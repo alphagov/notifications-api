@@ -13,9 +13,16 @@ from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
-    User, Organisation, Service, ServicePermission, Notification,
-    ServiceEmailReplyTo, ServiceLetterContact,
-    ServiceSmsSender, InboundNumber,
+    EmailBranding,
+    InboundNumber,
+    Notification,
+    Organisation,
+    Service,
+    ServiceEmailReplyTo,
+    ServiceLetterContact,
+    ServicePermission,
+    ServiceSmsSender,
+    User,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
@@ -403,6 +410,10 @@ def test_update_service(client, notify_db, sample_service):
     org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db.session.add(org)
     notify_db.session.commit()
+    # Need to set this up manually until org->email_branding migration is complete :(
+    brand = EmailBranding(id=org.id, colour='#000000', logo='justice-league.png', name='Justice League')
+    notify_db.session.add(brand)
+    notify_db.session.commit()
 
     auth_header = create_authorization_header()
     resp = client.get(
@@ -412,6 +423,8 @@ def test_update_service(client, notify_db, sample_service):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert resp.status_code == 200
     assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['organisation'] is None
+    assert json_resp['data']['email_branding'] is None
 
     data = {
         'name': 'updated service name',
@@ -434,6 +447,7 @@ def test_update_service(client, notify_db, sample_service):
     assert result['data']['name'] == 'updated service name'
     assert result['data']['email_from'] == 'updated.service.name'
     assert result['data']['organisation'] == str(org.id)
+    assert result['data']['email_branding'] == str(org.id)
     assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
     assert result['data']['organisation_type'] == 'foo'
 
