@@ -270,13 +270,13 @@ def test_create_service_returns_service_with_default_permissions(service_factory
 
     service = dao_fetch_service_by_id(service.id)
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE,
     ))
 
 
 @pytest.mark.parametrize("permission_to_remove, permission_remaining", [
-    (SMS_TYPE, EMAIL_TYPE),
-    (EMAIL_TYPE, SMS_TYPE),
+    (SMS_TYPE, (EMAIL_TYPE, LETTER_TYPE)),
+    (EMAIL_TYPE, (SMS_TYPE, LETTER_TYPE)),
 ])
 def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(
     sample_service, permission_to_remove, permission_remaining
@@ -285,13 +285,14 @@ def test_remove_permission_from_service_by_id_returns_service_with_correct_permi
 
     service = dao_fetch_service_by_id(sample_service.id)
     _assert_service_permissions(service.permissions, (
-        permission_remaining, INTERNATIONAL_SMS_TYPE,
+        permission_remaining + (INTERNATIONAL_SMS_TYPE,)
     ))
 
 
 def test_removing_all_permission_returns_service_with_no_permissions(sample_service):
     dao_remove_service_permission(service_id=sample_service.id, permission=SMS_TYPE)
     dao_remove_service_permission(service_id=sample_service.id, permission=EMAIL_TYPE)
+    dao_remove_service_permission(service_id=sample_service.id, permission=LETTER_TYPE)
     dao_remove_service_permission(service_id=sample_service.id, permission=INTERNATIONAL_SMS_TYPE)
 
     service = dao_fetch_service_by_id(sample_service.id)
@@ -309,6 +310,7 @@ def test_remove_service_does_not_remove_service_permission_types(sample_service)
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
     service = service_factory.get('testing', email_from='testing')
 
+    dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
     dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
 
     service = dao_fetch_service_by_id(service.id)
@@ -387,7 +389,11 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
                       message_limit=1000,
                       restricted=False,
                       created_by=sample_user)
-    dao_create_service(service, sample_user)
+    dao_create_service(service, sample_user, service_permissions=[
+        SMS_TYPE,
+        EMAIL_TYPE,
+        INTERNATIONAL_SMS_TYPE,
+    ])
 
     service.permissions.append(ServicePermission(service_id=service.id, permission='letter'))
     dao_update_service(service)
@@ -451,8 +457,9 @@ def test_delete_service_and_associated_objects(notify_db,
                                                sample_invited_user,
                                                sample_permission,
                                                sample_provider_statistics):
-    # Default service permissions of Email and SMS
-    assert ServicePermission.query.count() == 3
+    assert ServicePermission.query.count() == len((
+        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
+    ))
 
     delete_service_and_all_associated_db_objects(sample_service)
     assert ProviderStatistics.query.count() == 0
