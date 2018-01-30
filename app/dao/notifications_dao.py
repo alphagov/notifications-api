@@ -249,7 +249,8 @@ def get_notifications_for_service(
     include_jobs=False,
     include_from_test_key=False,
     older_than=None,
-    client_reference=None
+    client_reference=None,
+    include_created_by_user=False
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -286,6 +287,10 @@ def get_notifications_for_service(
     if include_jobs:
         query = query.options(
             joinedload('job')
+        )
+    if include_created_by_user:
+        query = query.options(
+            joinedload('created_by')
         )
 
     return query.order_by(desc(Notification.created_at)).paginate(

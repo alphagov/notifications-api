@@ -52,7 +52,7 @@ def build_notification_for_service(notification):
         "sent_at": notification.sent_at.strftime(DATETIME_FORMAT) if notification.sent_at else None,
         "completed_at": notification.completed_at(),
         "job": notification.job.original_file_name if notification.job_id else None,
-        "sent_by": notification.sent_by
+        "sent_by": notification.created_by.name if notification.created_by_id else None
     }
 
 

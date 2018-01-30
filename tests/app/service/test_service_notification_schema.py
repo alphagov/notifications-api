@@ -17,7 +17,7 @@ def test_get_notifications_for_service(client, notify_db_session):
     job = create_job(template=sms_template)
     create_notification(template=sms_template, status='sending', sent_at=datetime.utcnow(),
                         updated_at=datetime.utcnow())
-    create_notification(template=sms_template, status='created')
+    create_notification(template=sms_template, status='created', created_by_id=service.users[0].id)
     create_notification(template=email_template, status='temporary-failure',
                         sent_at=datetime.utcnow(), updated_at=datetime.utcnow())
     create_notification(template=sms_template, status='delivered',
@@ -25,7 +25,6 @@ def test_get_notifications_for_service(client, notify_db_session):
     create_notification(template=email_template2, job=job, job_row_number=1, personalisation={"some": "any"})
 
     auth_header = create_authorization_header()
-
     response = client.get(
         path='/service/{}/notifications/csv'.format(
             service.id
