@@ -454,7 +454,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     class Meta:
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', )
+        exclude = ('_personalisation', 'scheduled_notification')
 
     template = fields.Nested(
         TemplateSchema,

@@ -69,6 +69,7 @@ from app.errors import (
 from app.models import Service
 from app.schema_validation import validate
 from app.service import statistics
+from app.service.service_notification_schema import build_notification_for_service
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
@@ -334,6 +335,47 @@ def get_all_notifications_for_service(service_id):
     kwargs['service_id'] = service_id
     return jsonify(
         notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
+        page_size=page_size,
+        total=pagination.total,
+        links=pagination_links(
+            pagination,
+            '.get_all_notifications_for_service',
+            **kwargs
+        )
+    ), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/csv', methods=['GET'])
+def get_all_notifications_for_service_csv(service_id):
+    data = notifications_filter_schema.load(request.args).data
+    if data.get('to'):
+        return search_for_notification_by_to_field(service_id, data['to'], statuses=data.get('status'))
+    page = data['page'] if 'page' in data else 1
+    page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
+    limit_days = data.get('limit_days')
+    include_jobs = data.get('include_jobs', True)
+    include_from_test_key = data.get('include_from_test_key', False)
+    include_created_by_user = data.get('include_created_by_user', False)
+
+    pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page,
+        page_size=page_size,
+        limit_days=limit_days,
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key,
+        personalisation=True,
+        include_created_by_user=include_created_by_user
+    )
+    kwargs = request.args.to_dict()
+    kwargs['service_id'] = service_id
+    results = []
+    for n in pagination.items:
+        results.append(build_notification_for_service(n))
+
+    return jsonify(
+        notifications=results,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(

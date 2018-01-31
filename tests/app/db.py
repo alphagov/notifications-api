@@ -166,7 +166,8 @@ def create_notification(
     normalised_to=None,
     one_off=False,
     sms_sender_id=None,
-    reply_to_text=None
+    reply_to_text=None,
+    created_by_id=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -211,7 +212,8 @@ def create_notification(
         'international': international,
         'phone_prefix': phone_prefix,
         'normalised_to': normalised_to,
-        'reply_to_text': reply_to_text
+        'reply_to_text': reply_to_text,
+        'created_by_id': created_by_id
     }
     notification = Notification(**data)
     dao_create_notification(notification)
