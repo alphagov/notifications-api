@@ -25,8 +25,8 @@ from app.models import (
     User,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
-)
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+    LETTERS_AS_PDF)
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_user_service_permission as create_user_service_permission,
@@ -159,7 +159,7 @@ def test_get_service_list_has_default_permissions(admin_request, service_factory
         set(
             json['permissions']
         ) == set([
-            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
+            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTERS_AS_PDF
         ])
         for json in json_resp['data']
     )
@@ -171,7 +171,7 @@ def test_get_service_by_id_has_default_service_permissions(admin_request, sample
     assert set(
         json_resp['data']['permissions']
     ) == set([
-        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
+        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTERS_AS_PDF
     ])
 
 

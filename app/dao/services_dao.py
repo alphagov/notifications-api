@@ -39,15 +39,15 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES,
     SMS_TYPE,
     TEMPLATE_TYPES,
-    LETTER_TYPE,
+    LETTERS_AS_PDF
 )
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
     EMAIL_TYPE,
-    LETTER_TYPE,
     INTERNATIONAL_SMS_TYPE,
+    LETTERS_AS_PDF
 ]
 
 
