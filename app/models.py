@@ -166,6 +166,33 @@ class Organisation(db.Model):
         return serialized
 
 
+class EmailBranding(db.Model):
+    __tablename__ = 'email_branding'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    colour = db.Column(db.String(7), nullable=True)
+    logo = db.Column(db.String(255), nullable=True)
+    name = db.Column(db.String(255), nullable=True)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "colour": self.colour,
+            "logo": self.logo,
+            "name": self.name,
+        }
+
+        return serialized
+
+
+service_email_branding = db.Table(
+    'service_email_branding',
+    db.Model.metadata,
+    # service_id is a primary key as you can only have one email branding per service
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False),
+    db.Column('email_branding_id', UUID(as_uuid=True), db.ForeignKey('email_branding.id'), nullable=False),
+)
+
+
 DVLA_ORG_HM_GOVERNMENT = '001'
 DVLA_ORG_LAND_REGISTRY = '500'
 
@@ -254,6 +281,12 @@ class Service(db.Model, Versioned):
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
 
     association_proxy('permissions', 'service_permission_types')
+
+    email_branding = db.relationship(
+        'EmailBranding',
+        secondary=service_email_branding,
+        uselist=False,
+        backref=db.backref('services', lazy='dynamic'))
 
     @classmethod
     def from_json(cls, data):
