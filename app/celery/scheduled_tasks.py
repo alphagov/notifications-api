@@ -364,7 +364,7 @@ def raise_alert_if_letter_notifications_still_sending():
         )
 
         # Only send alerts in production
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             deskpro_client.create_ticket(
                 subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
                 message=message,
@@ -535,7 +535,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     zip_file_set.discard('')
 
     if len(zip_file_set - ack_content_set) > 0:
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['production', 'test']:
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             deskpro_client.create_ticket(
                 subject="Letter acknowledge error",
                 message=deskpro_message,
