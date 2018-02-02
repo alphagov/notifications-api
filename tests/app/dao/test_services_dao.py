@@ -60,7 +60,9 @@ from app.models import (
     SMS_TYPE,
     INTERNATIONAL_SMS_TYPE,
     SERVICE_PERMISSION_TYPES,
-    LETTERS_AS_PDF)
+    LETTERS_AS_PDF,
+    LETTER_TYPE
+)
 
 from tests.app.db import (
     create_inbound_number, create_user, create_service, create_service_with_inbound_number,
@@ -269,13 +271,13 @@ def test_create_service_returns_service_with_default_permissions(service_factory
 
     service = dao_fetch_service_by_id(service.id)
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
 
 @pytest.mark.parametrize("permission_to_remove, permission_remaining", [
-    (SMS_TYPE, (EMAIL_TYPE, LETTERS_AS_PDF)),
-    (EMAIL_TYPE, (SMS_TYPE, LETTERS_AS_PDF)),
+    (SMS_TYPE, (EMAIL_TYPE, LETTERS_AS_PDF, LETTER_TYPE)),
+    (EMAIL_TYPE, (SMS_TYPE, LETTERS_AS_PDF, LETTER_TYPE)),
 ])
 def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(
     sample_service, permission_to_remove, permission_remaining
@@ -293,6 +295,7 @@ def test_removing_all_permission_returns_service_with_no_permissions(sample_serv
     dao_remove_service_permission(service_id=sample_service.id, permission=EMAIL_TYPE)
     dao_remove_service_permission(service_id=sample_service.id, permission=LETTERS_AS_PDF)
     dao_remove_service_permission(service_id=sample_service.id, permission=INTERNATIONAL_SMS_TYPE)
+    dao_remove_service_permission(service_id=sample_service.id, permission=LETTER_TYPE)
 
     service = dao_fetch_service_by_id(sample_service.id)
     assert len(service.permissions) == 0
@@ -314,14 +317,14 @@ def test_create_service_by_id_adding_and_removing_letter_returns_service_without
 
     service = dao_fetch_service_by_id(service.id)
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, LETTER_TYPE, INTERNATIONAL_SMS_TYPE,
     ))
 
     dao_remove_service_permission(service_id=service.id, permission=LETTERS_AS_PDF)
     service = dao_fetch_service_by_id(service.id)
 
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
 
@@ -457,7 +460,7 @@ def test_delete_service_and_associated_objects(notify_db,
                                                sample_permission,
                                                sample_provider_statistics):
     assert ServicePermission.query.count() == len((
-        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
     delete_service_and_all_associated_db_objects(sample_service)

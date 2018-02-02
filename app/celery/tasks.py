@@ -125,7 +125,7 @@ def process_job(job_id):
 def job_complete(job, service, template_type, resumed=False, start=None):
     if (
         template_type == LETTER_TYPE and
-        not service.has_permission('letters_as_pdf')
+        service.has_permission(LETTER_TYPE)
     ):
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
