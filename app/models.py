@@ -166,6 +166,24 @@ class Organisation(db.Model):
         return serialized
 
 
+class EmailBranding(db.Model):
+    __tablename__ = 'email_branding'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    colour = db.Column(db.String(7), nullable=True)
+    logo = db.Column(db.String(255), nullable=True)
+    name = db.Column(db.String(255), nullable=True)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "colour": self.colour,
+            "logo": self.logo,
+            "name": self.name,
+        }
+
+        return serialized
+
+
 DVLA_ORG_HM_GOVERNMENT = '001'
 DVLA_ORG_LAND_REGISTRY = '500'
 
@@ -231,6 +249,8 @@ class Service(db.Model, Versioned):
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship('Organisation')
+    email_branding_id = db.Column(UUID(as_uuid=True), db.ForeignKey('email_branding.id'), index=True, nullable=True)
+    email_branding = db.relationship('EmailBranding')
     dvla_organisation_id = db.Column(
         db.String,
         db.ForeignKey('dvla_organisation.id'),

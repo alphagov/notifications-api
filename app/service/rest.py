@@ -179,11 +179,16 @@ def update_service(service_id):
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
 
-    update_dict = service_schema.load(current_data).data
+    service = service_schema.load(current_data).data
     org_type = req_json.get('organisation_type', None)
     if org_type:
-        update_dict.crown = org_type == 'central'
-    dao_update_service(update_dict)
+        service.crown = org_type == 'central'
+
+    # Temp fix to ensure email branding is kept up to date while we migrate to the new column
+    org_id = req_json.get('organisation', None)
+    if org_id:
+        service.email_branding_id = org_id
+    dao_update_service(service)
 
     if service_going_live:
         send_notification_to_service_users(
