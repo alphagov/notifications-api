@@ -161,7 +161,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
                 queue=queue_name
             )
         else:
-            current_app.logger.info("POST simulated notification for id: {}".format(notification.id))
+            current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
 
     return notification
 

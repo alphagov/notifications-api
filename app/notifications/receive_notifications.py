@@ -59,7 +59,7 @@ def receive_mmg_sms():
 
     tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
 
-    current_app.logger.info(
+    current_app.logger.debug(
         '{} received inbound SMS with reference {} from MMG'.format(service.id, inbound.provider_reference))
     return jsonify({
         "status": "ok"
@@ -96,7 +96,7 @@ def receive_firetext_sms():
     statsd_client.incr('inbound.firetext.successful')
 
     tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
-    current_app.logger.info(
+    current_app.logger.debug(
         '{} received inbound SMS with reference {} from Firetext'.format(service.id, inbound.provider_reference))
     return jsonify({
         "status": "ok"

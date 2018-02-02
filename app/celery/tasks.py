@@ -110,7 +110,7 @@ def process_job(job_id):
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
-    current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
+    current_app.logger.debug("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
     for row_number, recipient, personalisation in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
@@ -131,7 +131,7 @@ def job_complete(job, service, template_type, resumed=False, start=None):
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
         else:
             build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.info("send job {} to build-dvla-file in the {} queue".format(job.id, QueueNames.JOBS))
+            current_app.logger.debug("send job {} to build-dvla-file in the {} queue".format(job.id, QueueNames.JOBS))
     else:
         job.job_status = JOB_STATUS_FINISHED
 
@@ -206,7 +206,7 @@ def save_sms(self,
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
     if not service_allowed_to_send_to(notification['to'], service, key_type):
-        current_app.logger.info(
+        current_app.logger.debug(
             "SMS {} failed as restricted service".format(notification_id)
         )
         return
@@ -233,7 +233,7 @@ def save_sms(self,
             queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
-        current_app.logger.info(
+        current_app.logger.debug(
             "SMS {} created at {} for job {}".format(
                 saved_notification.id,
                 saved_notification.created_at,
@@ -283,7 +283,7 @@ def save_email(self,
             queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
         )
 
-        current_app.logger.info("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
+        current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
@@ -340,7 +340,7 @@ def save_letter(
             else:
                 update_notification_status_by_reference(saved_notification.reference, 'delivered')
 
-        current_app.logger.info("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
+        current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
@@ -421,7 +421,7 @@ def update_letter_notifications_to_error(self, notification_references):
         }
     )
 
-    current_app.logger.info("Updated {} letter notifications to technical-failure".format(updated_count))
+    current_app.logger.debug("Updated {} letter notifications to technical-failure".format(updated_count))
 
 
 def create_dvla_file_contents_for_job(job_id):
@@ -553,7 +553,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
             },
             timeout=60
         )
-        current_app.logger.info('send_inbound_sms_to_service sending {} to {}, response {}'.format(
+        current_app.logger.debug('send_inbound_sms_to_service sending {} to {}, response {}'.format(
             inbound_sms_id,
             inbound_api.url,
             response.status_code
