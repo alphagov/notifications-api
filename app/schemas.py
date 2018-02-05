@@ -199,11 +199,12 @@ class ProviderDetailsHistorySchema(BaseSchema):
 class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
-    organisation = field_for(models.Service, 'organisation')
     organisation_type = field_for(models.Service, 'organisation_type')
     branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
+    # TODO: remove this variable after admin is updated to refer to email branding
+    organisation = field_for(models.Service, 'organisation')
     email_branding = field_for(models.Service, 'email_branding')
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
@@ -284,11 +285,13 @@ class DetailedServiceSchema(BaseSchema):
             'template_statistics',
             'service_provider_stats',
             'service_notification_stats',
+            # TODO: remove this field after admin is updated to refer to email branding
             'organisation',
+            'email_branding',
             'service_sms_senders',
             'monthly_billing',
             'reply_to_email_addresses',
-            'letter_contact_block',         # new exclude from here
+            'letter_contact_block',
             'message_limit',
             'email_from',
             'inbound_api',

@@ -13,7 +13,7 @@ from app.models import (
     Job,
     MonthlyBilling,
     Notification,
-    Organisation,
+    EmailBranding,
     Rate,
     Service,
     ServiceEmailReplyTo,
@@ -40,7 +40,7 @@ from app.dao.templates_dao import dao_create_template
 from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
-from app.dao.organisations_dao import dao_create_organisation
+from app.dao.email_branding_dao import dao_create_email_branding
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
@@ -316,16 +316,16 @@ def create_service_callback_api(
     return service_callback_api
 
 
-def create_organisation(colour='blue', logo='test_x2.png', name='test_org_1'):
+def create_email_branding(colour='blue', logo='test_x2.png', name='test_org_1'):
     data = {
         'colour': colour,
         'logo': logo,
         'name': name
     }
-    organisation = Organisation(**data)
-    dao_create_organisation(organisation)
+    email_branding = EmailBranding(**data)
+    dao_create_email_branding(email_branding)
 
-    return organisation
+    return email_branding
 
 
 def create_rate(start_date, value, notification_type):

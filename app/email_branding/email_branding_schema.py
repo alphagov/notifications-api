@@ -1,6 +1,6 @@
-post_create_organisation_schema = {
+post_create_email_branding_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST schema for getting organisation",
+    "description": "POST schema for getting email_branding",
     "type": "object",
     "properties": {
         "colour": {"type": ["string", "null"]},
@@ -10,9 +10,9 @@ post_create_organisation_schema = {
     "required": []
 }
 
-post_update_organisation_schema = {
+post_update_email_branding_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST schema for getting organisation",
+    "description": "POST schema for getting email_branding",
     "type": "object",
     "properties": {
         "colour": {"type": ["string", "null"]},
