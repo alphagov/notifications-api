@@ -76,7 +76,7 @@ def create_app(application):
     register_blueprint(application)
     register_v2_blueprints(application)
 
-    # avoid circular imports by importing this file later 😬
+    # avoid circular imports by importing this file later
     from app.commands import setup_commands
     setup_commands(application)
 
