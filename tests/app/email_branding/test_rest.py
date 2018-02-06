@@ -1,6 +1,10 @@
+import json
+
 import pytest
 
 from app.models import EmailBranding
+
+from tests import create_authorization_header
 
 
 def test_get_email_branding_options(admin_request, notify_db, notify_db_session):
@@ -12,6 +16,29 @@ def test_get_email_branding_options(admin_request, notify_db, notify_db_session)
     email_branding = admin_request.get(
         'email_branding.get_email_branding_options'
     )['email_branding']
+
+    assert len(email_branding) == 2
+    assert {
+        email_branding['id'] for email_branding in email_branding
+    } == {
+        str(email_branding1.id), str(email_branding2.id)
+    }
+
+
+def test_get_email_branding_options_from_old_endpoint(client, notify_db, notify_db_session):
+    email_branding1 = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Org1')
+    email_branding2 = EmailBranding(colour='#000000', logo='/path/other.png', name='Org2')
+    notify_db.session.add_all([email_branding1, email_branding2])
+    notify_db.session.commit()
+
+    response = client.get(
+        '/organisation',
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    email_branding = json_resp['organisations']
 
     assert len(email_branding) == 2
     assert {
@@ -37,6 +64,21 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
     assert response['email_branding']['logo'] == '/path/image.png'
     assert response['email_branding']['name'] == 'My Org'
     assert response['email_branding']['id'] == str(email_branding.id)
+
+
+def test_get_email_branding_by_id_from_old_endpoint(client, notify_db, notify_db_session):
+    email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='My Org')
+    notify_db.session.add(email_branding)
+    notify_db.session.commit()
+
+    response = client.get(
+        '/organisation/{}'.format(email_branding.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    assert json_resp['organisation']['id'] == str(email_branding.id)
 
 
 def test_post_create_email_branding(admin_request, notify_db_session):
