@@ -1,5 +1,12 @@
+import os
 import sys
 import traceback
+
+workers = 5
+worker_class = "eventlet"
+worker_connections = 256
+errorlog = "/home/vcap/logs/gunicorn_error.log"
+bind = "0.0.0.0:{}".format(os.getenv("PORT"))
 
 
 def on_starting(server):
