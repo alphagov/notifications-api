@@ -542,7 +542,9 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
             Template, Notification.template_id == Template.id,
         ).filter(
             Notification.created_at >= start_date,
-            Notification.service_id == service_id
+            Notification.service_id == service_id,
+            # we don't want to include test keys
+            Notification.key_type != KEY_TYPE_TEST
         ).group_by(
             Notification.template_id,
             Template.name,
@@ -562,7 +564,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
                     add_to_stats = False
 
             if add_to_stats:
-                new_stat = type("", (), {})()
+                new_stat = type("StatsTemplateUsageByMonth", (), {})()
                 new_stat.template_id = today_result.template_id
                 new_stat.template_type = today_result.template_type
                 new_stat.name = today_result.name

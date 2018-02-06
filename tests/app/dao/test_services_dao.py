@@ -64,8 +64,13 @@ from app.models import (
 )
 
 from tests.app.db import (
-    create_inbound_number, create_user, create_service, create_service_with_inbound_number,
-    create_service_with_defined_sms_sender
+    create_inbound_number,
+    create_user,
+    create_service,
+    create_service_with_inbound_number,
+    create_service_with_defined_sms_sender,
+    create_template,
+    create_notification as create_notification_db
 )
 from tests.app.conftest import (
     sample_notification as create_notification,
@@ -1477,3 +1482,27 @@ def test_dao_fetch_monthly_historical_usage_by_template_for_service_only_returns
     )
 
     assert len(result) == 1
+
+
+@freeze_time("2018-01-01 11:09:00.000000")
+def test_dao_fetch_monthly_historical_usage_by_template_for_service_ignores_test_api_keys(sample_service):
+    template_1 = create_template(sample_service, template_name='1')
+    template_2 = create_template(sample_service, template_name='2')
+    template_3 = create_template(sample_service, template_name='3')
+
+    create_notification_db(template_1, key_type=KEY_TYPE_TEST)
+    create_notification_db(template_2, key_type=KEY_TYPE_TEAM)
+    create_notification_db(template_3, key_type=KEY_TYPE_NORMAL)
+
+    results = sorted(
+        dao_fetch_monthly_historical_usage_by_template_for_service(sample_service.id, 2017),
+        key=lambda x: x.name
+    )
+
+    assert len(results) == 2
+    # template_1 only used with test keys
+    assert results[0].template_id == template_2.id
+    assert results[0].count == 1
+
+    assert results[1].template_id == template_3.id
+    assert results[1].count == 1
