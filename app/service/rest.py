@@ -66,7 +66,7 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service
+from app.models import Service, EmailBranding
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_senders_schema import (
@@ -179,11 +179,16 @@ def update_service(service_id):
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
 
-    update_dict = service_schema.load(current_data).data
+    service = service_schema.load(current_data).data
     org_type = req_json.get('organisation_type', None)
     if org_type:
-        update_dict.crown = org_type == 'central'
-    dao_update_service(update_dict)
+        service.crown = org_type == 'central'
+
+    if 'organisation' in req_json:
+        org_id = req_json['organisation']
+        service.email_branding = None if not org_id else EmailBranding.query.get(org_id)
+
+    dao_update_service(service)
 
     if service_going_live:
         send_notification_to_service_users(
