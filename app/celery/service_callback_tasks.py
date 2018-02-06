@@ -1,4 +1,7 @@
 import json
+
+from notifications_utils.statsd_decorators import statsd
+
 from app import (
     DATETIME_FORMAT,
     notify_celery,
@@ -7,7 +10,6 @@ from app.dao.notifications_dao import (
     get_notification_by_id,
 )
 
-from app.statsd_decorators import statsd
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from requests import (
     HTTPError,

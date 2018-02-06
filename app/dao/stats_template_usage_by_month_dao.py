@@ -1,7 +1,7 @@
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import or_, and_
 
 from app import db
-from app.statsd_decorators import statsd
 from app.dao.dao_utils import transactional
 from app.models import StatsTemplateUsageByMonth, Template
 

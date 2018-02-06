@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import func, desc, asc, cast, Date as sql_date
 
 from app import db
@@ -12,7 +13,6 @@ from app.models import (
     LETTER_TYPE
 )
 from app.variables import LETTER_TEST_API_FILENAME
-from app.statsd_decorators import statsd
 
 
 @statsd(namespace="dao")

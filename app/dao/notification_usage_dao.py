@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import Float, Integer, and_
 from sqlalchemy import func, case, cast
 from sqlalchemy import literal_column
@@ -17,7 +18,6 @@ from app.models import (
     LetterRate,
     Service
 )
-from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column
 
 

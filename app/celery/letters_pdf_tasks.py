@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import math
 
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from requests import (
     post as requests_post,
     RequestException
@@ -20,7 +21,6 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references,
 )
 from app.models import NOTIFICATION_CREATED
-from app.statsd_decorators import statsd
 
 LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
     '{folder}/NOTIFY.{reference}.{duplex}.{letter_class}.{colour}.{crown}.{date}.pdf'

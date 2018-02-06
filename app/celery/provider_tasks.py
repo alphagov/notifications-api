@@ -1,13 +1,13 @@
 from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.recipients import InvalidEmailError
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.config import QueueNames
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
-from app.statsd_decorators import statsd
 from app.delivery import send_to_providers
 
 
