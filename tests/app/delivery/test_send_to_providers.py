@@ -15,7 +15,7 @@ from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_wit
 from app.delivery import send_to_providers
 from app.models import (
     Notification,
-    Organisation,
+    EmailBranding,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -439,9 +439,9 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
     sample_service.branding = branding_type
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    sample_service.organisation = org
-    notify_db.session.add_all([sample_service, org])
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.email_branding = email_branding
+    notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
 
     options = send_to_providers.get_html_email_options(sample_service)
@@ -458,9 +458,9 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
     sample_service.branding = BRANDING_GOVUK
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    sample_service.organisation = org
-    notify_db.session.add_all([sample_service, org])
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    sample_service.email_branding = email_branding
+    notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
 
     options = send_to_providers.get_html_email_options(sample_service)
@@ -469,23 +469,23 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
-    Service = namedtuple('Service', ['branding', 'organisation'])
-    Organisation = namedtuple('Organisation', ['colour', 'name', 'logo'])
+    Service = namedtuple('Service', ['branding', 'email_branding'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo'])
 
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    service = Service(branding=BRANDING_ORG, organisation=org)
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
 
     assert renderer['brand_logo'] == 'http://static-logos.notify.tools/justice-league.png'
 
 
-def test_get_html_email_renderer_handles_org_without_logo(notify_api):
-    Service = namedtuple('Service', ['branding', 'organisation'])
-    Organisation = namedtuple('Organisation', ['colour', 'name', 'logo'])
+def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
+    Service = namedtuple('Service', ['branding', 'email_branding'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo'])
 
-    org = Organisation(colour='#000000', logo=None, name='Justice League')
-    service = Service(branding=BRANDING_ORG, organisation=org)
+    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League')
+    service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
 

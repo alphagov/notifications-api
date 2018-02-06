@@ -148,6 +148,7 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+# TODO: remove this model after admin is updated to refer to email branding
 class Organisation(db.Model):
     __tablename__ = 'organisation'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

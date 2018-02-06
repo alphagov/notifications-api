@@ -184,9 +184,14 @@ def update_service(service_id):
     if org_type:
         service.crown = org_type == 'central'
 
+    # TODO: remove this block after admin is updated to refer to email branding
     if 'organisation' in req_json:
         org_id = req_json['organisation']
         service.email_branding = None if not org_id else EmailBranding.query.get(org_id)
+
+    if 'email_branding' in req_json:
+        email_branding_id = req_json['email_branding']
+        service.email_branding = None if not email_branding_id else EmailBranding.query.get(email_branding_id)
 
     dao_update_service(service)
 
