@@ -1,7 +1,7 @@
 ---
 
 buildpack: python_buildpack
-command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py -k eventlet --worker_connections 256 --error-logfile /home/vcap/logs/gunicorn_error.log -w 5 -b 0.0.0.0:$PORT application
+command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py -k eventlet --worker-connections 256 --error-logfile /home/vcap/logs/gunicorn_error.log -w 5 -b 0.0.0.0:$PORT application
 services:
   - notify-db
 env:
