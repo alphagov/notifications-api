@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import current_app
 
 from app import statsd_client
+from app.clients import ClientException
 from app.dao import notifications_dao
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
@@ -49,17 +50,19 @@ def process_sms_client_response(status, reference, client_name):
 
     # validate  status
     try:
-        response_dict = response_parser(status)
+        notification_status = response_parser(status)
         current_app.logger.info('{} callback return status of {} for reference: {}'.format(
             client_name, status, reference)
         )
     except KeyError:
-        msg = "{} callback failed: status {} not found.".format(client_name, status)
-        return success, msg
+        process_for_status(notification_status='technical-failure', client_name=client_name, reference=reference)
+        raise ClientException("{} callback failed: status {} not found.".format(client_name, status))
 
-    notification_status = response_dict['notification_status']
-    notification_status_message = response_dict['message']
-    notification_success = response_dict['success']
+    success = process_for_status(notification_status=notification_status, client_name=client_name, reference=reference)
+    return success, errors
+
+
+def process_for_status(notification_status, client_name, reference):
 
     # record stats
     notification = notifications_dao.update_notification_status_by_id(reference, notification_status)
@@ -67,14 +70,8 @@ def process_sms_client_response(status, reference, client_name):
         current_app.logger.warning("{} callback failed: notification {} either not found or already updated "
                                    "from sending. Status {}".format(client_name,
                                                                     reference,
-                                                                    notification_status_message))
-        return success, errors
-
-    if not notification_success:
-        current_app.logger.info(
-            "{} delivery failed: notification {} has error found. Status {}".format(client_name,
-                                                                                    reference,
-                                                                                    notification_status_message))
+                                                                    notification_status))
+        return
 
     statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))
     if notification.sent_at:
@@ -92,4 +89,4 @@ def process_sms_client_response(status, reference, client_name):
         send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
 
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
-    return success, errors
+    return success
