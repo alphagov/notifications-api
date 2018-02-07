@@ -161,8 +161,6 @@ def register_blueprint(application):
 
     email_branding_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(email_branding_blueprint, url_prefix='/email-branding')
-    # TODO: remove this route after admin is updated to refer to email branding
-    application.register_blueprint(email_branding_blueprint, url_prefix='/organisation')
 
     dvla_organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(dvla_organisation_blueprint, url_prefix='/dvla_organisations')

@@ -21,17 +21,13 @@ register_errors(email_branding_blueprint)
 @email_branding_blueprint.route('', methods=['GET'])
 def get_email_branding_options():
     email_branding_options = [o.serialize() for o in dao_get_email_branding_options()]
-    key = 'organisations' if request.path.startswith('/organisation') else 'email_branding'
-    return jsonify(**{key: email_branding_options})
     return jsonify(email_branding=email_branding_options)
 
 
 @email_branding_blueprint.route('/<uuid:email_branding_id>', methods=['GET'])
 def get_email_branding_by_id(email_branding_id):
     email_branding = dao_get_email_branding_by_id(email_branding_id)
-    # TODO: remove this switch after admin is updated to refer to email branding
-    key = 'organisation' if request.path.startswith('/organisation') else 'email_branding'
-    return jsonify(**{key: email_branding.serialize()})
+    return jsonify(email_branding=email_branding.serialize())
 
 
 @email_branding_blueprint.route('', methods=['POST'])
