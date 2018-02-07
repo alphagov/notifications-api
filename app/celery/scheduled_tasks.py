@@ -6,6 +6,7 @@ from datetime import (
 
 from celery.signals import worker_process_shutdown
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 from notifications_utils.s3 import s3upload
@@ -54,7 +55,6 @@ from app.models import (
     JOB_STATUS_READY_TO_SEND
 )
 from app.notifications.process_notifications import send_notification_to_queue
-from app.statsd_decorators import statsd
 from app.celery.tasks import (
     create_dvla_file_contents_for_notifications,
     process_job

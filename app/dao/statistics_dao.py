@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from itertools import groupby
 
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -17,7 +18,6 @@ from app.models import (
     NOTIFICATION_STATUS_SUCCESS,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENT)
-from app.statsd_decorators import statsd
 
 
 @transactional

@@ -1,6 +1,7 @@
 import uuid
 from datetime import date, datetime, timedelta, time
 
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import asc, func, extract
 from sqlalchemy.orm import joinedload
 from flask import current_app
@@ -40,7 +41,6 @@ from app.models import (
     TEMPLATE_TYPES,
     LETTER_TYPE,
 )
-from app.statsd_decorators import statsd
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
 
 DEFAULT_SERVICE_PERMISSIONS = [

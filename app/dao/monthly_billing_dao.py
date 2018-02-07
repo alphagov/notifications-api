@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from notifications_utils.statsd_decorators import statsd
 
 from app import db
 from app.dao.dao_utils import transactional
@@ -12,7 +13,6 @@ from app.models import (
     MonthlyBilling,
     NotificationHistory
 )
-from app.statsd_decorators import statsd
 from app.utils import convert_utc_to_bst
 
 

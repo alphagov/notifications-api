@@ -3,12 +3,12 @@ from datetime import (
     datetime
 )
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import desc
 
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import InboundSms
-from app.statsd_decorators import statsd
 
 
 @transactional

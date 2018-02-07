@@ -8,6 +8,7 @@ from flask import current_app
 from notifications_utils.recipients import (
     RecipientCSV
 )
+from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import (
     SMSMessageTemplate,
     WithSubjectTemplate,
@@ -71,7 +72,6 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
-from app.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
 
 

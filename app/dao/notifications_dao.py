@@ -13,6 +13,7 @@ from notifications_utils.recipients import (
     InvalidPhoneError,
     InvalidEmailError,
 )
+from notifications_utils.statsd_decorators import statsd
 from werkzeug.datastructures import MultiDict
 from sqlalchemy import (desc, func, or_, asc)
 from sqlalchemy.orm import joinedload
@@ -44,7 +45,6 @@ from app.models import (
 )
 
 from app.dao.dao_utils import transactional
-from app.statsd_decorators import statsd
 
 
 @statsd(namespace="dao")

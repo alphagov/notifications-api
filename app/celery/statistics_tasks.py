@@ -1,10 +1,10 @@
 from celery.signals import worker_process_shutdown
+from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery
 from flask import current_app
 
-from app.statsd_decorators import statsd
 from app.dao.statistics_dao import (
     create_or_update_job_sending_statistics,
     update_job_stats_outcome_count
