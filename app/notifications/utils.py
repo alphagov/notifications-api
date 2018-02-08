@@ -20,6 +20,6 @@ def confirm_subscription(confirmation_request):
 
 def autoconfirm_subscription(req_json):
     if req_json.get('Type') == 'SubscriptionConfirmation':
-        current_app.logger.info("SNS subscription confirmation url: {}".format(req_json['SubscribeURL']))
+        current_app.logger.debug("SNS subscription confirmation url: {}".format(req_json['SubscribeURL']))
         subscribed_topic = confirm_subscription(req_json)
         return subscribed_topic

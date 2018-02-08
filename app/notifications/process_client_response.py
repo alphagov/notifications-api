@@ -71,7 +71,7 @@ def process_sms_client_response(status, reference, client_name):
         return success, errors
 
     if not notification_success:
-        current_app.logger.info(
+        current_app.logger.debug(
             "{} delivery failed: notification {} has error found. Status {}".format(client_name,
                                                                                     reference,
                                                                                     notification_status_message))
