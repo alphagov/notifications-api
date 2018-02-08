@@ -60,8 +60,6 @@ class TaskNames(object):
 
 
 class Config(object):
-    NOTIFY_LOG_LEVEL = 'INFO'
-
     # URL of admin app
     ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
 
