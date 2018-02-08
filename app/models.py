@@ -311,6 +311,15 @@ class Organisation(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "name": self.name,
+            "active": self.active,
+        }
+
+        return serialized
+
 
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
