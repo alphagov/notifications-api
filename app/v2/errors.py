@@ -62,19 +62,19 @@ def register_errors(blueprint):
     def invalid_format(error):
         # Please not that InvalidEmailError is re-raised for InvalidEmail or InvalidPhone,
         # work should be done in the utils app to tidy up these errors.
-        current_app.logger.exception(error)
+        current_app.logger.info(error)
         return jsonify(status_code=400,
                        errors=[{"error": error.__class__.__name__, "message": str(error)}]), 400
 
     @blueprint.errorhandler(InvalidRequest)
     def invalid_data(error):
-        current_app.logger.error(error)
+        current_app.logger.info(error)
         response = jsonify(error.to_dict_v2()), error.status_code
         return response
 
     @blueprint.errorhandler(ValidationError)
     def validation_error(error):
-        current_app.logger.exception(error)
+        current_app.logger.info(error)
         return jsonify(json.loads(error.message)), 400
 
     @blueprint.errorhandler(JobIncompleteError)
@@ -84,7 +84,7 @@ def register_errors(blueprint):
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
-        current_app.logger.exception(e)
+        current_app.logger.info(e)
         return jsonify(status_code=404,
                        errors=[{"error": e.__class__.__name__, "message": "No result found"}]), 404
 

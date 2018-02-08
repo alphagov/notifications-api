@@ -53,19 +53,19 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(ValidationError)
     def marshmallow_validation_error(error):
-        current_app.logger.error(error)
+        current_app.logger.info(error)
         return jsonify(result='error', message=error.messages), 400
 
     @blueprint.errorhandler(JsonSchemaValidationError)
     def jsonschema_validation_error(error):
-        current_app.logger.exception(error)
+        current_app.logger.info(error)
         return jsonify(json.loads(error.message)), 400
 
     @blueprint.errorhandler(InvalidRequest)
     def invalid_data(error):
         response = jsonify(error.to_dict())
         response.status_code = error.status_code
-        current_app.logger.error(error)
+        current_app.logger.info(error)
         return response
 
     @blueprint.errorhandler(400)
@@ -92,12 +92,11 @@ def register_errors(blueprint):
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
-        current_app.logger.exception(e)
+        current_app.logger.info(e)
         return jsonify(result='error', message="No result found"), 404
 
     @blueprint.errorhandler(SQLAlchemyError)
     def db_error(e):
-        current_app.logger.exception(e)
         if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror and \
             ('duplicate key value violates unique constraint "services_name_key"' in e.orig.pgerror or
              'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
@@ -107,6 +106,7 @@ def register_errors(blueprint):
                     e.params.get('name', e.params.get('email_from', ''))
                 )]}
             ), 400
+        current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
 
     # this must be defined after all other error handlers since it catches the generic Exception object
