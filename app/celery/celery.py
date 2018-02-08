@@ -12,7 +12,7 @@ class NotifyTask(Task):
         elapsed_time = time.time() - self.start
         current_app.logger.info(
             "{task_name} took {time}".format(
-                task_name=Task.name, time="{0:.4f}".format(elapsed_time)
+                task_name=self.name, time="{0:.4f}".format(elapsed_time)
             )
         )
 
