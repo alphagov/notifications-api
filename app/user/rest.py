@@ -196,7 +196,7 @@ def send_user_email_code(user_to_send_to, data):
     secret_code = str(uuid.uuid4())
     personalisation = {
         'name': user_to_send_to.name,
-        'url': _create_2fa_url(user_to_send_to, secret_code, data.get('next'))
+        'url': _create_2fa_url(user_to_send_to, secret_code, data.get('next'), data.get('email_auth_link_host'))
     }
 
     create_2fa_code(
@@ -413,10 +413,10 @@ def _create_confirmation_url(user, email_address):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_2fa_url(user, secret_code, next_redir):
+def _create_2fa_url(user, secret_code, next_redir, email_auth_link_host):
     data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
     url = '/email-auth/'
-    ret = url_with_token(data, url, current_app.config)
+    ret = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
     if next_redir:
         ret += '?{}'.format(urlencode({'next': next_redir}))
     return ret

@@ -343,12 +343,30 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
     assert resp.status_code == 404
 
 
-def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code_template):
+@pytest.mark.parametrize('data, expected_auth_url', (
+    (
+        {},
+        'http://localhost:6012/email-auth/.',
+    ),
+    (
+        {'to': None},
+        'http://localhost:6012/email-auth/.',
+    ),
+    (
+        {'to': None, 'email_auth_link_host': 'https://example.com'},
+        'https://example.com/email-auth/.',
+    ),
+))
+def test_send_user_email_code(
+    admin_request,
+    mocker,
+    sample_user,
+    email_2fa_code_template,
+    data,
+    expected_auth_url,
+):
     deliver_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    data = {
-        'to': None
-    }
     admin_request.post(
         'user.send_user_2fa_code',
         code_type='email',
@@ -361,6 +379,7 @@ def test_send_user_email_code(admin_request, mocker, sample_user, email_2fa_code
     assert noti.to == sample_user.email_address
     assert str(noti.template_id) == current_app.config['EMAIL_2FA_TEMPLATE_ID']
     assert noti.personalisation['name'] == 'Test User'
+    assert noti.personalisation['url'].startswith(expected_auth_url)
     deliver_email.assert_called_once_with(
         [str(noti.id)],
         queue='notify-internal-tasks'

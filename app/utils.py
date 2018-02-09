@@ -20,10 +20,10 @@ def pagination_links(pagination, endpoint, **kwargs):
     return links
 
 
-def url_with_token(data, url, config):
+def url_with_token(data, url, config, base_url=None):
     from notifications_utils.url_safe_token import generate_token
     token = generate_token(data, config['SECRET_KEY'], config['DANGEROUS_SALT'])
-    base_url = config['ADMIN_BASE_URL'] + url
+    base_url = (base_url or config['ADMIN_BASE_URL']) + url
     return base_url + token
 
 
