@@ -19,7 +19,7 @@ def dao_create_organisation(organisation):
 
 
 @transactional
-def dao_update_organisation(organisation, **kwargs):
-    for key, value in kwargs.items():
-        setattr(organisation, key, value)
-    db.session.add(organisation)
+def dao_update_organisation(organisation_id, **kwargs):
+    return Organisation.query.filter_by(id=organisation_id).update(
+        kwargs
+    )

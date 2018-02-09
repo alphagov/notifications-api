@@ -79,7 +79,7 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
         'organisation.update_organisation',
         _data=data,
         organisation_id=org.id,
-        _expected_status=200
+        _expected_status=204
     )
 
     organisation = Organisation.query.all()
@@ -88,3 +88,18 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
     assert organisation[0].id == org.id
     assert organisation[0].name == data['name']
     assert organisation[0].active == data['active']
+
+
+def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_request, notify_db_session):
+    data = {'name': 'new organisation name'}
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id='31d42ce6-3dac-45a7-95cb-94423d5ca03c',
+        _expected_status=404
+    )
+
+    organisation = Organisation.query.all()
+
+    assert not organisation

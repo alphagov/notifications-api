@@ -45,7 +45,7 @@ def test_update_organisation(notify_db, notify_db_session):
     assert len(organisation) == 1
     assert organisation[0].name != updated_name
 
-    dao_update_organisation(organisation[0], name=updated_name)
+    dao_update_organisation(organisation[0].id, **{'name': updated_name})
 
     organisation = Organisation.query.all()
 

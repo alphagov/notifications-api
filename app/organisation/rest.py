@@ -6,7 +6,7 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_id,
     dao_update_organisation,
 )
-from app.errors import register_errors
+from app.errors import register_errors, InvalidRequest
 from app.models import Organisation
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
@@ -48,10 +48,10 @@ def create_organisation():
 @organisation_blueprint.route('/<uuid:organisation_id>', methods=['POST'])
 def update_organisation(organisation_id):
     data = request.get_json()
-
     validate(data, post_update_organisation_schema)
+    result = dao_update_organisation(organisation_id, **data)
 
-    fetched_organisation = dao_get_organisation_by_id(organisation_id)
-    dao_update_organisation(fetched_organisation, **data)
-
-    return jsonify(fetched_organisation.serialize()), 200
+    if result:
+        return '', 204
+    else:
+        raise InvalidRequest("Organisation not found", 404)
