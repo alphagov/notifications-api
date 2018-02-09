@@ -16,7 +16,6 @@ from app.models import (
     EmailBranding,
     InboundNumber,
     Notification,
-    Organisation,
     Service,
     ServiceEmailReplyTo,
     ServiceLetterContact,
@@ -134,7 +133,7 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
     assert not json_resp['data']['research_mode']
-    assert json_resp['data']['organisation'] is None
+    assert json_resp['data']['email_branding'] is None
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
@@ -407,30 +406,17 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
 
 
 def test_update_service(client, notify_db, sample_service):
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    notify_db.session.add(org)
-    notify_db.session.commit()
-    # Need to set this up manually until org->email_branding migration is complete :(
-    brand = EmailBranding(id=org.id, colour='#000000', logo='justice-league.png', name='Justice League')
+    brand = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db.session.add(brand)
     notify_db.session.commit()
 
-    auth_header = create_authorization_header()
-    resp = client.get(
-        '/service/{}'.format(sample_service.id),
-        headers=[auth_header]
-    )
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == 200
-    assert json_resp['data']['name'] == sample_service.name
-    assert json_resp['data']['organisation'] is None
-    assert json_resp['data']['email_branding'] is None
+    assert sample_service.email_branding is None
 
     data = {
         'name': 'updated service name',
         'email_from': 'updated.service.name',
         'created_by': str(sample_service.created_by.id),
-        'organisation': str(org.id),
+        'email_branding': str(brand.id),
         'dvla_organisation': DVLA_ORG_LAND_REGISTRY,
         'organisation_type': 'foo',
     }
@@ -446,46 +432,36 @@ def test_update_service(client, notify_db, sample_service):
     assert resp.status_code == 200
     assert result['data']['name'] == 'updated service name'
     assert result['data']['email_from'] == 'updated.service.name'
-    assert result['data']['organisation'] == str(org.id)
-    assert result['data']['email_branding'] == str(org.id)
+    assert result['data']['email_branding'] == str(brand.id)
     assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
     assert result['data']['organisation_type'] == 'foo'
 
 
-def test_update_service_remove_org(admin_request, notify_db, sample_service):
-    org = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    notify_db.session.add(org)
-    notify_db.session.commit()
-    # Need to set this up manually until org->email_branding migration is complete :(
-    brand = EmailBranding(id=org.id, colour='#000000', logo='justice-league.png', name='Justice League')
-    sample_service.organisation = org
+def test_update_service_remove_email_branding(admin_request, notify_db, sample_service):
+    brand = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
     sample_service.email_branding = brand
     notify_db.session.commit()
 
-    resp = admin_request.post('service.update_service', service_id=sample_service.id, _data={'organisation': None})
-    assert resp['data']['organisation'] is None
+    resp = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={'email_branding': None}
+    )
     assert resp['data']['email_branding'] is None
 
 
-def test_update_service_change_org(admin_request, notify_db, sample_service):
-    org1 = Organisation(colour='#000000', logo='justice-league.png', name='Justice League')
-    org2 = Organisation(colour='#111111', logo='avengers.png', name='Avengers')
-    notify_db.session.add_all([org1, org2])
-    notify_db.session.commit()
-    # Need to set this up manually until org->email_branding migration is complete :(
-    brand1 = EmailBranding(id=org1.id, colour='#000000', logo='justice-league.png', name='Justice League')
-    brand2 = EmailBranding(id=org2.id, colour='#111111', logo='avengers.png', name='Avengers')
+def test_update_service_change_email_branding(admin_request, notify_db, sample_service):
+    brand1 = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    brand2 = EmailBranding(colour='#111111', logo='avengers.png', name='Avengers')
     notify_db.session.add_all([brand1, brand2])
-    sample_service.organisation = org1
     sample_service.email_branding = brand1
     notify_db.session.commit()
 
     resp = admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
-        _data={'organisation': str(org2.id)}
+        _data={'email_branding': str(brand2.id)}
     )
-    assert resp['data']['organisation'] == str(org2.id)
     assert resp['data']['email_branding'] == str(brand2.id)
 
 

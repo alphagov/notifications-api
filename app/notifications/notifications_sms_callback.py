@@ -26,7 +26,7 @@ def process_mmg_response():
 
     safe_to_log = data.copy()
     safe_to_log.pop("MSISDN")
-    current_app.logger.info(
+    current_app.logger.debug(
         "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('CID'),
                                                                          safe_to_log))
     if errors:
@@ -45,7 +45,7 @@ def process_firetext_response():
         raise InvalidRequest(errors, status_code=400)
     safe_to_log = dict(request.form).copy()
     safe_to_log.pop('mobile')
-    current_app.logger.info(
+    current_app.logger.debug(
         "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('reference'),
                                                                          safe_to_log))
     success, errors = process_sms_client_response(status=request.form.get('status'),

@@ -43,7 +43,7 @@ def send_sms_to_provider(notification):
 
     if notification.status == 'created':
         provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
-        current_app.logger.info(
+        current_app.logger.debug(
             "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
         )
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
@@ -85,7 +85,7 @@ def send_sms_to_provider(notification):
 
         create_initial_notification_statistic_tasks(notification)
 
-        current_app.logger.info(
+        current_app.logger.debug(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
@@ -99,7 +99,7 @@ def send_email_to_provider(notification):
         return
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE, notification.id)
-        current_app.logger.info(
+        current_app.logger.debug(
             "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
         )
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
@@ -140,7 +140,7 @@ def send_email_to_provider(notification):
 
         create_initial_notification_statistic_tasks(notification)
 
-        current_app.logger.info(
+        current_app.logger.debug(
             "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
         )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
