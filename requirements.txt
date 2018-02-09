@@ -20,7 +20,7 @@ PyJWT==1.5.3
 SQLAlchemy-Utils==0.32.21
 SQLAlchemy==1.2.2
 
-notifications-python-client==4.7.1
+notifications-python-client==4.7.2
 
 # PaaS
 awscli==1.14.32
