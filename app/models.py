@@ -148,25 +148,6 @@ class BrandingTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-# TODO: remove this model after admin is updated to refer to email branding
-class Organisation(db.Model):
-    __tablename__ = 'organisation'
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    colour = db.Column(db.String(7), nullable=True)
-    logo = db.Column(db.String(255), nullable=True)
-    name = db.Column(db.String(255), nullable=True)
-
-    def serialize(self):
-        serialized = {
-            "id": str(self.id),
-            "colour": self.colour,
-            "logo": self.logo,
-            "name": self.name,
-        }
-
-        return serialized
-
-
 class EmailBranding(db.Model):
     __tablename__ = 'email_branding'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -257,8 +238,6 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
-    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
-    organisation = db.relationship('Organisation')
     dvla_organisation_id = db.Column(
         db.String,
         db.ForeignKey('dvla_organisation.id'),
