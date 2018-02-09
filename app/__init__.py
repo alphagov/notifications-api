@@ -234,7 +234,6 @@ def init_app(app):
     @app.errorhandler(404)
     def page_not_found(e):
         msg = e.description or "Not found"
-        app.logger.exception(msg)
         return jsonify(result='error', message=msg), 404
 
 
