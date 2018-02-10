@@ -17,6 +17,7 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     expire_api_key)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
+from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
@@ -662,6 +663,12 @@ def get_service_sms_sender_by_id(service_id, sms_sender_id):
 def get_service_sms_senders_for_service(service_id):
     sms_senders = dao_get_sms_senders_by_service_id(service_id=service_id)
     return jsonify([sms_sender.serialize() for sms_sender in sms_senders]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/organisation', methods=['GET'])
+def get_organisation_for_service(service_id):
+    organisation = dao_get_organisation_by_service_id(service_id=service_id)
+    return jsonify(organisation.serialize() if organisation else {}), 200
 
 
 @service_blueprint.route('/unique', methods=["GET"])

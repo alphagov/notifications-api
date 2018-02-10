@@ -4,15 +4,20 @@ from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
+    dao_get_organisation_services,
     dao_update_organisation,
+    dao_add_service_to_organisation,
 )
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
 from app.models import Organisation
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_update_organisation_schema,
+    post_link_service_to_organisation_schema,
 )
 from app.schema_validation import validate
+from app.schemas import service_schema
 
 organisation_blueprint = Blueprint('organisation', __name__)
 register_errors(organisation_blueprint)
@@ -55,3 +60,21 @@ def update_organisation(organisation_id):
         return '', 204
     else:
         raise InvalidRequest("Organisation not found", 404)
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/service', methods=['POST'])
+def link_service_to_organisation(organisation_id):
+    data = request.get_json()
+    validate(data, post_link_service_to_organisation_schema)
+    service = dao_fetch_service_by_id(data['service_id'])
+    service.organisation = None
+
+    dao_add_service_to_organisation(service, organisation_id)
+
+    return '', 204
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/services', methods=['GET'])
+def get_organisation_services(organisation_id):
+    services = dao_get_organisation_services(organisation_id)
+    return jsonify([service_schema.dump(s).data for s in services])

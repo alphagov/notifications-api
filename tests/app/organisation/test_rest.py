@@ -1,4 +1,5 @@
 from app.models import Organisation
+from app.dao.organisation_dao import dao_add_service_to_organisation
 from tests.app.db import create_organisation
 
 
@@ -103,3 +104,95 @@ def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_r
     organisation = Organisation.query.all()
 
     assert not organisation
+
+
+def test_post_link_service_to_organisation(admin_request, sample_service, sample_organisation):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=sample_organisation.id,
+        _expected_status=204
+    )
+
+    assert len(sample_organisation.services) == 1
+
+
+def test_post_link_service_to_another_org(
+        admin_request, sample_service, sample_organisation):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=sample_organisation.id,
+        _expected_status=204
+    )
+
+    assert len(sample_organisation.services) == 1
+
+    new_org = create_organisation()
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=new_org.id,
+        _expected_status=204
+    )
+    assert not sample_organisation.services
+    assert len(new_org.services) == 1
+
+
+def test_post_link_service_to_organisation_nonexistent_organisation(
+        admin_request, sample_service, fake_uuid):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=fake_uuid,
+        _expected_status=404
+    )
+
+
+def test_post_link_service_to_organisation_nonexistent_service(
+        admin_request, sample_organisation, fake_uuid):
+    data = {
+        'service_id': fake_uuid
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=str(sample_organisation.id),
+        _expected_status=404
+    )
+
+
+def test_post_link_service_to_organisation_missing_payload(
+        admin_request, sample_organisation, fake_uuid):
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=400
+    )
+
+
+def test_rest_get_organisation_services(
+        admin_request, sample_organisation, sample_service):
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
+    assert len(response) == 1
+    assert response[0]['id'] == str(sample_service.id)
+    assert response[0]['name'] == sample_service.name
