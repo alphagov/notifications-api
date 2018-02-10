@@ -17,6 +17,7 @@ from app.models import (
     TemplateHistory,
     ApiKey,
     Job,
+    Organisation,
     Notification,
     NotificationHistory,
     InvitedUser,
@@ -40,6 +41,7 @@ from app.models import (
     ServiceEmailReplyTo
 )
 from app.dao.users_dao import (create_user_code, create_secret_code)
+from app.dao.organisation_dao import dao_create_organisation
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
 from app.dao.api_key_dao import save_model_api_key
@@ -1042,6 +1044,13 @@ def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
     inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
     inbound_numbers.append(create_inbound_number(number='3', provider='firetext', service_id=sample_service.id))
     return inbound_numbers
+
+
+@pytest.fixture
+def sample_organisation(notify_db, notify_db_session):
+    org = Organisation(name='sample organisation')
+    dao_create_organisation(org)
+    return org
 
 
 @pytest.fixture
