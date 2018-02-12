@@ -107,6 +107,7 @@ def register_blueprint(application):
     from app.authentication.auth import requires_admin_auth, requires_auth, requires_no_auth
     from app.letters.rest import letter_job
     from app.billing.rest import billing_blueprint
+    from app.organisation.rest import organisation_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
@@ -177,6 +178,9 @@ def register_blueprint(application):
     service_callback_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_callback_blueprint)
 
+    organisation_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(organisation_blueprint, url_prefix='/organisations')
+
 
 def register_v2_blueprints(application):
     from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint as get_inbound_sms
@@ -234,7 +238,6 @@ def init_app(app):
     @app.errorhandler(404)
     def page_not_found(e):
         msg = e.description or "Not found"
-        app.logger.exception(msg)
         return jsonify(result='error', message=msg), 404
 
 

@@ -14,6 +14,7 @@ from app.models import (
     MonthlyBilling,
     Notification,
     EmailBranding,
+    Organisation,
     Rate,
     Service,
     ServiceEmailReplyTo,
@@ -41,6 +42,7 @@ from app.dao.services_dao import dao_create_service
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.email_branding_dao import dao_create_email_branding
+from app.dao.organisation_dao import dao_create_organisation
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
@@ -479,3 +481,14 @@ def create_letter_rate(
     db.session.commit()
 
     return rate
+
+
+def create_organisation(name='test_org_1', active=True):
+    data = {
+        'name': name,
+        'active': active
+    }
+    organisation = Organisation(**data)
+    dao_create_organisation(organisation)
+
+    return organisation

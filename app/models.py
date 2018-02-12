@@ -303,6 +303,24 @@ class Service(db.Model, Versioned):
         return permission in [p.permission for p in self.permissions]
 
 
+class Organisation(db.Model):
+    __tablename__ = "organisation"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
+    name = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "name": self.name,
+            "active": self.active,
+        }
+
+        return serialized
+
+
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
