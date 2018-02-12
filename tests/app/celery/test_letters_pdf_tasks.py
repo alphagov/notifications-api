@@ -1,4 +1,3 @@
-import time
 from flask import current_app
 
 from unittest.mock import call
