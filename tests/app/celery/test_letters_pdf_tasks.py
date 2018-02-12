@@ -1,3 +1,4 @@
+import time
 from flask import current_app
 
 from unittest.mock import call
@@ -103,6 +104,7 @@ def test_get_letters_pdf_calculates_billing_units(
     assert billable_units == expected_billable_units
 
 
+@freeze_time("2017-12-04 17:31:00")
 def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', '1'))
     mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
