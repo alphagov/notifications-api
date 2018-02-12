@@ -95,6 +95,6 @@ applications:
       NOTIFY_APP_NAME: delivery-worker-receipts
 
   - name: notify-delivery-worker-service-callbacks
-    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q service-callbacks
+    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO -P eventlet -c 1000 -Q service-callbacks
     env:
       NOTIFY_APP_NAME: delivery-worker-service-callbacks
