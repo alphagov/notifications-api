@@ -1,6 +1,6 @@
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import Organisation, Service
+from app.models import Organisation
 
 
 def dao_get_organisations():
@@ -20,7 +20,7 @@ def dao_get_organisation_by_id(organisation_id):
 
 
 def dao_get_organisation_by_service_id(service_id):
-    return Organisation.query.join(Organisation.services).filter(Service.id == service_id).first()
+    return Organisation.query.join(Organisation.services).filter_by(id=service_id).first()
 
 
 @transactional

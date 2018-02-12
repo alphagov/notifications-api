@@ -85,9 +85,7 @@ def test_get_organisation_services(notify_db, notify_db_session, sample_service,
     org_services = dao_get_organisation_services(sample_organisation.id)
     other_org_services = dao_get_organisation_services(another_org.id)
 
-    assert len(org_services) == 2
-    assert org_services[0].name == sample_service.name
-    assert org_services[1].name == another_service.name
+    assert [sample_service.name, another_service.name] == sorted([s.name for s in org_services])
     assert not other_org_services
 
 
@@ -98,8 +96,8 @@ def test_get_organisation_by_service_id(notify_db, notify_db_session, sample_ser
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
     dao_add_service_to_organisation(another_service, another_org.id)
 
-    organisation_1 = dao_get_organisation_by_service_id(str(sample_service.id))
-    organisation_2 = dao_get_organisation_by_service_id(str(another_service.id))
+    organisation_1 = dao_get_organisation_by_service_id(sample_service.id)
+    organisation_2 = dao_get_organisation_by_service_id(another_service.id)
 
     assert organisation_1 == sample_organisation
     assert organisation_2 == another_org
