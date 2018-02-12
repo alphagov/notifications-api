@@ -176,7 +176,7 @@ def test_firetext_callback_should_set_status_technical_failure_if_status_unknown
     assert 'Firetext callback failed: status 99 not found.' in str(e.value)
 
 
-def test_firetext_callback_returns_200_when_notification_id_not_found_or_already_updated(client, mocker):
+def test_firetext_callback_returns_200_when_notification_id_is_not_a_valid_uuid(client, mocker):
     mocker.patch('app.statsd_client.incr')
     data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234'
     response = firetext_post(client, data)
@@ -436,6 +436,16 @@ def test_mmg_callback_returns_200_when_notification_id_not_found_or_already_upda
 
     response = mmg_post(client, data)
     assert response.status_code == 200
+
+
+def test_mmg_callback_returns_400_when_notification_id_is_not_a_valid_uuid(client):
+    data = '{"reference": "10100164", "CID": "1234", "MSISDN": "447775349060", "status": "3", \
+             "deliverytime": "2016-04-05 16:01:07"}'
+
+    response = mmg_post(client, data)
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+    assert json_resp['message'] == 'MMG callback with invalid reference 1234'
 
 
 def test_process_mmg_response_records_statsd(notify_db, notify_db_session, client, mocker):

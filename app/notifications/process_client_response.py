@@ -40,8 +40,8 @@ def process_sms_client_response(status, reference, client_name):
     try:
         uuid.UUID(reference, version=4)
     except ValueError:
-        message = "{} callback with invalid reference {}".format(client_name, reference)
-        return success, message
+        errors = "{} callback with invalid reference {}".format(client_name, reference)
+        return success, errors
 
     try:
         response_parser = sms_response_mapper[client_name]
@@ -55,15 +55,14 @@ def process_sms_client_response(status, reference, client_name):
             client_name, status, reference)
         )
     except KeyError:
-        process_for_status(notification_status='technical-failure', client_name=client_name, reference=reference)
+        _process_for_status(notification_status='technical-failure', client_name=client_name, reference=reference)
         raise ClientException("{} callback failed: status {} not found.".format(client_name, status))
 
-    success = process_for_status(notification_status=notification_status, client_name=client_name, reference=reference)
+    success = _process_for_status(notification_status=notification_status, client_name=client_name, reference=reference)
     return success, errors
 
 
-def process_for_status(notification_status, client_name, reference):
-
+def _process_for_status(notification_status, client_name, reference):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(reference, notification_status)
     if not notification:
