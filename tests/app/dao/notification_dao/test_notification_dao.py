@@ -35,7 +35,6 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references
 )
 from app.dao.services_dao import dao_update_service
-from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     Job,
     Notification,
@@ -62,7 +61,9 @@ from tests.app.conftest import (
 from tests.app.db import (
     create_api_key,
     create_job,
-    create_notification
+    create_notification,
+    create_service,
+    create_template
 )
 
 
@@ -2042,8 +2043,6 @@ def test_dao_get_notifications_by_reference(sample_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_today(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # expected
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
@@ -2059,8 +2058,6 @@ def test_dao_get_count_of_letters_to_process_for_today(sample_letter_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_in_past(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # expected
     create_notification(template=sample_letter_template, created_at='2017-12-15 17:29:59')
 
@@ -2075,8 +2072,6 @@ def test_dao_get_count_of_letters_to_process_for_date_in_past(sample_letter_temp
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_in_future_does_not_raise_error(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # not expected
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-19 17:29:59')
@@ -2094,27 +2089,25 @@ def test_dao_get_count_of_letters_to_process_for_today_without_notis_does_not_ra
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_ignores_service_not_letters_as_pdf(
-        sample_letter_template, sample_template):
+        notify_db_session):
+    service = create_service(service_name='letter service', service_permissions=['letter'])
+    pdf_service = create_service(service_name='pdf letter service', service_permissions=['letters_as_pdf'])
+    letter_template = create_template(service=service, template_type='letter')
+    pdf_letter_template = create_template(service=pdf_service, template_type='letter')
+
     # not expected
-    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:00')
-
-    dao_add_service_permission(sample_template.service.id, 'letters_as_pdf')
-    sample_template.template_type = 'letter'
-
+    create_notification(template=letter_template, created_at='2017-12-18 17:29:00')
     # expected
-    create_notification(template=sample_template, created_at='2017-12-18 17:29:00')
-    create_notification(template=sample_template, created_at='2017-12-18 17:29:10')
+    create_notification(template=pdf_letter_template, created_at='2017-12-18 17:29:00')
+    create_notification(template=pdf_letter_template, created_at='2017-12-18 17:29:10')
 
     count_for_date = dao_get_count_of_letters_to_process_for_date()
 
-    assert 'letters_as_pdf' not in [p.permission for p in sample_letter_template.service.permissions]
     assert count_for_date == 2
 
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_ignores_test_keys(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # not expected
     create_notification(template=sample_letter_template, key_type=KEY_TYPE_TEST, created_at='2017-12-18 17:29:00')
 

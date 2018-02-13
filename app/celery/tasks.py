@@ -69,6 +69,7 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
+    LETTERS_AS_PDF
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
@@ -124,8 +125,8 @@ def process_job(job_id):
 
 def job_complete(job, service, template_type, resumed=False, start=None):
     if (
-        template_type == LETTER_TYPE and
-        not service.has_permission('letters_as_pdf')
+        template_type == LETTER_TYPE
+        and not service.has_permission(LETTERS_AS_PDF)
     ):
         if service.research_mode:
             update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)

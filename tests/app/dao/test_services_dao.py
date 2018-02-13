@@ -59,8 +59,9 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE,
-    SERVICE_PERMISSION_TYPES
+    SERVICE_PERMISSION_TYPES,
+    LETTERS_AS_PDF,
+    LETTER_TYPE
 )
 
 from tests.app.db import (
@@ -275,13 +276,13 @@ def test_create_service_returns_service_with_default_permissions(service_factory
 
     service = dao_fetch_service_by_id(service.id)
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
 
 @pytest.mark.parametrize("permission_to_remove, permission_remaining", [
-    (SMS_TYPE, (EMAIL_TYPE, LETTER_TYPE)),
-    (EMAIL_TYPE, (SMS_TYPE, LETTER_TYPE)),
+    (SMS_TYPE, (EMAIL_TYPE, LETTERS_AS_PDF, LETTER_TYPE)),
+    (EMAIL_TYPE, (SMS_TYPE, LETTERS_AS_PDF, LETTER_TYPE)),
 ])
 def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(
     sample_service, permission_to_remove, permission_remaining
@@ -297,8 +298,9 @@ def test_remove_permission_from_service_by_id_returns_service_with_correct_permi
 def test_removing_all_permission_returns_service_with_no_permissions(sample_service):
     dao_remove_service_permission(service_id=sample_service.id, permission=SMS_TYPE)
     dao_remove_service_permission(service_id=sample_service.id, permission=EMAIL_TYPE)
-    dao_remove_service_permission(service_id=sample_service.id, permission=LETTER_TYPE)
+    dao_remove_service_permission(service_id=sample_service.id, permission=LETTERS_AS_PDF)
     dao_remove_service_permission(service_id=sample_service.id, permission=INTERNATIONAL_SMS_TYPE)
+    dao_remove_service_permission(service_id=sample_service.id, permission=LETTER_TYPE)
 
     service = dao_fetch_service_by_id(sample_service.id)
     assert len(service.permissions) == 0
@@ -315,19 +317,19 @@ def test_remove_service_does_not_remove_service_permission_types(sample_service)
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
     service = service_factory.get('testing', email_from='testing')
 
-    dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
-    dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
+    dao_remove_service_permission(service_id=service.id, permission=LETTERS_AS_PDF)
+    dao_add_service_permission(service_id=service.id, permission=LETTERS_AS_PDF)
 
     service = dao_fetch_service_by_id(service.id)
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, LETTER_TYPE, INTERNATIONAL_SMS_TYPE,
     ))
 
-    dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
+    dao_remove_service_permission(service_id=service.id, permission=LETTERS_AS_PDF)
     service = dao_fetch_service_by_id(service.id)
 
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE,
+        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
 
@@ -400,7 +402,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
         INTERNATIONAL_SMS_TYPE,
     ])
 
-    service.permissions.append(ServicePermission(service_id=service.id, permission='letter'))
+    service.permissions.append(ServicePermission(service_id=service.id, permission='letters_as_pdf'))
     dao_update_service(service)
 
     assert Service.query.count() == 1
@@ -411,7 +413,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
     assert service_from_db.version == 2
 
     _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE,
+        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTERS_AS_PDF,
     ))
 
     permission = [p for p in service.permissions if p.permission == 'sms'][0]
@@ -424,7 +426,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
     service_from_db = Service.query.first()
     assert service_from_db.version == 3
     _assert_service_permissions(service.permissions, (
-        EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE,
+        EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTERS_AS_PDF,
     ))
 
     assert len(Service.get_history_model().query.filter_by(name='service_name').all()) == 3
@@ -463,7 +465,7 @@ def test_delete_service_and_associated_objects(notify_db,
                                                sample_permission,
                                                sample_provider_statistics):
     assert ServicePermission.query.count() == len((
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
+        SMS_TYPE, EMAIL_TYPE, LETTERS_AS_PDF, INTERNATIONAL_SMS_TYPE, LETTER_TYPE
     ))
 
     delete_service_and_all_associated_db_objects(sample_service)

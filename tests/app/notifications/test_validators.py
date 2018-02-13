@@ -1,9 +1,9 @@
 import pytest
-from freezegun import freeze_time
 from flask import current_app
+from freezegun import freeze_time
 
 import app
-from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, ServicePermission
 from app.notifications.validators import (
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
@@ -16,20 +16,21 @@ from app.notifications.validators import (
     check_service_sms_sender_id,
     check_service_letter_contact_id,
     check_reply_to,
+    service_has_permission
 )
-
 from app.v2.errors import (
     BadRequestError,
     TooManyRequestsError,
-    RateLimitError)
-
-from tests.conftest import set_config
+    RateLimitError
+)
 from tests.app.conftest import (
     sample_notification as create_notification,
     sample_service as create_service,
     sample_service_whitelist,
-    sample_api_key)
+    sample_api_key
+)
 from tests.app.db import create_reply_to_email, create_service_sms_sender, create_letter_contact
+from tests.conftest import set_config
 
 
 # all of these tests should have redis enabled (except where we specifically disable it)
@@ -475,3 +476,27 @@ def test_check_reply_to_sms_type(sample_service):
 def test_check_reply_to_letter_type(sample_service):
     letter_contact = create_letter_contact(service=sample_service, contact_block='123456')
     assert check_reply_to(sample_service.id, letter_contact.id, LETTER_TYPE) == '123456'
+
+
+@pytest.mark.parametrize('permission, notification_type, expected',
+                         [
+                             ('letter', 'letter', True),
+                             ('letters_as_pdf', 'letter', True),
+                             ('email', 'letter', False),
+                             ('sms', 'letter', False),
+                             ('letter', 'sms', False),
+                             ('letters_as_pdf', 'sms', False),
+                             ('email', 'sms', False),
+                             ('sms', 'sms', True),
+                             ('letter', 'email', False),
+                             ('letters_as_pdf', 'email', False),
+                             ('email', 'email', True),
+                             ('sms', 'email', False)
+                         ])
+def test_service_has_permission_for_notification_type(permission, notification_type, expected, sample_service):
+    service_permission = ServicePermission(service_id=sample_service.id, permission=permission)
+    assert service_has_permission(notification_type, [service_permission]) == expected
+
+
+def test_service_has_permission_when_both_letter_and_letters_as_pdf_exist(sample_service):
+    assert service_has_permission('letter', sample_service.permissions)

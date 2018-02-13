@@ -28,7 +28,6 @@ from tests.app.db import (
     create_service,
     create_template,
     create_reply_to_email,
-    create_letter_contact,
     create_service_sms_sender,
     create_service_with_inbound_number
 )
@@ -695,26 +694,3 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
-
-
-def test_letter_notification_should_use_template_reply_to(client, sample_letter_template):
-    letter_contact = create_letter_contact(sample_letter_template.service, "Edinburgh, ED1 1AA", is_default=False)
-    sample_letter_template.reply_to = str(letter_contact.id)
-
-    data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {
-            'address_line_1': '123',
-            'address_line_2': '234',
-            'postcode': 'W1A1AA',
-        }
-    }
-    response = client.post("v2/notifications/letter",
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json'),
-                                    create_authorization_header(service_id=sample_letter_template.service.id)]
-                           )
-    assert response.status_code == 201, response.get_data(as_text=True)
-    notifications = Notification.query.all()
-    assert len(notifications) == 1
-    assert notifications[0].reply_to_text == "Edinburgh, ED1 1AA"
