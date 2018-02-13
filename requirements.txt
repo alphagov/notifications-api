@@ -15,7 +15,7 @@ jsonschema==2.6.0
 marshmallow-sqlalchemy==0.13.2
 marshmallow==2.15.0
 monotonic==1.4
-psycopg2==2.7.3.2
+psycopg2==2.7.4
 PyJWT==1.5.3
 SQLAlchemy-Utils==0.32.21
 SQLAlchemy==1.2.2
