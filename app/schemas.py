@@ -204,6 +204,7 @@ class ServiceSchema(BaseSchema):
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
+    organisation = field_for(models.Service, 'organisation')
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
     sms_sender = fields.Method(method_name="get_sms_sender")

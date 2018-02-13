@@ -1,5 +1,6 @@
 from app.models import Organisation
-from tests.app.db import create_organisation
+from app.dao.organisation_dao import dao_add_service_to_organisation
+from tests.app.db import create_organisation, create_service
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
@@ -52,6 +53,24 @@ def test_post_create_organisation(admin_request, notify_db_session):
     assert len(organisation) == 1
 
 
+def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
+    data = {
+        'name': sample_organisation.name,
+        'active': True
+    }
+
+    response = admin_request.post(
+        'organisation.create_organisation',
+        _data=data,
+        _expected_status=400
+    )
+
+    organisation = Organisation.query.all()
+
+    assert len(organisation) == 1
+    assert response['message'] == 'Organisation name already exists'
+
+
 def test_post_create_organisation_with_missing_name_gives_validation_error(admin_request, notify_db_session):
     data = {
         'active': False
@@ -90,6 +109,24 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
     assert organisation[0].active == data['active']
 
 
+def test_post_update_organisation_raises_400_on_existing_org_name(
+        admin_request, notify_db_session, sample_organisation):
+    org = create_organisation()
+    data = {
+        'name': sample_organisation.name,
+        'active': False
+    }
+
+    response = admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org.id,
+        _expected_status=400
+    )
+
+    assert response['message'] == 'Organisation name already exists'
+
+
 def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_request, notify_db_session):
     data = {'name': 'new organisation name'}
 
@@ -103,3 +140,133 @@ def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_r
     organisation = Organisation.query.all()
 
     assert not organisation
+
+
+def test_post_link_service_to_organisation(admin_request, sample_service, sample_organisation):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=sample_organisation.id,
+        _expected_status=204
+    )
+
+    assert len(sample_organisation.services) == 1
+
+
+def test_post_link_service_to_another_org(
+        admin_request, sample_service, sample_organisation):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=sample_organisation.id,
+        _expected_status=204
+    )
+
+    assert len(sample_organisation.services) == 1
+
+    new_org = create_organisation()
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=new_org.id,
+        _expected_status=204
+    )
+    assert not sample_organisation.services
+    assert len(new_org.services) == 1
+
+
+def test_post_link_service_to_organisation_nonexistent_organisation(
+        admin_request, sample_service, fake_uuid):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=fake_uuid,
+        _expected_status=404
+    )
+
+
+def test_post_link_service_to_organisation_nonexistent_service(
+        admin_request, sample_organisation, fake_uuid):
+    data = {
+        'service_id': fake_uuid
+    }
+
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=str(sample_organisation.id),
+        _expected_status=404
+    )
+
+
+def test_post_link_service_to_organisation_missing_payload(
+        admin_request, sample_organisation, fake_uuid):
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=400
+    )
+
+
+def test_rest_get_organisation_services(
+        admin_request, sample_organisation, sample_service):
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
+    assert response == [sample_service.serialize_for_org_dashboard()]
+
+
+def test_rest_get_organisation_services_is_ordered_by_name(
+        admin_request, sample_organisation, sample_service):
+    service_2 = create_service(service_name='service 2')
+    service_1 = create_service(service_name='service 1')
+    dao_add_service_to_organisation(service_1, sample_organisation.id)
+    dao_add_service_to_organisation(service_2, sample_organisation.id)
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
+    assert response[0]['name'] == sample_service.name
+    assert response[1]['name'] == service_1.name
+    assert response[2]['name'] == service_2.name
+
+
+def test_rest_get_organisation_services_inactive_services_at_end(
+        admin_request, sample_organisation):
+    inactive_service = create_service(service_name='inactive service', active=False)
+    service = create_service()
+    inactive_service_1 = create_service(service_name='inactive service 1', active=False)
+
+    dao_add_service_to_organisation(inactive_service, sample_organisation.id)
+    dao_add_service_to_organisation(service, sample_organisation.id)
+    dao_add_service_to_organisation(inactive_service_1, sample_organisation.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
+    assert response[0]['name'] == service.name
+    assert response[1]['name'] == inactive_service.name
+    assert response[2]['name'] == inactive_service_1.name

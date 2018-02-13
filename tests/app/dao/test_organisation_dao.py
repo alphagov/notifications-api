@@ -1,11 +1,17 @@
+import pytest
+from sqlalchemy.exc import IntegrityError
+
 from app.dao.organisation_dao import (
     dao_get_organisations,
     dao_get_organisation_by_id,
+    dao_get_organisation_by_service_id,
+    dao_get_organisation_services,
     dao_update_organisation,
+    dao_add_service_to_organisation,
 )
 from app.models import Organisation
 
-from tests.app.db import create_organisation
+from tests.app.db import create_organisation, create_service
 
 
 def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
@@ -40,14 +46,61 @@ def test_update_organisation(notify_db, notify_db_session):
     updated_name = 'new name'
     create_organisation()
 
-    organisation = Organisation.query.all()
+    organisation = Organisation.query.one()
 
-    assert len(organisation) == 1
-    assert organisation[0].name != updated_name
+    assert organisation.name != updated_name
 
-    dao_update_organisation(organisation[0].id, **{'name': updated_name})
+    dao_update_organisation(organisation.id, **{'name': updated_name})
 
-    organisation = Organisation.query.all()
+    organisation = Organisation.query.one()
 
-    assert len(organisation) == 1
-    assert organisation[0].name == updated_name
+    assert organisation.name == updated_name
+
+
+def test_add_service_to_organisation(notify_db, notify_db_session, sample_service, sample_organisation):
+    assert sample_organisation.services == []
+
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    assert len(sample_organisation.services) == 1
+    assert sample_organisation.services[0].id == sample_service.id
+
+
+def test_add_service_to_multiple_organisation_raises_error(
+        notify_db, notify_db_session, sample_service, sample_organisation):
+    another_org = create_organisation()
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    with pytest.raises(IntegrityError):
+        dao_add_service_to_organisation(sample_service, another_org.id)
+
+    assert len(sample_organisation.services) == 1
+    assert sample_organisation.services[0] == sample_service
+
+
+def test_get_organisation_services(notify_db, notify_db_session, sample_service, sample_organisation):
+    another_service = create_service(service_name='service 2')
+    another_org = create_organisation()
+
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    dao_add_service_to_organisation(another_service, sample_organisation.id)
+
+    org_services = dao_get_organisation_services(sample_organisation.id)
+    other_org_services = dao_get_organisation_services(another_org.id)
+
+    assert [sample_service.name, another_service.name] == sorted([s.name for s in org_services])
+    assert not other_org_services
+
+
+def test_get_organisation_by_service_id(notify_db, notify_db_session, sample_service, sample_organisation):
+    another_service = create_service(service_name='service 2')
+    another_org = create_organisation()
+
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    dao_add_service_to_organisation(another_service, another_org.id)
+
+    organisation_1 = dao_get_organisation_by_service_id(sample_service.id)
+    organisation_2 = dao_get_organisation_by_service_id(another_service.id)
+
+    assert organisation_1 == sample_organisation
+    assert organisation_2 == another_org

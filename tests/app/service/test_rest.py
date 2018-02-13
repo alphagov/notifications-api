@@ -9,6 +9,7 @@ from flask import url_for, current_app
 from freezegun import freeze_time
 
 from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
+from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -2763,6 +2764,23 @@ def test_get_service_sms_senders_for_service_returns_empty_list_when_service_doe
                           )
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == []
+
+
+def test_get_organisation_for_service_id(admin_request, sample_service, sample_organisation):
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+    response = admin_request.get(
+        'service.get_organisation_for_service',
+        service_id=sample_service.id
+    )
+    assert response == sample_organisation.serialize()
+
+
+def test_get_organisation_for_service_id_return_empty_dict_if_service_not_in_organisation(admin_request, fake_uuid):
+    response = admin_request.get(
+        'service.get_organisation_for_service',
+        service_id=fake_uuid
+    )
+    assert response == {}
 
 
 def test_get_platform_stats(client, notify_db_session):
