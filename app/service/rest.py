@@ -87,6 +87,8 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
+from app import notify_celery
+from app.config import QueueNames
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -167,6 +169,18 @@ def create_service():
     valid_service = Service.from_json(data)
 
     dao_create_service(valid_service, user)
+
+    # Send data to Reports queue to update Report DB
+    report_data = request.get_json()
+    report_data['id'] = str(valid_service.id)
+
+    if current_app.config['SEND_REPORTS']:
+        notify_celery.send_task(
+            name='update-reports-service-db',
+            args=(report_data,),
+            queue=QueueNames.REPORTS
+        )
+
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
@@ -199,6 +213,18 @@ def update_service(service_id):
                 'message_limit': '{:,}'.format(current_data['message_limit'])
             },
             include_user_fields=['name']
+        )
+
+    # Send data to Reports queue to update Report DB
+    # Need service id
+    report_data=req_json
+    report_data['id']=str(fetched_service.id)
+
+    if current_app.config['SEND_REPORTS']:
+        notify_celery.send_task(
+            name='update-reports-service-db',
+            args=(report_data,),
+            queue=QueueNames.REPORTS
         )
 
     return jsonify(data=service_schema.dump(fetched_service).data), 200

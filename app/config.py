@@ -32,6 +32,7 @@ class QueueNames(object):
     CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
     CALLBACKS = 'service-callbacks'
     LETTERS = 'letter-tasks'
+    REPORTS = 'reports-tasks'   # To be consumed by notifications-reports app, hence it is not in all_queue
 
     @staticmethod
     def all_queues():
@@ -48,7 +49,7 @@ class QueueNames(object):
             QueueNames.NOTIFY,
             QueueNames.CREATE_LETTERS_PDF,
             QueueNames.CALLBACKS,
-            QueueNames.LETTERS,
+            QueueNames.LETTERS
         ]
 
 
@@ -352,6 +353,7 @@ class Development(Config):
 
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
+    SEND_REPORTS = True
 
 
 class Test(Config):
@@ -382,6 +384,7 @@ class Test(Config):
     MMG_INBOUND_SMS_AUTH = ['testkey']
     MMG_INBOUND_SMS_USERNAME = ['username']
     TEMPLATE_PREVIEW_API_HOST = 'http://localhost:9999'
+    SEND_REPORTS = True
 
 
 class Preview(Config):
@@ -393,6 +396,7 @@ class Preview(Config):
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    SEND_REPORTS = True
 
 
 class Staging(Config):
@@ -406,6 +410,7 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
     REDIS_ENABLED = True
+    SEND_REPORTS = False
 
 
 class Live(Config):
@@ -421,6 +426,7 @@ class Live(Config):
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    SEND_REPORTS = False
 
 
 class CloudFoundryConfig(Config):
