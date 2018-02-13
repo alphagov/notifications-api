@@ -14,6 +14,7 @@ from notifications_utils.s3 import s3upload
 from app import notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
+from app.variables import Retention
 from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
@@ -68,7 +69,8 @@ def create_letters_pdf(self, notification_id):
             filedata=pdf_data,
             region=current_app.config['AWS_REGION'],
             bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-            file_location=upload_file_name
+            file_location=upload_file_name,
+            tags={Retention.KEY: Retention.ONE_WEEK}
         )
 
         current_app.logger.info("Uploaded letters PDF {} to {}".format(
