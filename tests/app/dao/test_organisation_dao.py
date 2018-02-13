@@ -58,9 +58,12 @@ def test_update_organisation(notify_db, notify_db_session):
 
 
 def test_add_service_to_organisation(notify_db, notify_db_session, sample_service, sample_organisation):
+    assert sample_organisation.services == []
+
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
 
     assert len(sample_organisation.services) == 1
+    assert sample_organisation.services[0].id == sample_service.id
 
 
 def test_add_service_to_multiple_organisation_raises_error(
