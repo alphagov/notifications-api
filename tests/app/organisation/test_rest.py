@@ -53,6 +53,24 @@ def test_post_create_organisation(admin_request, notify_db_session):
     assert len(organisation) == 1
 
 
+def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
+    data = {
+        'name': sample_organisation.name,
+        'active': True
+    }
+
+    response = admin_request.post(
+        'organisation.create_organisation',
+        _data=data,
+        _expected_status=400
+    )
+
+    organisation = Organisation.query.all()
+
+    assert len(organisation) == 1
+    assert response['message'] == 'Organisation name already exists'
+
+
 def test_post_create_organisation_with_missing_name_gives_validation_error(admin_request, notify_db_session):
     data = {
         'active': False
@@ -89,6 +107,24 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
     assert organisation[0].id == org.id
     assert organisation[0].name == data['name']
     assert organisation[0].active == data['active']
+
+
+def test_post_update_organisation_raises_400_on_existing_org_name(
+        admin_request, notify_db_session, sample_organisation):
+    org = create_organisation()
+    data = {
+        'name': sample_organisation.name,
+        'active': False
+    }
+
+    response = admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org.id,
+        _expected_status=400
+    )
+
+    assert response['message'] == 'Organisation name already exists'
 
 
 def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_request, notify_db_session):
