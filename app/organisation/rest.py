@@ -17,7 +17,6 @@ from app.organisation.organisation_schema import (
     post_link_service_to_organisation_schema,
 )
 from app.schema_validation import validate
-from app.schemas import service_schema
 
 organisation_blueprint = Blueprint('organisation', __name__)
 register_errors(organisation_blueprint)
@@ -77,4 +76,5 @@ def link_service_to_organisation(organisation_id):
 @organisation_blueprint.route('/<uuid:organisation_id>/services', methods=['GET'])
 def get_organisation_services(organisation_id):
     services = dao_get_organisation_services(organisation_id)
-    return jsonify([service_schema.dump(s).data for s in services])
+    sorted_services = sorted(services, key=lambda s: (-s.active, s.name))
+    return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])

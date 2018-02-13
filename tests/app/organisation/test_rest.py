@@ -1,6 +1,6 @@
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from tests.app.db import create_organisation
+from tests.app.db import create_organisation, create_service
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
@@ -193,6 +193,44 @@ def test_rest_get_organisation_services(
         _expected_status=200
     )
 
-    assert len(response) == 1
-    assert response[0]['id'] == str(sample_service.id)
+    assert response == [sample_service.serialize_for_org_dashboard()]
+
+
+def test_rest_get_organisation_services_is_ordered_by_name(
+        admin_request, sample_organisation, sample_service):
+    service_2 = create_service(service_name='service 2')
+    service_1 = create_service(service_name='service 1')
+    dao_add_service_to_organisation(service_1, sample_organisation.id)
+    dao_add_service_to_organisation(service_2, sample_organisation.id)
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
     assert response[0]['name'] == sample_service.name
+    assert response[1]['name'] == service_1.name
+    assert response[2]['name'] == service_2.name
+
+
+def test_rest_get_organisation_services_inactive_services_at_end(
+        admin_request, sample_organisation):
+    inactive_service = create_service(service_name='inactive service', active=False)
+    service = create_service()
+    inactive_service_1 = create_service(service_name='inactive service 1', active=False)
+
+    dao_add_service_to_organisation(inactive_service, sample_organisation.id)
+    dao_add_service_to_organisation(service, sample_organisation.id)
+    dao_add_service_to_organisation(inactive_service_1, sample_organisation.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_services',
+        organisation_id=str(sample_organisation.id),
+        _expected_status=200
+    )
+
+    assert response[0]['name'] == service.name
+    assert response[1]['name'] == inactive_service.name
+    assert response[2]['name'] == inactive_service_1.name

@@ -344,6 +344,15 @@ class Service(db.Model, Versioned):
     def has_permission(self, permission):
         return permission in [p.permission for p in self.permissions]
 
+    def serialize_for_org_dashboard(self):
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'active': self.active,
+            'restricted': self.restricted,
+            'research_mode': self.research_mode
+        }
+
 
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
