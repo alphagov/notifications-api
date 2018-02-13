@@ -496,3 +496,7 @@ def test_check_reply_to_letter_type(sample_service):
 def test_service_has_permission_for_notification_type(permission, notification_type, expected, sample_service):
     service_permission = ServicePermission(service_id=sample_service.id, permission=permission)
     assert service_has_permission(notification_type, [service_permission]) == expected
+
+
+def test_service_has_permission_when_both_letter_and_letters_as_pdf_exist(sample_service):
+    assert service_has_permission('letter', sample_service.permissions)
