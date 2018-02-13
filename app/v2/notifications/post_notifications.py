@@ -183,20 +183,19 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                               status=status,
                                               reply_to_text=reply_to_text)
 
-    if api_key.service.has_permission('letters_as_pdf'):
-        if should_send:
-            create_letters_pdf.apply_async(
-                [str(notification.id)],
-                queue=QueueNames.CREATE_LETTERS_PDF
-            )
-        elif (api_key.service.research_mode and
-              current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
-            create_fake_letter_response_file.apply_async(
-                (notification.reference,),
-                queue=QueueNames.RESEARCH_MODE
-            )
-        else:
-            update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
+    if should_send:
+        create_letters_pdf.apply_async(
+            [str(notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF
+        )
+    elif (api_key.service.research_mode and
+          current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
+        create_fake_letter_response_file.apply_async(
+            (notification.reference,),
+            queue=QueueNames.RESEARCH_MODE
+        )
+    else:
+        update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
     return notification
 

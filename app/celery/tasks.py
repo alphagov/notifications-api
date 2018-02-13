@@ -119,21 +119,11 @@ def process_job(job_id):
     ).enumerated_recipients_and_personalisation:
         process_row(row_number, recipient, personalisation, template, job, service)
 
-    job_complete(job, service, template.template_type, start=start)
+    job_complete(job, start=start)
 
 
-def job_complete(job, service, template_type, resumed=False, start=None):
-    if (
-        template_type == LETTER_TYPE and
-        not service.has_permission('letters_as_pdf')
-    ):
-        if service.research_mode:
-            update_job_to_sent_to_dvla.apply_async([str(job.id)], queue=QueueNames.RESEARCH_MODE)
-        else:
-            build_dvla_file.apply_async([str(job.id)], queue=QueueNames.JOBS)
-            current_app.logger.debug("send job {} to build-dvla-file in the {} queue".format(job.id, QueueNames.JOBS))
-    else:
-        job.job_status = JOB_STATUS_FINISHED
+def job_complete(job, resumed=False, start=None):
+    job.job_status = JOB_STATUS_FINISHED
 
     finished = datetime.utcnow()
     job.processing_finished = finished
@@ -326,19 +316,18 @@ def save_letter(
             status=status
         )
 
-        if service.has_permission('letters_as_pdf'):
-            if not service.research_mode:
-                letters_pdf_tasks.create_letters_pdf.apply_async(
-                    [str(saved_notification.id)],
-                    queue=QueueNames.CREATE_LETTERS_PDF
-                )
-            elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
-                research_mode_tasks.create_fake_letter_response_file.apply_async(
-                    (saved_notification.reference,),
-                    queue=QueueNames.RESEARCH_MODE
-                )
-            else:
-                update_notification_status_by_reference(saved_notification.reference, 'delivered')
+        if not service.research_mode:
+            letters_pdf_tasks.create_letters_pdf.apply_async(
+                [str(saved_notification.id)],
+                queue=QueueNames.CREATE_LETTERS_PDF
+            )
+        elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+            research_mode_tasks.create_fake_letter_response_file.apply_async(
+                (saved_notification.reference,),
+                queue=QueueNames.RESEARCH_MODE
+            )
+        else:
+            update_notification_status_by_reference(saved_notification.reference, 'delivered')
 
         current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
@@ -608,4 +597,4 @@ def process_incomplete_job(job_id):
         if row_number > resume_from_row:
             process_row(row_number, recipient, personalisation, template, job, job.service)
 
-    job_complete(job, job.service, template.template_type, resumed=True)
+    job_complete(job, resumed=True)
