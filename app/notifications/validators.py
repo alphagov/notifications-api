@@ -11,7 +11,8 @@ from app.dao import services_dao, templates_dao
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
-    KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
+    KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS,
+    LETTERS_AS_PDF
 )
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
@@ -78,7 +79,11 @@ def service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_
 
 
 def service_has_permission(notify_type, permissions):
-    return notify_type in [p.permission for p in permissions]
+    _permissions = [p.permission for p in permissions]
+    if notify_type == LETTER_TYPE:
+        return LETTER_TYPE in _permissions or LETTERS_AS_PDF in _permissions
+    else:
+        return notify_type in _permissions
 
 
 def check_service_has_permission(notify_type, permissions):

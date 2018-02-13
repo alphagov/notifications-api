@@ -5,8 +5,7 @@ from flask import url_for
 import pytest
 
 from app.config import QueueNames
-from app.dao import service_permissions_dao
-from app.models import EMAIL_TYPE
+from app.models import EMAIL_TYPE, LETTERS_AS_PDF
 from app.models import Job
 from app.models import KEY_TYPE_NORMAL
 from app.models import KEY_TYPE_TEAM
@@ -44,10 +43,17 @@ def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected
     return json_resp
 
 
-@pytest.mark.parametrize('reference', [None, 'reference_from_client'])
-def test_post_letter_notification_returns_201(client, sample_letter_template, mocker, reference):
+@pytest.mark.parametrize('reference, permission',
+                         [(None, LETTER_TYPE),
+                          ('reference_from_client', LETTER_TYPE),
+                          (None, LETTERS_AS_PDF),
+                          ('reference_from_client', LETTERS_AS_PDF)
+                          ])
+def test_post_letter_notification_returns_201(client, notify_db_session, mocker, reference, permission):
+    service = create_service(service_permissions=[permission])
+    template = create_template(service=service, template_type=LETTER_TYPE)
     data = {
-        'template_id': str(sample_letter_template.id),
+        'template_id': str(template.id),
         'personalisation': {
             'address_line_1': 'Her Royal Highness Queen Elizabeth II',
             'address_line_2': 'Buckingham Palace',
@@ -56,11 +62,12 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
             'name': 'Lizzie'
         }
     }
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
 
     if reference:
         data.update({'reference': reference})
 
-    resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
+    resp_json = letter_request(client, data, service_id=template.service_id)
 
     assert validate(resp_json, post_letter_response) == resp_json
     assert Job.query.count() == 0
@@ -68,15 +75,15 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     notification_id = notification.id
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
-    assert resp_json['content']['subject'] == sample_letter_template.subject
-    assert resp_json['content']['body'] == sample_letter_template.content
+    assert resp_json['content']['subject'] == template.subject
+    assert resp_json['content']['body'] == template.content
     assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
-    assert resp_json['template']['id'] == str(sample_letter_template.id)
-    assert resp_json['template']['version'] == sample_letter_template.version
+    assert resp_json['template']['id'] == str(template.id)
+    assert resp_json['template']['version'] == template.version
     assert (
         'services/{}/templates/{}'.format(
-            sample_letter_template.service_id,
-            sample_letter_template.id
+            template.service_id,
+            template.id
         ) in resp_json['template']['uri']
     )
     assert not resp_json['scheduled_for']
@@ -84,8 +91,6 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
 
 
 def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, sample_letter_template, mocker):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {
@@ -112,7 +117,6 @@ def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, s
 ])
 def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_in_research_and_test_key_correct_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = True
 
     data = {
@@ -149,7 +153,6 @@ def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_
 ])
 def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_and_test_key_incorrect_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = True
 
     data = {
@@ -188,7 +191,6 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_a
 ])
 def test_post_letter_noti_for_letters_as_pdf_sets_status_to_delivered_using_test_key_and_not_research_all_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = False
 
     data = {
@@ -255,15 +257,18 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
     ])
 
 
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
 def test_notification_returns_400_for_missing_template_field(
     client,
-    sample_service_full_permissions
+    permission,
+    notify_db_session
 ):
+    service = create_service(service_permissions=[permission])
     data = {
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
@@ -272,12 +277,16 @@ def test_notification_returns_400_for_missing_template_field(
     }]
 
 
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
 def test_notification_returns_400_if_address_doesnt_have_underscores(
     client,
-    sample_letter_template
+    permission,
+    notify_db_session
 ):
+    service = create_service(service_permissions=[permission])
+    template = create_template(service=service, template_type=LETTER_TYPE)
     data = {
-        'template_id': str(sample_letter_template.id),
+        'template_id': str(template.id),
         'personalisation': {
             'address line 1': 'Her Royal Highness Queen Elizabeth II',
             'address-line-2': 'Buckingham Palace',
@@ -285,7 +294,7 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
         }
     }
 
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
+    error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
 
     assert error_json['status_code'] == 400
     assert len(error_json['errors']) == 2
@@ -299,11 +308,15 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
     } in error_json['errors']
 
 
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
-    client,
-    sample_letter_template,
-    mocker
+        client,
+        permission,
+        notify_db_session,
+        mocker
 ):
+    service = create_service(service_permissions=[permission])
+    template = create_template(service=service, template_type=LETTER_TYPE)
     persist_mock = mocker.patch('app.v2.notifications.post_notifications.persist_notification')
     mocker.patch(
         'app.v2.notifications.post_notifications.check_rate_limiting',
@@ -311,11 +324,11 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     )
 
     data = {
-        'template_id': str(sample_letter_template.id),
+        'template_id': str(template.id),
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=429)
+    error_json = letter_request(client, data, service_id=service.id, _expected_status=429)
 
     assert error_json['status_code'] == 429
     assert error_json['errors'] == [{
@@ -350,18 +363,22 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     ]
 
 
-@pytest.mark.parametrize('research_mode, key_type', [
-    (True, KEY_TYPE_NORMAL),
-    (False, KEY_TYPE_TEST)
+@pytest.mark.parametrize('research_mode, key_type, permission, final_status', [
+    (True, KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_SENDING),
+    (False, KEY_TYPE_TEST, LETTER_TYPE, NOTIFICATION_SENDING),
+    (True, KEY_TYPE_NORMAL, LETTERS_AS_PDF, NOTIFICATION_DELIVERED),
+    (False, KEY_TYPE_TEST, LETTERS_AS_PDF, NOTIFICATION_DELIVERED)
 ])
 def test_post_letter_notification_updates_noti_sending(
     client,
     notify_db_session,
     mocker,
     research_mode,
-    key_type
+    key_type,
+    permission,
+    final_status
 ):
-    service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
+    service = create_service(research_mode=research_mode, service_permissions=[permission])
     template = create_template(service, template_type=LETTER_TYPE)
 
     data = {
@@ -372,19 +389,22 @@ def test_post_letter_notification_updates_noti_sending(
     letter_request(client, data, service_id=service.id, key_type=key_type)
 
     notification = Notification.query.one()
-    assert notification.status == NOTIFICATION_SENDING
+    assert notification.status == final_status
 
 
-def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
+def test_post_letter_notification_doesnt_accept_team_key(client, permission, notify_db_session):
+    service = create_service(service_permissions=[permission])
+    template = create_template(service, template_type=LETTER_TYPE)
     data = {
-        'template_id': str(sample_letter_template.id),
+        'template_id': str(template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
     error_json = letter_request(
         client,
         data,
-        sample_letter_template.service_id,
+        service.id,
         key_type=KEY_TYPE_TEAM,
         _expected_status=403
     )
@@ -393,16 +413,19 @@ def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_t
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]
 
 
-def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template):
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
+def test_post_letter_notification_doesnt_send_in_trial(client, permission, mocker, notify_db_session):
+    service = create_service(service_permissions=[permission], restricted=True)
+    template = create_template(service, template_type=LETTER_TYPE)
     data = {
-        'template_id': str(sample_trial_letter_template.id),
+        'template_id': str(template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
     error_json = letter_request(
         client,
         data,
-        sample_trial_letter_template.service_id,
+        service.id,
         _expected_status=403
     )
 
@@ -411,26 +434,36 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
         {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
 
 
+@pytest.mark.parametrize("permission, final_status",
+                         [(LETTER_TYPE, NOTIFICATION_SENDING),
+                          (LETTERS_AS_PDF, NOTIFICATION_DELIVERED)])
 def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_using_test_key(
     client,
-    sample_trial_letter_template,
-    mocker
+    permission,
+    final_status,
+    mocker,
+    notify_db_session
 ):
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    service = create_service(service_permissions=[permission])
+    template = create_template(service, template_type=LETTER_TYPE)
     data = {
-        "template_id": sample_trial_letter_template.id,
+        "template_id": template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
-    letter_request(client, data=data, service_id=sample_trial_letter_template.service_id, key_type=KEY_TYPE_TEST)
+    letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_TEST)
 
     notification = Notification.query.one()
-    assert notification.status == NOTIFICATION_SENDING
+    assert notification.status == final_status
 
 
+@pytest.mark.parametrize("permission", [LETTER_TYPE, LETTERS_AS_PDF])
 def test_post_letter_notification_persists_notification_reply_to_text(
-    client, notify_db_session
+    client, permission, notify_db_session, mocker
 ):
-    service = create_service(service_permissions=[LETTER_TYPE])
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    service = create_service(service_permissions=[permission], restricted=False)
     service_address = "12 Main Street, London"
     letter_contact = create_letter_contact(service=service, contact_block=service_address, is_default=True)
     template = create_template(service=service, template_type='letter', reply_to=letter_contact.id)

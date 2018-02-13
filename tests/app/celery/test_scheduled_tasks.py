@@ -46,7 +46,6 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
-from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     MonthlyBilling,
     NotificationHistory,
@@ -807,8 +806,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
 
@@ -822,11 +819,11 @@ def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
 
 
 @freeze_time("2017-12-18 17:50")
-def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notis_for_day(
-        client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
-    create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
+def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notifications_for_day(
+        client, mocker, notify_db_session):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    create_notification(template=template, created_at='2017-12-15 17:30:00')
 
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
 
@@ -845,7 +842,10 @@ def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_le
     assert not mock_celery.called
 
 
-def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_letter_notification):
+def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, notify_db_session):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    notification = create_notification(template=template)
     file_contents_mock = mocker.patch(
         'app.celery.scheduled_tasks.create_dvla_file_contents_for_notifications',
         return_value='foo\nbar'
@@ -857,8 +857,8 @@ def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_l
     with freeze_time('2017-01-01 12:00:00'):
         run_letter_api_notifications()
 
-    assert sample_letter_notification.status == NOTIFICATION_PENDING
-    file_contents_mock.assert_called_once_with([sample_letter_notification])
+    assert notification.status == NOTIFICATION_PENDING
+    file_contents_mock.assert_called_once_with([notification])
     s3upload.assert_called_once_with(
         # with trailing new line added
         filedata='foo\nbar\n',

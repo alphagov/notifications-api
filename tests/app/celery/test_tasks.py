@@ -33,7 +33,7 @@ from app.celery.tasks import (
     send_inbound_sms_to_service,
 )
 from app.config import QueueNames
-from app.dao import jobs_dao, services_dao, service_permissions_dao
+from app.dao import jobs_dao, services_dao
 from app.models import (
     Job,
     Notification,
@@ -306,7 +306,10 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_process_letter_job(sample_letter_job, mocker):
+def test_should_process_letter_job(notify_db_session, mocker):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=template)
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
@@ -315,11 +318,11 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
     mocker.patch('app.celery.tasks.build_dvla_file')
 
-    process_job(sample_letter_job.id)
+    process_job(job.id)
 
     s3_mock.assert_called_once_with(
-        str(sample_letter_job.service.id),
-        str(sample_letter_job.id)
+        str(job.service.id),
+        str(job.id)
     )
 
     row_call = process_row_mock.mock_calls[0][1]
@@ -333,13 +336,13 @@ def test_should_process_letter_job(sample_letter_job, mocker):
         'addressline4': 'A4',
         'postcode': 'A_POST'
     }
-    assert row_call[4] == sample_letter_job
-    assert row_call[5] == sample_letter_job.service
+    assert row_call[4] == job
+    assert row_call[5] == job.service
 
     assert process_row_mock.call_count == 1
 
-    assert sample_letter_job.job_status == 'in progress'
-    tasks.build_dvla_file.apply_async.assert_called_once_with([str(sample_letter_job.id)], queue="job-tasks")
+    assert job.job_status == 'in progress'
+    tasks.build_dvla_file.apply_async.assert_called_once_with([str(job.id)], queue="job-tasks")
 
 
 def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
@@ -672,10 +675,12 @@ def test_should_not_build_dvla_file_in_research_mode_for_letter_job(
 
 
 def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
-        mocker, sample_letter_job, fake_uuid
+        mocker, notify_db_session, fake_uuid
 ):
+    service = create_service(service_permissions=[LETTER_TYPE], research_mode=True)
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    job = create_job(template=template)
     test_encrypted_data = 'some encrypted data'
-    sample_letter_job.service.research_mode = True
 
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
@@ -687,13 +692,13 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
     mocker.patch('app.celery.tasks.encryption.encrypt', return_value=test_encrypted_data)
     mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
 
-    process_job(sample_letter_job.id)
+    process_job(job.id)
 
-    job = jobs_dao.dao_get_job_by_id(sample_letter_job.id)
+    processed_job = jobs_dao.dao_get_job_by_id(job.id)
 
     save_letter.apply_async.assert_called_once_with(
         (
-            str(sample_letter_job.service_id),
+            str(job.service_id),
             fake_uuid,
             test_encrypted_data,
         ),
@@ -701,7 +706,7 @@ def test_should_update_job_to_sent_to_dvla_in_research_mode_for_letter_job(
     )
 
     mock_update_job_task.assert_called_once_with(
-        [str(job.id)], queue=QueueNames.RESEARCH_MODE)
+        [str(processed_job.id)], queue=QueueNames.RESEARCH_MODE)
 
 
 def test_should_save_sms_template_to_and_persist_with_job_id(sample_job, sample_api_key, mocker):
@@ -1155,7 +1160,6 @@ def test_save_letter_sets_delivered_letters_as_pdf_permission_in_research_mode_i
         notify_api, mocker, notify_db_session, sample_letter_job, env):
     sample_letter_job.service.research_mode = True
     sample_reference = "this-is-random-in-real-life"
-    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
     mock_create_fake_letter_response_file = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
     mocker.patch('app.celery.tasks.create_random_identifier', return_value=sample_reference)
@@ -1193,7 +1197,6 @@ def test_save_letter_calls_create_fake_response_for_letters_as_pdf_permission_in
         notify_api, mocker, notify_db_session, sample_letter_job, env):
     sample_letter_job.service.research_mode = True
     sample_reference = "this-is-random-in-real-life"
-    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
     mock_create_fake_letter_response_file = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
     mocker.patch('app.celery.tasks.create_random_identifier', return_value=sample_reference)
@@ -1229,7 +1232,6 @@ def test_save_letter_calls_create_fake_response_for_letters_as_pdf_permission_in
 
 def test_save_letter_calls_create_letters_pdf_task_with_letters_as_pdf_permission_and_not_in_research(
         mocker, notify_db_session, sample_letter_job):
-    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
     mock_create_letters_pdf = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
 
     personalisation = {
@@ -1261,7 +1263,6 @@ def test_save_letter_calls_create_letters_pdf_task_with_letters_as_pdf_permissio
 
 def test_job_complete_does_not_call_build_dvla_file_with_letters_as_pdf_permission(
         mocker, notify_db_session, sample_letter_job):
-    service_permissions_dao.dao_add_service_permission(sample_letter_job.service.id, 'letters_as_pdf')
     mock_build_dvla_files = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
 
     job_complete(sample_letter_job, sample_letter_job.service, sample_letter_job.template.template_type)
@@ -1666,19 +1667,21 @@ def test_process_incomplete_job_email(mocker, sample_email_template):
     assert mock_email_saver.call_count == 8  # There are 10 in the file and we've added two already
 
 
-def test_process_incomplete_job_letter(mocker, sample_letter_template):
+def test_process_incomplete_job_letter(mocker, notify_db_session):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service=service, template_type=LETTER_TYPE)
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_letter'))
     mock_letter_saver = mocker.patch('app.celery.tasks.save_letter.apply_async')
     mock_build_dvla = mocker.patch('app.celery.tasks.build_dvla_file.apply_async')
 
-    job = create_job(template=sample_letter_template, notification_count=10,
+    job = create_job(template=template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
                      job_status=JOB_STATUS_IN_PROGRESS)
 
-    create_notification(sample_letter_template, job, 0)
-    create_notification(sample_letter_template, job, 1)
+    create_notification(template, job, 0)
+    create_notification(template, job, 1)
 
     assert Notification.query.filter(Notification.job_id == job.id).count() == 2
 
