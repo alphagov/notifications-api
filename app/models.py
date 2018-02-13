@@ -209,6 +209,44 @@ class ServicePermissionTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+organisation_to_service = db.Table(
+    'organisation_to_service',
+    db.Model.metadata,
+    # service_id is a primary key as you can only have one organisation per service
+    db.Column(
+        'service_id',
+        UUID(as_uuid=True),
+        db.ForeignKey('services.id'),
+        primary_key=True,
+        unique=True,
+        nullable=False),
+    db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False),
+)
+
+
+class Organisation(db.Model):
+    __tablename__ = "organisation"
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
+    name = db.Column(db.String(255), nullable=False, unique=True, index=True)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    services = db.relationship(
+        'Service',
+        secondary='organisation_to_service',
+        uselist=True)
+
+    def serialize(self):
+        serialized = {
+            "id": str(self.id),
+            "name": self.name,
+            "active": self.active,
+        }
+
+        return serialized
+
+
 class Service(db.Model, Versioned):
     __tablename__ = 'services'
 
@@ -260,7 +298,11 @@ class Service(db.Model, Versioned):
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
 
-    association_proxy('permissions', 'service_permission_types')
+    organisation = db.relationship(
+        'Organisation',
+        secondary=organisation_to_service,
+        uselist=False,
+        single_parent=True)
 
     email_branding = db.relationship(
         'EmailBranding',
@@ -302,23 +344,14 @@ class Service(db.Model, Versioned):
     def has_permission(self, permission):
         return permission in [p.permission for p in self.permissions]
 
-
-class Organisation(db.Model):
-    __tablename__ = "organisation"
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
-    name = db.Column(db.String(255), nullable=False, unique=True, index=True)
-    active = db.Column(db.Boolean, nullable=False, default=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
-
-    def serialize(self):
-        serialized = {
-            "id": str(self.id),
-            "name": self.name,
-            "active": self.active,
+    def serialize_for_org_dashboard(self):
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'active': self.active,
+            'restricted': self.restricted,
+            'research_mode': self.research_mode
         }
-
-        return serialized
 
 
 class AnnualBilling(db.Model):
