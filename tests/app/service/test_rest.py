@@ -2202,6 +2202,58 @@ def test_is_service_name_unique_returns_200_if_unique(client):
     assert json.loads(response.get_data(as_text=True)) == {"result": True}
 
 
+def test_is_service_name_unique_returns_200_if_unique_and_service_id_given(
+    client,
+    notify_db,
+    notify_db_session
+):
+    service = create_service(service_name='unique', email_from='unique')
+    service_id = str(service.id)
+
+    response = client.get(
+        '/service/unique?service_id={}&name=something&email_from=something'.format(service_id),
+        headers=[create_authorization_header()]
+    )
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": True}
+
+
+def test_is_service_name_unique_returns_200_when_capitalized(
+    client,
+    notify_db,
+    notify_db_session
+):
+    service = create_service(service_name='unique', email_from='unique')
+    service_id = str(service.id)
+
+    response = client.get(
+        '/service/unique?service_id={}&name={}&email_from={}'.format(service_id, 'UNIQUE', 'unique'),
+        headers=[create_authorization_header()]
+    )
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": True}
+
+
+def test_is_service_name_unique_returns_false_if_checking_capitalization_of_different_service(
+    client,
+    notify_db,
+    notify_db_session
+):
+    create_service(service_name='unique', email_from='unique')
+    different_service_id = '111aa111-2222-bbbb-aaaa-111111111111'
+
+    response = client.get(
+        '/service/unique?service_id={}&name={}&email_from={}'.format(
+            different_service_id, 'UNIQUE', 'unique'),
+        headers=[create_authorization_header()]
+    )
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {"result": False}
+
+
 @pytest.mark.parametrize('name, email_from',
                          [("something unique", "something"),
                           ("unique", "something.unique"),
