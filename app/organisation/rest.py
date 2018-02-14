@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.organisation_dao import (
@@ -29,11 +29,7 @@ def handle_integrity_error(exc):
     Handle integrity errors caused by the unique contraint on ix_organisation_name
     """
     if 'ix_organisation_name' in str(exc):
-        current_app.logger.exception('Unique constraint ix_organisation_name triggered')
-        return jsonify(
-            result='error',
-            message='Organisation name already exists'
-        ), 400
+        raise InvalidRequest('Organisation name already exists', 400)
 
     raise
 

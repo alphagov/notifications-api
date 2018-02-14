@@ -1,3 +1,6 @@
+import pytest
+
+from app.errors import InvalidRequest
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from tests.app.db import create_organisation, create_service
@@ -59,16 +62,17 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
         'active': True
     }
 
-    response = admin_request.post(
-        'organisation.create_organisation',
-        _data=data,
-        _expected_status=400
-    )
+    with pytest.raises(InvalidRequest) as e:
+        admin_request.post(
+            'organisation.create_organisation',
+            _data=data,
+            _expected_status=400
+        )
 
     organisation = Organisation.query.all()
 
     assert len(organisation) == 1
-    assert response['message'] == 'Organisation name already exists'
+    assert 'Organisation name already exists' in str(e.value)
 
 
 def test_post_create_organisation_with_missing_name_gives_validation_error(admin_request, notify_db_session):
@@ -117,14 +121,15 @@ def test_post_update_organisation_raises_400_on_existing_org_name(
         'active': False
     }
 
-    response = admin_request.post(
-        'organisation.update_organisation',
-        _data=data,
-        organisation_id=org.id,
-        _expected_status=400
-    )
+    with pytest.raises(expected_exception=InvalidRequest) as e:
+        admin_request.post(
+            'organisation.update_organisation',
+            _data=data,
+            organisation_id=org.id,
+            _expected_status=400
+        )
 
-    assert response['message'] == 'Organisation name already exists'
+    assert 'Organisation name already exists' in str(e.value)
 
 
 def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_request, notify_db_session):
