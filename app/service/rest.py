@@ -699,15 +699,24 @@ def get_organisation_for_service(service_id):
 
 @service_blueprint.route('/unique', methods=["GET"])
 def is_service_name_unique():
-    name, email_from = check_request_args(request)
+    service_id, name, email_from = check_request_args(request)
 
     name_exists = Service.query.filter_by(name=name).first()
-    email_from_exists = Service.query.filter_by(email_from=email_from).first()
+
+    if service_id:
+        email_from_exists = Service.query.filter(
+            Service.email_from == email_from,
+            Service.id != service_id
+        ).first()
+    else:
+        email_from_exists = Service.query.filter_by(email_from=email_from).first()
+
     result = not (name_exists or email_from_exists)
     return jsonify(result=result), 200
 
 
 def check_request_args(request):
+    service_id = request.args.get('service_id')
     name = request.args.get('name', None)
     email_from = request.args.get('email_from', None)
     errors = []
@@ -717,4 +726,4 @@ def check_request_args(request):
         errors.append({'email_from': ["Can't be empty"]})
     if errors:
         raise InvalidRequest(errors, status_code=400)
-    return name, email_from
+    return service_id, name, email_from
