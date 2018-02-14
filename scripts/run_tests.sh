@@ -31,5 +31,5 @@ flake8 .
 display_result $? 1 "Code style check"
 
 # run with four concurrent threads
-py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml -n 4 -v
+py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml -n4 -v -x
 display_result $? 2 "Unit tests"
