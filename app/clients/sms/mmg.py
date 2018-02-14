@@ -1,45 +1,18 @@
 import json
 from monotonic import monotonic
 from requests import (request, RequestException)
-from app.clients import (STATISTICS_DELIVERED, STATISTICS_FAILURE)
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
 mmg_response_map = {
-    '2': {
-        "message": ' Permanent failure',
-        "notification_statistics_status": STATISTICS_FAILURE,
-        "success": False,
-        "notification_status": 'permanent-failure'
-    },
-    '3': {
-        "message": 'Delivered',
-        "notification_statistics_status": STATISTICS_DELIVERED,
-        "success": True,
-        "notification_status": 'delivered'
-    },
-    '4': {
-        "message": ' Temporary failure',
-        "notification_statistics_status": STATISTICS_FAILURE,
-        "success": False,
-        "notification_status": 'temporary-failure'
-    },
-    '5': {
-        "message": 'Permanent failure',
-        "notification_statistics_status": STATISTICS_FAILURE,
-        "success": False,
-        "notification_status": 'permanent-failure'
-    },
-    'default': {
-        "message": 'Declined',
-        "success": False,
-        "notification_statistics_status": STATISTICS_FAILURE,
-        "notification_status": 'failed'
-    }
+    '2': 'permanent-failure',
+    '3': 'delivered',
+    '4': 'temporary-failure',
+    '5': 'permanent-failure'
 }
 
 
 def get_mmg_responses(status):
-    return mmg_response_map.get(status, mmg_response_map.get('default'))
+    return mmg_response_map[status]
 
 
 class MMGClientResponseException(SmsClientResponseException):
