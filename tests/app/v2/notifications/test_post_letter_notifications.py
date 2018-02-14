@@ -5,7 +5,6 @@ from flask import url_for
 import pytest
 
 from app.config import QueueNames
-from app.dao import service_permissions_dao
 from app.models import EMAIL_TYPE
 from app.models import Job
 from app.models import KEY_TYPE_NORMAL
@@ -46,6 +45,7 @@ def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected
 
 @pytest.mark.parametrize('reference', [None, 'reference_from_client'])
 def test_post_letter_notification_returns_201(client, sample_letter_template, mocker, reference):
+    mock = mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {
@@ -81,38 +81,15 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     )
     assert not resp_json['scheduled_for']
     assert not notification.reply_to_text
-
-
-def test_post_letter_notification_for_letters_as_pdf_calls_celery_task(client, sample_letter_template, mocker):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
-    data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': 'Buckingham Palace',
-            'address_line_3': 'London',
-            'postcode': 'SW1 1AA',
-            'name': 'Lizzie'
-        },
-        'reference': 'foo'
-    }
-    fake_task = mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
-
-    letter_request(client, data, service_id=sample_letter_template.service_id)
-
-    notification = Notification.query.one()
-
-    fake_task.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+    mock.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 @pytest.mark.parametrize('env', [
     'development',
     'preview',
 ])
-def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_in_research_and_test_key_correct_env(
+def test_post_letter_notification_calls_create_fake_response_in_research_and_test_key_correct_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = True
 
     data = {
@@ -147,9 +124,8 @@ def test_post_letter_notification_for_letters_as_pdf_calls_create_fake_response_
     'staging',
     'live',
 ])
-def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_and_test_key_incorrect_env(
+def test_post_letter_notification_sets_status_delivered_in_research_and_test_key_incorrect_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = True
 
     data = {
@@ -186,9 +162,8 @@ def test_post_letter_noti_for_letters_as_pdf_sets_status_delivered_in_research_a
     'staging',
     'live',
 ])
-def test_post_letter_noti_for_letters_as_pdf_sets_status_to_delivered_using_test_key_and_not_research_all_env(
+def test_post_letter_notification_sets_status_to_delivered_using_test_key_and_not_research_all_env(
         notify_api, client, sample_letter_template, mocker, env):
-    service_permissions_dao.dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
     sample_letter_template.service.research_mode = False
 
     data = {
@@ -350,32 +325,8 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     ]
 
 
-@pytest.mark.parametrize('research_mode, key_type', [
-    (True, KEY_TYPE_NORMAL),
-    (False, KEY_TYPE_TEST)
-])
-def test_post_letter_notification_updates_noti_sending(
-    client,
-    notify_db_session,
-    mocker,
-    research_mode,
-    key_type
-):
-    service = create_service(research_mode=research_mode, service_permissions=[LETTER_TYPE])
-    template = create_template(service, template_type=LETTER_TYPE)
-
-    data = {
-        'template_id': str(template.id),
-        'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
-    }
-
-    letter_request(client, data, service_id=service.id, key_type=key_type)
-
-    notification = Notification.query.one()
-    assert notification.status == NOTIFICATION_SENDING
-
-
-def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template):
+def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -393,7 +344,8 @@ def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_t
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]
 
 
-def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template):
+def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
     data = {
         'template_id': str(sample_trial_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -411,11 +363,13 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
         {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
 
 
-def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_using_test_key(
+def test_post_letter_notification_is_delivered_if_in_trial_mode_and_using_test_key(
     client,
     sample_trial_letter_template,
     mocker
 ):
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+
     data = {
         "template_id": sample_trial_letter_template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -424,12 +378,15 @@ def test_post_letter_notification_fakes_dvla_when_service_is_in_trial_mode_but_u
     letter_request(client, data=data, service_id=sample_trial_letter_template.service_id, key_type=KEY_TYPE_TEST)
 
     notification = Notification.query.one()
-    assert notification.status == NOTIFICATION_SENDING
+    assert notification.status == NOTIFICATION_DELIVERED
+    assert not fake_create_letter_task.called
 
 
 def test_post_letter_notification_persists_notification_reply_to_text(
-    client, notify_db_session
+    client, notify_db_session, mocker
 ):
+    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+
     service = create_service(service_permissions=[LETTER_TYPE])
     service_address = "12 Main Street, London"
     letter_contact = create_letter_contact(service=service, contact_block=service_address, is_default=True)
