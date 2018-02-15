@@ -15,6 +15,7 @@ from alembic import op
 
 NEW_ORGANISATIONS = [
     ('502', 'Welsh Revenue Authority'),
+    ('503', 'East Riding of Yorkshire Council'),
 ]
 
 
