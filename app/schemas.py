@@ -347,12 +347,16 @@ class TemplateSchema(BaseTemplateSchema):
 class TemplateHistorySchema(BaseSchema):
 
     reply_to = fields.Method("get_reply_to", allow_none=True)
+    reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
 
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
 
     def get_reply_to(self, template):
         return template.reply_to
+
+    def get_reply_to_text(self, template):
+        return template.get_reply_to_text()
 
     class Meta:
         model = models.TemplateHistory
