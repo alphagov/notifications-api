@@ -170,11 +170,6 @@ class Config(object):
             'schedule': crontab(minute=1),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        # 'send-scheduled-notifications': {
-        #     'task': 'send-scheduled-notifications',
-        #     'schedule': crontab(minute='*/15'),
-        #     'options': {'queue': 'periodic'}
-        # },
         'delete-verify-codes': {
             'task': 'delete-verify-codes',
             'schedule': timedelta(minutes=63),
@@ -252,11 +247,6 @@ class Config(object):
             'schedule': crontab(hour=16, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'run-letter-jobs': {
-            'task': 'run-letter-jobs',
-            'schedule': crontab(hour=17, minute=30),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'trigger-letter-pdfs-for-day': {
             'task': 'trigger-letter-pdfs-for-day',
             'schedule': crontab(hour=17, minute=50),
@@ -265,11 +255,6 @@ class Config(object):
         'raise-alert-if-no-letter-ack-file': {
             'task': 'raise-alert-if-no-letter-ack-file',
             'schedule': crontab(hour=23, minute=00),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'run-letter-api-notifications': {
-            'task': 'run-letter-api-notifications',
-            'schedule': crontab(hour=17, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'check-job-status': {

@@ -1,5 +1,8 @@
 import uuid
 
+import pytest
+
+from app.clients import ClientException
 from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
@@ -96,7 +99,7 @@ def test_process_sms_response_returns_error_bad_reference(mocker):
     stats_mock.assert_not_called()
 
 
-def test_process_sms_response_returns_error_for_unknown_sms_client(mocker):
+def test_process_sms_response_raises_client_exception_for_unknown_sms_client(mocker):
     stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
     success, error = process_sms_client_response(status='000', reference=str(uuid.uuid4()), client_name='sms-client')
 
@@ -105,10 +108,8 @@ def test_process_sms_response_returns_error_for_unknown_sms_client(mocker):
     stats_mock.assert_not_called()
 
 
-def test_process_sms_response_returns_error_for_unknown_status(mocker):
-    stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
+def test_process_sms_response_raises_client_exception_for_unknown_status(mocker):
+    with pytest.raises(ClientException) as e:
+        process_sms_client_response(status='000', reference=str(uuid.uuid4()), client_name='Firetext')
 
-    success, error = process_sms_client_response(status='000', reference=str(uuid.uuid4()), client_name='Firetext')
-    assert success is None
-    assert error == "{} callback failed: status {} not found.".format('Firetext', '000')
-    stats_mock.assert_not_called()
+    assert "{} callback failed: status {} not found.".format('Firetext', '000') in str(e.value)

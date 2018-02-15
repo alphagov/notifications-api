@@ -10,27 +10,22 @@ from app.clients.sms.mmg import get_mmg_responses, MMGClientResponseException
 
 
 def test_should_return_correct_details_for_delivery():
-    response_dict = get_mmg_responses('3')
-    assert response_dict['message'] == 'Delivered'
-    assert response_dict['notification_status'] == 'delivered'
-    assert response_dict['notification_statistics_status'] == 'delivered'
-    assert response_dict['success']
+    get_mmg_responses('3') == 'delivered'
 
 
-def test_should_return_correct_details_for_bounced():
-    response_dict = get_mmg_responses('50')
-    assert response_dict['message'] == 'Declined'
-    assert response_dict['notification_status'] == 'failed'
-    assert response_dict['notification_statistics_status'] == 'failure'
-    assert not response_dict['success']
+def test_should_return_correct_details_for_temporary_failure():
+    get_mmg_responses('4') == 'temporary-failure'
 
 
-def test_should_be_none_if_unrecognised_status_code():
-    response_dict = get_mmg_responses('blah')
-    assert response_dict['message'] == 'Declined'
-    assert response_dict['notification_status'] == 'failed'
-    assert response_dict['notification_statistics_status'] == 'failure'
-    assert not response_dict['success']
+@pytest.mark.parametrize('status', ['5', '2'])
+def test_should_return_correct_details_for_bounced(status):
+    get_mmg_responses(status) == 'permanent-failure'
+
+
+def test_should_be_raise_if_unrecognised_status_code():
+    with pytest.raises(KeyError) as e:
+        get_mmg_responses('99')
+    assert '99' in str(e.value)
 
 
 def test_send_sms_successful_returns_mmg_response(notify_api, mocker):

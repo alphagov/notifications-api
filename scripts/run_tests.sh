@@ -5,11 +5,7 @@
 # NOTE: This script expects to be run from the project root with
 # ./scripts/run_tests.sh
 
-# Use default environment vars for localhost if not already set
-
 set -o pipefail
-
-source environment_test.sh
 
 function display_result {
   RESULT=$1
@@ -31,5 +27,5 @@ flake8 .
 display_result $? 1 "Code style check"
 
 # run with four concurrent threads
-py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml -n 4 -v
+py.test --cov=app --cov-report=term-missing tests/ --junitxml=test_results.xml -n4 -v --maxfail=10
 display_result $? 2 "Unit tests"
