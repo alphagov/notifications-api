@@ -84,7 +84,7 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 404
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'No result found'
+    assert json_resp['message'] == 'Template not found'
 
 
 @pytest.mark.parametrize('permissions, template_type, subject, expected_error', [
@@ -184,7 +184,7 @@ def test_should_be_error_if_service_does_not_exist_on_update(client, fake_uuid):
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 404
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'No result found'
+    assert json_resp['message'] == 'Template not found'
 
 
 @pytest.mark.parametrize('template_type', [EMAIL_TYPE, LETTER_TYPE])
@@ -463,7 +463,7 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
     assert response.status_code == 404
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'No result found'
+    assert json_resp['message'] == 'Template not found'
 
 
 def test_create_400_for_over_limit_content(client, notify_api, sample_user, sample_service, fake_uuid):
