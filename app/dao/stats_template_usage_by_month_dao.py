@@ -1,5 +1,5 @@
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import or_, and_
+from sqlalchemy import or_, and_, desc
 
 from app import db
 from app.dao.dao_utils import transactional
@@ -54,4 +54,6 @@ def dao_get_template_usage_stats_by_service(service_id, year):
                 StatsTemplateUsageByMonth.year == year + 1
             )
         )
+    ).order_by(
+        desc(StatsTemplateUsageByMonth.month)
     ).all()
