@@ -137,6 +137,16 @@ user_to_service = db.Table(
     UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
 )
 
+
+user_to_organisation = db.Table(
+    'user_to_organisation',
+    db.Model.metadata,
+    db.Column('user_id', UUID(as_uuid=True), db.ForeignKey('users.id')),
+    db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id')),
+    UniqueConstraint('user_id', 'organisation_id', name='uix_user_to_organisation')
+)
+
+
 BRANDING_GOVUK = 'govuk'
 BRANDING_ORG = 'org'
 BRANDING_BOTH = 'both'
@@ -236,6 +246,11 @@ class Organisation(db.Model):
         'Service',
         secondary='organisation_to_service',
         uselist=True)
+
+    users = db.relationship(
+        'User',
+        secondary='user_to_organisation',
+        backref=db.backref('organisations', lazy='dynamic'))
 
     def serialize(self):
         serialized = {
@@ -1362,9 +1377,6 @@ class NotificationHistory(db.Model, HistoryModel):
         self.status = original.status
 
 
-INVITED_USER_STATUS_TYPES = ['pending', 'accepted', 'cancelled']
-
-
 class ScheduledNotification(db.Model):
     __tablename__ = 'scheduled_notifications'
 
@@ -1373,6 +1385,18 @@ class ScheduledNotification(db.Model):
     notification = db.relationship('Notification', uselist=False)
     scheduled_for = db.Column(db.DateTime, index=False, nullable=False)
     pending = db.Column(db.Boolean, nullable=False, default=True)
+
+
+INVITE_PENDING = 'pending'
+INVITE_ACCEPTED = 'accepted'
+INVITE_CANCELLED = 'cancelled'
+INVITED_USER_STATUS_TYPES = [INVITE_PENDING, INVITE_ACCEPTED, INVITE_CANCELLED]
+
+
+class InviteStatusType(db.Model):
+    __tablename__ = 'invite_status_type'
+
+    name = db.Column(db.String, primary_key=True)
 
 
 class InvitedUser(db.Model):
@@ -1391,7 +1415,7 @@ class InvitedUser(db.Model):
         nullable=False,
         default=datetime.datetime.utcnow)
     status = db.Column(
-        db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default='pending')
+        db.Enum(*INVITED_USER_STATUS_TYPES, name='invited_users_status_types'), nullable=False, default=INVITE_PENDING)
     permissions = db.Column(db.String, nullable=False)
     auth_type = db.Column(
         db.String,
@@ -1405,6 +1429,25 @@ class InvitedUser(db.Model):
     # play nice with marshmallow yet
     def get_permissions(self):
         return self.permissions.split(',')
+
+
+class InvitedOrganisationUser(db.Model):
+    __tablename__ = 'invited_organisation_users'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    email_address = db.Column(db.String(255), nullable=False)
+    invited_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    invited_by = db.relationship('User')
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False)
+    organisation = db.relationship('Organisation')
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    status = db.Column(
+        db.String,
+        db.ForeignKey('invite_status_type.name'),
+        nullable=False,
+        default=INVITE_PENDING
+    )
 
 
 # Service Permissions
