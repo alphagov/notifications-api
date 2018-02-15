@@ -92,8 +92,11 @@ def register_errors(blueprint):
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
     def no_result_found(e):
+        message = {
+            'template': 'Template not found'
+        }.get(blueprint.name, 'No result found')
         current_app.logger.info(e)
-        return jsonify(result='error', message="No result found"), 404
+        return jsonify(result='error', message=message), 404
 
     @blueprint.errorhandler(SQLAlchemyError)
     def db_error(e):
