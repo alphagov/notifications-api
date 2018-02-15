@@ -115,6 +115,30 @@ def test_post_sms_schema_is_valid(input):
     assert validate(input, post_sms_request_schema) == input
 
 
+@pytest.mark.parametrize("template_id",
+                         ['2ebe4da8-17be-49fe-b02f-dff2760261a0' + "\n",
+                          '2ebe4da8-17be-49fe-b02f-dff2760261a0' + " ",
+                          '2ebe4da8-17be-49fe-b02f-dff2760261a0' + "\r",
+                          "\t" + '2ebe4da8-17be-49fe-b02f-dff2760261a0',
+                          '2ebe4da8-17be-49fe-b02f-dff2760261a0'[4:],
+                          "bad_uuid"
+                          ]
+                         )
+def test_post_sms_json_schema_bad_uuid(template_id):
+    j = {
+        "template_id": template_id,
+        "phone_number": "07515111111"
+    }
+    with pytest.raises(ValidationError) as e:
+        validate(j, post_sms_request_schema)
+    error = json.loads(str(e.value))
+    assert len(error.keys()) == 2
+    assert error.get('status_code') == 400
+    assert len(error.get('errors')) == 1
+    assert {'error': 'ValidationError',
+            'message': "template_id is not a valid UUID"} in error['errors']
+
+
 def test_post_sms_json_schema_bad_uuid_and_missing_phone_number():
     j = {"template_id": "notUUID"}
     with pytest.raises(ValidationError) as e:
