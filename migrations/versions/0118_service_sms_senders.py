@@ -32,6 +32,13 @@ def upgrade():
                     unique=True)
     op.create_index(op.f('ix_service_sms_senders_service_id'), 'service_sms_senders', ['service_id'], unique=True)
 
+    # populate govuk seeded service
+    op.execute("""
+        INSERT INTO service_sms_senders
+        (id, sms_sender, service_id, is_default, inbound_number_id, created_at, updated_at)
+        VALUES ('286d6176-adbe-7ea7-ba26-b7606ee5e2a4', 'GOVUK', 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553', true, null, now(), null)
+    """)
+
 
 def downgrade():
     op.drop_index(op.f('ix_service_sms_senders_service_id'), table_name='service_sms_senders')
