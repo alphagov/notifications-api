@@ -1752,3 +1752,13 @@ class StatsTemplateUsageByMonth(db.Model):
             'year': self.year,
             'count': self.count
         }
+
+
+class DailySortedLetter(db.Model):
+    __tablename__ = "daily_sorted_letter"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    billing_day = db.Column(db.Date, nullable=False, index=True, unique=True)
+    unsorted_count = db.Column(db.Integer, nullable=False, default=0)
+    sorted_count = db.Column(db.Integer, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
