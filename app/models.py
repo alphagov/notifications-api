@@ -225,13 +225,7 @@ organisation_to_service = db.Table(
     'organisation_to_service',
     db.Model.metadata,
     # service_id is a primary key as you can only have one organisation per service
-    db.Column(
-        'service_id',
-        UUID(as_uuid=True),
-        db.ForeignKey('services.id'),
-        primary_key=True,
-        unique=True,
-        nullable=False),
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False),
     db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False),
 )
 

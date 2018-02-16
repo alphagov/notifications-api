@@ -188,7 +188,7 @@ def delete_invitations():
         deleted_invites = delete_invitations_created_more_than_two_days_ago()
         deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
+            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted_invites)
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")

@@ -12,7 +12,7 @@ from app.dao.invited_org_user_dao import (
     get_invited_org_users_for_organisation
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, Service, InvitedOrganisationUser
+from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, InvitedOrganisationUser
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schemas import invited_org_user_schema
 from app.errors import register_errors
