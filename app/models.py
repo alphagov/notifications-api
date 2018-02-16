@@ -1451,6 +1451,16 @@ class InvitedOrganisationUser(db.Model):
         default=INVITE_PENDING
     )
 
+    def serialize(self):
+        return {
+            'id': self.id,
+            'email_address': self.email_address,
+            'invited_by': self.invited_by_id,
+            'organisation': self.organisation_id,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'status': self.status
+        }
+
 
 # Service Permissions
 MANAGE_USERS = 'manage_users'
