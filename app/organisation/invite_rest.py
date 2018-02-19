@@ -12,23 +12,30 @@ from app.dao.invited_org_user_dao import (
     get_invited_org_users_for_organisation
 )
 from app.dao.templates_dao import dao_get_template_by_id
+from app.errors import register_errors
 from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, InvitedOrganisationUser
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.schemas import invited_org_user_schema
-from app.errors import register_errors
+from app.schema_validation import validate
+from app.organisation.organisation_schema import (
+    post_create_invited_org_user_status_schema,
+    post_update_invited_org_user_status_schema
+)
 
-invite = Blueprint('invite', __name__, url_prefix='/organisation/<organisation_id>/invite')
+organisation_invite_blueprint = Blueprint(
+    'organisation_invite', __name__,
+    url_prefix='/organisation/<uuid:organisation_id>/invite')
 
-register_errors(invite)
+register_errors(organisation_invite_blueprint)
 
 
-@invite.route('', methods=['POST'])
+@organisation_invite_blueprint.route('', methods=['POST'])
 def create_invited_org_user(organisation_id):
-    request_json = request.get_json()
+    data = request.get_json()
+    validate(data, post_create_invited_org_user_status_schema)
 
     invited_org_user = InvitedOrganisationUser(
-        email_address=request_json['email_address'],
-        invited_by_id=request_json['invited_by'],
+        email_address=data['email_address'],
+        invited_by_id=data['invited_by'],
         organisation_id=organisation_id
     )
     save_invited_org_user(invited_org_user)
@@ -45,7 +52,7 @@ def create_invited_org_user(organisation_id):
             'org_name': invited_org_user.organisation.name,
             'url': invited_org_user_url(
                 invited_org_user.id,
-                request_json.get('invite_link_host'),
+                data.get('invite_link_host'),
             ),
         },
         notification_type=EMAIL_TYPE,
@@ -59,20 +66,21 @@ def create_invited_org_user(organisation_id):
     return jsonify(data=invited_org_user.serialize()), 201
 
 
-@invite.route('', methods=['GET'])
+@organisation_invite_blueprint.route('', methods=['GET'])
 def get_invited_org_users_by_organisation(organisation_id):
     invited_org_users = get_invited_org_users_for_organisation(organisation_id)
     return jsonify(data=[x.serialize() for x in invited_org_users]), 200
 
 
-@invite.route('/<invited_org_user_id>', methods=['POST'])
-def update_invited_org_user(organisation_id, invited_org_user_id):
+@organisation_invite_blueprint.route('/<invited_org_user_id>', methods=['POST'])
+def update_invited_org_user_status(organisation_id, invited_org_user_id):
     fetched = get_invited_org_user(organisation_id=organisation_id, invited_org_user_id=invited_org_user_id)
 
-    current_data = dict(fetched.serialize().items())
-    current_data.update(request.get_json())
-    update_dict = invited_org_user_schema.load(current_data).data
-    save_invited_org_user(update_dict)
+    data = request.get_json()
+    validate(data, post_update_invited_org_user_status_schema)
+
+    fetched.status = data['status']
+    save_invited_org_user(fetched)
     return jsonify(data=fetched.serialize()), 200
 
 

@@ -161,40 +161,6 @@ def test_get_invited_users_by_service_with_no_invites(client, notify_db, notify_
     assert len(json_resp['data']) == 0
 
 
-def test_get_invited_user_by_service_and_id(client, sample_service, sample_invited_user):
-    url = '/service/{}/invite/{}'.format(sample_service.id, sample_invited_user.id)
-
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        url,
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
-
-    invite_email_address = sample_invited_user.email_address
-    invite_from = sample_service.users[0]
-
-    assert json_resp['data']['service'] == str(sample_service.id)
-    assert json_resp['data']['email_address'] == invite_email_address
-    assert json_resp['data']['from_user'] == str(invite_from.id)
-    assert json_resp['data']['id']
-
-
-def test_get_invited_user_by_service_but_unknown_invite_id_returns_404(client, sample_service):
-    unknown_id = uuid.uuid4()
-    url = '/service/{}/invite/{}'.format(sample_service.id, unknown_id)
-
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        url,
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    assert response.status_code == 404
-
-
 def test_update_invited_user_set_status_to_cancelled(client, sample_invited_user):
     data = {'status': 'cancelled'}
     url = '/service/{0}/invite/{1}'.format(sample_invited_user.service_id, sample_invited_user.id)
