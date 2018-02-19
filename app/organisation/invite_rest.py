@@ -29,7 +29,7 @@ register_errors(organisation_invite_blueprint)
 
 
 @organisation_invite_blueprint.route('', methods=['POST'])
-def create_invited_org_user(organisation_id):
+def invite_user_to_org(organisation_id):
     data = request.get_json()
     validate(data, post_create_invited_org_user_status_schema)
 
@@ -49,7 +49,7 @@ def create_invited_org_user(organisation_id):
         service=template.service,
         personalisation={
             'user_name': invited_org_user.invited_by.name,
-            'org_name': invited_org_user.organisation.name,
+            'organisation_name': invited_org_user.organisation.name,
             'url': invited_org_user_url(
                 invited_org_user.id,
                 data.get('invite_link_host'),
@@ -58,7 +58,7 @@ def create_invited_org_user(organisation_id):
         notification_type=EMAIL_TYPE,
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
-        reply_to_text=invited_org_user.from_user.email_address
+        reply_to_text=invited_org_user.invited_by.email_address
     )
 
     send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
@@ -73,7 +73,7 @@ def get_invited_org_users_by_organisation(organisation_id):
 
 
 @organisation_invite_blueprint.route('/<invited_org_user_id>', methods=['POST'])
-def update_invited_org_user_status(organisation_id, invited_org_user_id):
+def update_invite_status(organisation_id, invited_org_user_id):
     fetched = get_invited_org_user(organisation_id=organisation_id, invited_org_user_id=invited_org_user_id)
 
     data = request.get_json()

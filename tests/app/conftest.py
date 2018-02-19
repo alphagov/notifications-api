@@ -59,7 +59,8 @@ from tests.app.db import (
     create_service,
     create_api_key,
     create_inbound_number,
-    create_letter_contact
+    create_letter_contact,
+    create_invited_org_user,
 )
 
 
@@ -738,6 +739,16 @@ def sample_invited_user(notify_db,
 
 
 @pytest.fixture(scope='function')
+def sample_invited_org_user(
+    notify_db,
+    notify_db_session,
+    sample_user,
+    sample_organisation
+):
+    return create_invited_org_user(sample_organisation, sample_user)
+
+
+@pytest.fixture(scope='function')
 def sample_permission(notify_db,
                       notify_db_session,
                       service=None,
@@ -906,6 +917,20 @@ def invitation_email_template(notify_db,
         template_config_name='INVITATION_EMAIL_TEMPLATE_ID',
         content=content,
         subject='Invitation to ((service_name))',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
+def org_invite_email_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='ORGANISATION_INVITATION_EMAIL_TEMPLATE_ID',
+        content='((user_name)) ((organisation_name)) ((url))',
+        subject='Invitation to ((organisation_name))',
         template_type='email'
     )
 

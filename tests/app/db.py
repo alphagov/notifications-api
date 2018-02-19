@@ -6,6 +6,7 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
+from app.dao.invited_org_user_dao import save_invited_org_user
 from app.models import (
     ApiKey,
     InboundSms,
@@ -30,7 +31,8 @@ from app.models import (
     SMS_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
-    LetterRate
+    LetterRate,
+    InvitedOrganisationUser,
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -492,3 +494,13 @@ def create_organisation(name='test_org_1', active=True):
     dao_create_organisation(organisation)
 
     return organisation
+
+
+def create_invited_org_user(organisation, invited_by, email_address='invite@example.com'):
+    invited_org_user = InvitedOrganisationUser(
+        email_address=email_address,
+        invited_by=invited_by,
+        organisation=organisation,
+    )
+    save_invited_org_user(invited_org_user)
+    return invited_org_user
