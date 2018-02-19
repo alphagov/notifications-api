@@ -7,6 +7,7 @@ from flask import (
     current_app,
     Blueprint
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao import notifications_dao
@@ -92,6 +93,22 @@ from app.utils import pagination_links
 service_blueprint = Blueprint('service', __name__)
 
 register_errors(service_blueprint)
+
+
+@service_blueprint.errorhandler(IntegrityError)
+def handle_integrity_error(exc):
+    """
+    Handle integrity errors caused by the unique constraint on ix_organisation_name
+    """
+    if 'services_name_key' or 'services_email_from_key' in str(exc):
+        return jsonify(
+            result='error',
+            message={'name': ["Duplicate service name '{}'".format(
+                exc.params.get('name', exc.params.get('email_from', ''))
+            )]}
+        ), 400
+    current_app.logger.exception(exc)
+    return jsonify(result='error', message="Internal server error"), 500
 
 
 @service_blueprint.route('/platform-stats', methods=['GET'])

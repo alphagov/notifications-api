@@ -110,7 +110,7 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
 
 
 def test_post_update_organisation_raises_400_on_existing_org_name(
-        admin_request, notify_db_session, sample_organisation):
+        admin_request, sample_organisation):
     org = create_organisation()
     data = {
         'name': sample_organisation.name,
