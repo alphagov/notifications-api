@@ -3,7 +3,7 @@ from flask import (
     current_app,
     json)
 from notifications_utils.recipients import InvalidEmailError
-from sqlalchemy.exc import SQLAlchemyError, DataError
+from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from marshmallow import ValidationError
 from jsonschema import ValidationError as JsonSchemaValidationError
@@ -94,20 +94,6 @@ def register_errors(blueprint):
     def no_result_found(e):
         current_app.logger.info(e)
         return jsonify(result='error', message="No result found"), 404
-
-    @blueprint.errorhandler(SQLAlchemyError)
-    def db_error(e):
-        if hasattr(e, 'orig') and hasattr(e.orig, 'pgerror') and e.orig.pgerror and \
-            ('duplicate key value violates unique constraint "services_name_key"' in e.orig.pgerror or
-             'duplicate key value violates unique constraint "services_email_from_key"' in e.orig.pgerror):
-            return jsonify(
-                result='error',
-                message={'name': ["Duplicate service name '{}'".format(
-                    e.params.get('name', e.params.get('email_from', ''))
-                )]}
-            ), 400
-        current_app.logger.exception(e)
-        return jsonify(result='error', message="Internal server error"), 500
 
     # this must be defined after all other error handlers since it catches the generic Exception object
     @blueprint.app_errorhandler(500)
