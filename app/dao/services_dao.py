@@ -41,6 +41,7 @@ from app.models import (
     TEMPLATE_TYPES,
     LETTER_TYPE,
 )
+from app.reports.report_tasks import send_service_task_to_report_queue
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
 
 DEFAULT_SERVICE_PERMISSIONS = [
@@ -180,11 +181,17 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
     db.session.add(service)
 
+    if current_app.config['SEND_REPORTS']:
+        send_service_task_to_report_queue(service)
+
 
 @transactional
 @version_class(Service)
 def dao_update_service(service):
     db.session.add(service)
+
+    if current_app.config['SEND_REPORTS']:
+        send_service_task_to_report_queue(service)
 
 
 def dao_add_user_to_service(service, user, permissions=None):

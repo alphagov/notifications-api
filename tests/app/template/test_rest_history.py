@@ -112,3 +112,4 @@ def test_update_template_reply_to_updates_history(client, sample_letter_template
     hist_json_resp = json.loads(resp.get_data(as_text=True))
     assert 'service_letter_contact_id' not in hist_json_resp['data']
     assert hist_json_resp['data']['reply_to'] == str(letter_contact.id)
+    assert hist_json_resp['data']['reply_to_text'] == letter_contact.contact_block

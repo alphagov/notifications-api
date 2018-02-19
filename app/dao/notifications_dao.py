@@ -43,7 +43,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT
 )
-
+from app.reports.report_tasks import send_notifications_task_to_report_queue
 from app.dao.dao_utils import transactional
 
 
@@ -115,6 +115,9 @@ def dao_create_notification(notification):
     db.session.add(notification)
     if _should_record_notification_in_history_table(notification):
         db.session.add(NotificationHistory.from_original(notification))
+
+    if current_app.config['SEND_REPORTS']:
+        send_notifications_task_to_report_queue(notification)
 
 
 def _should_record_notification_in_history_table(notification):
@@ -198,6 +201,9 @@ def dao_update_notification(notification):
         notification_history.update_from_original(notification)
         db.session.add(notification_history)
     db.session.commit()
+
+    if current_app.config['SEND_REPORTS']:
+        send_notifications_task_to_report_queue(notification)
 
 
 @statsd(namespace="dao")

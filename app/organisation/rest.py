@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.organisation_dao import (
@@ -26,16 +26,14 @@ register_errors(organisation_blueprint)
 @organisation_blueprint.errorhandler(IntegrityError)
 def handle_integrity_error(exc):
     """
-    Handle integrity errors caused by the unique contraint on ix_organisation_name
+    Handle integrity errors caused by the unique constraint on ix_organisation_name
     """
     if 'ix_organisation_name' in str(exc):
-        current_app.logger.exception('Unique constraint ix_organisation_name triggered')
-        return jsonify(
-            result='error',
-            message='Organisation name already exists'
-        ), 400
+        return jsonify(result="error",
+                       message="Organisation name already exists"), 400
 
-    raise
+    current_app.logger.exception(exc)
+    return jsonify(result='error', message="Internal server error"), 500
 
 
 @organisation_blueprint.route('', methods=['GET'])
@@ -61,7 +59,6 @@ def create_organisation():
 
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
-
     return jsonify(organisation.serialize()), 201
 
 
@@ -70,7 +67,6 @@ def update_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_update_organisation_schema)
     result = dao_update_organisation(organisation_id, **data)
-
     if result:
         return '', 204
     else:

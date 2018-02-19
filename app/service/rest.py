@@ -7,6 +7,7 @@ from flask import (
     current_app,
     Blueprint
 )
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao import notifications_dao
@@ -88,12 +89,26 @@ from app.schemas import (
     detailed_service_schema
 )
 from app.utils import pagination_links
-from app import notify_celery
-from app.config import QueueNames
 
 service_blueprint = Blueprint('service', __name__)
 
 register_errors(service_blueprint)
+
+
+@service_blueprint.errorhandler(IntegrityError)
+def handle_integrity_error(exc):
+    """
+    Handle integrity errors caused by the unique constraint on ix_organisation_name
+    """
+    if 'services_name_key' or 'services_email_from_key' in str(exc):
+        return jsonify(
+            result='error',
+            message={'name': ["Duplicate service name '{}'".format(
+                exc.params.get('name', exc.params.get('email_from', ''))
+            )]}
+        ), 400
+    current_app.logger.exception(exc)
+    return jsonify(result='error', message="Internal server error"), 500
 
 
 @service_blueprint.route('/platform-stats', methods=['GET'])
@@ -170,18 +185,6 @@ def create_service():
     valid_service = Service.from_json(data)
 
     dao_create_service(valid_service, user)
-
-    # Send data to Reports queue to update Report DB
-    report_data = request.get_json()
-    report_data['id'] = str(valid_service.id)
-
-    if current_app.config['SEND_REPORTS']:
-        notify_celery.send_task(
-            name='update-reports-service-db',
-            args=(report_data,),
-            queue=QueueNames.REPORTS
-        )
-
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
@@ -214,18 +217,6 @@ def update_service(service_id):
                 'message_limit': '{:,}'.format(current_data['message_limit'])
             },
             include_user_fields=['name']
-        )
-
-    # Send data to Reports queue to update Report DB
-    # Need service id
-    report_data=req_json
-    report_data['id']=str(fetched_service.id)
-
-    if current_app.config['SEND_REPORTS']:
-        notify_celery.send_task(
-            name='update-reports-service-db',
-            args=(report_data,),
-            queue=QueueNames.REPORTS
         )
 
     return jsonify(data=service_schema.dump(fetched_service).data), 200
@@ -703,13 +694,10 @@ def is_service_name_unique():
 
     name_exists = Service.query.filter_by(name=name).first()
 
-    if service_id:
-        email_from_exists = Service.query.filter(
-            Service.email_from == email_from,
-            Service.id != service_id
-        ).first()
-    else:
-        email_from_exists = Service.query.filter_by(email_from=email_from).first()
+    email_from_exists = Service.query.filter(
+        Service.email_from == email_from,
+        Service.id != service_id
+    ).first()
 
     result = not (name_exists or email_from_exists)
     return jsonify(result=result), 200
@@ -720,6 +708,8 @@ def check_request_args(request):
     name = request.args.get('name', None)
     email_from = request.args.get('email_from', None)
     errors = []
+    if not service_id:
+        errors.append({'service_id': ["Can't be empty"]})
     if not name:
         errors.append({'name': ["Can't be empty"]})
     if not email_from:

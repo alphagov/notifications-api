@@ -1,6 +1,7 @@
 from datetime import datetime
 import uuid
 
+from flask import current_app
 from sqlalchemy import asc, desc
 from sqlalchemy.sql.expression import bindparam
 
@@ -10,6 +11,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+from app.reports.report_tasks import send_template_task_to_report_queue
 
 
 @transactional
@@ -26,11 +28,18 @@ def dao_create_template(template):
 
     db.session.add(template)
 
+    # Send data to Reports queue to update Report DB
+    if current_app.config['SEND_REPORTS']:
+        send_template_task_to_report_queue(template)
+
 
 @transactional
 @version_class(Template, TemplateHistory)
 def dao_update_template(template):
     db.session.add(template)
+
+    if current_app.config['SEND_REPORTS']:
+        send_template_task_to_report_queue(template)
 
 
 @transactional

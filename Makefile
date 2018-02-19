@@ -128,7 +128,7 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
 		-e UID=$(shell id -u) \
 		-e GID=$(shell id -g) \
-		-e TEST_DATABASE=postgresql://postgres:postgres@postgres/test_notification_api \
+		-e SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@postgres/test_notification_api \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
 		-e BUILD_URL=${BUILD_URL} \
