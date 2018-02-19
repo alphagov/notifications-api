@@ -677,13 +677,10 @@ def is_service_name_unique():
 
     name_exists = Service.query.filter_by(name=name).first()
 
-    if service_id:
-        email_from_exists = Service.query.filter(
-            Service.email_from == email_from,
-            Service.id != service_id
-        ).first()
-    else:
-        email_from_exists = Service.query.filter_by(email_from=email_from).first()
+    email_from_exists = Service.query.filter(
+        Service.email_from == email_from,
+        Service.id != service_id
+    ).first()
 
     result = not (name_exists or email_from_exists)
     return jsonify(result=result), 200
@@ -694,6 +691,8 @@ def check_request_args(request):
     name = request.args.get('name', None)
     email_from = request.args.get('email_from', None)
     errors = []
+    if not service_id:
+        errors.append({'service_id': ["Can't be empty"]})
     if not name:
         errors.append({'name': ["Can't be empty"]})
     if not email_from:

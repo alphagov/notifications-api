@@ -5,7 +5,6 @@ from monotonic import monotonic
 from requests import request, RequestException
 
 from app.clients.sms import (SmsClient, SmsClientResponseException)
-from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 
 logger = logging.getLogger(__name__)
 
@@ -15,24 +14,9 @@ logger = logging.getLogger(__name__)
 # the notification status to temporary-failure rather than permanent failure.
 #  See the code in the notification_dao.update_notifications_status_by_id
 firetext_responses = {
-    '0': {
-        "message": 'Delivered',
-        "notification_statistics_status": STATISTICS_DELIVERED,
-        "success": True,
-        "notification_status": 'delivered'
-    },
-    '1': {
-        "message": 'Declined',
-        "success": False,
-        "notification_statistics_status": STATISTICS_FAILURE,
-        "notification_status": 'permanent-failure'
-    },
-    '2': {
-        "message": 'Undelivered (Pending with Network)',
-        "success": True,
-        "notification_statistics_status": None,
-        "notification_status": 'pending'
-    }
+    '0': 'delivered',
+    '1': 'permanent-failure',
+    '2': 'pending'
 }
 
 

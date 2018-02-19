@@ -3,6 +3,7 @@ import json
 from notifications_utils.statsd_decorators import statsd
 
 from app import (
+    db,
     DATETIME_FORMAT,
     notify_celery,
 )
@@ -29,6 +30,9 @@ def send_delivery_status_to_service(self, notification_id):
     if not service_callback_api:
         # No delivery receipt API info set
         return
+
+    # Release DB connection before performing an external HTTP request
+    db.session.close()
 
     data = {
         "id": str(notification_id),

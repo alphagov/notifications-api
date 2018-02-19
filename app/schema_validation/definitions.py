@@ -5,7 +5,7 @@ If the definition is specific to a version put it in a definition file in the ve
 
 uuid = {
     "type": "string",
-    "pattern": "^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$",
+    "format": "validate_uuid",
     "validationMessage": "is not a valid UUID",
     "code": "1001",  # yet to be implemented
     "link": "link to our error documentation not yet implemented"

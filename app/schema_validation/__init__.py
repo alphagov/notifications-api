@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+from uuid import UUID
 
 from iso8601 import iso8601, ParseError
 from jsonschema import (Draft4Validator, ValidationError, FormatChecker)
@@ -9,6 +10,12 @@ from notifications_utils.recipients import (validate_phone_number, validate_emai
 
 def validate(json_to_validate, schema):
     format_checker = FormatChecker()
+
+    @format_checker.checks("validate_uuid", raises=Exception)
+    def validate_uuid(instance):
+        if isinstance(instance, str):
+            UUID(instance)
+        return True
 
     @format_checker.checks('phone_number', raises=InvalidPhoneError)
     def validate_schema_phone_number(instance):

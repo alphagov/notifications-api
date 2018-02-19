@@ -4,7 +4,6 @@ import os
 from flask import Flask
 from alembic.command import upgrade
 from alembic.config import Config
-import boto3
 import pytest
 import sqlalchemy
 
@@ -126,12 +125,6 @@ def os_environ():
     os.environ = EnvironDict()
     yield
     os.environ = old_env
-
-
-@pytest.fixture(scope='function')
-def sqs_client_conn():
-    boto3.setup_default_session(region_name='eu-west-1')
-    return boto3.resource('sqs')
 
 
 def pytest_generate_tests(metafunc):
