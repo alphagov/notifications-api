@@ -109,6 +109,7 @@ def register_blueprint(application):
     from app.billing.rest import billing_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
+    from app.organisation.accept_organisation_invite import accept_organisation_invite_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
@@ -184,6 +185,9 @@ def register_blueprint(application):
 
     organisation_invite_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_invite_blueprint)
+
+    accept_organisation_invite_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(accept_organisation_invite_blueprint)
 
 
 def register_v2_blueprints(application):

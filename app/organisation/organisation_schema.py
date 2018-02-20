@@ -1,3 +1,4 @@
+from app.models import INVITED_USER_STATUS_TYPES
 from app.schema_validation.definitions import uuid
 
 post_create_organisation_schema = {
@@ -51,7 +52,7 @@ post_update_invited_org_user_status_schema = {
     "description": "POST update organisation invite schema",
     "type": "object",
     "properties": {
-        "status": {"type": "string"}
+        "status": {"enum": INVITED_USER_STATUS_TYPES}
     },
     "required": ["status"]
 }

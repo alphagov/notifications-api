@@ -1,6 +1,5 @@
 import json
 import pytest
-import uuid
 
 from app.models import Notification, SMS_AUTH_TYPE, EMAIL_AUTH_TYPE
 from tests import create_authorization_header

@@ -73,7 +73,7 @@ def get_invited_org_users_by_organisation(organisation_id):
 
 
 @organisation_invite_blueprint.route('/<invited_org_user_id>', methods=['POST'])
-def update_invite_status(organisation_id, invited_org_user_id):
+def update_org_invite_status(organisation_id, invited_org_user_id):
     fetched = get_invited_org_user(organisation_id=organisation_id, invited_org_user_id=invited_org_user_id)
 
     data = request.get_json()
@@ -81,6 +81,7 @@ def update_invite_status(organisation_id, invited_org_user_id):
 
     fetched.status = data['status']
     save_invited_org_user(fetched)
+
     return jsonify(data=fetched.serialize()), 200
 
 

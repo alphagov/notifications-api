@@ -8,6 +8,8 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_update_organisation,
     dao_add_service_to_organisation,
+    dao_get_users_for_organisation,
+    dao_add_user_to_organisation
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
@@ -18,6 +20,7 @@ from app.organisation.organisation_schema import (
     post_link_service_to_organisation_schema,
 )
 from app.schema_validation import validate
+from app.schemas import user_schema
 
 organisation_blueprint = Blueprint('organisation', __name__)
 register_errors(organisation_blueprint)
@@ -90,3 +93,18 @@ def get_organisation_services(organisation_id):
     services = dao_get_organisation_services(organisation_id)
     sorted_services = sorted(services, key=lambda s: (-s.active, s.name))
     return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])
+def add_user_to_organisation(organisation_id, user_id):
+    current_app.logger.info("ADDING new user")
+    new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
+    return jsonify(data=user_schema.dump(new_org_user).data), 200
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/users', methods=['GET'])
+def get_organisation_users(organisation_id):
+    org_users = dao_get_users_for_organisation(organisation_id)
+
+    result = user_schema.dump(org_users, many=True)
+    return jsonify(data=result.data)

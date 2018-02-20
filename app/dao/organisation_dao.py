@@ -1,6 +1,6 @@
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import Organisation
+from app.models import Organisation, InvitedOrganisationUser, User
 
 
 def dao_get_organisations():
@@ -42,3 +42,23 @@ def dao_add_service_to_organisation(service, organisation_id):
     ).one()
 
     organisation.services.append(service)
+
+
+def dao_get_invited_organisation_user(user_id):
+    return InvitedOrganisationUser.query.filter_by(id=user_id).first()
+
+
+def dao_get_users_for_organisation(organisation_id):
+    return User.query.filter(
+        User.user_to_organisation.any(id=organisation_id),
+        User.state == 'active'
+    ).all()
+
+
+def dao_add_user_to_organisation(organisation_id, user_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    user = User.query.get(user_id)
+    organisation.users.append(user)
+    db.session.add(organisation)
+    db.session.commit()
+    return user

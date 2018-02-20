@@ -109,11 +109,11 @@ def test_get_invited_users_by_service_with_no_invites(admin_request, sample_orga
     assert len(json_resp['data']) == 0
 
 
-def test_update_invited_user_set_status_to_cancelled(admin_request, sample_invited_org_user):
+def test_update_org_invited_user_set_status_to_cancelled(admin_request, sample_invited_org_user):
     data = {'status': 'cancelled'}
 
     json_resp = admin_request.post(
-        'organisation_invite.update_invite_status',
+        'organisation_invite.update_org_invite_status',
         organisation_id=sample_invited_org_user.organisation_id,
         invited_org_user_id=sample_invited_org_user.id,
         _data=data
@@ -121,11 +121,11 @@ def test_update_invited_user_set_status_to_cancelled(admin_request, sample_invit
     assert json_resp['data']['status'] == 'cancelled'
 
 
-def test_update_invited_user_for_wrong_service_returns_404(admin_request, sample_invited_org_user, fake_uuid):
+def test_update_org_invited_user_for_wrong_service_returns_404(admin_request, sample_invited_org_user, fake_uuid):
     data = {'status': 'cancelled'}
 
     json_resp = admin_request.post(
-        'organisation_invite.update_invite_status',
+        'organisation_invite.update_org_invite_status',
         organisation_id=fake_uuid,
         invited_org_user_id=sample_invited_org_user.id,
         _data=data,
@@ -134,14 +134,15 @@ def test_update_invited_user_for_wrong_service_returns_404(admin_request, sample
     assert json_resp['message'] == 'No result found'
 
 
-def test_update_invited_user_for_invalid_data_returns_400(admin_request, sample_invited_org_user):
+def test_update_org_invited_user_for_invalid_data_returns_400(admin_request, sample_invited_org_user):
     data = {'status': 'garbage'}
 
     json_resp = admin_request.post(
-        'organisation_invite.update_invite_status',
+        'organisation_invite.update_org_invite_status',
         organisation_id=sample_invited_org_user.organisation_id,
         invited_org_user_id=sample_invited_org_user.id,
         _data=data,
-        _expected_status=404
+        _expected_status=400
     )
-    assert json_resp['message'] == 'No result found'
+    assert len(json_resp['errors']) == 1
+    assert json_resp['errors'][0]['message'] == 'status garbage is not one of [pending, accepted, cancelled]'

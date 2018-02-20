@@ -116,6 +116,10 @@ class User(db.Model):
         'Service',
         secondary='user_to_service',
         backref=db.backref('user_to_service', lazy='dynamic'))
+    organisations = db.relationship(
+        'Organisation',
+        secondary='user_to_organisation',
+        backref=db.backref('user_to_organisation', lazy='dynamic'))
 
     @property
     def password(self):
@@ -245,8 +249,8 @@ class Organisation(db.Model):
 
     users = db.relationship(
         'User',
-        secondary='user_to_organisation',
-        backref=db.backref('organisations', lazy='dynamic'))
+        secondary=user_to_organisation,
+        backref=db.backref('user_to_organisation', lazy='dynamic'))
 
     def serialize(self):
         serialized = {
@@ -1447,10 +1451,10 @@ class InvitedOrganisationUser(db.Model):
 
     def serialize(self):
         return {
-            'id': self.id,
+            'id': str(self.id),
             'email_address': self.email_address,
-            'invited_by': self.invited_by_id,
-            'organisation': self.organisation_id,
+            'invited_by': str(self.invited_by_id),
+            'organisation': str(self.organisation_id),
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
             'status': self.status
         }

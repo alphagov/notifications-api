@@ -8,6 +8,7 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_update_organisation,
     dao_add_service_to_organisation,
+    dao_get_invited_organisation_user
 )
 from app.models import Organisation
 
@@ -104,3 +105,12 @@ def test_get_organisation_by_service_id(notify_db, notify_db_session, sample_ser
 
     assert organisation_1 == sample_organisation
     assert organisation_2 == another_org
+
+
+def test_dao_get_invited_organisation_user(sample_invited_org_user):
+    invited_org_user = dao_get_invited_organisation_user(sample_invited_org_user.id)
+    assert invited_org_user == sample_invited_org_user
+
+
+def test_dao_get_users_for_organisation(sample_organisation, sample_user):
+    dao
