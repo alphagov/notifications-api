@@ -30,20 +30,13 @@ Create a local environment.sh file containing the following:
 
 ```
 echo "
-export SQLALCHEMY_DATABASE_URI='postgresql://localhost/notification_api'
-export SECRET_KEY='dev-notify-secret-key'
-export DANGEROUS_SALT='dev-notify-salt'
 export NOTIFY_ENVIRONMENT='development'
-export ADMIN_CLIENT_SECRET='dev-notify-secret-key'
-export ADMIN_BASE_URL='http://localhost:6012'
-export FROM_NUMBER='development'
-export MMG_URL='https://api.mmg.co.uk/json/api.php'
+
 export MMG_API_KEY='MMG_API_KEY'
 export LOADTESTING_API_KEY='FIRETEXT_SIMULATION_KEY'
 export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
-export STATSD_PREFIX='YOU_OWN_PREFIX'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
-export REDIS_URL="redis://localhost:6379/0"
+
 export FLASK_APP=application.py
 export FLASK_DEBUG=1
 export WERKZEUG_DEBUG_PIN=off

@@ -61,26 +61,23 @@ class TaskNames(object):
 
 class Config(object):
     # URL of admin app
-    ADMIN_BASE_URL = os.environ['ADMIN_BASE_URL']
+    ADMIN_BASE_URL = os.getenv('ADMIN_BASE_URL', 'http://localhost:6012')
 
     # URL of api app (on AWS this is the internal api endpoint)
     API_HOST_NAME = os.getenv('API_HOST_NAME')
 
     # admin app api key
-    ADMIN_CLIENT_SECRET = os.environ['ADMIN_CLIENT_SECRET']
+    ADMIN_CLIENT_SECRET = os.getenv('ADMIN_CLIENT_SECRET')
 
     # encyption secret/salt
-    SECRET_KEY = os.environ['SECRET_KEY']
-    DANGEROUS_SALT = os.environ['DANGEROUS_SALT']
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    DANGEROUS_SALT = os.getenv('DANGEROUS_SALT')
 
     # DB conection string
-    SQLALCHEMY_DATABASE_URI = os.environ['SQLALCHEMY_DATABASE_URI']
-
-    # MMG API Url
-    MMG_URL = os.environ['MMG_URL']
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
 
     # MMG API Key
-    MMG_API_KEY = os.environ['MMG_API_KEY']
+    MMG_API_KEY = os.getenv('MMG_API_KEY')
 
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
@@ -314,21 +311,38 @@ class Config(object):
 
     LETTER_PROCESSING_DEADLINE = time(17, 30)
 
+    MMG_URL = "https://api.mmg.co.uk/json/api.php"
+    AWS_REGION = 'eu-west-1'
+
 
 ######################
 # Config overrides ###
 ######################
 
 class Development(Config):
-    NOTIFY_LOG_PATH = 'application.log'
+    DEBUG = True
     SQLALCHEMY_ECHO = False
-    NOTIFY_EMAIL_DOMAIN = 'notify.tools'
+
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
+
+    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
+    SECRET_KEY = 'dev-notify-secret-key'
+    DANGEROUS_SALT = 'dev-notify-salt'
+
     NOTIFY_ENVIRONMENT = 'development'
+    NOTIFY_LOG_PATH = 'application.log'
     NOTIFICATION_QUEUE_PREFIX = 'development'
-    DEBUG = True
+    NOTIFY_EMAIL_DOMAIN = "notify.tools"
+
+    SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
+    REDIS_URL = 'redis://localhost:6379/0'
+
+    STATSD_ENABLED = False
+    STATSD_HOST = "localhost"
+    STATSD_PORT = 1000
+    STATSD_PREFIX = "stats-prefix"
 
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
@@ -351,6 +365,8 @@ class Test(Config):
     STATSD_ENABLED = True
     STATSD_HOST = "localhost"
     STATSD_PORT = 1000
+    # this is overriden in jenkins and on cloudfoundry
+    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
     BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
 
