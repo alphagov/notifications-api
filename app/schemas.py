@@ -1,4 +1,3 @@
-import re
 from datetime import (
     datetime,
     date,
@@ -207,7 +206,6 @@ class ServiceSchema(BaseSchema):
     organisation = field_for(models.Service, 'organisation')
     override_flag = False
     reply_to_email_address = fields.Method(method_name="get_reply_to_email_address")
-    sms_sender = fields.Method(method_name="get_sms_sender")
     letter_contact_block = fields.Method(method_name="get_letter_contact")
 
     def service_permissions(self, service):
@@ -215,9 +213,6 @@ class ServiceSchema(BaseSchema):
 
     def get_reply_to_email_address(self, service):
         return service.get_default_reply_to_email_address()
-
-    def get_sms_sender(self, service):
-        return service.get_default_sms_sender()
 
     def get_letter_contact(self, service):
         return service.get_default_letter_contact()
@@ -241,11 +236,6 @@ class ServiceSchema(BaseSchema):
             'letter_contacts',
         )
         strict = True
-
-    @validates('sms_sender')
-    def validate_sms_sender(self, value):
-        if value and not re.match(r'^[a-zA-Z0-9\s]+$', value):
-            raise ValidationError('Only alphanumeric characters allowed')
 
     @validates('permissions')
     def validate_permissions(self, value):

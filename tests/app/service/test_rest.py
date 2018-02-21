@@ -137,7 +137,6 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['email_branding'] is None
     assert json_resp['data']['branding'] == 'govuk'
     assert json_resp['data']['dvla_organisation'] == '001'
-    assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
     assert json_resp['data']['prefix_sms'] is True
 
 
@@ -239,7 +238,6 @@ def test_create_service(client, sample_user):
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
-    assert json_resp['data']['sms_sender'] == current_app.config['FROM_NUMBER']
     assert json_resp['data']['rate_limit'] == 3000
 
     service_db = Service.query.get(json_resp['data']['id'])
@@ -1425,7 +1423,6 @@ def test_set_sms_prefixing_for_service(
         _data={'prefix_sms': posted_value},
     )
     assert result['data']['prefix_sms'] == stored_value
-    assert result['data']['sms_sender'] == current_app.config['FROM_NUMBER']
 
 
 def test_set_sms_prefixing_for_service_cant_be_none(
