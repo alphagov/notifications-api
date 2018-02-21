@@ -200,6 +200,7 @@ INBOUND_SMS_TYPE = 'inbound_sms'
 SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 EMAIL_AUTH = 'email_auth'
 LETTERS_AS_PDF = 'letters_as_pdf'
+PRECOMPILED_LETTER = 'precompiled_letter'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -210,6 +211,7 @@ SERVICE_PERMISSION_TYPES = [
     SCHEDULE_NOTIFICATIONS,
     EMAIL_AUTH,
     LETTERS_AS_PDF,
+    PRECOMPILED_LETTER,
 ]
 
 
