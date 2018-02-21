@@ -353,18 +353,16 @@ class Development(Config):
     API_RATE_LIMIT_ENABLED = True
 
 
-class Test(Config):
+class Test(Development):
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
-    DEBUG = True
     TESTING = True
+
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
-    STATSD_ENABLED = True
-    STATSD_HOST = "localhost"
-    STATSD_PORT = 1000
+
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
