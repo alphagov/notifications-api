@@ -270,8 +270,8 @@ def list_routes():
 
 @notify_command(name='insert-inbound-numbers')
 @click.option('-f', '--file_name', required=True,
-              help="""Full path of the file to upload, file is a contains inbound numbers, 
-                      one number per line. The number must have the format of 07... not 447....""")
+              help="""Full path of the file to upload, file is a contains inbound numbers,
+              one number per line. The number must have the format of 07... not 447....""")
 def insert_inbound_numbers_from_file(file_name):
     print("Inserting inbound numbers from {}".format(file_name))
     file = open(file_name)
