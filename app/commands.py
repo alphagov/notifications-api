@@ -171,27 +171,6 @@ def fix_notification_statuses_not_in_sync():
 
 
 @notify_command()
-def link_inbound_numbers_to_service():
-    """
-    DEPRECATED.
-
-    Matches inbound numbers and service ids based on services.sms_sender
-    """
-    update = """
-    UPDATE inbound_numbers SET
-    service_id = services.id,
-    updated_at = now()
-    FROM services
-    WHERE services.sms_sender = inbound_numbers.number AND
-    inbound_numbers.service_id is null
-    """
-    result = db.session.execute(update)
-    db.session.commit()
-
-    print("Linked {} inbound numbers to service".format(result.rowcount))
-
-
-@notify_command()
 @click.option('-y', '--year', required=True, help="e.g. 2017", type=int)
 def populate_monthly_billing(year):
     """
@@ -258,89 +237,6 @@ def backfill_processing_time(start_date, end_date):
 
 
 @notify_command()
-def populate_service_email_reply_to():
-    """
-    Migrate reply to emails.
-    """
-    services_to_update = """
-        INSERT INTO service_email_reply_to(id, service_id, email_address, is_default, created_at)
-        SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, reply_to_email_address, true, '{}'
-        FROM services
-        WHERE reply_to_email_address IS NOT NULL
-        AND id NOT IN(
-            SELECT service_id
-            FROM service_email_reply_to
-        )
-    """.format(datetime.utcnow())
-
-    result = db.session.execute(services_to_update)
-    db.session.commit()
-
-    print("Populated email reply to addresses for {}".format(result.rowcount))
-
-
-@notify_command()
-def populate_service_sms_sender():
-    """
-    Migrate sms senders. Must be called when working on a fresh db!
-    """
-    services_to_update = """
-        INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
-        SELECT uuid_in(md5(random()::text || now()::text)::cstring), service_id, number, id, true, '{}'
-        FROM inbound_numbers
-        WHERE service_id NOT IN(
-            SELECT service_id
-            FROM service_sms_senders
-        )
-    """.format(datetime.utcnow())
-
-    services_to_update_from_services = """
-        INSERT INTO service_sms_senders(id, service_id, sms_sender, inbound_number_id, is_default, created_at)
-        SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, sms_sender, null, true, '{}'
-        FROM services
-        WHERE id NOT IN(
-            SELECT service_id
-            FROM service_sms_senders
-        )
-    """.format(datetime.utcnow())
-
-    result = db.session.execute(services_to_update)
-    second_result = db.session.execute(services_to_update_from_services)
-    db.session.commit()
-
-    services_count_query = db.session.execute("Select count(*) from services").fetchall()[0][0]
-
-    service_sms_sender_count_query = db.session.execute("Select count(*) from service_sms_senders").fetchall()[0][0]
-
-    print("Populated sms sender {} services from inbound_numbers".format(result.rowcount))
-    print("Populated sms sender {} services from services".format(second_result.rowcount))
-    print("{} services in table".format(services_count_query))
-    print("{} service_sms_senders".format(service_sms_sender_count_query))
-
-
-@notify_command()
-def populate_service_letter_contact():
-    """
-    Migrates letter contact blocks.
-    """
-    services_to_update = """
-        INSERT INTO service_letter_contacts(id, service_id, contact_block, is_default, created_at)
-        SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, letter_contact_block, true, '{}'
-        FROM services
-        WHERE letter_contact_block IS NOT NULL
-        AND id NOT IN(
-            SELECT service_id
-            FROM service_letter_contacts
-        )
-    """.format(datetime.utcnow())
-
-    result = db.session.execute(services_to_update)
-    db.session.commit()
-
-    print("Populated letter contacts for {} services".format(result.rowcount))
-
-
-@notify_command()
 def populate_annual_billing():
     """
     add annual_billing for 2016, 2017 and 2018.
@@ -365,22 +261,27 @@ def populate_annual_billing():
         print("Populated annual billing {} for {} services".format(fy, services_result1.rowcount))
 
 
-@notify_command()
-@click.option('-j', '--job_id', required=True, help="Enter the job id to rebuild the dvla file for", type=click.UUID)
-def re_run_build_dvla_file_for_job(job_id):
-    """
-    Rebuild dvla file for a job.
-    """
-    from app.celery.tasks import build_dvla_file
-    from app.config import QueueNames
-    build_dvla_file.apply_async([job_id], queue=QueueNames.JOBS)
-
-
 @notify_command(name='list-routes')
 def list_routes():
     """List URLs of all application routes."""
     for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
         print("{:10} {}".format(", ".join(rule.methods - set(['OPTIONS', 'HEAD'])), rule.rule))
+
+
+@notify_command(name='insert-inbound-numbers')
+@click.option('-f', '--file_name', required=True,
+              help="""Full path of the file to upload, file is a contains inbound numbers,
+              one number per line. The number must have the format of 07... not 447....""")
+def insert_inbound_numbers_from_file(file_name):
+    print("Inserting inbound numbers from {}".format(file_name))
+    file = open(file_name)
+    sql = "insert into inbound_numbers values('{}', '{}', 'mmg', null, True, now(), null);"
+
+    for line in file:
+        print(line)
+        db.session.execute(sql.format(uuid.uuid4(), line.strip()))
+        db.session.commit()
+    file.close()
 
 
 def setup_commands(application):
