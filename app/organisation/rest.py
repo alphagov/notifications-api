@@ -97,7 +97,6 @@ def get_organisation_services(organisation_id):
 
 @organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])
 def add_user_to_organisation(organisation_id, user_id):
-    current_app.logger.info("ADDING new user")
     new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
     return jsonify(data=user_schema.dump(new_org_user).data), 200
 

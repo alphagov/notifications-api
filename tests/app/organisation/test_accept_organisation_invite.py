@@ -15,4 +15,3 @@ def test_accept_organisation_invitation(client, sample_invited_org_user):
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['data'] == sample_invited_org_user.serialize()
-

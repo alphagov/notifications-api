@@ -22,11 +22,9 @@ def accept_organisation_invitation(token):
                                       current_app.config['DANGEROUS_SALT'],
                                       max_age_seconds)
     except SignatureExpired:
-        errors = {'invitation':
-                  ['Your invitation to GOV.UK Notify has expired. '
-                   'Please ask the person that invited you to send you another one']}
+        errors = {'invitation': ['Your invitation to GOV.UK Notify has expired. '
+                                 'Please ask the person that invited you to send you another one']}
         raise InvalidRequest(errors, status_code=400)
     invited_user = dao_get_invited_organisation_user(invited_user_id)
 
     return jsonify(data=invited_user.serialize()), 200
-

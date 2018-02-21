@@ -1,6 +1,10 @@
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import Organisation, InvitedOrganisationUser, User
+from app.models import (
+    Organisation,
+    InvitedOrganisationUser,
+    User
+)
 
 
 def dao_get_organisations():
@@ -55,10 +59,10 @@ def dao_get_users_for_organisation(organisation_id):
     ).order_by(User.created_at).all()
 
 
+@transactional
 def dao_add_user_to_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
-    user = User.query.get(user_id)
+    user = User.query.filter_by(id=user_id).filter_by(state='active').one()
     organisation.users.append(user)
     db.session.add(organisation)
-    db.session.commit()
     return user
