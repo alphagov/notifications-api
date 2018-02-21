@@ -35,7 +35,6 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references
 )
 from app.dao.services_dao import dao_update_service
-from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     Job,
     Notification,
@@ -52,7 +51,7 @@ from app.models import (
 )
 from tests.app.conftest import (
     sample_notification,
-    sample_template,
+    sample_template as create_sample_template,
     sample_email_template,
     sample_service,
     sample_job,
@@ -62,7 +61,9 @@ from tests.app.conftest import (
 from tests.app.db import (
     create_api_key,
     create_job,
-    create_notification
+    create_notification,
+    create_service,
+    create_template
 )
 
 
@@ -84,7 +85,7 @@ def test_should_have_decorated_notifications_dao_functions():
 
 def test_should_be_able_to_get_template_usage_history(notify_db, notify_db_session, sample_service):
     with freeze_time('2000-01-01 12:00:00'):
-        sms = sample_template(notify_db, notify_db_session)
+        sms = create_sample_template(notify_db, notify_db_session)
         notification = sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
         results = dao_get_last_template_usage(sms.id)
         assert results.template.name == 'Template Name'
@@ -98,7 +99,7 @@ def test_should_be_able_to_get_all_template_usage_history_order_by_notification_
         notify_db,
         notify_db_session,
         sample_service):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
@@ -115,7 +116,7 @@ def test_template_usage_should_ignore_test_keys(
         sample_team_api_key,
         sample_test_api_key
 ):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     one_minute_ago = datetime.utcnow() - timedelta(minutes=1)
     two_minutes_ago = datetime.utcnow() - timedelta(minutes=2)
@@ -142,14 +143,14 @@ def test_template_usage_should_ignore_test_keys(
 def test_should_be_able_to_get_no_template_usage_history_if_no_notifications_using_template(
         notify_db,
         notify_db_session):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     results = dao_get_last_template_usage(sms.id)
     assert not results
 
 
 def test_should_by_able_to_get_template_count(notify_db, notify_db_session, sample_service):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
     email = sample_email_template(notify_db, notify_db_session)
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
     sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
@@ -174,7 +175,7 @@ def test_template_history_should_ignore_test_keys(
     sample_test_api_key,
     sample_api_key
 ):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     sample_notification(
         notify_db, notify_db_session, template=sms, api_key=sample_api_key, key_type=KEY_TYPE_NORMAL)
@@ -198,7 +199,7 @@ def test_should_by_able_to_get_template_count_limited_for_service(
     service_2 = sample_service(notify_db, notify_db_session, service_name="test2", email_from="test2")
     service_3 = sample_service(notify_db, notify_db_session, service_name="test3", email_from="test3")
 
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     sample_notification(notify_db, notify_db_session, service=service_1, template=sms)
     sample_notification(notify_db, notify_db_session, service=service_1, template=sms)
@@ -223,7 +224,7 @@ def test_should_by_able_to_get_template_count_across_days(
         notify_db,
         notify_db_session,
         sample_service):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
     email = sample_email_template(notify_db, notify_db_session)
 
     today = datetime.now()
@@ -351,7 +352,7 @@ def test_should_by_able_to_get_template_count_from_notifications_history_with_da
         notify_db,
         notify_db_session,
         sample_service):
-    sms = sample_template(notify_db, notify_db_session)
+    sms = create_sample_template(notify_db, notify_db_session)
 
     email = sample_email_template(notify_db, notify_db_session)
 
@@ -693,7 +694,7 @@ def test_save_notification_with_research_mode_service_does_not_create_history(
     service = sample_service(notify_db, notify_db_session)
     service.research_mode = True
     dao_update_service(service)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     assert Notification.query.count() == 0
     data = _notification_json(template)
@@ -725,7 +726,7 @@ def test_update_notification_with_research_mode_service_does_not_create_or_updat
     service = sample_service(notify_db, notify_db_session)
     service.research_mode = True
     dao_update_service(service)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     data = _notification_json(template)
     notification = Notification(**data)
@@ -936,7 +937,7 @@ def test_should_delete_notifications_by_type_after_seven_days(
     assert len(Notification.query.all()) == 0
 
     email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
-    sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+    sms_template = create_sample_template(notify_db, notify_db_session, service=sample_service)
     letter_template = sample_letter_template(sample_service)
 
     # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
@@ -997,7 +998,7 @@ def test_should_delete_notifications_by_type_after_seven_days(
 def test_should_not_delete_notification_history(notify_db, notify_db_session, sample_service, notification_type):
     with freeze_time('2016-01-01 12:00'):
         email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
-        sms_template = sample_template(notify_db, notify_db_session, service=sample_service)
+        sms_template = create_sample_template(notify_db, notify_db_session, service=sample_service)
         letter_template = sample_letter_template(sample_service)
 
         sample_notification(
@@ -1125,7 +1126,7 @@ def test_should_delete_notification_and_ignore_history_for_research_mode(notify_
     service = sample_service(notify_db, notify_db_session)
     service.research_mode = True
     dao_update_service(service)
-    template = sample_template(notify_db, notify_db_session, service=service)
+    template = create_sample_template(notify_db, notify_db_session, service=service)
 
     data = _notification_json(template)
     notification = Notification(**data)
@@ -2042,8 +2043,6 @@ def test_dao_get_notifications_by_reference(sample_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_today(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # expected
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
@@ -2059,8 +2058,6 @@ def test_dao_get_count_of_letters_to_process_for_today(sample_letter_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_in_past(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # expected
     create_notification(template=sample_letter_template, created_at='2017-12-15 17:29:59')
 
@@ -2075,8 +2072,6 @@ def test_dao_get_count_of_letters_to_process_for_date_in_past(sample_letter_temp
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_in_future_does_not_raise_error(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # not expected
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-19 17:29:59')
@@ -2093,28 +2088,23 @@ def test_dao_get_count_of_letters_to_process_for_today_without_notis_does_not_ra
 
 
 @freeze_time("2017-12-18 17:50")
-def test_dao_get_count_of_letters_to_process_for_date_ignores_service_not_letters_as_pdf(
-        sample_letter_template, sample_template):
-    # not expected
-    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:00')
+def test_dao_get_count_of_letters_to_process_for_date_ignores_research_mode_services(sample_letter_template):
+    research_service = create_service(service_name='research service', research_mode=True)
+    research_template = create_template(research_service, template_type='letter')
 
-    dao_add_service_permission(sample_template.service.id, 'letters_as_pdf')
-    sample_template.template_type = 'letter'
+    # not expected
+    create_notification(template=research_template, created_at='2017-12-18 17:29:00')
 
     # expected
-    create_notification(template=sample_template, created_at='2017-12-18 17:29:00')
-    create_notification(template=sample_template, created_at='2017-12-18 17:29:10')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:10')
+    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:20')
 
     count_for_date = dao_get_count_of_letters_to_process_for_date()
-
-    assert 'letters_as_pdf' not in [p.permission for p in sample_letter_template.service.permissions]
     assert count_for_date == 2
 
 
 @freeze_time("2017-12-18 17:50")
 def test_dao_get_count_of_letters_to_process_for_date_ignores_test_keys(sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     # not expected
     create_notification(template=sample_letter_template, key_type=KEY_TYPE_TEST, created_at='2017-12-18 17:29:00')
 

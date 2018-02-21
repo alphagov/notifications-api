@@ -596,12 +596,11 @@ def dao_get_last_notification_added_for_job_id(job_id):
 
 def dao_get_count_of_letters_to_process_for_date(date_to_process=None):
     """
-    Returns a count of letter notifications for services with letters_as_pdf permission set
-    to be processed today if no argument passed in otherwise will return the count for
-    the date passed in.
+    Returns a count of letter notifications to be processed today if no
+    argument passed in otherwise will return the count for the date passed in.
     Records processed today = yesterday 17:30 to today 17:29:59
 
-    Note - services without letters_as_pdf permission will be ignored
+    Note - services in research mode are ignored
     """
     if date_to_process is None:
         date_to_process = date.today()
@@ -620,9 +619,7 @@ def dao_get_count_of_letters_to_process_for_date(date_to_process=None):
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type != KEY_TYPE_TEST,
-        Service.permissions.any(
-            ServicePermission.permission == 'letters_as_pdf'
-        )
+        Service.research_mode.is_(False)
     ).count()
 
     return count_of_letters_to_process_for_date
