@@ -62,7 +62,7 @@ def dao_get_users_for_organisation(organisation_id):
 @transactional
 def dao_add_user_to_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
-    user = User.query.filter_by(id=user_id).filter_by(state='active').one()
+    user = User.query.filter_by(id=user_id).one()
     organisation.users.append(user)
     db.session.add(organisation)
     return user

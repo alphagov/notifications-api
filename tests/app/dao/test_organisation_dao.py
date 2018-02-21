@@ -171,9 +171,3 @@ def test_add_user_to_organisation_when_user_does_not_exist(sample_organisation):
 def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     with pytest.raises(expected_exception=SQLAlchemyError):
         dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
-
-
-def test_add_user_to_organisation_raises_exception_when_user_is_not_active(sample_organisation):
-    first = create_user(state='inactive')
-    with pytest.raises(expected_exception=SQLAlchemyError):
-        dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
