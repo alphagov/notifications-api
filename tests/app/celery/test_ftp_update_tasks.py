@@ -5,6 +5,7 @@ import pytest
 from freezegun import freeze_time
 from flask import current_app
 
+from app.exceptions import DVLAException
 from app.models import (
     Job,
     Notification,
@@ -65,8 +66,23 @@ def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_a
     invalid_file = 'ref-foo|Sent|1|Unsorted\nref-bar|Sent|2'
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=invalid_file)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(DVLAException) as e:
         update_letter_notifications_statuses(filename='foo.txt')
+    assert 'DVLA response file: {} has an invalid format'.format('foo.txt') in str(e)
+
+
+def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, mocker, sample_letter_template):
+    valid_file = 'ref-foo|Failed|1|Unsorted'
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+    create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                        billable_units=0)
+
+    with pytest.raises(DVLAException) as e:
+        update_letter_notifications_statuses(filename="failed.txt")
+    failed = ["ref-foo"]
+    assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+        filename="failed.txt", failures=failed
+    ) in str(e)
 
 
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
@@ -114,7 +130,8 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
         sent_letter.reference, failed_letter.reference)
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
 
-    update_letter_notifications_statuses(filename='foo.txt')
+    with pytest.raises(expected_exception=DVLAException) as e:
+        update_letter_notifications_statuses(filename='foo.txt')
 
     assert sent_letter.status == NOTIFICATION_DELIVERED
     assert sent_letter.billable_units == 1
@@ -122,6 +139,8 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.status == NOTIFICATION_TEMPORARY_FAILURE
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
+    assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+        filename="foo.txt", failures=[format(failed_letter.reference)]) in str(e)
 
 
 def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(notify_api, mocker,

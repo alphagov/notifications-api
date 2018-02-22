@@ -52,6 +52,7 @@ from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
+from app.exceptions import DVLAException
 from app.models import (
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
@@ -469,37 +470,46 @@ def update_letter_notifications_statuses(self, filename):
     try:
         notification_updates = process_updates_from_file(response_file_content)
     except TypeError:
-        current_app.logger.exception('DVLA response file: {} has an invalid format'.format(filename))
-        raise
+        raise DVLAException('DVLA response file: {} has an invalid format'.format(filename))
     else:
+        temporary_failures = []
         for update in notification_updates:
             check_billable_units(update)
+            update_letter_notification(filename, temporary_failures, update)
 
-            status = NOTIFICATION_DELIVERED if update.status == DVLA_RESPONSE_STATUS_SENT \
-                else NOTIFICATION_TEMPORARY_FAILURE
-            updated_count = dao_update_notifications_by_reference(
-                references=[update.reference],
-                update_dict={"status": status,
-                             "billable_units": update.page_count,
-                             "updated_at": datetime.utcnow()
-                             }
-            )
-
-            if not updated_count:
-                msg = "Update letter notification file {filename} failed: notification either not found " \
-                    "or already updated from delivered. Status {status} for notification reference {reference}".format(
-                        filename=filename, status=status, reference=update.reference)
-                current_app.logger.error(msg)
-            else:
-                current_app.logger.info(
-                    'DVLA file: {filename}, notification updated to {status}: {reference}'.format(
-                        filename=filename, status=status, reference=str(update.reference)))
+        if temporary_failures:
+            # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
+            message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+                filename=filename, failures=temporary_failures)
+            raise DVLAException(message)
 
 
 def process_updates_from_file(response_file):
     NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
     notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
     return notification_updates
+
+
+def update_letter_notification(filename, temporary_failures, update):
+    if update.status == DVLA_RESPONSE_STATUS_SENT:
+        status = NOTIFICATION_DELIVERED
+    else:
+        status = NOTIFICATION_TEMPORARY_FAILURE
+        temporary_failures.append(update.reference)
+
+    updated_count = dao_update_notifications_by_reference(
+        references=[update.reference],
+        update_dict={"status": status,
+                     "billable_units": update.page_count,
+                     "updated_at": datetime.utcnow()
+                     }
+    )
+
+    if not updated_count:
+        msg = "Update letter notification file {filename} failed: notification either not found " \
+              "or already updated from delivered. Status {status} for notification reference {reference}".format(
+                  filename=filename, status=status, reference=update.reference)
+        current_app.logger.error(msg)
 
 
 def check_billable_units(notification_update):
