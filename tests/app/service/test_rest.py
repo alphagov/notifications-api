@@ -197,7 +197,6 @@ def test_get_service_by_id_and_user(client, sample_service, sample_user):
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['reply_to_email_address'] == 'new@service.com'
 
 
 def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_user):
