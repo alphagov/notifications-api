@@ -16,7 +16,7 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    # PRECOMPILED_LETTER,
+    PRECOMPILED_LETTER,
     PRIORITY,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -69,7 +69,7 @@ def post_precompiled_letter_notification():
 
     # Check both permission to send letters and permission to send pre-compiled PDFs
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
-    # check_service_has_permission(PRECOMPILED_LETTER, authenticated_service.permissions)
+    check_service_has_permission(PRECOMPILED_LETTER, authenticated_service.permissions)
 
     check_rate_limiting(authenticated_service, api_user)
 
