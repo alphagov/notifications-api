@@ -714,6 +714,27 @@ def test_post_precompiled_letter_requires_permission(client, sample_service, not
     assert resp_json['errors'][0]['message'] == 'Cannot send precompiled_letters'
 
 
+def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):
+    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+
+    data = {
+        "reference": "letter-reference",
+        "content": "hi"
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        path="v2/notifications/letter",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400, response.get_data(as_text=True)
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['errors'][0]['message'] == 'Cannot decode letter content (invalid base64 encoding)'
+
+    assert not Notification.query.first()
+
+
 def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker):
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
@@ -731,10 +752,12 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     s3mock.assert_called_once_with(ANY, b'letter-content')
 
+    notification = Notification.query.first()
+
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {
         'content': {'body': None, 'subject': 'Pre-compiled PDF'},
-        'id': ANY,
+        'id': str(notification.id),
         'reference': 'letter-reference',
         'scheduled_for': None,
         'template': {

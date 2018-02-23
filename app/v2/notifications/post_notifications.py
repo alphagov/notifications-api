@@ -224,6 +224,12 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if not api_key.service.research_mode and api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
+    if precompiled:
+        try:
+            letter_content = base64.b64decode(letter_data['content'])
+        except ValueError:
+            raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
+
     should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
@@ -236,7 +242,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     if should_send:
         if precompiled:
-            upload_letter_pdf(notification, base64.b64decode(letter_data['content']))
+            upload_letter_pdf(notification, letter_content)
         else:
             create_letters_pdf.apply_async(
                 [str(notification.id)],
