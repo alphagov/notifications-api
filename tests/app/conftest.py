@@ -102,6 +102,14 @@ def sample_user(notify_db_session):
     return create_user()
 
 
+@pytest.fixture(scope='function')
+def notify_user(notify_db_session):
+    return create_user(
+        email="notify-service-user@digital.cabinet-office.gov.uk",
+        id_=current_app.config['NOTIFY_USER_ID']
+    )
+
+
 def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
     if code is None:
         code = create_secret_code()

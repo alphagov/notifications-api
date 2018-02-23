@@ -45,9 +45,9 @@ from app.dao.email_branding_dao import dao_create_email_branding
 from app.dao.organisation_dao import dao_create_organisation
 
 
-def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active'):
+def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active', id_=None):
     data = {
-        'id': uuid.uuid4(),
+        'id': id_ or uuid.uuid4(),
         'name': 'Test User',
         'email_address': email,
         'password': 'password',
