@@ -54,7 +54,7 @@ def dao_get_invited_organisation_user(user_id):
 
 def dao_get_users_for_organisation(organisation_id):
     return User.query.filter(
-        User.user_to_organisation.any(id=organisation_id),
+        User.organisations.any(id=organisation_id),
         User.state == 'active'
     ).order_by(User.created_at).all()
 
@@ -63,6 +63,6 @@ def dao_get_users_for_organisation(organisation_id):
 def dao_add_user_to_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     user = User.query.filter_by(id=user_id).one()
-    organisation.users.append(user)
+    user.organisations.append(organisation)
     db.session.add(organisation)
     return user

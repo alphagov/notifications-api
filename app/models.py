@@ -246,11 +246,11 @@ class Organisation(db.Model):
         'Service',
         secondary='organisation_to_service',
         uselist=True)
-
-    users = db.relationship(
-        'User',
-        secondary=user_to_organisation,
-        backref=db.backref('user_to_organisation', lazy='dynamic'))
+    #
+    # users = db.relationship(
+    #     'User',
+    #     secondary=user_to_organisation,
+    #     backref=db.backref('user_to_organisation', lazy='dynamic'))
 
     def serialize(self):
         serialized = {
