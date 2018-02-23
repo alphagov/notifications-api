@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0167_add_org_invite_template
-Revises: 0166_add_org_user_stuff
+Revision ID: 0168_add_org_invite_template
+Revises: 0167_add_precomp_letter_svc_perm
 Create Date: 2018-02-16 14:16:43.618062
 
 """
@@ -11,8 +11,8 @@ from alembic import op
 from flask import current_app
 
 
-revision = '0167_add_org_invite_template'
-down_revision = '0166_add_org_user_stuff'
+revision = '0168_add_org_invite_template'
+down_revision = '0167_add_precomp_letter_svc_perm'
 
 
 template_id = '203566f0-d835-47c5-aa06-932439c86573'
