@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 import math
 
 from flask import current_app
@@ -9,42 +8,17 @@ from requests import (
 )
 from botocore.exceptions import ClientError as BotoClientError
 
-from notifications_utils.s3 import s3upload
-
 from app import notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
-from app.variables import Retention
 from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
     dao_update_notification,
     dao_get_notifications_by_references,
 )
+from app.letters.utils import upload_letter_pdf
 from app.models import NOTIFICATION_CREATED
-
-LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
-    '{folder}/NOTIFY.{reference}.{duplex}.{letter_class}.{colour}.{crown}.{date}.pdf'
-
-
-def get_letter_pdf_filename(reference, crown):
-    now = datetime.utcnow()
-
-    print_datetime = now
-    if now.time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
-        print_datetime = now + timedelta(days=1)
-
-    upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=print_datetime.date(),
-        reference=reference,
-        duplex="D",
-        letter_class="2",
-        colour="C",
-        crown="C" if crown else "N",
-        date=now.strftime('%Y%m%d%H%M%S')
-    ).upper()
-
-    return upload_file_name
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -59,22 +33,8 @@ def create_letters_pdf(self, notification_id):
             org_id=notification.service.dvla_organisation.id,
             values=notification.personalisation
         )
-        current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
-            notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
-        upload_file_name = get_letter_pdf_filename(
-            notification.reference, notification.service.crown)
-
-        s3upload(
-            filedata=pdf_data,
-            region=current_app.config['AWS_REGION'],
-            bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-            file_location=upload_file_name,
-            tags={Retention.KEY: Retention.ONE_WEEK}
-        )
-
-        current_app.logger.info("Uploaded letters PDF {} to {}".format(
-            upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME']))
+        upload_letter_pdf(notification, pdf_data)
 
         notification.billable_units = billable_units
         dao_update_notification(notification)

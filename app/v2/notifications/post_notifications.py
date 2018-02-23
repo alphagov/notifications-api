@@ -1,3 +1,4 @@
+import base64
 import functools
 
 from flask import request, jsonify, current_app, abort
@@ -9,11 +10,13 @@ from app.config import QueueNames
 from app.dao.notifications_dao import update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import get_user_by_id
+from app.letters.utils import upload_letter_pdf
 from app.models import (
     Template,
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
+    # PRECOMPILED_LETTER,
     PRIORITY,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -64,7 +67,9 @@ def post_precompiled_letter_notification():
 
     form = validate(request.get_json(), post_precompiled_letter_request)
 
-    #check_service_has_permission(notification_type, authenticated_service.permissions)
+    # Check both permission to send letters and permission to send pre-compiled PDFs
+    check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
+    # check_service_has_permission(PRECOMPILED_LETTER, authenticated_service.permissions)
 
     check_rate_limiting(authenticated_service, api_user)
 
@@ -80,7 +85,8 @@ def post_precompiled_letter_notification():
         letter_data=form,
         api_key=api_user,
         template=template,
-        reply_to_text=reply_to
+        reply_to_text=reply_to,
+        precompiled=True
     )
 
     create_resp_partial = functools.partial(
@@ -211,7 +217,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     return notification
 
 
-def process_letter_notification(*, letter_data, api_key, template, reply_to_text):
+def process_letter_notification(*, letter_data, api_key, template, reply_to_text, precompiled=False):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
@@ -229,10 +235,13 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                               reply_to_text=reply_to_text)
 
     if should_send:
-        create_letters_pdf.apply_async(
-            [str(notification.id)],
-            queue=QueueNames.CREATE_LETTERS_PDF
-        )
+        if precompiled:
+            upload_letter_pdf(notification, base64.b64decode(letter_data['content']))
+        else:
+            create_letters_pdf.apply_async(
+                [str(notification.id)],
+                queue=QueueNames.CREATE_LETTERS_PDF
+            )
     elif (api_key.service.research_mode and
           current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
         create_fake_letter_response_file.apply_async(
@@ -279,8 +288,8 @@ def get_precompiled_letter_template(service_id):
         return template
 
     template = Template(
-        name='Pre-compiled PDF letter',
-        created_by=get_user_by_id(api_user.created_by_id),
+        name='Pre-compiled PDF',
+        created_by=get_user_by_id(current_app.config['NOTIFY_USER_ID']),
         service_id=service_id,
         template_type=LETTER_TYPE,
         hidden=True,

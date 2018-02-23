@@ -697,11 +697,11 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
-def test_post_precompiled_letter_notification_returns_201(client, sample_service, mocker):
-    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+def test_post_precompiled_letter_notification_returns_201(client, sample_service, notify_user, mocker):
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     data = {
         "reference": "letter-reference",
-        "content": "abcdefgh"
+        "content": "bGV0dGVyLWNvbnRlbnQ="
     }
     auth_header = create_authorization_header(service_id=sample_service.id)
     response = client.post(
@@ -710,6 +710,8 @@ def test_post_precompiled_letter_notification_returns_201(client, sample_service
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 201, response.get_data(as_text=True)
+
+    s3mock.assert_called_once_with(ANY, b'letter-content')
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {
