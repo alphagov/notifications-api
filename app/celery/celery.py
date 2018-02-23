@@ -18,7 +18,7 @@ def make_task(app):
 
         def on_failure(self, exc, task_id, args, kwargs, einfo):
             # ensure task will log exceptions to correct handlers
-            app.logger.exception('Celery task failed')
+            app.logger.exception('Celery task: {} failed'.format(self.name))
             super().on_failure(exc, task_id, args, kwargs, einfo)
 
         def __call__(self, *args, **kwargs):
