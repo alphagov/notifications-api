@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import ANY
 
 import pytest
 from freezegun import freeze_time
@@ -694,3 +695,32 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
+def test_post_precompiled_letter_notification_returns_201(client, sample_service, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    data = {
+        "reference": "letter-reference",
+        "content": "abcdefgh"
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        path="v2/notifications/letter",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201, response.get_data(as_text=True)
+
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json == {
+        'content': {'body': None, 'subject': 'Pre-compiled PDF'},
+        'id': ANY,
+        'reference': 'letter-reference',
+        'scheduled_for': None,
+        'template': {
+            'id': ANY,
+            'uri': ANY,
+            'version': 1
+        },
+        'uri': ANY
+    }

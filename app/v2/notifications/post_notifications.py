@@ -7,7 +7,10 @@ from notifications_utils.recipients import try_validate_and_format_phone_number
 from app import api_user, authenticated_service
 from app.config import QueueNames
 from app.dao.notifications_dao import update_notification_status_by_reference
+from app.dao.templates_dao import dao_create_template
+from app.dao.users_dao import get_user_by_id
 from app.models import (
+    Template,
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
@@ -44,13 +47,55 @@ from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     post_email_request,
-    post_letter_request
+    post_letter_request,
+    post_precompiled_letter_request
 )
 from app.v2.notifications.create_response import (
     create_post_sms_response_from_notification,
     create_post_email_response_from_notification,
     create_post_letter_response_from_notification
 )
+
+
+@v2_notification_blueprint.route('/{}'.format(LETTER_TYPE), methods=['POST'])
+def post_precompiled_letter_notification():
+    if 'content' not in (request.get_json() or {}):
+        return post_notification(LETTER_TYPE)
+
+    form = validate(request.get_json(), post_precompiled_letter_request)
+
+    #check_service_has_permission(notification_type, authenticated_service.permissions)
+
+    check_rate_limiting(authenticated_service, api_user)
+
+    template = get_precompiled_letter_template(authenticated_service.id)
+
+    form['personalisation'] = {
+        'address_line_1': form['reference']
+    }
+
+    reply_to = get_reply_to_text(LETTER_TYPE, form, template)
+
+    notification = process_letter_notification(
+        letter_data=form,
+        api_key=api_user,
+        template=template,
+        reply_to_text=reply_to
+    )
+
+    create_resp_partial = functools.partial(
+        create_post_letter_response_from_notification,
+        subject=template.subject,
+    )
+
+    resp = create_resp_partial(
+        notification=notification,
+        content=None,
+        url_root=request.url_root,
+        scheduled_for=None,
+    )
+
+    return jsonify(resp), 201
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
@@ -222,3 +267,27 @@ def get_reply_to_text(notification_type, form, template):
         reply_to = template.get_reply_to_text()
 
     return reply_to
+
+
+def get_precompiled_letter_template(service_id):
+    template = Template.query.filter_by(
+        service_id=service_id,
+        template_type=LETTER_TYPE,
+        hidden=True
+    ).first()
+    if template is not None:
+        return template
+
+    template = Template(
+        name='Pre-compiled PDF letter',
+        created_by=get_user_by_id(api_user.created_by_id),
+        service_id=service_id,
+        template_type=LETTER_TYPE,
+        hidden=True,
+        subject='Pre-compiled PDF',
+        content='',
+    )
+
+    dao_create_template(template)
+
+    return template

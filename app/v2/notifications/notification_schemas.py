@@ -206,7 +206,6 @@ post_email_response = {
     "required": ["id", "content", "uri", "template"]
 }
 
-
 post_letter_request = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "POST letter notification schema",
@@ -218,6 +217,19 @@ post_letter_request = {
         "personalisation": letter_personalisation
     },
     "required": ["template_id", "personalisation"],
+    "additionalProperties": False
+}
+
+post_precompiled_letter_request = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "POST precompiled letter notification schema",
+    "type": "object",
+    "title": "POST v2/notifications/letter",
+    "properties": {
+        "reference": {"type": "string"},
+        "content": {"type": "string"}
+    },
+    "required": ["reference", "content"],
     "additionalProperties": False
 }
 
