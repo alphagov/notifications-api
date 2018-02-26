@@ -286,29 +286,6 @@ def test_get_all_templates_ignores_archived_templates(notify_db, notify_db_sessi
     assert templates[0] == normal_template
 
 
-def test_get_all_templates_ignores_hidden_templates(notify_db, notify_db_session, sample_service):
-    normal_template = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Normal Template',
-        service=sample_service,
-        archived=False
-    )
-
-    create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Hidden Template',
-        hidden=True,
-        service=sample_service
-    )
-
-    templates = dao_get_all_templates_for_service(sample_service.id)
-
-    assert len(templates) == 1
-    assert templates[0] == normal_template
-
-
 def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_service):
     sample_template = create_sample_template(
         notify_db,
@@ -322,39 +299,6 @@ def test_get_template_by_id_and_service(notify_db, notify_db_session, sample_ser
     assert template.name == 'Test Template'
     assert template.version == sample_template.version
     assert not template.redact_personalisation
-
-
-def test_get_template_by_id_and_service_returns_none_for_hidden_templates(notify_db, notify_db_session, sample_service):
-    sample_template = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Test Template',
-        hidden=True,
-        service=sample_service
-    )
-
-    with pytest.raises(NoResultFound):
-        dao_get_template_by_id_and_service_id(
-            template_id=sample_template.id,
-            service_id=sample_service.id
-        )
-
-
-def test_get_template_version_returns_none_for_hidden_templates(notify_db, notify_db_session, sample_service):
-    sample_template = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Test Template',
-        hidden=True,
-        service=sample_service
-    )
-
-    with pytest.raises(NoResultFound):
-        dao_get_template_by_id_and_service_id(
-            sample_template.id,
-            sample_service.id,
-            '1'
-        )
 
 
 def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service, fake_uuid):
@@ -462,18 +406,6 @@ def test_get_template_versions(sample_template):
     from app.schemas import template_history_schema
     v = template_history_schema.load(versions, many=True)
     assert len(v) == 2
-
-
-def test_get_template_versions_is_empty_for_hidden_templates(notify_db, notify_db_session, sample_service):
-    sample_template = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_name='Test Template',
-        hidden=True,
-        service=sample_service
-    )
-    versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
-    assert len(versions) == 0
 
 
 def test_get_templates_by_ids_successful(notify_db, notify_db_session):
