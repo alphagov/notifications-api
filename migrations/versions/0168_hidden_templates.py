@@ -17,12 +17,6 @@ def upgrade():
     op.add_column('templates', sa.Column('hidden', sa.Boolean(), nullable=True))
     op.add_column('templates_history', sa.Column('hidden', sa.Boolean(), nullable=True))
 
-    op.execute('UPDATE templates SET hidden=false')
-    op.execute('UPDATE templates_history SET hidden=false')
-
-    op.alter_column('templates', 'hidden', nullable=False)
-    op.alter_column('templates_history', 'hidden', nullable=False)
-
 
 def downgrade():
     op.drop_column('templates_history', 'hidden')
