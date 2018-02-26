@@ -75,9 +75,10 @@ def dao_get_template_by_id_and_service_id(template_id, service_id, version=None)
     if version is not None:
         return TemplateHistory.query.filter_by(
             id=template_id,
+            hidden=False,
             service_id=service_id,
             version=version).one()
-    return Template.query.filter_by(id=template_id, service_id=service_id).one()
+    return Template.query.filter_by(id=template_id, hidden=False, service_id=service_id).one()
 
 
 def dao_get_template_by_id(template_id, version=None):
@@ -93,6 +94,7 @@ def dao_get_all_templates_for_service(service_id, template_type=None):
         return Template.query.filter_by(
             service_id=service_id,
             template_type=template_type,
+            hidden=False,
             archived=False
         ).order_by(
             asc(Template.name),
@@ -101,6 +103,7 @@ def dao_get_all_templates_for_service(service_id, template_type=None):
 
     return Template.query.filter_by(
         service_id=service_id,
+        hidden=False,
         archived=False
     ).order_by(
         asc(Template.name),
@@ -110,7 +113,8 @@ def dao_get_all_templates_for_service(service_id, template_type=None):
 
 def dao_get_template_versions(service_id, template_id):
     return TemplateHistory.query.filter_by(
-        service_id=service_id, id=template_id
+        service_id=service_id, id=template_id,
+        hidden=False,
     ).order_by(
         desc(TemplateHistory.version)
     ).all()
