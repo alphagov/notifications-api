@@ -1313,7 +1313,7 @@ class Notification(db.Model):
             serialized['line_4'] = col.get('address_line_4')
             serialized['line_5'] = col.get('address_line_5')
             serialized['line_6'] = col.get('address_line_6')
-            serialized['postcode'] = self.personalisation['postcode']
+            serialized['postcode'] = col.get('postcode')
             serialized['estimated_delivery'] = \
                 get_letter_timings(serialized['created_at'])\
                 .earliest_delivery\
