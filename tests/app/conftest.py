@@ -216,6 +216,7 @@ def sample_template(
     template_type="sms",
     content="This is a template:\nwith a newline",
     archived=False,
+    hidden=False,
     subject_line='Subject',
     user=None,
     service=None,
@@ -237,6 +238,7 @@ def sample_template(
         'service': service,
         'created_by': created_by,
         'archived': archived,
+        'hidden': hidden,
         'process_type': process_type
     }
     if template_type in ['email', 'letter']:
