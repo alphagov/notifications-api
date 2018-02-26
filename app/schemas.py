@@ -100,8 +100,13 @@ class UserSchema(BaseSchema):
     class Meta:
         model = models.User
         exclude = (
-            "updated_at", "created_at", "user_to_service",
-            "_password", "verify_codes")
+            "updated_at",
+            "created_at",
+            "user_to_service",
+            "user_to_organisation",
+            "_password",
+            "verify_codes"
+        )
         strict = True
 
     @validates('name')

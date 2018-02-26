@@ -22,6 +22,7 @@ from app import performance_platform_client, deskpro_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
+from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
     dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
@@ -184,9 +185,10 @@ def delete_letter_notifications_older_than_seven_days():
 def delete_invitations():
     try:
         start = datetime.utcnow()
-        deleted = delete_invitations_created_more_than_two_days_ago()
+        deleted_invites = delete_invitations_created_more_than_two_days_ago()
+        deleted_invites += delete_org_invitations_created_more_than_two_days_ago()
         current_app.logger.info(
-            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted)
+            "Delete job started {} finished {} deleted {} invitations".format(start, datetime.utcnow(), deleted_invites)
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete invitations")

@@ -116,6 +116,10 @@ class User(db.Model):
         'Service',
         secondary='user_to_service',
         backref=db.backref('user_to_service', lazy='dynamic'))
+    organisations = db.relationship(
+        'Organisation',
+        secondary='user_to_organisation',
+        backref=db.backref('user_to_organisation', lazy='dynamic'))
 
     @property
     def password(self):
@@ -225,13 +229,7 @@ organisation_to_service = db.Table(
     'organisation_to_service',
     db.Model.metadata,
     # service_id is a primary key as you can only have one organisation per service
-    db.Column(
-        'service_id',
-        UUID(as_uuid=True),
-        db.ForeignKey('services.id'),
-        primary_key=True,
-        unique=True,
-        nullable=False),
+    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False),
     db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False),
 )
 
@@ -248,11 +246,6 @@ class Organisation(db.Model):
         'Service',
         secondary='organisation_to_service',
         uselist=True)
-
-    users = db.relationship(
-        'User',
-        secondary='user_to_organisation',
-        backref=db.backref('organisations', lazy='dynamic'))
 
     def serialize(self):
         serialized = {
@@ -1451,6 +1444,16 @@ class InvitedOrganisationUser(db.Model):
         nullable=False,
         default=INVITE_PENDING
     )
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'email_address': self.email_address,
+            'invited_by': str(self.invited_by_id),
+            'organisation': str(self.organisation_id),
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'status': self.status
+        }
 
 
 # Service Permissions

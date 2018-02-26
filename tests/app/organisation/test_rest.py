@@ -1,6 +1,8 @@
+import uuid
+
 from app.models import Organisation
-from app.dao.organisation_dao import dao_add_service_to_organisation
-from tests.app.db import create_organisation, create_service
+from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
+from tests.app.db import create_organisation, create_service, create_user
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
@@ -270,3 +272,41 @@ def test_rest_get_organisation_services_inactive_services_at_end(
     assert response[0]['name'] == service.name
     assert response[1]['name'] == inactive_service.name
     assert response[2]['name'] == inactive_service_1.name
+
+
+def test_add_user_to_organisation_returns_added_user(admin_request, sample_organisation, sample_user):
+    response = admin_request.post(
+        'organisation.add_user_to_organisation',
+        organisation_id=str(sample_organisation.id),
+        user_id=str(sample_user.id),
+        _expected_status=200
+    )
+
+    assert response['data']['id'] == str(sample_user.id)
+    assert len(response['data']['organisations']) == 1
+    assert response['data']['organisations'][0] == str(sample_organisation.id)
+
+
+def test_add_user_to_organisation_returns_404_if_user_does_not_exist(admin_request, sample_organisation):
+    admin_request.post(
+        'organisation.add_user_to_organisation',
+        organisation_id=str(sample_organisation.id),
+        user_id=str(uuid.uuid4()),
+        _expected_status=404
+    )
+
+
+def test_get_organisation_users_returns_users_for_organisation(admin_request, sample_organisation):
+    first = create_user(email='first@invited.com')
+    second = create_user(email='another@invited.com')
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_users',
+        organisation_id=sample_organisation.id,
+        _expected_status=200
+    )
+
+    assert len(response['data']) == 2
+    assert response['data'][0]['id'] == str(first.id)

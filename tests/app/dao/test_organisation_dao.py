@@ -1,5 +1,7 @@
+import uuid
+
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.dao.organisation_dao import (
     dao_get_organisations,
@@ -8,15 +10,18 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_update_organisation,
     dao_add_service_to_organisation,
+    dao_get_invited_organisation_user,
+    dao_get_users_for_organisation,
+    dao_add_user_to_organisation
 )
 from app.models import Organisation
 
-from tests.app.db import create_organisation, create_service
+from tests.app.db import create_organisation, create_service, create_user
 
 
 def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
-    notify_db,
-    notify_db_session
+        notify_db,
+        notify_db_session
 ):
     m_active_org = create_organisation(name='m_active_organisation')
     z_inactive_org = create_organisation(name='z_inactive_organisation', active=False)
@@ -104,3 +109,65 @@ def test_get_organisation_by_service_id(notify_db, notify_db_session, sample_ser
 
     assert organisation_1 == sample_organisation
     assert organisation_2 == another_org
+
+
+def test_dao_get_invited_organisation_user(sample_invited_org_user):
+    invited_org_user = dao_get_invited_organisation_user(sample_invited_org_user.id)
+    assert invited_org_user == sample_invited_org_user
+
+
+def test_dao_get_invited_organisation_user_returns_none(notify_db):
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_get_invited_organisation_user(uuid.uuid4())
+
+
+def test_dao_get_users_for_organisation(sample_organisation):
+    first = create_user(email='first@invited.com')
+    second = create_user(email='another@invited.com')
+
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+
+    results = dao_get_users_for_organisation(organisation_id=sample_organisation.id)
+
+    assert len(results) == 2
+    assert results[0] == first
+    assert results[1] == second
+
+
+def test_dao_get_users_for_organisation_returns_empty_list(sample_organisation):
+    results = dao_get_users_for_organisation(organisation_id=sample_organisation.id)
+    assert len(results) == 0
+
+
+def test_dao_get_users_for_organisation_only_returns_active_users(sample_organisation):
+    first = create_user(email='first@invited.com')
+    second = create_user(email='another@invited.com')
+
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
+
+    second.state = 'inactive'
+
+    results = dao_get_users_for_organisation(organisation_id=sample_organisation.id)
+    assert len(results) == 1
+    assert results[0] == first
+
+
+def test_add_user_to_organisation_returns_user(sample_organisation):
+    org_user = create_user()
+    assert not org_user.organisations
+
+    added_user = dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=org_user.id)
+    assert len(added_user.organisations) == 1
+    assert added_user.organisations[0] == sample_organisation
+
+
+def test_add_user_to_organisation_when_user_does_not_exist(sample_organisation):
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=uuid.uuid4())
+
+
+def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
