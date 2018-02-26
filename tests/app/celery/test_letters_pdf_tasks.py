@@ -16,9 +16,9 @@ from app.celery.letters_pdf_tasks import (
     get_letters_pdf,
     collate_letter_pdfs_for_day,
     group_letters,
-    letter_in_created_state,
-    get_letter_pdf_filename,
+    letter_in_created_state
 )
+from app.letters.utils import get_letter_pdf_filename
 from app.models import Notification, NOTIFICATION_SENDING
 
 from tests.conftest import set_config_values
@@ -106,7 +106,7 @@ def test_get_letters_pdf_calculates_billing_units(
 @freeze_time("2017-12-04 17:31:00")
 def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', '1'))
-    mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
+    mock_s3 = mocker.patch('app.letters.utils.s3upload')
 
     create_letters_pdf(sample_letter_notification.id)
 
@@ -126,7 +126,7 @@ def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
 
 def test_create_letters_pdf_sets_billable_units(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mocker.patch('app.celery.letters_pdf_tasks.s3upload')
+    mocker.patch('app.letters.utils.s3upload')
 
     create_letters_pdf(sample_letter_notification.id)
     noti = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
@@ -150,7 +150,7 @@ def test_create_letters_pdf_handles_request_errors(mocker, sample_letter_notific
 
 def test_create_letters_pdf_handles_s3_errors(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3upload', side_effect=ClientError({}, 'operation_name'))
+    mock_s3 = mocker.patch('app.letters.utils.s3upload', side_effect=ClientError({}, 'operation_name'))
     mock_retry = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.retry')
 
     create_letters_pdf(sample_letter_notification.id)

@@ -664,6 +664,7 @@ class TemplateBase(db.Model):
     updated_at = db.Column(db.DateTime, onupdate=datetime.datetime.utcnow)
     content = db.Column(db.Text, nullable=False)
     archived = db.Column(db.Boolean, nullable=False, default=False)
+    hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
 
     @declared_attr
