@@ -1,10 +1,11 @@
 from flask import (
     Blueprint,
+    current_app,
     jsonify,
-    request,
-    current_app
+    request
 )
 
+from app.dao.notifications_dao import get_notification_by_id
 from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
@@ -12,8 +13,8 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
     dao_get_template_versions,
-    dao_update_template_reply_to
-)
+    dao_update_template_reply_to,
+    dao_get_template_by_id)
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import SMS_TYPE
@@ -179,3 +180,43 @@ def redact_template(template, data):
     if not template.redact_personalisation:
         dao_redact_template(template, data['created_by'])
     return 'null', 200
+
+
+@template_blueprint.route('/<uuid:template_id>/pdf-preview/<uuid:notification_id>/<file_type>', methods=['GET'])
+def preview_letter_template_by_notification_id(service_id, template_id, notification_id, file_type):
+
+    if file_type not in ('pdf', 'png'):
+        raise InvalidRequest({'content': ["file_type must be pdf or png"]}, status_code=404)
+
+    page = request.args.get('page')
+
+    template = dao_get_template_by_id(template_id)
+
+    template_for_letter_print = {
+        "subject": template.subject,
+        "content": template.content
+    }
+
+    notification = get_notification_by_id(notification_id)
+
+    service = dao_fetch_service_by_id(service_id)
+
+    data = {
+        'letter_contact_block': notification.reply_to_text,
+        'template': template_for_letter_print,
+        'values': notification.personalisation,
+        'dvla_org_id': service.dvla_organisation_id,
+    }
+
+    from requests import (post as requests_post)
+    resp = requests_post(
+        '{}/preview.{}{}'.format(
+            current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+            file_type,
+            '?page={}'.format(page) if page else ''
+        ),
+        json=data,
+        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+    )
+
+    return resp.content, resp.status_code, resp.headers.items()
