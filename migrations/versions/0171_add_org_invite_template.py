@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0168_add_org_invite_template
-Revises: 0167_add_precomp_letter_svc_perm
+Revision ID: 0171_add_org_invite_template
+Revises: 0170_hidden_non_nullable
 Create Date: 2018-02-16 14:16:43.618062
 
 """
@@ -11,8 +11,8 @@ from alembic import op
 from flask import current_app
 
 
-revision = '0168_add_org_invite_template'
-down_revision = '0167_add_precomp_letter_svc_perm'
+revision = '0171_add_org_invite_template'
+down_revision = '0170_hidden_non_nullable'
 
 
 template_id = '203566f0-d835-47c5-aa06-932439c86573'
@@ -20,12 +20,14 @@ template_id = '203566f0-d835-47c5-aa06-932439c86573'
 
 def upgrade():
     template_insert = """
-        INSERT INTO templates (id, name, template_type, created_at, content, archived, service_id, subject, created_by_id, version, process_type)
-        VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
+        INSERT INTO templates (id, name, template_type, created_at, content, archived, service_id, subject, 
+        created_by_id, version, process_type, hidden)
+        VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}', false)
     """
     template_history_insert = """
-        INSERT INTO templates_history (id, name, template_type, created_at, content, archived, service_id, subject, created_by_id, version, process_type)
-        VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
+        INSERT INTO templates_history (id, name, template_type, created_at, content, archived, service_id, subject, 
+        created_by_id, version, process_type, hidden)
+        VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}', false)
     """
 
     template_content = '\n'.join([
