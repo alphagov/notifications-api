@@ -1,3 +1,4 @@
+import base64
 import json
 import random
 import string
@@ -6,7 +7,6 @@ from datetime import datetime, timedelta
 import pytest
 from freezegun import freeze_time
 
-from app.errors import InvalidRequest
 from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
@@ -798,25 +798,25 @@ def test_update_redact_template_400s_if_no_created_by(admin_request, sample_temp
 
 
 def test_preview_letter_template_by_id_invalid_file_type(
-        sample_service,
-        sample_letter_template,
-        sample_letter_notification):
+        sample_letter_notification,
+        admin_request):
 
-    with pytest.raises(InvalidRequest) as exc:
-        from app.template.rest import preview_letter_template_by_notification_id
-        preview_letter_template_by_notification_id(
-            sample_service.id,
-            sample_letter_template.id,
-            sample_letter_notification.id,
-            'doc')
-    assert 'file_type must be pdf or png' in str(exc.value)
+    resp = admin_request.get(
+        'template.preview_letter_template_by_notification_id',
+        service_id=sample_letter_notification.service_id,
+        template_id=sample_letter_notification.template_id,
+        notification_id=sample_letter_notification.id,
+        file_type='doc',
+        _expected_status=400
+    )
+
+    assert ['file_type must be pdf or png'] == resp['message']['content']
 
 
 def test_preview_letter_template_by_id_valid_file_type(
         notify_api,
         client,
-        sample_service,
-        sample_letter_template,
+        admin_request,
         sample_letter_notification):
 
     with set_config_values(notify_api, {
@@ -834,25 +834,20 @@ def test_preview_letter_template_by_id_valid_file_type(
                 status_code=200
             )
 
-            from app.template.rest import preview_letter_template_by_notification_id
-            content, status_code, items = preview_letter_template_by_notification_id(
-                sample_service.id,
-                sample_letter_template.id,
-                sample_letter_notification.id,
-                'pdf'
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=sample_letter_notification.service_id,
+                notification_id=sample_letter_notification.id,
+                file_type='pdf'
             )
 
-            assert status_code == 200
-            assert content == content
-            assert list(items)[0][0] == 'X-pdf-page-count'
-            assert list(items)[0][1] == '1'
+            assert base64.b64decode(resp['content']) == content
 
 
-def test_preview_letter_template_by_id_template_preview_404(
+def test_preview_letter_template_by_id_template_preview_500(
         notify_api,
         client,
-        sample_service,
-        sample_letter_template,
+        admin_request,
         sample_letter_notification):
 
     with set_config_values(notify_api, {
@@ -870,12 +865,12 @@ def test_preview_letter_template_by_id_template_preview_404(
                 status_code=404
             )
 
-            from app.template.rest import preview_letter_template_by_notification_id
-            content, status_code, items = preview_letter_template_by_notification_id(
-                sample_service.id,
-                sample_letter_template.id,
-                sample_letter_notification.id,
-                'pdf'
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=sample_letter_notification.service_id,
+                notification_id=sample_letter_notification.id,
+                file_type='pdf',
+                _expected_status=500
             )
 
-            assert status_code == 404
+            assert resp['message'] == 'Error generating preview for {}'.format(sample_letter_notification.id)

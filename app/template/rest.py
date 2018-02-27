@@ -1,9 +1,10 @@
+import base64
 from flask import (
     Blueprint,
     current_app,
     jsonify,
-    request
-)
+    request)
+from requests import post as requests_post
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.templates_dao import (
@@ -182,22 +183,23 @@ def redact_template(template, data):
     return 'null', 200
 
 
-@template_blueprint.route('/<uuid:template_id>/pdf-preview/<uuid:notification_id>/<file_type>', methods=['GET'])
-def preview_letter_template_by_notification_id(service_id, template_id, notification_id, file_type):
-
+@template_blueprint.route('/preview/<uuid:notification_id>/<file_type>', methods=['GET'])
+def preview_letter_template_by_notification_id(service_id, notification_id, file_type):
     if file_type not in ('pdf', 'png'):
-        raise InvalidRequest({'content': ["file_type must be pdf or png"]}, status_code=404)
+        raise InvalidRequest({'content': ["file_type must be pdf or png"]}, status_code=400)
 
     page = request.args.get('page')
 
-    template = dao_get_template_by_id(template_id)
+    notification = get_notification_by_id(notification_id)
+
+    template = dao_get_template_by_id(notification.template_id)
 
     template_for_letter_print = {
+        "id": str(notification.template_id),
         "subject": template.subject,
-        "content": template.content
+        "content": template.content,
+        "version": str(template.version)
     }
-
-    notification = get_notification_by_id(notification_id)
 
     service = dao_fetch_service_by_id(service_id)
 
@@ -208,7 +210,6 @@ def preview_letter_template_by_notification_id(service_id, template_id, notifica
         'dvla_org_id': service.dvla_organisation_id,
     }
 
-    from requests import (post as requests_post)
     resp = requests_post(
         '{}/preview.{}{}'.format(
             current_app.config['TEMPLATE_PREVIEW_API_HOST'],
@@ -219,4 +220,10 @@ def preview_letter_template_by_notification_id(service_id, template_id, notifica
         headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
     )
 
-    return resp.content, resp.status_code, resp.headers.items()
+    if resp.status_code != 200:
+        raise InvalidRequest(
+            'Error generating preview for {}'.format(notification_id), status_code=500
+        )
+
+    content = base64.b64encode(resp.content).decode('utf-8')
+    return jsonify({"content": content})

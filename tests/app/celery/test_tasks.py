@@ -1258,7 +1258,6 @@ def test_build_dvla_file_retries_if_s3_err(sample_letter_template, mocker):
             'Type': 'Sender'
         }
     }
-
     mocker.patch('app.celery.tasks.LetterDVLATemplate', return_value='dvla|string')
     mocker.patch('app.celery.tasks.s3upload', side_effect=ClientError(error_response, 'operation_name'))
     retry_mock = mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
