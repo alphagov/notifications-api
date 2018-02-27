@@ -9,7 +9,6 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
-from notifications_utils.s3 import s3upload
 
 from app.aws import s3
 from app import notify_celery
@@ -39,7 +38,6 @@ from app.dao.notifications_dao import (
     dao_get_count_of_letters_to_process_for_date,
     dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
-    dao_set_created_live_letter_api_notifications_to_pending,
 )
 from app.dao.statistics_dao import dao_timeout_job_statistics
 from app.dao.provider_details_dao import (
@@ -57,7 +55,6 @@ from app.models import (
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.celery.tasks import (
-    create_dvla_file_contents_for_notifications,
     process_job
 )
 from app.config import QueueNames, TaskNames
@@ -413,37 +410,6 @@ def trigger_letter_pdfs_for_day():
         )
     current_app.logger.info("{} letter pdfs to be process by {} task".format(
         letter_pdfs_count, 'collate-letter-pdfs-for-day'))
-
-
-@notify_celery.task(name="run-letter-api-notifications")
-@statsd(namespace="tasks")
-def run_letter_api_notifications():
-    current_time = datetime.utcnow().isoformat()
-
-    notifications = dao_set_created_live_letter_api_notifications_to_pending()
-
-    if notifications:
-        file_contents = create_dvla_file_contents_for_notifications(notifications)
-
-        filename = '{}-dvla-notifications.txt'.format(current_time)
-        s3upload(
-            filedata=file_contents + '\n',
-            region=current_app.config['AWS_REGION'],
-            bucket_name=current_app.config['DVLA_BUCKETS']['notification'],
-            file_location=filename
-        )
-
-        notify_celery.send_task(
-            name=TaskNames.DVLA_NOTIFICATIONS,
-            kwargs={'filename': filename},
-            queue=QueueNames.PROCESS_FTP
-        )
-        current_app.logger.info(
-            "Queued {} ready letter api notifications onto {}".format(
-                len(notifications),
-                QueueNames.PROCESS_FTP
-            )
-        )
 
 
 @notify_celery.task(name='check-job-status')
