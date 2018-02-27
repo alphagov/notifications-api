@@ -63,7 +63,8 @@ applications:
       NOTIFY_APP_NAME: delivery-worker-research
 
   - name: notify-delivery-worker-sender
-    command: scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Q send-sms-tasks,send-email-tasks
+    command: scripts/run_multi_worker_app_paas.sh celery multi start 4 -c 10 -A run_celery.notify_celery --loglevel=INFO -Q send-sms-tasks,send-email-tasks
+    memory: 2G
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 
