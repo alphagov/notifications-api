@@ -241,23 +241,36 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
                                                  sample_template.id)
 
 
-@pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type',
-                         [(True, None, 'research-mode-tasks', 'sms', 'normal'),
-                          (True, None, 'research-mode-tasks', 'email', 'normal'),
-                          (True, None, 'research-mode-tasks', 'email', 'team'),
-                          (False, None, 'send-sms-tasks', 'sms', 'normal'),
-                          (False, None, 'send-email-tasks', 'email', 'normal'),
-                          (False, None, 'send-sms-tasks', 'sms', 'team'),
-                          (False, None, 'research-mode-tasks', 'sms', 'test'),
-                          (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal'),
-                          (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal'),
-                          (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal'),
-                          (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test')])
-def test_send_notification_to_queue(notify_db, notify_db_session,
-                                    research_mode, requested_queue, expected_queue,
-                                    notification_type, key_type, mocker):
+@pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type', [
+    (True, None, 'research-mode-tasks', 'sms', 'normal'),
+    (True, None, 'research-mode-tasks', 'email', 'normal'),
+    (True, None, 'research-mode-tasks', 'email', 'team'),
+    (False, None, 'send-sms-tasks', 'sms', 'normal'),
+    (False, None, 'send-email-tasks', 'email', 'normal'),
+    (False, None, 'send-sms-tasks', 'sms', 'team'),
+    (False, None, 'research-mode-tasks', 'sms', 'test'),
+    (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal'),
+    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal'),
+    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal'),
+    (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test'),
+])
+def test_send_notification_to_queue(
+    notify_db,
+    notify_db_session,
+    research_mode,
+    requested_queue,
+    expected_queue,
+    notification_type,
+    key_type,
+    mocker,
+):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    Notification = namedtuple('Notification', ['id', 'key_type', 'notification_type', 'created_at'])
+    Notification = namedtuple('Notification', [
+        'id',
+        'key_type',
+        'notification_type',
+        'created_at',
+    ])
     notification = Notification(
         id=uuid.uuid4(),
         key_type=key_type,
