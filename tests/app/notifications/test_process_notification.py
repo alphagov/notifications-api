@@ -241,6 +241,14 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
                                                  sample_template.id)
 
 
+SENT_FROM_JOB = [None, None, uuid.uuid4()]
+SENT_ONE_OFF = [None, None, None]
+SENT_BY_API = [uuid.uuid4(), None]
+SENT_BY_API_TEAM_KEY = ['team'] + SENT_BY_API
+SENT_BY_API_NORMAL_KEY = ['normal'] + SENT_BY_API
+SENT_BY_API_TEST_KEY = ['test'] + SENT_BY_API
+
+
 @pytest.mark.parametrize((
     'research_mode,'
     'requested_queue,'
@@ -250,17 +258,41 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
     'api_key_id,'
     'job_id,'
 ), [
-    (True, None, 'research-mode-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (True, None, 'research-mode-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (True, None, 'research-mode-tasks', 'email', 'team', uuid.uuid4(), uuid.uuid4()),
-    (False, None, 'send-sms-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (False, None, 'send-email-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (False, None, 'send-sms-tasks', 'sms', 'team', uuid.uuid4(), uuid.uuid4()),
-    (False, None, 'research-mode-tasks', 'sms', 'test', uuid.uuid4(), uuid.uuid4()),
-    (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
-    (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test', uuid.uuid4(), uuid.uuid4()),
+
+    # Anything research mode goes to the research queue, no matter how it’s sent
+    [True, None, 'research-mode-tasks', 'sms'] + SENT_FROM_JOB,
+    [True, None, 'research-mode-tasks', 'sms'] + SENT_ONE_OFF,
+    [True, None, 'research-mode-tasks', 'sms'] + SENT_BY_API_NORMAL_KEY,
+    # …or if it’s a different channel
+    [True, None, 'research-mode-tasks', 'email'] + SENT_BY_API_NORMAL_KEY,
+    # …or if it’s using a team key
+    [True, None, 'research-mode-tasks', 'email'] + SENT_BY_API_TEAM_KEY,
+
+    # Job or API messages go to their respective queue for that channel
+    [False, None, 'send-sms-tasks', 'sms'] + SENT_FROM_JOB,
+    [False, None, 'send-sms-tasks', 'sms'] + SENT_BY_API_NORMAL_KEY,
+    [False, None, 'send-email-tasks', 'email'] + SENT_FROM_JOB,
+    [False, None, 'send-email-tasks', 'email'] + SENT_BY_API_NORMAL_KEY,
+
+    # One off messages go to the priority queue
+    [False, None, 'priority-tasks', 'sms'] + SENT_ONE_OFF,
+    [False, None, 'priority-tasks', 'email'] + SENT_ONE_OFF,
+
+    # Team keys behave normally, test keys go to the research mode queue
+    [False, None, 'send-sms-tasks', 'sms'] + SENT_BY_API_TEAM_KEY,
+    [False, None, 'research-mode-tasks', 'sms'] + SENT_BY_API_TEST_KEY,
+
+    # Only research mode can override a requested queue
+    [True, 'notify-internal-tasks', 'research-mode-tasks', 'email'] + SENT_BY_API_NORMAL_KEY,
+    [False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms'] + SENT_BY_API_NORMAL_KEY,
+    [False, 'notify-internal-tasks', 'notify-internal-tasks', 'email'] + SENT_BY_API_NORMAL_KEY,
+    [False, 'notify-internal-tasks', 'research-mode-tasks', 'sms'] + SENT_BY_API_TEST_KEY,
+
+    # Priority queue messages stay priority
+    [False, 'priority-tasks', 'priority-tasks', 'sms'] + SENT_FROM_JOB,
+    [False, 'priority-tasks', 'priority-tasks', 'sms'] + SENT_BY_API_NORMAL_KEY,
+    [False, 'priority-tasks', 'priority-tasks', 'sms'] + SENT_ONE_OFF,
+
 ])
 def test_send_notification_to_queue(
     notify_db,
