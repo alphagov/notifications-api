@@ -307,3 +307,15 @@ def test_letter_notification_serializes_correctly(client, sample_letter_notifica
     assert json['line_1'] == 'test'
     assert json['line_2'] == 'London'
     assert json['postcode'] == 'N1'
+
+
+def test_letter_notification_postcode_can_be_null_for_precompiled_letters(client, sample_letter_notification):
+    sample_letter_notification.personalisation = {
+        'address_line_1': 'test',
+        'address_line_2': 'London',
+    }
+
+    json = sample_letter_notification.serialize()
+    assert json['line_1'] == 'test'
+    assert json['line_2'] == 'London'
+    assert json['postcode'] is None
