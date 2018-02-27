@@ -241,18 +241,26 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
                                                  sample_template.id)
 
 
-@pytest.mark.parametrize('research_mode, requested_queue, expected_queue, notification_type, key_type', [
-    (True, None, 'research-mode-tasks', 'sms', 'normal'),
-    (True, None, 'research-mode-tasks', 'email', 'normal'),
-    (True, None, 'research-mode-tasks', 'email', 'team'),
-    (False, None, 'send-sms-tasks', 'sms', 'normal'),
-    (False, None, 'send-email-tasks', 'email', 'normal'),
-    (False, None, 'send-sms-tasks', 'sms', 'team'),
-    (False, None, 'research-mode-tasks', 'sms', 'test'),
-    (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal'),
-    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal'),
-    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal'),
-    (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test'),
+@pytest.mark.parametrize((
+    'research_mode,'
+    'requested_queue,'
+    'expected_queue,'
+    'notification_type,'
+    'key_type,'
+    'api_key_id,'
+    'job_id,'
+), [
+    (True, None, 'research-mode-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (True, None, 'research-mode-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (True, None, 'research-mode-tasks', 'email', 'team', uuid.uuid4(), uuid.uuid4()),
+    (False, None, 'send-sms-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (False, None, 'send-email-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (False, None, 'send-sms-tasks', 'sms', 'team', uuid.uuid4(), uuid.uuid4()),
+    (False, None, 'research-mode-tasks', 'sms', 'test', uuid.uuid4(), uuid.uuid4()),
+    (True, 'notify-internal-tasks', 'research-mode-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'sms', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (False, 'notify-internal-tasks', 'notify-internal-tasks', 'email', 'normal', uuid.uuid4(), uuid.uuid4()),
+    (False, 'notify-internal-tasks', 'research-mode-tasks', 'sms', 'test', uuid.uuid4(), uuid.uuid4()),
 ])
 def test_send_notification_to_queue(
     notify_db,
@@ -262,20 +270,26 @@ def test_send_notification_to_queue(
     expected_queue,
     notification_type,
     key_type,
+    api_key_id,
+    job_id,
     mocker,
 ):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     Notification = namedtuple('Notification', [
         'id',
         'key_type',
+        'api_key_id',
         'notification_type',
         'created_at',
+        'job_id',
     ])
     notification = Notification(
         id=uuid.uuid4(),
         key_type=key_type,
+        api_key_id=api_key_id,
         notification_type=notification_type,
         created_at=datetime.datetime(2016, 11, 11, 16, 8, 18),
+        job_id=job_id,
     )
 
     send_notification_to_queue(notification=notification, research_mode=research_mode, queue=requested_queue)
