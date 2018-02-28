@@ -150,7 +150,15 @@ def test_create_letters_pdf_handles_request_errors(mocker, sample_letter_notific
 
 def test_create_letters_pdf_handles_s3_errors(mocker, sample_letter_notification):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
-    mock_s3 = mocker.patch('app.letters.utils.s3upload', side_effect=ClientError({}, 'operation_name'))
+    error_response = {
+        'Error': {
+            'Code': 'InvalidParameterValue',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
+
+    mock_s3 = mocker.patch('app.letters.utils.s3upload', side_effect=ClientError(error_response, 'operation_name'))
     mock_retry = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.retry')
 
     create_letters_pdf(sample_letter_notification.id)
