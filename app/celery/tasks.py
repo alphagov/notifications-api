@@ -12,7 +12,6 @@ from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import (
     SMSMessageTemplate,
     WithSubjectTemplate,
-    LetterDVLATemplate
 )
 from requests import (
     HTTPError,
@@ -384,20 +383,6 @@ def update_letter_notifications_to_error(self, notification_references):
     )
 
     current_app.logger.debug("Updated {} letter notifications to technical-failure".format(updated_count))
-
-
-def create_dvla_file_contents_for_notifications(notifications):
-    file_contents = '\n'.join(
-        str(LetterDVLATemplate(
-            notification.template.__dict__,
-            notification.personalisation,
-            notification_reference=notification.reference,
-            contact_block=notification.reply_to_text,
-            org_id=notification.service.dvla_organisation.id,
-        ))
-        for notification in notifications
-    )
-    return file_contents
 
 
 def handle_exception(task, notification, notification_id, exc):

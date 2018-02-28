@@ -45,7 +45,6 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
-from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     MonthlyBilling,
     NotificationHistory,
@@ -803,8 +802,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
 
@@ -820,8 +817,6 @@ def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
 @freeze_time("2017-12-18 17:50")
 def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notis_for_day(
         client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
 
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
