@@ -1251,9 +1251,16 @@ def test_build_dvla_file_retries_if_all_notifications_are_not_created(sample_let
 def test_build_dvla_file_retries_if_s3_err(sample_letter_template, mocker):
     job = create_job(sample_letter_template, notification_count=1)
     create_notification(job.template, job=job)
+    error_response = {
+        'Error': {
+            'Code': 'InvalidParameterValue',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
 
     mocker.patch('app.celery.tasks.LetterDVLATemplate', return_value='dvla|string')
-    mocker.patch('app.celery.tasks.s3upload', side_effect=ClientError({}, 'operation_name'))
+    mocker.patch('app.celery.tasks.s3upload', side_effect=ClientError(error_response, 'operation_name'))
     retry_mock = mocker.patch('app.celery.tasks.build_dvla_file.retry', side_effect=Retry)
 
     with pytest.raises(Retry):
