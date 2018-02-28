@@ -118,6 +118,13 @@ def send_notification_to_queue(notification, research_mode, queue=None):
     if research_mode or notification.key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
 
+    if all((
+        not queue,
+        notification.api_key_id is None,
+        notification.job_id is None,
+    )):
+        queue = QueueNames.PRIORITY
+
     if notification.notification_type == SMS_TYPE:
         if not queue:
             queue = QueueNames.SEND_SMS
