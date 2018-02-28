@@ -1,13 +1,16 @@
 import base64
 import functools
+import io
+import math
 
 from flask import request, jsonify, current_app, abort
 
+from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao.notifications_dao import update_notification_status_by_reference
+from app.dao.notifications_dao import dao_update_notification, update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import get_user_by_id
 from app.letters.utils import upload_letter_pdf
@@ -227,8 +230,12 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if precompiled:
         try:
             letter_content = base64.b64decode(letter_data['content'])
+            pages = pdf_page_count(io.BytesIO(letter_content))
         except ValueError:
             raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
+        except PdfReadError:
+            current_app.logger.exception(msg='Invalid PDF received')
+            raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
 
     should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
 
@@ -243,6 +250,9 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if should_send:
         if precompiled:
             upload_letter_pdf(notification, letter_content)
+            pages_per_sheet = 2
+            notification.billable_units = math.ceil(pages / pages_per_sheet)
+            dao_update_notification(notification)
         else:
             create_letters_pdf.apply_async(
                 [str(notification.id)],
