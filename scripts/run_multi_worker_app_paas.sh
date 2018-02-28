@@ -81,7 +81,7 @@ function get_celery_pids {
 }
 
 function start_application {
-  exec "$@"
+  eval "$@"
   get_celery_pids
   echo "Application process pids: ${APP_PIDS}"
 }
