@@ -77,7 +77,11 @@ function on_exit {
 }
 
 function get_celery_pids {
-  APP_PIDS=`cat celery*.pid`
+  if [[ $(ls /home/vcap/app/celery*.pid) ]]; then
+    APP_PIDS=`cat /home/vcap/app/celery*.pid`
+  else
+    APP_PIDS=()
+  fi
 }
 
 function start_application {
