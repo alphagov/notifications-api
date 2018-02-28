@@ -94,6 +94,7 @@ function start_aws_logs_agent {
 
 function run {
   while true; do
+    get_celery_pids
     for APP_PID in ${APP_PIDS}; do
         kill -0 ${APP_PID} 2&>/dev/null || return 1
     done
