@@ -61,7 +61,7 @@ function on_exit {
       if [[ "$n" -ge "$TERMINATE_TIMEOUT" ]]; then
         echo "Timeout reached, killing process with pid ${APP_PID}"
         kill -9 ${APP_PID} || true
-        break
+        continue
       else
         echo "Timeout not reached yet, checking " ${APP_PID}
         # else, if process is still running send SIGTERM
