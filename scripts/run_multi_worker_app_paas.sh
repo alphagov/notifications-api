@@ -2,7 +2,7 @@
 
 set -e -o pipefail
 
-TERMINATE_TIMEOUT=10
+TERMINATE_TIMEOUT=9
 
 function check_params {
   if [ -z "${NOTIFY_APP_NAME}" ]; then
