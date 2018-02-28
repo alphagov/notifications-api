@@ -12,7 +12,6 @@ from app.notifications.process_notifications import (
 )
 from app.models import (
     KEY_TYPE_NORMAL,
-    PRIORITY,
     SMS_TYPE,
     EMAIL_TYPE,
 )
@@ -75,11 +74,10 @@ def send_one_off_notification(service_id, post_data):
         reply_to_text=reply_to
     )
 
-    queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
     send_notification_to_queue(
         notification=notification,
         research_mode=service.research_mode,
-        queue=queue_name
+        queue=QueueNames.PRIORITY
     )
 
     return {'id': str(notification.id)}
