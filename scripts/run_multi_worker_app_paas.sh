@@ -55,8 +55,7 @@ function on_exit {
         break
     fi
 
-    echo "Terminating celery processes with pids ${APP_PIDS}"
-    APP_PIDS=($APP_PIDS)
+    echo "Terminating celery processes with pids "${APP_PIDS}
     for APP_PID in ${APP_PIDS}; do
       # if TERMINATE_TIMEOUT is reached, send SIGKILL
       if [[ "$n" -ge "$TERMINATE_TIMEOUT" ]]; then
@@ -64,6 +63,7 @@ function on_exit {
         kill -9 ${APP_PID} || true
         break
       else
+        echo "Timeout not reached yet, checking " ${APP_PID}
         # else, if process is still running send SIGTERM
         if [[ $(kill -0 ${APP_PID} 2&>/dev/null) ]]; then
           echo "Terminating celery process with pid ${APP_PID}"
@@ -83,7 +83,7 @@ function get_celery_pids {
 function start_application {
   eval "$@"
   get_celery_pids
-  echo "Application process pids: ${APP_PIDS}"
+  echo "Application process pids: "${APP_PIDS}
 }
 
 function start_aws_logs_agent {
