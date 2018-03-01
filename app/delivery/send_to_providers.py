@@ -31,7 +31,6 @@ from app.models import (
     NOTIFICATION_SENT,
     NOTIFICATION_SENDING
 )
-from app.celery.statistics_tasks import create_initial_notification_statistic_tasks
 
 
 def send_sms_to_provider(notification):
@@ -82,8 +81,6 @@ def send_sms_to_provider(notification):
             else:
                 notification.billable_units = template.fragment_count
                 update_notification(notification, provider, notification.international)
-
-        create_initial_notification_statistic_tasks(notification)
 
         current_app.logger.debug(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -137,8 +134,6 @@ def send_email_to_provider(notification):
             )
             notification.reference = reference
             update_notification(notification, provider)
-
-        create_initial_notification_statistic_tasks(notification)
 
         current_app.logger.debug(
             "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
