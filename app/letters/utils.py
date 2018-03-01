@@ -46,5 +46,5 @@ def upload_letter_pdf(notification, pdf_data):
         tags={Retention.KEY: Retention.ONE_WEEK}
     )
 
-    current_app.logger.info("Uploaded letters PDF {} to {}".format(
-        upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME']))
+    current_app.logger.info("Uploaded letters PDF {} to {} for notification id {}".format(
+        upload_file_name, current_app.config['LETTERS_PDF_BUCKET_NAME'], notification.id))
