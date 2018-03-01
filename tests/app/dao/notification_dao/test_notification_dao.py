@@ -31,7 +31,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     update_notification_status_by_reference,
     dao_get_notification_by_reference,
-    dao_get_notifications_by_references
+    dao_get_notifications_by_references,
+    dao_get_notification_history_by_reference,
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -1996,6 +1997,30 @@ def test_dao_get_notifications_by_reference(sample_template):
     assert len(notifications) == 2
     assert notifications[0].id in [notification_1.id, notification_2.id]
     assert notifications[1].id in [notification_1.id, notification_2.id]
+
+
+def test_dao_get_notification_history_by_reference_with_one_match_returns_notification(
+        sample_letter_template
+):
+    create_notification(template=sample_letter_template, reference='REF1')
+    notification = dao_get_notification_history_by_reference('REF1')
+
+    assert notification.reference == 'REF1'
+
+
+def test_dao_get_notification_history_by_reference_with_multiple_matches_raises_error(
+        sample_letter_template
+):
+    create_notification(template=sample_letter_template, reference='REF1')
+    create_notification(template=sample_letter_template, reference='REF1')
+
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_history_by_reference('REF1')
+
+
+def test_dao_get_notification_history_by_reference_with_no_matches_raises_error(notify_db):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_history_by_reference('REF1')
 
 
 @freeze_time("2017-12-18 17:50")

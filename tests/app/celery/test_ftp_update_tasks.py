@@ -9,11 +9,12 @@ from app.exceptions import DVLAException
 from app.models import (
     Job,
     Notification,
+    NotificationHistory,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_TECHNICAL_FAILURE
+    NOTIFICATION_TECHNICAL_FAILURE,
 )
 from app.celery.tasks import (
     check_billable_units,
@@ -57,6 +58,22 @@ def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_a
     with pytest.raises(DVLAException) as e:
         update_letter_notifications_statuses(filename='foo.txt')
     assert 'DVLA response file: {} has an invalid format'.format('foo.txt') in str(e)
+
+
+def test_update_letter_notification_statuses_when_notification_does_not_exist_updates_notification_history(
+    sample_letter_template,
+    mocker
+):
+    valid_file = 'ref-foo|Sent|1|Unsorted'
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+    notification = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                                       billable_units=1)
+    Notification.query.filter_by(id=notification.id).delete()
+
+    update_letter_notifications_statuses(filename="older_than_7_days.txt")
+
+    updated_history = NotificationHistory.query.filter_by(id=notification.id).one()
+    assert updated_history.status == NOTIFICATION_DELIVERED
 
 
 def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, mocker, sample_letter_template):
@@ -191,8 +208,7 @@ def test_check_billable_units_when_billable_units_matches_page_count(
 ):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
 
-    notification = create_notification(sample_letter_template, reference='REFERENCE_ABC')
-    notification.billable_units = 1
+    create_notification(sample_letter_template, reference='REFERENCE_ABC', billable_units=1)
 
     check_billable_units(notification_update)
 
@@ -207,8 +223,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
 ):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
 
-    notification = create_notification(sample_letter_template, reference='REFERENCE_ABC')
-    notification.billable_units = 3
+    notification = create_notification(sample_letter_template, reference='REFERENCE_ABC', billable_units=3)
 
     check_billable_units(notification_update)
 
