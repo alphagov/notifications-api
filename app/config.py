@@ -189,12 +189,11 @@ class Config(object):
             'schedule': crontab(hour=0, minute=20),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        # Suspending the scheduled job to delete letter notifications, because there is a problem with the provider.
-        # 'delete-letter-notifications': {
-        #     'task': 'delete-letter-notifications',
-        #     'schedule': crontab(hour=0, minute=40),
-        #     'options': {'queue': QueueNames.PERIODIC}
-        # },
+        'delete-letter-notifications': {
+            'task': 'delete-letter-notifications',
+            'schedule': crontab(hour=0, minute=40),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'delete-inbound-sms': {
             'task': 'delete-inbound-sms',
             'schedule': crontab(hour=1, minute=0),

@@ -480,6 +480,13 @@ def dao_get_notification_by_reference(reference):
 
 
 @statsd(namespace="dao")
+def dao_get_notification_history_by_reference(reference):
+    return NotificationHistory.query.filter(
+        NotificationHistory.reference == reference
+    ).one()
+
+
+@statsd(namespace="dao")
 def dao_get_notifications_by_references(references):
     return Notification.query.filter(
         Notification.reference.in_(references)
