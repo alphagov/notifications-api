@@ -1,3 +1,4 @@
+import base64
 import json
 import random
 import string
@@ -14,9 +15,9 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_template_without_email_permission,
     sample_template_without_letter_permission,
-    sample_template_without_sms_permission,
-)
+    sample_template_without_sms_permission)
 from tests.app.db import create_service, create_letter_contact, create_template
+from tests.conftest import set_config_values
 
 
 @pytest.mark.parametrize('template_type, subject', [
@@ -794,3 +795,82 @@ def test_update_redact_template_400s_if_no_created_by(admin_request, sample_temp
 
     assert sample_template.redact_personalisation is False
     assert sample_template.template_redacted.updated_at == original_updated_time
+
+
+def test_preview_letter_template_by_id_invalid_file_type(
+        sample_letter_notification,
+        admin_request):
+
+    resp = admin_request.get(
+        'template.preview_letter_template_by_notification_id',
+        service_id=sample_letter_notification.service_id,
+        template_id=sample_letter_notification.template_id,
+        notification_id=sample_letter_notification.id,
+        file_type='doc',
+        _expected_status=400
+    )
+
+    assert ['file_type must be pdf or png'] == resp['message']['content']
+
+
+def test_preview_letter_template_by_id_valid_file_type(
+        notify_api,
+        client,
+        admin_request,
+        sample_letter_notification):
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        import requests_mock
+        with requests_mock.Mocker() as request_mock:
+            content = b'\x00\x01'
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/preview.pdf',
+                content=content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=200
+            )
+
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=sample_letter_notification.service_id,
+                notification_id=sample_letter_notification.id,
+                file_type='pdf'
+            )
+
+            assert base64.b64decode(resp['content']) == content
+
+
+def test_preview_letter_template_by_id_template_preview_500(
+        notify_api,
+        client,
+        admin_request,
+        sample_letter_notification):
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        import requests_mock
+        with requests_mock.Mocker() as request_mock:
+            content = b'\x00\x01'
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/preview.pdf',
+                content=content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=404
+            )
+
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=sample_letter_notification.service_id,
+                notification_id=sample_letter_notification.id,
+                file_type='pdf',
+                _expected_status=500
+            )
+
+            assert resp['message'] == 'Error generating preview for {}'.format(sample_letter_notification.id)
