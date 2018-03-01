@@ -60,7 +60,7 @@ def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_m
     celery_mock.assert_called_once_with(
         notification=persist_mock.return_value,
         research_mode=False,
-        queue=None
+        queue=QueueNames.PRIORITY,
     )
 
 
@@ -110,7 +110,7 @@ def test_send_one_off_notification_honors_research_mode(notify_db_session, persi
     assert celery_mock.call_args[1]['research_mode'] is True
 
 
-def test_send_one_off_notification_honors_priority(notify_db_session, persist_mock, celery_mock):
+def test_send_one_off_notification_maintains_priority(notify_db_session, persist_mock, celery_mock):
     service = create_service()
     template = create_template(service=service)
     template.process_type = PRIORITY
@@ -231,7 +231,7 @@ def test_send_one_off_notification_should_add_email_reply_to_text_for_notificati
     celery_mock.assert_called_once_with(
         notification=notification,
         research_mode=False,
-        queue=None
+        queue=QueueNames.PRIORITY,
     )
     assert notification.reply_to_text == reply_to_email.email_address
 
@@ -251,7 +251,7 @@ def test_send_one_off_letter_notification_should_use_template_reply_to_text(samp
     celery_mock.assert_called_once_with(
         notification=notification,
         research_mode=False,
-        queue=None
+        queue=QueueNames.PRIORITY,
     )
 
     assert notification.reply_to_text == "Edinburgh, ED1 1AA"
@@ -277,7 +277,7 @@ def test_send_one_off_sms_notification_should_use_sms_sender_reply_to_text(sampl
     celery_mock.assert_called_once_with(
         notification=notification,
         research_mode=False,
-        queue=None
+        queue=QueueNames.PRIORITY,
     )
 
     assert notification.reply_to_text == "447123123123"
@@ -303,7 +303,7 @@ def test_send_one_off_sms_notification_should_use_default_service_reply_to_text(
     celery_mock.assert_called_once_with(
         notification=notification,
         research_mode=False,
-        queue=None
+        queue=QueueNames.PRIORITY,
     )
 
     assert notification.reply_to_text == "447123123456"
