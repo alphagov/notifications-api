@@ -198,7 +198,7 @@ def sample_service_full_permissions(notify_db, notify_db_session):
         notify_db_session,
         # ensure name doesn't clash with regular sample service
         service_name="sample service full permissions",
-        permissions=set(SERVICE_PERMISSION_TYPES) - {'letters_as_pdf'}
+        permissions=set(SERVICE_PERMISSION_TYPES)
     )
 
 

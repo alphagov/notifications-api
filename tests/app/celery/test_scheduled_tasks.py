@@ -26,7 +26,6 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     run_letter_jobs,
     trigger_letter_pdfs_for_day,
-    run_letter_api_notifications,
     populate_monthly_billing,
     s3,
     send_daily_performance_platform_stats,
@@ -46,7 +45,6 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
-from app.dao.service_permissions_dao import dao_add_service_permission
 from app.models import (
     MonthlyBilling,
     NotificationHistory,
@@ -55,10 +53,7 @@ from app.models import (
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_SENT_TO_DVLA,
-    KEY_TYPE_TEST,
     LETTER_TYPE,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_PENDING,
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
@@ -807,8 +802,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
 
 @freeze_time("2017-12-18 17:50")
 def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
     create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
 
@@ -824,8 +817,6 @@ def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
 @freeze_time("2017-12-18 17:50")
 def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notis_for_day(
         client, mocker, sample_letter_template):
-    dao_add_service_permission(sample_letter_template.service.id, 'letters_as_pdf')
-
     create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
 
     mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
@@ -843,63 +834,6 @@ def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_le
     run_letter_jobs()
 
     assert not mock_celery.called
-
-
-def test_run_letter_api_notifications_triggers_ftp_task(client, mocker, sample_letter_notification):
-    file_contents_mock = mocker.patch(
-        'app.celery.scheduled_tasks.create_dvla_file_contents_for_notifications',
-        return_value='foo\nbar'
-    )
-    s3upload = mocker.patch('app.celery.scheduled_tasks.s3upload')
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
-    filename = '2017-01-01T12:00:00-dvla-notifications.txt'
-
-    with freeze_time('2017-01-01 12:00:00'):
-        run_letter_api_notifications()
-
-    assert sample_letter_notification.status == NOTIFICATION_PENDING
-    file_contents_mock.assert_called_once_with([sample_letter_notification])
-    s3upload.assert_called_once_with(
-        # with trailing new line added
-        filedata='foo\nbar\n',
-        region='eu-west-1',
-        bucket_name='test-dvla-letter-api-files',
-        file_location=filename
-    )
-    mock_celery.assert_called_once_with(
-        name=TaskNames.DVLA_NOTIFICATIONS,
-        kwargs={'filename': filename},
-        queue=QueueNames.PROCESS_FTP
-    )
-
-
-def test_run_letter_api_notifications_does_nothing_if_no_created_notifications(
-    mocker,
-    sample_letter_template,
-    sample_letter_job,
-    sample_api_key
-):
-    letter_job_notification = create_notification(
-        sample_letter_template,
-        job=sample_letter_job
-    )
-    create_notification(
-        sample_letter_template,
-        status=NOTIFICATION_PENDING,
-        api_key=sample_api_key
-    )
-    test_api_key_notification = create_notification(
-        sample_letter_template,
-        key_type=KEY_TYPE_TEST
-    )
-
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
-
-    run_letter_api_notifications()
-
-    assert not mock_celery.called
-    assert letter_job_notification.status == NOTIFICATION_CREATED
-    assert test_api_key_notification.status == NOTIFICATION_CREATED
 
 
 def test_check_job_status_task_raises_job_incomplete_error(mocker, sample_template):

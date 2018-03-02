@@ -3,14 +3,24 @@ from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import func, desc, asc, cast, Date as sql_date
+from sqlalchemy import (
+    Date as sql_date,
+    asc,
+    cast,
+    desc,
+    func,
+)
 
 from app import db
 from app.dao import days_ago
 from app.models import (
-    Job, JobStatistics, Notification, NotificationHistory, Template,
-    JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING,
-    LETTER_TYPE
+    Job,
+    JobStatistics,
+    JOB_STATUS_PENDING,
+    JOB_STATUS_SCHEDULED,
+    LETTER_TYPE,
+    NotificationHistory,
+    Template,
 )
 from app.variables import LETTER_TEST_API_FILENAME
 
@@ -22,28 +32,15 @@ def dao_get_notification_outcomes_for_job(service_id, job_id):
         NotificationHistory.status
     )
 
-    return query \
-        .filter(NotificationHistory.service_id == service_id) \
-        .filter(NotificationHistory.job_id == job_id)\
-        .group_by(NotificationHistory.status) \
-        .order_by(asc(NotificationHistory.status)) \
-        .all()
-
-
-@statsd(namespace="dao")
-def all_notifications_are_created_for_job(job_id):
-    query = db.session.query(func.count(Notification.id), Job.id)\
-        .join(Job)\
-        .filter(Job.id == job_id)\
-        .group_by(Job.id)\
-        .having(func.count(Notification.id) == Job.notification_count).all()
-
-    return query
-
-
-@statsd(namespace="dao")
-def dao_get_all_notifications_for_job(job_id):
-    return db.session.query(Notification).filter(Notification.job_id == job_id).order_by(Notification.created_at).all()
+    return query.filter(
+        NotificationHistory.service_id == service_id
+    ).filter(
+        NotificationHistory.job_id == job_id
+    ).group_by(
+        NotificationHistory.status
+    ).order_by(
+        asc(NotificationHistory.status)
+    ).all()
 
 
 def dao_get_job_by_service_id_and_job_id(service_id, job_id):

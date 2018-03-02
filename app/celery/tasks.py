@@ -12,7 +12,6 @@ from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import (
     SMSMessageTemplate,
     WithSubjectTemplate,
-    LetterDVLATemplate
 )
 from requests import (
     HTTPError,
@@ -20,14 +19,13 @@ from requests import (
     RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
-from botocore.exceptions import ClientError as BotoClientError
 
 from app import (
     create_uuid,
     create_random_identifier,
     DATETIME_FORMAT,
+    encryption,
     notify_celery,
-    encryption
 )
 from app.aws import s3
 from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
@@ -36,13 +34,10 @@ from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
-    all_notifications_are_created_for_job,
-    dao_get_all_notifications_for_job,
     dao_update_job_status
 )
 from app.dao.notifications_dao import (
     get_notification_by_id,
-    dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
     dao_get_notification_by_reference,
@@ -60,8 +55,7 @@ from app.models import (
     JOB_STATUS_FINISHED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
-    JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
+    JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -73,7 +67,6 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
-from notifications_utils.s3 import s3upload
 
 
 @worker_process_shutdown.connect
@@ -335,43 +328,6 @@ def save_letter(
         handle_exception(self, notification, notification_id, e)
 
 
-@notify_celery.task(bind=True, name="build-dvla-file", countdown=60, max_retries=15, default_retry_delay=300)
-@statsd(namespace="tasks")
-def build_dvla_file(self, job_id):
-    try:
-        if all_notifications_are_created_for_job(job_id):
-            file_contents = create_dvla_file_contents_for_job(job_id)
-            s3upload(
-                filedata=file_contents + '\n',
-                region=current_app.config['AWS_REGION'],
-                bucket_name=current_app.config['DVLA_BUCKETS']['job'],
-                file_location="{}-dvla-job.text".format(job_id)
-            )
-            dao_update_job_status(job_id, JOB_STATUS_READY_TO_SEND)
-        else:
-            msg = "All notifications for job {} are not persisted".format(job_id)
-            current_app.logger.info(msg)
-            self.retry(queue=QueueNames.RETRY)
-    # specifically don't catch celery.retry errors
-    except (SQLAlchemyError, BotoClientError):
-        current_app.logger.exception("build_dvla_file threw exception")
-        self.retry(queue=QueueNames.RETRY)
-
-
-@notify_celery.task(bind=True, name='update-letter-job-to-sent')
-@statsd(namespace="tasks")
-def update_job_to_sent_to_dvla(self, job_id):
-    # This task will be called by the FTP app to update the job to sent to dvla
-    # and update all notifications for this job to sending, provider = DVLA
-    provider = get_current_provider(LETTER_TYPE)
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider.identifier)
-    dao_update_job_status(job_id, JOB_STATUS_SENT_TO_DVLA)
-
-    current_app.logger.info("Updated {} letter notifications to sending. "
-                            "Updated {} job to {}".format(updated_count, job_id, JOB_STATUS_SENT_TO_DVLA))
-
-
 @notify_celery.task(bind=True, name='update-letter-job-to-error')
 @statsd(namespace="tasks")
 def update_dvla_job_to_error(self, job_id):
@@ -412,26 +368,6 @@ def update_letter_notifications_to_error(self, notification_references):
     )
 
     current_app.logger.debug("Updated {} letter notifications to technical-failure".format(updated_count))
-
-
-def create_dvla_file_contents_for_job(job_id):
-    notifications = dao_get_all_notifications_for_job(job_id)
-
-    return create_dvla_file_contents_for_notifications(notifications)
-
-
-def create_dvla_file_contents_for_notifications(notifications):
-    file_contents = '\n'.join(
-        str(LetterDVLATemplate(
-            notification.template.__dict__,
-            notification.personalisation,
-            notification_reference=notification.reference,
-            contact_block=notification.reply_to_text,
-            org_id=notification.service.dvla_organisation.id,
-        ))
-        for notification in notifications
-    )
-    return file_contents
 
 
 def handle_exception(task, notification, notification_id, exc):
