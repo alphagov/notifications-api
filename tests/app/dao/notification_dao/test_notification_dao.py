@@ -18,7 +18,6 @@ from app.dao.notifications_dao import (
     dao_get_template_usage,
     dao_timeout_notifications,
     dao_update_notification,
-    dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
@@ -59,7 +58,6 @@ from tests.app.conftest import (
     sample_letter_template
 )
 from tests.app.db import (
-    create_api_key,
     create_job,
     create_notification,
     create_service,
@@ -1710,47 +1708,6 @@ def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
     )
 
     assert not slow_delivery
-
-
-def test_dao_update_notifications_for_job_to_sent_to_dvla(notify_db, notify_db_session, sample_letter_template):
-    job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
-    notification = create_notification(template=sample_letter_template, job=job)
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(job_id=job.id, provider='some provider')
-
-    assert updated_count == 1
-    updated_notification = Notification.query.get(notification.id)
-    assert updated_notification.status == 'sending'
-    assert updated_notification.sent_by == 'some provider'
-    assert updated_notification.sent_at
-    assert updated_notification.updated_at
-    history = NotificationHistory.query.get(notification.id)
-    assert history.status == 'sending'
-    assert history.sent_by == 'some provider'
-    assert history.sent_at
-    assert history.updated_at
-
-
-def test_dao_update_notifications_for_job_to_sent_to_dvla_does_update_history_if_test_key(sample_letter_job):
-    api_key = create_api_key(sample_letter_job.service, key_type=KEY_TYPE_TEST)
-    notification = create_notification(
-        sample_letter_job.template,
-        job=sample_letter_job,
-        api_key=api_key
-    )
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(
-        job_id=sample_letter_job.id,
-        provider='some provider'
-    )
-
-    assert updated_count == 1
-    updated_notification = Notification.query.get(notification.id)
-    assert updated_notification.status == 'sending'
-    assert updated_notification.sent_by == 'some provider'
-    assert updated_notification.sent_at
-    assert updated_notification.updated_at
-    assert NotificationHistory.query.count() == 0
 
 
 def test_dao_get_notifications_by_to_field(sample_template):

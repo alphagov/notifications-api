@@ -24,8 +24,8 @@ from app import (
     create_uuid,
     create_random_identifier,
     DATETIME_FORMAT,
+    encryption,
     notify_celery,
-    encryption
 )
 from app.aws import s3
 from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
@@ -38,7 +38,6 @@ from app.dao.jobs_dao import (
 )
 from app.dao.notifications_dao import (
     get_notification_by_id,
-    dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
     dao_get_notification_by_reference,
@@ -56,7 +55,7 @@ from app.models import (
     JOB_STATUS_FINISHED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
-    JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_ERROR,
+    JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -327,20 +326,6 @@ def save_letter(
         current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
-
-
-@notify_celery.task(bind=True, name='update-letter-job-to-sent')
-@statsd(namespace="tasks")
-def update_job_to_sent_to_dvla(self, job_id):
-    # This task will be called by the FTP app to update the job to sent to dvla
-    # and update all notifications for this job to sending, provider = DVLA
-    provider = get_current_provider(LETTER_TYPE)
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(job_id, provider.identifier)
-    dao_update_job_status(job_id, JOB_STATUS_SENT_TO_DVLA)
-
-    current_app.logger.info("Updated {} letter notifications to sending. "
-                            "Updated {} job to {}".format(updated_count, job_id, JOB_STATUS_SENT_TO_DVLA))
 
 
 @notify_celery.task(bind=True, name='update-letter-job-to-error')
