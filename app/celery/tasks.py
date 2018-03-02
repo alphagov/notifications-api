@@ -19,6 +19,7 @@ from requests import (
     RequestException
 )
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import (
     create_uuid,
@@ -40,8 +41,9 @@ from app.dao.notifications_dao import (
     get_notification_by_id,
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
-    dao_get_notification_by_reference,
     update_notification_status_by_reference,
+    dao_get_notification_history_by_reference,
+    dao_get_notification_by_reference,
 )
 from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -449,7 +451,12 @@ def update_letter_notification(filename, temporary_failures, update):
 
 
 def check_billable_units(notification_update):
-    notification = dao_get_notification_by_reference(notification_update.reference)
+    try:
+        # This try except is necessary because in test keys and research mode does not create notification history.
+        # Otherwise we could just search for the NotificationHistory object
+        notification = dao_get_notification_by_reference(notification_update.reference)
+    except NoResultFound:
+        notification = dao_get_notification_history_by_reference(notification_update.reference)
 
     if int(notification_update.page_count) != notification.billable_units:
         msg = 'Notification with id {} had {} billable_units but a page count of {}'.format(
