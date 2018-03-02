@@ -2139,6 +2139,17 @@ def test_get_notification_for_service_includes_template_redacted(admin_request, 
     assert resp['template']['redact_personalisation'] is False
 
 
+def test_get_notification_for_service_includes_template_hidden(admin_request, sample_notification):
+    resp = admin_request.get(
+        'service.get_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id
+    )
+
+    assert resp['id'] == str(sample_notification.id)
+    assert resp['template']['hidden'] is False
+
+
 def test_get_all_notifications_for_service_includes_template_redacted(admin_request, sample_service):
     normal_template = create_template(sample_service)
 
@@ -2160,6 +2171,33 @@ def test_get_all_notifications_for_service_includes_template_redacted(admin_requ
 
     assert resp['notifications'][1]['id'] == str(redacted_noti.id)
     assert resp['notifications'][1]['template']['redact_personalisation'] is True
+
+
+def test_get_all_notifications_for_service_includes_template_hidden(admin_request, sample_service):
+    letter_template = create_template(sample_service, template_type=LETTER_TYPE)
+    precompiled_template = create_template(
+        sample_service,
+        template_type=LETTER_TYPE,
+        template_name='Pre-compiled PDF',
+        subject='Pre-compiled PDF',
+        hidden=True
+    )
+
+    with freeze_time('2000-01-01'):
+        letter_noti = create_notification(letter_template)
+    with freeze_time('2000-01-02'):
+        precompiled_noti = create_notification(precompiled_template)
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_service.id
+    )
+
+    assert resp['notifications'][0]['id'] == str(precompiled_noti.id)
+    assert resp['notifications'][0]['template']['hidden'] is True
+
+    assert resp['notifications'][1]['id'] == str(letter_noti.id)
+    assert resp['notifications'][1]['template']['hidden'] is False
 
 
 def test_search_for_notification_by_to_field_returns_personlisation(
