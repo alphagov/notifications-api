@@ -221,6 +221,7 @@ def send_total_sent_notifications_to_performance_platform():
     count_dict = total_sent_notifications.get_total_sent_notifications_yesterday()
     email_sent_count = count_dict.get('email').get('count')
     sms_sent_count = count_dict.get('sms').get('count')
+    letter_sent_count = count_dict.get('letter').get('count')
     start_date = count_dict.get('start_date')
 
     current_app.logger.info(
@@ -238,6 +239,12 @@ def send_total_sent_notifications_to_performance_platform():
         start_date,
         'email',
         email_sent_count
+    )
+
+    total_sent_notifications.send_total_notifications_sent_for_day_stats(
+        start_date,
+        'letter',
+        letter_sent_count
     )
 
 
