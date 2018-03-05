@@ -1,10 +1,14 @@
 import base64
+
+import botocore
 from flask import (
     Blueprint,
     current_app,
     jsonify,
     request)
 from requests import post as requests_post
+from werkzeug.exceptions import abort
+
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.templates_dao import (
@@ -18,7 +22,7 @@ from app.dao.templates_dao import (
     dao_get_template_by_id)
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.letters.utils import get_letter_pdf
+from app.letters.utils import get_letter_pdf, is_precompiled_letter
 from app.models import SMS_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schemas import (template_schema, template_history_schema)
@@ -196,18 +200,23 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
     template = dao_get_template_by_id(notification.template_id)
 
-    if template.hidden and template.name == 'Pre-compiled PDF':
+    if is_precompiled_letter(template):
 
-        pdf_file = get_letter_pdf(notification)
+        try:
+
+            pdf_file = get_letter_pdf(notification)
+
+        except botocore.exceptions.ClientError:
+            abort(404)
 
         content = base64.b64encode(pdf_file).decode('utf-8')
 
         if file_type == 'png':
 
-            url = '{}//precompiled-preview.png{}'.format(
-                    current_app.config['TEMPLATE_PREVIEW_API_HOST'],
-                    '?page={}'.format(page) if page else ''
-                )
+            url = '{}/precompiled-preview.png{}'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                '?page={}'.format(page) if page else ''
+            )
 
             resp = requests_post(
                 url,
