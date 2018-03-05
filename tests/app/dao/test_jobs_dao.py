@@ -15,10 +15,7 @@ from app.dao.jobs_dao import (
     dao_get_notification_outcomes_for_job,
     dao_update_job_status,
     dao_get_jobs_older_than_limited_by,
-    dao_get_job_statistics_for_job,
-    dao_get_job_stats_for_service,
     dao_get_letter_job_ids_by_status)
-from app.dao.statistics_dao import create_or_update_job_sending_statistics, update_job_stats_outcome_count
 from app.models import (
     Job, JobStatistics,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
@@ -397,101 +394,6 @@ def test_should_get_jobs_seven_days_old_filters_type(notify_db, notify_db_sessio
     assert job_to_remain.id not in [job.id for job in jobs]
 
 
-def test_dao_get_job_statistics_for_job_calculates_stats(notify_db, notify_db_session, sample_job):
-    notification = create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=sample_job)
-    notification_delivered = create_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                                 job=sample_job, status='delivered')
-    notification_failed = create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=sample_job,
-                                              status='permanent-failure')
-
-    create_or_update_job_sending_statistics(notification)
-    create_or_update_job_sending_statistics(notification_delivered)
-    create_or_update_job_sending_statistics(notification_failed)
-    update_job_stats_outcome_count(notification_delivered)
-    update_job_stats_outcome_count(notification_failed)
-
-    result = dao_get_job_statistics_for_job(sample_job.service_id, sample_job.id)
-
-    assert_job_stat(job=sample_job, result=result, sent=3, delivered=1, failed=1)
-
-
-def test_dao_get_job_statistics_for_job_separates_jobs(notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-
-    result = dao_get_job_statistics_for_job(sample_service.id, job_1.id)
-    result_2 = dao_get_job_statistics_for_job(sample_service.id, job_2.id)
-
-    assert_job_stat(job=job_1, result=result, sent=2, delivered=1, failed=0)
-    assert_job_stat(job=job_2, result=result_2, sent=1, delivered=0, failed=1)
-
-
-def test_dao_get_job_stats_for_service(notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id).items
-    assert len(results) == 2
-    assert_job_stat(job_2, results[0], 1, 0, 1)
-    assert_job_stat(job_1, results[1], 2, 1, 0)
-
-
-def test_dao_get_job_stats_for_service_only_returns_stats_for_service(notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-    another_service = create_service(notify_db=notify_db, notify_db_session=notify_db_session,
-                                     service_name='Another Service')
-    job_3, job_4 = stats_set_up(notify_db, notify_db_session, service=another_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id).items
-    assert len(results) == 2
-    assert_job_stat(job_2, results[0], 1, 0, 1)
-    assert_job_stat(job_1, results[1], 2, 1, 0)
-
-    results = dao_get_job_stats_for_service(another_service.id).items
-    assert len(results) == 2
-    assert_job_stat(job_4, results[0], 1, 0, 1)
-    assert_job_stat(job_3, results[1], 2, 1, 0)
-
-
-def test_dao_get_job_stats_for_service_only_returns_jobs_created_within_limited_days(
-        notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id, limit_days=1)
-    assert results.total == 1
-    assert_job_stat(job_2, results.items[0], 1, 0, 1)
-
-
-def test_dao_get_job_stats_for_service_only_returns_jobs_created_within_limited_days_inclusive(
-        notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id, limit_days=2).items
-    assert len(results) == 2
-    assert_job_stat(job_2, results[0], 1, 0, 1)
-    assert_job_stat(job_1, results[1], 2, 1, 0)
-
-
-def test_dao_get_job_stats_paginates_results(
-        notify_db, notify_db_session, sample_service):
-    job_1, job_2 = stats_set_up(notify_db, notify_db_session, sample_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id, page=1, page_size=1).items
-    assert len(results) == 1
-    assert_job_stat(job_2, results[0], 1, 0, 1)
-    results_2 = dao_get_job_stats_for_service(sample_service.id, page=2, page_size=1).items
-    assert len(results_2) == 1
-    assert_job_stat(job_1, results_2[0], 2, 1, 0)
-
-
-def test_dao_get_job_returns_jobs_for_status(
-        notify_db, notify_db_session, sample_service):
-    stats_set_up(notify_db, notify_db_session, sample_service)
-
-    results = dao_get_job_stats_for_service(sample_service.id, statuses=['pending'])
-    assert results.total == 1
-    results_2 = dao_get_job_stats_for_service(sample_service.id, statuses=['pending', 'finished'])
-    assert results_2.total == 2
-
-
 def assert_job_stat(job, result, sent, delivered, failed):
     assert result.job_id == job.id
     assert result.original_file_name == job.original_file_name
@@ -505,24 +407,6 @@ def assert_job_stat(job, result, sent, delivered, failed):
     assert result.sent == sent
     assert result.delivered == delivered
     assert result.failed == failed
-
-
-def stats_set_up(notify_db, notify_db_session, service):
-    job_1 = create_job(notify_db=notify_db, notify_db_session=notify_db_session,
-                       service=service, created_at=datetime.utcnow() - timedelta(days=2))
-    job_2 = create_job(notify_db=notify_db, notify_db_session=notify_db_session,
-                       service=service, original_file_name='Another job', job_status='finished')
-    notification = create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=job_1)
-    notification_delivered = create_notification(notify_db=notify_db, notify_db_session=notify_db_session,
-                                                 job=job_1, status='delivered')
-    notification_failed = create_notification(notify_db=notify_db, notify_db_session=notify_db_session, job=job_2,
-                                              status='permanent-failure')
-    create_or_update_job_sending_statistics(notification)
-    create_or_update_job_sending_statistics(notification_delivered)
-    create_or_update_job_sending_statistics(notification_failed)
-    update_job_stats_outcome_count(notification_delivered)
-    update_job_stats_outcome_count(notification_failed)
-    return job_1, job_2
 
 
 def test_dao_get_letter_job_ids_by_status(sample_service):
