@@ -35,6 +35,7 @@ def insert_or_update_stats_for_template(template_id, month, year, count):
 def dao_get_template_usage_stats_by_service(service_id, year):
     return db.session.query(
         StatsTemplateUsageByMonth.template_id,
+        Template.hidden,
         Template.name,
         Template.template_type,
         StatsTemplateUsageByMonth.month,

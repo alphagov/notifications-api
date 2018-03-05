@@ -536,7 +536,8 @@ def get_monthly_template_usage(service_id):
                     'type': i.template_type,
                     'month': i.month,
                     'year': i.year,
-                    'count': i.count
+                    'count': i.count,
+                    'hidden': i.hidden
                 }
             )
 

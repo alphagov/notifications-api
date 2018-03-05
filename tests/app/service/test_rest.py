@@ -1831,7 +1831,7 @@ def test_get_template_usage_by_month_returns_two_templates(
         sample_service
 ):
 
-    template_one = create_template(sample_service)
+    template_one = create_template(sample_service, hidden=True)
 
     # add a historical notification for template
     not1 = create_notification_history(
@@ -1889,6 +1889,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2017
     assert resp_json[0]["count"] == 1
+    assert resp_json[0]["hidden"] is True
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
     assert resp_json[1]["name"] == sample_template.name
@@ -1896,6 +1897,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[1]["month"] == 4
     assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 3
+    assert resp_json[1]["hidden"] is False
 
     assert resp_json[2]["template_id"] == str(sample_template.id)
     assert resp_json[2]["name"] == sample_template.name
@@ -1903,6 +1905,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[2]["month"] == 11
     assert resp_json[2]["year"] == 2017
     assert resp_json[2]["count"] == 1
+    assert resp_json[2]["hidden"] is False
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):

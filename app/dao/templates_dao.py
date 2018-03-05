@@ -135,6 +135,7 @@ def dao_get_templates_for_cache(cache):
     query = db.session.query(Template.id.label('template_id'),
                              Template.template_type,
                              Template.name,
+                             Template.hidden,
                              cache_subq.c.count.label('count')
                              ).join(cache_subq,
                                     Template.id == cache_subq.c.template_id
