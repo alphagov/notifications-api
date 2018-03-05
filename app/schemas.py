@@ -2,6 +2,7 @@ from datetime import (
     datetime,
     date,
     timedelta)
+from flask import current_app
 from flask_marshmallow.fields import fields
 from marshmallow import (
     post_load,
@@ -305,12 +306,20 @@ class NotificationModelSchema(BaseSchema):
 class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
+    precompiled_letter = fields.Method("get_precompiled_letter")
 
     def get_reply_to(self, template):
         return template.reply_to
 
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
+
+    def get_precompiled_letter(self, template):
+        return (
+            template.template_type == 'letter' and
+            template.hidden and
+            template.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
+        )
 
     class Meta:
         model = models.Template
@@ -454,7 +463,16 @@ class NotificationWithTemplateSchema(BaseSchema):
 
     template = fields.Nested(
         TemplateSchema,
-        only=['id', 'version', 'name', 'template_type', 'content', 'subject', 'redact_personalisation', 'hidden'],
+        only=[
+            'id',
+            'version',
+            'name',
+            'template_type',
+            'content',
+            'subject',
+            'redact_personalisation',
+            'precompiled_letter'
+        ],
         dump_only=True
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)
