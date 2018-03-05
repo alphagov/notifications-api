@@ -56,6 +56,7 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
     # Create some notifications for the day before
     yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
     with freeze_time(yesterday):
+        notification_history(notification_type='letter')
         notification_history(notification_type='sms')
         notification_history(notification_type='sms')
         notification_history(notification_type='email')
@@ -71,5 +72,8 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
         },
         "sms": {
             "count": 2
+        },
+        "letter": {
+            "count": 1
         }
     }

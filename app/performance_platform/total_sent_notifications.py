@@ -27,6 +27,7 @@ def get_total_sent_notifications_yesterday():
 
     email_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
     sms_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
+    letter_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'letter')
 
     return {
         "start_date": start_date,
@@ -35,5 +36,8 @@ def get_total_sent_notifications_yesterday():
         },
         "sms": {
             "count": sms_count
-        }
+        },
+        "letter": {
+            "count": letter_count
+        },
     }
