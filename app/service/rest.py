@@ -537,7 +537,11 @@ def get_monthly_template_usage(service_id):
                     'month': i.month,
                     'year': i.year,
                     'count': i.count,
-                    'hidden': i.hidden
+                    'precompiled_letter': (
+                        i.template_type == 'letter' and
+                        i.hidden and
+                        i.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
+                    )
                 }
             )
 

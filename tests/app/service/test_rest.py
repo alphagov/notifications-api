@@ -1831,7 +1831,12 @@ def test_get_template_usage_by_month_returns_two_templates(
         sample_service
 ):
 
-    template_one = create_template(sample_service, hidden=True)
+    template_one = create_template(
+        sample_service,
+        template_type=LETTER_TYPE,
+        template_name=current_app.config['PRECOMPILED_TEMPLATE_NAME'],
+        hidden=True
+    )
 
     # add a historical notification for template
     not1 = create_notification_history(
@@ -1889,7 +1894,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2017
     assert resp_json[0]["count"] == 1
-    assert resp_json[0]["hidden"] is True
+    assert resp_json[0]["precompiled_letter"] is True
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
     assert resp_json[1]["name"] == sample_template.name
@@ -1897,7 +1902,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[1]["month"] == 4
     assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 3
-    assert resp_json[1]["hidden"] is False
+    assert resp_json[1]["precompiled_letter"] is False
 
     assert resp_json[2]["template_id"] == str(sample_template.id)
     assert resp_json[2]["name"] == sample_template.name
@@ -1905,7 +1910,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[2]["month"] == 11
     assert resp_json[2]["year"] == 2017
     assert resp_json[2]["count"] == 1
-    assert resp_json[2]["hidden"] is False
+    assert resp_json[2]["precompiled_letter"] is False
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):
@@ -2142,7 +2147,7 @@ def test_get_notification_for_service_includes_template_redacted(admin_request, 
     assert resp['template']['redact_personalisation'] is False
 
 
-def test_get_notification_for_service_includes_template_hidden(admin_request, sample_notification):
+def test_get_notification_for_service_includes_precompiled_letter(admin_request, sample_notification):
     resp = admin_request.get(
         'service.get_notification_for_service',
         service_id=sample_notification.service_id,
@@ -2150,7 +2155,7 @@ def test_get_notification_for_service_includes_template_hidden(admin_request, sa
     )
 
     assert resp['id'] == str(sample_notification.id)
-    assert resp['template']['hidden'] is False
+    assert resp['template']['precompiled_letter'] is False
 
 
 def test_get_all_notifications_for_service_includes_template_redacted(admin_request, sample_service):
@@ -2197,10 +2202,10 @@ def test_get_all_notifications_for_service_includes_template_hidden(admin_reques
     )
 
     assert resp['notifications'][0]['id'] == str(precompiled_noti.id)
-    assert resp['notifications'][0]['template']['hidden'] is True
+    assert resp['notifications'][0]['template']['precompiled_letter'] is True
 
     assert resp['notifications'][1]['id'] == str(letter_noti.id)
-    assert resp['notifications'][1]['template']['hidden'] is False
+    assert resp['notifications'][1]['template']['precompiled_letter'] is False
 
 
 def test_search_for_notification_by_to_field_returns_personlisation(

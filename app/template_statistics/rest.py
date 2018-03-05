@@ -48,7 +48,11 @@ def get_template_statistics_for_service_by_day(service_id):
             'template_id': str(data.template_id),
             'template_name': data.name,
             'template_type': data.template_type,
-            'template_hidden': data.hidden
+            'precompiled_letter': (
+                data.template_type == 'letter' and
+                data.hidden and
+                data.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
+            )
         }
 
     return jsonify(data=[serialize(row) for row in stats])
