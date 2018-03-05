@@ -15,7 +15,6 @@ from app import db
 from app.dao import days_ago
 from app.models import (
     Job,
-    JobStatistics,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
@@ -109,11 +108,6 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 def dao_create_job(job):
     if not job.id:
         job.id = uuid.uuid4()
-    job_stats = JobStatistics(
-        job_id=job.id,
-        updated_at=datetime.utcnow()
-    )
-    db.session.add(job_stats)
     db.session.add(job)
     db.session.commit()
 
