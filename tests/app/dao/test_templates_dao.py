@@ -489,7 +489,8 @@ def test_get_templates_by_ids_successful(notify_db, notify_db_session):
         notify_db_session,
         template_name='Sample Template 2',
         template_type="sms",
-        content="Template content"
+        content="Template content",
+        hidden=True
     )
     create_sample_template(
         notify_db,
@@ -503,8 +504,8 @@ def test_get_templates_by_ids_successful(notify_db, notify_db_session):
     cache = [[k, v] for k, v in sample_cache_dict.items()]
     templates = dao_get_templates_for_cache(cache)
     assert len(templates) == 2
-    assert [(template_1.id, template_1.template_type, template_1.name, 2),
-            (template_2.id, template_2.template_type, template_2.name, 3)] == templates
+    assert [(template_1.id, template_1.template_type, template_1.name, False, 2),
+            (template_2.id, template_2.template_type, template_2.name, True, 3)] == templates
 
 
 def test_get_templates_by_ids_successful_for_one_cache_item(notify_db, notify_db_session):
@@ -519,7 +520,7 @@ def test_get_templates_by_ids_successful_for_one_cache_item(notify_db, notify_db
     cache = [[k, v] for k, v in sample_cache_dict.items()]
     templates = dao_get_templates_for_cache(cache)
     assert len(templates) == 1
-    assert [(template_1.id, template_1.template_type, template_1.name, 2)] == templates
+    assert [(template_1.id, template_1.template_type, template_1.name, False, 2)] == templates
 
 
 def test_get_templates_by_ids_returns_empty_list():
