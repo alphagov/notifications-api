@@ -949,7 +949,7 @@ def test_preview_letter_template_precompiled_s3_error(
                 service_id=notification.service_id,
                 notification_id=notification.id,
                 file_type='pdf',
-                _expected_status=404
+                _expected_status=500
             )
 
 
