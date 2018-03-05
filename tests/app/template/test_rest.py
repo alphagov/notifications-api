@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 import botocore
 import pytest
+import requests_mock
 from freezegun import freeze_time
 
 from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
@@ -824,7 +825,6 @@ def test_preview_letter_template_by_id_valid_file_type(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker() as request_mock:
             content = b'\x00\x01'
 
@@ -897,7 +897,6 @@ def test_preview_letter_template_precompiled_pdf_file_type(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker():
 
             content = b'\x00\x01'
@@ -935,7 +934,6 @@ def test_preview_letter_template_precompiled_s3_error(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker():
 
             mocker.patch('app.template.rest.get_letter_pdf',
@@ -973,7 +971,6 @@ def test_preview_letter_template_precompiled_png_file_type(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker() as request_mock:
 
             pdf_content = b'\x00\x01'
@@ -1019,7 +1016,6 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker() as request_mock:
 
             pdf_content = b'\x00\x01'
@@ -1064,7 +1060,6 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker() as request_mock:
 
             pdf_content = b'\x00\x01'
