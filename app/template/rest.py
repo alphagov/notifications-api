@@ -8,7 +8,6 @@ from flask import (
     request)
 from requests import post as requests_post
 
-
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.templates_dao import (
     dao_update_template,
@@ -32,7 +31,6 @@ from app.errors import (
 from app.utils import get_template_instance, get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
-
 
 register_errors(template_blueprint)
 
@@ -189,7 +187,6 @@ def redact_template(template, data):
 
 @template_blueprint.route('/preview/<uuid:notification_id>/<file_type>', methods=['GET'])
 def preview_letter_template_by_notification_id(service_id, notification_id, file_type):
-
     if file_type not in ('pdf', 'png'):
         raise InvalidRequest({'content': ["file_type must be pdf or png"]}, status_code=400)
 
@@ -214,13 +211,12 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         content = base64.b64encode(pdf_file).decode('utf-8')
 
         if file_type == 'png':
-
             url = '{}/precompiled-preview.png{}'.format(
                 current_app.config['TEMPLATE_PREVIEW_API_HOST'],
                 '?page={}'.format(page) if page else ''
             )
 
-            content = _get_png_preview(url, content, notification.id)
+            content = _get_png_preview(url, content, notification.id, json=False)
 
     else:
 
@@ -246,17 +242,24 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             '?page={}'.format(page) if page else ''
         )
 
-        content = _get_png_preview(url, data, notification.id)
+        content = _get_png_preview(url, data, notification.id, json=True)
 
     return jsonify({"content": content})
 
 
-def _get_png_preview(url, data, notification_id):
-    resp = requests_post(
-        url,
-        json=data,
-        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
-    )
+def _get_png_preview(url, data, notification_id, json=True):
+    if json:
+        resp = requests_post(
+            url,
+            json=data,
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+        )
+    else:
+        resp = requests_post(
+            url,
+            data=data,
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+        )
 
     if resp.status_code != 200:
         current_app.logger.exception(
