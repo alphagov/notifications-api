@@ -205,8 +205,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
             pdf_file = get_letter_pdf(notification)
 
-        except botocore.exceptions.ClientError:
-            current_app.logger.info
+        except botocore.exceptions.ClientError as e:
+            current_app.logger.exception(
+                'Error getting letter file from S3 notification id {}'.format(notification_id), e)
             raise InvalidRequest('Error getting letter file from S3 notification id {}'.format(notification_id),
                                  status_code=500)
 
@@ -253,13 +254,23 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 def _get_png_preview(url, data, notification_id):
     resp = requests_post(
         url,
-        data=data,
+        json=data,
         headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
     )
 
     if resp.status_code != 200:
+        current_app.logger.exception(
+            'Error generating preview letter for {} \nStatus code: {}\n{}'.format(
+                notification_id,
+                resp.status_code,
+                resp.content
+            ))
         raise InvalidRequest(
-            'Error generating preview for {}'.format(notification_id), status_code=500
+            'Error generating preview letter for {} \nStatus code: {}\n{}'.format(
+                notification_id,
+                resp.status_code,
+                resp.content
+            ), status_code=500
         )
 
     return base64.b64encode(resp.content).decode('utf-8')
