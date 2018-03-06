@@ -1766,6 +1766,41 @@ def test_dao_get_notifications_by_to_field_matches_partial_emails(sample_templat
     assert notification_2.id not in notification_ids
 
 
+@pytest.mark.parametrize('search_term', [
+    '001',
+    '100',
+    '09001',
+    '077009001',
+    '07700 9001',
+    '(0)7700 9001',
+    '4477009001',
+    '+4477009001',
+    pytest.mark.skip('+44077009001', reason='No easy way to normalise this'),
+    pytest.mark.skip('+44(0)77009001', reason='No easy way to normalise this'),
+])
+def test_dao_get_notifications_by_to_field_matches_partial_phone_numbers(
+    sample_template,
+    search_term,
+):
+
+    notification_1 = create_notification(
+        template=sample_template,
+        to_field='+447700900100',
+        normalised_to='447700900100',
+    )
+    notification_2 = create_notification(
+        template=sample_template,
+        to_field='+447700900200',
+        normalised_to='447700900200',
+    )
+    results = dao_get_notifications_by_to_field(notification_1.service_id, search_term)
+    notification_ids = [notification.id for notification in results]
+
+    assert len(results) == 1
+    assert notification_1.id in notification_ids
+    assert notification_2.id not in notification_ids
+
+
 @pytest.mark.parametrize('to', [
     'not@email', '123'
 ])

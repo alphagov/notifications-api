@@ -444,6 +444,11 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
         except InvalidEmailError:
             normalised = search_term
 
+    for character in ['(', ')', ' ']:
+        normalised = normalised.replace(character, '')
+
+    normalised = normalised.lstrip('+0')
+
     filters = [
         Notification.service_id == service_id,
         Notification.normalised_to.like("%{}%".format(normalised)),
