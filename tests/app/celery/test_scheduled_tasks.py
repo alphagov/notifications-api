@@ -335,7 +335,7 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         new_callable=PropertyMock
     ) as mock_active:
         mock_active.return_value = True
-        send_total_sent_notifications_to_performance_platform()
+        send_total_sent_notifications_to_performance_platform(yesterday)
 
         perf_mock.assert_has_calls([
             call(get_london_midnight_in_utc(yesterday), 'sms', 2),

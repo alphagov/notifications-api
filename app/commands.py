@@ -22,7 +22,8 @@ from app.dao.services_dao import (
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
 from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
-from app.performance_platform.processing_time import send_processing_time_for_start_and_end
+from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
+from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 
 
 @click.group(name='command', help='Additional commands')
@@ -212,9 +213,32 @@ def populate_monthly_billing(year):
 @notify_command()
 @click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
 @click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+def backfill_performance_platform_totals(start_date, end_date):
+    """
+    Send historical total messages sent to Performance Platform.
+    """
+
+    delta = end_date - start_date
+
+    print('Sending total messages sent for all days between {} and {}'.format(start_date, end_date))
+
+    for i in range(delta.days + 1):
+
+        process_date = start_date + timedelta(days=i)
+
+        print('Sending total messages sent for {}'.format(
+            process_date.isoformat()
+        ))
+
+        send_total_sent_notifications_to_performance_platform(process_date)
+
+
+@notify_command()
+@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
 def backfill_processing_time(start_date, end_date):
     """
-    Send historical performance platform stats.
+    Send historical processing time to Performance Platform.
     """
 
     delta = end_date - start_date
