@@ -133,6 +133,38 @@ class User(db.Model):
     def check_password(self, password):
         return check_hash(password, self._password)
 
+    def get_permissions(self):
+        from app.dao.permissions_dao import permission_dao
+        retval = {}
+        for x in permission_dao.get_permissions_by_user_id(self.id):
+            service_id = str(x.service_id)
+            if service_id not in retval:
+                retval[service_id] = []
+            retval[service_id].append(x.permission)
+        return retval
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email_address': self.email_address,
+            'auth_type': self.auth_type,
+            'current_session_id': self.current_session_id,
+            'failed_login_count': self.failed_login_count,
+            'logged_in_at': self.logged_in_at.strftime(DATETIME_FORMAT) if self.logged_in_at else None,
+            'mobile_number': self.mobile_number,
+            'organisations': [x.id for x in self.organisations if x.active],
+            'password_changed_at': (
+                self.password_changed_at.strftime('%Y-%m-%d %H:%M:%S.%f')
+                if self.password_changed_at
+                else None
+            ),
+            'permissions': self.get_permissions(),
+            'platform_admin': self.platform_admin,
+            'services': [x.id for x in self.services if x.active],
+            'state': self.state,
+        }
+
 
 user_to_service = db.Table(
     'user_to_service',

@@ -665,19 +665,15 @@ class UnarchivedTemplateSchema(BaseSchema):
             raise ValidationError('Template has been deleted', 'template')
 
 
-user_schema = UserSchema()
-user_schema_load_json = UserSchema(load_json=True)
+# should not be used on its own for dumping - only for loading
+create_user_schema = UserSchema()
 user_update_schema_load_json = UserUpdateAttributeSchema(load_json=True, partial=True)
 user_update_password_schema_load_json = UserUpdatePasswordSchema(load_json=True, partial=True)
 service_schema = ServiceSchema()
-service_schema_load_json = ServiceSchema(load_json=True)
 detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
-template_schema_load_json = TemplateSchema(load_json=True)
 api_key_schema = ApiKeySchema()
-api_key_schema_load_json = ApiKeySchema(load_json=True)
 job_schema = JobSchema()
-job_schema_load_json = JobSchema(load_json=True)
 sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
 job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()

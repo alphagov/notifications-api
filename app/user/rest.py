@@ -31,7 +31,7 @@ from app.notifications.process_notifications import (
 )
 from app.schemas import (
     email_data_request_schema,
-    user_schema,
+    create_user_schema,
     permission_schema,
     user_update_schema_load_json,
     user_update_password_schema_load_json
@@ -67,13 +67,14 @@ def handle_integrity_error(exc):
 
 @user_blueprint.route('', methods=['POST'])
 def create_user():
-    user_to_create, errors = user_schema.load(request.get_json())
+    user_to_create, errors = create_user_schema.load(request.get_json())
     req_json = request.get_json()
     if not req_json.get('password', None):
         errors.update({'password': ['Missing data for required field.']})
         raise InvalidRequest(errors, status_code=400)
     save_model_user(user_to_create, pwd=req_json.get('password'))
-    return jsonify(data=user_schema.dump(user_to_create).data), 201
+    result = user_to_create.serialize()
+    return jsonify(data=result), 201
 
 
 @user_blueprint.route('/<uuid:user_id>', methods=['POST'])
@@ -84,7 +85,7 @@ def update_user_attribute(user_id):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     save_user_attribute(user_to_update, update_dict=update_dct)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
+    return jsonify(data=user_to_update.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/activate', methods=['POST'])
@@ -95,14 +96,14 @@ def activate_user(user_id):
 
     user.state = 'active'
     save_model_user(user)
-    return jsonify(data=user_schema.dump(user).data), 200
+    return jsonify(data=user.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
 def user_reset_failed_login_count(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     reset_failed_login_count(user_to_update)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
+    return jsonify(data=user_to_update.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/verify/password', methods=['POST'])
@@ -324,8 +325,8 @@ def send_already_registered_email(user_id):
 @user_blueprint.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_user_by_id(user_id=user_id)
-    result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
-    return jsonify(data=result.data)
+    result = [x.serialize() for x in users] if isinstance(users, list) else users.serialize()
+    return jsonify(data=result)
 
 
 @user_blueprint.route('/<uuid:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
@@ -350,9 +351,8 @@ def get_by_email():
         error = 'Invalid request. Email query string param required'
         raise InvalidRequest(error, status_code=400)
     fetched_user = get_user_by_email(email)
-    result = user_schema.dump(fetched_user)
-
-    return jsonify(data=result.data)
+    result = fetched_user.serialize()
+    return jsonify(data=result)
 
 
 @user_blueprint.route('/reset-password', methods=['POST'])
@@ -392,7 +392,7 @@ def update_password(user_id):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     update_user_password(user, pwd)
-    return jsonify(data=user_schema.dump(user).data), 200
+    return jsonify(data=user.serialize()), 200
 
 
 def _create_reset_password_url(email):

@@ -36,28 +36,53 @@ def test_get_user_list(admin_request, sample_service):
     assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
 
 
-def test_get_user(client, sample_service):
+def test_get_user(admin_request, sample_service, sample_organisation):
     """
     Tests GET endpoint '/<user_id>' to retrieve a single service.
     """
     sample_user = sample_service.users[0]
-    header = create_authorization_header()
-    resp = client.get(url_for('user.get_user',
-                              user_id=sample_user.id),
-                      headers=[header])
-    assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+    sample_user.organisations = [sample_organisation]
+    json_resp = admin_request.get(
+        'user.get_user',
+        user_id=sample_user.id
+    )
 
     expected_permissions = default_service_permissions
     fetched = json_resp['data']
 
-    assert str(sample_user.id) == fetched['id']
-    assert sample_user.name == fetched['name']
-    assert sample_user.mobile_number == fetched['mobile_number']
-    assert sample_user.email_address == fetched['email_address']
-    assert sample_user.state == fetched['state']
+    assert fetched['id'] == str(sample_user.id)
+    assert fetched['name'] == sample_user.name
+    assert fetched['mobile_number'] == sample_user.mobile_number
+    assert fetched['email_address'] == sample_user.email_address
+    assert fetched['state'] == sample_user.state
     assert fetched['auth_type'] == SMS_AUTH_TYPE
-    assert sorted(expected_permissions) == sorted(fetched['permissions'][str(sample_service.id)])
+    assert fetched['permissions'].keys() == {str(sample_service.id)}
+    assert fetched['services'] == [str(sample_service.id)]
+    assert fetched['organisations'] == [str(sample_organisation.id)]
+    assert sorted(fetched['permissions'][str(sample_service.id)]) == sorted(expected_permissions)
+
+
+def test_get_user_doesnt_return_inactive_services_and_orgs(admin_request, sample_service, sample_organisation):
+    """
+    Tests GET endpoint '/<user_id>' to retrieve a single service.
+    """
+    sample_service.active = False
+    sample_organisation.active = False
+
+    sample_user = sample_service.users[0]
+    sample_user.organisations = [sample_organisation]
+
+    json_resp = admin_request.get(
+        'user.get_user',
+        user_id=sample_user.id
+    )
+
+    fetched = json_resp['data']
+
+    assert fetched['id'] == str(sample_user.id)
+    assert fetched['services'] == []
+    assert fetched['organisations'] == []
+    assert fetched['permissions'] == {}
 
 
 def test_post_user(client, notify_db, notify_db_session):
