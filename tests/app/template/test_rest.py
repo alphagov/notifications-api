@@ -4,7 +4,9 @@ import random
 import string
 from datetime import datetime, timedelta
 
+import botocore
 import pytest
+import requests_mock
 from freezegun import freeze_time
 
 from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
@@ -16,7 +18,7 @@ from tests.app.conftest import (
     sample_template_without_email_permission,
     sample_template_without_letter_permission,
     sample_template_without_sms_permission)
-from tests.app.db import create_service, create_letter_contact, create_template
+from tests.app.db import create_service, create_letter_contact, create_template, create_notification
 from tests.conftest import set_config_values
 
 
@@ -823,7 +825,6 @@ def test_preview_letter_template_by_id_valid_file_type(
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
     }):
-        import requests_mock
         with requests_mock.Mocker() as request_mock:
             content = b'\x00\x01'
 
@@ -874,3 +875,210 @@ def test_preview_letter_template_by_id_template_preview_500(
             )
 
             assert resp['message'] == 'Error generating preview for {}'.format(sample_letter_notification.id)
+
+
+def test_preview_letter_template_precompiled_pdf_file_type(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker():
+
+            content = b'\x00\x01'
+
+            mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=content)
+
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='pdf'
+            )
+
+            assert mock_get_letter_pdf.called_once_with(notification)
+            assert base64.b64decode(resp['content']) == content
+
+
+def test_preview_letter_template_precompiled_s3_error(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker():
+
+            mocker.patch('app.template.rest.get_letter_pdf',
+                         side_effect=botocore.exceptions.ClientError(
+                             {'Error': {'Code': '403', 'Message': 'Unauthorized'}},
+                             'GetObject'
+                         ))
+
+            admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='pdf',
+                _expected_status=500
+            )
+
+
+def test_preview_letter_template_precompiled_png_file_type(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+
+            pdf_content = b'\x00\x01'
+            png_content = b'\x00\x02'
+
+            mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/precompiled-preview.png',
+                content=png_content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=200
+            )
+
+            resp = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='png'
+            )
+
+            assert mock_get_letter_pdf.called_once_with(notification)
+            assert base64.b64decode(resp['content']) == png_content
+
+
+def test_preview_letter_template_precompiled_png_template_preview_500_error(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+
+            pdf_content = b'\x00\x01'
+            png_content = b'\x00\x02'
+
+            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/precompiled-preview.png',
+                content=png_content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=500
+            )
+
+            admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='png',
+                _expected_status=500
+
+            )
+
+
+def test_preview_letter_template_precompiled_png_template_preview_400_error(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+
+            pdf_content = b'\x00\x01'
+            png_content = b'\x00\x02'
+
+            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/precompiled-preview.png',
+                content=png_content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=404
+            )
+
+            admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='png',
+                _expected_status=500
+
+            )
