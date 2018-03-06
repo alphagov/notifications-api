@@ -266,7 +266,7 @@ def _get_png_preview(url, data, notification_id):
                 resp.content
             ))
         raise InvalidRequest(
-            'Error generating preview letter for {} \nStatus code: {}\n{}'.format(
+            'Error generating preview letter for {}\nStatus code: {}\n{}'.format(
                 notification_id,
                 resp.status_code,
                 resp.content

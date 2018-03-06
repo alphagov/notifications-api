@@ -874,7 +874,9 @@ def test_preview_letter_template_by_id_template_preview_500(
                 _expected_status=500
             )
 
-            assert resp['message'] == 'Error generating preview for {}'.format(sample_letter_notification.id)
+            assert 'Status code: 404' in resp['message']
+            assert 'Error generating preview letter for {}'.format(sample_letter_notification.id) in resp['message']
+
 
 
 def test_preview_letter_template_precompiled_pdf_file_type(
