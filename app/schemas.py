@@ -2,7 +2,6 @@ from datetime import (
     datetime,
     date,
     timedelta)
-from flask import current_app
 from flask_marshmallow.fields import fields
 from marshmallow import (
     post_load,
@@ -25,6 +24,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
+from app.letters.utils import is_precompiled_letter
 from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
 from app.utils import get_template_instance
@@ -315,11 +315,7 @@ class BaseTemplateSchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_precompiled_letter(self, template):
-        return (
-            template.template_type == 'letter' and
-            template.hidden and
-            template.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
-        )
+        return is_precompiled_letter(template)
 
     class Meta:
         model = models.Template
