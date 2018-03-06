@@ -3,6 +3,7 @@
 set -e -o pipefail
 
 TERMINATE_TIMEOUT=9
+readonly LOGS_DIR="/home/vcap/logs"
 
 function check_params {
   if [ -z "${NOTIFY_APP_NAME}" ]; then
@@ -17,22 +18,22 @@ function check_params {
 
 function configure_aws_logs {
   # create files so that aws logs agent doesn't complain
-  touch /home/vcap/logs/gunicorn_error.log
-  touch /home/vcap/logs/app.log.json
+  touch ${LOGS_DIR}/gunicorn_error.log
+  touch ${LOGS_DIR}/app.log.json
 
   aws configure set plugins.cwlogs cwlogs
 
   cat > /home/vcap/app/awslogs.conf << EOF
 [general]
-state_file = /home/vcap/logs/awslogs-state
+state_file = ${LOGS_DIR}/awslogs-state
 
-[/home/vcap/logs/app.log]
-file = /home/vcap/logs/app.log.json
+[${LOGS_DIR}/app.log]
+file = ${LOGS_DIR}/app.log.json
 log_group_name = paas-${CW_APP_NAME}-application
 log_stream_name = {hostname}
 
-[/home/vcap/logs/gunicorn_error.log]
-file = /home/vcap/logs/gunicorn_error.log
+[${LOGS_DIR}/gunicorn_error.log]
+file = ${LOGS_DIR}/gunicorn_error.log
 log_group_name = paas-${CW_APP_NAME}-gunicorn
 log_stream_name = {hostname}
 EOF
@@ -41,7 +42,7 @@ EOF
 # For every PID, check if it's still running
 # if it is, send the sigterm
 function on_exit {
-  n=0
+  wait_time=0
   while true; do
     # refresh pids to account for the case that
     # some workers may have terminated but others not
@@ -58,7 +59,7 @@ function on_exit {
     echo "Terminating celery processes with pids "${APP_PIDS}
     for APP_PID in ${APP_PIDS}; do
       # if TERMINATE_TIMEOUT is reached, send SIGKILL
-      if [[ "$n" -ge "$TERMINATE_TIMEOUT" ]]; then
+      if [[ "$wait_time" -ge "$TERMINATE_TIMEOUT" ]]; then
         echo "Timeout reached, killing process with pid ${APP_PID}"
         kill -9 ${APP_PID} || true
         continue
@@ -71,7 +72,7 @@ function on_exit {
         fi
       fi
     done
-    let n=n+1
+    let wait_time=wait_time+1
     sleep 1
   done
 }
