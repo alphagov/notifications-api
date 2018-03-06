@@ -304,12 +304,12 @@ def get_precompiled_letter_template(service_id):
         return template
 
     template = Template(
-        name='Pre-compiled PDF',
+        name=current_app.config['PRECOMPILED_TEMPLATE_NAME'],
         created_by=get_user_by_id(current_app.config['NOTIFY_USER_ID']),
         service_id=service_id,
         template_type=LETTER_TYPE,
         hidden=True,
-        subject='Pre-compiled PDF',
+        subject=current_app.config['PRECOMPILED_TEMPLATE_NAME'],
         content='',
     )
 
