@@ -18,7 +18,6 @@ from app.dao.notifications_dao import (
     dao_get_template_usage,
     dao_timeout_notifications,
     dao_update_notification,
-    dao_update_notifications_for_job_to_sent_to_dvla,
     dao_update_notifications_by_reference,
     delete_notifications_created_more_than_a_week_ago_by_type,
     get_notification_by_id,
@@ -32,7 +31,8 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     update_notification_status_by_reference,
     dao_get_notification_by_reference,
-    dao_get_notifications_by_references
+    dao_get_notifications_by_references,
+    dao_get_notification_history_by_reference,
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -59,7 +59,6 @@ from tests.app.conftest import (
     sample_letter_template
 )
 from tests.app.db import (
-    create_api_key,
     create_job,
     create_notification,
     create_service,
@@ -1712,47 +1711,6 @@ def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
     assert not slow_delivery
 
 
-def test_dao_update_notifications_for_job_to_sent_to_dvla(notify_db, notify_db_session, sample_letter_template):
-    job = sample_job(notify_db=notify_db, notify_db_session=notify_db_session, template=sample_letter_template)
-    notification = create_notification(template=sample_letter_template, job=job)
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(job_id=job.id, provider='some provider')
-
-    assert updated_count == 1
-    updated_notification = Notification.query.get(notification.id)
-    assert updated_notification.status == 'sending'
-    assert updated_notification.sent_by == 'some provider'
-    assert updated_notification.sent_at
-    assert updated_notification.updated_at
-    history = NotificationHistory.query.get(notification.id)
-    assert history.status == 'sending'
-    assert history.sent_by == 'some provider'
-    assert history.sent_at
-    assert history.updated_at
-
-
-def test_dao_update_notifications_for_job_to_sent_to_dvla_does_update_history_if_test_key(sample_letter_job):
-    api_key = create_api_key(sample_letter_job.service, key_type=KEY_TYPE_TEST)
-    notification = create_notification(
-        sample_letter_job.template,
-        job=sample_letter_job,
-        api_key=api_key
-    )
-
-    updated_count = dao_update_notifications_for_job_to_sent_to_dvla(
-        job_id=sample_letter_job.id,
-        provider='some provider'
-    )
-
-    assert updated_count == 1
-    updated_notification = Notification.query.get(notification.id)
-    assert updated_notification.status == 'sending'
-    assert updated_notification.sent_by == 'some provider'
-    assert updated_notification.sent_at
-    assert updated_notification.updated_at
-    assert NotificationHistory.query.count() == 0
-
-
 def test_dao_get_notifications_by_to_field(sample_template):
 
     recipient_to_search_for = {
@@ -2039,6 +1997,30 @@ def test_dao_get_notifications_by_reference(sample_template):
     assert len(notifications) == 2
     assert notifications[0].id in [notification_1.id, notification_2.id]
     assert notifications[1].id in [notification_1.id, notification_2.id]
+
+
+def test_dao_get_notification_history_by_reference_with_one_match_returns_notification(
+        sample_letter_template
+):
+    create_notification(template=sample_letter_template, reference='REF1')
+    notification = dao_get_notification_history_by_reference('REF1')
+
+    assert notification.reference == 'REF1'
+
+
+def test_dao_get_notification_history_by_reference_with_multiple_matches_raises_error(
+        sample_letter_template
+):
+    create_notification(template=sample_letter_template, reference='REF1')
+    create_notification(template=sample_letter_template, reference='REF1')
+
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_history_by_reference('REF1')
+
+
+def test_dao_get_notification_history_by_reference_with_no_matches_raises_error(notify_db):
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_history_by_reference('REF1')
 
 
 @freeze_time("2017-12-18 17:50")

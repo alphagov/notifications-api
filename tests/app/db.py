@@ -125,12 +125,13 @@ def create_service_with_defined_sms_sender(
 
 
 def create_template(
-    service,
-    template_type=SMS_TYPE,
-    template_name=None,
-    subject='Template subject',
-    content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
-    reply_to=None
+        service,
+        template_type=SMS_TYPE,
+        template_name=None,
+        subject='Template subject',
+        content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
+        reply_to=None,
+        hidden=False
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -139,6 +140,7 @@ def create_template(
         'service': service,
         'created_by': service.created_by,
         'reply_to': reply_to,
+        'hidden': hidden
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject

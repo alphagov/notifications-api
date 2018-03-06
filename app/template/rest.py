@@ -1,10 +1,15 @@
+import base64
+
+import botocore
 from flask import (
     Blueprint,
+    current_app,
     jsonify,
-    request,
-    current_app
-)
+    request)
+from requests import post as requests_post
 
+
+from app.dao.notifications_dao import get_notification_by_id
 from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
@@ -12,10 +17,11 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
     dao_get_template_versions,
-    dao_update_template_reply_to
-)
+    dao_update_template_reply_to,
+    dao_get_template_by_id)
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.letters.utils import get_letter_pdf, is_precompiled_letter
 from app.models import SMS_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schemas import (template_schema, template_history_schema)
@@ -179,3 +185,81 @@ def redact_template(template, data):
     if not template.redact_personalisation:
         dao_redact_template(template, data['created_by'])
     return 'null', 200
+
+
+@template_blueprint.route('/preview/<uuid:notification_id>/<file_type>', methods=['GET'])
+def preview_letter_template_by_notification_id(service_id, notification_id, file_type):
+
+    if file_type not in ('pdf', 'png'):
+        raise InvalidRequest({'content': ["file_type must be pdf or png"]}, status_code=400)
+
+    page = request.args.get('page')
+
+    notification = get_notification_by_id(notification_id)
+
+    template = dao_get_template_by_id(notification.template_id)
+
+    if is_precompiled_letter(template):
+
+        try:
+
+            pdf_file = get_letter_pdf(notification)
+
+        except botocore.exceptions.ClientError:
+            current_app.logger.info
+            raise InvalidRequest('Error getting letter file from S3 notification id {}'.format(notification_id),
+                                 status_code=500)
+
+        content = base64.b64encode(pdf_file).decode('utf-8')
+
+        if file_type == 'png':
+
+            url = '{}/precompiled-preview.png{}'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                '?page={}'.format(page) if page else ''
+            )
+
+            content = _get_png_preview(url, content, notification.id)
+
+    else:
+
+        template_for_letter_print = {
+            "id": str(notification.template_id),
+            "subject": template.subject,
+            "content": template.content,
+            "version": str(template.version)
+        }
+
+        service = dao_fetch_service_by_id(service_id)
+
+        data = {
+            'letter_contact_block': notification.reply_to_text,
+            'template': template_for_letter_print,
+            'values': notification.personalisation,
+            'dvla_org_id': service.dvla_organisation_id,
+        }
+
+        url = '{}/preview.{}{}'.format(
+            current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+            file_type,
+            '?page={}'.format(page) if page else ''
+        )
+
+        content = _get_png_preview(url, data, notification.id)
+
+    return jsonify({"content": content})
+
+
+def _get_png_preview(url, data, notification_id):
+    resp = requests_post(
+        url,
+        data=data,
+        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+    )
+
+    if resp.status_code != 200:
+        raise InvalidRequest(
+            'Error generating preview for {}'.format(notification_id), status_code=500
+        )
+
+    return base64.b64encode(resp.content).decode('utf-8')

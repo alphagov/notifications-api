@@ -738,6 +738,7 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
 def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker):
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+    mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=5)
     data = {
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ="
@@ -754,6 +755,8 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     notification = Notification.query.first()
 
+    assert notification.billable_units == 3
+
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {
         'content': {'body': None, 'subject': 'Pre-compiled PDF'},
@@ -767,3 +770,26 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
         },
         'uri': ANY
     }
+
+
+def test_post_precompiled_letter_notification_returns_400_with_invalid_pdf(client, notify_user, mocker):
+    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+    data = {
+        "reference": "letter-reference",
+        "content": "bGV0dGVyLWNvbnRlbnQ="
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        path="v2/notifications/letter",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    resp_json = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 400, response.get_data(as_text=True)
+    assert resp_json['errors'][0]['message'] == 'Letter content is not a valid PDF'
+
+    assert s3mock.called is False
+
+    assert Notification.query.count() == 0
