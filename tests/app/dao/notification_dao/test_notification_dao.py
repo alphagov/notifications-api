@@ -1751,6 +1751,21 @@ def test_dao_get_notifications_by_to_field_search_is_not_case_sensitive(sample_t
     assert notification.id in notification_ids
 
 
+def test_dao_get_notifications_by_to_field_matches_partial_emails(sample_template):
+    notification_1 = create_notification(
+        template=sample_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com'
+    )
+    notification_2 = create_notification(
+        template=sample_template, to_field='jacque@gmail.com', normalised_to='jacque@gmail.com'
+    )
+    results = dao_get_notifications_by_to_field(notification_1.service_id, 'ack')
+    notification_ids = [notification.id for notification in results]
+
+    assert len(results) == 1
+    assert notification_1.id in notification_ids
+    assert notification_2.id not in notification_ids
+
+
 @pytest.mark.parametrize('to', [
     'not@email', '123'
 ])
