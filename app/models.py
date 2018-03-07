@@ -363,6 +363,19 @@ class Service(db.Model, Versioned):
             'research_mode': self.research_mode
         }
 
+    def serialize_for_reports(self):
+        return {
+            'id': str(self.id),
+            'name': self.name,
+            'active': self.active,
+            'restricted': self.restricted,
+            'research_mode': self.research_mode,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            'organisation': self.organisation.name if self.organisation is not None else None,
+            'crown': self.crown
+        }
+
 
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
@@ -770,6 +783,20 @@ class Template(TemplateBase):
             template_id=self.id,
             _external=True
         )
+
+    def serialize_for_reports(self):
+        serialized = {
+            "id": str(self.id),
+            "type": self.template_type,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "created_by": self.created_by.email_address,
+            "service": str(self.service_id),
+            "version": self.version,
+            "name": self.name
+        }
+
+        return serialized
 
 
 class TemplateRedacted(db.Model):
@@ -1312,6 +1339,21 @@ class Notification(db.Model):
                 .earliest_delivery\
                 .strftime(DATETIME_FORMAT)
 
+        return serialized
+
+    def serialize_for_reports(self):
+        serialized = {
+            "id": self.id,
+            "template": self.template.id,
+            "service": self.service_id,
+            "type": self.notification_type,
+            "status": self.get_letter_status() if self.notification_type == LETTER_TYPE else self.status,
+            "provider": self.sent_by,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "rate_multiplier": self.rate_multiplier,
+            "international": self.international
+        }
         return serialized
 
 
