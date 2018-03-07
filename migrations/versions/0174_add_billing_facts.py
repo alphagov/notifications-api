@@ -81,9 +81,9 @@ def upgrade():
         (datum + TIME '00:00:00') at TIME zone 'utc' as utc_daytime_start,	-- convert bst time to utc time
         (datum + TIME '23:59:59') at TIME zone 'utc' as utc_daytime_end
         FROM (
-        -- There are 5 leap years in this range, so calculate 365 * 20 + 5 records
+        -- There are 10 leap years in this range, so calculate 365 * 50 + 5 records
         SELECT '2015-01-01'::date + SEQUENCE.DAY AS datum
-        FROM generate_series(0,365*20+5) AS SEQUENCE(DAY)
+        FROM generate_series(0,365*50+10) AS SEQUENCE(DAY)
         GROUP BY SEQUENCE.day
         ) DQ
         ORDER BY bst_date
