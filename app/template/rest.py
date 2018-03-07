@@ -202,9 +202,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
             pdf_file = get_letter_pdf(notification)
 
-        except botocore.exceptions.ClientError as e:
+        except botocore.exceptions.ClientError:
             current_app.logger.exception(
-                'Error getting letter file from S3 notification id {}'.format(notification_id), e)
+                'Error getting letter file from S3 notification id {}'.format(notification_id))
             raise InvalidRequest('Error getting letter file from S3 notification id {}'.format(notification_id),
                                  status_code=500)
 
