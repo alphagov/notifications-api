@@ -395,6 +395,45 @@ def update_password(user_id):
     return jsonify(data=user.serialize()), 200
 
 
+@user_blueprint.route('/<uuid:user_id>/organisations-and-services', methods=['GET'])
+def get_organisations_and_services_for_user(user_id):
+    user = get_user_by_id(user_id=user_id)
+
+    data = {
+        'organisations': [
+            {
+                'name': org.name,
+                'id': org.id,
+                'services': [
+                    {
+                        'id': service.id,
+                        'name': service.name
+                    }
+                    for service in org.services
+                    if service.active and user in service.users
+                ]
+            }
+            for org in user.organisations
+        ],
+        'services_without_organisations': [
+            {
+                'id': service.id,
+                'name': service.name
+            } for service in user.services
+            if (
+                service.active and
+                # include services that either aren't in an organisation, or are in an organisation,
+                # but not one that the user can see.
+                (
+                    not service.organisation or
+                    user not in service.organisation.users
+                )
+            )
+        ]
+    }
+    return jsonify(data)
+
+
 def _create_reset_password_url(email):
     data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
     url = '/new-password/'

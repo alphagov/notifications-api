@@ -120,7 +120,7 @@ class User(db.Model):
     organisations = db.relationship(
         'Organisation',
         secondary='user_to_organisation',
-        backref=db.backref('user_to_organisation', lazy='dynamic'))
+        backref=db.backref('users', lazy='dynamic'))
 
     @property
     def password(self):
