@@ -13,7 +13,12 @@ from app.dao.templates_dao import (
     dao_get_templates_for_cache,
     dao_redact_template, dao_update_template_reply_to
 )
-from app.models import Template, TemplateHistory, TemplateRedacted
+from app.models import (
+    Template,
+    TemplateHistory,
+    TemplateRedacted,
+    PRECOMPILED_TEMPLATE_NAME
+)
 
 from tests.app.conftest import sample_template as create_sample_template
 from tests.app.db import create_template, create_letter_contact
@@ -489,8 +494,7 @@ def test_get_templates_by_ids_successful(notify_db, notify_db_session):
         notify_db_session,
         template_name='Sample Template 2',
         template_type="sms",
-        content="Template content",
-        hidden=True
+        content="Template content"
     )
     create_sample_template(
         notify_db,
@@ -505,7 +509,32 @@ def test_get_templates_by_ids_successful(notify_db, notify_db_session):
     templates = dao_get_templates_for_cache(cache)
     assert len(templates) == 2
     assert [(template_1.id, template_1.template_type, template_1.name, False, 2),
-            (template_2.id, template_2.template_type, template_2.name, True, 3)] == templates
+            (template_2.id, template_2.template_type, template_2.name, False, 3)] == templates
+
+
+def test_get_letter_templates_by_ids_successful(notify_db, notify_db_session):
+    template_1 = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name=PRECOMPILED_TEMPLATE_NAME,
+        template_type="letter",
+        content="Template content",
+        hidden=True
+    )
+    template_2 = create_sample_template(
+        notify_db,
+        notify_db_session,
+        template_name='Sample Template 2',
+        template_type="letter",
+        content="Template content"
+    )
+    sample_cache_dict = {str.encode(str(template_1.id)): str.encode('2'),
+                         str.encode(str(template_2.id)): str.encode('3')}
+    cache = [[k, v] for k, v in sample_cache_dict.items()]
+    templates = dao_get_templates_for_cache(cache)
+    assert len(templates) == 2
+    assert [(template_1.id, template_1.template_type, template_1.name, True, 2),
+            (template_2.id, template_2.template_type, template_2.name, False, 3)] == templates
 
 
 def test_get_templates_by_ids_successful_for_one_cache_item(notify_db, notify_db_session):

@@ -5,7 +5,6 @@ from flask import current_app
 
 from notifications_utils.s3 import s3upload
 
-from app.models import LETTER_TYPE
 from app.variables import Retention
 
 
@@ -77,11 +76,3 @@ def get_letter_pdf(notification):
         file_content = obj.get()["Body"].read()
 
     return file_content
-
-
-def is_precompiled_letter(template):
-    return (
-        template.template_type == LETTER_TYPE and
-        template.hidden and
-        template.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
-    )

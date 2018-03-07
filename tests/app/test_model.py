@@ -18,7 +18,8 @@ from app.models import (
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE
+    NOTIFICATION_TECHNICAL_FAILURE,
+    PRECOMPILED_TEMPLATE_NAME
 )
 from tests.app.conftest import (
     sample_template as create_sample_template,
@@ -319,3 +320,23 @@ def test_letter_notification_postcode_can_be_null_for_precompiled_letters(client
     assert json['line_1'] == 'test'
     assert json['line_2'] == 'London'
     assert json['postcode'] is None
+
+
+def test_is_precompiled_letter_false(sample_letter_template):
+    assert not sample_letter_template.is_precompiled_letter
+
+
+def test_is_precompiled_letter_true(sample_letter_template):
+    sample_letter_template.hidden = True
+    sample_letter_template.name = PRECOMPILED_TEMPLATE_NAME
+    assert sample_letter_template.is_precompiled_letter
+
+
+def test_is_precompiled_letter_hidden_true_not_name(sample_letter_template):
+    sample_letter_template.hidden = True
+    assert not sample_letter_template.is_precompiled_letter
+
+
+def test_is_precompiled_letter_name_correct_not_hidden(sample_letter_template):
+    sample_letter_template.name = PRECOMPILED_TEMPLATE_NAME
+    assert not sample_letter_template.is_precompiled_letter

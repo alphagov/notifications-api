@@ -25,7 +25,8 @@ from app.models import (
     User,
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
+    PRECOMPILED_TEMPLATE_NAME
 )
 from tests import create_authorization_header
 from tests.app.conftest import (
@@ -1834,7 +1835,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     template_one = create_template(
         sample_service,
         template_type=LETTER_TYPE,
-        template_name=current_app.config['PRECOMPILED_TEMPLATE_NAME'],
+        template_name=PRECOMPILED_TEMPLATE_NAME,
         hidden=True
     )
 
@@ -1894,7 +1895,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[0]["month"] == 4
     assert resp_json[0]["year"] == 2017
     assert resp_json[0]["count"] == 1
-    assert resp_json[0]["precompiled_letter"] is True
+    assert resp_json[0]["is_precompiled_letter"] is True
 
     assert resp_json[1]["template_id"] == str(sample_template.id)
     assert resp_json[1]["name"] == sample_template.name
@@ -1902,7 +1903,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[1]["month"] == 4
     assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 3
-    assert resp_json[1]["precompiled_letter"] is False
+    assert resp_json[1]["is_precompiled_letter"] is False
 
     assert resp_json[2]["template_id"] == str(sample_template.id)
     assert resp_json[2]["name"] == sample_template.name
@@ -1910,7 +1911,7 @@ def test_get_template_usage_by_month_returns_two_templates(
     assert resp_json[2]["month"] == 11
     assert resp_json[2]["year"] == 2017
     assert resp_json[2]["count"] == 1
-    assert resp_json[2]["precompiled_letter"] is False
+    assert resp_json[2]["is_precompiled_letter"] is False
 
 
 def test_search_for_notification_by_to_field(client, notify_db, notify_db_session):
@@ -2155,7 +2156,7 @@ def test_get_notification_for_service_includes_precompiled_letter(admin_request,
     )
 
     assert resp['id'] == str(sample_notification.id)
-    assert resp['template']['precompiled_letter'] is False
+    assert resp['template']['is_precompiled_letter'] is False
 
 
 def test_get_all_notifications_for_service_includes_template_redacted(admin_request, sample_service):
@@ -2202,10 +2203,10 @@ def test_get_all_notifications_for_service_includes_template_hidden(admin_reques
     )
 
     assert resp['notifications'][0]['id'] == str(precompiled_noti.id)
-    assert resp['notifications'][0]['template']['precompiled_letter'] is True
+    assert resp['notifications'][0]['template']['is_precompiled_letter'] is True
 
     assert resp['notifications'][1]['id'] == str(letter_noti.id)
-    assert resp['notifications'][1]['template']['precompiled_letter'] is False
+    assert resp['notifications'][1]['template']['is_precompiled_letter'] is False
 
 
 def test_search_for_notification_by_to_field_returns_personlisation(

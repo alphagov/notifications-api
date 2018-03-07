@@ -68,7 +68,7 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service, EmailBranding
+from app.models import Service, EmailBranding, LETTER_TYPE, PRECOMPILED_TEMPLATE_NAME
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_senders_schema import (
@@ -538,9 +538,9 @@ def get_monthly_template_usage(service_id):
                     'year': i.year,
                     'count': i.count,
                     'precompiled_letter': (
-                        i.template_type == 'letter' and
+                        i.template_type == LETTER_TYPE and
                         i.hidden and
-                        i.name == current_app.config['PRECOMPILED_TEMPLATE_NAME']
+                        i.name == PRECOMPILED_TEMPLATE_NAME
                     )
                 }
             )

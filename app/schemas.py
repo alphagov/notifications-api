@@ -24,7 +24,6 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.letters.utils import is_precompiled_letter
 from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
 from app.utils import get_template_instance
@@ -315,7 +314,7 @@ class BaseTemplateSchema(BaseSchema):
         return template.get_reply_to_text()
 
     def get_precompiled_letter(self, template):
-        return is_precompiled_letter(template)
+        return template.is_precompiled_letter
 
     class Meta:
         model = models.Template

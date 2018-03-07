@@ -14,7 +14,6 @@ from app.dao.templates_dao import (
     dao_get_template_by_id_and_service_id
 )
 
-from app.letters.utils import is_precompiled_letter
 from app.schemas import notification_with_template_schema
 from app.utils import cache_key_for_service_template_counter
 from app.errors import register_errors, InvalidRequest
@@ -49,7 +48,7 @@ def get_template_statistics_for_service_by_day(service_id):
             'template_id': str(data.template_id),
             'template_name': data.name,
             'template_type': data.template_type,
-            'precompiled_letter': is_precompiled_letter(data)
+            'precompiled_letter': data.is_precompiled_letter
         }
 
     return jsonify(data=[serialize(row) for row in stats])
