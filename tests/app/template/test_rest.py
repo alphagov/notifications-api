@@ -995,7 +995,7 @@ def test_preview_letter_template_precompiled_png_file_type(
                 file_type='png'
             )
 
-            with pytest.raises(json.decoder.JSONDecodeError):
+            with pytest.raises(ValueError):
                 mock_post.last_request.json()
             assert mock_get_letter_pdf.called_once_with(notification)
             assert base64.b64decode(resp['content']) == png_content
@@ -1044,7 +1044,7 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
 
             )
 
-            with pytest.raises(json.decoder.JSONDecodeError):
+            with pytest.raises(ValueError):
                 mock_post.last_request.json()
 
 
@@ -1090,5 +1090,5 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
                 _expected_status=500
             )
 
-            with pytest.raises(json.decoder.JSONDecodeError):
+            with pytest.raises(ValueError):
                 mock_post.last_request.json()
