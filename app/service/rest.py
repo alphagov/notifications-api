@@ -385,7 +385,12 @@ def get_notification_for_service(service_id, notification_id):
 
 
 def search_for_notification_by_to_field(service_id, search_term, statuses, notification_type):
-    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses, notification_type)
+    results = notifications_dao.dao_get_notifications_by_to_field(
+        service_id=service_id,
+        search_term=search_term,
+        statuses=statuses,
+        notification_type=notification_type
+    )
     return jsonify(
         notifications=notification_with_template_schema.dump(results, many=True).data
     ), 200
