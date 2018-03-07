@@ -2238,6 +2238,42 @@ def test_search_for_notification_by_to_field_returns_personlisation(
     assert notifications[0]['personalisation']['name'] == 'Foo'
 
 
+def test_search_for_notification_by_to_field_returns_notifications_by_type(
+    client,
+    notify_db,
+    notify_db_session,
+    sample_template,
+    sample_email_template
+):
+    sms_notification = create_sample_notification(
+        notify_db,
+        notify_db_session,
+        to_field='+447700900855',
+        normalised_to='447700900855',
+        template=sample_template
+    )
+    create_sample_notification(
+        notify_db,
+        notify_db_session,
+        to_field='44770@gamil.com',
+        normalised_to='44770@gamil.com',
+        template=sample_email_template
+    )
+
+    response = client.get(
+        '/service/{}/notifications?to={}&template_type={}'.format(
+            sms_notification.service_id, '0770', 'sms'
+
+        ),
+        headers=[create_authorization_header()]
+    )
+    notifications = json.loads(response.get_data(as_text=True))['notifications']
+
+    assert response.status_code == 200
+    assert len(notifications) == 1
+    assert notifications[0]['id'] == str(sms_notification.id)
+
+
 def test_is_service_name_unique_returns_200_if_unique(admin_request, notify_db, notify_db_session):
     service = create_service(service_name='unique', email_from='unique')
 

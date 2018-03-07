@@ -337,7 +337,11 @@ def get_service_history(service_id):
 def get_all_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args).data
     if data.get('to'):
-        return search_for_notification_by_to_field(service_id, data['to'], statuses=data.get('status'))
+        notification_type = data.get('template_type')[0] if data.get('template_type') else None
+        return search_for_notification_by_to_field(service_id=service_id,
+                                                   search_term=data['to'],
+                                                   statuses=data.get('status'),
+                                                   notification_type=notification_type)
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     limit_days = data.get('limit_days')
@@ -380,8 +384,8 @@ def get_notification_for_service(service_id, notification_id):
     ), 200
 
 
-def search_for_notification_by_to_field(service_id, search_term, statuses):
-    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses)
+def search_for_notification_by_to_field(service_id, search_term, statuses, notification_type):
+    results = notifications_dao.dao_get_notifications_by_to_field(service_id, search_term, statuses, notification_type)
     return jsonify(
         notifications=notification_with_template_schema.dump(results, many=True).data
     ), 200

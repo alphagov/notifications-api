@@ -435,7 +435,7 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
+def dao_get_notifications_by_to_field(service_id, search_term, statuses=None, notification_type=None):
     try:
         normalised = validate_and_format_phone_number(search_term)
     except InvalidPhoneError:
@@ -457,6 +457,8 @@ def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
 
     if statuses:
         filters.append(Notification.status.in_(statuses))
+    if notification_type:
+        filters.append(Notification.notification_type == notification_type)
 
     results = db.session.query(Notification).filter(*filters).order_by(desc(Notification.created_at)).all()
     return results

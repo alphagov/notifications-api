@@ -1838,6 +1838,26 @@ def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template
     assert notification3.id in notification_ids
 
 
+def test_dao_get_notifications_by_to_field_only_searches_for_notification_type(
+    notify_db_session
+):
+    service = create_service()
+    sms_template = create_template(service=service)
+    email_template = create_template(service=service, template_type='email')
+    sms = create_notification(template=sms_template, to_field='0771111111', normalised_to='0771111111')
+    email = create_notification(
+        template=email_template, to_field='077@example.com', normalised_to='077@example.com'
+    )
+    results = dao_get_notifications_by_to_field(service.id, "077")
+    assert len(results) == 2
+    results = dao_get_notifications_by_to_field(service.id, "077", notification_type='sms')
+    assert len(results) == 1
+    assert results[0].id == sms.id
+    results = dao_get_notifications_by_to_field(service.id, "077", notification_type='email')
+    assert len(results) == 1
+    assert results[0].id == email.id
+
+
 def test_dao_created_scheduled_notification(sample_notification):
 
     scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
