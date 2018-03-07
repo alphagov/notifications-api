@@ -10,18 +10,7 @@ from app.dao.statistics_dao import (
     update_job_stats_outcome_count
 )
 from app.dao.notifications_dao import get_notification_by_id
-from app.models import NOTIFICATION_STATUS_TYPES_COMPLETED
 from app.config import QueueNames
-
-
-def create_initial_notification_statistic_tasks(notification):
-    if notification.job_id and notification.status:
-        record_initial_job_statistics.apply_async((str(notification.id),), queue=QueueNames.STATISTICS)
-
-
-def create_outcome_notification_statistic_tasks(notification):
-    if notification.job_id and notification.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
-        record_outcome_job_statistics.apply_async((str(notification.id),), queue=QueueNames.STATISTICS)
 
 
 @worker_process_shutdown.connect
