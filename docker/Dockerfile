@@ -19,6 +19,8 @@ RUN \
 		build-essential \
 		zip \
 		libpq-dev \
+		libffi-dev \
+		python-dev \
 		jq \
 	&& echo "Clean up" \
 	&& rm -rf /var/lib/apt/lists/* /tmp/*
