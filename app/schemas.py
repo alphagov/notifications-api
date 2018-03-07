@@ -305,16 +305,12 @@ class NotificationModelSchema(BaseSchema):
 class BaseTemplateSchema(BaseSchema):
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
-    precompiled_letter = fields.Method("get_precompiled_letter")
 
     def get_reply_to(self, template):
         return template.reply_to
 
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
-
-    def get_precompiled_letter(self, template):
-        return template.is_precompiled_letter
 
     class Meta:
         model = models.Template
@@ -466,7 +462,7 @@ class NotificationWithTemplateSchema(BaseSchema):
             'content',
             'subject',
             'redact_personalisation',
-            'precompiled_letter'
+            'is_precompiled_letter'
         ],
         dump_only=True
     )
