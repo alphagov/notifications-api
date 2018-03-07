@@ -216,6 +216,9 @@ def populate_monthly_billing(year):
 def backfill_performance_platform_totals(start_date, end_date):
     """
     Send historical total messages sent to Performance Platform.
+
+    WARNING: This does not overwrite existing data. You need to delete
+             the existing data or Performance Platform will double-count.
     """
 
     delta = end_date - start_date
