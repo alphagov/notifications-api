@@ -522,6 +522,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
         stat.month = result.month
         stat.year = result.year
         stat.count = result.count
+        stat.is_precompiled_letter = result.is_precompiled_letter
         stats.append(stat)
 
     month = get_london_month_from_utc_column(Notification.created_at)
@@ -533,6 +534,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
     if fy_start < datetime.now() < fy_end:
         today_results = db.session.query(
             Notification.template_id,
+            Template.is_precompiled_letter,
             Template.name,
             Template.template_type,
             extract('month', month).label('month'),
@@ -547,6 +549,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
             Notification.key_type != KEY_TYPE_TEST
         ).group_by(
             Notification.template_id,
+            Template.hidden,
             Template.name,
             Template.template_type,
             month,
@@ -571,6 +574,7 @@ def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year)
                 new_stat.month = int(today_result.month)
                 new_stat.year = int(today_result.year)
                 new_stat.count = today_result.count
+                new_stat.is_precompiled_letter = today_result.is_precompiled_letter
                 stats.append(new_stat)
 
     return stats

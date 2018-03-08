@@ -83,6 +83,7 @@ def dao_get_template_usage(service_id, limit_days=None):
         Template.id.label('template_id'),
         Template.name,
         Template.template_type,
+        Template.is_precompiled_letter,
         notifications_aggregate_query.c.count
     ).join(
         notifications_aggregate_query,

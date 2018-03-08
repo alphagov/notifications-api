@@ -454,7 +454,16 @@ class NotificationWithTemplateSchema(BaseSchema):
 
     template = fields.Nested(
         TemplateSchema,
-        only=['id', 'version', 'name', 'template_type', 'content', 'subject', 'redact_personalisation'],
+        only=[
+            'id',
+            'version',
+            'name',
+            'template_type',
+            'content',
+            'subject',
+            'redact_personalisation',
+            'is_precompiled_letter'
+        ],
         dump_only=True
     )
     job = fields.Nested(JobSchema, only=["id", "original_file_name"], dump_only=True)

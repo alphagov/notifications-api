@@ -20,7 +20,7 @@ from app.dao.templates_dao import (
     dao_get_template_by_id)
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.letters.utils import get_letter_pdf, is_precompiled_letter
+from app.letters.utils import get_letter_pdf
 from app.models import SMS_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schemas import (template_schema, template_history_schema)
@@ -196,7 +196,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
     template = dao_get_template_by_id(notification.template_id)
 
-    if is_precompiled_letter(template):
+    if template.is_precompiled_letter:
 
         try:
 
