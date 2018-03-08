@@ -1972,6 +1972,18 @@ def test_search_for_notification_by_to_field_return_multiple_matches(client, not
     assert str(notification4.id) not in notification_ids
 
 
+def test_search_for_notification_by_to_field_return_400_for_letter_type(
+        client, notify_db, notify_db_session, sample_service
+):
+    response = client.get(
+        '/service/{}/notifications?to={}&template_type={}'.format(sample_service.id, 'A. Name', 'letter'),
+        headers=[create_authorization_header()]
+    )
+    response.status_code = 400
+    error_message= json.loads(response.get_data(as_text=True))
+    assert error_message['message'] == 'Only email and SMS can use search by recipient'
+
+
 def test_update_service_calls_send_notification_as_service_becomes_live(notify_db, notify_db_session, client, mocker):
     send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
 
