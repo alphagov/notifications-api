@@ -1,10 +1,11 @@
+import uuid
 import json
 from datetime import datetime
 
+from requests import RequestException
 import pytest
 import requests_mock
-
-from requests import RequestException
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import (DATETIME_FORMAT)
 
@@ -18,6 +19,7 @@ from tests.app.db import (
     create_service_callback_api
 )
 from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.config import QueueNames
 
 
 @pytest.mark.parametrize("notification_type",
@@ -88,7 +90,7 @@ def test_send_delivery_status_to_service_does_not_sent_request_when_service_call
     mocked = mocker.patch("requests.request")
     send_delivery_status_to_service(notification.id)
 
-    mocked.call_count == 0
+    assert mocked.call_count == 0
 
 
 @pytest.mark.parametrize("notification_type",
@@ -182,4 +184,15 @@ def test_send_delivery_status_to_service_does_not_retries_if_request_returns_404
                           status_code=404)
         send_delivery_status_to_service(notification.id)
 
-    mocked.call_count == 0
+    assert mocked.call_count == 0
+
+
+def test_send_delivery_status_to_service_retries_if_database_error(client, mocker):
+    notification_id = uuid.uuid4()
+    db_call = mocker.patch('app.celery.service_callback_tasks.get_notification_by_id', side_effect=SQLAlchemyError)
+    retry = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.retry')
+
+    send_delivery_status_to_service(notification_id)
+
+    db_call.assert_called_once_with(notification_id)
+    retry.assert_called_once_with(queue=QueueNames.RETRY)

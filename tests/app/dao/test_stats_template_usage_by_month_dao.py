@@ -3,7 +3,7 @@ from app.dao.stats_template_usage_by_month_dao import (
     insert_or_update_stats_for_template,
     dao_get_template_usage_stats_by_service
 )
-from app.models import StatsTemplateUsageByMonth
+from app.models import StatsTemplateUsageByMonth, LETTER_TYPE, PRECOMPILED_TEMPLATE_NAME
 
 from tests.app.db import create_service, create_template
 
@@ -72,6 +72,36 @@ def test_dao_get_template_usage_stats_by_service(sample_service):
     result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
 
     assert len(result) == 1
+
+
+def test_dao_get_template_usage_stats_by_service_for_precompiled_letters(sample_service):
+
+    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
+
+    precompiled_letter_template = create_template(
+        service=sample_service, template_name=PRECOMPILED_TEMPLATE_NAME, hidden=True, template_type=LETTER_TYPE)
+
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=letter_template.id,
+        month=5,
+        year=2017,
+        count=10
+    ))
+
+    db.session.add(StatsTemplateUsageByMonth(
+        template_id=precompiled_letter_template.id,
+        month=4,
+        year=2017,
+        count=20
+    ))
+
+    result = dao_get_template_usage_stats_by_service(sample_service.id, 2017)
+
+    assert len(result) == 2
+    assert [
+        (letter_template.id, 'letter Template Name', 'letter', False, 5, 2017, 10),
+        (precompiled_letter_template.id, PRECOMPILED_TEMPLATE_NAME, 'letter', True, 4, 2017, 20)
+    ] == result
 
 
 def test_dao_get_template_usage_stats_by_service_specific_year(sample_service):

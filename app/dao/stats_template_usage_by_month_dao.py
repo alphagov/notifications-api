@@ -37,6 +37,7 @@ def dao_get_template_usage_stats_by_service(service_id, year):
         StatsTemplateUsageByMonth.template_id,
         Template.name,
         Template.template_type,
+        Template.is_precompiled_letter,
         StatsTemplateUsageByMonth.month,
         StatsTemplateUsageByMonth.year,
         StatsTemplateUsageByMonth.count

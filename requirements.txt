@@ -16,13 +16,13 @@ marshmallow==2.15.0
 monotonic==1.4
 psycopg2-binary==2.7.4
 PyJWT==1.5.3
-SQLAlchemy==1.2.4
+SQLAlchemy==1.2.5
 
 notifications-python-client==4.7.2
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@23.8.0#egg=notifications-utils==23.8.0
+git+https://github.com/alphagov/notifications-utils.git@24.0.0#egg=notifications-utils==24.0.0
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
