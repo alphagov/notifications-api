@@ -9,7 +9,8 @@ from app.models import (
     ScheduledNotification,
     SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
-    SMS_TYPE
+    SMS_TYPE,
+    PRECOMPILED_TEMPLATE_NAME
 )
 from flask import json, current_app
 
@@ -759,7 +760,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {
-        'content': {'body': None, 'subject': current_app.config['PRECOMPILED_TEMPLATE_NAME']},
+        'content': {'body': None, 'subject': PRECOMPILED_TEMPLATE_NAME},
         'id': str(notification.id),
         'reference': 'letter-reference',
         'scheduled_for': None,

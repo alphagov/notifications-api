@@ -2187,8 +2187,8 @@ def test_get_all_notifications_for_service_includes_template_hidden(admin_reques
     precompiled_template = create_template(
         sample_service,
         template_type=LETTER_TYPE,
-        template_name='Pre-compiled PDF',
-        subject='Pre-compiled PDF',
+        template_name=PRECOMPILED_TEMPLATE_NAME,
+        subject=PRECOMPILED_TEMPLATE_NAME,
         hidden=True
     )
 

@@ -1,15 +1,15 @@
 """
 
-Revision ID: 0173_precompiled_pdf_rename
-Revises: 0172_deprioritise_examples
+Revision ID: 0174_precompiled_pdf_rename
+Revises: 0173_create_daily_sorted_letter
 Create Date: 2018-03-06 17:09:56.619803
 
 """
 from alembic import op
 
 
-revision = '0173_precompiled_pdf_rename'
-down_revision = '0172_deprioritise_examples'
+revision = '0174_precompiled_pdf_rename'
+down_revision = '0173_create_daily_sorted_letter'
 
 
 def upgrade():

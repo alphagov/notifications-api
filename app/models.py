@@ -642,7 +642,7 @@ class TemplateProcessTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-PRECOMPILED_TEMPLATE_NAME = 'Pre-compiled PDF'
+PRECOMPILED_TEMPLATE_NAME = 'Provided as PDF'
 
 
 class TemplateBase(db.Model):
