@@ -24,28 +24,29 @@ from app.config import QueueNames
 @notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def send_delivery_status_to_service(self, notification_id):
-    # TODO: do we need to do rate limit this?
-    notification = get_notification_by_id(notification_id)
-    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
-    if not service_callback_api:
-        # No delivery receipt API info set
-        return
-
-    # Release DB connection before performing an external HTTP request
-    db.session.close()
-
-    data = {
-        "id": str(notification_id),
-        "reference": str(notification.client_reference),
-        "to": notification.to,
-        "status": notification.status,
-        "created_at": notification.created_at.strftime(DATETIME_FORMAT),     # the time service sent the request
-        "completed_at": notification.updated_at.strftime(DATETIME_FORMAT),   # the last time the status was updated
-        "sent_at": notification.sent_at.strftime(DATETIME_FORMAT),           # the time the email was sent
-        "notification_type": notification.notification_type
-    }
-
+    retry = False
     try:
+        # TODO: do we need to do rate limit this?
+        notification = get_notification_by_id(notification_id)
+        service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+        if not service_callback_api:
+            # No delivery receipt API info set
+            return
+
+        # Release DB connection before performing an external HTTP request
+        db.session.close()
+
+        data = {
+            "id": str(notification_id),
+            "reference": str(notification.client_reference),
+            "to": notification.to,
+            "status": notification.status,
+            "created_at": notification.created_at.strftime(DATETIME_FORMAT),     # the time service sent the request
+            "completed_at": notification.updated_at.strftime(DATETIME_FORMAT),   # the last time the status was updated
+            "sent_at": notification.sent_at.strftime(DATETIME_FORMAT),           # the time the email was sent
+            "notification_type": notification.notification_type
+        }
+
         response = request(
             method="POST",
             url=service_callback_api.url,
@@ -71,7 +72,15 @@ def send_delivery_status_to_service(self, notification_id):
             )
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
-            try:
-                self.retry(queue=QueueNames.RETRY)
-            except self.MaxRetriesExceededError:
-                current_app.logger.exception('Retry: send_delivery_status_to_service has retried the max num of times')
+            retry = True
+    except Exception as e:
+        current_app.logger.exception(
+            'Unhandled exception when sending callback for notification {}'.format(notification_id)
+        )
+        retry = True
+
+    if retry:
+        try:
+            self.retry(queue=QueueNames.RETRY)
+        except self.MaxRetriesExceededError:
+            current_app.logger.exception('Retry: send_delivery_status_to_service has retried the max num of times')
