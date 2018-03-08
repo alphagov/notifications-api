@@ -1980,7 +1980,7 @@ def test_search_for_notification_by_to_field_return_400_for_letter_type(
         headers=[create_authorization_header()]
     )
     response.status_code = 400
-    error_message= json.loads(response.get_data(as_text=True))
+    error_message = json.loads(response.get_data(as_text=True))
     assert error_message['message'] == 'Only email and SMS can use search by recipient'
 
 
