@@ -23,7 +23,7 @@ from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
-    LetterDVLATemplate,
+    LetterPrintTemplate,
 )
 
 from app.encryption import (
@@ -728,9 +728,8 @@ class TemplateBase(db.Model):
                 {'content': self.content}
             )
         if self.template_type == LETTER_TYPE:
-            return LetterDVLATemplate(
+            return LetterPrintTemplate(
                 {'content': self.content, 'subject': self.subject},
-                notification_reference=1,
                 contact_block=self.service.get_default_letter_contact(),
             )
 
