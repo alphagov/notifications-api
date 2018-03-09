@@ -1365,7 +1365,7 @@ def test_process_incomplete_job_sms(mocker, sample_template):
 @freeze_time('2017-01-01')
 def test_process_incomplete_job_resets_start_time(mocker, sample_template):
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
-    save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
+    mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     job = create_job(template=sample_template, notification_count=10,
                      created_at=datetime.utcnow() - timedelta(hours=2),

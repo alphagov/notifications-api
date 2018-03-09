@@ -560,6 +560,7 @@ def process_incomplete_job(job_id):
     job = dao_get_job_by_id(job_id)
 
     # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
+    job.job_status = JOB_STATUS_PENDING
     job.processing_started = datetime.utcnow()
     dao_update_job(job)
 
