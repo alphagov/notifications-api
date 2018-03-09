@@ -550,6 +550,14 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
 @notify_celery.task(name='process-incomplete-jobs')
 @statsd(namespace="tasks")
 def process_incomplete_jobs(job_ids):
+    jobs = [dao_get_job_by_id(job_id) for job_id in job_ids]
+
+    # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
+    for job in jobs:
+        job.job_status = JOB_STATUS_IN_PROGRESS
+        job.processing_started = datetime.utcnow()
+        dao_update_job(job)
+
     current_app.logger.info("Resuming Job(s) {}".format(job_ids))
     for job_id in job_ids:
         process_incomplete_job(job_id)
@@ -558,11 +566,6 @@ def process_incomplete_jobs(job_ids):
 def process_incomplete_job(job_id):
 
     job = dao_get_job_by_id(job_id)
-
-    # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
-    job.job_status = JOB_STATUS_PENDING
-    job.processing_started = datetime.utcnow()
-    dao_update_job(job)
 
     last_notification_added = dao_get_last_notification_added_for_job_id(job_id)
 
