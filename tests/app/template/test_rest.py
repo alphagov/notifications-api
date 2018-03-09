@@ -9,7 +9,7 @@ import pytest
 import requests_mock
 from freezegun import freeze_time
 
-from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
+from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, PRECOMPILED_TEMPLATE_NAME, TemplateHistory
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
 from tests import create_authorization_header
@@ -890,8 +890,8 @@ def test_preview_letter_template_precompiled_pdf_file_type(
 
     template = create_template(sample_service,
                                template_type='letter',
-                               template_name='Pre-compiled PDF',
-                               subject='Pre-compiled PDF',
+                               template_name=PRECOMPILED_TEMPLATE_NAME,
+                               subject=PRECOMPILED_TEMPLATE_NAME,
                                hidden=True)
 
     notification = create_notification(template)
@@ -927,8 +927,8 @@ def test_preview_letter_template_precompiled_s3_error(
 
     template = create_template(sample_service,
                                template_type='letter',
-                               template_name='Pre-compiled PDF',
-                               subject='Pre-compiled PDF',
+                               template_name=PRECOMPILED_TEMPLATE_NAME,
+                               subject=PRECOMPILED_TEMPLATE_NAME,
                                hidden=True)
 
     notification = create_notification(template)
@@ -964,8 +964,8 @@ def test_preview_letter_template_precompiled_png_file_type(
 
     template = create_template(sample_service,
                                template_type='letter',
-                               template_name='Pre-compiled PDF',
-                               subject='Pre-compiled PDF',
+                               template_name=PRECOMPILED_TEMPLATE_NAME,
+                               subject=PRECOMPILED_TEMPLATE_NAME,
                                hidden=True)
 
     notification = create_notification(template)
@@ -1011,8 +1011,8 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
 
     template = create_template(sample_service,
                                template_type='letter',
-                               template_name='Pre-compiled PDF',
-                               subject='Pre-compiled PDF',
+                               template_name=PRECOMPILED_TEMPLATE_NAME,
+                               subject=PRECOMPILED_TEMPLATE_NAME,
                                hidden=True)
 
     notification = create_notification(template)
@@ -1058,8 +1058,8 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
 
     template = create_template(sample_service,
                                template_type='letter',
-                               template_name='Pre-compiled PDF',
-                               subject='Pre-compiled PDF',
+                               template_name=PRECOMPILED_TEMPLATE_NAME,
+                               subject=PRECOMPILED_TEMPLATE_NAME,
                                hidden=True)
 
     notification = create_notification(template)

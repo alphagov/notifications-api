@@ -25,7 +25,8 @@ from app.models import (
     KEY_TYPE_TEAM,
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
-    NOTIFICATION_DELIVERED
+    NOTIFICATION_DELIVERED,
+    PRECOMPILED_TEMPLATE_NAME
 )
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.celery.research_mode_tasks import create_fake_letter_response_file
@@ -304,12 +305,12 @@ def get_precompiled_letter_template(service_id):
         return template
 
     template = Template(
-        name='Pre-compiled PDF',
+        name=PRECOMPILED_TEMPLATE_NAME,
         created_by=get_user_by_id(current_app.config['NOTIFY_USER_ID']),
         service_id=service_id,
         template_type=LETTER_TYPE,
         hidden=True,
-        subject='Pre-compiled PDF',
+        subject=PRECOMPILED_TEMPLATE_NAME,
         content='',
     )
 
