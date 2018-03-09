@@ -111,12 +111,12 @@ def process_job(job_id):
 
     current_app.logger.debug("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
-    for row_number, recipient, personalisation in RecipientCSV(
+    for row in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
             placeholders=template.placeholders
-    ).enumerated_recipients_and_personalisation:
-        process_row(row_number, recipient, personalisation, template, job, service)
+    ).rows:
+        process_row(row, template, job, service)
 
     job_complete(job, start=start)
 
@@ -138,15 +138,15 @@ def job_complete(job, resumed=False, start=None):
         )
 
 
-def process_row(row_number, recipient, personalisation, template, job, service):
+def process_row(row, template, job, service):
     template_type = template.template_type
     encrypted = encryption.encrypt({
         'template': str(template.id),
         'template_version': job.template_version,
         'job': str(job.id),
-        'to': recipient,
-        'row_number': row_number,
-        'personalisation': dict(personalisation)
+        'to': row.recipient,
+        'row_number': row.index,
+        'personalisation': dict(row.personalisation)
     })
 
     send_fns = {
@@ -573,12 +573,12 @@ def process_incomplete_job(job_id):
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
-    for row_number, recipient, personalisation in RecipientCSV(
+    for row in RecipientCSV(
             s3.get_job_from_s3(str(job.service_id), str(job.id)),
             template_type=template.template_type,
             placeholders=template.placeholders
-    ).enumerated_recipients_and_personalisation:
-        if row_number > resume_from_row:
-            process_row(row_number, recipient, personalisation, template, job, job.service)
+    ).rows:
+        if row.index > resume_from_row:
+            process_row(row, template, job, job.service)
 
     job_complete(job, resumed=True)

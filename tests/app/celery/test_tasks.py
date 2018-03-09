@@ -10,6 +10,7 @@ from requests import RequestException
 from sqlalchemy.exc import SQLAlchemyError
 from celery.exceptions import Retry
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.columns import Row
 
 from app import (encryption, DATETIME_FORMAT)
 from app.celery import provider_tasks
@@ -303,18 +304,17 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     )
 
     row_call = process_row_mock.mock_calls[0][1]
-
-    assert row_call[0] == 0
-    assert row_call[1] == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST']
-    assert dict(row_call[2]) == {
+    assert row_call[0].index == 0
+    assert row_call[0].recipient == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST']
+    assert row_call[0].personalisation == {
         'addressline1': 'A1',
         'addressline2': 'A2',
         'addressline3': 'A3',
         'addressline4': 'A4',
         'postcode': 'A_POST'
     }
-    assert row_call[4] == sample_letter_job
-    assert row_call[5] == sample_letter_job.service
+    assert row_call[2] == sample_letter_job
+    assert row_call[3] == sample_letter_job.service
 
     assert process_row_mock.call_count == 1
 
@@ -363,7 +363,19 @@ def test_process_row_sends_letter_task(template_type, research_mode, expected_fu
     job = Mock(id='job_id', template_version='temp_vers')
     service = Mock(id='service_id', research_mode=research_mode)
 
-    process_row('row_num', 'recip', {'foo': 'bar'}, template, job, service)
+    process_row(
+        Row(
+            {'foo': 'bar', 'to': 'recip'},
+            index='row_num',
+            error_fn=lambda k, v: None,
+            recipient_column_headers=['to'],
+            placeholders={'foo'},
+            template=template,
+        ),
+        template,
+        job,
+        service,
+    )
 
     encrypt_mock.assert_called_once_with({
         'template': 'template_id',
