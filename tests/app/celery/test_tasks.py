@@ -1362,6 +1362,25 @@ def test_process_incomplete_job_sms(mocker, sample_template):
     assert save_sms.call_count == 8  # There are 10 in the file and we've added two already
 
 
+@freeze_time('2017-01-01')
+def test_process_incomplete_job_resets_start_time(mocker, sample_template):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
+
+    job = create_job(template=sample_template, notification_count=10,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     processing_started=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_IN_PROGRESS)
+
+    process_incomplete_job(str(job.id))
+
+    completed_job = Job.query.get(job.id)
+
+    assert completed_job.processing_started == datetime.utcnow()
+    assert completed_job.job_status == JOB_STATUS_FINISHED
+
+
 def test_process_incomplete_job_with_notifications_all_sent(mocker, sample_template):
 
     mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))

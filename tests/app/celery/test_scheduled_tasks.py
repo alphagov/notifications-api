@@ -896,6 +896,36 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
     )
 
 
+def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+    job = create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_IN_PROGRESS
+    )
+    job_2 = create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=29),
+        job_status=JOB_STATUS_IN_PROGRESS
+    )
+    with pytest.raises(expected_exception=JobIncompleteError) as e:
+        check_job_status()
+    assert str(job.id) in e.value.message
+    assert str(job_2.id) not in e.value.message
+
+    # job 2 not in celery task
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
+        args=([str(job.id)],),
+        queue=QueueNames.JOBS
+    )
+
+
 def test_daily_stats_template_usage_by_month(notify_db, notify_db_session):
     notification_history = functools.partial(
         create_notification_history,
