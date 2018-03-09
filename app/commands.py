@@ -1,29 +1,33 @@
+import functools
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
-import functools
 
-import flask
-from flask import current_app
 import click
+import flask
 from click_datetime import Datetime as click_dt
+from flask import current_app
+from sqlalchemy.orm.exc import NoResultFound
 
-from app import db
+from app import db, DATETIME_FORMAT, encryption
+from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
+from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.config import QueueNames
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
     get_service_ids_that_need_billing_populated
 )
-from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE
+from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user
 )
-from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
-from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
+from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE, Notification
 from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
-from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
+from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
 
 
 @click.group(name='command', help='Additional commands')
@@ -309,6 +313,56 @@ def insert_inbound_numbers_from_file(file_name):
         db.session.execute(sql.format(uuid.uuid4(), line.strip()))
         db.session.commit()
     file.close()
+
+
+@notify_command(name='replay-service-callbacks')
+@click.option('-f', '--file_name', required=True,
+              help="""Full path of the file to upload, file is a contains client references of
+              notifications that need the status to be sent to the service.""")
+@click.option('-s', '--service_id', required=True,
+              help="""The service that the callbacks are for""")
+def replay_service_callbacks(file_name, service_id):
+    print("Start send service callbacks for service: ", service_id)
+    callback_api = get_service_callback_api_for_service(service_id=service_id)
+    if not callback_api:
+        print("Callback api was not found for service: {}".format(service_id))
+        return
+
+    errors = []
+    notifications = []
+    file = open(file_name)
+
+    for ref in file:
+        try:
+            notification = Notification.query.filter_by(client_reference=ref.strip()).one()
+            notifications.append(notification)
+        except NoResultFound as e:
+            errors.append("Reference: {} was not found in notifications.".format(ref))
+
+    for e in errors:
+        print(e)
+    if errors:
+        raise Exception("Some notifications for the given references were not found")
+
+    for n in notifications:
+        data = {
+            "notification_id": str(n.id),
+            "notification_client_reference": n.client_reference,
+            "notification_to": n.to,
+            "notification_status": n.status,
+            "notification_created_at": n.created_at.strftime(DATETIME_FORMAT),
+            "notification_updated_at": n.updated_at.strftime(DATETIME_FORMAT),
+            "notification_sent_at": n.sent_at.strftime(DATETIME_FORMAT),
+            "notification_type": n.notification_type,
+            "service_callback_api_url": callback_api.url,
+            "service_callback_api_bearer_token": callback_api.bearer_token,
+        }
+        encrypted_status_update = encryption.encrypt(data)
+        send_delivery_status_to_service.apply_async([str(n.id), encrypted_status_update],
+                                                    queue=QueueNames.CALLBACKS)
+
+    print("Replay service status for service: {}. Sent {} notification status updates to the queue".format(
+        service_id, len(notifications)))
 
 
 def setup_commands(application):
