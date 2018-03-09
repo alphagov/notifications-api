@@ -1,11 +1,14 @@
 import base64
+from io import BytesIO
 
 import botocore
+from PyPDF2.utils import PdfReadError
 from flask import (
     Blueprint,
     current_app,
     jsonify,
     request)
+from notifications_utils.pdf import extract_page_from_pdf
 from requests import post as requests_post
 
 from app.dao.notifications_dao import get_notification_by_id
@@ -211,9 +214,21 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         content = base64.b64encode(pdf_file).decode('utf-8')
 
         if file_type == 'png':
-            url = '{}/precompiled-preview.png{}'.format(
-                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
-                '?page={}'.format(page) if page else ''
+
+            try:
+                page_number = page if page else "0"
+                pdf_page = extract_page_from_pdf(BytesIO(pdf_file), int(page_number) - 1)
+                content = base64.b64encode(pdf_page).decode('utf-8')
+            except PdfReadError:
+                current_app.logger.exception(
+                    'Error extracting requested page from PDF file for notification_id {}'.format(notification_id))
+                raise InvalidRequest(
+                    'Error extracting requested page from PDF file for notification_id {}'.format(notification_id),
+                    status_code=500
+                )
+
+            url = '{}/precompiled-preview.png'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST']
             )
 
             content = _get_png_preview(url, content, notification.id, json=False)

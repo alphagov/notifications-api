@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import botocore
 import pytest
 import requests_mock
+from PyPDF2.utils import PdfReadError
 from freezegun import freeze_time
 
 from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
@@ -981,6 +982,8 @@ def test_preview_letter_template_precompiled_png_file_type(
 
             mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
+            mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
+
             mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
                 content=png_content,
@@ -1027,6 +1030,8 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
             png_content = b'\x00\x02'
 
             mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+
+            mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
             mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
@@ -1075,6 +1080,8 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
 
             mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
+            mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
+
             mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
                 content=png_content,
@@ -1092,3 +1099,48 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
+
+
+def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+
+            pdf_content = b'\x00\x01'
+            png_content = b'\x00\x02'
+
+            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+
+            mocker.patch('app.template.rest.extract_page_from_pdf', side_effect=PdfReadError())
+
+            request_mock.post(
+                'http://localhost/notifications-template-preview/precompiled-preview.png',
+                content=png_content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=404
+            )
+
+            admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type='png',
+                _expected_status=500
+            )
