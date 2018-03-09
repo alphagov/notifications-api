@@ -16,11 +16,11 @@ down_revision = '0173_create_daily_sorted_letter'
 def upgrade():
     # Create notifications_for_today table
     op.create_table('ft_billing',
-                    sa.Column('dm_datetime', sa.Date(), nullable=True),
-                    sa.Column('template', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('service', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('organisation', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('annual_billing', postgresql.UUID(as_uuid=True), nullable=True),
+                    sa.Column('bst_date', sa.Date(), nullable=True),
+                    sa.Column('template_id', postgresql.UUID(as_uuid=True), nullable=True),
+                    sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=True),
+                    sa.Column('organisation_id', postgresql.UUID(as_uuid=True), nullable=True),
+                    sa.Column('annual_billing_id', postgresql.UUID(as_uuid=True), nullable=True),
                     sa.Column('notification_type', sa.Text(), nullable=True),
                     sa.Column('provider', sa.Text(), nullable=True),
                     sa.Column('crown', sa.Text(), nullable=True),
@@ -29,8 +29,11 @@ def upgrade():
                     sa.Column('rate', sa.Numeric(), nullable=True),
                     sa.Column('billable_units', sa.Numeric(), nullable=True),
                     sa.Column('notifications_sent', sa.Integer(), nullable=True),
-                    sa.PrimaryKeyConstraint('dm_datetime', 'template')
+                    sa.PrimaryKeyConstraint('bst_date', 'template_id')
                     )
+    # Set indexes
+    op.create_index(op.f('ix_ft_billing_bst_date'), 'ft_billing', ['bst_date'], unique=False)
+    op.create_index(op.f('ix_ft_billing_service_id'), 'ft_billing', ['service_id'], unique=False)
 
     # Create dm_datetime table
     op.create_table('dm_datetime',
@@ -54,6 +57,7 @@ def upgrade():
                     )
     # Set indexes
     op.create_index(op.f('ix_dm_datetime_yearmonth'), 'dm_datetime', ['year', 'month'], unique=False)
+    op.create_index(op.f('ix_dm_datetime_bst_date'), 'dm_datetime', ['bst_date'], unique=False)
 
     # Insert data into table
     op.execute(
