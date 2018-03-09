@@ -66,6 +66,7 @@ applications:
     command: scripts/run_multi_worker_app_paas.sh celery multi start 4 -c 10 -A run_celery.notify_celery --loglevel=INFO -Q send-sms-tasks,send-email-tasks
     memory: 2G
     env:
+      SQLALCHEMY_POOL_SIZE: 1
       NOTIFY_APP_NAME: delivery-worker-sender
 
   - name: notify-delivery-worker-periodic
