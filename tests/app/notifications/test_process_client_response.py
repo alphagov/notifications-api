@@ -50,7 +50,6 @@ def test_validate_callback_data_returns_error_for_empty_string():
 
 
 def test_outcome_statistics_called_for_successful_callback(sample_notification, mocker):
-    stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
     mocker.patch(
         'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
         return_value=sample_notification
@@ -65,7 +64,6 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
     assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
     assert error is None
     send_mock.assert_called_once_with([str(sample_notification.id)], queue="service-callbacks")
-    stats_mock.assert_called_once_with(sample_notification)
 
 
 def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notification, mocker):
@@ -82,30 +80,22 @@ def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notificat
 
 
 def test_process_sms_response_return_success_for_send_sms_code_reference(mocker):
-    stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
-
     success, error = process_sms_client_response(status='000', reference='send-sms-code', client_name='sms-client')
     assert success == "{} callback succeeded: send-sms-code".format('sms-client')
     assert error is None
-    stats_mock.assert_not_called()
 
 
 def test_process_sms_response_returns_error_bad_reference(mocker):
-    stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
-
     success, error = process_sms_client_response(status='000', reference='something-bad', client_name='sms-client')
     assert success is None
     assert error == "{} callback with invalid reference {}".format('sms-client', 'something-bad')
-    stats_mock.assert_not_called()
 
 
 def test_process_sms_response_raises_client_exception_for_unknown_sms_client(mocker):
-    stats_mock = mocker.patch('app.notifications.process_client_response.create_outcome_notification_statistic_tasks')
     success, error = process_sms_client_response(status='000', reference=str(uuid.uuid4()), client_name='sms-client')
 
     assert success is None
     assert error == 'unknown sms client: {}'.format('sms-client')
-    stats_mock.assert_not_called()
 
 
 def test_process_sms_response_raises_client_exception_for_unknown_status(mocker):

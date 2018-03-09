@@ -6,6 +6,7 @@ from flask import url_for, current_app
 
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON
@@ -23,7 +24,7 @@ from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
-    LetterDVLATemplate,
+    LetterPrintTemplate,
 )
 
 from app.encryption import (
@@ -641,6 +642,9 @@ class TemplateProcessTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+PRECOMPILED_TEMPLATE_NAME = 'Pre-compiled PDF'
+
+
 class TemplateBase(db.Model):
     __abstract__ = True
 
@@ -718,6 +722,14 @@ class TemplateBase(db.Model):
         else:
             return None
 
+    @hybrid_property
+    def is_precompiled_letter(self):
+        return self.hidden and self.name == PRECOMPILED_TEMPLATE_NAME and self.template_type == LETTER_TYPE
+
+    @is_precompiled_letter.setter
+    def is_precompiled_letter(self, value):
+        pass
+
     def _as_utils_template(self):
         if self.template_type == EMAIL_TYPE:
             return PlainTextEmailTemplate(
@@ -728,9 +740,8 @@ class TemplateBase(db.Model):
                 {'content': self.content}
             )
         if self.template_type == LETTER_TYPE:
-            return LetterDVLATemplate(
+            return LetterPrintTemplate(
                 {'content': self.content, 'subject': self.subject},
-                notification_reference=1,
                 contact_block=self.service.get_default_letter_contact(),
             )
 
@@ -1752,3 +1763,13 @@ class StatsTemplateUsageByMonth(db.Model):
             'year': self.year,
             'count': self.count
         }
+
+
+class DailySortedLetter(db.Model):
+    __tablename__ = "daily_sorted_letter"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    billing_day = db.Column(db.Date, nullable=False, index=True, unique=True)
+    unsorted_count = db.Column(db.Integer, nullable=False, default=0)
+    sorted_count = db.Column(db.Integer, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)

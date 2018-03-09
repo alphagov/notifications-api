@@ -828,7 +828,7 @@ def test_preview_letter_template_by_id_valid_file_type(
         with requests_mock.Mocker() as request_mock:
             content = b'\x00\x01'
 
-            request_mock.post(
+            mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/preview.pdf',
                 content=content,
                 headers={'X-pdf-page-count': '1'},
@@ -842,6 +842,7 @@ def test_preview_letter_template_by_id_valid_file_type(
                 file_type='pdf'
             )
 
+            assert mock_post.last_request.json()
             assert base64.b64decode(resp['content']) == content
 
 
@@ -859,7 +860,7 @@ def test_preview_letter_template_by_id_template_preview_500(
         with requests_mock.Mocker() as request_mock:
             content = b'\x00\x01'
 
-            request_mock.post(
+            mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/preview.pdf',
                 content=content,
                 headers={'X-pdf-page-count': '1'},
@@ -874,7 +875,9 @@ def test_preview_letter_template_by_id_template_preview_500(
                 _expected_status=500
             )
 
-            assert resp['message'] == 'Error generating preview for {}'.format(sample_letter_notification.id)
+            assert mock_post.last_request.json()
+            assert 'Status code: 404' in resp['message']
+            assert 'Error generating preview letter for {}'.format(sample_letter_notification.id) in resp['message']
 
 
 def test_preview_letter_template_precompiled_pdf_file_type(
@@ -978,7 +981,7 @@ def test_preview_letter_template_precompiled_png_file_type(
 
             mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
-            request_mock.post(
+            mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
                 content=png_content,
                 headers={'X-pdf-page-count': '1'},
@@ -992,6 +995,8 @@ def test_preview_letter_template_precompiled_png_file_type(
                 file_type='png'
             )
 
+            with pytest.raises(ValueError):
+                mock_post.last_request.json()
             assert mock_get_letter_pdf.called_once_with(notification)
             assert base64.b64decode(resp['content']) == png_content
 
@@ -1023,7 +1028,7 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
 
             mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
-            request_mock.post(
+            mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
                 content=png_content,
                 headers={'X-pdf-page-count': '1'},
@@ -1038,6 +1043,9 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
                 _expected_status=500
 
             )
+
+            with pytest.raises(ValueError):
+                mock_post.last_request.json()
 
 
 def test_preview_letter_template_precompiled_png_template_preview_400_error(
@@ -1067,7 +1075,7 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
 
             mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
-            request_mock.post(
+            mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
                 content=png_content,
                 headers={'X-pdf-page-count': '1'},
@@ -1080,5 +1088,7 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
                 notification_id=notification.id,
                 file_type='png',
                 _expected_status=500
-
             )
+
+            with pytest.raises(ValueError):
+                mock_post.last_request.json()

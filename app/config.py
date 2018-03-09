@@ -149,7 +149,6 @@ class Config(object):
     CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID = 'eb4d9930-87ab-4aef-9bce-786762687884'
     SERVICE_NOW_LIVE_TEMPLATE_ID = '618185c6-3636-49cd-b7d2-6f6f5eb3bdde'
     ORGANISATION_INVITATION_EMAIL_TEMPLATE_ID = '203566f0-d835-47c5-aa06-932439c86573'
-    PRECOMPILED_TEMPLATE_NAME = 'Pre-compiled PDF'
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
@@ -229,11 +228,6 @@ class Config(object):
         'remove_transformed_dvla_files': {
             'task': 'remove_transformed_dvla_files',
             'schedule': crontab(hour=4, minute=40),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'timeout-job-statistics': {
-            'task': 'timeout-job-statistics',
-            'schedule': crontab(hour=5, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'populate_monthly_billing': {

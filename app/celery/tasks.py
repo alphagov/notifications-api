@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 
 from celery.signals import worker_process_shutdown
 from flask import current_app
@@ -31,6 +31,7 @@ from app import (
 from app.aws import s3
 from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
 from app.config import QueueNames
+from app.dao.daily_sorted_letter_dao import dao_create_or_update_daily_sorted_letter
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
     dao_update_job,
@@ -66,9 +67,11 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE,
     SMS_TYPE,
+    DailySortedLetter,
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
+from app.utils import convert_utc_to_bst
 
 
 @worker_process_shutdown.connect
@@ -108,12 +111,12 @@ def process_job(job_id):
 
     current_app.logger.debug("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
-    for row_number, recipient, personalisation in RecipientCSV(
+    for row in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
             template_type=template.template_type,
             placeholders=template.placeholders
-    ).enumerated_recipients_and_personalisation:
-        process_row(row_number, recipient, personalisation, template, job, service)
+    ).rows:
+        process_row(row, template, job, service)
 
     job_complete(job, start=start)
 
@@ -135,15 +138,15 @@ def job_complete(job, resumed=False, start=None):
         )
 
 
-def process_row(row_number, recipient, personalisation, template, job, service):
+def process_row(row, template, job, service):
     template_type = template.template_type
     encrypted = encryption.encrypt({
         'template': str(template.id),
         'template_version': job.template_version,
         'job': str(job.id),
-        'to': recipient,
-        'row_number': row_number,
-        'personalisation': dict(personalisation)
+        'to': row.recipient,
+        'row_number': row.index,
+        'personalisation': dict(row.personalisation)
     })
 
     send_fns = {
@@ -404,6 +407,7 @@ def get_template_class(template_type):
 def update_letter_notifications_statuses(self, filename):
     bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
     response_file_content = s3.get_s3_file(bucket_location, filename)
+    sorted_letter_counts = defaultdict(int)
 
     try:
         notification_updates = process_updates_from_file(response_file_content)
@@ -414,12 +418,39 @@ def update_letter_notifications_statuses(self, filename):
         for update in notification_updates:
             check_billable_units(update)
             update_letter_notification(filename, temporary_failures, update)
+            sorted_letter_counts[update.cost_threshold] += 1
 
         if temporary_failures:
             # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
             message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
                 filename=filename, failures=temporary_failures)
             raise DVLAException(message)
+
+        if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
+            unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
+
+            message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
+                filename, unknown_status
+            )
+            raise DVLAException(message)
+
+        billing_date = get_billing_date_in_bst_from_filename(filename)
+        persist_daily_sorted_letter_counts(billing_date, sorted_letter_counts)
+
+
+def get_billing_date_in_bst_from_filename(filename):
+    datetime_string = filename.split('.')[1]
+    datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M%S')
+    return convert_utc_to_bst(datetime_obj).date()
+
+
+def persist_daily_sorted_letter_counts(day, sorted_letter_counts):
+    daily_letter_count = DailySortedLetter(
+        billing_day=day,
+        unsorted_count=sorted_letter_counts['Unsorted'],
+        sorted_count=sorted_letter_counts['Sorted']
+    )
+    dao_create_or_update_daily_sorted_letter(daily_letter_count)
 
 
 def process_updates_from_file(response_file):
@@ -542,12 +573,12 @@ def process_incomplete_job(job_id):
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
-    for row_number, recipient, personalisation in RecipientCSV(
+    for row in RecipientCSV(
             s3.get_job_from_s3(str(job.service_id), str(job.id)),
             template_type=template.template_type,
             placeholders=template.placeholders
-    ).enumerated_recipients_and_personalisation:
-        if row_number > resume_from_row:
-            process_row(row_number, recipient, personalisation, template, job, job.service)
+    ).rows:
+        if row.index > resume_from_row:
+            process_row(row, template, job, job.service)
 
     job_complete(job, resumed=True)

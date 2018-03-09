@@ -1,5 +1,7 @@
 import uuid
 
+import pytest
+
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
 from tests.app.db import create_organisation, create_service, create_user
@@ -310,3 +312,100 @@ def test_get_organisation_users_returns_users_for_organisation(admin_request, sa
 
     assert len(response['data']) == 2
     assert response['data'][0]['id'] == str(first.id)
+
+
+def test_is_organisation_name_unique_returns_200_if_unique(admin_request, notify_db, notify_db_session):
+    organisation = create_organisation(name='unique')
+
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=200,
+        org_id=organisation.id,
+        name='something'
+    )
+
+    assert response == {"result": True}
+
+
+@pytest.mark.parametrize('name', ["UNIQUE", "Unique.", "**uniQUE**"])
+def test_is_organisation_name_unique_returns_200_and_name_capitalized_or_punctuation_added(
+    admin_request,
+    notify_db,
+    notify_db_session,
+    name
+):
+    organisation = create_organisation(name='unique')
+
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=200,
+        org_id=organisation.id,
+        name=name
+    )
+
+    assert response == {"result": True}
+
+
+@pytest.mark.parametrize('name', ["UNIQUE", "Unique"])
+def test_is_organisation_name_unique_returns_200_and_false_with_same_name_and_different_case_of_other_organisation(
+    admin_request,
+    notify_db,
+    notify_db_session,
+    name
+):
+    create_organisation(name='unique')
+    different_organisation_id = '111aa111-2222-bbbb-aaaa-111111111111'
+
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=200,
+        org_id=different_organisation_id,
+        name=name
+    )
+
+    assert response == {"result": False}
+
+
+def test_is_organisation_name_unique_returns_200_and_false_if_name_exists_for_a_different_organisation(
+    admin_request,
+    notify_db,
+    notify_db_session
+):
+    create_organisation(name='existing name')
+    different_organisation_id = '111aa111-2222-bbbb-aaaa-111111111111'
+
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=200,
+        org_id=different_organisation_id,
+        name='existing name'
+    )
+
+    assert response == {"result": False}
+
+
+def test_is_organisation_name_unique_returns_200_and_true_if_name_exists_for_the_same_organisation(
+    admin_request,
+    notify_db,
+    notify_db_session
+):
+    organisation = create_organisation(name='unique')
+
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=200,
+        org_id=organisation.id,
+        name='unique'
+    )
+
+    assert response == {"result": True}
+
+
+def test_is_organisation_name_unique_returns_400_when_name_does_not_exist(admin_request):
+    response = admin_request.get(
+        'organisation.is_organisation_name_unique',
+        _expected_status=400
+    )
+
+    assert response["message"][0]["org_id"] == ["Can't be empty"]
+    assert response["message"][1]["name"] == ["Can't be empty"]
