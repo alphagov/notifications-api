@@ -361,8 +361,8 @@ def replay_service_callbacks(file_name, service_id):
         send_delivery_status_to_service.apply_async([str(n.id), encrypted_status_update],
                                                     queue=QueueNames.CALLBACKS)
 
-    print("Replay service status for service: {}. Sent {} notification status updates".format(service_id,
-                                                                                              len(notifications)))
+    print("Replay service status for service: {}. Sent {} notification status updates to the queue".format(
+        service_id, len(notifications)))
 
 
 def setup_commands(application):

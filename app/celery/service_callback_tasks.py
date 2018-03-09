@@ -73,7 +73,9 @@ def send_delivery_status_to_service(self, notification_id,
                     self.retry(queue=QueueNames.RETRY)
                 except self.MaxRetriesExceededError:
                     current_app.logger.exception(
-                        'Retry: send_delivery_status_to_service has retried the max num of times')
+                        """Retry: send_delivery_status_to_service has retried the max num of times
+                         for notification: {}""".format(notification_id)
+                    )
 
 
 def process_update_with_notification_id(self, notification_id):
@@ -135,4 +137,7 @@ def process_update_with_notification_id(self, notification_id):
         try:
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
-            current_app.logger.exception('Retry: send_delivery_status_to_service has retried the max num of times')
+            current_app.logger.exception(
+                """Retry: send_delivery_status_to_service has retried the max num of times
+                 for notification: {}""".format(notification_id)
+            )
