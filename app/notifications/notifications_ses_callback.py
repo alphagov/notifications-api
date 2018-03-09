@@ -11,7 +11,6 @@ from app.dao import (
     notifications_dao
 )
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
-from app.celery.statistics_tasks import create_outcome_notification_statistic_tasks
 from app.notifications.process_client_response import validate_callback_data
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.config import QueueNames
@@ -77,7 +76,6 @@ def process_ses_response(ses_request):
                     notification.sent_at
                 )
 
-            create_outcome_notification_statistic_tasks(notification)
             _check_and_queue_callback_task(notification.id, notification.service_id)
             return
 

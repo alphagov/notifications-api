@@ -213,19 +213,21 @@ def timeout_notifications():
 @statsd(namespace="tasks")
 def send_daily_performance_platform_stats():
     if performance_platform_client.active:
-        send_total_sent_notifications_to_performance_platform()
+        yesterday = datetime.utcnow() - timedelta(days=1)
+        send_total_sent_notifications_to_performance_platform(yesterday)
         processing_time.send_processing_time_to_performance_platform()
 
 
-def send_total_sent_notifications_to_performance_platform():
-    count_dict = total_sent_notifications.get_total_sent_notifications_yesterday()
+def send_total_sent_notifications_to_performance_platform(day):
+    count_dict = total_sent_notifications.get_total_sent_notifications_for_day(day)
     email_sent_count = count_dict.get('email').get('count')
     sms_sent_count = count_dict.get('sms').get('count')
+    letter_sent_count = count_dict.get('letter').get('count')
     start_date = count_dict.get('start_date')
 
     current_app.logger.info(
-        "Attempting to update performance platform for date {} with email count {} and sms count {}"
-        .format(start_date, email_sent_count, sms_sent_count)
+        "Attempting to update Performance Platform for {} with {} emails, {} text messages and {} letters"
+        .format(start_date, email_sent_count, sms_sent_count, letter_sent_count)
     )
 
     total_sent_notifications.send_total_notifications_sent_for_day_stats(
@@ -238,6 +240,12 @@ def send_total_sent_notifications_to_performance_platform():
         start_date,
         'email',
         email_sent_count
+    )
+
+    total_sent_notifications.send_total_notifications_sent_for_day_stats(
+        start_date,
+        'letter',
+        letter_sent_count
     )
 
 

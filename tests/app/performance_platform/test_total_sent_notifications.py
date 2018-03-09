@@ -6,7 +6,7 @@ from freezegun import freeze_time
 from app.utils import get_midnight_for_day_before
 from app.performance_platform.total_sent_notifications import (
     send_total_notifications_sent_for_day_stats,
-    get_total_sent_notifications_yesterday
+    get_total_sent_notifications_for_day
 )
 
 from tests.app.conftest import (
@@ -55,14 +55,16 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
 
     # Create some notifications for the day before
     yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
+    ereyesterday = datetime(2016, 1, 9, 15, 30, 0, 0)
     with freeze_time(yesterday):
+        notification_history(notification_type='letter')
         notification_history(notification_type='sms')
         notification_history(notification_type='sms')
         notification_history(notification_type='email')
         notification_history(notification_type='email')
         notification_history(notification_type='email')
 
-    total_count_dict = get_total_sent_notifications_yesterday()
+    total_count_dict = get_total_sent_notifications_for_day(yesterday)
 
     assert total_count_dict == {
         "start_date": get_midnight_for_day_before(datetime.utcnow()),
@@ -71,5 +73,17 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
         },
         "sms": {
             "count": 2
+        },
+        "letter": {
+            "count": 1
         }
+    }
+
+    another_day = get_total_sent_notifications_for_day(ereyesterday)
+
+    assert another_day == {
+        'email': {'count': 0},
+        'letter': {'count': 0},
+        'sms': {'count': 0},
+        'start_date': datetime(2016, 1, 9, 0, 0),
     }

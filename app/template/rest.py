@@ -1,4 +1,6 @@
 import base64
+
+import botocore
 from flask import (
     Blueprint,
     current_app,
@@ -18,6 +20,7 @@ from app.dao.templates_dao import (
     dao_get_template_by_id)
 from notifications_utils.template import SMSMessageTemplate
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.letters.utils import get_letter_pdf
 from app.models import SMS_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schemas import (template_schema, template_history_schema)
@@ -28,7 +31,6 @@ from app.errors import (
 from app.utils import get_template_instance, get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
-
 
 register_errors(template_blueprint)
 
@@ -194,36 +196,84 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
     template = dao_get_template_by_id(notification.template_id)
 
-    template_for_letter_print = {
-        "id": str(notification.template_id),
-        "subject": template.subject,
-        "content": template.content,
-        "version": str(template.version)
-    }
+    if template.is_precompiled_letter:
 
-    service = dao_fetch_service_by_id(service_id)
+        try:
 
-    data = {
-        'letter_contact_block': notification.reply_to_text,
-        'template': template_for_letter_print,
-        'values': notification.personalisation,
-        'dvla_org_id': service.dvla_organisation_id,
-    }
+            pdf_file = get_letter_pdf(notification)
 
-    resp = requests_post(
-        '{}/preview.{}{}'.format(
+        except botocore.exceptions.ClientError:
+            current_app.logger.exception(
+                'Error getting letter file from S3 notification id {}'.format(notification_id))
+            raise InvalidRequest('Error getting letter file from S3 notification id {}'.format(notification_id),
+                                 status_code=500)
+
+        content = base64.b64encode(pdf_file).decode('utf-8')
+
+        if file_type == 'png':
+            url = '{}/precompiled-preview.png{}'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                '?page={}'.format(page) if page else ''
+            )
+
+            content = _get_png_preview(url, content, notification.id, json=False)
+
+    else:
+
+        template_for_letter_print = {
+            "id": str(notification.template_id),
+            "subject": template.subject,
+            "content": template.content,
+            "version": str(template.version)
+        }
+
+        service = dao_fetch_service_by_id(service_id)
+
+        data = {
+            'letter_contact_block': notification.reply_to_text,
+            'template': template_for_letter_print,
+            'values': notification.personalisation,
+            'dvla_org_id': service.dvla_organisation_id,
+        }
+
+        url = '{}/preview.{}{}'.format(
             current_app.config['TEMPLATE_PREVIEW_API_HOST'],
             file_type,
             '?page={}'.format(page) if page else ''
-        ),
-        json=data,
-        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
-    )
-
-    if resp.status_code != 200:
-        raise InvalidRequest(
-            'Error generating preview for {}'.format(notification_id), status_code=500
         )
 
-    content = base64.b64encode(resp.content).decode('utf-8')
+        content = _get_png_preview(url, data, notification.id, json=True)
+
     return jsonify({"content": content})
+
+
+def _get_png_preview(url, data, notification_id, json=True):
+    if json:
+        resp = requests_post(
+            url,
+            json=data,
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+        )
+    else:
+        resp = requests_post(
+            url,
+            data=data,
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+        )
+
+    if resp.status_code != 200:
+        current_app.logger.exception(
+            'Error generating preview letter for {} \nStatus code: {}\n{}'.format(
+                notification_id,
+                resp.status_code,
+                resp.content
+            ))
+        raise InvalidRequest(
+            'Error generating preview letter for {}\nStatus code: {}\n{}'.format(
+                notification_id,
+                resp.status_code,
+                resp.content
+            ), status_code=500
+        )
+
+    return base64.b64encode(resp.content).decode('utf-8')

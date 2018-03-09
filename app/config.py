@@ -230,11 +230,6 @@ class Config(object):
             'schedule': crontab(hour=4, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'timeout-job-statistics': {
-            'task': 'timeout-job-statistics',
-            'schedule': crontab(hour=5, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'populate_monthly_billing': {
             'task': 'populate_monthly_billing',
             'schedule': crontab(hour=5, minute=10),

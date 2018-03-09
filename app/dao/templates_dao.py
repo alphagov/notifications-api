@@ -5,7 +5,11 @@ from sqlalchemy import asc, desc
 from sqlalchemy.sql.expression import bindparam
 
 from app import db
-from app.models import (Template, TemplateHistory, TemplateRedacted)
+from app.models import (
+    Template,
+    TemplateHistory,
+    TemplateRedacted
+)
 from app.dao.dao_utils import (
     transactional,
     version_class
@@ -135,6 +139,7 @@ def dao_get_templates_for_cache(cache):
     query = db.session.query(Template.id.label('template_id'),
                              Template.template_type,
                              Template.name,
+                             Template.is_precompiled_letter,
                              cache_subq.c.count.label('count')
                              ).join(cache_subq,
                                     Template.id == cache_subq.c.template_id
