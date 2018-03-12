@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from app import db
 from app.models import ApiKey
@@ -8,6 +8,8 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+
+from sqlalchemy import or_, func
 
 
 @transactional
@@ -30,7 +32,11 @@ def expire_api_key(service_id, api_key_id):
 def get_model_api_keys(service_id, id=None):
     if id:
         return ApiKey.query.filter_by(id=id, service_id=service_id, expiry_date=None).one()
-    return ApiKey.query.filter_by(service_id=service_id).all()
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    return ApiKey.query.filter(
+        or_(ApiKey.expiry_date == None, func.date(ApiKey.expiry_date) > seven_days_ago),  # noqa
+        ApiKey.service_id == service_id
+    ).all()
 
 
 def get_unsigned_secrets(service_id):
