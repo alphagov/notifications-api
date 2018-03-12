@@ -946,13 +946,17 @@ def test_preview_letter_template_precompiled_s3_error(
                              'GetObject'
                          ))
 
-            admin_request.get(
+            request = admin_request.get(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
                 file_type='pdf',
                 _expected_status=500
             )
+
+            assert request['message'] == "Error extracting requested page from PDF file for notification_id {} type " \
+                                         "<class 'botocore.exceptions.ClientError'> An error occurred (403) " \
+                                         "when calling the GetObject operation: Unauthorized".format(notification.id)
 
 
 def test_preview_letter_template_precompiled_png_file_type(
@@ -1128,7 +1132,8 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
 
             mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
-            mocker.patch('app.template.rest.extract_page_from_pdf', side_effect=PdfReadError())
+            error_message = "PDF Error message"
+            mocker.patch('app.template.rest.extract_page_from_pdf', side_effect=PdfReadError(error_message))
 
             request_mock.post(
                 'http://localhost/notifications-template-preview/precompiled-preview.png',
@@ -1137,10 +1142,13 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
                 status_code=404
             )
 
-            admin_request.get(
+            request = admin_request.get(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
                 file_type='png',
                 _expected_status=500
             )
+
+            assert request['message'] == "Error extracting requested page from PDF file for notification_id {} type " \
+                                         "{} {}".format(notification.id, type(PdfReadError()), error_message)
