@@ -113,6 +113,25 @@ def test_update_letter_notifications_statuses_raises_error_for_unknown_sorted_st
     ) in str(e)
 
 
+def test_update_letter_notifications_statuses_still_raises_temp_failure_error_with_unknown_sorted_status(
+    notify_api,
+    mocker,
+    sample_letter_template
+):
+    valid_file = 'ref-foo|Failed|1|unknown'
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+    create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                        billable_units=0)
+
+    with pytest.raises(DVLAException) as e:
+        update_letter_notifications_statuses(filename="failed.txt")
+
+    failed = ["ref-foo"]
+    assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+        filename="failed.txt", failures=failed
+    ) in str(e)
+
+
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
     s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
 
