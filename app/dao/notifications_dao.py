@@ -8,10 +8,9 @@ from datetime import (
 from flask import current_app
 
 from notifications_utils.recipients import (
-    validate_and_format_phone_number,
     validate_and_format_email_address,
-    InvalidPhoneError,
     InvalidEmailError,
+    try_validate_and_format_phone_number
 )
 from notifications_utils.statsd_decorators import statsd
 from werkzeug.datastructures import MultiDict
@@ -23,6 +22,7 @@ from notifications_utils.international_billing_rates import INTERNATIONAL_BILLIN
 
 from app import db, create_uuid
 from app.dao import days_ago
+from app.errors import InvalidRequest
 from app.models import (
     Notification,
     NotificationHistory,
@@ -40,7 +40,9 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
-    NOTIFICATION_SENT
+    NOTIFICATION_SENT,
+    SMS_TYPE,
+    EMAIL_TYPE
 )
 
 from app.dao.dao_utils import transactional
@@ -435,23 +437,34 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term, statuses=None):
-    try:
-        normalised = validate_and_format_phone_number(search_term)
-    except InvalidPhoneError:
+def dao_get_notifications_by_to_field(service_id, search_term, notification_type, statuses=None):
+
+    if notification_type == SMS_TYPE:
+        normalised = try_validate_and_format_phone_number(search_term)
+
+        for character in {'(', ')', ' ', '-'}:
+            normalised = normalised.replace(character, '')
+
+        normalised = normalised.lstrip('+0')
+
+    elif notification_type == EMAIL_TYPE:
         try:
             normalised = validate_and_format_email_address(search_term)
         except InvalidEmailError:
-            normalised = search_term
+            normalised = search_term.lower()
+    else:
+        raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
     filters = [
         Notification.service_id == service_id,
-        Notification.normalised_to == normalised,
+        Notification.normalised_to.like("%{}%".format(normalised)),
         Notification.key_type != KEY_TYPE_TEST,
     ]
 
     if statuses:
         filters.append(Notification.status.in_(statuses))
+    if notification_type:
+        filters.append(Notification.notification_type == notification_type)
 
     results = db.session.query(Notification).filter(*filters).order_by(desc(Notification.created_at)).all()
     return results
