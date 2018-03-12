@@ -45,13 +45,15 @@ from app.dao.provider_details_dao import (
     dao_toggle_sms_provider
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.jobs_dao import dao_update_job
 from app.models import (
     Job,
     Notification,
     NOTIFICATION_SENDING,
     LETTER_TYPE,
     JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_READY_TO_SEND
+    JOB_STATUS_READY_TO_SEND,
+    JOB_STATUS_ERROR
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.celery.tasks import (
@@ -442,7 +444,14 @@ def check_job_status():
         and_(thirty_five_minutes_ago < Job.processing_started, Job.processing_started < thirty_minutes_ago)
     ).order_by(Job.processing_started).all()
 
-    job_ids = [str(x.id) for x in jobs_not_complete_after_30_minutes]
+    # temporarily mark them as ERROR so that they don't get picked up by future check_job_status tasks
+    # if they haven't been re-processed in time.
+    job_ids = []
+    for job in jobs_not_complete_after_30_minutes:
+        job.job_status = JOB_STATUS_ERROR
+        dao_update_job(job)
+        job_ids.append(str(job.id))
+
     if job_ids:
         notify_celery.send_task(
             name=TaskNames.PROCESS_INCOMPLETE_JOBS,
