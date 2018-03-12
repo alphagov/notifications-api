@@ -32,7 +32,6 @@ from app.celery.scheduled_tasks import (
     send_scheduled_notifications,
     send_total_sent_notifications_to_performance_platform,
     switch_current_sms_provider_on_slow_delivery,
-    timeout_job_statistics,
     timeout_notifications,
     daily_stats_template_usage_by_month,
     letter_raise_alert_if_no_ack_file_for_zip
@@ -490,13 +489,6 @@ def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_templat
     mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms-tasks')
     scheduled_notifications = dao_get_scheduled_notifications()
     assert not scheduled_notifications
-
-
-def test_timeout_job_statistics_called_with_notification_timeout(notify_api, mocker):
-    notify_api.config['SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'] = 999
-    dao_mock = mocker.patch('app.celery.scheduled_tasks.dao_timeout_job_statistics')
-    timeout_job_statistics()
-    dao_mock.assert_called_once_with(999)
 
 
 def test_should_call_delete_inbound_sms_older_than_seven_days(notify_api, mocker):
