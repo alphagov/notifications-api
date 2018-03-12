@@ -419,21 +419,22 @@ def update_letter_notifications_statuses(self, filename):
             update_letter_notification(filename, temporary_failures, update)
             sorted_letter_counts[update.cost_threshold] += 1
 
-        if temporary_failures:
-            # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-            message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
-                filename=filename, failures=temporary_failures)
-            raise DVLAException(message)
+        try:
+            if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
+                unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
 
-        if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
-            unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
+                message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
+                    filename, unknown_status
+                )
+                raise DVLAException(message)
 
-            message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
-                filename, unknown_status
-            )
-            raise DVLAException(message)
-
-        persist_daily_sorted_letter_counts(sorted_letter_counts)
+            persist_daily_sorted_letter_counts(sorted_letter_counts)
+        finally:
+            if temporary_failures:
+                # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
+                message = "DVLA response file: {filename} has failed letters with notification.reference {failures}" \
+                    .format(filename=filename, failures=temporary_failures)
+                raise DVLAException(message)
 
 
 def persist_daily_sorted_letter_counts(sorted_letter_counts):
