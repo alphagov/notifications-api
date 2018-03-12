@@ -199,16 +199,15 @@ def delete_invitations():
 def timeout_notifications():
     notifications = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
 
-    if notifications:
-        for notification in notifications:
-            # queue callback task only if the service_callback_api exists
-            service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+    for notification in notifications:
+        # queue callback task only if the service_callback_api exists
+        service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
 
-            if service_callback_api:
-                send_delivery_status_to_service.apply_async([str(id)], queue=QueueNames.CALLBACKS)
+        if service_callback_api:
+            send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
 
-        current_app.logger.info(
-            "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
+    current_app.logger.info(
+        "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
 
 
 @notify_celery.task(name='send-daily-performance-platform-stats')

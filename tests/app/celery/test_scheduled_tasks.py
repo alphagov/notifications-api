@@ -59,7 +59,10 @@ from app.models import (
 )
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
-from tests.app.db import create_notification, create_service, create_template, create_job, create_rate
+from tests.app.db import (
+    create_notification, create_service, create_template, create_job, create_rate,
+    create_service_callback_api
+)
 
 from tests.app.conftest import (
     sample_job as create_sample_job,
@@ -205,6 +208,18 @@ def test_should_not_update_status_of_letter_notifications(client, sample_letter_
 
     assert not1.status == 'sending'
     assert not2.status == 'created'
+
+
+def test_timeout_notifications_sends_status_update_to_service(client, sample_template, mocker):
+    create_service_callback_api(service=sample_template.service)
+    mocked = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+    notification = create_notification(
+        template=sample_template,
+        status='sending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    timeout_notifications()
+    mocked.assert_called_once_with([str(notification.id)], queue=QueueNames.CALLBACKS)
 
 
 def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
