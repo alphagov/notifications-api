@@ -1546,54 +1546,6 @@ class Rate(db.Model):
         return the_string
 
 
-class JobStatistics(db.Model):
-    __tablename__ = 'job_statistics'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=True, nullable=False)
-    job = db.relationship('Job', backref=db.backref('job_statistics', lazy='dynamic'))
-    emails_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    emails_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    emails_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    sms_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    sms_delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    sms_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    letters_sent = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    letters_failed = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=0)
-    sent = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
-    delivered = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
-    failed = db.Column(db.BigInteger, index=False, unique=False, nullable=True, default=0)
-    created_at = db.Column(
-        db.DateTime,
-        index=False,
-        unique=False,
-        nullable=True,
-        default=datetime.datetime.utcnow)
-    updated_at = db.Column(
-        db.DateTime,
-        index=False,
-        unique=False,
-        nullable=True,
-        onupdate=datetime.datetime.utcnow)
-
-    def __str__(self):
-        the_string = ""
-        the_string += "email sent {} email delivered {} email failed {} ".format(
-            self.emails_sent, self.emails_delivered, self.emails_failed
-        )
-        the_string += "sms sent {} sms delivered {} sms failed {} ".format(
-            self.sms_sent, self.sms_delivered, self.sms_failed
-        )
-        the_string += "letter sent {} letter failed {} ".format(
-            self.letters_sent, self.letters_failed
-        )
-        the_string += "job_id {} ".format(
-            self.job_id
-        )
-        the_string += "created at {}".format(self.created_at)
-        return the_string
-
-
 class InboundSms(db.Model):
     __tablename__ = 'inbound_sms'
 

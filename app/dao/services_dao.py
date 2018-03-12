@@ -20,7 +20,6 @@ from app.models import (
     InboundNumber,
     InvitedUser,
     Job,
-    JobStatistics,
     Notification,
     NotificationHistory,
     Permission,
@@ -219,10 +218,6 @@ def delete_service_and_all_associated_db_objects(service):
     def _delete_commit(query):
         query.delete(synchronize_session=False)
         db.session.commit()
-
-    job_stats = JobStatistics.query.join(Job).filter(Job.service_id == service.id)
-    list(map(db.session.delete, job_stats))
-    db.session.commit()
 
     subq = db.session.query(Template.id).filter_by(service=service).subquery()
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))

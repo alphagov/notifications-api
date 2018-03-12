@@ -15,7 +15,6 @@ from app import db
 from app.dao import days_ago
 from app.models import (
     Job,
-    JobStatistics,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
@@ -109,11 +108,6 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 def dao_create_job(job):
     if not job.id:
         job.id = uuid.uuid4()
-    job_stats = JobStatistics(
-        job_id=job.id,
-        updated_at=datetime.utcnow()
-    )
-    db.session.add(job_stats)
     db.session.add(job)
     db.session.commit()
 
@@ -170,56 +164,3 @@ def dao_get_letter_job_ids_by_status(status):
     ).all()
 
     return [str(job.id) for job in jobs]
-
-
-@statsd(namespace="dao")
-def dao_get_job_statistics_for_job(service_id, job_id):
-    query = Job.query.join(
-        JobStatistics, Job.id == JobStatistics.job_id
-    ).filter(
-        Job.id == job_id,
-        Job.service_id == service_id
-    ).add_columns(
-        JobStatistics.job_id,
-        Job.original_file_name,
-        Job.created_at,
-        Job.scheduled_for,
-        Job.template_id,
-        Job.template_version,
-        Job.job_status,
-        Job.service_id,
-        Job.notification_count,
-        JobStatistics.sent,
-        JobStatistics.delivered,
-        JobStatistics.failed
-    )
-    return query.one()
-
-
-@statsd(namespace="dao")
-def dao_get_job_stats_for_service(service_id, page=1, page_size=50, limit_days=None, statuses=None):
-    query = Job.query.join(
-        JobStatistics, Job.id == JobStatistics.job_id
-    ).filter(
-        Job.service_id == service_id
-    ).add_columns(
-        JobStatistics.job_id,
-        Job.original_file_name,
-        Job.created_at,
-        Job.scheduled_for,
-        Job.template_id,
-        Job.template_version,
-        Job.job_status,
-        Job.service_id,
-        Job.notification_count,
-        JobStatistics.sent,
-        JobStatistics.delivered,
-        JobStatistics.failed
-    )
-    if limit_days:
-        query = query.filter(Job.created_at >= days_ago(limit_days))
-    if statuses is not None and statuses != ['']:
-        query = query.filter(Job.job_status.in_(statuses))
-
-    query = query.order_by(Job.created_at.desc())
-    return query.paginate(page=page, per_page=page_size)
