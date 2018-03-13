@@ -15,6 +15,7 @@ from app.models import (
 )
 from app.dao.permissions_dao import default_service_permissions
 from tests import create_authorization_header
+from tests.app.db import create_service, create_organisation, create_user
 
 
 def test_get_user_list(admin_request, sample_service):
@@ -605,3 +606,128 @@ def test_cannot_update_user_password_using_attributes_method(admin_request, samp
         _expected_status=400
     )
     assert resp['message']['_schema'] == ['Unknown field name password']
+
+
+def test_get_orgs_and_services_nests_services(admin_request, sample_user):
+    org1 = create_organisation(name='org1')
+    org2 = create_organisation(name='org2')
+    service1 = create_service(service_name='service1')
+    service2 = create_service(service_name='service2')
+    service3 = create_service(service_name='service3')
+
+    org1.services = [service1, service2]
+    org2.services = []
+
+    sample_user.organisations = [org1, org2]
+    sample_user.services = [service1, service2, service3]
+
+    resp = admin_request.get('user.get_organisations_and_services_for_user', user_id=sample_user.id)
+
+    assert resp == {
+        'organisations': [
+            {
+                'name': org1.name,
+                'id': str(org1.id),
+                'services': [
+                    {
+                        'name': service1.name,
+                        'id': str(service1.id)
+                    },
+                    {
+                        'name': service2.name,
+                        'id': str(service2.id)
+                    }
+                ]
+            },
+            {
+                'name': org2.name,
+                'id': str(org2.id),
+                'services': []
+            }
+        ],
+        'services_without_organisations': [
+            {
+                'name': service3.name,
+                'id': str(service3.id)
+            }
+        ]
+    }
+
+
+def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
+    org1 = create_organisation(name='org1', active=True)
+    org2 = create_organisation(name='org2', active=False)
+
+    # in an active org
+    service1 = create_service(service_name='service1', active=True)
+    service2 = create_service(service_name='service2', active=False)
+    # active but in an inactive org
+    service3 = create_service(service_name='service3', active=True)
+    # not in an org
+    service4 = create_service(service_name='service4', active=True)
+    service5 = create_service(service_name='service5', active=False)
+
+    org1.services = [service1, service2]
+    org2.services = [service3]
+
+    sample_user.organisations = [org1, org2]
+    sample_user.services = [service1, service2, service3, service4, service5]
+
+    resp = admin_request.get('user.get_organisations_and_services_for_user', user_id=sample_user.id)
+
+    assert resp == {
+        'organisations': [
+            {
+                'name': org1.name,
+                'id': str(org1.id),
+                'services': [
+                    {
+                        'name': service1.name,
+                        'id': str(service1.id)
+                    }
+                ]
+            }
+        ],
+        'services_without_organisations': [
+            {
+                'name': service4.name,
+                'id': str(service4.id)
+            }
+        ]
+    }
+
+
+def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request, sample_user):
+    other_user = create_user(email='other@user.com')
+
+    org1 = create_organisation(name='org1')
+    org2 = create_organisation(name='org2')
+    service1 = create_service(service_name='service1')
+    service2 = create_service(service_name='service2')
+
+    org1.services = [service1]
+
+    sample_user.organisations = [org2]
+    sample_user.services = [service1]
+
+    other_user.organisations = [org1, org2]
+    other_user.services = [service1, service2]
+
+    resp = admin_request.get('user.get_organisations_and_services_for_user', user_id=sample_user.id)
+
+    assert resp == {
+        'organisations': [
+            {
+                'name': org2.name,
+                'id': str(org2.id),
+                'services': []
+            }
+        ],
+        # service1 belongs to org1, but the user doesn't know about org1
+        'services_without_organisations': [
+            {
+                'name': service1.name,
+                'id': str(service1.id)
+            }
+        ]
+    }

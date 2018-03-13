@@ -19,7 +19,8 @@ from app.dao.users_dao import (
     create_secret_code,
     save_user_attribute,
     update_user_password,
-    count_user_verify_codes
+    count_user_verify_codes,
+    get_user_and_accounts
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -397,8 +398,7 @@ def update_password(user_id):
 
 @user_blueprint.route('/<uuid:user_id>/organisations-and-services', methods=['GET'])
 def get_organisations_and_services_for_user(user_id):
-    user = get_user_by_id(user_id=user_id)
-
+    user = get_user_and_accounts(user_id)
     data = {
         'organisations': [
             {
@@ -410,10 +410,10 @@ def get_organisations_and_services_for_user(user_id):
                         'name': service.name
                     }
                     for service in org.services
-                    if service.active and user in service.users
+                    if service.active and service in user.services
                 ]
             }
-            for org in user.organisations
+            for org in user.organisations if org.active
         ],
         'services_without_organisations': [
             {
@@ -426,7 +426,7 @@ def get_organisations_and_services_for_user(user_id):
                 # but not one that the user can see.
                 (
                     not service.organisation or
-                    user not in service.organisation.users
+                    service.organisation not in user.organisations
                 )
             )
         ]
