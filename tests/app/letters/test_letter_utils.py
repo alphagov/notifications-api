@@ -1,4 +1,3 @@
-from flask import current_app
 import pytest
 from datetime import datetime
 
@@ -9,6 +8,7 @@ from moto import mock_s3
 
 from app.letters.utils import (
     get_bucket_prefix_for_notification,
+    get_letter_pdf,
     get_letter_pdf_filename,
     upload_letter_pdf
 )
@@ -107,6 +107,8 @@ def test_get_letter_pdf_gets_pdf_from_correct_bucket(
     ret = get_letter_pdf(sample_precompiled_letter_notification_using_test_key)
 
     assert ret == b'pdf_content'
+
+
 @pytest.mark.parametrize('is_precompiled_letter,bucket_config_name', [
     (False, 'LETTERS_PDF_BUCKET_NAME'),
     (True, 'LETTERS_SCAN_BUCKET_NAME')

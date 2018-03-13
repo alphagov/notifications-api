@@ -8,7 +8,6 @@ from app.models import (
     ScheduledNotification,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_PENDING_VIRUS_CHECK,
     SCHEDULE_NOTIFICATIONS,
     SMS_TYPE
 )
@@ -698,95 +697,3 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
-
-
-def test_post_precompiled_letter_requires_permission(client, sample_service, notify_user, mocker):
-    mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    data = {
-        "reference": "letter-reference",
-        "content": "bGV0dGVyLWNvbnRlbnQ="
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json['errors'][0]['message'] == 'Cannot send precompiled_letters'
-
-
-def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-
-    data = {
-        "reference": "letter-reference",
-        "content": "hi"
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json['errors'][0]['message'] == 'Cannot decode letter content (invalid base64 encoding)'
-
-    assert not Notification.query.first()
-
-
-def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=5)
-    data = {
-        "reference": "letter-reference",
-        "content": "bGV0dGVyLWNvbnRlbnQ="
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 201, response.get_data(as_text=True)
-
-    s3mock.assert_called_once_with(ANY, b'letter-content')
-
-    notification = Notification.query.first()
-
-    assert notification.billable_units == 3
-    assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
-
-    resp_json = json.loads(response.get_data(as_text=True))
-
-    assert resp_json == {
-        'id': str(notification.id),
-        'reference': 'letter-reference'
-    }
-
-
-def test_post_precompiled_letter_notification_returns_400_with_invalid_pdf(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    data = {
-        "reference": "letter-reference",
-        "content": "bGV0dGVyLWNvbnRlbnQ="
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    resp_json = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    assert resp_json['errors'][0]['message'] == 'Letter content is not a valid PDF'
-
-    assert s3mock.called is False
-
-    assert Notification.query.count() == 0
