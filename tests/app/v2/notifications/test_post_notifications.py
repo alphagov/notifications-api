@@ -8,6 +8,7 @@ from app.models import (
     ScheduledNotification,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
     SCHEDULE_NOTIFICATIONS,
     SMS_TYPE
 )
