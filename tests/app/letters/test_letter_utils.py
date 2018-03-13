@@ -1,3 +1,4 @@
+from flask import current_app
 import pytest
 from datetime import datetime
 
@@ -21,6 +22,13 @@ def sample_precompiled_letter_notification_using_test_key(sample_letter_notifica
     sample_letter_notification.reference = 'foo'
     sample_letter_notification.created_at = datetime.utcnow()
     return sample_letter_notification
+from app.letters.utils import (
+    get_bucket_prefix_for_notification,
+    get_letter_pdf_filename,
+    upload_letter_pdf
+)
+from app.models import PRECOMPILED_TEMPLATE_NAME
+from app.variables import Retention
 
 
 def test_get_bucket_prefix_for_notification_valid_notification(sample_notification):
@@ -100,3 +108,32 @@ def test_get_letter_pdf_gets_pdf_from_correct_bucket(
     ret = get_letter_pdf(sample_precompiled_letter_notification_using_test_key)
 
     assert ret == b'pdf_content'
+
+
+@pytest.mark.parametrize('is_precompiled_letter,bucket_config_name', [
+    (False, 'LETTERS_PDF_BUCKET_NAME'),
+    (True, 'LETTERS_SCAN_BUCKET_NAME')
+])
+def test_upload_letter_pdf_to_correct_bucket(
+    sample_letter_notification, mocker, is_precompiled_letter, bucket_config_name
+):
+    if is_precompiled_letter:
+        sample_letter_notification.template.hidden = True
+        sample_letter_notification.template.name = PRECOMPILED_TEMPLATE_NAME
+
+    mock_s3 = mocker.patch('app.letters.utils.s3upload')
+
+    filename = get_letter_pdf_filename(
+        reference=sample_letter_notification.reference,
+        crown=sample_letter_notification.service.crown
+    )
+
+    upload_letter_pdf(sample_letter_notification, b'\x00\x01')
+
+    mock_s3.assert_called_once_with(
+        bucket_name=current_app.config[bucket_config_name],
+        file_location=filename,
+        filedata=b'\x00\x01',
+        region=current_app.config['AWS_REGION'],
+        tags={Retention.KEY: Retention.ONE_WEEK}
+    )
