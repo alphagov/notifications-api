@@ -7,8 +7,14 @@ from flask import current_app
 from freezegun import freeze_time
 from moto import mock_s3
 
-from app.letters.utils import get_bucket_prefix_for_notification, get_letter_pdf_filename, get_letter_pdf
+from app.letters.utils import (
+    get_bucket_prefix_for_notification,
+    get_letter_pdf_filename,
+    upload_letter_pdf
+)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
+from app.variables import Retention
+
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 

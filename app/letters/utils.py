@@ -69,6 +69,11 @@ def upload_letter_pdf(notification, pdf_data, is_test_letter=False):
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
 
+    if notification.template.is_precompiled_letter:
+        bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    else:
+        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+
     s3upload(
         filedata=pdf_data,
         region=current_app.config['AWS_REGION'],
