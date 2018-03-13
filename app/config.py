@@ -328,6 +328,8 @@ class Development(Config):
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'development-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'development-letters-scan'
 
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     SECRET_KEY = 'dev-notify-secret-key'
@@ -365,6 +367,8 @@ class Test(Development):
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'test-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'test-letters-scan'
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
@@ -393,6 +397,8 @@ class Preview(Config):
     LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'preview-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'preview-letters-scan'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -405,6 +411,8 @@ class Staging(Config):
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'staging-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'staging-letters-scan'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
@@ -419,6 +427,8 @@ class Live(Config):
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'production-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'production-letters-scan'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
@@ -440,6 +450,8 @@ class Sandbox(CloudFoundryConfig):
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'cf-sandbox-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
+    LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-virus-check-pdf'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
 
