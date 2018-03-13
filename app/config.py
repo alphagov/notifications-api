@@ -451,7 +451,7 @@ class Sandbox(CloudFoundryConfig):
     TEST_LETTERS_BUCKET_NAME = 'cf-sandbox-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
-    LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-virus-check-pdf'
+    LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
 
