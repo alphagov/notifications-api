@@ -8,8 +8,8 @@ Create Date: 2018-02-21 14:05:04.448977
 from alembic import op
 
 
-revision = '0176_alter_billing_columns'
-down_revision = '0175_drop_job_statistics_table'
+revision = '0177_add_virus_scan_statuses'
+down_revision = '0176_alter_billing_columns'
 
 
 def upgrade():
