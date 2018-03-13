@@ -18,7 +18,6 @@ from app.models import (
 )
 from app.celery.tasks import (
     check_billable_units,
-    get_billing_date_in_bst_from_filename,
     persist_daily_sorted_letter_counts,
     process_updates_from_file,
     update_dvla_job_to_error,
@@ -113,6 +112,25 @@ def test_update_letter_notifications_statuses_raises_error_for_unknown_sorted_st
     ) in str(e)
 
 
+def test_update_letter_notifications_statuses_still_raises_temp_failure_error_with_unknown_sorted_status(
+    notify_api,
+    mocker,
+    sample_letter_template
+):
+    valid_file = 'ref-foo|Failed|1|unknown'
+    mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
+    create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                        billable_units=0)
+
+    with pytest.raises(DVLAException) as e:
+        update_letter_notifications_statuses(filename="failed.txt")
+
+    failed = ["ref-foo"]
+    assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+        filename="failed.txt", failures=failed
+    ) in str(e)
+
+
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
     s3_mock = mocker.patch('app.celery.tasks.s3.get_s3_object')
 
@@ -189,9 +207,10 @@ def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count
 
     update_letter_notifications_statuses(filename='NOTIFY.20170823160812.RSP.TXT')
 
-    persist_letter_count_mock.assert_called_once_with(date(2017, 8, 23), {'Unsorted': 1, 'Sorted': 1})
+    persist_letter_count_mock.assert_called_once_with({'Unsorted': 1, 'Sorted': 1})
 
 
+@freeze_time("2018-01-11 09:00:00")
 def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count_with_no_sorted_values(
     notify_api,
     mocker,
@@ -206,8 +225,9 @@ def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count
 
     update_letter_notifications_statuses(filename='NOTIFY.20170823160812.RSP.TXT')
 
-    daily_sorted_letter = dao_get_daily_sorted_letter_by_billing_day(date(2017, 8, 23))
+    daily_sorted_letter = dao_get_daily_sorted_letter_by_billing_day(date(2018, 1, 11))
 
+    assert daily_sorted_letter.billing_day == date(2018, 1, 11)
     assert daily_sorted_letter.unsorted_count == 2
     assert daily_sorted_letter.sorted_count == 0
 
@@ -296,22 +316,12 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
     )
 
 
-@pytest.mark.parametrize('filename_date, billing_date', [
-    ('20170820230000', date(2017, 8, 21)),
-    ('20170120230000', date(2017, 1, 20))
-])
-def test_get_billing_date_in_bst_from_filename(filename_date, billing_date):
-    filename = 'NOTIFY.{}.RSP.TXT'.format(filename_date)
-    result = get_billing_date_in_bst_from_filename(filename)
-
-    assert result == billing_date
-
-
 @freeze_time("2018-01-11 09:00:00")
-def test_persist_daily_sorted_letter_counts_saves_sorted_and_unsorted_values(client, notify_db_session):
+def test_persist_daily_sorted_letter_counts_saves_sorted_count_and_todays_date(client, notify_db_session):
     letter_counts = defaultdict(int, **{'Unsorted': 5, 'Sorted': 1})
-    persist_daily_sorted_letter_counts(date.today(), letter_counts)
+    persist_daily_sorted_letter_counts(letter_counts)
     day = dao_get_daily_sorted_letter_by_billing_day(date.today())
 
+    assert day.billing_day == date(2018, 1, 11)
     assert day.unsorted_count == 5
     assert day.sorted_count == 1
