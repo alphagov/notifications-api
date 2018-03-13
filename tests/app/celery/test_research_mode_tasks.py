@@ -112,7 +112,7 @@ def test_failure_firetext_callback(phone_number):
 def test_create_fake_letter_response_file_uploads_response_file_s3(
         notify_api, mocker):
     mock_s3upload = mocker.patch('app.celery.research_mode_tasks.s3upload')
-    filename = 'NOTIFY.20180125140000.RSP.TXT'
+    filename = 'NOTIFY-20180125140000-RSP.TXT'
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
@@ -135,7 +135,7 @@ def test_create_fake_letter_response_file_uploads_response_file_s3(
 def test_create_fake_letter_response_file_calls_dvla_callback_on_development(
         notify_api, mocker):
     mocker.patch('app.celery.research_mode_tasks.s3upload')
-    filename = 'NOTIFY.20180125140000.RSP.TXT'
+    filename = 'NOTIFY-20180125140000-RSP.TXT'
 
     with set_config_values(notify_api, {
         'NOTIFY_ENVIRONMENT': 'development'

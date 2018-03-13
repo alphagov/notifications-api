@@ -123,7 +123,7 @@ def firetext_callback(notification_id, to):
 def create_fake_letter_response_file(self, reference):
     now = datetime.utcnow()
     dvla_response_data = '{}|Sent|0|Sorted'.format(reference)
-    upload_file_name = 'NOTIFY.{}.RSP.TXT'.format(now.strftime('%Y%m%d%H%M%S'))
+    upload_file_name = 'NOTIFY-{}-RSP.TXT'.format(now.strftime('%Y%m%d%H%M%S'))
 
     s3upload(
         filedata=dvla_response_data,

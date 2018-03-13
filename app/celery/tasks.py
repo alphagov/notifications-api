@@ -440,7 +440,7 @@ def update_letter_notifications_statuses(self, filename):
 
 
 def get_billing_date_in_bst_from_filename(filename):
-    datetime_string = filename.split('.')[1]
+    datetime_string = filename.split('-')[1]
     datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M%S')
     return convert_utc_to_bst(datetime_obj).date()
 
