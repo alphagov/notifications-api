@@ -7,8 +7,10 @@ from freezegun import freeze_time
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
     ScheduledNotification,
-    SCHEDULE_NOTIFICATIONS,
     EMAIL_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
+    SCHEDULE_NOTIFICATIONS,
     SMS_TYPE
 )
 from flask import json, current_app
@@ -55,6 +57,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
     assert validate(resp_json, post_sms_response) == resp_json
     notifications = Notification.query.all()
     assert len(notifications) == 1
+    assert notifications[0].status == NOTIFICATION_CREATED
     notification_id = notifications[0].id
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
@@ -306,6 +309,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.one()
+    assert notification.status == NOTIFICATION_CREATED
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
@@ -756,6 +760,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
     notification = Notification.query.first()
 
     assert notification.billable_units == 3
+    assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
 
     resp_json = json.loads(response.get_data(as_text=True))
 
