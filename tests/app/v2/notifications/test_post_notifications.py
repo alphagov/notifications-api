@@ -1,5 +1,4 @@
 import uuid
-from unittest.mock import ANY
 
 import pytest
 from freezegun import freeze_time
@@ -9,7 +8,6 @@ from app.models import (
     ScheduledNotification,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_PENDING_VIRUS_CHECK,
     SCHEDULE_NOTIFICATIONS,
     SMS_TYPE
 )
