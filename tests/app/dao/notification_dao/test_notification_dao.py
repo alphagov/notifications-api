@@ -1769,6 +1769,45 @@ def test_dao_get_notifications_by_to_field_matches_partial_emails(sample_email_t
     assert notification_2.id not in notification_ids
 
 
+@pytest.mark.parametrize('search_term, expected_result_count', [
+    ('foobar', 1),
+    ('foo', 2),
+    ('bar', 2),
+    ('foo%', 1),
+    ('%%bar', 1),
+    ('%_', 1),
+    ('%', 2),
+    ('_', 1),
+    ('/', 1),
+    ('%foo', 0),
+    ('%_%', 0),
+    ('example.com', 4),
+])
+def test_dao_get_notifications_by_to_field_escapes(
+    sample_email_template,
+    search_term,
+    expected_result_count,
+):
+
+    for email_address in {
+        'foo%_@example.com',
+        '%%bar@example.com',
+        'foobar@example.com',
+        '/@example.com',
+    }:
+        create_notification(
+            template=sample_email_template,
+            to_field=email_address,
+            normalised_to=email_address,
+        )
+
+    assert len(dao_get_notifications_by_to_field(
+        sample_email_template.service_id,
+        search_term,
+        notification_type='email',
+    )) == expected_result_count
+
+
 @pytest.mark.parametrize('search_term', [
     '001',
     '100',
