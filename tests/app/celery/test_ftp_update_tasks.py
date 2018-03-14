@@ -208,7 +208,9 @@ def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count
 
     update_letter_notifications_statuses(filename='NOTIFY-20170823160812-RSP.TXT')
 
-    persist_letter_count_mock.assert_called_once_with(date(2017, 8, 23), {'Unsorted': 1, 'Sorted': 1})
+    persist_letter_count_mock.assert_called_once_with(day=date(2017, 8, 23),
+                                                      file_name='NOTIFY-20170823160812-RSP.TXT',
+                                                      sorted_letter_counts={'Unsorted': 1, 'Sorted': 1})
 
 
 def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count_with_no_sorted_values(
@@ -329,7 +331,7 @@ def test_get_billing_date_in_bst_from_filename(filename_date, billing_date):
 @freeze_time("2018-01-11 09:00:00")
 def test_persist_daily_sorted_letter_counts_saves_sorted_and_unsorted_values(client, notify_db_session):
     letter_counts = defaultdict(int, **{'Unsorted': 5, 'Sorted': 1})
-    persist_daily_sorted_letter_counts(date.today(), letter_counts)
+    persist_daily_sorted_letter_counts(date.today(), "test.txt", letter_counts)
     day = dao_get_daily_sorted_letter_by_billing_day(date.today())
 
     assert day.unsorted_count == 5

@@ -20,7 +20,10 @@ def test_dao_get_daily_sorted_letter_by_billing_day(notify_db, notify_db_session
 
 def test_dao_create_or_update_daily_sorted_letter_creates_a_new_entry(notify_db, notify_db_session):
     billing_day = date(2018, 2, 1)
-    dsl = DailySortedLetter(billing_day=billing_day, unsorted_count=2, sorted_count=0)
+    dsl = DailySortedLetter(billing_day=billing_day,
+                            file_name="Notify-201802011234.rs.txt",
+                            unsorted_count=2,
+                            sorted_count=0)
     dao_create_or_update_daily_sorted_letter(dsl)
 
     daily_sorted_letter = dao_get_daily_sorted_letter_by_billing_day(billing_day)
@@ -35,13 +38,19 @@ def test_dao_create_or_update_daily_sorted_letter_updates_an_existing_entry(
     notify_db,
     notify_db_session
 ):
-    create_daily_sorted_letter(unsorted_count=2, sorted_count=3)
+    create_daily_sorted_letter(billing_day=date(2018, 1, 18),
+                               file_name="Notify-20180118123.rs.txt",
+                               unsorted_count=2,
+                               sorted_count=3)
 
-    dsl = DailySortedLetter(billing_day=date(2018, 1, 18), unsorted_count=5, sorted_count=17)
+    dsl = DailySortedLetter(billing_day=date(2018, 1, 18),
+                            file_name="Notify-20180118123.rs.txt",
+                            unsorted_count=5,
+                            sorted_count=17)
     dao_create_or_update_daily_sorted_letter(dsl)
 
     daily_sorted_letter = dao_get_daily_sorted_letter_by_billing_day(dsl.billing_day)
 
-    assert daily_sorted_letter.unsorted_count == 7
-    assert daily_sorted_letter.sorted_count == 20
+    assert daily_sorted_letter.unsorted_count == 5
+    assert daily_sorted_letter.sorted_count == 17
     assert daily_sorted_letter.updated_at
