@@ -455,10 +455,10 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
     else:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
-    for special_character in {'_', '%', '/'}:
+    for special_character in ('\\', '_', '%', '/'):
         normalised = normalised.replace(
             special_character,
-            '\\{}'.format(special_character)
+            '\{}'.format(special_character)
         )
 
     filters = [

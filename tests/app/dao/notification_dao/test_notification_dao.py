@@ -1779,9 +1779,11 @@ def test_dao_get_notifications_by_to_field_matches_partial_emails(sample_email_t
     ('%', 2),
     ('_', 1),
     ('/', 1),
+    ('\\', 1),
+    ('baz\\baz', 1),
     ('%foo', 0),
     ('%_%', 0),
-    ('example.com', 4),
+    ('example.com', 5),
 ])
 def test_dao_get_notifications_by_to_field_escapes(
     sample_email_template,
@@ -1794,6 +1796,7 @@ def test_dao_get_notifications_by_to_field_escapes(
         '%%bar@example.com',
         'foobar@example.com',
         '/@example.com',
+        'baz\\baz@example.com',
     }:
         create_notification(
             template=sample_email_template,
