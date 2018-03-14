@@ -61,3 +61,23 @@ def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == 'No result found'
+
+
+@pytest.mark.parametrize('invitation_type', ['service', 'organisation'])
+def test_validate_invitation_token_returns_400_when_token_is_malformed(client, invitation_type):
+    token = generate_token(
+        str(uuid.uuid4()),
+        current_app.config['SECRET_KEY'],
+        current_app.config['DANGEROUS_SALT']
+    )[:-2]
+
+    url = '/invite/{}/{}'.format(invitation_type, token)
+    auth_header = create_authorization_header()
+    response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {
+        'invitation': 'Something’s wrong with this link. Make sure you’ve copied the whole thing.'
+    }
