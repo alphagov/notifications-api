@@ -455,6 +455,12 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
     else:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
+    for special_character in ('\\', '_', '%', '/'):
+        normalised = normalised.replace(
+            special_character,
+            '\{}'.format(special_character)
+        )
+
     filters = [
         Notification.service_id == service_id,
         Notification.normalised_to.like("%{}%".format(normalised)),
