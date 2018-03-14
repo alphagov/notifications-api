@@ -1,8 +1,26 @@
 import pytest
+from datetime import datetime
 
+import boto3
+from flask import current_app
 from freezegun import freeze_time
+from moto import mock_s3
 
-from app.letters.utils import get_bucket_prefix_for_notification, get_letter_pdf_filename
+from app.letters.utils import get_bucket_prefix_for_notification, get_letter_pdf_filename, get_letter_pdf
+from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
+
+FROZEN_DATE_TIME = "2018-03-14 17:00:00"
+
+
+@pytest.fixture()
+@freeze_time(FROZEN_DATE_TIME)
+def sample_precompiled_letter_notification_using_test_key(sample_letter_notification):
+    sample_letter_notification.template.hidden = True
+    sample_letter_notification.template.name = PRECOMPILED_TEMPLATE_NAME
+    sample_letter_notification.key_type = KEY_TYPE_TEST
+    sample_letter_notification.reference = 'foo'
+    sample_letter_notification.created_at = datetime.utcnow()
+    return sample_letter_notification
 
 
 def test_get_bucket_prefix_for_notification_valid_notification(sample_notification):
@@ -13,6 +31,17 @@ def test_get_bucket_prefix_for_notification_valid_notification(sample_notificati
         folder=sample_notification.created_at.date(),
         reference=sample_notification.reference
     ).upper()
+
+
+@freeze_time(FROZEN_DATE_TIME)
+def test_get_bucket_prefix_for_notification_precompiled_letter_using_test_key(
+    sample_precompiled_letter_notification_using_test_key
+):
+    bucket_prefix = get_bucket_prefix_for_notification(
+        sample_precompiled_letter_notification_using_test_key, is_test_letter=True)
+
+    assert bucket_prefix == 'NOTIFY.{}'.format(
+        sample_precompiled_letter_notification_using_test_key.reference).upper()
 
 
 def test_get_bucket_prefix_for_notification_invalid_notification():
@@ -45,3 +74,29 @@ def test_get_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
     filename = get_letter_pdf_filename(reference='foo', crown=True)
 
     assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
+
+
+@mock_s3
+@pytest.mark.parametrize('bucket_config_name,filename_format', [
+    ('TEST_LETTERS_BUCKET_NAME', 'NOTIFY.FOO.D.2.C.C.%Y%m%d%H%M%S.PDF'),
+    ('LETTERS_PDF_BUCKET_NAME', '%Y-%m-%d/NOTIFY.FOO.D.2.C.C.%Y%m%d%H%M%S.PDF')
+])
+@freeze_time(FROZEN_DATE_TIME)
+def test_get_letter_pdf_gets_pdf_from_correct_bucket(
+    sample_precompiled_letter_notification_using_test_key,
+    bucket_config_name,
+    filename_format
+):
+    if bucket_config_name == 'LETTERS_PDF_BUCKET_NAME':
+        sample_precompiled_letter_notification_using_test_key.key_type = KEY_TYPE_NORMAL
+
+    bucket_name = current_app.config[bucket_config_name]
+    filename = datetime.utcnow().strftime(filename_format)
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=bucket_name)
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b'pdf_content')
+
+    ret = get_letter_pdf(sample_precompiled_letter_notification_using_test_key)
+
+    assert ret == b'pdf_content'
