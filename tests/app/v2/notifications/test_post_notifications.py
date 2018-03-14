@@ -760,11 +760,8 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json == {
-        'content': {'body': None, 'subject': 'Pre-compiled PDF'},
         'id': str(notification.id),
-        'reference': 'letter-reference',
-        'scheduled_for': None,
-        'uri': ANY
+        'reference': 'letter-reference'
     }
 
 

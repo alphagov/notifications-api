@@ -92,20 +92,10 @@ def post_precompiled_letter_notification():
         precompiled=True
     )
 
-    create_resp_partial = functools.partial(
-        create_post_letter_response_from_notification,
-        subject=template.subject,
-    )
-
-    resp = create_resp_partial(
-        notification=notification,
-        content=None,
-        url_root=request.url_root,
-        scheduled_for=None,
-    )
-
-    # Precompile should be the same as a letter without the template as its auto generated
-    resp.pop('template', None)
+    resp = {
+        'id': notification.id,
+        'reference': notification.client_reference
+    }
 
     return jsonify(resp), 201
 
