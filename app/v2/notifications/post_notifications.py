@@ -104,6 +104,9 @@ def post_precompiled_letter_notification():
         scheduled_for=None,
     )
 
+    # Precompile should be the same as a letter without the template as its auto generated
+    resp.pop('template', None)
+
     return jsonify(resp), 201
 
 
