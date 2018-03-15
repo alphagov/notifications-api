@@ -509,9 +509,13 @@ def create_invited_org_user(organisation, invited_by, email_address='invite@exam
     return invited_org_user
 
 
-def create_daily_sorted_letter(billing_day=date(2018, 1, 18), unsorted_count=0, sorted_count=0):
+def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
+                               file_name="Notify-20180118123.rs.txt",
+                               unsorted_count=0,
+                               sorted_count=0):
     daily_sorted_letter = DailySortedLetter(
         billing_day=billing_day,
+        file_name=file_name,
         unsorted_count=unsorted_count,
         sorted_count=sorted_count
     )

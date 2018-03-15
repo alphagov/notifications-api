@@ -24,13 +24,14 @@ def dao_create_or_update_daily_sorted_letter(new_daily_sorted_letter):
     table = DailySortedLetter.__table__
     stmt = insert(table).values(
         billing_day=new_daily_sorted_letter.billing_day,
+        file_name=new_daily_sorted_letter.file_name,
         unsorted_count=new_daily_sorted_letter.unsorted_count,
         sorted_count=new_daily_sorted_letter.sorted_count)
     stmt = stmt.on_conflict_do_update(
-        index_elements=[table.c.billing_day],
+        index_elements=[table.c.billing_day, table.c.file_name],
         set_={
-            'unsorted_count': table.c.unsorted_count + stmt.excluded.unsorted_count,
-            'sorted_count': table.c.sorted_count + stmt.excluded.sorted_count,
+            'unsorted_count': stmt.excluded.unsorted_count,
+            'sorted_count': stmt.excluded.sorted_count,
             'updated_at': datetime.utcnow()
         }
     )
