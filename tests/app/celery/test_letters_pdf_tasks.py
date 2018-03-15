@@ -28,25 +28,6 @@ def test_should_have_decorated_tasks_functions():
     assert create_letters_pdf.__wrapped__.__name__ == 'create_letters_pdf'
 
 
-@pytest.mark.parametrize('crown_flag,expected_crown_text', [
-    (True, 'C'),
-    (False, 'N'),
-])
-@freeze_time("2017-12-04 17:29:00")
-def test_get_letter_pdf_filename_returns_correct_filename(
-        notify_api, mocker, crown_flag, expected_crown_text):
-    filename = get_letter_pdf_filename(reference='foo', crown=crown_flag)
-
-    assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
-
-
-@freeze_time("2017-12-04 17:31:00")
-def test_get_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
-    filename = get_letter_pdf_filename(reference='foo', crown=True)
-
-    assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
-
-
 @pytest.mark.parametrize('personalisation', [{'name': 'test'}, None])
 def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
         notify_api, mocker, client, sample_letter_template, personalisation):
