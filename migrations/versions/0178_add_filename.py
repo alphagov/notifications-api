@@ -14,6 +14,8 @@ down_revision = '0177_add_virus_scan_statuses'
 
 
 def upgrade():
+    # Deleting the data here is ok because a full migration from the files on s3 is coming.
+    op.execute("DELETE FROM daily_sorted_letter")
     op.add_column('daily_sorted_letter', sa.Column('file_name', sa.String(), nullable=True))
     op.create_index(op.f('ix_daily_sorted_letter_file_name'), 'daily_sorted_letter', ['file_name'], unique=False)
     op.create_unique_constraint('uix_file_name_billing_day', 'daily_sorted_letter', ['file_name', 'billing_day'])
