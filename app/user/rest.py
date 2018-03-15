@@ -19,7 +19,8 @@ from app.dao.users_dao import (
     create_secret_code,
     save_user_attribute,
     update_user_password,
-    count_user_verify_codes
+    count_user_verify_codes,
+    get_user_and_accounts
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -31,7 +32,7 @@ from app.notifications.process_notifications import (
 )
 from app.schemas import (
     email_data_request_schema,
-    user_schema,
+    create_user_schema,
     permission_schema,
     user_update_schema_load_json,
     user_update_password_schema_load_json
@@ -67,13 +68,14 @@ def handle_integrity_error(exc):
 
 @user_blueprint.route('', methods=['POST'])
 def create_user():
-    user_to_create, errors = user_schema.load(request.get_json())
+    user_to_create, errors = create_user_schema.load(request.get_json())
     req_json = request.get_json()
     if not req_json.get('password', None):
         errors.update({'password': ['Missing data for required field.']})
         raise InvalidRequest(errors, status_code=400)
     save_model_user(user_to_create, pwd=req_json.get('password'))
-    return jsonify(data=user_schema.dump(user_to_create).data), 201
+    result = user_to_create.serialize()
+    return jsonify(data=result), 201
 
 
 @user_blueprint.route('/<uuid:user_id>', methods=['POST'])
@@ -84,7 +86,7 @@ def update_user_attribute(user_id):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     save_user_attribute(user_to_update, update_dict=update_dct)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
+    return jsonify(data=user_to_update.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/activate', methods=['POST'])
@@ -95,14 +97,14 @@ def activate_user(user_id):
 
     user.state = 'active'
     save_model_user(user)
-    return jsonify(data=user_schema.dump(user).data), 200
+    return jsonify(data=user.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/reset-failed-login-count', methods=['POST'])
 def user_reset_failed_login_count(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     reset_failed_login_count(user_to_update)
-    return jsonify(data=user_schema.dump(user_to_update).data), 200
+    return jsonify(data=user_to_update.serialize()), 200
 
 
 @user_blueprint.route('/<uuid:user_id>/verify/password', methods=['POST'])
@@ -324,8 +326,8 @@ def send_already_registered_email(user_id):
 @user_blueprint.route('', methods=['GET'])
 def get_user(user_id=None):
     users = get_user_by_id(user_id=user_id)
-    result = user_schema.dump(users, many=True) if isinstance(users, list) else user_schema.dump(users)
-    return jsonify(data=result.data)
+    result = [x.serialize() for x in users] if isinstance(users, list) else users.serialize()
+    return jsonify(data=result)
 
 
 @user_blueprint.route('/<uuid:user_id>/service/<uuid:service_id>/permission', methods=['POST'])
@@ -350,9 +352,8 @@ def get_by_email():
         error = 'Invalid request. Email query string param required'
         raise InvalidRequest(error, status_code=400)
     fetched_user = get_user_by_email(email)
-    result = user_schema.dump(fetched_user)
-
-    return jsonify(data=result.data)
+    result = fetched_user.serialize()
+    return jsonify(data=result)
 
 
 @user_blueprint.route('/reset-password', methods=['POST'])
@@ -392,7 +393,14 @@ def update_password(user_id):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     update_user_password(user, pwd)
-    return jsonify(data=user_schema.dump(user).data), 200
+    return jsonify(data=user.serialize()), 200
+
+
+@user_blueprint.route('/<uuid:user_id>/organisations-and-services', methods=['GET'])
+def get_organisations_and_services_for_user(user_id):
+    user = get_user_and_accounts(user_id)
+    data = get_orgs_and_services(user)
+    return jsonify(data)
 
 
 def _create_reset_password_url(email):
@@ -420,3 +428,38 @@ def _create_2fa_url(user, secret_code, next_redir, email_auth_link_host):
     if next_redir:
         ret += '?{}'.format(urlencode({'next': next_redir}))
     return ret
+
+
+def get_orgs_and_services(user):
+    return {
+        'organisations': [
+            {
+                'name': org.name,
+                'id': org.id,
+                'services': [
+                    {
+                        'id': service.id,
+                        'name': service.name
+                    }
+                    for service in org.services
+                    if service.active and service in user.services
+                ]
+            }
+            for org in user.organisations if org.active
+        ],
+        'services_without_organisations': [
+            {
+                'id': service.id,
+                'name': service.name
+            } for service in user.services
+            if (
+                service.active and
+                # include services that either aren't in an organisation, or are in an organisation,
+                # but not one that the user can see.
+                (
+                    not service.organisation or
+                    service.organisation not in user.organisations
+                )
+            )
+        ]
+    }

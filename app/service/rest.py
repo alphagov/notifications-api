@@ -82,7 +82,6 @@ from app.service.send_notification import send_one_off_notification
 from app.schemas import (
     service_schema,
     api_key_schema,
-    user_schema,
     permission_schema,
     notification_with_template_schema,
     notifications_filter_schema,
@@ -258,8 +257,7 @@ def get_api_keys(service_id, key_id=None):
 @service_blueprint.route('/<uuid:service_id>/users', methods=['GET'])
 def get_users_for_service(service_id):
     fetched = dao_fetch_service_by_id(service_id)
-    result = user_schema.dump(fetched.users, many=True)
-    return jsonify(data=result.data)
+    return jsonify(data=[x.serialize() for x in fetched.users])
 
 
 @service_blueprint.route('/<uuid:service_id>/users/<user_id>', methods=['POST'])

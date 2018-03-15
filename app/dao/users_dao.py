@@ -1,6 +1,9 @@
 from random import (SystemRandom)
 from datetime import (datetime, timedelta)
+
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
 from app import db
 from app.models import (User, VerifyCode)
 
@@ -113,3 +116,16 @@ def update_user_password(user, password):
     user.password_changed_at = datetime.utcnow()
     db.session.add(user)
     db.session.commit()
+
+
+def get_user_and_accounts(user_id):
+    return User.query.filter(
+        User.id == user_id
+    ).options(
+        # eagerly load the user's services and organisations, and also the service's org and vice versa
+        # (so we can see if the user knows about it)
+        joinedload('services'),
+        joinedload('organisations'),
+        joinedload('organisations.services'),
+        joinedload('services.organisation'),
+    ).one()
