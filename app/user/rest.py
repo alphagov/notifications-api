@@ -399,7 +399,39 @@ def update_password(user_id):
 @user_blueprint.route('/<uuid:user_id>/organisations-and-services', methods=['GET'])
 def get_organisations_and_services_for_user(user_id):
     user = get_user_and_accounts(user_id)
-    data = {
+    data = get_orgs_and_services(user)
+    return jsonify(data)
+
+
+def _create_reset_password_url(email):
+    data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
+    url = '/new-password/'
+    return url_with_token(data, url, current_app.config)
+
+
+def _create_verification_url(user):
+    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
+    url = '/verify-email/'
+    return url_with_token(data, url, current_app.config)
+
+
+def _create_confirmation_url(user, email_address):
+    data = json.dumps({'user_id': str(user.id), 'email': email_address})
+    url = '/user-profile/email/confirm/'
+    return url_with_token(data, url, current_app.config)
+
+
+def _create_2fa_url(user, secret_code, next_redir, email_auth_link_host):
+    data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
+    url = '/email-auth/'
+    ret = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
+    if next_redir:
+        ret += '?{}'.format(urlencode({'next': next_redir}))
+    return ret
+
+
+def get_orgs_and_services(user):
+    return {
         'organisations': [
             {
                 'name': org.name,
@@ -431,31 +463,3 @@ def get_organisations_and_services_for_user(user_id):
             )
         ]
     }
-    return jsonify(data)
-
-
-def _create_reset_password_url(email):
-    data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
-    url = '/new-password/'
-    return url_with_token(data, url, current_app.config)
-
-
-def _create_verification_url(user):
-    data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
-    url = '/verify-email/'
-    return url_with_token(data, url, current_app.config)
-
-
-def _create_confirmation_url(user, email_address):
-    data = json.dumps({'user_id': str(user.id), 'email': email_address})
-    url = '/user-profile/email/confirm/'
-    return url_with_token(data, url, current_app.config)
-
-
-def _create_2fa_url(user, secret_code, next_redir, email_auth_link_host):
-    data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
-    url = '/email-auth/'
-    ret = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
-    if next_redir:
-        ret += '?{}'.format(urlencode({'next': next_redir}))
-    return ret
