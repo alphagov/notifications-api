@@ -96,12 +96,12 @@ def test_dvla_rs_txt_file_callback_calls_update_letter_notifications_task(client
 def test_dvla_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mocker):
     update_task = \
         mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_callback('NOTIFY.20170823160812.RSP.TXT')
+    data = _sample_sns_s3_callback('NOTIFY-20170823160812-RSP.TXT')
     response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert update_task.called
-    update_task.assert_called_with(['NOTIFY.20170823160812.RSP.TXT'], queue='notify-internal-tasks')
+    update_task.assert_called_with(['NOTIFY-20170823160812-RSP.TXT'], queue='notify-internal-tasks')
 
 
 def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mocker):

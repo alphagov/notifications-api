@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -95,3 +95,21 @@ def test_save_api_key_should_not_create_new_service_history(sample_service):
     save_model_api_key(api_key)
 
     assert Service.get_history_model().query.count() == 1
+
+
+@pytest.mark.parametrize('days_old, expected_length', [(5, 1), (8, 0)])
+def test_should_not_return_revoked_api_keys_older_than_7_days(
+    sample_service,
+    days_old,
+    expected_length
+):
+    expired_api_key = ApiKey(**{'service': sample_service,
+                                'name': sample_service.name,
+                                'created_by': sample_service.created_by,
+                                'key_type': KEY_TYPE_NORMAL,
+                                'expiry_date': datetime.utcnow() - timedelta(days=days_old)})
+    save_model_api_key(expired_api_key)
+
+    all_api_keys = get_model_api_keys(service_id=sample_service.id)
+
+    assert len(all_api_keys) == expected_length

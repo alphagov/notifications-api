@@ -420,33 +420,37 @@ def update_letter_notifications_statuses(self, filename):
             update_letter_notification(filename, temporary_failures, update)
             sorted_letter_counts[update.cost_threshold] += 1
 
-        if temporary_failures:
-            # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-            message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
-                filename=filename, failures=temporary_failures)
-            raise DVLAException(message)
+        try:
+            if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
+                unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
 
-        if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
-            unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
+                message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
+                    filename, unknown_status
+                )
+                raise DVLAException(message)
 
-            message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
-                filename, unknown_status
-            )
-            raise DVLAException(message)
-
-        billing_date = get_billing_date_in_bst_from_filename(filename)
-        persist_daily_sorted_letter_counts(billing_date, sorted_letter_counts)
+            billing_date = get_billing_date_in_bst_from_filename(filename)
+            persist_daily_sorted_letter_counts(day=billing_date,
+                                               file_name=filename,
+                                               sorted_letter_counts=sorted_letter_counts)
+        finally:
+            if temporary_failures:
+                # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
+                message = "DVLA response file: {filename} has failed letters with notification.reference {failures}" \
+                    .format(filename=filename, failures=temporary_failures)
+                raise DVLAException(message)
 
 
 def get_billing_date_in_bst_from_filename(filename):
-    datetime_string = filename.split('.')[1]
+    datetime_string = filename.split('-')[1]
     datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M%S')
     return convert_utc_to_bst(datetime_obj).date()
 
 
-def persist_daily_sorted_letter_counts(day, sorted_letter_counts):
+def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
     daily_letter_count = DailySortedLetter(
         billing_day=day,
+        file_name=file_name,
         unsorted_count=sorted_letter_counts['Unsorted'],
         sorted_count=sorted_letter_counts['Sorted']
     )

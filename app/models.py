@@ -116,11 +116,11 @@ class User(db.Model):
     services = db.relationship(
         'Service',
         secondary='user_to_service',
-        backref=db.backref('user_to_service', lazy='dynamic'))
+        backref='user_to_service')
     organisations = db.relationship(
         'Organisation',
         secondary='user_to_organisation',
-        backref=db.backref('user_to_organisation', lazy='dynamic'))
+        backref='users')
 
     @property
     def password(self):
@@ -132,6 +132,38 @@ class User(db.Model):
 
     def check_password(self, password):
         return check_hash(password, self._password)
+
+    def get_permissions(self):
+        from app.dao.permissions_dao import permission_dao
+        retval = {}
+        for x in permission_dao.get_permissions_by_user_id(self.id):
+            service_id = str(x.service_id)
+            if service_id not in retval:
+                retval[service_id] = []
+            retval[service_id].append(x.permission)
+        return retval
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email_address': self.email_address,
+            'auth_type': self.auth_type,
+            'current_session_id': self.current_session_id,
+            'failed_login_count': self.failed_login_count,
+            'logged_in_at': self.logged_in_at.strftime(DATETIME_FORMAT) if self.logged_in_at else None,
+            'mobile_number': self.mobile_number,
+            'organisations': [x.id for x in self.organisations if x.active],
+            'password_changed_at': (
+                self.password_changed_at.strftime('%Y-%m-%d %H:%M:%S.%f')
+                if self.password_changed_at
+                else None
+            ),
+            'permissions': self.get_permissions(),
+            'platform_admin': self.platform_admin,
+            'services': [x.id for x in self.services if x.active],
+            'state': self.state,
+        }
 
 
 user_to_service = db.Table(
@@ -1726,10 +1758,14 @@ class DailySortedLetter(db.Model):
     __tablename__ = "daily_sorted_letter"
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    billing_day = db.Column(db.Date, nullable=False, index=True, unique=True)
+    billing_day = db.Column(db.Date, nullable=False, index=True)
+    file_name = db.Column(db.String, nullable=True, index=True)
     unsorted_count = db.Column(db.Integer, nullable=False, default=0)
     sorted_count = db.Column(db.Integer, nullable=False, default=0)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint('file_name', 'billing_day', name='uix_file_name_billing_day'),
+                      )
 
 
 class FactBilling(db.Model):

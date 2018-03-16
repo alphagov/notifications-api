@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import ANY
 
 from flask import json
 from flask import url_for
@@ -29,9 +30,13 @@ test_address = {
 }
 
 
-def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201):
+def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201, precompiled=False):
+    if precompiled:
+        url = url_for('v2_notifications.post_precompiled_letter_notification')
+    else:
+        url = url_for('v2_notifications.post_notification', notification_type=LETTER_TYPE)
     resp = client.post(
-        url_for('v2_notifications.post_notification', notification_type=LETTER_TYPE),
+        url,
         data=json.dumps(data),
         headers=[
             ('Content-Type', 'application/json'),
@@ -380,6 +385,30 @@ def test_post_letter_notification_is_delivered_if_in_trial_mode_and_using_test_k
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_DELIVERED
     assert not fake_create_letter_task.called
+
+
+def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_letters_bucket_using_test_key(
+    client,
+    notify_user,
+    mocker
+):
+    sample_letter_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+    mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=1)
+    data = {
+        "reference": "letter-reference",
+        "content": "bGV0dGVyLWNvbnRlbnQ="
+    }
+    letter_request(
+        client,
+        data=data,
+        service_id=str(sample_letter_service.id),
+        key_type=KEY_TYPE_TEST,
+        precompiled=True)
+
+    notification = Notification.query.one()
+    assert notification.status == NOTIFICATION_DELIVERED
+    s3mock.assert_called_once_with(ANY, b'letter-content', is_test_letter=True)
 
 
 def test_post_letter_notification_persists_notification_reply_to_text(

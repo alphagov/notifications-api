@@ -326,6 +326,7 @@ class Development(Config):
 
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'development-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
 
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
@@ -362,6 +363,7 @@ class Test(Development):
 
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'test-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
 
     # this is overriden in jenkins and on cloudfoundry
@@ -389,6 +391,7 @@ class Preview(Config):
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'preview-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
@@ -400,6 +403,7 @@ class Staging(Config):
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'staging-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
@@ -413,6 +417,7 @@ class Live(Config):
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'production-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
@@ -433,6 +438,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
+    TEST_LETTERS_BUCKET_NAME = 'cf-sandbox-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
