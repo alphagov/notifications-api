@@ -5,8 +5,10 @@ from freezegun import freeze_time
 
 from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
+from app.models import Notification
 from app.notifications.notifications_ses_callback import process_ses_response, remove_emails_from_bounce
 from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
+from app.celery.service_callback_tasks import create_encrypted_callback_data
 
 from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.db import create_service_callback_api
@@ -32,7 +34,8 @@ def test_ses_callback_should_update_notification_status(
             status='sending',
             sent_at=datetime.utcnow()
         )
-        create_service_callback_api(service=sample_email_template.service, url="https://original_url.com")
+        callback_api = create_service_callback_api(service=sample_email_template.service,
+                                                   url="https://original_url.com")
         assert get_notification_by_id(notification.id).status == 'sending'
 
         errors = process_ses_response(ses_notification_callback(reference='ref'))
@@ -42,7 +45,9 @@ def test_ses_callback_should_update_notification_status(
             "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
-        send_mock.assert_called_once_with([str(notification.id)], queue="service-callbacks")
+        updated_notification = Notification.query.get(notification.id)
+        encrypted_data = create_encrypted_callback_data(updated_notification, callback_api)
+        send_mock.assert_called_once_with([str(notification.id), encrypted_data], queue="service-callbacks")
 
 
 def test_ses_callback_does_not_call_send_delivery_status_if_no_db_entry(

@@ -59,10 +59,15 @@ from app.celery.tasks import (
     process_job
 )
 from app.config import QueueNames, TaskNames
-from app.utils import convert_utc_to_bst
+from app.utils import (
+    convert_utc_to_bst
+)
 from app.v2.errors import JobIncompleteError
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
-from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.service_callback_tasks import (
+    send_delivery_status_to_service,
+    create_encrypted_callback_data,
+)
 import pytz
 
 
@@ -201,9 +206,10 @@ def timeout_notifications():
     for notification in notifications:
         # queue callback task only if the service_callback_api exists
         service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
-
         if service_callback_api:
-            send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
+            encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
+            send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],
+                                                        queue=QueueNames.CALLBACKS)
 
     current_app.logger.info(
         "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))

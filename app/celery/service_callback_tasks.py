@@ -141,3 +141,21 @@ def process_update_with_notification_id(self, notification_id):
                 """Retry: send_delivery_status_to_service has retried the max num of times
                  for notification: {}""".format(notification_id)
             )
+
+
+def create_encrypted_callback_data(notification, service_callback_api):
+    from app import DATETIME_FORMAT, encryption
+    data = {
+        "notification_id": str(notification.id),
+        "notification_client_reference": notification.client_reference,
+        "notification_to": notification.to,
+        "notification_status": notification.status,
+        "notification_created_at": notification.created_at.strftime(DATETIME_FORMAT),
+        "notification_updated_at":
+            notification.updated_at.strftime(DATETIME_FORMAT) if notification.updated_at else None,
+        "notification_sent_at": notification.sent_at.strftime(DATETIME_FORMAT) if notification.sent_at else None,
+        "notification_type": notification.notification_type,
+        "service_callback_api_url": service_callback_api.url,
+        "service_callback_api_bearer_token": service_callback_api.bearer_token,
+    }
+    return encryption.encrypt(data)

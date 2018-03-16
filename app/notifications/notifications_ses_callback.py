@@ -12,7 +12,10 @@ from app.dao import (
 )
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.notifications.process_client_response import validate_callback_data
-from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.service_callback_tasks import (
+    send_delivery_status_to_service,
+    create_encrypted_callback_data,
+)
 from app.config import QueueNames
 
 
@@ -76,7 +79,7 @@ def process_ses_response(ses_request):
                     notification.sent_at
                 )
 
-            _check_and_queue_callback_task(notification.id, notification.service_id)
+            _check_and_queue_callback_task(notification)
             return
 
         except KeyError:
@@ -93,8 +96,10 @@ def remove_emails_from_bounce(bounce_dict):
         recip.pop('emailAddress')
 
 
-def _check_and_queue_callback_task(notification_id, service_id):
+def _check_and_queue_callback_task(notification):
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_callback_api_for_service(service_id=service_id)
+    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
-        send_delivery_status_to_service.apply_async([str(notification_id)], queue=QueueNames.CALLBACKS)
+        encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
+        send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],
+                                                    queue=QueueNames.CALLBACKS)
