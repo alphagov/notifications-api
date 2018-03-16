@@ -86,7 +86,7 @@ def test_should_be_able_to_get_template_usage_history(notify_db, notify_db_sessi
     with freeze_time('2000-01-01 12:00:00'):
         sms = create_sample_template(notify_db, notify_db_session)
         notification = sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
-        results = dao_get_last_template_usage(sms.id)
+        results = dao_get_last_template_usage(sms.id, 'sms')
         assert results.template.name == 'Template Name'
         assert results.template.template_type == 'sms'
         assert results.created_at == datetime(year=2000, month=1, day=1, hour=12, minute=0, second=0)
@@ -98,14 +98,14 @@ def test_should_be_able_to_get_all_template_usage_history_order_by_notification_
         notify_db,
         notify_db_session,
         sample_service):
-    sms = create_sample_template(notify_db, notify_db_session)
+    email = create_sample_template(notify_db, notify_db_session, template_type='email')
 
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
-    most_recent = sample_notification(notify_db, notify_db_session, service=sample_service, template=sms)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+    most_recent = sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
 
-    results = dao_get_last_template_usage(sms.id)
+    results = dao_get_last_template_usage(email.id, 'email')
     assert results.id == most_recent.id
 
 
@@ -135,7 +135,7 @@ def test_template_usage_should_ignore_test_keys(
         api_key=sample_test_api_key,
         key_type=KEY_TYPE_TEST)
 
-    results = dao_get_last_template_usage(sms.id)
+    results = dao_get_last_template_usage(sms.id, 'sms')
     assert results.id == team_key.id
 
 
@@ -144,7 +144,7 @@ def test_should_be_able_to_get_no_template_usage_history_if_no_notifications_usi
         notify_db_session):
     sms = create_sample_template(notify_db, notify_db_session)
 
-    results = dao_get_last_template_usage(sms.id)
+    results = dao_get_last_template_usage(sms.id, 'sms')
     assert not results
 
 

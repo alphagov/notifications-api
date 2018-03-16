@@ -96,10 +96,11 @@ def dao_get_template_usage(service_id, limit_days=None):
 
 
 @statsd(namespace="dao")
-def dao_get_last_template_usage(template_id):
+def dao_get_last_template_usage(template_id, template_type):
     return Notification.query.filter(
         Notification.template_id == template_id,
-        Notification.key_type != KEY_TYPE_TEST
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == template_type
     ).order_by(
         desc(Notification.created_at)
     ).first()
