@@ -375,14 +375,15 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
 
     # Notifications still in created status are marked with a technical-failure:
-    updated_ids = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
+    technical_failure_notifications = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
 
     # Notifications still in sending or pending status are marked with a temporary-failure:
-    updated_ids += timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING], NOTIFICATION_TEMPORARY_FAILURE)
+    temporary_failure_notifications = timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING],
+                                              NOTIFICATION_TEMPORARY_FAILURE)
 
     db.session.commit()
 
-    return updated_ids
+    return technical_failure_notifications, temporary_failure_notifications
 
 
 def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):

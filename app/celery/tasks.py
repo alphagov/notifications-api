@@ -50,7 +50,7 @@ from app.dao.provider_details_dao import get_current_provider
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
-from app.exceptions import DVLAException
+from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
     DVLA_RESPONSE_STATUS_SENT,
     EMAIL_TYPE,
@@ -371,8 +371,10 @@ def update_letter_notifications_to_error(self, notification_references):
             'updated_at': datetime.utcnow()
         }
     )
-
-    current_app.logger.debug("Updated {} letter notifications to technical-failure".format(updated_count))
+    message = "Updated {} letter notifications to technical-failure with references {}".format(
+        updated_count, notification_references
+    )
+    raise NotificationTechnicalFailureException(message=message)
 
 
 def handle_exception(task, notification, notification_id, exc):

@@ -19,6 +19,7 @@ from app.dao.provider_details_dao import (
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
+from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     SMS_TYPE,
     KEY_TYPE_TEST,
@@ -211,7 +212,7 @@ def get_html_email_options(service):
 def technical_failure(notification):
     notification.status = NOTIFICATION_TECHNICAL_FAILURE
     dao_update_notification(notification)
-    current_app.logger.warn(
+    raise NotificationTechnicalFailureException(
         "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
             notification.notification_type,
             notification.id,

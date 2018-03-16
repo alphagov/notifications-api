@@ -16,6 +16,7 @@ from app.dao.services_dao import (
     dao_fetch_monthly_historical_stats_by_template
 )
 from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
+from app.exceptions import NotificationTechnicalFailureException
 from app.performance_platform import total_sent_notifications, processing_time
 from app import performance_platform_client, deskpro_client
 from app.dao.date_util import get_month_start_and_end_date_in_utc
@@ -201,8 +202,10 @@ def delete_invitations():
 @notify_celery.task(name='timeout-sending-notifications')
 @statsd(namespace="tasks")
 def timeout_notifications():
-    notifications = dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+    technical_failure_notifications, temporary_failure_notifications = \
+        dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
 
+    notifications = technical_failure_notifications + temporary_failure_notifications
     for notification in notifications:
         # queue callback task only if the service_callback_api exists
         service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
@@ -213,6 +216,11 @@ def timeout_notifications():
 
     current_app.logger.info(
         "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
+    if technical_failure_notifications:
+        message = "{} notifications have been updated to technical-failure because they " \
+                  "have timed out and are still in created.Notification ids: {}".format(
+                      len(technical_failure_notifications), [str(x.id) for x in technical_failure_notifications])
+        raise NotificationTechnicalFailureException(message)
 
 
 @notify_celery.task(name='send-daily-performance-platform-stats')

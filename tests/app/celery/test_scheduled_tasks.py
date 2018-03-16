@@ -44,6 +44,7 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
+from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     MonthlyBilling,
     NotificationHistory,
@@ -181,8 +182,10 @@ def test_update_status_of_notifications_after_timeout(notify_api, sample_templat
             status='pending',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        timeout_notifications()
-
+        with pytest.raises(NotificationTechnicalFailureException) as e:
+            timeout_notifications()
+        print(e.value.message)
+        assert str(not2.id) in e.value.message
         assert not1.status == 'temporary-failure'
         assert not2.status == 'technical-failure'
         assert not3.status == 'temporary-failure'
