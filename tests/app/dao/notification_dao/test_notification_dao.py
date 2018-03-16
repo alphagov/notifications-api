@@ -94,18 +94,22 @@ def test_should_be_able_to_get_template_usage_history(notify_db, notify_db_sessi
         assert results.id == notification.id
 
 
+@pytest.mark.parametrize("notification_type",
+                         ['sms', 'email', 'letter'])
 def test_should_be_able_to_get_all_template_usage_history_order_by_notification_created_at(
         notify_db,
         notify_db_session,
-        sample_service):
-    email = create_sample_template(notify_db, notify_db_session, template_type='email')
+        sample_service,
+        notification_type
+):
+    template = create_sample_template(notify_db, notify_db_session, template_type=notification_type)
 
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
-    sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
-    most_recent = sample_notification(notify_db, notify_db_session, service=sample_service, template=email)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=template)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=template)
+    sample_notification(notify_db, notify_db_session, service=sample_service, template=template)
+    most_recent = sample_notification(notify_db, notify_db_session, service=sample_service, template=template)
 
-    results = dao_get_last_template_usage(email.id, 'email')
+    results = dao_get_last_template_usage(template.id, notification_type)
     assert results.id == most_recent.id
 
 
