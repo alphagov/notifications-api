@@ -213,6 +213,11 @@ class Config(object):
             'schedule': crontab(hour=3, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'create-nightly-billing': {
+            'task': 'create-nightly-billing',
+            'schedule': crontab(hour=3, minute=30),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(hour=4, minute=0),

@@ -1,6 +1,7 @@
 from app import notify_celery
 from notifications_utils.statsd_decorators import statsd
 import random
+from datetime import datetime, timedelta
 from app.models import (Notification,
                         Rate,
                         NOTIFICATION_CREATED,
@@ -15,11 +16,7 @@ from sqlalchemy import func, desc, case
 from app.dao.dao_utils import transactional
 
 
-def get_rate(notification_type, date, crown=None, rate_multiplier=None):
-    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
-                        Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate) for r in
-                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
+def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
 
     if notification_type == LETTER_TYPE:
         return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and rate_multiplier == r[2])
@@ -32,7 +29,15 @@ def get_rate(notification_type, date, crown=None, rate_multiplier=None):
 @notify_celery.task(bind=True, name="create-nightly-billing", max_retries=15, default_retry_delay=300)
 @statsd(namespace="tasks")
 @transactional
-def create_nightly_billing(self, day_start):
+def create_nightly_billing(self, day_start=None):
+    if day_start is None:
+        day_start = datetime.date(datetime.utcnow()) - timedelta(days=3)   # Nightly jobs consolidating last 3 days
+        # Task to be run after mid-night
+
+    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
+                        Rate.query.order_by(desc(Rate.valid_from)).all()]
+    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate) for r in
+                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
 
     transit_data = db.session.query(
         func.date_trunc('day', Notification.created_at).label('day_created'),
@@ -56,7 +61,7 @@ def create_nightly_billing(self, day_start):
         Notification.status != NOTIFICATION_CREATED,        # at created status, provider information is not available
         Notification.status != NOTIFICATION_TECHNICAL_FAILURE,
         Notification.key_type != KEY_TYPE_TEST,
-        Notification.created_at >= '2018-01-01;'
+        Notification.created_at >= day_start
     ).group_by(
         'day_created',
         Notification.template_id,
@@ -94,6 +99,11 @@ def create_nightly_billing(self, day_start):
                 international=data.international,
                 billable_units=data.billable_units,
                 notifications_sent=data.notifications_sent,
-                rate=get_rate(data.notification_type, data.day_created, data.crown, data.rate_multiplier)
+                rate=get_rate(non_letter_rates,
+                              letter_rates,
+                              data.notification_type,
+                              data.day_created,
+                              data.crown,
+                              data.rate_multiplier)
             )
             db.session.add(billing_record)
