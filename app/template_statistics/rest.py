@@ -63,7 +63,7 @@ def get_template_statistics_for_template_id(service_id, template_id):
         raise InvalidRequest(errors, status_code=404)
 
     data = None
-    notification = dao_get_last_template_usage(template_id)
+    notification = dao_get_last_template_usage(template_id, template.template_type)
     if notification:
         data = notification_with_template_schema.dump(notification).data
 
