@@ -265,6 +265,8 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
             queue=QueueNames.RESEARCH_MODE
         )
     else:
+        if precompiled and api_key.key_type == KEY_TYPE_TEST:
+            upload_letter_pdf(notification, letter_content, is_test_letter=True)
         update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
     return notification
