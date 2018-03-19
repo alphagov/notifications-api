@@ -62,7 +62,7 @@ def send_delivery_status_to_service(self, notification_id,
             response.raise_for_status()
         except RequestException as e:
             current_app.logger.warning(
-                "send_delivery_status_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+                "send_delivery_status_to_service request failed for notification_id: {} and url: {}. exc: {}".format(
                     notification_id,
                     status_update['service_callback_api_url'],
                     e
@@ -119,7 +119,7 @@ def process_update_with_notification_id(self, notification_id):
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "send_delivery_status_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+            "send_delivery_status_to_service request failed for notification_id: {} and url: {}. exc: {}".format(
                 notification_id,
                 service_callback_api.url,
                 e
