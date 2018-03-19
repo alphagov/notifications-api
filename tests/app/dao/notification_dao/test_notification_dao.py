@@ -1222,7 +1222,7 @@ def test_dao_timeout_notifications(sample_template):
     assert Notification.query.get(sending.id).status == 'sending'
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
-    updated_ids = dao_timeout_notifications(1)
+    technical_failure_notifications, temporary_failure_notifications = dao_timeout_notifications(1)
     assert Notification.query.get(created.id).status == 'technical-failure'
     assert Notification.query.get(sending.id).status == 'temporary-failure'
     assert Notification.query.get(pending.id).status == 'temporary-failure'
@@ -1231,7 +1231,7 @@ def test_dao_timeout_notifications(sample_template):
     assert NotificationHistory.query.get(sending.id).status == 'temporary-failure'
     assert NotificationHistory.query.get(pending.id).status == 'temporary-failure'
     assert NotificationHistory.query.get(delivered.id).status == 'delivered'
-    assert len(updated_ids) == 3
+    assert len(technical_failure_notifications + temporary_failure_notifications) == 3
 
 
 def test_dao_timeout_notifications_only_updates_for_older_notifications(sample_template):
@@ -1245,12 +1245,12 @@ def test_dao_timeout_notifications_only_updates_for_older_notifications(sample_t
     assert Notification.query.get(sending.id).status == 'sending'
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
-    updated_ids = dao_timeout_notifications(1)
+    technical_failure_notifications, temporary_failure_notifications = dao_timeout_notifications(1)
     assert NotificationHistory.query.get(created.id).status == 'created'
     assert NotificationHistory.query.get(sending.id).status == 'sending'
     assert NotificationHistory.query.get(pending.id).status == 'pending'
     assert NotificationHistory.query.get(delivered.id).status == 'delivered'
-    assert len(updated_ids) == 0
+    assert len(technical_failure_notifications + temporary_failure_notifications) == 0
 
 
 def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template):
@@ -1265,13 +1265,13 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
     assert Notification.query.get(pending.id).status == 'pending'
     assert Notification.query.get(delivered.id).status == 'delivered'
 
-    updated_ids = dao_timeout_notifications(1)
+    technical_failure_notifications, temporary_failure_notifications = dao_timeout_notifications(1)
 
     assert NotificationHistory.query.get(created.id).status == 'created'
     assert NotificationHistory.query.get(sending.id).status == 'sending'
     assert NotificationHistory.query.get(pending.id).status == 'pending'
     assert NotificationHistory.query.get(delivered.id).status == 'delivered'
-    assert len(updated_ids) == 0
+    assert len(technical_failure_notifications + temporary_failure_notifications) == 0
 
 
 def test_should_return_notifications_excluding_jobs_by_default(sample_template, sample_job, sample_api_key):

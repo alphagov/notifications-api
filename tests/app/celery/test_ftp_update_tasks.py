@@ -5,7 +5,7 @@ import pytest
 from freezegun import freeze_time
 from flask import current_app
 
-from app.exceptions import DVLAException
+from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
     Job,
     Notification,
@@ -276,7 +276,9 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     dt = datetime.utcnow()
     with freeze_time(dt):
-        update_letter_notifications_to_error([first.reference])
+        with pytest.raises(NotificationTechnicalFailureException) as e:
+            update_letter_notifications_to_error([first.reference])
+    assert first.reference in e.value.message
 
     assert first.status == NOTIFICATION_TECHNICAL_FAILURE
     assert first.sent_by is None

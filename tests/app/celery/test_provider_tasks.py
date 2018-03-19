@@ -1,9 +1,11 @@
+import pytest
 from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.recipients import InvalidEmailError
 
 import app
 from app.celery import provider_tasks
 from app.celery.provider_tasks import deliver_sms, deliver_email
+from app.exceptions import NotificationTechnicalFailureException
 
 
 def test_should_have_decorated_tasks_functions():
@@ -59,21 +61,25 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(s
     mocker.patch('app.delivery.send_to_providers.send_sms_to_provider', side_effect=Exception("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.deliver_sms.retry', side_effect=MaxRetriesExceededError())
 
-    deliver_sms(sample_notification.id)
+    with pytest.raises(NotificationTechnicalFailureException) as e:
+        deliver_sms(sample_notification.id)
 
     provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks")
 
     assert sample_notification.status == 'technical-failure'
+    assert str(sample_notification.id) in e.value.message
 
 
 def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task(sample_notification, mocker):
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=Exception("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.deliver_email.retry', side_effect=MaxRetriesExceededError())
 
-    deliver_email(sample_notification.id)
+    with pytest.raises(NotificationTechnicalFailureException) as e:
+        deliver_email(sample_notification.id)
 
     provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
     assert sample_notification.status == 'technical-failure'
+    assert str(sample_notification.id) in e.value.message
 
 
 def test_should_technical_error_and_not_retry_if_invalid_email(sample_notification, mocker):

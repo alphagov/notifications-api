@@ -110,6 +110,29 @@ def test_send_delivery_status_to_service_does_not_retries_if_request_returns_404
     assert mocked.call_count == 0
 
 
+def test_send_delivery_status_to_service_succeeds_if_sent_at_is_none(
+        notify_db_session,
+        mocker
+):
+    callback_api, template = _set_up_test_data('email')
+    datestr = datetime(2017, 6, 20)
+    notification = create_notification(template=template,
+                                       created_at=datestr,
+                                       updated_at=datestr,
+                                       sent_at=None,
+                                       status='technical-failure'
+                                       )
+    encrypted_data = _set_up_encrypted_data(callback_api, notification)
+    mocked = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.retry')
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(callback_api.url,
+                          json={},
+                          status_code=404)
+        send_delivery_status_to_service(notification.id, encrypted_status_update=encrypted_data)
+
+    assert mocked.call_count == 0
+
+
 def _set_up_test_data(notification_type):
     service = create_service(restricted=True)
     template = create_template(service=service, template_type=notification_type, subject='Hello')
@@ -125,8 +148,9 @@ def _set_up_encrypted_data(callback_api, notification):
         "notification_to": notification.to,
         "notification_status": notification.status,
         "notification_created_at": notification.created_at.strftime(DATETIME_FORMAT),
-        "notification_updated_at": notification.updated_at.strftime(DATETIME_FORMAT),
-        "notification_sent_at": notification.sent_at.strftime(DATETIME_FORMAT),
+        "notification_updated_at": notification.updated_at.strftime(
+            DATETIME_FORMAT) if notification.updated_at else None,
+        "notification_sent_at": notification.sent_at.strftime(DATETIME_FORMAT) if notification.sent_at else None,
         "notification_type": notification.notification_type,
         "service_callback_api_url": callback_api.url,
         "service_callback_api_bearer_token": callback_api.bearer_token,

@@ -44,6 +44,7 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     get_current_provider
 )
+from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     MonthlyBilling,
     NotificationHistory,
@@ -57,6 +58,7 @@ from app.models import (
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
+from app.celery.service_callback_tasks import create_encrypted_callback_data
 from app.v2.errors import JobIncompleteError
 from tests.app.db import (
     create_notification, create_service, create_template, create_job, create_rate,
@@ -180,8 +182,9 @@ def test_update_status_of_notifications_after_timeout(notify_api, sample_templat
             status='pending',
             created_at=datetime.utcnow() - timedelta(
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        timeout_notifications()
-
+        with pytest.raises(NotificationTechnicalFailureException) as e:
+            timeout_notifications()
+        assert str(not2.id) in e.value.message
         assert not1.status == 'temporary-failure'
         assert not2.status == 'technical-failure'
         assert not3.status == 'temporary-failure'
@@ -210,7 +213,7 @@ def test_should_not_update_status_of_letter_notifications(client, sample_letter_
 
 
 def test_timeout_notifications_sends_status_update_to_service(client, sample_template, mocker):
-    create_service_callback_api(service=sample_template.service)
+    callback_api = create_service_callback_api(service=sample_template.service)
     mocked = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
     notification = create_notification(
         template=sample_template,
@@ -218,7 +221,9 @@ def test_timeout_notifications_sends_status_update_to_service(client, sample_tem
         created_at=datetime.utcnow() - timedelta(
             seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
     timeout_notifications()
-    mocked.assert_called_once_with([str(notification.id)], queue=QueueNames.CALLBACKS)
+
+    encrypted_data = create_encrypted_callback_data(notification, callback_api)
+    mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
 def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):

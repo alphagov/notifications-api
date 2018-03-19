@@ -7,6 +7,7 @@ from app.notifications.process_client_response import (
     validate_callback_data,
     process_sms_client_response
 )
+from app.celery.service_callback_tasks import create_encrypted_callback_data
 from tests.app.db import create_service_callback_api
 
 
@@ -57,13 +58,15 @@ def test_outcome_statistics_called_for_successful_callback(sample_notification, 
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
-    create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
+    callback_api = create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
     reference = str(uuid.uuid4())
 
     success, error = process_sms_client_response(status='3', reference=reference, client_name='MMG')
     assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
     assert error is None
-    send_mock.assert_called_once_with([str(sample_notification.id)], queue="service-callbacks")
+    encrypted_data = create_encrypted_callback_data(sample_notification, callback_api)
+    send_mock.assert_called_once_with([str(sample_notification.id), encrypted_data],
+                                      queue="service-callbacks")
 
 
 def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notification, mocker):

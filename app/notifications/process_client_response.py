@@ -8,10 +8,12 @@ from app.clients import ClientException
 from app.dao import notifications_dao
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
-from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.service_callback_tasks import (
+    send_delivery_status_to_service,
+    create_encrypted_callback_data,
+)
 from app.config import QueueNames
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
-
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -83,7 +85,9 @@ def _process_for_status(notification_status, client_name, reference):
     service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
 
     if service_callback_api:
-        send_delivery_status_to_service.apply_async([str(notification.id)], queue=QueueNames.CALLBACKS)
+        encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
+        send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],
+                                                    queue=QueueNames.CALLBACKS)
 
     success = "{} callback succeeded. reference {} updated".format(client_name, reference)
     return success
