@@ -4,12 +4,11 @@ import io
 import math
 
 from flask import request, jsonify, current_app, abort
-
 from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import api_user, authenticated_service
-from app.config import QueueNames
+from app import api_user, authenticated_service, notify_celery
+from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import dao_update_notification, update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import get_user_by_id
@@ -246,10 +245,21 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     if should_send:
         if precompiled:
-            upload_letter_pdf(notification, letter_content)
+            filename = upload_letter_pdf(notification, letter_content)
             pages_per_sheet = 2
             notification.billable_units = math.ceil(pages / pages_per_sheet)
             dao_update_notification(notification)
+
+            current_app.logger.info(
+                'Calling task scan-file for {}'.format(filename)
+            )
+
+            # call task to add the filename to anti virus queue
+            notify_celery.send_task(
+                name=TaskNames.SCAN_FILE,
+                kwargs={'filename': filename},
+                queue=QueueNames.ANTIVIRUS,
+            )
         else:
             create_letters_pdf.apply_async(
                 [str(notification.id)],

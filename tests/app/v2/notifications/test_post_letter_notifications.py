@@ -479,6 +479,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=5)
+    mocker.patch("app.letters.rest.notify_celery.send_task")
     data = {
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ="
