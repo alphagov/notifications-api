@@ -533,6 +533,7 @@ def sample_notification(
     api_key=None,
     key_type=KEY_TYPE_NORMAL,
     sent_by=None,
+    international=False,
     client_reference=None,
     rate_multiplier=1.0,
     scheduled_for=None,
