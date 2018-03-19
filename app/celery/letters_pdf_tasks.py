@@ -1,12 +1,14 @@
 import math
+from datetime import datetime
 
+from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from requests import (
     post as requests_post,
     RequestException
 )
-from botocore.exceptions import ClientError as BotoClientError
+
+from notifications_utils.statsd_decorators import statsd
 
 from app import notify_celery
 from app.aws import s3
@@ -16,9 +18,15 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     dao_update_notification,
     dao_get_notifications_by_references,
+    dao_update_notifications_by_reference,
 )
-from app.letters.utils import upload_letter_pdf
-from app.models import NOTIFICATION_CREATED
+from app.letters.utils import (
+    delete_pdf_from_letters_scan_bucket,
+    get_reference_from_filename,
+    move_scanned_pdf_to_letters_pdf_bucket,
+    upload_letter_pdf
+)
+from app.models import NOTIFICATION_CREATED, NOTIFICATION_PERMANENT_FAILURE
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -133,7 +141,7 @@ def group_letters(letter_pdfs):
 def letter_in_created_state(filename):
     # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
     subfolder = filename.split('/')[0]
-    ref = filename.split('.')[1]
+    ref = get_reference_from_filename(filename)
     notifications = dao_get_notifications_by_references([ref])
     if notifications:
         if notifications[0].status == NOTIFICATION_CREATED:
@@ -144,3 +152,42 @@ def letter_in_created_state(filename):
             notifications[0].status
         ))
     return False
+
+
+@notify_celery.task(name='process-letter-scan-passed')
+def process_letter_scan_passed(filename):
+    current_app.logger.info('Virus scan passed: {}'.format(filename))
+    move_scanned_pdf_to_letters_pdf_bucket(filename)
+    reference = get_reference_from_filename(filename)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_CREATED)
+
+    if updated_count != 1:
+        raise Exception(
+            "There should only be one letter notification for each reference. Found {} notifications".format(
+                updated_count
+            )
+        )
+
+
+@notify_celery.task(name='process-letter-scan-failed')
+def process_letter_scan_failed(filename):
+    current_app.logger.info('Virus scan failed: {}'.format(filename))
+    delete_pdf_from_letters_scan_bucket(filename)
+    reference = get_reference_from_filename(filename)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_PERMANENT_FAILURE)
+
+    if updated_count != 1:
+        raise Exception(
+            "There should only be one letter notification for each reference. Found {} notifications".format(
+                updated_count
+            )
+        )
+
+
+def update_letter_pdf_status(reference, status):
+    return dao_update_notifications_by_reference(
+        references=[reference],
+        update_dict={
+            'status': status,
+            'updated_at': datetime.utcnow()
+        })
