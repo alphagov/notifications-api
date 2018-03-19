@@ -184,7 +184,6 @@ def test_update_status_of_notifications_after_timeout(notify_api, sample_templat
                 seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
         with pytest.raises(NotificationTechnicalFailureException) as e:
             timeout_notifications()
-        print(e.value.message)
         assert str(not2.id) in e.value.message
         assert not1.status == 'temporary-failure'
         assert not2.status == 'technical-failure'
