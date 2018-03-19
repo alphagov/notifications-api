@@ -32,6 +32,7 @@ class QueueNames(object):
     CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
     CALLBACKS = 'service-callbacks'
     LETTERS = 'letter-tasks'
+    ANTIVIRUS = 'antivirus-tasks'
 
     @staticmethod
     def all_queues():
@@ -56,6 +57,7 @@ class TaskNames(object):
     DVLA_JOBS = 'send-jobs-to-dvla'
     PROCESS_INCOMPLETE_JOBS = 'process-incomplete-jobs'
     ZIP_AND_SEND_LETTER_PDFS = 'zip-and-send-letter-pdfs'
+    SCAN_FILE = 'scan-file'
 
 
 class Config(object):
