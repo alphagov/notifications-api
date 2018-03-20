@@ -333,6 +333,9 @@ def dao_fetch_monthly_historical_stats_for_service(service_id, year):
 
 @statsd(namespace='dao')
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
+    today = date.today()
+    start_date = get_london_midnight_in_utc(today)
+    end_date = get_london_midnight_in_utc(today + timedelta(days=1))
 
     subquery = db.session.query(
         Notification.notification_type,
@@ -340,7 +343,8 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
         Notification.service_id,
         func.count(Notification.id).label('count')
     ).filter(
-        func.date(Notification.created_at) == date.today(),
+        Notification.created_at >= start_date,
+        Notification.created_at < end_date
     ).group_by(
         Notification.notification_type,
         Notification.status,
