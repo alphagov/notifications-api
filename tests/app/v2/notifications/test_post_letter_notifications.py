@@ -500,18 +500,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
 
     resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json == {
-        'content': {'body': None, 'subject': 'Pre-compiled PDF'},
-        'id': str(notification.id),
-        'reference': 'letter-reference',
-        'scheduled_for': None,
-        'template': {
-            'id': ANY,
-            'uri': ANY,
-            'version': 1
-        },
-        'uri': ANY
-    }
+    assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}
 
 
 def test_post_precompiled_letter_notification_returns_400_with_invalid_pdf(client, notify_user, mocker):
