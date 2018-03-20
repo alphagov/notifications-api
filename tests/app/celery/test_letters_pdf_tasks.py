@@ -17,8 +17,8 @@ from app.celery.letters_pdf_tasks import (
     collate_letter_pdfs_for_day,
     group_letters,
     letter_in_created_state,
-    process_letter_scan_passed,
-    process_letter_scan_failed,
+    process_virus_scan_passed,
+    process_virus_scan_failed,
 )
 from app.letters.utils import get_letter_pdf_filename
 from app.models import (
@@ -322,7 +322,7 @@ def test_process_letter_task_check_virus_scan_passed(sample_letter_notification,
     sample_letter_notification.status = 'pending-virus-check'
     mock_move_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_scanned_pdf_to_letters_pdf_bucket')
 
-    process_letter_scan_passed(filename)
+    process_virus_scan_passed(filename)
 
     mock_move_pdf.assert_called_once_with(filename)
     assert sample_letter_notification.status == NOTIFICATION_CREATED
@@ -333,7 +333,7 @@ def test_process_letter_task_check_virus_scan_failed(sample_letter_notification,
     sample_letter_notification.status = 'pending-virus-check'
     mock_delete_pdf = mocker.patch('app.celery.letters_pdf_tasks.delete_pdf_from_letters_scan_bucket')
 
-    process_letter_scan_failed(filename)
+    process_virus_scan_failed(filename)
 
     mock_delete_pdf.assert_called_once_with(filename)
     assert sample_letter_notification.status == NOTIFICATION_PERMANENT_FAILURE

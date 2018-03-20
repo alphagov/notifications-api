@@ -154,8 +154,8 @@ def letter_in_created_state(filename):
     return False
 
 
-@notify_celery.task(name='process-letter-scan-passed')
-def process_letter_scan_passed(filename):
+@notify_celery.task(name='process-virus-scan-passed')
+def process_virus_scan_passed(filename):
     current_app.logger.info('Virus scan passed: {}'.format(filename))
     move_scanned_pdf_to_letters_pdf_bucket(filename)
     reference = get_reference_from_filename(filename)
@@ -169,8 +169,8 @@ def process_letter_scan_passed(filename):
         )
 
 
-@notify_celery.task(name='process-letter-scan-failed')
-def process_letter_scan_failed(filename):
+@notify_celery.task(name='process-virus-scan-failed')
+def process_virus_scan_failed(filename):
     current_app.logger.info('Virus scan failed: {}'.format(filename))
     delete_pdf_from_letters_scan_bucket(filename)
     reference = get_reference_from_filename(filename)
