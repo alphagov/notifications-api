@@ -1635,6 +1635,7 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 9, 23, 59))
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 0, 0))
     create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 12, 0))
+    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 23, 0))
 
     with freeze_time('2015-10-10T12:00:00'):
         data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
@@ -1643,7 +1644,7 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     assert len(data) == 1
     assert data[0]['statistics'] == {
         EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
-        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
+        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 3},
         LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
 
