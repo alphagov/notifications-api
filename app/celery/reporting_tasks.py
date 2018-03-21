@@ -1,4 +1,3 @@
-import random
 from datetime import datetime, timedelta
 from app.models import (Notification,
                         Rate,
@@ -44,14 +43,14 @@ def create_nightly_billing(day_start=None):
         Notification.template_id,
         Notification.service_id,
         Notification.notification_type,
-        case(
-            [
-                (Notification.notification_type == 'letter', func.coalesce(Notification.sent_by, 'dvla')),
-                (Notification.notification_type == 'sms',
-                 func.coalesce(Notification.sent_by, random.choice(['mmg', 'firetext'])))
-            ],
-            else_='ses'
-        ).label('sent_by'),  # This could be null - this is a bug to be fixed.
+        func.coalesce(Notification.sent_by,
+                      case(
+                          [
+                              (Notification.notification_type == 'letter', 'dvla'),
+                              (Notification.notification_type == 'sms', 'unknown'),
+                              (Notification.notification_type == 'email', 'ses')
+                          ]),
+                      ).label('sent_by'),
         func.coalesce(Notification.rate_multiplier, 1).label('rate_multiplier'),
         func.coalesce(Notification.international, False).label('international'),
         func.sum(Notification.billable_units).label('billable_units'),
