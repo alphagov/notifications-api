@@ -161,7 +161,7 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks')
+    CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks', 'app.celery.reporting_tasks')
     CELERYBEAT_SCHEDULE = {
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',

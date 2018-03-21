@@ -70,7 +70,6 @@ from app.celery.service_callback_tasks import (
     create_encrypted_callback_data,
 )
 import pytz
-from app.celery.reporting_tasks import create_nightly_billing   # noqa - otherwise task won't start
 
 
 @worker_process_shutdown.connect
