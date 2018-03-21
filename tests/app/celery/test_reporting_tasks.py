@@ -261,7 +261,7 @@ def test_create_nightly_billing_null_sent_by_sms(
     assert record.rate == Decimal(1.33)
     assert record.billable_units == 1
     assert record.rate_multiplier == 1
-    assert record.provider in ['mmg', 'firetext']
+    assert record.provider == 'unknown'
 
 
 @freeze_time('2018-01-15T03:30:00')

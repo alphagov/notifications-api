@@ -1,6 +1,3 @@
-from app import notify_celery
-from notifications_utils.statsd_decorators import statsd
-import random
 from datetime import datetime, timedelta
 from app.models import (Notification,
                         Rate,
@@ -14,6 +11,8 @@ from app.models import (Notification,
 from app import db
 from sqlalchemy import func, desc, case
 from app.dao.dao_utils import transactional
+from notifications_utils.statsd_decorators import statsd
+from app import notify_celery
 
 
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
@@ -26,10 +25,10 @@ def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None
         return 0
 
 
-@notify_celery.task(bind=True, name="create-nightly-billing", max_retries=15, default_retry_delay=300)
+@notify_celery.task(name="create-nightly-billing")
 @statsd(namespace="tasks")
 @transactional
-def create_nightly_billing(self, day_start=None):
+def create_nightly_billing(day_start=None):
     if day_start is None:
         day_start = datetime.date(datetime.utcnow()) - timedelta(days=3)   # Nightly jobs consolidating last 3 days
         # Task to be run after mid-night
@@ -44,14 +43,14 @@ def create_nightly_billing(self, day_start=None):
         Notification.template_id,
         Notification.service_id,
         Notification.notification_type,
-        case(
-            [
-                (Notification.notification_type == 'letter', func.coalesce(Notification.sent_by, 'dvla')),
-                (Notification.notification_type == 'sms',
-                 func.coalesce(Notification.sent_by, random.choice(['mmg', 'firetext'])))
-            ],
-            else_='ses'
-        ).label('sent_by'),  # This could be null - this is a bug to be fixed.
+        func.coalesce(Notification.sent_by,
+                      case(
+                          [
+                              (Notification.notification_type == 'letter', 'dvla'),
+                              (Notification.notification_type == 'sms', 'unknown'),
+                              (Notification.notification_type == 'email', 'ses')
+                          ]),
+                      ).label('sent_by'),
         func.coalesce(Notification.rate_multiplier, 1).label('rate_multiplier'),
         func.coalesce(Notification.international, False).label('international'),
         func.sum(Notification.billable_units).label('billable_units'),
