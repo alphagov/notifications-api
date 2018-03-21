@@ -16,10 +16,17 @@ from app.celery.letters_pdf_tasks import (
     get_letters_pdf,
     collate_letter_pdfs_for_day,
     group_letters,
-    letter_in_created_state
+    letter_in_created_state,
+    process_virus_scan_passed,
+    process_virus_scan_failed,
 )
 from app.letters.utils import get_letter_pdf_filename
-from app.models import Notification, NOTIFICATION_SENDING
+from app.models import (
+    Notification,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_SENDING
+)
 
 from tests.conftest import set_config_values
 
@@ -308,3 +315,25 @@ def test_letter_in_created_state_fails_if_notification_doesnt_exist(sample_notif
     sample_notification.reference = 'QWERTY1234567890'
     filename = '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
     assert letter_in_created_state(filename) is False
+
+
+def test_process_letter_task_check_virus_scan_passed(sample_letter_notification, mocker):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = 'pending-virus-check'
+    mock_move_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_scanned_pdf_to_letters_pdf_bucket')
+
+    process_virus_scan_passed(filename)
+
+    mock_move_pdf.assert_called_once_with(filename)
+    assert sample_letter_notification.status == NOTIFICATION_CREATED
+
+
+def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = 'pending-virus-check'
+    mock_delete_pdf = mocker.patch('app.celery.letters_pdf_tasks.delete_pdf_from_letters_scan_bucket')
+
+    process_virus_scan_failed(filename)
+
+    mock_delete_pdf.assert_called_once_with(filename)
+    assert sample_letter_notification.status == NOTIFICATION_PERMANENT_FAILURE

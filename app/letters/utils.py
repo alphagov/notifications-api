@@ -15,8 +15,8 @@ LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
 
-def get_folder_name(_now, is_test_letter):
-    if is_test_letter:
+def get_folder_name(_now, is_test_or_scan_letter=False):
+    if is_test_or_scan_letter:
         folder_name = ''
     else:
         print_datetime = _now
@@ -26,11 +26,11 @@ def get_folder_name(_now, is_test_letter):
     return folder_name
 
 
-def get_letter_pdf_filename(reference, crown, is_test_letter=False):
+def get_letter_pdf_filename(reference, crown, is_test_or_scan_letter=False):
     now = datetime.utcnow()
 
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(now, is_test_letter),
+        folder=get_folder_name(now, is_test_or_scan_letter),
         reference=reference,
         duplex="D",
         letter_class="2",
@@ -52,17 +52,28 @@ def get_bucket_prefix_for_notification(notification, is_test_letter=False):
     return upload_file_name
 
 
+def get_reference_from_filename(filename):
+    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+    filename_parts = filename.split('.')
+    return filename_parts[1]
+
+
 def upload_letter_pdf(notification, pdf_data, is_test_letter=False):
     current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
     upload_file_name = get_letter_pdf_filename(
-        notification.reference, notification.service.crown, is_test_letter)
+        notification.reference,
+        notification.service.crown,
+        is_test_or_scan_letter=is_test_letter or notification.template.is_precompiled_letter)
 
     if is_test_letter:
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
-        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+        if notification.template.is_precompiled_letter:
+            bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+        else:
+            bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
 
     s3upload(
         filedata=pdf_data,
@@ -74,6 +85,37 @@ def upload_letter_pdf(notification, pdf_data, is_test_letter=False):
 
     current_app.logger.info("Uploaded letters PDF {} to {} for notification id {}".format(
         upload_file_name, bucket_name, notification.id))
+    return upload_file_name
+
+
+def move_scanned_pdf_to_letters_pdf_bucket(filename):
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+
+    s3 = boto3.resource('s3')
+    copy_source = {'Bucket': source_bucket_name, 'Key': filename}
+    target_filename = get_folder_name(datetime.utcnow()) + filename
+    target_bucket = s3.Bucket(target_bucket_name)
+    obj = target_bucket.Object(target_filename)
+
+    # Tags are copied across but the expiration time is reset in the destination bucket
+    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
+    # in the destination bucket the expiration time will be reset to 7 days left to expire
+    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
+
+    s3.Object(source_bucket_name, filename).delete()
+
+    current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
+        source_bucket_name, filename, target_bucket_name, target_filename))
+
+
+def delete_pdf_from_letters_scan_bucket(filename):
+    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    s3 = boto3.resource('s3')
+    s3.Object(bucket_name, filename).delete()
+
+    current_app.logger.info("Deleted letter PDF: {}/{}".format(bucket_name, filename))
 
 
 def get_letter_pdf(notification):
