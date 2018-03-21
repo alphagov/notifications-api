@@ -97,6 +97,10 @@ def move_scanned_pdf_to_letters_pdf_bucket(filename):
     target_filename = get_folder_name(datetime.utcnow()) + filename
     target_bucket = s3.Bucket(target_bucket_name)
     obj = target_bucket.Object(target_filename)
+
+    # Tags are copied across but the expiration time is reset in the destination bucket
+    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
+    # in the destination bucket the expiration time will be reset to 7 days left to expire
     obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
 
     s3.Object(source_bucket_name, filename).delete()
