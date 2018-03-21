@@ -443,7 +443,10 @@ def migrate_data_to_ft_billing(start_date, end_date):
                 group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
                     sms_rate, letter_rate
                 order by bst_date
-            on conflict do nothing
+            on conflict on constraint ft_billing_pkey do update set
+             billable_units = excluded.billable_units,
+             notifications_sent = excluded.notifications_sent,
+             rate = excluded.rate
             """.format(process_date, process_date + timedelta(days=1))
 
         result = db.session.execute(sql)
