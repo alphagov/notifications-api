@@ -386,11 +386,12 @@ def migrate_data_to_ft_billing(start_date, end_date):
             where notification_status!='technical-failure'
             and key_type!='test'
             and notification_status!='created'
-            and created_at >= '{}'
-            and created_at <'{}'order by utc_date) as distinct_records
-            """.format(process_date, process_date + timedelta(days=1))
+            and created_at >= :start
+            and created_at < :end order by utc_date) as distinct_records
+            """
 
-        predicted_records = db.session.execute(sql).fetchall()[0][0]
+        predicted_records = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
         start_time = datetime.now()
         print('{}: Migrating date: {}, expecting {} rows'
               .format(start_time, process_date, predicted_records))
@@ -437,8 +438,8 @@ def migrate_data_to_ft_billing(start_date, end_date):
                     where n.notification_status!='technical-failure'
                         and n.key_type!='test'
                         and n.notification_status!='created'
-                        and n.created_at >= '{}'
-                        and n.created_at < '{}'
+                        and n.created_at >= :start
+                        and n.created_at < :end
                     ) as individual_record
                 group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
                     sms_rate, letter_rate
@@ -447,9 +448,9 @@ def migrate_data_to_ft_billing(start_date, end_date):
              billable_units = excluded.billable_units,
              notifications_sent = excluded.notifications_sent,
              rate = excluded.rate
-            """.format(process_date, process_date + timedelta(days=1))
+            """
 
-        result = db.session.execute(sql)
+        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
         print('{}: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now(), datetime.now() - start_time,
                                                                       result.rowcount,
