@@ -13,6 +13,7 @@ from sqlalchemy import func, desc, case
 from app.dao.dao_utils import transactional
 from notifications_utils.statsd_decorators import statsd
 from app import notify_celery
+from flask import current_app
 
 
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
@@ -76,13 +77,16 @@ def create_nightly_billing(day_start=None):
         'day_created'
     ).all()
 
+    updated_records = 0
+    inserted_records = 0
+
     for data in transit_data:
         update_count = FactBilling.query.filter(
             FactBilling.bst_date == data.day_created,
             FactBilling.template_id == data.template_id,
             FactBilling.provider == data.sent_by,  # This could be zero - this is a bug that needs to be fixed.
             FactBilling.rate_multiplier == data.rate_multiplier,
-            FactBilling.international == data.international,
+            FactBilling.notification_type == data.notification_type,
         ).update(
             {"notifications_sent": data.notifications_sent,
              "billable_units": data.billable_units},
@@ -106,3 +110,9 @@ def create_nightly_billing(day_start=None):
                               data.rate_multiplier)
             )
             db.session.add(billing_record)
+            inserted_records += 1
+
+        updated_records += update_count
+
+        current_app.logger.info('ft_billing: {} rows updated, {} rows inserted'
+                                .format(updated_records, inserted_records))
