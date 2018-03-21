@@ -25,7 +25,8 @@ from app.models import (
     KEY_TYPE_TEAM,
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
-    NOTIFICATION_DELIVERED
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
 )
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.celery.research_mode_tasks import create_fake_letter_response_file
@@ -220,8 +221,15 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if not api_key.service.research_mode and api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
+    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
+
+    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
+
     if precompiled:
         try:
+            if should_send:
+                status = NOTIFICATION_PENDING_VIRUS_CHECK
             letter_content = base64.b64decode(letter_data['content'])
             pages = pdf_page_count(io.BytesIO(letter_content))
         except ValueError:
@@ -230,10 +238,6 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
             current_app.logger.exception(msg='Invalid PDF received')
             raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
 
-    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
-
-    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
-    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
                                               api_key=api_key,
