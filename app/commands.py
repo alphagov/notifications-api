@@ -28,6 +28,7 @@ from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
 from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE, Notification
 from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
 from app.utils import get_midnight_for_day_before, get_london_midnight_in_utc
+from notifications_utils.statsd_decorators import statsd
 
 
 @click.group(name='command', help='Additional commands')
@@ -372,6 +373,7 @@ def setup_commands(application):
 @notify_command(name='migrate-data-to-ft-billing')
 @click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
 @click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@statsd(namespace="tasks")
 def migrate_data_to_ft_billing(start_date, end_date):
 
     print('Billing migration from date {} to {}'.format(start_date, end_date))
