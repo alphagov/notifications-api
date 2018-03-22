@@ -95,7 +95,7 @@ def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(notify_db, 
         status='3', provider_reference=str(sample_notification.id), client_name='MMG')
     assert error is None
     assert success == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert sample_notification.sent_by == 'MMG'
+    assert sample_notification.sent_by == 'mmg'
 
 
 def test_process_sms_does_not_update_sent_by_if_already_set(mocker, notify_db, sample_notification):
