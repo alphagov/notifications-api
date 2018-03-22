@@ -367,3 +367,96 @@ def replay_service_callbacks(file_name, service_id):
 
 def setup_commands(application):
     application.cli.add_command(command_group)
+
+
+@notify_command(name='migrate-data-to-ft-billing')
+@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+def migrate_data_to_ft_billing(start_date, end_date):
+
+    print('Billing migration from date {} to {}'.format(start_date, end_date))
+
+    process_date = start_date
+    while (process_date <= end_date):
+        sql = \
+            """
+            select count(*) from
+            (select distinct date_part('day', created_at) as utc_date, service_id, template_id, rate_multiplier,
+            sent_by from notification_history
+            where notification_status!='technical-failure'
+            and key_type!='test'
+            and notification_status!='created'
+            and created_at >= :start
+            and created_at < :end order by utc_date) as distinct_records
+            """
+
+        predicted_records = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
+        start_time = datetime.now()
+        print('{}: Migrating date: {}, expecting {} rows'
+              .format(start_time, process_date, predicted_records))
+
+        # migrate data into ft_billing, ignore if records already exist - do not do upsert
+        sql = \
+            """
+            insert into ft_billing (bst_date, template_id, service_id, notification_type, provider, rate_multiplier,
+                international, billable_units, notifications_sent, rate)
+                select bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
+                    sum(billable_units) as billable_units, sum(notifications_sent) as notification_sent,
+                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate
+                from (
+                    select
+                        n.id,
+                        da.bst_date,
+                        coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
+                        coalesce(n.service_id, '00000000-0000-0000-0000-000000000000') as service_id,
+                        n.notification_type,
+                        coalesce(n.sent_by, (
+                        case
+                        when notification_type = 'sms' then
+                            coalesce(sent_by, 'unknown')
+                        when notification_type = 'letter' then
+                            coalesce(sent_by, 'dvla')
+                        else
+                            coalesce(sent_by, 'ses')
+                        end )) as provider,
+                        coalesce(n.rate_multiplier,1) as rate_multiplier,
+                        s.crown,
+                        coalesce((select rates.rate from rates
+                        where n.notification_type = rates.notification_type and n.sent_at > rates.valid_from
+                        order by rates.valid_from desc limit 1), 0) as sms_rate,
+                        coalesce((select l.rate from letter_rates l where n.rate_multiplier = l.sheet_count
+                        and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
+                        coalesce(n.international, false) as international,
+                        n.billable_units,
+                        1 as notifications_sent
+                    from public.notification_history n
+                    left join templates t on t.id = n.template_id
+                    left join dm_datetime da on n.created_at> da.utc_daytime_start
+                        and n.created_at < da.utc_daytime_end
+                    left join services s on s.id = n.service_id
+                    where n.notification_status!='technical-failure'
+                        and n.key_type!='test'
+                        and n.notification_status!='created'
+                        and n.created_at >= :start
+                        and n.created_at < :end
+                    ) as individual_record
+                group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
+                    sms_rate, letter_rate
+                order by bst_date
+            on conflict on constraint ft_billing_pkey do update set
+             billable_units = excluded.billable_units,
+             notifications_sent = excluded.notifications_sent,
+             rate = excluded.rate
+            """
+
+        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
+        db.session.commit()
+        print('{}: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now(), datetime.now() - start_time,
+                                                                      result.rowcount,
+                                                                      ))
+        if predicted_records != result.rowcount:
+            print('                          : --- Result mismatch by {} rows'
+                  .format(predicted_records - result.rowcount))
+
+        process_date += timedelta(days=1)
