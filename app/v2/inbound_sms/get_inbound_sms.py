@@ -11,7 +11,7 @@ from app.v2.inbound_sms.inbound_sms_schemas import get_inbound_sms_request
 def get_inbound_sms():
     data = validate(request.args.to_dict(), get_inbound_sms_request)
 
-    paginated_inbound_sms = inbound_sms_dao.dao_get_paginated_inbound_sms_for_service(
+    paginated_inbound_sms = inbound_sms_dao.dao_get_paginated_inbound_sms_for_service_for_public_api(
         authenticated_service.id,
         older_than=data.get('older_than', None),
         page_size=current_app.config.get('API_PAGE_SIZE')
