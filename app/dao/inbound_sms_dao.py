@@ -32,7 +32,23 @@ def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None):
     return q.all()
 
 
-def dao_get_paginated_inbound_sms_for_service(
+def dao_get_paginated_inbound_sms_for_service(service_id, user_number=None, page=1):
+    q = InboundSms.query.filter(
+        InboundSms.service_id == service_id
+    ).order_by(
+        InboundSms.created_at.desc()
+    )
+
+    if user_number:
+        q = q.filter(InboundSms.user_number == user_number)
+
+    return q.paginate(
+        page=page,
+        per_page=current_app.config['PAGE_SIZE']
+    )
+
+
+def dao_get_paginated_inbound_sms_for_service_for_public_api(
     service_id,
     older_than=None,
     page_size=None
