@@ -179,7 +179,7 @@ def process_virus_scan_passed(filename):
 
 @notify_celery.task(name='process-virus-scan-failed')
 def process_virus_scan_failed(filename):
-    current_app.logger.error('Virus scan failed: {}'.format(filename))
+    current_app.logger.exception('Virus scan failed: {}'.format(filename))
     delete_pdf_from_letters_scan_bucket(filename)
     reference = get_reference_from_filename(filename)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
