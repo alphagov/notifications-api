@@ -12,6 +12,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db, DATETIME_FORMAT, encryption
 from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
@@ -314,6 +315,14 @@ def insert_inbound_numbers_from_file(file_name):
         db.session.execute(sql.format(uuid.uuid4(), line.strip()))
         db.session.commit()
     file.close()
+
+
+@notify_command(name='replay-create-pdf-letters')
+@click.option('-n', '--notification_id', required=True,
+              help="Notification id of the letter that needs the create_letters_pdf task replayed")
+def replay_create_pdf_letters(notification_id):
+    print("Create task to create_letters_pdf for notification: {}".format(notification_id))
+    create_letters_pdf.apply_async([notification_id], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 @notify_command(name='replay-service-callbacks')
