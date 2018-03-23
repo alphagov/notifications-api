@@ -26,11 +26,11 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
     return folder_name
 
 
-def get_letter_pdf_filename(reference, crown, is_test_or_scan_letter=False):
+def get_letter_pdf_filename(reference, crown, is_scan_letter=False):
     now = datetime.utcnow()
 
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(now, is_test_or_scan_letter),
+        folder=get_folder_name(now, is_scan_letter),
         reference=reference,
         duplex="D",
         letter_class="2",
@@ -58,22 +58,19 @@ def get_reference_from_filename(filename):
     return filename_parts[1]
 
 
-def upload_letter_pdf(notification, pdf_data, is_test_letter=False):
+def upload_letter_pdf(notification, pdf_data):
     current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
     upload_file_name = get_letter_pdf_filename(
         notification.reference,
         notification.service.crown,
-        is_test_or_scan_letter=is_test_letter or notification.template.is_precompiled_letter)
+        is_scan_letter=notification.template.is_precompiled_letter)
 
-    if is_test_letter:
-        bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
+    if notification.template.is_precompiled_letter:
+        bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     else:
-        if notification.template.is_precompiled_letter:
-            bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-        else:
-            bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
 
     s3upload(
         filedata=pdf_data,
@@ -88,9 +85,10 @@ def upload_letter_pdf(notification, pdf_data, is_test_letter=False):
     return upload_file_name
 
 
-def move_scanned_pdf_to_letters_pdf_bucket(filename):
+def move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=False):
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-    target_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
+    target_bucket_name = current_app.config[target_bucket_config]
 
     s3 = boto3.resource('s3')
     copy_source = {'Bucket': source_bucket_name, 'Key': filename}

@@ -22,9 +22,12 @@ from app.celery.letters_pdf_tasks import (
 )
 from app.letters.utils import get_letter_pdf_filename
 from app.models import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
     Notification,
     NOTIFICATION_CREATED,
-    NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
     NOTIFICATION_SENDING
 )
 
@@ -317,15 +320,22 @@ def test_letter_in_created_state_fails_if_notification_doesnt_exist(sample_notif
     assert letter_in_created_state(filename) is False
 
 
-def test_process_letter_task_check_virus_scan_passed(sample_letter_notification, mocker):
+@pytest.mark.parametrize('key_type,is_test_letter,noti_status', [
+    (KEY_TYPE_NORMAL, False, NOTIFICATION_CREATED),
+    (KEY_TYPE_TEST, True, NOTIFICATION_DELIVERED)
+])
+def test_process_letter_task_check_virus_scan_passed(
+    sample_letter_notification, mocker, key_type, is_test_letter, noti_status
+):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
     sample_letter_notification.status = 'pending-virus-check'
-    mock_move_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_scanned_pdf_to_letters_pdf_bucket')
+    sample_letter_notification.key_type = key_type
+    mock_move_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_scanned_pdf_to_test_or_live_pdf_bucket')
 
     process_virus_scan_passed(filename)
 
-    mock_move_pdf.assert_called_once_with(filename)
-    assert sample_letter_notification.status == NOTIFICATION_CREATED
+    mock_move_pdf.assert_called_once_with(filename, is_test_letter=is_test_letter)
+    assert sample_letter_notification.status == noti_status
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
@@ -336,4 +346,4 @@ def test_process_letter_task_check_virus_scan_failed(sample_letter_notification,
     process_virus_scan_failed(filename)
 
     mock_delete_pdf.assert_called_once_with(filename)
-    assert sample_letter_notification.status == NOTIFICATION_PERMANENT_FAILURE
+    assert sample_letter_notification.status == NOTIFICATION_VIRUS_SCAN_FAILED

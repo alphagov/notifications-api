@@ -5,7 +5,7 @@ from flask import json
 from flask import url_for
 import pytest
 
-from app.config import QueueNames
+from app.config import TaskNames, QueueNames
 from app.models import (
     Job,
     Notification,
@@ -399,8 +399,9 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
     mocker
 ):
     sample_letter_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf', return_value='test.pdf')
     mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=1)
+    mock_celery = mocker.patch("app.letters.rest.notify_celery.send_task")
     data = {
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ="
@@ -413,8 +414,13 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
         precompiled=True)
 
     notification = Notification.query.one()
-    assert notification.status == NOTIFICATION_DELIVERED
-    s3mock.assert_called_once_with(ANY, b'letter-content', is_test_letter=True)
+    assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+    s3mock.assert_called_once_with(ANY, b'letter-content')
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SCAN_FILE,
+        kwargs={'filename': 'test.pdf'},
+        queue=QueueNames.ANTIVIRUS
+    )
 
 
 def test_post_letter_notification_persists_notification_reply_to_text(

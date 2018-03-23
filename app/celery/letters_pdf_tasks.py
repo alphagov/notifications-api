@@ -17,16 +17,22 @@ from app.dao.notifications_dao import (
     get_notification_by_id,
     update_notification_status_by_id,
     dao_update_notification,
+    dao_get_notification_by_reference,
     dao_get_notifications_by_references,
     dao_update_notifications_by_reference,
 )
 from app.letters.utils import (
     delete_pdf_from_letters_scan_bucket,
     get_reference_from_filename,
-    move_scanned_pdf_to_letters_pdf_bucket,
+    move_scanned_pdf_to_test_or_live_pdf_bucket,
     upload_letter_pdf
 )
-from app.models import NOTIFICATION_CREATED, NOTIFICATION_PERMANENT_FAILURE
+from app.models import (
+    KEY_TYPE_TEST,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
+)
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -157,16 +163,18 @@ def letter_in_created_state(filename):
 @notify_celery.task(name='process-virus-scan-passed')
 def process_virus_scan_passed(filename):
     current_app.logger.info('Virus scan passed: {}'.format(filename))
-    move_scanned_pdf_to_letters_pdf_bucket(filename)
     reference = get_reference_from_filename(filename)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_CREATED)
+    notification = dao_get_notification_by_reference(reference)
 
-    if updated_count != 1:
-        raise Exception(
-            "There should only be one letter notification for each reference. Found {} notifications".format(
-                updated_count
-            )
-        )
+    is_test_key = notification.key_type == KEY_TYPE_TEST
+    move_scanned_pdf_to_test_or_live_pdf_bucket(
+        filename,
+        is_test_letter=is_test_key
+    )
+    update_letter_pdf_status(
+        reference,
+        NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED
+    )
 
 
 @notify_celery.task(name='process-virus-scan-failed')
@@ -174,7 +182,7 @@ def process_virus_scan_failed(filename):
     current_app.logger.error('Virus scan failed: {}'.format(filename))
     delete_pdf_from_letters_scan_bucket(filename)
     reference = get_reference_from_filename(filename)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_PERMANENT_FAILURE)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
 
     if updated_count != 1:
         raise Exception(

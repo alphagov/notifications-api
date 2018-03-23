@@ -11,7 +11,7 @@ from app.letters.utils import (
     get_letter_pdf_filename,
     get_letter_pdf,
     upload_letter_pdf,
-    move_scanned_pdf_to_letters_pdf_bucket
+    move_scanned_pdf_to_test_or_live_pdf_bucket
 )
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
 from app.variables import Retention
@@ -71,7 +71,7 @@ def test_get_letter_pdf_filename_returns_correct_filename(
 @freeze_time("2017-12-04 17:29:00")
 def test_get_letter_pdf_filename_returns_correct_filename_for_test_letters(
         notify_api, mocker):
-    filename = get_letter_pdf_filename(reference='foo', crown='C', is_test_or_scan_letter=True)
+    filename = get_letter_pdf_filename(reference='foo', crown='C', is_scan_letter=True)
 
     assert filename == 'NOTIFY.FOO.D.2.C.C.20171204172900.PDF'
 
@@ -125,7 +125,7 @@ def test_upload_letter_pdf_to_correct_bucket(
     filename = get_letter_pdf_filename(
         reference=sample_letter_notification.reference,
         crown=sample_letter_notification.service.crown,
-        is_test_or_scan_letter=is_precompiled_letter
+        is_scan_letter=is_precompiled_letter
     )
 
     upload_letter_pdf(sample_letter_notification, b'\x00\x01')
@@ -140,11 +140,17 @@ def test_upload_letter_pdf_to_correct_bucket(
 
 
 @mock_s3
+@pytest.mark.parametrize('is_test_letter,bucket_config_name', [
+    (False, 'LETTERS_PDF_BUCKET_NAME'),
+    (True, 'TEST_LETTERS_BUCKET_NAME')
+])
 @freeze_time(FROZEN_DATE_TIME)
-def test_move_scanned_letter_pdf_to_processing_bucket(notify_api):
+def test_move_scanned_letter_pdf_to_processing_bucket(
+    notify_api, is_test_letter, bucket_config_name
+):
     filename = 'test.pdf'
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-    target_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    target_bucket_name = current_app.config[bucket_config_name]
 
     conn = boto3.resource('s3', region_name='eu-west-1')
     source_bucket = conn.create_bucket(Bucket=source_bucket_name)
@@ -153,7 +159,7 @@ def test_move_scanned_letter_pdf_to_processing_bucket(notify_api):
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
 
-    move_scanned_pdf_to_letters_pdf_bucket(filename)
+    move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=is_test_letter)
 
     assert '2018-03-14/' + filename in [o.key for o in target_bucket.objects.all()]
     assert filename not in [o.key for o in source_bucket.objects.all()]
