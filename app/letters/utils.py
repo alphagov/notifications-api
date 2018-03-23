@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from enum import Enum
 
 import boto3
 from flask import current_app
@@ -7,6 +8,11 @@ from notifications_utils.s3 import s3upload
 
 from app.models import KEY_TYPE_TEST
 from app.variables import Retention
+
+
+class ScanErrorType(Enum):
+    ERROR = 1
+    FAILURE = 2
 
 
 LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
@@ -115,6 +121,46 @@ def delete_pdf_from_letters_scan_bucket(filename):
     s3.Object(bucket_name, filename).delete()
 
     current_app.logger.info("Deleted letter PDF: {}/{}".format(bucket_name, filename))
+
+
+def move_failed_pdf(filename, scan_error_type):
+    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    s3 = boto3.resource('s3')
+    copy_source = {'Bucket': bucket_name, 'Key': filename}
+
+    if scan_error_type == ScanErrorType.ERROR:
+        target_filename = 'ERROR/' + filename
+    elif scan_error_type == ScanErrorType.FAILURE:
+        target_filename = 'FAILURE/' + filename
+
+    target_bucket = s3.Bucket(bucket_name)
+    obj = target_bucket.Object(target_filename)
+
+    # Tags are copied across but the expiration time is reset in the destination bucket
+    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
+    # in the destination bucket the expiration time will be reset to 7 days left to expire
+    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
+
+    s3.Object(bucket_name, filename).delete()
+
+    current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
+        bucket_name, filename, bucket_name, target_filename))
+
+
+def move_pdf_from_letters_scan_bucket(filename, scan_error_type):
+    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    s3 = boto3.resource('s3')
+
+    if scan_error_type == ScanErrorType.ERROR:
+        file_path = 'ERROR/' + filename
+    elif scan_error_type == ScanErrorType.FA:
+        file_path = 'FAILURE/' + filename
+
+    s3.Object(bucket_name, file_path).delete()
+
+    current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(bucket_name, filename, bucket_name, file_path))
 
 
 def get_letter_pdf(notification):
