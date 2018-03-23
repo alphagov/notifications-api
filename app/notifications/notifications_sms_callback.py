@@ -21,7 +21,7 @@ def process_mmg_response():
         raise InvalidRequest(errors, status_code=400)
 
     success, errors = process_sms_client_response(status=str(data.get('status')),
-                                                  reference=data.get('CID'),
+                                                  provider_reference=data.get('CID'),
                                                   client_name=client_name)
 
     safe_to_log = data.copy()
@@ -49,7 +49,7 @@ def process_firetext_response():
         "Full delivery response from {} for notification: {}\n{}".format(client_name, request.form.get('reference'),
                                                                          safe_to_log))
     success, errors = process_sms_client_response(status=request.form.get('status'),
-                                                  reference=request.form.get('reference'),
+                                                  provider_reference=request.form.get('reference'),
                                                   client_name=client_name)
     if errors:
         raise InvalidRequest(errors, status_code=400)
