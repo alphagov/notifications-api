@@ -114,5 +114,5 @@ def create_nightly_billing(day_start=None):
 
         updated_records += update_count
 
-        current_app.logger.info('ft_billing: {} rows updated, {} rows inserted'
-                                .format(updated_records, inserted_records))
+    current_app.logger.info('ft_billing: {} rows updated, {} rows inserted'
+                            .format(updated_records, inserted_records))
