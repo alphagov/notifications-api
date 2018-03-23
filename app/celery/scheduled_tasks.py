@@ -39,6 +39,7 @@ from app.dao.notifications_dao import (
     dao_get_count_of_letters_to_process_for_date,
     dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
+    notifications_not_yet_sent
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -53,7 +54,9 @@ from app.models import (
     LETTER_TYPE,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_READY_TO_SEND,
-    JOB_STATUS_ERROR
+    JOB_STATUS_ERROR,
+    SMS_TYPE,
+    EMAIL_TYPE
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.celery.tasks import (
@@ -535,3 +538,20 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         current_app.logger.info(
             "letter ack contains zip that is not for today: {}".format(ack_content_set - zip_file_set)
         )
+
+
+@notify_celery.task(name='replay-created-notifications')
+@statsd(namespace="tasks")
+def replay_created_notifications():
+    for notification_type in (EMAIL_TYPE, SMS_TYPE):
+        notifications_to_resend = notifications_not_yet_sent(
+            current_app.config.get("RESEND_CREATED_NOTIFICATIONS_OLDER_THAN"),
+            notification_type
+        )
+
+        current_app.logger.info("Sending {} {} notifications "
+                                "to the delivery queue because the notification "
+                                "status was created.".format(len(notifications_to_resend), notification_type))
+
+        for n in notifications_to_resend:
+            send_notification_to_queue(notification=n, research_mode=n.service.research_mode)

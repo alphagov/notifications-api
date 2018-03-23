@@ -279,6 +279,9 @@ class Config(object):
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
+    RESEND_CREATED_NOTIFICATIONS_OLDER_THAN = (60 * 60 * 4) + (60 * 15)
+    RESEND_LETTER_CREATED_NOTIFICATIONS_OLDER_THAN_DAYS = 2
+
     SIMULATED_EMAIL_ADDRESSES = (
         'simulate-delivered@notifications.service.gov.uk',
         'simulate-delivered-2@notifications.service.gov.uk',

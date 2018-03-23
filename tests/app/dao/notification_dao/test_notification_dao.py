@@ -33,6 +33,7 @@ from app.dao.notifications_dao import (
     dao_get_notification_by_reference,
     dao_get_notifications_by_references,
     dao_get_notification_history_by_reference,
+    notifications_not_yet_sent
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -2216,3 +2217,40 @@ def test_dao_get_count_of_letters_to_process_for_date_ignores_test_keys(sample_l
     count_for_date = dao_get_count_of_letters_to_process_for_date()
 
     assert count_for_date == 2
+
+
+@pytest.mark.parametrize("notification_type",
+                         ["letter", "email", "sms"]
+                         )
+def test_notifications_not_yet_sent(sample_service, notification_type):
+    older_than = 4  # number of seconds the notification can not be older than
+    template = create_template(service=sample_service, template_type=notification_type)
+    old_notification = create_notification(template=template,
+                                           created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                                           status='created')
+    create_notification(template=template,
+                        created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                        status='sending')
+    create_notification(template=template, created_at=datetime.utcnow(), status='created')
+
+    results = notifications_not_yet_sent(older_than, notification_type)
+    assert len(results) == 1
+    assert results[0] == old_notification
+
+
+@pytest.mark.parametrize("notification_type",
+                         ["letter", "email", "sms"]
+                         )
+def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_type):
+    older_than = 5  # number of seconds the notification can not be older than
+    template = create_template(service=sample_service, template_type=notification_type)
+    create_notification(template=template,
+                        created_at=datetime.utcnow(),
+                        status='created')
+    create_notification(template=template,
+                        created_at=datetime.utcnow(),
+                        status='sending')
+    create_notification(template=template, created_at=datetime.utcnow(), status='delivered')
+
+    results = notifications_not_yet_sent(older_than, notification_type)
+    assert len(results) == 0

@@ -34,7 +34,8 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     timeout_notifications,
     daily_stats_template_usage_by_month,
-    letter_raise_alert_if_no_ack_file_for_zip
+    letter_raise_alert_if_no_ack_file_for_zip,
+    replay_created_notifications
 )
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
@@ -1191,3 +1192,33 @@ def test_letter_not_raise_alert_if_no_files_do_not_cause_error(mocker, notify_db
 
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 0
+
+
+def test_replay_created_notifications(notify_db_session, sample_service, mocker):
+    email_delivery_queue = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    sms_delivery_queue = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    sms_template = create_template(service=sample_service, template_type='sms')
+    email_template = create_template(service=sample_service, template_type='email')
+    older_than = current_app.config["RESEND_CREATED_NOTIFICATIONS_OLDER_THAN"]
+    # notifications expected to be resent
+    old_sms = create_notification(template=sms_template, created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                                  status='created')
+    old_email = create_notification(template=email_template,
+                                    created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                                    status='created')
+    # notifications that are not to be resent
+    create_notification(template=sms_template, created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                        status='sending')
+    create_notification(template=email_template, created_at=datetime.utcnow() - timedelta(seconds=older_than),
+                        status='delivered')
+    create_notification(template=sms_template, created_at=datetime.utcnow(),
+                        status='created')
+    create_notification(template=email_template, created_at=datetime.utcnow(),
+                        status='created')
+
+    replay_created_notifications()
+    email_delivery_queue.assert_called_once_with([str(old_email.id)],
+                                                 queue='send-email-tasks')
+    sms_delivery_queue.assert_called_once_with([str(old_sms.id)],
+                                               queue="send-sms-tasks")
