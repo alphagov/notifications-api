@@ -266,6 +266,11 @@ class Config(object):
             'task': 'daily-stats-template-usage-by-month',
             'schedule': crontab(hour=0, minute=5),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'replay_created_notifications': {
+            'task': 'replay_created_notifications',
+            'schedule': crontab(minute=15),
+            'options': {'queue': QueueNames.PERIODIC}
         }
     }
     CELERY_QUEUES = []
