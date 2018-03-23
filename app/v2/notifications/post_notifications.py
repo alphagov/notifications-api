@@ -227,7 +227,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     if precompiled:
         try:
-            if should_send:
+            if should_send or (precompiled and api_key.key_type == KEY_TYPE_TEST):
                 status = NOTIFICATION_PENDING_VIRUS_CHECK
             letter_content = base64.b64decode(letter_data['content'])
             pages = pdf_page_count(io.BytesIO(letter_content))
@@ -273,8 +273,16 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
         )
     else:
         if precompiled and api_key.key_type == KEY_TYPE_TEST:
-            upload_letter_pdf(notification, letter_content, is_test_letter=True)
-        update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
+            filename = upload_letter_pdf(notification, letter_content)
+
+            # call task to add the filename to anti virus queue
+            notify_celery.send_task(
+                name=TaskNames.SCAN_FILE,
+                kwargs={'filename': filename},
+                queue=QueueNames.ANTIVIRUS,
+            )
+        else:
+            update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
     return notification
 
