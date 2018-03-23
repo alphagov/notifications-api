@@ -318,11 +318,11 @@ def insert_inbound_numbers_from_file(file_name):
 
 
 @notify_command(name='replay-create-pdf-letters')
-@click.option('-n', '--notification_id', required=True,
+@click.option('-n', '--notification_id', type=click.UUID, required=True,
               help="Notification id of the letter that needs the create_letters_pdf task replayed")
 def replay_create_pdf_letters(notification_id):
     print("Create task to create_letters_pdf for notification: {}".format(notification_id))
-    create_letters_pdf.apply_async([notification_id], queue=QueueNames.CREATE_LETTERS_PDF)
+    create_letters_pdf.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 @notify_command(name='replay-service-callbacks')
