@@ -92,7 +92,8 @@ def move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=False):
 
     s3 = boto3.resource('s3')
     copy_source = {'Bucket': source_bucket_name, 'Key': filename}
-    target_filename = get_folder_name(datetime.utcnow()) + filename
+    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + filename
+
     target_bucket = s3.Bucket(target_bucket_name)
     obj = target_bucket.Object(target_filename)
 

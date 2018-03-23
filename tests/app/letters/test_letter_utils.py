@@ -140,13 +140,13 @@ def test_upload_letter_pdf_to_correct_bucket(
 
 
 @mock_s3
-@pytest.mark.parametrize('is_test_letter,bucket_config_name', [
-    (False, 'LETTERS_PDF_BUCKET_NAME'),
-    (True, 'TEST_LETTERS_BUCKET_NAME')
+@pytest.mark.parametrize('is_test_letter,bucket_config_name,folder_date_name', [
+    (False, 'LETTERS_PDF_BUCKET_NAME', '2018-03-14/'),
+    (True, 'TEST_LETTERS_BUCKET_NAME', '')
 ])
 @freeze_time(FROZEN_DATE_TIME)
 def test_move_scanned_letter_pdf_to_processing_bucket(
-    notify_api, is_test_letter, bucket_config_name
+    notify_api, is_test_letter, bucket_config_name, folder_date_name
 ):
     filename = 'test.pdf'
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
@@ -161,5 +161,5 @@ def test_move_scanned_letter_pdf_to_processing_bucket(
 
     move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=is_test_letter)
 
-    assert '2018-03-14/' + filename in [o.key for o in target_bucket.objects.all()]
+    assert folder_date_name + filename in [o.key for o in target_bucket.objects.all()]
     assert filename not in [o.key for o in source_bucket.objects.all()]
