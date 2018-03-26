@@ -269,7 +269,7 @@ class Config(object):
         },
         'replay_created_notifications': {
             'task': 'replay_created_notifications',
-            'schedule': crontab(minute=15),
+            'schedule': crontab(minutes=15),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
