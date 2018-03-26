@@ -1200,7 +1200,7 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
 
     sms_template = create_template(service=sample_service, template_type='sms')
     email_template = create_template(service=sample_service, template_type='email')
-    older_than = current_app.config["RESEND_CREATED_NOTIFICATIONS_OLDER_THAN"]
+    older_than = (60 * 60 * 4) + (60 * 15)  # 4 hours 15 minutes
     # notifications expected to be resent
     old_sms = create_notification(template=sms_template, created_at=datetime.utcnow() - timedelta(seconds=older_than),
                                   status='created')
