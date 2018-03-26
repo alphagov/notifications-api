@@ -22,15 +22,15 @@ def worker_process_shutdown(sender, signal, pid, exitcode):
 @statsd(namespace="tasks")
 def deliver_sms(self, notification_id):
     try:
+        current_app.logger.info("Start sending SMS for notification id: {}".format(notification_id))
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
             raise NoResultFound()
-        current_app.logger.info("Start sending SMS for notification id: {}".format(notification_id))
         send_to_providers.send_sms_to_provider(notification)
     except Exception as e:
         try:
             current_app.logger.exception(
-                "SMS notification delivery for id: {} failed".format(notification_id)
+                "SMS notification delivery for id: {} failed".format(notification_id), e
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
@@ -44,10 +44,10 @@ def deliver_sms(self, notification_id):
 @statsd(namespace="tasks")
 def deliver_email(self, notification_id):
     try:
+        current_app.logger.info("Start sending email for notification id: {}".format(notification_id))
         notification = notifications_dao.get_notification_by_id(notification_id)
         if not notification:
             raise NoResultFound()
-        current_app.logger.info("Start sending email for notification id: {}".format(notification_id))
         send_to_providers.send_email_to_provider(notification)
     except InvalidEmailError as e:
         current_app.logger.exception(e)
@@ -55,7 +55,7 @@ def deliver_email(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "RETRY: Email notification {} failed".format(notification_id)
+                "RETRY: Email notification {} failed".format(notification_id), e
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
