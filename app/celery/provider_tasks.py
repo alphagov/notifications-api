@@ -30,7 +30,7 @@ def deliver_sms(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "SMS notification delivery for id: {} failed".format(notification_id), e
+                "SMS notification delivery for id: {} failed".format(notification_id)
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
@@ -55,7 +55,7 @@ def deliver_email(self, notification_id):
     except Exception as e:
         try:
             current_app.logger.exception(
-                "RETRY: Email notification {} failed".format(notification_id), e
+                "RETRY: Email notification {} failed".format(notification_id)
             )
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
