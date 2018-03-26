@@ -267,9 +267,9 @@ class Config(object):
             'schedule': crontab(hour=0, minute=5),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'replay_created_notifications': {
-            'task': 'replay_created_notifications',
-            'schedule': crontab(minutes=15),
+        'replay-created-notifications': {
+            'task': 'replay-created-notifications',
+            'schedule': crontab(minute='0, 15, 24, 30, 45'),
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
@@ -283,9 +283,6 @@ class Config(object):
     STATSD_PORT = 8125
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
-
-    RESEND_CREATED_NOTIFICATIONS_OLDER_THAN = (60 * 60 * 4) + (60 * 15)
-    RESEND_LETTER_CREATED_NOTIFICATIONS_OLDER_THAN_DAYS = 2
 
     SIMULATED_EMAIL_ADDRESSES = (
         'simulate-delivered@notifications.service.gov.uk',

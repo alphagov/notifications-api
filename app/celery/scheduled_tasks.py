@@ -543,9 +543,11 @@ def letter_raise_alert_if_no_ack_file_for_zip():
 @notify_celery.task(name='replay-created-notifications')
 @statsd(namespace="tasks")
 def replay_created_notifications():
+    # if the notification has not be send after 4 hours + 15 minutes, then try to resend.
+    resend_created_notifications_older_than = (60 * 60 * 4) + (60 * 15)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
         notifications_to_resend = notifications_not_yet_sent(
-            current_app.config.get("RESEND_CREATED_NOTIFICATIONS_OLDER_THAN"),
+            resend_created_notifications_older_than,
             notification_type
         )
 
