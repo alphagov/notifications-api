@@ -600,3 +600,14 @@ def dao_get_count_of_letters_to_process_for_date(date_to_process=None):
     ).count()
 
     return count_of_letters_to_process_for_date
+
+
+def notifications_not_yet_sent(should_be_sending_after_seconds, notification_type):
+    older_than_date = datetime.utcnow() - timedelta(seconds=should_be_sending_after_seconds)
+
+    notifications = Notification.query.filter(
+        Notification.created_at <= older_than_date,
+        Notification.notification_type == notification_type,
+        Notification.status == NOTIFICATION_CREATED
+    ).all()
+    return notifications
