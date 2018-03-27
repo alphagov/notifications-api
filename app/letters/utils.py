@@ -104,10 +104,7 @@ def move_scanned_pdf_to_test_or_live_pdf_bucket(source_filename, is_test_letter=
 def move_failed_pdf(source_filename, scan_error_type):
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
 
-    if scan_error_type == ScanErrorType.ERROR:
-        target_filename = 'ERROR/' + source_filename
-    elif scan_error_type == ScanErrorType.FAILURE:
-        target_filename = 'FAILURE/' + source_filename
+    target_filename = ('ERROR/' if scan_error_type == ScanErrorType.ERROR else 'FAILURE/') + source_filename
 
     _move_s3_object(scan_bucket, source_filename, scan_bucket, target_filename)
 
