@@ -238,6 +238,7 @@ SCHEDULE_NOTIFICATIONS = 'schedule_notifications'
 EMAIL_AUTH = 'email_auth'
 LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
+UPLOAD_DOCUMENT = 'upload_document'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -249,6 +250,7 @@ SERVICE_PERMISSION_TYPES = [
     EMAIL_AUTH,
     LETTERS_AS_PDF,
     PRECOMPILED_LETTER,
+    UPLOAD_DOCUMENT,
 ]
 
 
