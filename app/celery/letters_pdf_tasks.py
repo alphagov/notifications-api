@@ -22,16 +22,16 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
 )
 from app.letters.utils import (
-    delete_pdf_from_letters_scan_bucket,
     get_reference_from_filename,
     move_scanned_pdf_to_test_or_live_pdf_bucket,
-    upload_letter_pdf
-)
+    upload_letter_pdf,
+    move_failed_pdf, ScanErrorType)
 from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE
 )
 
 
@@ -180,9 +180,24 @@ def process_virus_scan_passed(filename):
 @notify_celery.task(name='process-virus-scan-failed')
 def process_virus_scan_failed(filename):
     current_app.logger.exception('Virus scan failed: {}'.format(filename))
-    delete_pdf_from_letters_scan_bucket(filename)
+    move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
+
+    if updated_count != 1:
+        raise Exception(
+            "There should only be one letter notification for each reference. Found {} notifications".format(
+                updated_count
+            )
+        )
+
+
+@notify_celery.task(name='process-virus-scan-error')
+def process_virus_scan_error(filename):
+    current_app.logger.exception('Virus scan error: {}'.format(filename))
+    move_failed_pdf(filename, ScanErrorType.ERROR)
+    reference = get_reference_from_filename(filename)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE)
 
     if updated_count != 1:
         raise Exception(
