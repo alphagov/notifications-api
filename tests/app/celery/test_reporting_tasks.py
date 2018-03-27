@@ -76,7 +76,7 @@ def test_create_nightly_billing_sms_rate_multiplier(
     assert len(records) == 0
 
     create_nightly_billing(yesterday)
-    records = FactBilling.query.all()
+    records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == records_num
     for i, record in enumerate(records):
         assert record.bst_date == datetime.date(yesterday)
@@ -298,9 +298,9 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
     create_nightly_billing()
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
-    assert len(records) == 4
+    assert len(records) == 3
     assert records[0].bst_date == date(2018, 1, 12)
-    assert records[-1].bst_date == date(2018, 1, 15)
+    assert records[-1].bst_date == date(2018, 1, 14)
 
 
 def test_get_rate_for_letter_latest(notify_db, notify_db_session):
@@ -354,3 +354,53 @@ def test_get_rate_for_sms_and_email(notify_db, notify_db_session):
 
     rate = get_rate(non_letter_rates, letter_rates, EMAIL_TYPE, datetime(2018, 1, 1))
     assert rate == Decimal(0)
+
+
+@freeze_time('2018-03-27T03:30:00')
+# summer time starts on 2018-03-25
+def test_create_nightly_billing_use_BST(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template,
+        mocker):
+
+    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime(2018, 3, 25, 12, 0),
+        service=sample_service,
+        template=sample_template,
+        status='delivered',
+        sent_by=None,
+        international=False,
+        rate_multiplier=1.0,
+        billable_units=1,
+    )
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime(2018, 3, 25, 23, 5),
+        service=sample_service,
+        template=sample_template,
+        status='delivered',
+        sent_by=None,
+        international=False,
+        rate_multiplier=1.0,
+        billable_units=1,
+    )
+
+    notifications = Notification.query.order_by(Notification.created_at).all()
+    assert len(notifications) == 2
+    records = FactBilling.query.all()
+    assert len(records) == 0
+
+    create_nightly_billing()
+    records = FactBilling.query.order_by(FactBilling.bst_date).all()
+
+    assert len(records) == 2
+    assert records[0].bst_date == date(2018, 3, 25)
+    assert records[-1].bst_date == date(2018, 3, 26)
