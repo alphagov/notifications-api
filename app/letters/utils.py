@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from enum import Enum
 
 import boto3
 from flask import current_app
@@ -7,6 +8,11 @@ from notifications_utils.s3 import s3upload
 
 from app.models import KEY_TYPE_TEST
 from app.variables import Retention
+
+
+class ScanErrorType(Enum):
+    ERROR = 1
+    FAILURE = 2
 
 
 LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
@@ -85,36 +91,22 @@ def upload_letter_pdf(notification, pdf_data):
     return upload_file_name
 
 
-def move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=False):
+def move_scanned_pdf_to_test_or_live_pdf_bucket(source_filename, is_test_letter=False):
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
     target_bucket_name = current_app.config[target_bucket_config]
 
-    s3 = boto3.resource('s3')
-    copy_source = {'Bucket': source_bucket_name, 'Key': filename}
-    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + filename
+    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + source_filename
 
-    target_bucket = s3.Bucket(target_bucket_name)
-    obj = target_bucket.Object(target_filename)
-
-    # Tags are copied across but the expiration time is reset in the destination bucket
-    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
-    # in the destination bucket the expiration time will be reset to 7 days left to expire
-    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
-
-    s3.Object(source_bucket_name, filename).delete()
-
-    current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
-        source_bucket_name, filename, target_bucket_name, target_filename))
+    _move_s3_object(source_bucket_name, source_filename, target_bucket_name, target_filename)
 
 
-def delete_pdf_from_letters_scan_bucket(filename):
-    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+def move_failed_pdf(source_filename, scan_error_type):
+    scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
 
-    s3 = boto3.resource('s3')
-    s3.Object(bucket_name, filename).delete()
+    target_filename = ('ERROR/' if scan_error_type == ScanErrorType.ERROR else 'FAILURE/') + source_filename
 
-    current_app.logger.info("Deleted letter PDF: {}/{}".format(bucket_name, filename))
+    _move_s3_object(scan_bucket, source_filename, scan_bucket, target_filename)
 
 
 def get_letter_pdf(notification):
@@ -135,3 +127,21 @@ def get_letter_pdf(notification):
         file_content = obj.get()["Body"].read()
 
     return file_content
+
+
+def _move_s3_object(source_bucket, source_filename, target_bucket, target_filename):
+    s3 = boto3.resource('s3')
+    copy_source = {'Bucket': source_bucket, 'Key': source_filename}
+
+    target_bucket = s3.Bucket(target_bucket)
+    obj = target_bucket.Object(target_filename)
+
+    # Tags are copied across but the expiration time is reset in the destination bucket
+    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
+    # in the destination bucket the expiration time will be reset to 7 days left to expire
+    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
+
+    s3.Object(source_bucket, source_filename).delete()
+
+    current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
+        source_bucket, source_filename, target_bucket, target_filename))

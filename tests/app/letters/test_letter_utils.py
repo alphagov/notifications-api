@@ -11,8 +11,8 @@ from app.letters.utils import (
     get_letter_pdf_filename,
     get_letter_pdf,
     upload_letter_pdf,
-    move_scanned_pdf_to_test_or_live_pdf_bucket
-)
+    move_scanned_pdf_to_test_or_live_pdf_bucket,
+    ScanErrorType, move_failed_pdf)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
 from app.variables import Retention
 
@@ -162,4 +162,44 @@ def test_move_scanned_letter_pdf_to_processing_bucket(
     move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=is_test_letter)
 
     assert folder_date_name + filename in [o.key for o in target_bucket.objects.all()]
+    assert filename not in [o.key for o in source_bucket.objects.all()]
+
+
+@mock_s3
+@freeze_time(FROZEN_DATE_TIME)
+def test_move_failed_pdf_error(notify_api):
+    filename = 'test.pdf'
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    source_bucket = conn.create_bucket(Bucket=source_bucket_name)
+    target_bucket = conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    move_failed_pdf(filename, ScanErrorType.ERROR)
+
+    assert 'ERROR/' + filename in [o.key for o in target_bucket.objects.all()]
+    assert filename not in [o.key for o in source_bucket.objects.all()]
+
+
+@mock_s3
+@freeze_time(FROZEN_DATE_TIME)
+def test_move_failed_pdf_scan_failed(notify_api):
+    filename = 'test.pdf'
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    source_bucket = conn.create_bucket(Bucket=source_bucket_name)
+    target_bucket = conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    move_failed_pdf(filename, ScanErrorType.FAILURE)
+
+    assert 'FAILURE/' + filename in [o.key for o in target_bucket.objects.all()]
     assert filename not in [o.key for o in source_bucket.objects.all()]

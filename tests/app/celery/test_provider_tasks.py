@@ -1,10 +1,12 @@
 import pytest
+from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.recipients import InvalidEmailError
 
 import app
 from app.celery import provider_tasks
 from app.celery.provider_tasks import deliver_sms, deliver_email
+from app.clients.email.aws_ses import AwsSesClientException
 from app.exceptions import NotificationTechnicalFailureException
 
 
@@ -90,6 +92,24 @@ def test_should_technical_error_and_not_retry_if_invalid_email(sample_notificati
 
     assert provider_tasks.deliver_email.retry.called is False
     assert sample_notification.status == 'technical-failure'
+
+
+def test_should_retry_and_log_exception(sample_notification, mocker):
+    error_response = {
+        'Error': {
+            'Code': 'SomeError',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
+    ex = ClientError(error_response=error_response, operation_name='opname')
+    mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=AwsSesClientException(str(ex)))
+    mocker.patch('app.celery.provider_tasks.deliver_email.retry')
+
+    deliver_email(sample_notification.id)
+
+    assert provider_tasks.deliver_email.retry.called is True
+    assert sample_notification.status == 'created'
 
 
 def test_send_sms_should_switch_providers_on_provider_failure(sample_notification, mocker):

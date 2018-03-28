@@ -19,8 +19,8 @@ from app.celery.letters_pdf_tasks import (
     letter_in_created_state,
     process_virus_scan_passed,
     process_virus_scan_failed,
-)
-from app.letters.utils import get_letter_pdf_filename
+    process_virus_scan_error)
+from app.letters.utils import get_letter_pdf_filename, ScanErrorType
 from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -28,8 +28,8 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
-    NOTIFICATION_SENDING
-)
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE)
 
 from tests.conftest import set_config_values
 
@@ -341,9 +341,20 @@ def test_process_letter_task_check_virus_scan_passed(
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
     sample_letter_notification.status = 'pending-virus-check'
-    mock_delete_pdf = mocker.patch('app.celery.letters_pdf_tasks.delete_pdf_from_letters_scan_bucket')
+    mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
 
     process_virus_scan_failed(filename)
 
-    mock_delete_pdf.assert_called_once_with(filename)
+    mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.FAILURE)
     assert sample_letter_notification.status == NOTIFICATION_VIRUS_SCAN_FAILED
+
+
+def test_process_letter_task_check_virus_scan_error(sample_letter_notification, mocker):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = 'pending-virus-check'
+    mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
+
+    process_virus_scan_error(filename)
+
+    mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.ERROR)
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
