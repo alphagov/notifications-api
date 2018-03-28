@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from app.models import (Notification,
                         Rate,
                         NOTIFICATION_CREATED,
@@ -14,7 +14,6 @@ from notifications_utils.statsd_decorators import statsd
 from app import notify_celery
 from flask import current_app
 from app.utils import convert_bst_to_utc
-from dateutil import parser
 
 
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
@@ -42,8 +41,8 @@ def create_nightly_billing(day_start=None):
 
     for i in range(0, 3):
         process_day = day_start - timedelta(days=i)
-        ds = convert_bst_to_utc(parser.parse("{:%Y-%m-%d}".format(process_day) + ' 00:00:00'))
-        de = convert_bst_to_utc(parser.parse("{:%Y-%m-%d}".format(process_day + timedelta(days=1)) + ' 00:00:00'))
+        ds = convert_bst_to_utc(datetime.combine(process_day, time.min))
+        de = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
 
         transit_data = db.session.query(
             Notification.template_id,
