@@ -1008,6 +1008,54 @@ def test_preview_letter_template_precompiled_png_file_type(
             assert base64.b64decode(resp['content']) == png_content
 
 
+@pytest.mark.parametrize('page_number,expect_preview_url', [
+    ('', 'http://localhost/notifications-template-preview/precompiled-preview.png?hide_notify=true'),
+    ('1', 'http://localhost/notifications-template-preview/precompiled-preview.png?hide_notify=true'),
+    ('2', 'http://localhost/notifications-template-preview/precompiled-preview.png')
+])
+def test_preview_letter_template_precompiled_png_file_type_hide_notify_tag_only_on_first_page(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker,
+        page_number,
+        expect_preview_url
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        pdf_content = b'\x00\x01'
+        png_content = b'\x00\x02'
+        encoded = base64.b64encode(png_content).decode('utf-8')
+
+        mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+        mocker.patch('app.template.rest.extract_page_from_pdf', return_value=png_content)
+        mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview', return_value=encoded)
+
+        admin_request.get(
+            'template.preview_letter_template_by_notification_id',
+            service_id=notification.service_id,
+            notification_id=notification.id,
+            file_type='png',
+            page=page_number
+        )
+
+        mock_get_png_preview.assert_called_once_with(
+            expect_preview_url, encoded, notification.id, json=False
+        )
+
+
 def test_preview_letter_template_precompiled_png_template_preview_500_error(
         notify_api,
         client,
