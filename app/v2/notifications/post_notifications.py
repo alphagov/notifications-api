@@ -265,12 +265,6 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                 [str(notification.id)],
                 queue=QueueNames.CREATE_LETTERS_PDF
             )
-    elif (api_key.service.research_mode and
-          current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
-        create_fake_letter_response_file.apply_async(
-            (notification.reference,),
-            queue=QueueNames.RESEARCH_MODE
-        )
     else:
         if precompiled and api_key.key_type == KEY_TYPE_TEST:
             filename = upload_letter_pdf(notification, letter_content)
@@ -280,6 +274,14 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                 name=TaskNames.SCAN_FILE,
                 kwargs={'filename': filename},
                 queue=QueueNames.ANTIVIRUS,
+            )
+        elif (
+            api_key.service.research_mode and
+            current_app.config['NOTIFY_ENVIRONMENT'] not in ['staging', 'live']
+        ):
+            create_fake_letter_response_file.apply_async(
+                (notification.reference,),
+                queue=QueueNames.RESEARCH_MODE
             )
         else:
             update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
