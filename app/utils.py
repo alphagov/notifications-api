@@ -80,7 +80,7 @@ def cache_key_for_service_template_counter(service_id, limit_days=7):
 
 
 def cache_key_for_service_template_usage_per_day(service_id, datetime):
-    return "{}-template-usage-{}".format(service_id, datetime.date().isoformat())
+    return "service-{}-template-usage-{}".format(service_id, datetime.date().isoformat())
 
 
 def get_public_notify_type_text(notify_type, plural=False):

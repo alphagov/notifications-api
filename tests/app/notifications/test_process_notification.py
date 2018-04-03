@@ -226,7 +226,7 @@ def test_persist_notification_doesnt_touch_cache_for_old_keys_that_dont_exist(sa
     )
     mock_incr.assert_not_called()
     mock_incr_hash_value.assert_called_once_with(
-        str(sample_template.service_id) + "-template-usage-2016-01-01",
+        "service-{}-template-usage-2016-01-01".format(sample_template.service_id),
         sample_template.id
     )
 
@@ -252,8 +252,8 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
 
     mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
     assert mock_incr_hash_value.mock_calls == [
-        call(str(sample_template.service_id) + "-template-counter-limit-7-days", sample_template.id),
-        call(str(sample_template.service_id) + "-template-usage-2016-01-01", sample_template.id),
+        call("{}-template-counter-limit-7-days".format(sample_template.service_id), sample_template.id),
+        call("service-{}-template-usage-2016-01-01".format(sample_template.service_id), sample_template.id),
     ]
 
 
@@ -493,10 +493,10 @@ def test_persist_notification_increments_and_expires_redis_template_usage(
             key_type=sample_api_key.key_type,
         )
     mock_incr_hash_value.assert_called_once_with(
-        '{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
+        'service-{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
         sample_template.id
     )
     mock_expire.assert_called_once_with(
-        '{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
+        'service-{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
         current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
     )
