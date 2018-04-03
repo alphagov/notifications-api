@@ -10,6 +10,7 @@ from celery.exceptions import MaxRetriesExceededError
 from requests import RequestException
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.errors import VirusScanError
 from app.variables import Retention
 from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
@@ -343,8 +344,10 @@ def test_process_letter_task_check_virus_scan_failed(sample_letter_notification,
     sample_letter_notification.status = 'pending-virus-check'
     mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
 
-    process_virus_scan_failed(filename)
+    with pytest.raises(VirusScanError) as e:
+        process_virus_scan_failed(filename)
 
+    assert "Virus scan failed:" in str(e)
     mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.FAILURE)
     assert sample_letter_notification.status == NOTIFICATION_VIRUS_SCAN_FAILED
 
@@ -354,7 +357,9 @@ def test_process_letter_task_check_virus_scan_error(sample_letter_notification, 
     sample_letter_notification.status = 'pending-virus-check'
     mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
 
-    process_virus_scan_error(filename)
+    with pytest.raises(VirusScanError) as e:
+        process_virus_scan_error(filename)
 
+    assert "Virus scan error:" in str(e)
     mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.ERROR)
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
