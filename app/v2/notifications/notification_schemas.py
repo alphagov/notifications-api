@@ -20,6 +20,18 @@ template = {
     "required": ["id", "version", "uri"]
 }
 
+notification_by_id = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "GET notification response schema",
+    "type": "object",
+    "title": "response v2/notification",
+    "properties": {
+        "notification_id": uuid
+    },
+    "required": ["notification_id"]
+}
+
+
 get_notification_response = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "GET notification response schema",
