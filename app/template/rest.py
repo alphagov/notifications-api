@@ -200,7 +200,6 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
     template = dao_get_template_by_id(notification.template_id)
 
     if template.is_precompiled_letter:
-
         try:
 
             pdf_file = get_letter_pdf(notification)
@@ -215,9 +214,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         content = base64.b64encode(pdf_file).decode('utf-8')
 
         if file_type == 'png':
-
             try:
-                page_number = page if page else "0"
+                page_number = page if page else "1"
+
                 pdf_page = extract_page_from_pdf(BytesIO(pdf_file), int(page_number) - 1)
                 content = base64.b64encode(pdf_page).decode('utf-8')
             except PdfReadError as e:
@@ -227,12 +226,12 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     status_code=500
                 )
 
-            url = '{}/precompiled-preview.png'.format(
-                current_app.config['TEMPLATE_PREVIEW_API_HOST']
+            url = '{}/precompiled-preview.png{}'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                '?hide_notify=true' if page_number == '1' else ''
             )
 
             content = _get_png_preview(url, content, notification.id, json=False)
-
     else:
 
         template_for_letter_print = {
@@ -256,7 +255,6 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             file_type,
             '?page={}'.format(page) if page else ''
         )
-
         content = _get_png_preview(url, data, notification.id, json=True)
 
     return jsonify({"content": content})
