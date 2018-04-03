@@ -21,6 +21,7 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references,
     dao_update_notifications_by_reference,
 )
+from app.errors import VirusScanError
 from app.letters.utils import (
     get_reference_from_filename,
     move_scanned_pdf_to_test_or_live_pdf_bucket,
@@ -162,9 +163,9 @@ def letter_in_created_state(filename):
 
 @notify_celery.task(name='process-virus-scan-passed')
 def process_virus_scan_passed(filename):
-    current_app.logger.info('Virus scan passed: {}'.format(filename))
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
+    current_app.logger.info('notification id {} Virus scan passed: {}'.format(notification.id, filename))
 
     is_test_key = notification.key_type == KEY_TYPE_TEST
     move_scanned_pdf_to_test_or_live_pdf_bucket(
@@ -179,9 +180,9 @@ def process_virus_scan_passed(filename):
 
 @notify_celery.task(name='process-virus-scan-failed')
 def process_virus_scan_failed(filename):
-    current_app.logger.exception('Virus scan failed: {}'.format(filename))
     move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
+    notification = dao_get_notification_by_reference(reference)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
 
     if updated_count != 1:
@@ -191,12 +192,14 @@ def process_virus_scan_failed(filename):
             )
         )
 
+    raise VirusScanError('notification id {} Virus scan failed: {}'.format(notification.id, filename))
+
 
 @notify_celery.task(name='process-virus-scan-error')
 def process_virus_scan_error(filename):
-    current_app.logger.exception('Virus scan error: {}'.format(filename))
     move_failed_pdf(filename, ScanErrorType.ERROR)
     reference = get_reference_from_filename(filename)
+    notification = dao_get_notification_by_reference(reference)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE)
 
     if updated_count != 1:
@@ -205,6 +208,8 @@ def process_virus_scan_error(filename):
                 updated_count
             )
         )
+
+    raise VirusScanError('notification id {} Virus scan error: {}'.format(notification.id, filename))
 
 
 def update_letter_pdf_status(reference, status):

@@ -10,6 +10,12 @@ from jsonschema import ValidationError as JsonSchemaValidationError
 from app.authentication.auth import AuthError
 
 
+class VirusScanError(Exception):
+    def __init__(self, message):
+
+        super().__init__(message)
+
+
 class InvalidRequest(Exception):
     code = None
     fields = []
