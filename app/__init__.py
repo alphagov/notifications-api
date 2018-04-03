@@ -219,8 +219,6 @@ def init_app(app):
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
 
-    app.before_request(request_helper.check_proxy_header_before_request)
-
     @app.before_request
     def record_request_details():
         g.start = monotonic()
