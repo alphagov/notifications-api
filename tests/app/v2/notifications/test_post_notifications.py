@@ -9,7 +9,8 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
     SCHEDULE_NOTIFICATIONS,
-    SMS_TYPE
+    SMS_TYPE,
+    UPLOAD_DOCUMENT
 )
 from flask import json, current_app
 
@@ -697,3 +698,96 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
+def test_post_notification_with_document_upload(client, notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    template = create_sample_template(
+        notify_db, notify_db_session, service=service,
+        template_type='email',
+        content="Document: ((document))"
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.return_value = 'https://document-url/'
+
+    data = {
+        "email_address": service.users[0].email_address,
+        "template_id": template.id,
+        "personalisation": {"document": {"file": "abababab"}}
+    }
+
+    auth_header = create_authorization_header(service_id=service.id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201, response.get_data(as_text=True)
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
+
+    notification = Notification.query.one()
+    assert notification.status == NOTIFICATION_CREATED
+    assert notification.personalisation == {'document': 'https://document-url/'}
+
+    assert resp_json['content']['body'] == 'Document: https://document-url/'
+
+
+def test_post_notification_with_document_upload_simulated(client, notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    template = create_sample_template(
+        notify_db, notify_db_session, service=service,
+        template_type='email',
+        content="Document: ((document))"
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.get_upload_url.return_value = 'https://document-url'
+
+    data = {
+        "email_address": 'simulate-delivered@notifications.service.gov.uk',
+        "template_id": template.id,
+        "personalisation": {"document": {"file": "abababab"}}
+    }
+
+    auth_header = create_authorization_header(service_id=service.id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201, response.get_data(as_text=True)
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert validate(resp_json, post_email_response) == resp_json
+
+    assert resp_json['content']['body'] == 'Document: https://document-url/test-document'
+
+
+def test_post_notification_without_document_upload_permission(client, notify_db, notify_db_session, mocker):
+    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
+    template = create_sample_template(
+        notify_db, notify_db_session, service=service,
+        template_type='email',
+        content="Document: ((document))"
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.return_value = 'https://document-url/'
+
+    data = {
+        "email_address": service.users[0].email_address,
+        "template_id": template.id,
+        "personalisation": {"document": {"file": "abababab"}}
+    }
+
+    auth_header = create_authorization_header(service_id=service.id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400, response.get_data(as_text=True)
