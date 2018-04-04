@@ -16,6 +16,7 @@ from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
 from app.clients import Clients
+from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.loadtesting import LoadtestingClient
@@ -39,6 +40,7 @@ deskpro_client = DeskproClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 performance_platform_client = PerformancePlatformClient()
+document_download_client = DocumentDownloadClient()
 
 clients = Clients()
 
@@ -71,6 +73,7 @@ def create_app(application):
     encryption.init_app(application)
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
+    document_download_client.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
 
     register_blueprint(application)

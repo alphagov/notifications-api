@@ -318,6 +318,9 @@ class Config(object):
     TEMPLATE_PREVIEW_API_HOST = os.environ.get('TEMPLATE_PREVIEW_API_HOST', 'http://localhost:6013')
     TEMPLATE_PREVIEW_API_KEY = os.environ.get('TEMPLATE_PREVIEW_API_KEY', 'my-secret-key')
 
+    DOCUMENT_DOWNLOAD_API_HOST = os.environ.get('DOCUMENT_DOWNLOAD_API_HOST', 'http://localhost:7000')
+    DOCUMENT_DOWNLOAD_API_KEY = os.environ.get('DOCUMENT_DOWNLOAD_API_KEY', 'auth-token')
+
     LETTER_PROCESSING_DEADLINE = time(17, 30)
 
     MMG_URL = "https://api.mmg.co.uk/json/api.php"
