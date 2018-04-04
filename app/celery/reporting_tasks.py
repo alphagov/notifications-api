@@ -84,15 +84,18 @@ def create_nightly_billing(day_start=None):
 
         for data in transit_data:
             update_count = FactBilling.query.filter(
-                FactBilling.bst_date == process_day,
+                FactBilling.bst_date == datetime.date(process_day),
                 FactBilling.template_id == data.template_id,
+                FactBilling.service_id == data.service_id,
                 FactBilling.provider == data.sent_by,  # This could be zero - this is a bug that needs to be fixed.
                 FactBilling.rate_multiplier == data.rate_multiplier,
                 FactBilling.notification_type == data.notification_type,
+                FactBilling.international == data.international
             ).update(
                 {"notifications_sent": data.notifications_sent,
                  "billable_units": data.billable_units},
                 synchronize_session=False)
+
             if update_count == 0:
                 billing_record = FactBilling(
                     bst_date=process_day,

@@ -325,11 +325,11 @@ def __create_token(service_id):
 
 @pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
     (True, 'key_1', 200),
-    (True, 'wrong_key', 403),
+    (True, 'wrong_key', 200),
     (False, 'key_1', 200),
     (False, 'wrong_key', 200),
 ])
-def test_route_correct_secret_key(notify_api, check_proxy_header, header_value, expected_status):
+def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
         'ROUTE_SECRET_KEY_2': '',
@@ -341,6 +341,32 @@ def test_route_correct_secret_key(notify_api, check_proxy_header, header_value, 
                 path='/_status',
                 headers=[
                     ('X-Custom-Forwarder', header_value),
+                ]
+            )
+        assert response.status_code == expected_status
+
+
+@pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
+    (True, 'key_1', 200),
+    (True, 'wrong_key', 403),
+    (False, 'key_1', 200),
+    (False, 'wrong_key', 200),
+])
+def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
+    token = create_jwt_token(current_app.config['ADMIN_CLIENT_SECRET'], current_app.config['ADMIN_CLIENT_USER_NAME'])
+
+    with set_config_values(notify_api, {
+        'ROUTE_SECRET_KEY_1': 'key_1',
+        'ROUTE_SECRET_KEY_2': '',
+        'CHECK_PROXY_HEADER': check_proxy_header,
+    }):
+
+        with notify_api.test_client() as client:
+            response = client.get(
+                path='/service',
+                headers=[
+                    ('X-Custom-Forwarder', header_value),
+                    ('Authorization', 'Bearer {}'.format(token))
                 ]
             )
         assert response.status_code == expected_status

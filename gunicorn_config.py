@@ -2,7 +2,7 @@ import os
 import sys
 import traceback
 
-workers = 5
+workers = 4
 worker_class = "eventlet"
 worker_connections = 256
 errorlog = "/home/vcap/logs/gunicorn_error.log"

@@ -404,3 +404,40 @@ def test_create_nightly_billing_use_BST(
     assert len(records) == 2
     assert records[0].bst_date == date(2018, 3, 25)
     assert records[-1].bst_date == date(2018, 3, 26)
+
+
+@freeze_time('2018-01-15T03:30:00')
+def test_create_nightly_billing_update_when_record_exists(
+        notify_db,
+        notify_db_session,
+        sample_service,
+        sample_template,
+        mocker):
+
+    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.now() - timedelta(days=1),
+        service=sample_service,
+        template=sample_template,
+        status='delivered',
+        sent_by=None,
+        international=False,
+        rate_multiplier=1.0,
+        billable_units=1,
+    )
+
+    records = FactBilling.query.all()
+    assert len(records) == 0
+
+    create_nightly_billing()
+    records = FactBilling.query.order_by(FactBilling.bst_date).all()
+
+    assert len(records) == 1
+    assert records[0].bst_date == date(2018, 1, 14)
+
+    # run again, make sure create_nightly_billing() updates with no error
+    create_nightly_billing()
+    assert len(records) == 1

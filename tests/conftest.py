@@ -141,8 +141,10 @@ def pytest_generate_tests(metafunc):
 def set_config(app, name, value):
     old_val = app.config.get(name)
     app.config[name] = value
-    yield
-    app.config[name] = old_val
+    try:
+        yield
+    finally:
+        app.config[name] = old_val
 
 
 @contextmanager
@@ -153,7 +155,8 @@ def set_config_values(app, dict):
         old_values[key] = app.config.get(key)
         app.config[key] = dict[key]
 
-    yield
-
-    for key in dict:
-        app.config[key] = old_values[key]
+    try:
+        yield
+    finally:
+        for key in dict:
+            app.config[key] = old_values[key]
