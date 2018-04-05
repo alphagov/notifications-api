@@ -643,8 +643,8 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
 
 @freeze_time("2018-01-17 17:00:00")
 def test_alert_if_letter_notifications_still_sending(sample_letter_template, mocker):
-    yesterday = datetime(2018, 1, 16, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+    two_days_ago = datetime(2018, 1, 15, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
 
@@ -652,17 +652,17 @@ def test_alert_if_letter_notifications_still_sending(sample_letter_template, moc
 
     mock_celery.assert_called_once_with(
         subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Tuesday 16 January",
+        message="There are 1 letters in the 'sending' state from Monday 15 January",
         ticket_type='alert'
     )
 
 
 @freeze_time("2018-01-17 17:00:00")
 def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_letter_template, mocker):
-    yesterday = datetime(2018, 1, 16, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
-    create_notification(template=sample_letter_template, status='delivered', sent_at=yesterday)
-    create_notification(template=sample_letter_template, status='failed', sent_at=yesterday)
+    two_days_ago = datetime(2018, 1, 15, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
+    create_notification(template=sample_letter_template, status='delivered', sent_at=two_days_ago)
+    create_notification(template=sample_letter_template, status='failed', sent_at=two_days_ago)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
 
@@ -670,15 +670,15 @@ def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_
 
     mock_celery.assert_called_once_with(
         subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Tuesday 16 January",
+        message="There are 1 letters in the 'sending' state from Monday 15 January",
         ticket_type='alert'
     )
 
 
 @freeze_time("2018-01-17 17:00:00")
-def test_alert_if_letter_notifications_still_sending_only_alerts_previous_day(sample_letter_template, mocker):
-    day_before_yesterday = datetime(2018, 1, 15, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=day_before_yesterday)
+def test_alert_if_letter_notifications_still_sending_only_alerts_two_days_ago(sample_letter_template, mocker):
+    three_days_ago = datetime(2018, 1, 14, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=three_days_ago)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
 
@@ -700,11 +700,11 @@ def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend
 
 
 @freeze_time("2018-01-15 17:00:00")
-def test_monday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
-    friday = datetime(2018, 1, 12, 13, 30)
+def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_letters(sample_letter_template, mocker):
+    thursday = datetime(2018, 1, 11, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
 
-    create_notification(template=sample_letter_template, status='sending', sent_at=friday)
+    create_notification(template=sample_letter_template, status='sending', sent_at=thursday)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
@@ -713,7 +713,7 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_friday_lette
 
     mock_celery.assert_called_once_with(
         subject="[test] Letters still sending",
-        message="There are 2 letters in the 'sending' state from Friday 12 January",
+        message="There are 2 letters in the 'sending' state from Thursday 11 January",
         ticket_type='alert'
     )
 

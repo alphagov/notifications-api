@@ -361,9 +361,9 @@ def raise_alert_if_letter_notifications_still_sending():
         return
 
     if today.isoweekday() == 1:
-        offset_days = 3
+        offset_days = 4
     else:
-        offset_days = 1
+        offset_days = 2
 
     still_sending = Notification.query.filter(
         Notification.notification_type == LETTER_TYPE,
