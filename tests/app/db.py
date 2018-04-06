@@ -34,6 +34,7 @@ from app.models import (
     AnnualBilling,
     LetterRate,
     InvitedOrganisationUser,
+    FactBilling
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -524,3 +525,34 @@ def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
     db.session.commit()
 
     return daily_sorted_letter
+
+
+def create_ft_billing(bst_date,
+                      notification_type,
+                      template = None,
+                      service = None,
+                      provider='test',
+                      rate_multiplier=1,
+                      international=False,
+                      rate=0,
+                      billable_unit=1,
+                      notifications_sent=1
+                      ):
+    if not service:
+        service = create_service()
+    if not template:
+        template = create_template(service=service, template_type=notification_type)
+
+    data = FactBilling(bst_date=bst_date,
+                       service_id=service.id,
+                       template_id=template.id,
+                       notification_type=notification_type,
+                       provider=provider,
+                       rate_multiplier=rate_multiplier,
+                       international=international,
+                       rate=rate,
+                       billable_units=billable_unit,
+                       notifications_sent=notifications_sent)
+    db.session.add(data)
+    db.session.commit()
+    return data
