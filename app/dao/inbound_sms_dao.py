@@ -4,7 +4,8 @@ from datetime import (
 )
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import desc
+from sqlalchemy import desc, and_
+from sqlalchemy.orm import aliased
 
 from app import db
 from app.dao.dao_utils import transactional
@@ -30,22 +31,6 @@ def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None):
         q = q.limit(limit)
 
     return q.all()
-
-
-def dao_get_paginated_inbound_sms_for_service(service_id, user_number=None, page=1):
-    q = InboundSms.query.filter(
-        InboundSms.service_id == service_id
-    ).order_by(
-        InboundSms.created_at.desc()
-    )
-
-    if user_number:
-        q = q.filter(InboundSms.user_number == user_number)
-
-    return q.paginate(
-        page=page,
-        per_page=current_app.config['PAGE_SIZE']
-    )
 
 
 def dao_get_paginated_inbound_sms_for_service_for_public_api(
@@ -93,3 +78,48 @@ def dao_get_inbound_sms_by_id(service_id, inbound_id):
         id=inbound_id,
         service_id=service_id
     ).one()
+
+
+def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
+    service_id,
+    page
+):
+    """
+    This query starts from inbound_sms and joins on to itself to find the most recent row for each user_number
+
+    Equivalent sql:
+
+    SELECT t1.*
+    FROM inbound_sms t1
+    LEFT OUTER JOIN inbound_sms AS t2 ON (
+        -- identifying
+        t1.user_number = t2.user_number AND
+        t1.service_id = t2.service_id AND
+        -- ordering
+        t1.created_at < t2.created_at
+    )
+    WHERE t2.id IS NULL AND t1.service_id = :service_id
+    ORDER BY t1.created_at DESC;
+    LIMIT 50 OFFSET :page
+    """
+    t2 = aliased(InboundSms)
+    q = db.session.query(
+        InboundSms
+    ).outerjoin(
+        t2,
+        and_(
+            InboundSms.user_number == t2.user_number,
+            InboundSms.service_id == t2.service_id,
+            InboundSms.created_at < t2.created_at
+        )
+    ).filter(
+        t2.id == None,  # noqa
+        InboundSms.service_id == service_id
+    ).order_by(
+        InboundSms.created_at.desc()
+    )
+
+    return q.paginate(
+        page=page,
+        per_page=current_app.config['PAGE_SIZE']
+    )

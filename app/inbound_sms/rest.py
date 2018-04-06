@@ -10,7 +10,7 @@ from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_for_service,
     dao_count_inbound_sms_for_service,
     dao_get_inbound_sms_by_id,
-    dao_get_paginated_inbound_sms_for_service
+    dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service
 )
 from app.errors import register_errors
 from app.schema_validation import validate
@@ -41,23 +41,27 @@ def post_query_inbound_sms_for_service(service_id):
 
 @inbound_sms.route('', methods=['GET'])
 def get_inbound_sms_for_service(service_id):
-    limit = request.args.get('limit')
-    page = request.args.get('page')
     user_number = request.args.get('user_number')
 
     if user_number:
         # we use this to normalise to an international phone number - but this may fail if it's an alphanumeric
         user_number = try_validate_and_format_phone_number(user_number, international=True)
 
-    if not page:
-        results = dao_get_inbound_sms_for_service(service_id, limit, user_number)
-        return jsonify(data=[row.serialize() for row in results])
-    else:
-        results = dao_get_paginated_inbound_sms_for_service(service_id, user_number, int(page))
-        return jsonify(
-            data=[row.serialize() for row in results.items],
-            has_next=results.has_next
-        )
+    results = dao_get_inbound_sms_for_service(service_id, user_number=user_number)
+    return jsonify(data=[row.serialize() for row in results])
+
+
+@inbound_sms.route('/most-recent', methods=['GET'])
+def get_most_recent_inbound_sms_for_service(service_id):
+    # used on the service inbox page
+    page = request.args.get('page', 1)
+    # get most recent message for each user for service
+
+    results = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service_id, int(page))
+    return jsonify(
+        data=[row.serialize() for row in results.items],
+        has_next=results.has_next
+    )
 
 
 @inbound_sms.route('/summary')
