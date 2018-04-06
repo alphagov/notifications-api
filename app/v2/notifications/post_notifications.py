@@ -277,7 +277,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
             )
         elif (
             api_key.service.research_mode and
-            current_app.config['NOTIFY_ENVIRONMENT'] not in ['staging', 'live']
+            current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']
         ):
             create_fake_letter_response_file.apply_async(
                 (notification.reference,),
