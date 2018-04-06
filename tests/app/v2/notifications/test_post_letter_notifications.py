@@ -393,12 +393,15 @@ def test_post_letter_notification_is_delivered_if_in_trial_mode_and_using_test_k
     assert not fake_create_letter_task.called
 
 
+@pytest.mark.parametrize('is_research_mode', [True, False])
 def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_letters_bucket_using_test_key(
     client,
     notify_user,
-    mocker
+    mocker,
+    is_research_mode
 ):
-    sample_letter_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_letter_service = create_service(
+        service_permissions=['letter', 'precompiled_letter'], research_mode=is_research_mode)
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf', return_value='test.pdf')
     mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=1)
     mock_celery = mocker.patch("app.letters.rest.notify_celery.send_task")
