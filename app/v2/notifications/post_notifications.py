@@ -8,6 +8,7 @@ from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
+from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import dao_update_notification, update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
@@ -231,9 +232,12 @@ def process_document_uploads(personalisation_data, service, simulated=False):
         if simulated:
             personalisation_data[key] = document_download_client.get_upload_url(service.id) + '/test-document'
         else:
-            personalisation_data[key] = document_download_client.upload_document(
-                service.id, personalisation_data[key]['file']
-            )
+            try:
+                personalisation_data[key] = document_download_client.upload_document(
+                    service.id, personalisation_data[key]['file']
+                )
+            except DocumentDownloadError as e:
+                raise BadRequestError(message=e.message, status_code=e.status_code)
 
     return personalisation_data
 

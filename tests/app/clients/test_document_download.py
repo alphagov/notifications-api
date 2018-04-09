@@ -2,7 +2,7 @@ import requests
 import requests_mock
 import pytest
 
-from app.clients.document_download import DocumentDownloadClient
+from app.clients.document_download import DocumentDownloadClient, DocumentDownloadError
 
 
 @pytest.fixture(scope='function')
@@ -32,6 +32,25 @@ def test_upload_document(document_download):
 
 
 def test_should_raise_for_status(document_download):
-    with pytest.raises(requests.HTTPError), requests_mock.Mocker() as request_mock:
-        request_mock.post('https://document-download/services/service-id/documents', json={}, status_code=403)
+    with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
+        request_mock.post('https://document-download/services/service-id/documents', json={
+            'error': 'Invalid encoding'
+        }, status_code=403)
+
         document_download.upload_document('service-id', 'abababab')
+
+    assert excinfo.value.message == 'Invalid encoding'
+    assert excinfo.value.status_code == 403
+
+
+def test_should_raise_for_connection_errors(document_download):
+    with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
+        request_mock.post(
+            'https://document-download/services/service-id/documents',
+            exc=requests.exceptions.ConnectTimeout
+        )
+
+        document_download.upload_document('service-id', 'abababab')
+
+    assert excinfo.value.message == 'connection error'
+    assert excinfo.value.status_code == 503
