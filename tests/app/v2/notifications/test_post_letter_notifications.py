@@ -96,12 +96,11 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
 
 
 @pytest.mark.parametrize('env', [
-    'development',
-    'preview',
+    'staging',
+    'live',
 ])
-def test_post_letter_notification_calls_create_fake_response_in_research_and_test_key_correct_env(
+def test_post_letter_notification_with_test_key_set_status_to_delivered(
         notify_api, client, sample_letter_template, mocker, env):
-    sample_letter_template.service.research_mode = True
 
     data = {
         'template_id': str(sample_letter_template.id),
@@ -126,83 +125,44 @@ def test_post_letter_notification_calls_create_fake_response_in_research_and_tes
 
     notification = Notification.query.one()
 
+    assert not fake_create_letter_task.called
+    assert not fake_create_dvla_response_task.called
+    assert notification.status == NOTIFICATION_DELIVERED
+
+
+@pytest.mark.parametrize('env', [
+    'development',
+    'preview',
+])
+def test_post_letter_notification_with_test_key_sets_status_to_sending_and_sends_fake_response_file(
+        notify_api, client, sample_letter_template, mocker, env):
+
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        },
+        'reference': 'foo'
+    }
+
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_dvla_response_task = mocker.patch(
+        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
+
+    with set_config_values(notify_api, {
+        'NOTIFY_ENVIRONMENT': env
+    }):
+        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+
+    notification = Notification.query.one()
+
+    assert not fake_create_letter_task.called
+    assert fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_SENDING
-    assert not fake_create_letter_task.called
-    fake_create_dvla_response_task.assert_called_once_with((notification.reference,), queue=QueueNames.RESEARCH_MODE)
-
-
-@pytest.mark.parametrize('env', [
-    'staging',
-    'live',
-])
-def test_post_letter_notification_sets_status_delivered_in_research_and_test_key_incorrect_env(
-        notify_api, client, sample_letter_template, mocker, env):
-    sample_letter_template.service.research_mode = True
-
-    data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': 'Buckingham Palace',
-            'address_line_3': 'London',
-            'postcode': 'SW1 1AA',
-            'name': 'Lizzie'
-        },
-        'reference': 'foo'
-    }
-
-    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
-    fake_create_dvla_response_task = mocker.patch(
-        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
-
-    with set_config_values(notify_api, {
-        'NOTIFY_ENVIRONMENT': env
-    }):
-        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
-
-    notification = Notification.query.one()
-
-    assert not fake_create_letter_task.called
-    assert not fake_create_dvla_response_task.called
-    assert notification.status == NOTIFICATION_DELIVERED
-
-
-@pytest.mark.parametrize('env', [
-    'development',
-    'preview',
-    'staging',
-    'live',
-])
-def test_post_letter_notification_sets_status_to_delivered_using_test_key_and_not_research_all_env(
-        notify_api, client, sample_letter_template, mocker, env):
-    sample_letter_template.service.research_mode = False
-
-    data = {
-        'template_id': str(sample_letter_template.id),
-        'personalisation': {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': 'Buckingham Palace',
-            'address_line_3': 'London',
-            'postcode': 'SW1 1AA',
-            'name': 'Lizzie'
-        },
-        'reference': 'foo'
-    }
-
-    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
-    fake_create_dvla_response_task = mocker.patch(
-        'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
-
-    with set_config_values(notify_api, {
-        'NOTIFY_ENVIRONMENT': env
-    }):
-        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
-
-    notification = Notification.query.one()
-
-    assert not fake_create_letter_task.called
-    assert not fake_create_dvla_response_task.called
-    assert notification.status == NOTIFICATION_DELIVERED
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
@@ -234,11 +194,11 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
 
     assert error_json['status_code'] == 400
     assert all([e['error'] == 'ValidationError' for e in error_json['errors']])
-    assert set([e['message'] for e in error_json['errors']]) == set([
+    assert set([e['message'] for e in error_json['errors']]) == {
         'personalisation address_line_1 is required',
         'personalisation address_line_2 is required',
         'personalisation postcode is required'
-    ])
+    }
 
 
 def test_notification_returns_400_for_missing_template_field(
@@ -415,7 +375,7 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
-    s3mock.assert_called_once_with(ANY, b'letter-content')
+    s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
     mock_celery.assert_called_once_with(
         name=TaskNames.SCAN_FILE,
         kwargs={'filename': 'test.pdf'},
@@ -498,7 +458,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     assert response.status_code == 201, response.get_data(as_text=True)
 
-    s3mock.assert_called_once_with(ANY, b'letter-content')
+    s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
     notification = Notification.query.first()
 

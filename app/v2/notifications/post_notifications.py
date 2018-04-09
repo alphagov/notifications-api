@@ -220,22 +220,16 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     if not api_key.service.research_mode and api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
-    should_send = not (api_key.service.research_mode or api_key.key_type == KEY_TYPE_TEST)
+    if precompiled:
+        return process_precompiled_letter_notifications(letter_data=letter_data,
+                                                        api_key=api_key,
+                                                        template=template,
+                                                        reply_to_text=reply_to_text)
+
+    should_send = not (api_key.key_type == KEY_TYPE_TEST)
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
     status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
-
-    if precompiled:
-        try:
-            if should_send or (precompiled and api_key.key_type == KEY_TYPE_TEST):
-                status = NOTIFICATION_PENDING_VIRUS_CHECK
-            letter_content = base64.b64decode(letter_data['content'])
-            pages = pdf_page_count(io.BytesIO(letter_content))
-        except ValueError:
-            raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
-        except PdfReadError:
-            current_app.logger.exception(msg='Invalid PDF received')
-            raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
 
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
@@ -244,45 +238,52 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                               reply_to_text=reply_to_text)
 
     if should_send:
-        if precompiled:
-            filename = upload_letter_pdf(notification, letter_content)
-            pages_per_sheet = 2
-            notification.billable_units = math.ceil(pages / pages_per_sheet)
-            dao_update_notification(notification)
-
-            current_app.logger.info(
-                'Calling task scan-file for {}'.format(filename)
-            )
-
-            # call task to add the filename to anti virus queue
-            notify_celery.send_task(
-                name=TaskNames.SCAN_FILE,
-                kwargs={'filename': filename},
-                queue=QueueNames.ANTIVIRUS,
-            )
-        else:
-            create_letters_pdf.apply_async(
-                [str(notification.id)],
-                queue=QueueNames.CREATE_LETTERS_PDF
-            )
-    elif (api_key.service.research_mode and
-          current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']):
+        create_letters_pdf.apply_async(
+            [str(notification.id)],
+            queue=QueueNames.CREATE_LETTERS_PDF
+        )
+    elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
         create_fake_letter_response_file.apply_async(
             (notification.reference,),
             queue=QueueNames.RESEARCH_MODE
         )
     else:
-        if precompiled and api_key.key_type == KEY_TYPE_TEST:
-            filename = upload_letter_pdf(notification, letter_content)
+        update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
-            # call task to add the filename to anti virus queue
-            notify_celery.send_task(
-                name=TaskNames.SCAN_FILE,
-                kwargs={'filename': filename},
-                queue=QueueNames.ANTIVIRUS,
-            )
-        else:
-            update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
+    return notification
+
+
+def process_precompiled_letter_notifications(*, letter_data, api_key, template, reply_to_text):
+    try:
+        status = NOTIFICATION_PENDING_VIRUS_CHECK
+        letter_content = base64.b64decode(letter_data['content'])
+        pages = pdf_page_count(io.BytesIO(letter_content))
+    except ValueError:
+        raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
+    except PdfReadError:
+        current_app.logger.exception(msg='Invalid PDF received')
+        raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
+
+    notification = create_letter_notification(letter_data=letter_data,
+                                              template=template,
+                                              api_key=api_key,
+                                              status=status,
+                                              reply_to_text=reply_to_text)
+
+    filename = upload_letter_pdf(notification, letter_content, precompiled=True)
+    pages_per_sheet = 2
+    notification.billable_units = math.ceil(pages / pages_per_sheet)
+
+    dao_update_notification(notification)
+
+    current_app.logger.info('Calling task scan-file for {}'.format(filename))
+
+    # call task to add the filename to anti virus queue
+    notify_celery.send_task(
+        name=TaskNames.SCAN_FILE,
+        kwargs={'filename': filename},
+        queue=QueueNames.ANTIVIRUS,
+    )
 
     return notification
 

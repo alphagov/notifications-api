@@ -64,16 +64,16 @@ def get_reference_from_filename(filename):
     return filename_parts[1]
 
 
-def upload_letter_pdf(notification, pdf_data):
+def upload_letter_pdf(notification, pdf_data, precompiled=False):
     current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
     upload_file_name = get_letter_pdf_filename(
         notification.reference,
         notification.service.crown,
-        is_scan_letter=notification.template.is_precompiled_letter)
+        is_scan_letter=precompiled)
 
-    if notification.template.is_precompiled_letter:
+    if precompiled:
         bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
