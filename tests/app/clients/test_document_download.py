@@ -24,6 +24,8 @@ def test_upload_document(document_download):
     with requests_mock.Mocker() as request_mock:
         request_mock.post('https://document-download/services/service-id/documents', json={
             'document': {'url': 'https://document-download/services/service-id/documents/uploaded-url'}
+        }, request_headers={
+            'Authorization': 'Bearer test-key',
         }, status_code=201)
 
         resp = document_download.upload_document('service-id', 'abababab')
