@@ -128,7 +128,7 @@ def test_upload_letter_pdf_to_correct_bucket(
         is_scan_letter=is_precompiled_letter
     )
 
-    upload_letter_pdf(sample_letter_notification, b'\x00\x01')
+    upload_letter_pdf(sample_letter_notification, b'\x00\x01', precompiled=is_precompiled_letter)
 
     mock_s3.assert_called_once_with(
         bucket_name=current_app.config[bucket_config_name],
