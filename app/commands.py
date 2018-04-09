@@ -1,3 +1,4 @@
+import sys
 import functools
 import uuid
 from datetime import datetime, timedelta
@@ -504,7 +505,14 @@ def populate_redis_template_usage(service_id, day):
     Recalculate and replace the stats in redis for a day.
     To be used if redis data is lost for some reason.
     """
-    assert current_app.config['REDIS_ENABLED']
+    if not current_app.config['REDIS_ENABLED']:
+        current_app.logger.error('Cannot populate redis template usage - redis not enabled')
+        sys.exit(1)
+
+    # the day variable is set by click to be midnight of that day
+    start_time = get_london_midnight_in_utc(day)
+    end_time = get_london_midnight_in_utc(day + timedelta(days=1))
+
     usage = {
         str(row.template_id): row.count
         for row in db.session.query(
@@ -512,6 +520,8 @@ def populate_redis_template_usage(service_id, day):
             func.count().label('count')
         ).filter(
             Notification.service_id == service_id,
+            Notification.created_at >= start_time,
+            Notification.created_at < end_time
         ).group_by(
             Notification.template_id
         )
@@ -526,5 +536,6 @@ def populate_redis_template_usage(service_id, day):
         redis_store.set_hash_and_expire(
             key,
             usage,
-            current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
+            current_app.config['EXPIRE_CACHE_EIGHT_DAYS'],
+            raise_exception=True
         )
