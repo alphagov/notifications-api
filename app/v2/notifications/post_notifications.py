@@ -138,7 +138,7 @@ def post_notification(notification_type):
             reply_to_text=reply_to
         )
     else:
-        notification, personalisation = process_sms_or_email_notification(
+        notification = process_sms_or_email_notification(
             form=form,
             notification_type=notification_type,
             api_key=api_user,
@@ -147,7 +147,7 @@ def post_notification(notification_type):
             reply_to_text=reply_to
         )
 
-        template_with_content.values = personalisation
+        template_with_content.values = notification.personalisation
 
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
@@ -216,7 +216,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         else:
             current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
 
-    return notification, personalisation
+    return notification
 
 
 def process_document_uploads(personalisation_data, service, simulated=False):
