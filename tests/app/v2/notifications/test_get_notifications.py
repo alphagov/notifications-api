@@ -120,7 +120,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
         'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
-        'body': "Hello Bob\nThis is an email from GOV.\u200bUK",
+        'body': "Hello Bob\nThis is an email from GOV.UK",
         "subject": "Bob",
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
