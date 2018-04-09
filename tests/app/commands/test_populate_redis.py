@@ -12,10 +12,12 @@ from tests.app.db import create_notification, create_template, create_service
 def test_populate_redis_template_usage_does_nothing_if_redis_disabled(mocker, notify_api, sample_service):
     mock_redis = mocker.patch('app.commands.redis_store')
     with set_config(notify_api, 'REDIS_ENABLED', False):
-        with pytest.raises(AssertionError):
+        with pytest.raises(SystemExit) as exit_signal:
             populate_redis_template_usage.callback.__wrapped__(sample_service.id, datetime.utcnow())
 
-    assert not mock_redis.called
+    assert mock_redis.mock_calls == []
+    # sys.exit with nonzero exit code
+    assert exit_signal.value.code != 0
 
 
 def test_populate_redis_template_usage_does_nothing_if_no_data(mocker, notify_api, sample_service):
@@ -23,7 +25,7 @@ def test_populate_redis_template_usage_does_nothing_if_no_data(mocker, notify_ap
     with set_config(notify_api, 'REDIS_ENABLED', True):
         populate_redis_template_usage.callback.__wrapped__(sample_service.id, datetime.utcnow())
 
-    assert not mock_redis.called
+    assert mock_redis.mock_calls == []
 
 
 @freeze_time('2017-06-12')
@@ -41,7 +43,8 @@ def test_populate_redis_template_usage_only_populates_for_today(mocker, notify_a
     mock_redis.set_hash_and_expire.assert_called_once_with(
         'service-{}-template-usage-2017-06-10'.format(sample_template.service_id),
         {str(sample_template.id): 3},
-        notify_api.config['EXPIRE_CACHE_EIGHT_DAYS']
+        notify_api.config['EXPIRE_CACHE_EIGHT_DAYS'],
+        raise_exception=True
     )
 
 
@@ -65,5 +68,6 @@ def test_populate_redis_template_usage_only_populates_for_given_service(mocker, 
     mock_redis.set_hash_and_expire.assert_called_once_with(
         'service-{}-template-usage-2017-06-10'.format(s1.id),
         {str(t1.id): 2},
-        notify_api.config['EXPIRE_CACHE_EIGHT_DAYS']
+        notify_api.config['EXPIRE_CACHE_EIGHT_DAYS'],
+        raise_exception=True
     )
