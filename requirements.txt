@@ -16,7 +16,7 @@ marshmallow==2.15.0
 monotonic==1.4
 psycopg2-binary==2.7.4
 PyJWT==1.6.1
-SQLAlchemy==1.2.5
+SQLAlchemy==1.2.6
 
 notifications-python-client==4.8.1
 
