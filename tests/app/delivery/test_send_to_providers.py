@@ -117,7 +117,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
         '"Sample service" <sample.service@test.notify.com>',
         'jo.smith@example.com',
         'Jo <em>some HTML</em>',
-        body='Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>',
+        body='Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>\n',
         html_body=ANY,
         reply_to_address=None
     )

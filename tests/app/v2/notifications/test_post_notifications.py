@@ -314,7 +314,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert notification.reference is None
     assert notification.reply_to_text is None
     assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
-        .replace('((name))', 'Bob').replace('GOV.UK', u'GOV.\u200bUK')
+        .replace('((name))', 'Bob')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
         .replace('((name))', 'Bob')
     assert resp_json['content']['from_email'] == "{}@{}".format(
