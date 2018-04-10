@@ -7,7 +7,8 @@ from flask import request, jsonify, current_app, abort
 from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import api_user, authenticated_service, notify_celery
+from app import api_user, authenticated_service, notify_celery, document_download_client
+from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import dao_update_notification, update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
@@ -19,6 +20,7 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     PRECOMPILED_LETTER,
+    UPLOAD_DOCUMENT,
     PRIORITY,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -145,6 +147,8 @@ def post_notification(notification_type):
             reply_to_text=reply_to
         )
 
+        template_with_content.values = notification.personalisation
+
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
@@ -182,12 +186,14 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
 
+    personalisation = process_document_uploads(form.get('personalisation'), service, simulated=simulated)
+
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
         recipient=form_send_to,
         service=service,
-        personalisation=form.get('personalisation', None),
+        personalisation=personalisation,
         notification_type=notification_type,
         api_key_id=api_key.id,
         key_type=api_key.key_type,
@@ -211,6 +217,29 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
             current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
 
     return notification
+
+
+def process_document_uploads(personalisation_data, service, simulated=False):
+    file_keys = [k for k, v in (personalisation_data or {}).items() if isinstance(v, dict) and 'file' in v]
+    if not file_keys:
+        return personalisation_data
+
+    personalisation_data = personalisation_data.copy()
+
+    check_service_has_permission(UPLOAD_DOCUMENT, authenticated_service.permissions)
+
+    for key in file_keys:
+        if simulated:
+            personalisation_data[key] = document_download_client.get_upload_url(service.id) + '/test-document'
+        else:
+            try:
+                personalisation_data[key] = document_download_client.upload_document(
+                    service.id, personalisation_data[key]['file']
+                )
+            except DocumentDownloadError as e:
+                raise BadRequestError(message=e.message, status_code=e.status_code)
+
+    return personalisation_data
 
 
 def process_letter_notification(*, letter_data, api_key, template, reply_to_text, precompiled=False):
