@@ -420,13 +420,15 @@ def create_service_sms_sender(
     service,
     sms_sender,
     is_default=True,
-    inbound_number_id=None
+    inbound_number_id=None,
+    is_active=True
 ):
     data = {
         'service_id': service.id,
         'sms_sender': sms_sender,
         'is_default': is_default,
-        'inbound_number_id': inbound_number_id
+        'inbound_number_id': inbound_number_id,
+        'is_active': is_active,
     }
     service_sms_sender = ServiceSmsSender(**data)
 

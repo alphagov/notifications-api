@@ -10,7 +10,7 @@ from app.dao.service_sms_sender_dao import (
     dao_get_sms_senders_by_service_id,
     update_existing_sms_sender_with_inbound_number)
 from app.models import ServiceSmsSender
-from tests.app.db import create_service, create_inbound_number
+from tests.app.db import create_service, create_inbound_number, create_service_sms_sender
 
 
 def test_dao_get_service_sms_senders_id(notify_db_session):
@@ -32,6 +32,18 @@ def test_dao_get_service_sms_senders_id_raise_exception_when_not_found(notify_db
                                           service_sms_sender_id=uuid.uuid4())
 
 
+def test_dao_get_service_sms_senders_id_raise_exception_with_inactive_sms_sender(notify_db_session):
+    service = create_service()
+    inactive_sms_sender = create_service_sms_sender(
+        service=service,
+        sms_sender="second",
+        is_default=False,
+        is_active=False)
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_get_service_sms_senders_by_id(service_id=service.id,
+                                          service_sms_sender_id=inactive_sms_sender.id)
+
+
 def test_dao_get_sms_senders_by_service_id(notify_db_session):
     service = create_service()
     second_sender = dao_add_sms_sender_for_service(service_id=service.id,
@@ -45,6 +57,19 @@ def test_dao_get_sms_senders_by_service_id(notify_db_session):
             assert x.sms_sender == 'testing'
         else:
             assert x == second_sender
+
+
+def test_dao_get_sms_senders_by_service_id_only_returns_active_senders(notify_db_session):
+    service = create_service()
+    inactive_sms_sender = create_service_sms_sender(
+        service=service,
+        sms_sender="second",
+        is_default=False,
+        is_active=False)
+    results = dao_get_sms_senders_by_service_id(service_id=service.id)
+
+    assert len(results) == 1
+    assert inactive_sms_sender not in results
 
 
 def test_dao_add_sms_sender_for_service(notify_db_session):
