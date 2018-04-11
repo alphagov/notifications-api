@@ -27,6 +27,22 @@ def test_dao_get_letter_contacts_by_service_id(notify_db_session):
     assert second_letter_contact == results[2]
 
 
+def test_dao_get_letter_contacts_by_service_id_only_returns_active_contacts(notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    create_letter_contact(service=service, contact_block='Cardiff, CA1 2DB', is_default=False)
+    inactive_contact = create_letter_contact(
+        service=service,
+        contact_block='London, E1 8QS',
+        is_default=False, is_active=False
+    )
+
+    results = dao_get_letter_contacts_by_service_id(service_id=service.id)
+
+    assert len(results) == 2
+    assert inactive_contact not in results
+
+
 def test_add_letter_contact_for_service_creates_additional_letter_contact_for_service(notify_db_session):
     service = create_service()
 
@@ -162,6 +178,15 @@ def test_dao_get_letter_contact_by_id(sample_service):
 def test_dao_get_letter_contact_by_id_raises_sqlalchemy_error_when_letter_contact_does_not_exist(sample_service):
     with pytest.raises(SQLAlchemyError):
         dao_get_letter_contact_by_id(service_id=sample_service.id, letter_contact_id=uuid.uuid4())
+
+
+def test_dao_get_letter_contact_by_id_raises_sqlalchemy_error_when_letter_contact_is_inactive(sample_service):
+    inactive_contact = create_letter_contact(
+        service=sample_service,
+        contact_block='Aberdeen, AB12 23X',
+        is_active=False)
+    with pytest.raises(SQLAlchemyError):
+        dao_get_letter_contact_by_id(service_id=sample_service.id, letter_contact_id=inactive_contact.id)
 
 
 def test_dao_get_letter_contact_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):

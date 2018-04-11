@@ -439,12 +439,14 @@ def create_service_sms_sender(
 def create_letter_contact(
     service,
     contact_block,
-    is_default=True
+    is_default=True,
+    is_active=True
 ):
     data = {
         'service': service,
         'contact_block': contact_block,
         'is_default': is_default,
+        'is_active': is_active,
     }
     letter_content = ServiceLetterContact(**data)
 
