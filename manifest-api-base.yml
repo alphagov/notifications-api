@@ -51,6 +51,8 @@ memory: 1G
 
 applications:
   - name: notify-api
+    health-check-type: http
+    health-check-http-endpoint: /_status?simple=true
 
   - name: notify-api-db-migration
     command: sleep infinity

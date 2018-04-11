@@ -11,7 +11,7 @@ status = Blueprint('status', __name__)
 
 @status.route('/_status', methods=['GET', 'POST'])
 def show_status():
-    if request.args.get('elb', None):
+    if request.args.get('simple', None):
         return jsonify(status="ok"), 200
     else:
         return jsonify(
