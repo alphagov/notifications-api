@@ -35,7 +35,7 @@ def get_template_statistics_for_service_by_day(service_id):
             message = {'limit_days': [error]}
             raise InvalidRequest(message, status_code=400)
     else:
-        limit_days = None
+        limit_days = 7
 
     if limit_days == 7:
         stats = get_template_statistics_for_7_days(limit_days, service_id)

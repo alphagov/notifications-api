@@ -46,40 +46,34 @@ from app.models import (
 )
 
 from app.dao.dao_utils import transactional
-from app.utils import convert_utc_to_bst
+from app.utils import convert_utc_to_bst, get_london_midnight_in_utc
 
 
 @statsd(namespace="dao")
-def dao_get_template_usage(service_id, limit_days=None):
+def dao_get_template_usage(service_id, limit_days=None, day=None):
+    if bool(limit_days) == bool(day):
+        raise ValueError('Must filter on either limit_days or a specific day')
+
     query_filter = []
 
-    table = NotificationHistory
+    if limit_days:
+        query_filter.append(Notification.created_at >= days_ago(limit_days))
+    else:
+        start = get_london_midnight_in_utc(day)
+        end = get_london_midnight_in_utc(day + timedelta(days=1))
+        query_filter.append(Notification.created_at >= start)
+        query_filter.append(Notification.created_at < end)
 
-    if limit_days is not None and limit_days <= 7:
-        table = Notification
-
-        # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
-        if limit_days != 7:
-            query_filter.append(table.created_at >= days_ago(limit_days))
-
-    elif limit_days is not None:
-        # case where not under 7 days, so using NotificationsHistory so limit allowed
-        query_filter.append(table.created_at >= days_ago(limit_days))
-
-    query_filter.append(table.service_id == service_id)
-    query_filter.append(table.key_type != KEY_TYPE_TEST)
-
-    # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
-    if limit_days is not None and limit_days != 7:
-        query_filter.append(table.created_at >= days_ago(limit_days))
+    query_filter.append(Notification.service_id == service_id)
+    query_filter.append(Notification.key_type != KEY_TYPE_TEST)
 
     notifications_aggregate_query = db.session.query(
         func.count().label('count'),
-        table.template_id
+        Notification.template_id
     ).filter(
         *query_filter
     ).group_by(
-        table.template_id
+        Notification.template_id
     ).subquery()
 
     query = db.session.query(
