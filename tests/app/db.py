@@ -399,12 +399,14 @@ def create_monthly_billing_entry(
 def create_reply_to_email(
     service,
     email_address,
-    is_default=True
+    is_default=True,
+    is_active=True
 ):
     data = {
         'service': service,
         'email_address': email_address,
         'is_default': is_default,
+        'is_active': is_active,
     }
     reply_to = ServiceEmailReplyTo(**data)
 

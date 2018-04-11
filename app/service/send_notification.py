@@ -1,3 +1,5 @@
+from sqlalchemy.orm.exc import NoResultFound
+
 from app.config import QueueNames
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
@@ -89,7 +91,11 @@ def get_reply_to_text(notification_type, sender_id, service, template):
     reply_to = None
     if sender_id:
         if notification_type == EMAIL_TYPE:
-            reply_to = dao_get_reply_to_by_id(service.id, sender_id).email_address
+            try:
+                reply_to = dao_get_reply_to_by_id(service.id, sender_id).email_address
+            except NoResultFound:
+                message = 'Reply to email address not found'
+                raise BadRequestError(message=message)
         elif notification_type == SMS_TYPE:
             reply_to = dao_get_service_sms_senders_by_id(service.id, sender_id).get_reply_to_text()
     else:

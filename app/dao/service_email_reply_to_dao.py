@@ -10,7 +10,8 @@ def dao_get_reply_to_by_service_id(service_id):
     reply_to = db.session.query(
         ServiceEmailReplyTo
     ).filter(
-        ServiceEmailReplyTo.service_id == service_id
+        ServiceEmailReplyTo.service_id == service_id,
+        ServiceEmailReplyTo.is_active == True  # noqa
     ).order_by(desc(ServiceEmailReplyTo.is_default), desc(ServiceEmailReplyTo.created_at)).all()
     return reply_to
 
@@ -20,7 +21,8 @@ def dao_get_reply_to_by_id(service_id, reply_to_id):
         ServiceEmailReplyTo
     ).filter(
         ServiceEmailReplyTo.service_id == service_id,
-        ServiceEmailReplyTo.id == reply_to_id
+        ServiceEmailReplyTo.id == reply_to_id,
+        ServiceEmailReplyTo.is_active == True  # noqa
     ).order_by(ServiceEmailReplyTo.created_at).one()
     return reply_to
 

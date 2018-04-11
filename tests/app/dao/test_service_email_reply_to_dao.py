@@ -25,6 +25,23 @@ def test_dao_get_reply_to_by_service_id(notify_db_session):
     assert second_reply_to == results[2]
 
 
+def test_dao_get_reply_to_by_service_id_only_returns_active_reply_tos(notify_db_session):
+    service = create_service()
+    create_reply_to_email(service=service, email_address='something@email.com')
+    create_reply_to_email(service=service, email_address='another@email.com', is_default=False)
+    inactive_reply_to = create_reply_to_email(
+        service=service,
+        email_address='second@email.com',
+        is_default=False,
+        is_active=False
+    )
+
+    results = dao_get_reply_to_by_service_id(service_id=service.id)
+
+    assert len(results) == 2
+    assert inactive_reply_to not in results
+
+
 def test_add_reply_to_email_address_for_service_creates_first_email_for_service(notify_db_session):
     service = create_service()
     add_reply_to_email_address_for_service(service_id=service.id,
@@ -161,6 +178,18 @@ def test_dao_get_reply_to_by_id(sample_service):
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_does_not_exist(sample_service):
     with pytest.raises(SQLAlchemyError):
         dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=uuid.uuid4())
+
+
+def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_is_inactive(sample_service):
+    create_reply_to_email(service=sample_service, email_address='email@address.com')
+    inactive_reply_to = create_reply_to_email(
+        service=sample_service,
+        email_address='email_two@address.com',
+        is_default=False,
+        is_active=False)
+
+    with pytest.raises(SQLAlchemyError):
+        dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=inactive_reply_to.id)
 
 
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):
