@@ -136,7 +136,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
                 queue="send-email-tasks"
             )
             assert response.status_code == 201
-            assert response_data['body'] == u'Hello Jo\nThis is an email from GOV.\u200BUK'
+            assert response_data['body'] == u'Hello Jo\nThis is an email from GOV.UK'
             assert response_data['subject'] == 'Jo'
 
 
@@ -148,7 +148,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
             '* Jo\n'
             '* John\n'
             '* Josephine\n'
-            'This is an email from GOV.\u200BUK'
+            'This is an email from GOV.UK'
         ),
         'Jo, John and Josephine',
     ),
@@ -156,7 +156,7 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
         6,
         (
             'Hello 6\n'
-            'This is an email from GOV.\u200BUK'
+            'This is an email from GOV.UK'
         ),
         '6',
     ),

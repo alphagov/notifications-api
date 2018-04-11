@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from flask import url_for
 from sqlalchemy import func
-from notifications_utils.template import SMSMessageTemplate, PlainTextEmailTemplate
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -30,7 +30,7 @@ def url_with_token(data, url, config, base_url=None):
 def get_template_instance(template, values):
     from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
     return {
-        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: PlainTextEmailTemplate, LETTER_TYPE: PlainTextEmailTemplate
+        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: WithSubjectTemplate, LETTER_TYPE: WithSubjectTemplate
     }[template['template_type']](template, values)
 
 
@@ -77,6 +77,10 @@ def get_london_month_from_utc_column(column):
 
 def cache_key_for_service_template_counter(service_id, limit_days=7):
     return "{}-template-counter-limit-{}-days".format(service_id, limit_days)
+
+
+def cache_key_for_service_template_usage_per_day(service_id, datetime):
+    return "service-{}-template-usage-{}".format(service_id, datetime.date().isoformat())
 
 
 def get_public_notify_type_text(notify_type, plural=False):

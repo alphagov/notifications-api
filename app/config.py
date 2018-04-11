@@ -95,7 +95,8 @@ class Config(object):
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
-    EXPIRE_CACHE_IN_SECONDS = 600
+    EXPIRE_CACHE_TEN_MINUTES = 600
+    EXPIRE_CACHE_EIGHT_DAYS = 8 * 24 * 60 * 60
 
     # Performance platform
     PERFORMANCE_PLATFORM_ENABLED = False
@@ -316,6 +317,9 @@ class Config(object):
 
     TEMPLATE_PREVIEW_API_HOST = os.environ.get('TEMPLATE_PREVIEW_API_HOST', 'http://localhost:6013')
     TEMPLATE_PREVIEW_API_KEY = os.environ.get('TEMPLATE_PREVIEW_API_KEY', 'my-secret-key')
+
+    DOCUMENT_DOWNLOAD_API_HOST = os.environ.get('DOCUMENT_DOWNLOAD_API_HOST', 'http://localhost:7000')
+    DOCUMENT_DOWNLOAD_API_KEY = os.environ.get('DOCUMENT_DOWNLOAD_API_KEY', 'auth-token')
 
     LETTER_PROCESSING_DEADLINE = time(17, 30)
 

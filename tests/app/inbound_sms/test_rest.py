@@ -156,22 +156,6 @@ def test_old_get_inbound_sms(admin_request, sample_service):
     }
 
 
-def test_old_get_inbound_sms_limits(admin_request, sample_service):
-    with freeze_time('2017-01-01'):
-        create_inbound_sms(sample_service)
-    with freeze_time('2017-01-02'):
-        two = create_inbound_sms(sample_service)
-
-    sms = admin_request.get(
-        'inbound_sms.get_inbound_sms_for_service',
-        service_id=sample_service.id,
-        limit=1,
-    )
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(two.id)
-
-
 @pytest.mark.parametrize('user_number', [
     '(07700) 900-001',
     '+4407700900001',
@@ -289,3 +273,28 @@ def test_get_inbound_sms_by_id_with_invalid_service_id_returns_404(admin_request
         inbound_sms_id='2cfbd6a1-1575-4664-8969-f27be0ea40d9',
         _expected_status=404
     )
+
+
+@pytest.mark.parametrize('page_given, expected_rows, has_next_link', [
+    (True, 10, False),
+    (False, 50, True)
+])
+def test_get_most_recent_inbound_sms_for_service(
+    admin_request,
+    page_given,
+    sample_service,
+    expected_rows,
+    has_next_link
+):
+    for i in range(60):
+        create_inbound_sms(service=sample_service, user_number='44770090000{}'.format(i))
+
+    request_args = {'page': 2} if page_given else {}
+    response = admin_request.get(
+        'inbound_sms.get_most_recent_inbound_sms_for_service',
+        service_id=sample_service.id,
+        **request_args
+    )
+
+    assert len(response['data']) == expected_rows
+    assert response['has_next'] == has_next_link

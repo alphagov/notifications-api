@@ -1,23 +1,17 @@
-import uuid
-
 from flask import jsonify, request, url_for, current_app
-from werkzeug.exceptions import abort
-
 from app import api_user, authenticated_service
 from app.dao import notifications_dao
 from app.schema_validation import validate
 from app.v2.notifications import v2_notification_blueprint
-from app.v2.notifications.notification_schemas import get_notifications_request
+from app.v2.notifications.notification_schemas import get_notifications_request, notification_by_id
 
 
-@v2_notification_blueprint.route("/<id>", methods=['GET'])
-def get_notification_by_id(id):
-    try:
-        casted_id = uuid.UUID(id)
-    except (ValueError, AttributeError):
-        abort(404)
+@v2_notification_blueprint.route("/<notification_id>", methods=['GET'])
+def get_notification_by_id(notification_id):
+    _data = {"notification_id": notification_id}
+    validate(_data, notification_by_id)
     notification = notifications_dao.get_notification_with_personalisation(
-        authenticated_service.id, casted_id, key_type=None
+        authenticated_service.id, notification_id, key_type=None
     )
 
     return jsonify(notification.serialize()), 200

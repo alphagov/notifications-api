@@ -120,7 +120,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
         'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
-        'body': "Hello Bob\nThis is an email from GOV.\u200bUK",
+        'body': "Hello Bob\nThis is an email from GOV.UK",
         "subject": "Bob",
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
@@ -210,15 +210,15 @@ def test_get_notification_by_id_invalid_id(client, sample_notification, id):
         path='/v2/notifications/{}'.format(id),
         headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 404
+    assert response.status_code == 400
     assert response.headers['Content-type'] == 'application/json'
 
     json_response = json.loads(response.get_data(as_text=True))
-    assert json_response == {
-        "message": "The requested URL was not found on the server.  "
-                   "If you entered the URL manually please check your spelling and try again.",
-        "result": "error"
-    }
+    assert json_response == {"errors": [
+        {"error": "ValidationError",
+         "message": "notification_id is not a valid UUID"
+         }],
+        "status_code": 400}
 
 
 @pytest.mark.parametrize('created_at_month, estimated_delivery', [
@@ -628,7 +628,7 @@ def test_get_notifications_renames_letter_statuses(client, sample_letter_templat
     )
     auth_header = create_authorization_header(service_id=letter_noti.service_id)
     response = client.get(
-        path=url_for('v2_notifications.get_notification_by_id', id=letter_noti.id),
+        path=url_for('v2_notifications.get_notification_by_id', notification_id=letter_noti.id),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
 

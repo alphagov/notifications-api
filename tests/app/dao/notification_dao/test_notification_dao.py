@@ -925,14 +925,18 @@ def test_update_notification_sets_status(sample_notification):
     assert notification_from_db.status == 'failed'
 
 
-@pytest.mark.parametrize('notification_type, expected_sms_count, expected_email_count, expected_letter_count', [
-    ('sms', 8, 10, 10), ('email', 10, 8, 10), ('letter', 10, 10, 8)
-])
-@freeze_time("2016-01-10 12:00:00.000000")
+@pytest.mark.parametrize('month, delete_run_time',
+                         [(4, '2016-04-10 23:40'), (1, '2016-01-11 00:40')])
+@pytest.mark.parametrize(
+    'notification_type, expected_sms_count, expected_email_count, expected_letter_count',
+    [('sms', 7, 10, 10),
+     ('email', 10, 7, 10),
+     ('letter', 10, 10, 7)]
+)
 def test_should_delete_notifications_by_type_after_seven_days(
-        notify_db,
-        notify_db_session,
         sample_service,
+        month,
+        delete_run_time,
         notification_type,
         expected_sms_count,
         expected_email_count,
@@ -940,44 +944,24 @@ def test_should_delete_notifications_by_type_after_seven_days(
 ):
     assert len(Notification.query.all()) == 0
 
-    email_template = sample_email_template(notify_db, notify_db_session, service=sample_service)
-    sms_template = create_sample_template(notify_db, notify_db_session, service=sample_service)
-    letter_template = sample_letter_template(sample_service)
+    email_template = create_template(service=sample_service, template_type='email')
+    sms_template = create_template(service=sample_service)
+    letter_template = create_template(service=sample_service, template_type='letter')
 
     # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
     for i in range(1, 11):
-        past_date = '2016-01-{0:02d}  {0:02d}:00:00.000000'.format(i)
+        past_date = '2016-0{0}-{1:02d}  {1:02d}:00:00.000000'.format(month, i)
         with freeze_time(past_date):
-            sample_notification(
-                notify_db,
-                notify_db_session,
-                created_at=datetime.utcnow(),
-                status="failed",
-                service=sample_service,
-                template=email_template
-            )
-            sample_notification(
-                notify_db,
-                notify_db_session,
-                created_at=datetime.utcnow(),
-                status="failed",
-                service=sample_service,
-                template=sms_template
-            )
-            sample_notification(
-                notify_db,
-                notify_db_session,
-                created_at=datetime.utcnow(),
-                status="failed",
-                service=sample_service,
-                template=letter_template
-            )
+            create_notification(template=email_template, created_at=datetime.utcnow(), status="permanent-failure")
+            create_notification(template=sms_template, created_at=datetime.utcnow(), status="delivered")
+            create_notification(template=letter_template, created_at=datetime.utcnow(), status="temporary-failure")
 
     all_notifications = Notification.query.all()
     assert len(all_notifications) == 30
 
     # Records from before 3rd should be deleted
-    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    with freeze_time(delete_run_time):
+        delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     remaining_sms_notifications = Notification.query.filter_by(notification_type='sms').all()
     remaining_letter_notifications = Notification.query.filter_by(notification_type='letter').all()
     remaining_email_notifications = Notification.query.filter_by(notification_type='email').all()
@@ -994,7 +978,7 @@ def test_should_delete_notifications_by_type_after_seven_days(
         notifications_to_check = remaining_letter_notifications
 
     for notification in notifications_to_check:
-        assert notification.created_at.date() >= date(2016, 1, 3)
+        assert notification.created_at.date() >= date(2016, month, 3)
 
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])

@@ -8,8 +8,9 @@ from app.dao.inbound_sms_dao import (
     delete_inbound_sms_created_more_than_a_week_ago,
     dao_get_inbound_sms_by_id,
     dao_get_paginated_inbound_sms_for_service_for_public_api,
-    dao_get_paginated_inbound_sms_for_service
+    dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service
 )
+from tests.conftest import set_config
 from tests.app.db import create_inbound_sms, create_service
 
 from app.models import InboundSms
@@ -21,16 +22,6 @@ def test_get_all_inbound_sms(sample_service):
     res = dao_get_inbound_sms_for_service(sample_service.id)
     assert len(res) == 1
     assert res[0] == inbound
-
-
-def test_get_all_inbound_sms_by_page(sample_service):
-    inbound = create_inbound_sms(sample_service)
-
-    res = dao_get_paginated_inbound_sms_for_service(sample_service.id)
-    assert len(res.items) == 1
-    assert res.has_next is False
-    assert res.per_page == 50
-    assert res.items[0] == inbound
 
 
 def test_get_all_inbound_sms_when_none_exist(sample_service):
@@ -184,3 +175,49 @@ def test_dao_get_paginated_inbound_sms_for_service_for_public_api_older_than_end
     )
 
     assert inbound_from_db == []
+
+
+def test_most_recent_inbound_sms_only_returns_most_recent_for_each_number(notify_api, sample_service):
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 1', created_at=datetime(2017, 1, 1))
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 2', created_at=datetime(2017, 1, 2))
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 3', created_at=datetime(2017, 1, 3))
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 4', created_at=datetime(2017, 1, 4))
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 5', created_at=datetime(2017, 1, 5))
+    create_inbound_sms(sample_service, user_number='447700900222', content='222 1', created_at=datetime(2017, 1, 1))
+    create_inbound_sms(sample_service, user_number='447700900222', content='222 2', created_at=datetime(2017, 1, 2))
+
+    with set_config(notify_api, 'PAGE_SIZE', 3):
+        res = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(sample_service.id, page=1)
+
+    assert len(res.items) == 2
+    assert res.has_next is False
+    assert res.per_page == 3
+    assert res.items[0].content == '111 5'
+    assert res.items[1].content == '222 2'
+
+
+def test_most_recent_inbound_sms_paginates_properly(notify_api, sample_service):
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 1', created_at=datetime(2017, 1, 1))
+    create_inbound_sms(sample_service, user_number='447700900111', content='111 2', created_at=datetime(2017, 1, 2))
+    create_inbound_sms(sample_service, user_number='447700900222', content='222 1', created_at=datetime(2017, 1, 3))
+    create_inbound_sms(sample_service, user_number='447700900222', content='222 2', created_at=datetime(2017, 1, 4))
+    create_inbound_sms(sample_service, user_number='447700900333', content='333 1', created_at=datetime(2017, 1, 5))
+    create_inbound_sms(sample_service, user_number='447700900333', content='333 2', created_at=datetime(2017, 1, 6))
+    create_inbound_sms(sample_service, user_number='447700900444', content='444 1', created_at=datetime(2017, 1, 7))
+    create_inbound_sms(sample_service, user_number='447700900444', content='444 2', created_at=datetime(2017, 1, 8))
+
+    with set_config(notify_api, 'PAGE_SIZE', 2):
+        # first page has most recent 444 and 333
+        res = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(sample_service.id, page=1)
+        assert len(res.items) == 2
+        assert res.has_next is True
+        assert res.per_page == 2
+        assert res.items[0].content == '444 2'
+        assert res.items[1].content == '333 2'
+
+        # second page has no 444 or 333 - just most recent 222 and 111
+        res = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(sample_service.id, page=2)
+        assert len(res.items) == 2
+        assert res.has_next is False
+        assert res.items[0].content == '222 2'
+        assert res.items[1].content == '111 2'
