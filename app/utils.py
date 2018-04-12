@@ -104,8 +104,8 @@ def days_ago(number_of_days):
 
 def last_n_days(limit_days):
     """
-    Returns the last n dates, oldest first. Takes care of daylight savings (but returns a date, be careful how you manipulate it later! Don't
-    directly use the date for comparing to UTC datetimes!). Includes today.
+    Returns the last n dates, oldest first. Takes care of daylight savings (but returns a date, be careful how you
+    manipulate it later! Don't directly use the date for comparing to UTC datetimes!). Includes today.
     """
     return [
         datetime.combine(

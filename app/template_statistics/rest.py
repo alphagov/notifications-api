@@ -67,7 +67,7 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
         if not stats:
             # key didn't exist (or redis was down) - lets populate from DB.
             stats = {
-                row.id: row.count for row in dao_get_template_usage(service_id, day=day)
+                str(row.id): row.count for row in dao_get_template_usage(service_id, day=day)
             }
 
         template_stats_by_id += Counter(stats)
@@ -76,7 +76,7 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
     template_details = dao_get_multiple_template_details(template_stats_by_id.keys())
     return [
         {
-            'count': template_stats_by_id[template.id],
+            'count': template_stats_by_id[str(template.id)],
             'template_id': str(template.id),
             'template_name': template.name,
             'template_type': template.template_type,
