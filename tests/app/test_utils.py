@@ -1,11 +1,15 @@
 from datetime import datetime
+
 import pytest
+from freezegun import freeze_time
 
 from app.utils import (
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
     convert_utc_to_bst,
-    convert_bst_to_utc)
+    convert_bst_to_utc,
+    days_ago
+)
 
 
 @pytest.mark.parametrize('date, expected_date', [
@@ -44,3 +48,21 @@ def test_convert_bst_to_utc():
     bst_datetime = datetime.strptime(bst, "%Y-%m-%d %H:%M")
     utc = convert_bst_to_utc(bst_datetime)
     assert utc == datetime(2017, 5, 12, 12, 15)
+
+
+@pytest.mark.parametrize('current_time, expected_datetime', [
+    # winter
+    ('2018-01-10 23:59', datetime(2018, 1, 9, 0, 0)),
+    ('2018-01-11 00:00', datetime(2018, 1, 10, 0, 0)),
+
+    # bst switchover at 1am 25th
+    ('2018-03-25 10:00', datetime(2018, 3, 24, 0, 0)),
+    ('2018-03-26 10:00', datetime(2018, 3, 25, 0, 0)),
+    ('2018-03-27 10:00', datetime(2018, 3, 25, 23, 0)),
+
+    # summer
+    ('2018-06-05 10:00', datetime(2018, 6, 3, 23, 0))
+])
+def test_days_ago(current_time, expected_datetime):
+    with freeze_time(current_time):
+        assert days_ago(1) == expected_datetime

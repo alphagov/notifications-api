@@ -39,7 +39,7 @@ def get_london_midnight_in_utc(date):
      This function converts date to midnight as BST (British Standard Time) to UTC,
      the tzinfo is lastly removed from the datetime because the database stores the timestamps without timezone.
      :param date: the day to calculate the London midnight in UTC for
-     :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-17 23:00:00
+     :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-16 23:00:00
     """
     return local_timezone.localize(datetime.combine(date, datetime.min.time())).astimezone(
         pytz.UTC).replace(
@@ -90,3 +90,10 @@ def get_public_notify_type_text(notify_type, plural=False):
         notify_type_text = 'text message'
 
     return '{}{}'.format(notify_type_text, 's' if plural else '')
+
+
+def days_ago(number_of_days):
+    """
+    Returns midnight a number of days ago. Takes care of daylight savings etc.
+    """
+    return get_london_midnight_in_utc(datetime.utcnow() - timedelta(number_of_days))

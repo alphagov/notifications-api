@@ -21,7 +21,7 @@ from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
-from app.dao import days_ago
+from app.utils import days_ago
 from app.errors import InvalidRequest
 from app.models import (
     Notification,
@@ -75,7 +75,6 @@ def dao_get_template_usage(service_id, limit_days=None, day=None):
     ).group_by(
         Notification.template_id
     ).subquery()
-
     query = db.session.query(
         Template.id.label('template_id'),
         Template.name,
@@ -256,8 +255,7 @@ def get_notifications_for_service(
     filters = [Notification.service_id == service_id]
 
     if limit_days is not None:
-        days_ago = date.today() - timedelta(days=limit_days)
-        filters.append(func.date(Notification.created_at) >= days_ago)
+        filters.append(Notification.created_at >= days_ago(limit_days))
 
     if older_than is not None:
         older_than_created_at = db.session.query(
