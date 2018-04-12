@@ -50,7 +50,7 @@ from app.utils import convert_utc_to_bst, get_london_midnight_in_utc
 
 
 @statsd(namespace="dao")
-def dao_get_template_usage(service_id, limit_days=None, day=None):
+def dao_get_template_usage(service_id, *, limit_days=None, day=None):
     if bool(limit_days) == bool(day):
         raise ValueError('Must filter on either limit_days or a specific day')
 
@@ -75,8 +75,9 @@ def dao_get_template_usage(service_id, limit_days=None, day=None):
     ).group_by(
         Notification.template_id
     ).subquery()
+
     query = db.session.query(
-        Template.id.label('template_id'),
+        Template.id,
         Template.name,
         Template.template_type,
         Template.is_precompiled_letter,

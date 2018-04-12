@@ -8,7 +8,8 @@ from app.utils import (
     get_midnight_for_day_before,
     convert_utc_to_bst,
     convert_bst_to_utc,
-    days_ago
+    days_ago,
+    last_n_days
 )
 
 
@@ -66,3 +67,16 @@ def test_convert_bst_to_utc():
 def test_days_ago(current_time, expected_datetime):
     with freeze_time(current_time):
         assert days_ago(1) == expected_datetime
+
+
+def test_last_n_days():
+    with freeze_time('2018-03-27 12:00'):
+        res = last_n_days(5)
+
+    assert res == [
+        datetime(2018, 3, 23, 0, 0),
+        datetime(2018, 3, 24, 0, 0),
+        datetime(2018, 3, 25, 0, 0),
+        datetime(2018, 3, 26, 0, 0),
+        datetime(2018, 3, 27, 0, 0)
+    ]
