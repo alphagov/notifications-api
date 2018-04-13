@@ -1,7 +1,8 @@
 from flask import (
     Blueprint,
     jsonify,
-    request
+    request,
+    current_app
 )
 
 from app import redis_store
@@ -61,15 +62,28 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
     template_stats_by_id = Counter()
 
     for day in last_n_days(limit_days):
+        print('\n')
         # "{SERVICE_ID}-template-usage-{YYYY-MM-DD}"
         key = cache_key_for_service_template_usage_per_day(service_id, day)
         stats = redis_store.get_all_from_hash(key)
-        if not stats:
+        if stats:
+            stats = {
+                k.decode('utf-8'): int(v) for k, v in stats.items()
+            }
+        else:
             # key didn't exist (or redis was down) - lets populate from DB.
             stats = {
                 str(row.id): row.count for row in dao_get_template_usage(service_id, day=day)
             }
-
+            # if there is data in db, but not in redis - lets put it in redis so we don't have to do
+            # this calc again next time. If there isn't any data, we can't put it in redis.
+            # Zero length hashes aren't a thing in redis. (There'll only be no data if the service has no templates)
+            if stats:
+                redis_store.set_hash_and_expire(
+                    key,
+                    stats,
+                    current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
+                )
         template_stats_by_id += Counter(stats)
 
     # attach count from stats to name/type/etc from database
@@ -83,4 +97,7 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
             'is_precompiled_letter': template.is_precompiled_letter
         }
         for template in template_details
+        # we don't want to return templates with no count to the front-end,
+        # but they're returned from the DB and might be put in redis like that (if there was no data that day)
+        if template_stats_by_id[str(template.id)] != 0
     ]

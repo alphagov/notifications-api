@@ -114,23 +114,28 @@ def test_template_usage_should_filter_by_service(notify_db_session):
 
     template_1 = create_template(service_1)
     template_2 = create_template(service_2)  # noqa
-    template_3 = create_template(service_3)
+    template_3a = create_template(service_3)
+    template_3b = create_template(service_3)  # noqa
 
     # two for service_1, one for service_3
     create_notification(template_1)
     create_notification(template_1)
 
-    create_notification(template_3)
+    create_notification(template_3a)
 
     res1 = dao_get_template_usage(service_1.id, limit_days=1)
     res2 = dao_get_template_usage(service_2.id, limit_days=1)
     res3 = dao_get_template_usage(service_3.id, limit_days=1)
 
     assert len(res1) == 1
-    assert len(res2) == 0
-    assert len(res3) == 1
     assert res1[0].count == 2
+
+    assert len(res2) == 1
+    assert res2[0].count == 0
+
+    assert len(res3) == 2
     assert res3[0].count == 1
+    assert res3[1].count == 0
 
 
 def test_template_usage_should_by_able_to_get_zero_count_from_notifications_history_if_no_rows(sample_service):

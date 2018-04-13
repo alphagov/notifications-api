@@ -3,6 +3,7 @@ from datetime import datetime
 from unittest.mock import Mock, call, ANY
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 
 from tests.app.db import (
@@ -11,7 +12,23 @@ from tests.app.db import (
 )
 
 
+def set_up_get_all_from_hash(mock_redis, side_effect):
+    """
+    redis returns binary strings for both keys and values - so given a list of side effects (return values),
+    make sure
+    """
+    assert type(side_effect) == list
+    side_effects = []
+    for ret_val in side_effect:
+        if ret_val is None:
+            side_effects.append(None)
+        else:
+            side_effects += [{str(k).encode('utf-8'): str(v).encode('utf-8') for k, v in ret_val.items()}]
+
+    mock_redis.get_all_from_hash.side_effect = side_effects
+
 # get_template_statistics_for_service_by_day
+
 
 @pytest.mark.parametrize('query_string', [
     {},
@@ -54,9 +71,9 @@ def test_get_template_statistics_for_service_by_day_gets_out_of_redis_if_availab
     sample_template
 ):
     mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
-    mock_redis.get_all_from_hash.return_value = {
-        str(sample_template.id): 3
-    }
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 3}
+    ])
 
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
@@ -68,7 +85,7 @@ def test_get_template_statistics_for_service_by_day_gets_out_of_redis_if_availab
     assert json_resp['data'][0]['count'] == 3
     assert json_resp['data'][0]['template_id'] == str(sample_template.id)
     mock_redis.get_all_from_hash.assert_called_once_with(
-        "service-{}-template-usage-{}".format(sample_template.service_id, '2018-01-01')
+        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')
     )
 
 
@@ -81,10 +98,10 @@ def test_get_template_statistics_for_service_by_day_goes_to_db_if_not_in_redis(
     mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
     # first time it is called redis returns data, second time returns none
-    mock_redis.get_all_from_hash.side_effect = [
-        {str(sample_template.id): 2},
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 2},
         None
-    ]
+    ])
     mock_dao = mocker.patch(
         'app.template_statistics.rest.dao_get_template_usage',
         return_value=[
@@ -102,17 +119,19 @@ def test_get_template_statistics_for_service_by_day_goes_to_db_if_not_in_redis(
     assert json_resp['data'][0]['count'] == 5
     assert json_resp['data'][0]['template_id'] == str(sample_template.id)
     # first redis call
-    assert mock_redis.mock_calls == [
-        call.get_all_from_hash(
-            "service-{}-template-usage-{}".format(sample_template.service_id, '2018-01-01')
-        ),
-        call.get_all_from_hash(
-            "service-{}-template-usage-{}".format(sample_template.service_id, '2018-01-02')
-        )
+    assert mock_redis.get_all_from_hash.mock_calls == [
+        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')),
+        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'))
     ]
     # dao only called for 2nd, since redis returned values for first call
     mock_dao.assert_called_once_with(
         str(sample_template.service_id), day=datetime(2018, 1, 2)
+    )
+    mock_redis.set_hash_and_expire.assert_called_once_with(
+        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'),
+        # sets the data that the dao returned
+        {str(sample_template.id): 3},
+        current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
     )
 
 
@@ -127,11 +146,11 @@ def test_get_template_statistics_for_service_by_day_combines_templates_correctly
     mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
     # first time it is called redis returns data, second time returns none
-    mock_redis.get_all_from_hash.side_effect = [
-        {str(t1.id): 2},
+    set_up_get_all_from_hash(mock_redis, [
+        {t1.id: 2},
         None,
-        {str(t1.id): 1, str(t2.id): 4},
-    ]
+        {t1.id: 1, t2.id: 4},
+    ])
     mock_dao = mocker.patch(
         'app.template_statistics.rest.dao_get_template_usage',
         return_value=[
@@ -165,15 +184,15 @@ def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
     mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
     # first time it is called redis returns data, second time returns none
-    mock_redis.get_all_from_hash.side_effect = [
-        {str(sample_template.id): 1},
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 1},
         None,
-        {str(sample_template.id): 1},
-        {str(sample_template.id): 1},
-        {str(sample_template.id): 1},
+        {sample_template.id: 1},
+        {sample_template.id: 1},
+        {sample_template.id: 1},
         None,
         None,
-    ]
+    ])
     mock_dao = mocker.patch(
         'app.template_statistics.rest.dao_get_template_usage',
         return_value=[
@@ -213,6 +232,8 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     mocker,
     sample_service
 ):
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
+
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_service.id,
@@ -220,6 +241,9 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     )
 
     assert len(json_resp['data']) == 0
+    assert mock_redis.get_all_from_hash.call_count == 7
+    # make sure we don't try and set any empty hashes in redis
+    assert mock_redis.set_hash_and_expire.call_count == 0
 
 # get_template_statistics_for_template
 

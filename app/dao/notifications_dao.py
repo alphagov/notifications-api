@@ -81,10 +81,12 @@ def dao_get_template_usage(service_id, *, limit_days=None, day=None):
         Template.name,
         Template.template_type,
         Template.is_precompiled_letter,
-        notifications_aggregate_query.c.count
-    ).join(
+        func.coalesce(notifications_aggregate_query.c.count, 0).label('count')
+    ).outerjoin(
         notifications_aggregate_query,
         notifications_aggregate_query.c.template_id == Template.id
+    ).filter(
+        Template.service_id == service_id
     ).order_by(Template.name)
 
     return query.all()
