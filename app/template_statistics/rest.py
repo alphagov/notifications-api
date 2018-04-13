@@ -62,7 +62,6 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
     template_stats_by_id = Counter()
 
     for day in last_n_days(limit_days):
-        print('\n')
         # "{SERVICE_ID}-template-usage-{YYYY-MM-DD}"
         key = cache_key_for_service_template_usage_per_day(service_id, day)
         stats = redis_store.get_all_from_hash(key)

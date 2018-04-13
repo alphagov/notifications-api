@@ -50,28 +50,18 @@ from app.utils import convert_utc_to_bst, get_london_midnight_in_utc
 
 
 @statsd(namespace="dao")
-def dao_get_template_usage(service_id, *, limit_days=None, day=None):
-    if bool(limit_days) == bool(day):
-        raise ValueError('Must filter on either limit_days or a specific day')
-
-    query_filter = []
-
-    if limit_days:
-        query_filter.append(Notification.created_at >= days_ago(limit_days))
-    else:
-        start = get_london_midnight_in_utc(day)
-        end = get_london_midnight_in_utc(day + timedelta(days=1))
-        query_filter.append(Notification.created_at >= start)
-        query_filter.append(Notification.created_at < end)
-
-    query_filter.append(Notification.service_id == service_id)
-    query_filter.append(Notification.key_type != KEY_TYPE_TEST)
+def dao_get_template_usage(service_id, day):
+    start = get_london_midnight_in_utc(day)
+    end = get_london_midnight_in_utc(day + timedelta(days=1))
 
     notifications_aggregate_query = db.session.query(
         func.count().label('count'),
         Notification.template_id
     ).filter(
-        *query_filter
+        Notification.created_at >= start,
+        Notification.created_at < end,
+        Notification.service_id == service_id,
+        Notification.key_type != KEY_TYPE_TEST,
     ).group_by(
         Notification.template_id
     ).subquery()
