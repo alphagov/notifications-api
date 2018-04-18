@@ -3,6 +3,7 @@ from sqlalchemy import desc
 from app import db
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
+from app.exceptions import ValidationError
 from app.models import ServiceEmailReplyTo
 
 
@@ -54,6 +55,19 @@ def update_reply_to_email_address(service_id, reply_to_id, email_address, is_def
     reply_to_update.is_default = is_default
     db.session.add(reply_to_update)
     return reply_to_update
+
+
+@transactional
+def set_reply_to_inactive(service_id, reply_to_id):
+    reply_to_for_updating = ServiceEmailReplyTo.query.get(reply_to_id)
+
+    if reply_to_for_updating.is_default:
+        raise ValidationError("You cannot delete a default email reply to address")
+
+    reply_to_for_updating.is_active = False
+
+    db.session.add(reply_to_for_updating)
+    return reply_to_for_updating
 
 
 def _get_existing_default(service_id):

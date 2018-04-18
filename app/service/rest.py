@@ -54,6 +54,7 @@ from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
+    set_reply_to_inactive,
     update_reply_to_email_address
 )
 from app.dao.service_letter_contact_dao import (
@@ -587,10 +588,14 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
-    new_reply_to = update_reply_to_email_address(service_id=service_id,
-                                                 reply_to_id=reply_to_email_id,
-                                                 email_address=form['email_address'],
-                                                 is_default=form.get('is_default', True))
+
+    if form.get('is_active', True) is False:
+        new_reply_to = set_reply_to_inactive(service_id, reply_to_email_id)
+    else:
+        new_reply_to = update_reply_to_email_address(service_id=service_id,
+                                                     reply_to_id=reply_to_email_id,
+                                                     email_address=form['email_address'],
+                                                     is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
 
 

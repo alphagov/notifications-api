@@ -2525,6 +2525,58 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
     assert result['message'] == 'No result found'
 
 
+def test_update_service_reply_to_email_address_can_set_reply_to_inactive(
+    mocker,
+    sample_service,
+    admin_request,
+    notify_db_session
+):
+    mock_update = mocker.patch('app.service.rest.update_reply_to_email_address')
+    create_reply_to_email(service=sample_service, email_address="some@email.com")
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com", is_default=False)
+
+    data = {
+        'email_address': 'some@email.com',
+        'is_default': False,
+        'is_active': False
+    }
+
+    admin_request.post(
+        'service.update_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _data=data
+    )
+
+    assert reply_to.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_reply_to_email_address_returns_400_if_setting_default_reply_to_as_inactive(
+    admin_request,
+    notify_db_session,
+    sample_service
+):
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+
+    data = {
+        'email_address': 'some@email.com',
+        'is_default': False,
+        'is_active': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response == {'message': 'You cannot delete a default email reply to address', 'result': 'error'}
+    assert reply_to.is_active is True
+
+
 def test_get_email_reply_to_address(client, notify_db, notify_db_session):
     service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')

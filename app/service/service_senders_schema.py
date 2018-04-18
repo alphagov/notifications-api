@@ -7,7 +7,8 @@ add_service_email_reply_to_request = {
     "title": "Add new email reply to address for service",
     "properties": {
         "email_address": {"type": "string", "format": "email_address"},
-        "is_default": {"type": "boolean"}
+        "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"}
     },
     "required": ["email_address", "is_default"]
 }

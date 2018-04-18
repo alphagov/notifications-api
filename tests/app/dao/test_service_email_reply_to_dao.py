@@ -4,9 +4,13 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.service_email_reply_to_dao import (
+    add_reply_to_email_address_for_service,
+    dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
-    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id)
+    set_reply_to_inactive,
+    update_reply_to_email_address)
 from app.errors import InvalidRequest
+from app.exceptions import ValidationError
 from app.models import ServiceEmailReplyTo
 from tests.app.db import create_reply_to_email, create_service
 
@@ -167,6 +171,33 @@ def test_update_reply_to_email_address_raises_exception_if_single_reply_to_and_s
                                       reply_to_id=first_reply_to.id,
                                       email_address='should@fail.com',
                                       is_default=False)
+
+
+def test_set_reply_to_inactive_changes_is_active_to_false(sample_service):
+    create_reply_to_email(service=sample_service, email_address="first@address.com")
+    second_reply_to = create_reply_to_email(
+        service=sample_service,
+        email_address="first@address.com",
+        is_default=False)
+
+    set_reply_to_inactive(sample_service.id, second_reply_to.id)
+
+    assert not second_reply_to.is_active
+    assert second_reply_to.updated_at is not None
+
+
+def test_set_reply_to_inactive_does_not_inactivate_a_default_reply_to(sample_service):
+    create_reply_to_email(
+        service=sample_service,
+        email_address="first@address.com",
+        is_default=False)
+    reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com")
+
+    with pytest.raises(ValidationError) as e:
+        set_reply_to_inactive(sample_service.id, reply_to.id)
+
+    assert 'You cannot delete a default email reply to address' in str(e.value)
+    assert reply_to.is_active
 
 
 def test_dao_get_reply_to_by_id(sample_service):
