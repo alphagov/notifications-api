@@ -8,9 +8,15 @@ from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
+    dao_set_service_sms_sender_inactive,
     update_existing_sms_sender_with_inbound_number)
+from app.exceptions import ValidationError
 from app.models import ServiceSmsSender
-from tests.app.db import create_service, create_inbound_number, create_service_sms_sender
+from tests.app.db import (
+    create_service,
+    create_inbound_number,
+    create_service_sms_sender,
+    create_service_with_inbound_number)
 
 
 def test_dao_get_service_sms_senders_id(notify_db_session):
@@ -116,6 +122,7 @@ def test_dao_update_service_sms_sender(notify_db_session):
     assert sms_senders[0].is_default
     assert sms_senders[0].sms_sender == 'updated'
     assert not sms_senders[0].inbound_number_id
+    assert sms_senders[0].is_active
 
 
 def test_dao_update_service_sms_sender_switches_default(notify_db_session):
@@ -148,6 +155,49 @@ def test_dao_update_service_sms_sender_raises_exception_when_no_default_after_up
                                       is_default=False,
                                       sms_sender="updated")
     assert 'You must have at least one SMS sender as the default' in str(e.value)
+
+
+def test_dao_set_service_sms_sender_inactive_changes_is_active_to_false(notify_db_session):
+    service = create_service()
+    second_sms_sender = dao_add_sms_sender_for_service(service_id=service.id,
+                                                       sms_sender='second',
+                                                       is_default=False,
+                                                       inbound_number_id=None)
+
+    dao_set_service_sms_sender_inactive(service_id=service.id, service_sms_sender_id=second_sms_sender.id)
+
+    assert not second_sms_sender.is_active
+    assert second_sms_sender.updated_at is not None
+
+
+@pytest.mark.parametrize('is_default', [True, False])
+def test_dao_set_service_sms_sender_inactive_does_not_inactivate_inbound_numbers(notify_db_session, is_default):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    dao_add_sms_sender_for_service(service.id, 'second', is_default=True)
+
+    inbound_number = next(x for x in service.service_sms_senders if x.inbound_number_id)
+
+    # regardless of whether inbound number is default or not, can't delete it
+    dao_update_service_sms_sender(service.id, inbound_number.id, is_default=is_default)
+
+    with pytest.raises(ValidationError) as e:
+        dao_set_service_sms_sender_inactive(
+            service_id=service.id,
+            service_sms_sender_id=inbound_number.id
+        )
+
+    assert 'You cannot delete an inbound number' in str(e.value)
+    assert inbound_number.is_active
+
+
+def test_dao_set_service_sms_sender_inactive_doesnt_inactivate_default_sender(notify_db_session):
+    service = create_service()
+    sms_sender = service.service_sms_senders[0]
+
+    with pytest.raises(ValidationError) as e:
+        dao_set_service_sms_sender_inactive(service_id=service.id,
+                                            service_sms_sender_id=sms_sender.id)
+    assert 'You cannot delete a default sms sender' in str(e.value)
 
 
 def test_update_existing_sms_sender_with_inbound_number(notify_db_session):

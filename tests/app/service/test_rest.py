@@ -44,7 +44,8 @@ from tests.app.db import (
     create_letter_contact,
     create_inbound_number,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender
+    create_service_with_defined_sms_sender,
+    create_service_with_inbound_number,
 )
 from tests.app.db import create_user
 
@@ -2924,6 +2925,50 @@ def test_update_service_sms_sender_return_404_when_service_does_not_exist(client
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_update_service_sms_sender_can_set_sms_sender_inactive(mocker, admin_request, notify_db_session):
+    mock_update = mocker.patch('app.service.rest.dao_update_service_sms_sender')
+    service = create_service()
+    service_sms_sender = create_service_sms_sender(service=service,
+                                                   sms_sender='5678',
+                                                   is_default=False)
+    data = {
+        'sms_sender': '5678',
+        'is_active': False,
+        'is_default': False
+    }
+
+    admin_request.post(
+        'service.update_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service_sms_sender.id,
+        _data=data
+    )
+
+    assert service_sms_sender.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_sms_sender_returns_400_if_setting_inbound_as_inactive(admin_request, notify_db_session):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    inbound_number = service.service_sms_senders[0]
+
+    data = {
+        'sms_sender': '7654321',
+        'is_active': False,
+        'is_default': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service.service_sms_senders[0].id,
+        _data=data,
+        _expected_status=400
+    )
+    assert response == {'message': 'You cannot delete an inbound number', 'result': 'error'}
+    assert inbound_number.is_active is True
 
 
 def test_get_service_sms_sender_by_id(client, notify_db_session):

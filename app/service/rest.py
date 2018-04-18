@@ -24,6 +24,7 @@ from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
+    dao_set_service_sms_sender_inactive,
     update_existing_sms_sender_with_inbound_number
 )
 from app.dao.services_dao import (
@@ -674,11 +675,14 @@ def update_service_sms_sender(service_id, sms_sender_id):
         raise InvalidRequest("You can not change the inbound number for service {}".format(service_id),
                              status_code=400)
 
-    new_sms_sender = dao_update_service_sms_sender(service_id=service_id,
-                                                   service_sms_sender_id=sms_sender_id,
-                                                   is_default=form['is_default'],
-                                                   sms_sender=form['sms_sender']
-                                                   )
+    if form.get('is_active', True) is False:
+        new_sms_sender = dao_set_service_sms_sender_inactive(service_id, sms_sender_id)
+    else:
+        new_sms_sender = dao_update_service_sms_sender(service_id=service_id,
+                                                       service_sms_sender_id=sms_sender_id,
+                                                       is_default=form['is_default'],
+                                                       sms_sender=form['sms_sender']
+                                                       )
     return jsonify(new_sms_sender.serialize()), 200
 
 

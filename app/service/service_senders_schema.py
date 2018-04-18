@@ -35,6 +35,7 @@ add_service_sms_sender_request = {
     "properties": {
         "sms_sender": {"type": "string"},
         "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"},
         "inbound_number_id": uuid
     },
     "required": ["sms_sender", "is_default"]
