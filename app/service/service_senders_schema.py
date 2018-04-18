@@ -21,7 +21,8 @@ add_service_letter_contact_block_request = {
     "title": "Add new letter contact block for service",
     "properties": {
         "contact_block": {"type": "string"},
-        "is_default": {"type": "boolean"}
+        "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"}
     },
     "required": ["contact_block", "is_default"]
 }

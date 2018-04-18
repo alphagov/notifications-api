@@ -6,11 +6,13 @@ from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     dao_get_letter_contacts_by_service_id,
     dao_get_letter_contact_by_id,
+    set_letter_contact_inactive,
     update_letter_contact
 )
 from app.errors import InvalidRequest
+from app.exceptions import ValidationError
 from app.models import ServiceLetterContact
-from tests.app.db import create_letter_contact, create_service
+from tests.app.db import create_letter_contact, create_service, create_template
 
 
 def test_dao_get_letter_contacts_by_service_id(notify_db_session):
@@ -167,6 +169,39 @@ def test_update_letter_contact_unset_default_for_only_letter_contact_raises_exce
             contact_block='Warwick, W14 TSR',
             is_default=False
         )
+
+
+def test_set_letter_contact_inactive_changes_is_active_to_false(notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Aberdeen, AB12 23X')
+    letter_contact = create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA', is_default=False)
+
+    set_letter_contact_inactive(service.id, letter_contact.id)
+
+    assert not letter_contact.is_active
+    assert letter_contact.updated_at is not None
+
+
+def test_set_letter_contact_inactive_doesnt_inactivate_service_default_letter_contacts(notify_db_session):
+    service = create_service()
+    letter_contact = create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+
+    with pytest.raises(ValidationError) as e:
+        set_letter_contact_inactive(service.id, letter_contact.id)
+
+    assert 'You cannot delete a default letter contact block' in str(e.value)
+
+
+def test_set_letter_contact_inactive_doesnt_inactivate_template_default_letter_contacts(notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    template_default = create_letter_contact(service=service, contact_block='Aberdeen, AB12 23X', is_default=False)
+    create_template(service=service, template_type='letter', reply_to=template_default.id)
+
+    with pytest.raises(ValidationError) as e:
+        set_letter_contact_inactive(service.id, template_default.id)
+
+    assert 'You cannot delete the default letter contact block for a template' in str(e.value)
 
 
 def test_dao_get_letter_contact_by_id(sample_service):

@@ -2751,6 +2751,57 @@ def test_update_service_letter_contact_returns_404_when_invalid_service_id(clien
     assert result['message'] == 'No result found'
 
 
+def test_update_service_letter_contact_can_set_letter_contact_inactive(mocker, admin_request, notify_db_session):
+    mock_update = mocker.patch('app.service.rest.update_letter_contact')
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+
+    data = {
+        'contact_block': 'Swansea, SN1 3CC',
+        'is_default': False,
+        'is_active': False
+    }
+
+    admin_request.post(
+        'service.update_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _data=data
+    )
+
+    assert letter_contact.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_letter_contact_returns_400_if_setting_template_default_inactive(
+    admin_request,
+    notify_db_session,
+):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+    create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+
+    data = {
+        'contact_block': 'Swansea, SN1 3CC',
+        'is_default': False,
+        'is_active': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _data=data,
+        _expected_status=400
+    )
+    assert response == {
+        'message': 'You cannot delete the default letter contact block for a template',
+        'result': 'error'}
+    assert letter_contact.is_active is True
+
+
 def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_session):
     service = create_service()
     data = {

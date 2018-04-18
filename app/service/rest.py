@@ -62,6 +62,7 @@ from app.dao.service_letter_contact_dao import (
     dao_get_letter_contacts_by_service_id,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
+    set_letter_contact_inactive,
     update_letter_contact
 )
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -628,10 +629,14 @@ def update_service_letter_contact(service_id, letter_contact_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_letter_contact_block_request)
-    new_reply_to = update_letter_contact(service_id=service_id,
-                                         letter_contact_id=letter_contact_id,
-                                         contact_block=form['contact_block'],
-                                         is_default=form.get('is_default', True))
+
+    if form.get('is_active', True) is False:
+        new_reply_to = set_letter_contact_inactive(service_id, letter_contact_id)
+    else:
+        new_reply_to = update_letter_contact(service_id=service_id,
+                                             letter_contact_id=letter_contact_id,
+                                             contact_block=form['contact_block'],
+                                             is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
 
 
