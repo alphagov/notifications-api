@@ -185,9 +185,12 @@ def fix_notification_statuses_not_in_sync():
 
 @notify_command()
 @click.option('-y', '--year', required=True, help="e.g. 2017", type=int)
-def populate_monthly_billing(year):
+@click.option('-s', '--service_id', required=False, help="Enter the service id", type=click.UUID)
+@click.option('-m', '--month', required=False, help="e.g. 1 for January", type=int)
+def populate_monthly_billing(year, service_id=None, month=None):
     """
     Populate monthly billing table for all services for a given year.
+    If service_id and month provided then only rebuild monthly billing for that month.
     """
     def populate(service_id, year, month):
         create_or_update_monthly_billing(service_id, datetime(year, month, 1))
@@ -201,25 +204,28 @@ def populate_monthly_billing(year):
             service_id, datetime(year, month, 1), 'letter'
         )
 
-        print("Finished populating data for {} for service id {}".format(month, str(service_id)))
+        print("Finished populating data for {}-{} for service id {}".format(month, year, str(service_id)))
         print('SMS: {}'.format(sms_res.monthly_totals))
         print('Email: {}'.format(email_res.monthly_totals))
         print('Letter: {}'.format(letter_res.monthly_totals))
 
-    service_ids = get_service_ids_that_need_billing_populated(
-        start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
-    )
-    start, end = 1, 13
+    if service_id and month:
+            populate(service_id, year, month)
+    else:
+        service_ids = get_service_ids_that_need_billing_populated(
+            start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
+        )
+        start, end = 1, 13
 
-    if year == 2016:
-        start = 4
+        if year == 2016:
+            start = 4
 
-    for service_id in service_ids:
-        print('Starting to populate data for service {}'.format(str(service_id)))
-        print('Starting populating monthly billing for {}'.format(year))
-        for i in range(start, end):
-            print('Population for {}-{}'.format(i, year))
-            populate(service_id, year, i)
+        for service_id in service_ids:
+            print('Starting to populate data for service {}'.format(str(service_id)))
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                print('Population for {}-{}'.format(i, year))
+                populate(service_id, year, i)
 
 
 @notify_command()
