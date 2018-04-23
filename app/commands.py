@@ -211,21 +211,21 @@ def populate_monthly_billing(year, service_id=None, month=None):
 
     if service_id and month:
             populate(service_id, year, month)
+    else:
+        service_ids = get_service_ids_that_need_billing_populated(
+            start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
+        )
+        start, end = 1, 13
 
-    service_ids = get_service_ids_that_need_billing_populated(
-        start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
-    )
-    start, end = 1, 13
+        if year == 2016:
+            start = 4
 
-    if year == 2016:
-        start = 4
-
-    for service_id in service_ids:
-        print('Starting to populate data for service {}'.format(str(service_id)))
-        print('Starting populating monthly billing for {}'.format(year))
-        for i in range(start, end):
-            print('Population for {}-{}'.format(i, year))
-            populate(service_id, year, i)
+        for service_id in service_ids:
+            print('Starting to populate data for service {}'.format(str(service_id)))
+            print('Starting populating monthly billing for {}'.format(year))
+            for i in range(start, end):
+                print('Population for {}-{}'.format(i, year))
+                populate(service_id, year, i)
 
 
 @notify_command()
