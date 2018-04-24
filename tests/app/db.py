@@ -66,17 +66,17 @@ def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-off
 
 
 def create_service(
-    user=None,
-    service_name="Sample service",
-    service_id=None,
-    restricted=False,
-    service_permissions=[EMAIL_TYPE, SMS_TYPE],
-    research_mode=False,
-    active=True,
-    email_from=None,
-    prefix_sms=True,
-    message_limit=1000,
-    organisation_type='central'
+        user=None,
+        service_name="Sample service",
+        service_id=None,
+        restricted=False,
+        service_permissions=[EMAIL_TYPE, SMS_TYPE],
+        research_mode=False,
+        active=True,
+        email_from=None,
+        prefix_sms=True,
+        message_limit=1000,
+        organisation_type='central'
 ):
     service = Service(
         name=service_name,
@@ -97,8 +97,8 @@ def create_service(
 
 
 def create_service_with_inbound_number(
-    inbound_number='1234567',
-    *args, **kwargs
+        inbound_number='1234567',
+        *args, **kwargs
 ):
     service = create_service(*args, **kwargs)
 
@@ -112,8 +112,8 @@ def create_service_with_inbound_number(
 
 
 def create_service_with_defined_sms_sender(
-    sms_sender_value='1234567',
-    *args, **kwargs
+        sms_sender_value='1234567',
+        *args, **kwargs
 ):
     service = create_service(*args, **kwargs)
 
@@ -127,13 +127,13 @@ def create_service_with_defined_sms_sender(
 
 
 def create_template(
-    service,
-    template_type=SMS_TYPE,
-    template_name=None,
-    subject='Template subject',
-    content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
-    reply_to=None,
-    hidden=False
+        service,
+        template_type=SMS_TYPE,
+        template_name=None,
+        subject='Template subject',
+        content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
+        reply_to=None,
+        hidden=False
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -152,29 +152,29 @@ def create_template(
 
 
 def create_notification(
-    template,
-    job=None,
-    job_row_number=None,
-    to_field=None,
-    status='created',
-    reference=None,
-    created_at=None,
-    sent_at=None,
-    updated_at=None,
-    billable_units=1,
-    personalisation=None,
-    api_key=None,
-    key_type=KEY_TYPE_NORMAL,
-    sent_by=None,
-    client_reference=None,
-    rate_multiplier=None,
-    international=False,
-    phone_prefix=None,
-    scheduled_for=None,
-    normalised_to=None,
-    one_off=False,
-    sms_sender_id=None,
-    reply_to_text=None
+        template,
+        job=None,
+        job_row_number=None,
+        to_field=None,
+        status='created',
+        reference=None,
+        created_at=None,
+        sent_at=None,
+        updated_at=None,
+        billable_units=1,
+        personalisation=None,
+        api_key=None,
+        key_type=KEY_TYPE_NORMAL,
+        sent_by=None,
+        client_reference=None,
+        rate_multiplier=None,
+        international=False,
+        phone_prefix=None,
+        scheduled_for=None,
+        normalised_to=None,
+        one_off=False,
+        sms_sender_id=None,
+        reply_to_text=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -236,13 +236,13 @@ def create_notification(
 
 
 def create_job(
-    template,
-    notification_count=1,
-    created_at=None,
-    job_status='pending',
-    scheduled_for=None,
-    processing_started=None,
-    original_file_name='some.csv'
+        template,
+        notification_count=1,
+        created_at=None,
+        job_status='pending',
+        scheduled_for=None,
+        processing_started=None,
+        original_file_name='some.csv'
 ):
     data = {
         'id': uuid.uuid4(),
@@ -273,14 +273,14 @@ def create_service_permission(service_id, permission=EMAIL_TYPE):
 
 
 def create_inbound_sms(
-    service,
-    notify_number=None,
-    user_number='447700900111',
-    provider_date=None,
-    provider_reference=None,
-    content='Hello',
-    provider="mmg",
-    created_at=None
+        service,
+        notify_number=None,
+        user_number='447700900111',
+        provider_date=None,
+        provider_reference=None,
+        content='Hello',
+        provider="mmg",
+        created_at=None
 ):
     inbound = InboundSms(
         service=service,
@@ -297,9 +297,9 @@ def create_inbound_sms(
 
 
 def create_service_inbound_api(
-    service,
-    url="https://something.com",
-    bearer_token="some_super_secret",
+        service,
+        url="https://something.com",
+        bearer_token="some_super_secret",
 ):
     service_inbound_api = ServiceInboundApi(service_id=service.id,
                                             url=url,
@@ -311,9 +311,9 @@ def create_service_inbound_api(
 
 
 def create_service_callback_api(
-    service,
-    url="https://something.com",
-    bearer_token="some_super_secret",
+        service,
+        url="https://something.com",
+        bearer_token="some_super_secret",
 ):
     service_callback_api = ServiceCallbackApi(service_id=service.id,
                                               url=url,
@@ -377,11 +377,11 @@ def create_inbound_number(number, provider='mmg', active=True, service_id=None):
 
 
 def create_monthly_billing_entry(
-    service,
-    start_date,
-    end_date,
-    notification_type,
-    monthly_totals=[]
+        service,
+        start_date,
+        end_date,
+        notification_type,
+        monthly_totals=[]
 ):
     entry = MonthlyBilling(
         service_id=service.id,
@@ -398,9 +398,9 @@ def create_monthly_billing_entry(
 
 
 def create_reply_to_email(
-    service,
-    email_address,
-    is_default=True
+        service,
+        email_address,
+        is_default=True
 ):
     data = {
         'service': service,
@@ -416,10 +416,10 @@ def create_reply_to_email(
 
 
 def create_service_sms_sender(
-    service,
-    sms_sender,
-    is_default=True,
-    inbound_number_id=None
+        service,
+        sms_sender,
+        is_default=True,
+        inbound_number_id=None
 ):
     data = {
         'service_id': service.id,
@@ -436,9 +436,9 @@ def create_service_sms_sender(
 
 
 def create_letter_contact(
-    service,
-    contact_block,
-    is_default=True
+        service,
+        contact_block,
+        is_default=True
 ):
     data = {
         'service': service,
@@ -454,7 +454,7 @@ def create_letter_contact(
 
 
 def create_annual_billing(
-    service_id, free_sms_fragment_limit, financial_year_start
+        service_id, free_sms_fragment_limit, financial_year_start
 ):
     annual_billing = AnnualBilling(
         service_id=service_id,
@@ -468,12 +468,12 @@ def create_annual_billing(
 
 
 def create_letter_rate(
-    start_date=datetime(2017, 1, 1, 00, 00, 00),
-    end_date=None,
-    sheet_count=1,
-    rate=0.31,
-    crown=True,
-    post_class='second'
+        start_date=datetime(2017, 1, 1, 00, 00, 00),
+        end_date=None,
+        sheet_count=1,
+        rate=0.31,
+        crown=True,
+        post_class='second'
 ):
     rate = LetterRate(
         start_date=start_date,
@@ -529,8 +529,8 @@ def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
 
 def create_ft_billing(bst_date,
                       notification_type,
-                      template = None,
-                      service = None,
+                      template=None,
+                      service=None,
                       provider='test',
                       rate_multiplier=1,
                       international=False,

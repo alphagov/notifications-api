@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, date
 from tests.app.conftest import sample_notification
-from app.celery.reporting_tasks import create_nightly_billing, get_rate
+from app.celery.reporting_tasks import create_nightly_billing
+from app.dao.fact_billing_dao import get_rate
 from app.models import (FactBilling,
                         Notification,
                         LETTER_TYPE,
@@ -44,7 +45,7 @@ def test_create_nightly_billing_sms_rate_multiplier(
 
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # These are sms notifications
     sample_notification(
@@ -94,7 +95,7 @@ def test_create_nightly_billing_different_templates(
         mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     sample_notification(
         notify_db,
@@ -147,7 +148,7 @@ def test_create_nightly_billing_different_sent_by(
         mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # These are sms notifications
     sample_notification(
@@ -197,7 +198,7 @@ def test_create_nightly_billing_letter(
         mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     sample_notification(
         notify_db,
@@ -234,7 +235,7 @@ def test_create_nightly_billing_null_sent_by_sms(
         mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     sample_notification(
         notify_db,
@@ -272,7 +273,7 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
         sample_template,
         mocker):
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # create records from 11th to 15th
     for i in range(0, 5):
@@ -365,7 +366,7 @@ def test_create_nightly_billing_use_BST(
         sample_template,
         mocker):
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     sample_notification(
         notify_db,
@@ -414,7 +415,7 @@ def test_create_nightly_billing_update_when_record_exists(
         sample_template,
         mocker):
 
-    mocker.patch('app.celery.reporting_tasks.get_rate', side_effect=mocker_get_rate)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     sample_notification(
         notify_db,
