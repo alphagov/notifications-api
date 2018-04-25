@@ -734,9 +734,9 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_let
 
 @freeze_time("2018-01-16 17:00:00")
 def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
-    thursday = datetime(2018, 1, 12, 13, 30)
+    friday = datetime(2018, 1, 12, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=thursday)
+    create_notification(template=sample_letter_template, status='sending', sent_at=friday)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
