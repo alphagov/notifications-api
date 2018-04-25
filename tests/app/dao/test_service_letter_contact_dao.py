@@ -39,9 +39,11 @@ def test_add_letter_contact_for_service_creates_additional_letter_contact_for_se
 
     assert results[0].contact_block == 'Edinburgh, ED1 1AA'
     assert results[0].is_default
+    assert not results[0].archived
 
     assert results[1].contact_block == 'Swansea, SN1 3CC'
     assert not results[1].is_default
+    assert not results[1].archived
 
 
 def test_add_another_letter_contact_as_default_overrides_existing(notify_db_session):

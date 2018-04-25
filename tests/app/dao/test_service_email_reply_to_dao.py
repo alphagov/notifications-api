@@ -35,6 +35,7 @@ def test_add_reply_to_email_address_for_service_creates_first_email_for_service(
     assert len(results) == 1
     assert results[0].email_address == 'new@address.com'
     assert results[0].is_default
+    assert not results[0].archived
 
 
 def test_add_reply_to_email_address_for_service_creates_another_email_for_service(notify_db_session):

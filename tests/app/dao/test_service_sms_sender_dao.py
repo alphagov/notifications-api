@@ -58,6 +58,7 @@ def test_dao_add_sms_sender_for_service(notify_db_session):
     assert len(service_sms_senders) == 2
     assert service_sms_senders[0].sms_sender == 'testing'
     assert service_sms_senders[0].is_default
+    assert not service_sms_senders[0].archived
     assert service_sms_senders[1] == new_sms_sender
 
 
