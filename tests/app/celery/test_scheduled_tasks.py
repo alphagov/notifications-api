@@ -660,8 +660,6 @@ def test_alert_if_letter_notifications_still_sending(sample_letter_template, moc
 def test_alert_if_letter_notifications_still_sending_a_day_ago_no_alert(sample_letter_template, mocker):
     today = datetime.utcnow()
     one_day_ago = today - timedelta(days=1)
-    print("today: ", today)
-    print("one_day_ago:", one_day_ago)
     create_notification(template=sample_letter_template, status='sending', sent_at=one_day_ago)
 
     mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
