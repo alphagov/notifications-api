@@ -165,7 +165,8 @@ def test_get_rate(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=3.3, notification_type='email')
     create_letter_rate(start_date=datetime.utcnow(), rate=4.4)
     non_letter_rates, letter_rates = get_rates_for_billing()
-    rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates, notification_type='sms', date=datetime.utcnow())
+    rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates, notification_type='sms',
+                    date=datetime.utcnow())
     letter_rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates,
                            notification_type='letter',
                            crown=True,

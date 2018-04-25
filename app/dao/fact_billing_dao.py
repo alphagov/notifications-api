@@ -94,7 +94,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
         Service
     )
     if service_id:
-        transit_data.filter(Notification.service_id == service_id)
+        transit_data = transit_data.filter(Notification.service_id == service_id)
     return transit_data.all()
 
 
