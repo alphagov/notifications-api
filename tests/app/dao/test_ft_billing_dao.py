@@ -5,7 +5,7 @@ from freezegun import freeze_time
 
 from app import db
 from app.dao.fact_billing_dao import (
-    fetch_annual_billing_for_year, fetch_billing_data_for_day, get_rates_for_billing,
+    fetch_montly_billing_for_year, fetch_billing_data_for_day, get_rates_for_billing,
     get_rate
 )
 from app.models import FactBilling
@@ -23,10 +23,14 @@ from tests.app.db import (
 def test_fetch_billing_data_for_today_includes_data_with_the_right_status(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="email")
-    for status in ['delivered', 'sending', 'temporary-failure', 'created', 'technical-failure']:
+    for status in ['created', 'technical-failure']:
         create_notification(template=template, status=status)
 
     today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(today)
+    assert results == []
+    for status in ['delivered', 'sending', 'temporary-failure']:
+        create_notification(template=template, status=status)
     results = fetch_billing_data_for_day(today)
     assert len(results) == 1
     assert results[0].notifications_sent == 3
@@ -193,8 +197,7 @@ def test_fetch_annual_billing_for_year(notify_db_session):
                           notification_type='sms',
                           rate=0.158)
 
-    results = fetch_annual_billing_for_year(service_id=service.id,
-                                            year=2018)
+    results = fetch_montly_billing_for_year(service_id=service.id, year=2018)
 
     assert len(results) == 2
     assert results[0][0] == 6.0
@@ -227,7 +230,7 @@ def test_fetch_annual_billing_for_year_adds_data_for_today(notify_db_session):
     create_notification(template=template, status='delivered')
 
     assert db.session.query(FactBilling.bst_date).count() == 31
-    results = fetch_annual_billing_for_year(service_id=service.id,
+    results = fetch_montly_billing_for_year(service_id=service.id,
                                             year=2018)
     assert db.session.query(FactBilling.bst_date).count() == 32
     assert len(results) == 2
