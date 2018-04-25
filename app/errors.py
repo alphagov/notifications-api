@@ -8,6 +8,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from marshmallow import ValidationError
 from jsonschema import ValidationError as JsonSchemaValidationError
 from app.authentication.auth import AuthError
+from app.exceptions import ArchiveValidationError
 
 
 class VirusScanError(Exception):
@@ -66,6 +67,11 @@ def register_errors(blueprint):
     def jsonschema_validation_error(error):
         current_app.logger.info(error)
         return jsonify(json.loads(error.message)), 400
+
+    @blueprint.errorhandler(ArchiveValidationError)
+    def archive_validation_error(error):
+        current_app.logger.info(error)
+        return jsonify(result='error', message=str(error)), 400
 
     @blueprint.errorhandler(InvalidRequest)
     def invalid_data(error):

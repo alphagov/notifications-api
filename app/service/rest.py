@@ -52,6 +52,7 @@ from app.dao.service_whitelist_dao import (
 )
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
+    archive_reply_to_email_address,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
     update_reply_to_email_address
@@ -592,6 +593,13 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
                                                  email_address=form['email_address'],
                                                  is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_email_id>/archive', methods=['POST'])
+def delete_service_reply_to_email_address(service_id, reply_to_email_id):
+    archived_reply_to = archive_reply_to_email_address(service_id, reply_to_email_id)
+
+    return jsonify(data=archived_reply_to.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/letter-contact', methods=["GET"])

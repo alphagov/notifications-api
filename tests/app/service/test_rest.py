@@ -2525,6 +2525,40 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
     assert result['message'] == 'No result found'
 
 
+def test_delete_service_reply_to_email_address_archives_an_email_reply_to(
+    sample_service,
+    admin_request,
+    notify_db_session
+):
+    create_reply_to_email(service=sample_service, email_address="some@email.com")
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com", is_default=False)
+
+    admin_request.post(
+        'service.delete_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+    )
+    assert reply_to.archived is True
+
+
+def test_delete_service_reply_to_email_address_returns_400_if_archiving_default_reply_to(
+    admin_request,
+    notify_db_session,
+    sample_service
+):
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+
+    response = admin_request.post(
+        'service.delete_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _expected_status=400
+    )
+
+    assert response == {'message': 'You cannot delete a default email reply to address', 'result': 'error'}
+    assert reply_to.archived is False
+
+
 def test_get_email_reply_to_address(client, notify_db, notify_db_session):
     service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')
