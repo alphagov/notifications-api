@@ -24,6 +24,7 @@ from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
+    dao_set_service_sms_sender_inactive,
     update_existing_sms_sender_with_inbound_number
 )
 from app.dao.services_dao import (
@@ -54,12 +55,14 @@ from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
+    set_reply_to_inactive,
     update_reply_to_email_address
 )
 from app.dao.service_letter_contact_dao import (
     dao_get_letter_contacts_by_service_id,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
+    set_letter_contact_inactive,
     update_letter_contact
 )
 from app.dao.provider_statistics_dao import get_fragment_count
@@ -587,10 +590,14 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
-    new_reply_to = update_reply_to_email_address(service_id=service_id,
-                                                 reply_to_id=reply_to_email_id,
-                                                 email_address=form['email_address'],
-                                                 is_default=form.get('is_default', True))
+
+    if form.get('is_active', True) is False:
+        new_reply_to = set_reply_to_inactive(service_id, reply_to_email_id)
+    else:
+        new_reply_to = update_reply_to_email_address(service_id=service_id,
+                                                     reply_to_id=reply_to_email_id,
+                                                     email_address=form['email_address'],
+                                                     is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
 
 
@@ -622,10 +629,14 @@ def update_service_letter_contact(service_id, letter_contact_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_letter_contact_block_request)
-    new_reply_to = update_letter_contact(service_id=service_id,
-                                         letter_contact_id=letter_contact_id,
-                                         contact_block=form['contact_block'],
-                                         is_default=form.get('is_default', True))
+
+    if form.get('is_active', True) is False:
+        new_reply_to = set_letter_contact_inactive(service_id, letter_contact_id)
+    else:
+        new_reply_to = update_letter_contact(service_id=service_id,
+                                             letter_contact_id=letter_contact_id,
+                                             contact_block=form['contact_block'],
+                                             is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
 
 
@@ -669,11 +680,14 @@ def update_service_sms_sender(service_id, sms_sender_id):
         raise InvalidRequest("You can not change the inbound number for service {}".format(service_id),
                              status_code=400)
 
-    new_sms_sender = dao_update_service_sms_sender(service_id=service_id,
-                                                   service_sms_sender_id=sms_sender_id,
-                                                   is_default=form['is_default'],
-                                                   sms_sender=form['sms_sender']
-                                                   )
+    if form.get('is_active', True) is False:
+        new_sms_sender = dao_set_service_sms_sender_inactive(service_id, sms_sender_id)
+    else:
+        new_sms_sender = dao_update_service_sms_sender(service_id=service_id,
+                                                       service_sms_sender_id=sms_sender_id,
+                                                       is_default=form['is_default'],
+                                                       sms_sender=form['sms_sender']
+                                                       )
     return jsonify(new_sms_sender.serialize()), 200
 
 

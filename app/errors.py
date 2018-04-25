@@ -5,9 +5,10 @@ from flask import (
 from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from marshmallow import ValidationError
+from marshmallow import ValidationError as MarshmallowValidationError
 from jsonschema import ValidationError as JsonSchemaValidationError
 from app.authentication.auth import AuthError
+from app.exceptions import ValidationError
 
 
 class VirusScanError(Exception):
@@ -58,6 +59,11 @@ def register_errors(blueprint):
         return jsonify(result='error', message=error.message), error.code
 
     @blueprint.errorhandler(ValidationError)
+    def validation_error(error):
+        current_app.logger.info(error)
+        return jsonify(result='error', message=str(error)), 400
+
+    @blueprint.errorhandler(MarshmallowValidationError)
     def marshmallow_validation_error(error):
         current_app.logger.info(error)
         return jsonify(result='error', message=error.messages), 400

@@ -10,6 +10,7 @@ from freezegun import freeze_time
 
 from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -43,7 +44,8 @@ from tests.app.db import (
     create_letter_contact,
     create_inbound_number,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender
+    create_service_with_defined_sms_sender,
+    create_service_with_inbound_number,
 )
 from tests.app.db import create_user
 
@@ -2524,6 +2526,58 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
     assert result['message'] == 'No result found'
 
 
+def test_update_service_reply_to_email_address_can_set_reply_to_inactive(
+    mocker,
+    sample_service,
+    admin_request,
+    notify_db_session
+):
+    mock_update = mocker.patch('app.service.rest.update_reply_to_email_address')
+    create_reply_to_email(service=sample_service, email_address="some@email.com")
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com", is_default=False)
+
+    data = {
+        'email_address': 'some@email.com',
+        'is_default': False,
+        'is_active': False
+    }
+
+    admin_request.post(
+        'service.update_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _data=data
+    )
+
+    assert reply_to.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_reply_to_email_address_returns_400_if_setting_default_reply_to_as_inactive(
+    admin_request,
+    notify_db_session,
+    sample_service
+):
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+
+    data = {
+        'email_address': 'some@email.com',
+        'is_default': False,
+        'is_active': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response == {'message': 'You cannot delete a default email reply to address', 'result': 'error'}
+    assert reply_to.is_active is True
+
+
 def test_get_email_reply_to_address(client, notify_db, notify_db_session):
     service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')
@@ -2697,6 +2751,57 @@ def test_update_service_letter_contact_returns_404_when_invalid_service_id(clien
     assert result['message'] == 'No result found'
 
 
+def test_update_service_letter_contact_can_set_letter_contact_inactive(mocker, admin_request, notify_db_session):
+    mock_update = mocker.patch('app.service.rest.update_letter_contact')
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+
+    data = {
+        'contact_block': 'Swansea, SN1 3CC',
+        'is_default': False,
+        'is_active': False
+    }
+
+    admin_request.post(
+        'service.update_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _data=data
+    )
+
+    assert letter_contact.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_letter_contact_returns_400_if_setting_template_default_inactive(
+    admin_request,
+    notify_db_session,
+):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+    create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+
+    data = {
+        'contact_block': 'Swansea, SN1 3CC',
+        'is_default': False,
+        'is_active': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _data=data,
+        _expected_status=400
+    )
+    assert response == {
+        'message': 'You cannot delete the default letter contact block for a template',
+        'result': 'error'}
+    assert letter_contact.is_active is True
+
+
 def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_session):
     service = create_service()
     data = {
@@ -2715,9 +2820,10 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
     assert len(senders) == 2
 
 
-def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
+def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_active_sms_sender(
         client, notify_db_session):
     service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
+    create_service_sms_sender(service=service, sms_sender="inactive", is_default=False, is_active=False)
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
@@ -2736,7 +2842,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_ex
     assert resp_json['inbound_number_id'] == str(inbound_number.id)
     assert resp_json['is_default']
 
-    senders = ServiceSmsSender.query.all()
+    senders = dao_get_sms_senders_by_service_id(service.id)
     assert len(senders) == 1
 
 
@@ -2870,6 +2976,50 @@ def test_update_service_sms_sender_return_404_when_service_does_not_exist(client
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_update_service_sms_sender_can_set_sms_sender_inactive(mocker, admin_request, notify_db_session):
+    mock_update = mocker.patch('app.service.rest.dao_update_service_sms_sender')
+    service = create_service()
+    service_sms_sender = create_service_sms_sender(service=service,
+                                                   sms_sender='5678',
+                                                   is_default=False)
+    data = {
+        'sms_sender': '5678',
+        'is_active': False,
+        'is_default': False
+    }
+
+    admin_request.post(
+        'service.update_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service_sms_sender.id,
+        _data=data
+    )
+
+    assert service_sms_sender.is_active is False
+    assert not mock_update.called
+
+
+def test_update_service_sms_sender_returns_400_if_setting_inbound_as_inactive(admin_request, notify_db_session):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    inbound_number = service.service_sms_senders[0]
+
+    data = {
+        'sms_sender': '7654321',
+        'is_active': False,
+        'is_default': False
+    }
+
+    response = admin_request.post(
+        'service.update_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service.service_sms_senders[0].id,
+        _data=data,
+        _expected_status=400
+    )
+    assert response == {'message': 'You cannot delete an inbound number', 'result': 'error'}
+    assert inbound_number.is_active is True
 
 
 def test_get_service_sms_sender_by_id(client, notify_db_session):

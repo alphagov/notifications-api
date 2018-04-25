@@ -7,7 +7,8 @@ add_service_email_reply_to_request = {
     "title": "Add new email reply to address for service",
     "properties": {
         "email_address": {"type": "string", "format": "email_address"},
-        "is_default": {"type": "boolean"}
+        "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"}
     },
     "required": ["email_address", "is_default"]
 }
@@ -20,7 +21,8 @@ add_service_letter_contact_block_request = {
     "title": "Add new letter contact block for service",
     "properties": {
         "contact_block": {"type": "string"},
-        "is_default": {"type": "boolean"}
+        "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"}
     },
     "required": ["contact_block", "is_default"]
 }
@@ -34,6 +36,7 @@ add_service_sms_sender_request = {
     "properties": {
         "sms_sender": {"type": "string"},
         "is_default": {"type": "boolean"},
+        "is_active": {"type": "boolean"},
         "inbound_number_id": uuid
     },
     "required": ["sms_sender", "is_default"]

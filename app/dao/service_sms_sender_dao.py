@@ -2,6 +2,7 @@ from sqlalchemy import desc
 
 from app import db
 from app.dao.dao_utils import transactional
+from app.exceptions import ValidationError
 from app.models import ServiceSmsSender
 
 
@@ -19,12 +20,16 @@ def insert_service_sms_sender(service, sms_sender):
 def dao_get_service_sms_senders_by_id(service_id, service_sms_sender_id):
     return ServiceSmsSender.query.filter_by(
         id=service_sms_sender_id,
-        service_id=service_id
+        service_id=service_id,
+        is_active=True
     ).one()
 
 
 def dao_get_sms_senders_by_service_id(service_id):
-    return ServiceSmsSender.query.filter_by(service_id=service_id).order_by(desc(ServiceSmsSender.is_default)).all()
+    return ServiceSmsSender.query.filter_by(
+        service_id=service_id,
+        is_active=True
+    ).order_by(desc(ServiceSmsSender.is_default)).all()
 
 
 @transactional
@@ -69,6 +74,21 @@ def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sende
     service_sms_sender.inbound_number_id = inbound_number_id
     db.session.add(service_sms_sender)
     return service_sms_sender
+
+
+@transactional
+def dao_set_service_sms_sender_inactive(service_id, service_sms_sender_id):
+    sms_sender_to_update = ServiceSmsSender.query.get(service_sms_sender_id)
+
+    if sms_sender_to_update.inbound_number_id:
+        raise ValidationError("You cannot delete an inbound number")
+    if sms_sender_to_update.is_default:
+        raise ValidationError("You cannot delete a default sms sender")
+
+    sms_sender_to_update.is_active = False
+
+    db.session.add(sms_sender_to_update)
+    return sms_sender_to_update
 
 
 def _get_existing_default(service_id):

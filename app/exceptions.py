@@ -6,3 +6,7 @@ class DVLAException(Exception):
 class NotificationTechnicalFailureException(Exception):
     def __init__(self, message):
         self.message = message
+
+
+class ValidationError(Exception):
+    pass
