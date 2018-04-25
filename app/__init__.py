@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from monotonic import monotonic
-from notifications_utils.clients import DeskproClient
+from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils import logging, request_helper
@@ -36,7 +36,7 @@ loadtest_client = LoadtestingClient()
 mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
-deskpro_client = DeskproClient()
+zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 performance_platform_client = PerformancePlatformClient()
@@ -62,7 +62,7 @@ def create_app(application):
     db.init_app(application)
     migrate.init_app(application, db=db)
     ma.init_app(application)
-    deskpro_client.init_app(application)
+    zendesk_client.init_app(application)
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)

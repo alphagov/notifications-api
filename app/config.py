@@ -102,13 +102,8 @@ class Config(object):
     PERFORMANCE_PLATFORM_ENABLED = False
     PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/'
 
-    # Deskpro
-    DESKPRO_API_HOST = os.environ.get('DESKPRO_API_HOST')
-    DESKPRO_API_KEY = os.environ.get('DESKPRO_API_KEY')
-
-    DESKPRO_DEPT_ID = 5
-    DESKPRO_ASSIGNED_AGENT_TEAM_ID = 5
-    DESKPRO_PERSON_EMAIL = 'donotreply@notifications.service.gov.uk'
+    # Zendesk
+    ZENDESK_API_KEY = os.environ.get('ZENDESK_API_KEY')
 
     # Logging
     DEBUG = False

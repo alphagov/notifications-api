@@ -12,15 +12,13 @@ from sqlalchemy import and_, func
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery
-from app import performance_platform_client, deskpro_client
+from app import performance_platform_client, zendesk_client
 from app.aws import s3
 from app.celery.service_callback_tasks import (
     send_delivery_status_to_service,
     create_encrypted_callback_data,
 )
-from app.celery.tasks import (
-    process_job
-)
+from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
@@ -379,10 +377,10 @@ def raise_alert_if_letter_notifications_still_sending():
         )
         # Only send alerts in production
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            deskpro_client.create_ticket(
+            zendesk_client.create_ticket(
                 subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
                 message=message,
-                ticket_type="alert"
+                ticket_type=zendesk_client.TYPE_INCIDENT
             )
         else:
             current_app.logger.info(message)
@@ -513,25 +511,29 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                 s = zip_file.split('|')
                 ack_content_set.add(s[0].upper())
 
-    deskpro_message = "Letter ack file does not contains all zip files sent. " \
-                      "Missing ack for zip files: {}, " \
-                      "pdf bucket: {}, subfolder: {}, " \
-                      "ack bucket: {}".format(str(sorted(zip_file_set - ack_content_set)),
-                                              current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                              datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
-                                              current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
+    message = (
+        "Letter ack file does not contain all zip files sent. "
+        "Missing ack for zip files: {}, "
+        "pdf bucket: {}, subfolder: {}, "
+        "ack bucket: {}"
+    ).format(
+        str(sorted(zip_file_set - ack_content_set)),
+        current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+        current_app.config['DVLA_RESPONSE_BUCKET_NAME']
+    )
     # strip empty element before comparison
     ack_content_set.discard('')
     zip_file_set.discard('')
 
     if len(zip_file_set - ack_content_set) > 0:
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            deskpro_client.create_ticket(
+            zendesk_client.create_ticket(
                 subject="Letter acknowledge error",
-                message=deskpro_message,
-                ticket_type='alert'
+                message=message,
+                ticket_type=zendesk_client.TYPE_INCIDENT
             )
-        current_app.logger.error(deskpro_message)
+        current_app.logger.error(message)
 
     if len(ack_content_set - zip_file_set) > 0:
         current_app.logger.info(

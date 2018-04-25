@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
-import pytz
 import functools
-from flask import current_app
 
+import pytz
+from flask import current_app
 import pytest
 from freezegun import freeze_time
+from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 
 from app import db
 from app.celery import scheduled_tasks
@@ -646,14 +647,14 @@ def test_alert_if_letter_notifications_still_sending(sample_letter_template, moc
     two_days_ago = datetime(2018, 1, 15, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_celery.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Monday 15 January",
-        ticket_type='alert'
+        ticket_type=ZendeskClient.TYPE_INCIDENT
     )
 
 
@@ -662,10 +663,10 @@ def test_alert_if_letter_notifications_still_sending_a_day_ago_no_alert(sample_l
     one_day_ago = today - timedelta(days=1)
     create_notification(template=sample_letter_template, status='sending', sent_at=one_day_ago)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
-    assert not mock_celery.called
+    assert not mock_create_ticket.called
 
 
 @freeze_time("2018-01-17 17:00:00")
@@ -675,14 +676,14 @@ def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_
     create_notification(template=sample_letter_template, status='delivered', sent_at=two_days_ago)
     create_notification(template=sample_letter_template, status='failed', sent_at=two_days_ago)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_celery.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Monday 15 January",
-        ticket_type='alert'
+        ticket_type='incident'
     )
 
 
@@ -691,14 +692,14 @@ def test_alert_if_letter_notifications_still_sending_alerts_for_older_than_offse
     three_days_ago = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=three_days_ago)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_celery.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Monday 15 January",
-        ticket_type='alert'
+        ticket_type='incident'
     )
 
 
@@ -707,11 +708,11 @@ def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend
     yesterday = datetime(2018, 1, 13, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    assert not mock_celery.called
+    assert not mock_create_ticket.called
 
 
 @freeze_time("2018-01-15 17:00:00")
@@ -721,14 +722,14 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_let
     create_notification(template=sample_letter_template, status='sending', sent_at=thursday)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_celery.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Thursday 11 January",
-        ticket_type='alert'
+        ticket_type='incident'
     )
 
 
@@ -739,14 +740,14 @@ def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_lett
     create_notification(template=sample_letter_template, status='sending', sent_at=friday)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
-    mock_celery = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_create_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_celery.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
         message="There are 1 letters in the 'sending' state from Friday 12 January",
-        ticket_type='alert'
+        ticket_type='incident'
     )
 
 
@@ -1191,25 +1192,25 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
                                  return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
                                               'NOTIFY.20180111175008.ZIP|20180111175734')
-    mock_deskpro = mocker.patch("app.celery.scheduled_tasks.deskpro_client.create_ticket")
+    mock_zendesk = mocker.patch("app.celery.scheduled_tasks.zendesk_client.create_ticket")
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
     assert mock_file_list.call_count == 2
     assert mock_get_file.call_count == 1
 
-    deskpro_message = "Letter ack file does not contains all zip files sent. " \
-                      "Missing ack for zip files: {}, " \
-                      "pdf bucket: {}, subfolder: {}, " \
-                      "ack bucket: {}".format(str(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']),
-                                              current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                              datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
-                                              current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
+    message = "Letter ack file does not contain all zip files sent. " \
+              "Missing ack for zip files: {}, " \
+              "pdf bucket: {}, subfolder: {}, " \
+              "ack bucket: {}".format(str(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']),
+                                      current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                                      datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+                                      current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
 
-    mock_deskpro.assert_called_once_with(
+    mock_zendesk.assert_called_once_with(
         subject="Letter acknowledge error",
-        message=deskpro_message,
-        ticket_type='alert'
+        message=message,
+        ticket_type='incident'
     )
 
 
