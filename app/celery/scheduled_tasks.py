@@ -4,30 +4,34 @@ from datetime import (
     timedelta
 )
 
+import pytz
 from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.aws import s3
 from app import notify_celery
-from app.dao.services_dao import (
-    dao_fetch_monthly_historical_stats_by_template
-)
-from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
-from app.exceptions import NotificationTechnicalFailureException
-from app.performance_platform import total_sent_notifications, processing_time
 from app import performance_platform_client, deskpro_client
+from app.aws import s3
+from app.celery.service_callback_tasks import (
+    send_delivery_status_to_service,
+    create_encrypted_callback_data,
+)
+from app.celery.tasks import (
+    process_job
+)
+from app.config import QueueNames, TaskNames
 from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
-from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
+from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
     dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
     dao_get_jobs_older_than_limited_by
 )
+from app.dao.jobs_dao import dao_update_job
 from app.dao.monthly_billing_dao import (
     get_service_ids_that_need_billing_populated,
     create_or_update_monthly_billing
@@ -45,8 +49,13 @@ from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider
 )
+from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.dao.services_dao import (
+    dao_fetch_monthly_historical_stats_by_template
+)
+from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.dao.jobs_dao import dao_update_job
+from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     Job,
     Notification,
@@ -56,23 +65,15 @@ from app.models import (
     JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_ERROR,
     SMS_TYPE,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL
 )
 from app.notifications.process_notifications import send_notification_to_queue
-from app.celery.tasks import (
-    process_job
-)
-from app.config import QueueNames, TaskNames
+from app.performance_platform import total_sent_notifications, processing_time
 from app.utils import (
     convert_utc_to_bst
 )
 from app.v2.errors import JobIncompleteError
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
-from app.celery.service_callback_tasks import (
-    send_delivery_status_to_service,
-    create_encrypted_callback_data,
-)
-import pytz
 
 
 @worker_process_shutdown.connect
@@ -360,16 +361,15 @@ def raise_alert_if_letter_notifications_still_sending():
     if today.isoweekday() in [6, 7]:
         return
 
-    if today.isoweekday() == 1:
+    if today.isoweekday() in [1, 2]:
         offset_days = 4
     else:
         offset_days = 2
-
     still_sending = Notification.query.filter(
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_SENDING,
-        Notification.sent_at >= today - timedelta(days=offset_days),
-        Notification.sent_at < today
+        Notification.key_type == KEY_TYPE_NORMAL,
+        func.date(Notification.sent_at) <= today - timedelta(days=offset_days)
     ).count()
 
     if still_sending:
@@ -377,7 +377,6 @@ def raise_alert_if_letter_notifications_still_sending():
             still_sending,
             (today - timedelta(days=offset_days)).strftime('%A %d %B')
         )
-
         # Only send alerts in production
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             deskpro_client.create_ticket(
