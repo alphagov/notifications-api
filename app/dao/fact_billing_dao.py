@@ -1,62 +1,37 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
+
+from flask import current_app
 from sqlalchemy import func, case, desc, extract
 
 from app import db
-from app.dao.date_util import get_month_start_and_end_date_in_utc, get_financial_year
+from app.dao.date_util import get_financial_year
 from app.models import (
-    FactBilling, Notification, Service, NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE,
+    FactBilling,
+    Notification,
+    Service,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_TECHNICAL_FAILURE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     SMS_TYPE,
     Rate,
     LetterRate
 )
-from app.utils import convert_utc_to_bst
-
-
-def fetch_annual_billing_by_month(service_id, billing_month, notification_type):
-    billing_month_in_bst = convert_utc_to_bst(billing_month)
-    start_date, end_date = get_month_start_and_end_date_in_utc(billing_month_in_bst)
-
-    monthly_data = db.session.query(
-        func.sum(FactBilling.notifications_sent).label('notifications_sent'),
-        func.sum(FactBilling.billable_units).label('billing_units'),
-        FactBilling.service_id,
-        FactBilling.notification_type,
-        FactBilling.rate,
-        FactBilling.rate_multiplier,
-        FactBilling.international
-    ).filter(
-        FactBilling.notification_type == notification_type,
-        FactBilling.service_id == service_id,
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date
-    ).group_by(
-        FactBilling.service_id,
-        FactBilling.notification_type,
-        FactBilling.rate,
-        FactBilling.rate_multiplier,
-        FactBilling.international
-    ).all()
-
-    return monthly_data, start_date
+from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 
 def fetch_annual_billing_for_year(service_id, year):
     year_start_date, year_end_date = get_financial_year(year)
     utcnow = datetime.utcnow()
-    today = convert_utc_to_bst(utcnow)
+    today = convert_utc_to_bst(utcnow).date()
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
-    if year_end_date >= today:
-        last_2_days = utcnow - timedelta(days=2)
-        data = fetch_billing_data(start_date=last_2_days, end_date=today, service_id=service_id)
-        inserted_records = 0
-        updated_records = 0
-        for d in data:
-            update_fact_billing(data=data,
-                                inserted_records=inserted_records,
-                                process_day=d.created_at,
-                                updated_records=updated_records)
+    if year_end_date.date() >= today:
+        yesterday = today - timedelta(days=1)
+        for day in [yesterday, today]:
+            data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
+            for d in data:
+                update_fact_billing(data=d, process_day=day)
+
     yearly_data = db.session.query(
         extract('month', FactBilling.bst_date).label("Month"),
         func.sum(FactBilling.notifications_sent).label("notifications_sent"),
@@ -80,7 +55,10 @@ def fetch_annual_billing_for_year(service_id, year):
     return yearly_data
 
 
-def fetch_billing_data(start_date, end_date, service_id=None):
+def fetch_billing_data_for_day(process_day, service_id=None):
+    start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
+    end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
+
     transit_data = db.session.query(
         Notification.template_id,
         Notification.service_id,
@@ -137,7 +115,9 @@ def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None
         return 0
 
 
-def update_fact_billing(data, inserted_records, process_day, updated_records):
+def update_fact_billing(data, process_day):
+    inserted_records = 0
+    updated_records = 0
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     update_count = FactBilling.query.filter(
@@ -165,7 +145,8 @@ def update_fact_billing(data, inserted_records, process_day, updated_records):
         inserted_records += 1
     updated_records += update_count
     db.session.commit()
-    return inserted_records, updated_records
+    current_app.logger.info('ft_billing for {}: {} rows updated, {} rows inserted'
+                            .format(process_day, updated_records, inserted_records))
 
 
 def create_billing_record(data, rate, process_day):
