@@ -10,7 +10,8 @@ def dao_get_letter_contacts_by_service_id(service_id):
     letter_contacts = db.session.query(
         ServiceLetterContact
     ).filter(
-        ServiceLetterContact.service_id == service_id
+        ServiceLetterContact.service_id == service_id,
+        ServiceLetterContact.archived == False  # noqa
     ).order_by(
         desc(ServiceLetterContact.is_default),
         desc(ServiceLetterContact.created_at)
@@ -24,7 +25,8 @@ def dao_get_letter_contact_by_id(service_id, letter_contact_id):
         ServiceLetterContact
     ).filter(
         ServiceLetterContact.service_id == service_id,
-        ServiceLetterContact.id == letter_contact_id
+        ServiceLetterContact.id == letter_contact_id,
+        ServiceLetterContact.archived == False  # noqa
     ).one()
     return letter_contact
 

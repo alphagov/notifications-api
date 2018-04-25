@@ -438,14 +438,16 @@ def create_service_sms_sender(
 
 
 def create_letter_contact(
-        service,
-        contact_block,
-        is_default=True
+    service,
+    contact_block,
+    is_default=True,
+    archived=False
 ):
     data = {
         'service': service,
         'contact_block': contact_block,
         'is_default': is_default,
+        'archived': archived,
     }
     letter_content = ServiceLetterContact(**data)
 
