@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 import pytest
 from notifications_utils.recipients import InvalidPhoneError
-from sqlalchemy.exc import SQLAlchemyError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
@@ -334,5 +333,6 @@ def test_send_one_off_notification_should_throw_exception_if_sms_sender_id_doesn
         'created_by': str(sample_template.service.created_by_id)
     }
 
-    with pytest.raises(expected_exception=SQLAlchemyError):
+    with pytest.raises(expected_exception=BadRequestError) as e:
         send_one_off_notification(service_id=sample_template.service.id, post_data=data)
+    assert e.value.message == 'SMS sender not found'

@@ -10,6 +10,7 @@ from freezegun import freeze_time
 
 from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -2715,9 +2716,10 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
     assert len(senders) == 2
 
 
-def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
+def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_non_archived_sms_sender(
         client, notify_db_session):
     service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
+    create_service_sms_sender(service=service, sms_sender="archived", is_default=False, archived=True)
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
@@ -2736,7 +2738,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_ex
     assert resp_json['inbound_number_id'] == str(inbound_number.id)
     assert resp_json['is_default']
 
-    senders = ServiceSmsSender.query.all()
+    senders = dao_get_sms_senders_by_service_id(service.id)
     assert len(senders) == 1
 
 

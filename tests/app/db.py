@@ -418,16 +418,18 @@ def create_reply_to_email(
 
 
 def create_service_sms_sender(
-        service,
-        sms_sender,
-        is_default=True,
-        inbound_number_id=None
+    service,
+    sms_sender,
+    is_default=True,
+    inbound_number_id=None,
+    archived=False
 ):
     data = {
         'service_id': service.id,
         'sms_sender': sms_sender,
         'is_default': is_default,
-        'inbound_number_id': inbound_number_id
+        'inbound_number_id': inbound_number_id,
+        'archived': archived,
     }
     service_sms_sender = ServiceSmsSender(**data)
 
