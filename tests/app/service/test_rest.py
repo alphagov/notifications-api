@@ -2733,6 +2733,38 @@ def test_update_service_letter_contact_returns_404_when_invalid_service_id(clien
     assert result['message'] == 'No result found'
 
 
+def test_delete_service_letter_contact_can_archive_letter_contact(admin_request, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+
+    admin_request.post(
+        'service.delete_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+    )
+
+    assert letter_contact.archived is True
+
+
+def test_delete_service_letter_contact_returns_400_if_archiving_template_default(admin_request, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+    create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+
+    response = admin_request.post(
+        'service.delete_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _expected_status=400
+    )
+    assert response == {
+        'message': 'You cannot delete the default letter contact block for a template',
+        'result': 'error'}
+    assert letter_contact.archived is False
+
+
 def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_session):
     service = create_service()
     data = {

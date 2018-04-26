@@ -3,7 +3,8 @@ from sqlalchemy import desc
 from app import db
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
-from app.models import ServiceLetterContact
+from app.exceptions import ArchiveValidationError
+from app.models import ServiceLetterContact, Template
 
 
 def dao_get_letter_contacts_by_service_id(service_id):
@@ -63,6 +64,32 @@ def update_letter_contact(service_id, letter_contact_id, contact_block, is_defau
     letter_contact_update.is_default = is_default
     db.session.add(letter_contact_update)
     return letter_contact_update
+
+
+@transactional
+def archive_letter_contact(service_id, letter_contact_id):
+    letter_contact_to_archive = ServiceLetterContact.query.filter_by(
+        id=letter_contact_id,
+        service_id=service_id
+    ).one()
+
+    if _is_template_default(letter_contact_id):
+        raise ArchiveValidationError("You cannot delete the default letter contact block for a template")
+    if letter_contact_to_archive.is_default:
+        raise ArchiveValidationError("You cannot delete a default letter contact block")
+
+    letter_contact_to_archive.archived = True
+
+    db.session.add(letter_contact_to_archive)
+    return letter_contact_to_archive
+
+
+def _is_template_default(letter_contact_id):
+    template_defaults = Template.query.filter_by(
+        service_letter_contact_id=letter_contact_id
+    ).all()
+
+    return any(template_defaults)
 
 
 def _get_existing_default(service_id):
