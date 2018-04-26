@@ -4,13 +4,19 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.service_sms_sender_dao import (
+    archive_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
     update_existing_sms_sender_with_inbound_number)
+from app.exceptions import ArchiveValidationError
 from app.models import ServiceSmsSender
-from tests.app.db import create_service, create_inbound_number, create_service_sms_sender
+from tests.app.db import (
+    create_inbound_number,
+    create_service,
+    create_service_sms_sender,
+    create_service_with_inbound_number)
 
 
 def test_dao_get_service_sms_senders_id(notify_db_session):
@@ -172,3 +178,57 @@ def test_update_existing_sms_sender_with_inbound_number_raises_exception_if_inbo
         update_existing_sms_sender_with_inbound_number(service_sms_sender=existing_sms_sender,
                                                        sms_sender='blah',
                                                        inbound_number_id=uuid.uuid4())
+
+
+def test_archive_sms_sender(notify_db_session):
+    service = create_service()
+    second_sms_sender = dao_add_sms_sender_for_service(service_id=service.id,
+                                                       sms_sender='second',
+                                                       is_default=False)
+
+    archive_sms_sender(service_id=service.id, sms_sender_id=second_sms_sender.id)
+
+    assert second_sms_sender.archived is True
+    assert second_sms_sender.updated_at is not None
+
+
+def test_archive_sms_sender_does_not_archive_a_sender_for_a_different_service(sample_service):
+    service = create_service(service_name="First service")
+    sms_sender = dao_add_sms_sender_for_service(service_id=sample_service.id,
+                                                sms_sender='second',
+                                                is_default=False)
+
+    with pytest.raises(SQLAlchemyError):
+        archive_sms_sender(service.id, sms_sender.id)
+
+    assert not sms_sender.archived
+
+
+def test_archive_sms_sender_raises_an_error_if_attempting_to_archive_a_default(notify_db_session):
+    service = create_service()
+    sms_sender = service.service_sms_senders[0]
+
+    with pytest.raises(ArchiveValidationError) as e:
+        archive_sms_sender(service_id=service.id, sms_sender_id=sms_sender.id)
+
+    assert 'You cannot delete a default sms sender' in str(e.value)
+
+
+@pytest.mark.parametrize('is_default', [True, False])
+def test_archive_sms_sender_raises_an_error_if_attempting_to_archive_an_inbound_number(notify_db_session, is_default):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    dao_add_sms_sender_for_service(service.id, 'second', is_default=True)
+
+    inbound_number = next(x for x in service.service_sms_senders if x.inbound_number_id)
+
+    # regardless of whether inbound number is default or not, can't delete it
+    dao_update_service_sms_sender(service.id, inbound_number.id, is_default=is_default)
+
+    with pytest.raises(ArchiveValidationError) as e:
+        archive_sms_sender(
+            service_id=service.id,
+            sms_sender_id=inbound_number.id
+        )
+
+    assert 'You cannot delete an inbound number' in str(e.value)
+    assert not inbound_number.archived

@@ -38,6 +38,7 @@ from tests.app.conftest import (
 )
 from tests.app.db import (
     create_service,
+    create_service_with_inbound_number,
     create_template,
     create_notification,
     create_reply_to_email,
@@ -2906,6 +2907,35 @@ def test_update_service_sms_sender_return_404_when_service_does_not_exist(client
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_delete_service_sms_sender_can_archive_sms_sender(admin_request, notify_db_session):
+    service = create_service()
+    service_sms_sender = create_service_sms_sender(service=service,
+                                                   sms_sender='5678',
+                                                   is_default=False)
+
+    admin_request.post(
+        'service.delete_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service_sms_sender.id,
+    )
+
+    assert service_sms_sender.archived is True
+
+
+def test_delete_service_sms_sender_returns_400_if_archiving_inbound_number(admin_request, notify_db_session):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    inbound_number = service.service_sms_senders[0]
+
+    response = admin_request.post(
+        'service.delete_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service.service_sms_senders[0].id,
+        _expected_status=400
+    )
+    assert response == {'message': 'You cannot delete an inbound number', 'result': 'error'}
+    assert inbound_number.archived is False
 
 
 def test_get_service_sms_sender_by_id(client, notify_db_session):

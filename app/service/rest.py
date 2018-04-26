@@ -20,6 +20,7 @@ from app.dao.api_key_dao import (
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
+    archive_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
@@ -683,6 +684,13 @@ def update_service_sms_sender(service_id, sms_sender_id):
                                                    sms_sender=form['sms_sender']
                                                    )
     return jsonify(new_sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>/archive', methods=['POST'])
+def delete_service_sms_sender(service_id, sms_sender_id):
+    sms_sender = archive_sms_sender(service_id, sms_sender_id)
+
+    return jsonify(data=sms_sender.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['GET'])
