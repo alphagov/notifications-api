@@ -251,7 +251,9 @@ def delete_service_and_all_associated_db_objects(service):
 
 @statsd(namespace="dao")
 def dao_fetch_stats_for_service(service_id):
-    return _stats_for_service_query(service_id).all()
+    return _stats_for_service_query(service_id).filter(
+        func.date(Notification.created_at) >= date.today() - timedelta(days=7)
+    ).all()
 
 
 @statsd(namespace="dao")
