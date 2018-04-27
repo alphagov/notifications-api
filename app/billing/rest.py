@@ -3,6 +3,7 @@ import json
 
 from flask import Blueprint, jsonify, request
 
+from app.dao.fact_billing_dao import fetch_monthly_billing_for_year
 from app.dao.monthly_billing_dao import (
     get_billing_data_for_financial_year,
     get_monthly_billing_by_notification_type
@@ -28,6 +29,16 @@ billing_blueprint = Blueprint(
 
 
 register_errors(billing_blueprint)
+
+
+@billing_blueprint.route('/ft-monthly-usage')
+def get_yearly_usage_by_monthy_from_ft_billing(service_id):
+    try:
+        year = int(request.args.get('year'))
+        results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
+        serialize_ft_billing(results)
+    except TypeError:
+        return jsonify(result='error', message='No valid year provided'), 400
 
 
 @billing_blueprint.route('/monthly-usage')
@@ -192,3 +203,21 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
             free_sms_fragment_limit,
             financial_year_start
         )
+
+
+def serialize_ft_billing(data):
+    results = []
+
+    for d in data:
+        j = {
+            "Month": d.month,
+            "service_id": d.service_id,
+            "notifications_type": d.notification_type,
+            "notifications_sent": d.notifications_sent,
+            "billable_units": d.billable_units,
+            "rate": d.rate,
+            "rate_multiplier": d.rate_multiplier,
+            "international": d.international,
+        }
+        results.append(j)
+    return results
