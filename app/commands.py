@@ -17,6 +17,7 @@ from app.celery.scheduled_tasks import send_total_sent_notifications_to_performa
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
+from app.dao.fact_billing_dao import fetch_billing_data_for_day, update_fact_billing
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
@@ -26,7 +27,8 @@ from app.dao.provider_rates_dao import create_provider_rates as dao_create_provi
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
-    dao_fetch_all_services_by_user
+    dao_fetch_all_services_by_user,
+    dao_fetch_service_by_id
 )
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
 from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE, Notification
@@ -545,3 +547,18 @@ def populate_redis_template_usage(service_id, day):
             current_app.config['EXPIRE_CACHE_EIGHT_DAYS'],
             raise_exception=True
         )
+
+
+@notify_command(name='rebuild-ft-billing-for-month-and-service')
+@click.option('-s', '--service_id', required=True, type=click.UUID)
+@click.option('-d', '--day', help="The date to recalculate, as YYYY-MM-DD", required=True,
+              type=click_dt(format='%Y-%m-%d'))
+def rebuild_ft_billing_for_month_and_service(service_id, day):
+    """
+    Rebuild the data in ft_billing for the given service_id and date
+    """
+    # confirm the service exists
+    dao_fetch_service_by_id(service_id)
+    transit_data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
+    for data in transit_data:
+        update_fact_billing(data, day)
