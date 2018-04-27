@@ -28,8 +28,7 @@ env:
 
   STATSD_PREFIX: null
 
-  DESKPRO_API_KEY: null
-  DESKPRO_API_HOST: null
+  ZENDESK_API_KEY: null
 
   MMG_URL: null
   MMG_API_KEY: null
