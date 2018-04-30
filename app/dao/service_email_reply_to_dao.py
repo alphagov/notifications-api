@@ -3,6 +3,7 @@ from sqlalchemy import desc
 from app import db
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
+from app.exceptions import ArchiveValidationError
 from app.models import ServiceEmailReplyTo
 
 
@@ -10,7 +11,8 @@ def dao_get_reply_to_by_service_id(service_id):
     reply_to = db.session.query(
         ServiceEmailReplyTo
     ).filter(
-        ServiceEmailReplyTo.service_id == service_id
+        ServiceEmailReplyTo.service_id == service_id,
+        ServiceEmailReplyTo.archived == False  # noqa
     ).order_by(desc(ServiceEmailReplyTo.is_default), desc(ServiceEmailReplyTo.created_at)).all()
     return reply_to
 
@@ -20,7 +22,8 @@ def dao_get_reply_to_by_id(service_id, reply_to_id):
         ServiceEmailReplyTo
     ).filter(
         ServiceEmailReplyTo.service_id == service_id,
-        ServiceEmailReplyTo.id == reply_to_id
+        ServiceEmailReplyTo.id == reply_to_id,
+        ServiceEmailReplyTo.archived == False  # noqa
     ).order_by(ServiceEmailReplyTo.created_at).one()
     return reply_to
 
@@ -52,6 +55,22 @@ def update_reply_to_email_address(service_id, reply_to_id, email_address, is_def
     reply_to_update.is_default = is_default
     db.session.add(reply_to_update)
     return reply_to_update
+
+
+@transactional
+def archive_reply_to_email_address(service_id, reply_to_id):
+    reply_to_archive = ServiceEmailReplyTo.query.filter_by(
+        id=reply_to_id,
+        service_id=service_id
+    ).one()
+
+    if reply_to_archive.is_default:
+        raise ArchiveValidationError("You cannot delete a default email reply to address")
+
+    reply_to_archive.archived = True
+
+    db.session.add(reply_to_archive)
+    return reply_to_archive
 
 
 def _get_existing_default(service_id):

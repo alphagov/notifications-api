@@ -398,14 +398,16 @@ def create_monthly_billing_entry(
 
 
 def create_reply_to_email(
-        service,
-        email_address,
-        is_default=True
+    service,
+    email_address,
+    is_default=True,
+    archived=False
 ):
     data = {
         'service': service,
         'email_address': email_address,
         'is_default': is_default,
+        'archived': archived,
     }
     reply_to = ServiceEmailReplyTo(**data)
 
@@ -416,16 +418,18 @@ def create_reply_to_email(
 
 
 def create_service_sms_sender(
-        service,
-        sms_sender,
-        is_default=True,
-        inbound_number_id=None
+    service,
+    sms_sender,
+    is_default=True,
+    inbound_number_id=None,
+    archived=False
 ):
     data = {
         'service_id': service.id,
         'sms_sender': sms_sender,
         'is_default': is_default,
-        'inbound_number_id': inbound_number_id
+        'inbound_number_id': inbound_number_id,
+        'archived': archived,
     }
     service_sms_sender = ServiceSmsSender(**data)
 
@@ -436,14 +440,16 @@ def create_service_sms_sender(
 
 
 def create_letter_contact(
-        service,
-        contact_block,
-        is_default=True
+    service,
+    contact_block,
+    is_default=True,
+    archived=False
 ):
     data = {
         'service': service,
         'contact_block': contact_block,
         'is_default': is_default,
+        'archived': archived,
     }
     letter_content = ServiceLetterContact(**data)
 

@@ -4,9 +4,13 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.service_email_reply_to_dao import (
+    add_reply_to_email_address_for_service,
+    archive_reply_to_email_address,
+    dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
-    add_reply_to_email_address_for_service, update_reply_to_email_address, dao_get_reply_to_by_id)
+    update_reply_to_email_address)
 from app.errors import InvalidRequest
+from app.exceptions import ArchiveValidationError
 from app.models import ServiceEmailReplyTo
 from tests.app.db import create_reply_to_email, create_service
 
@@ -25,6 +29,23 @@ def test_dao_get_reply_to_by_service_id(notify_db_session):
     assert second_reply_to == results[2]
 
 
+def test_dao_get_reply_to_by_service_id_does_not_return_archived_reply_tos(notify_db_session):
+    service = create_service()
+    create_reply_to_email(service=service, email_address='something@email.com')
+    create_reply_to_email(service=service, email_address='another@email.com', is_default=False)
+    archived_reply_to = create_reply_to_email(
+        service=service,
+        email_address='second@email.com',
+        is_default=False,
+        archived=True
+    )
+
+    results = dao_get_reply_to_by_service_id(service_id=service.id)
+
+    assert len(results) == 2
+    assert archived_reply_to not in results
+
+
 def test_add_reply_to_email_address_for_service_creates_first_email_for_service(notify_db_session):
     service = create_service()
     add_reply_to_email_address_for_service(service_id=service.id,
@@ -35,6 +56,7 @@ def test_add_reply_to_email_address_for_service_creates_first_email_for_service(
     assert len(results) == 1
     assert results[0].email_address == 'new@address.com'
     assert results[0].is_default
+    assert not results[0].archived
 
 
 def test_add_reply_to_email_address_for_service_creates_another_email_for_service(notify_db_session):
@@ -162,7 +184,56 @@ def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_does_not_e
         dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=uuid.uuid4())
 
 
+def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_is_archived(sample_service):
+    create_reply_to_email(service=sample_service, email_address='email@address.com')
+    archived_reply_to = create_reply_to_email(
+        service=sample_service,
+        email_address='email_two@address.com',
+        is_default=False,
+        archived=True)
+
+    with pytest.raises(SQLAlchemyError):
+        dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=archived_reply_to.id)
+
+
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):
     reply_to = create_reply_to_email(service=sample_service, email_address='email@address.com')
     with pytest.raises(SQLAlchemyError):
         dao_get_reply_to_by_id(service_id=uuid.uuid4(), reply_to_id=reply_to.id)
+
+
+def test_archive_reply_to_email_address(sample_service):
+    create_reply_to_email(service=sample_service, email_address="first@address.com")
+    second_reply_to = create_reply_to_email(
+        service=sample_service,
+        email_address="second@address.com",
+        is_default=False)
+
+    archive_reply_to_email_address(sample_service.id, second_reply_to.id)
+
+    assert second_reply_to.archived is True
+    assert second_reply_to.updated_at is not None
+
+
+def test_archive_reply_to_email_address_does_not_archive_a_reply_to_for_a_different_service(sample_service):
+    service = create_service(service_name="First service")
+    reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com", is_default=False)
+
+    with pytest.raises(SQLAlchemyError):
+        archive_reply_to_email_address(service.id, reply_to.id)
+
+    assert not reply_to.archived
+
+
+def test_archive_reply_to_email_address_raises_an_error_if_attempting_to_archive_a_default(sample_service):
+    create_reply_to_email(
+        service=sample_service,
+        email_address="first@address.com",
+        is_default=False)
+    default_reply_to = create_reply_to_email(service=sample_service, email_address="first@address.com")
+
+    with pytest.raises(ArchiveValidationError) as e:
+        archive_reply_to_email_address(sample_service.id, default_reply_to.id)
+
+    assert 'You cannot delete a default email reply to address' in str(e.value)
+    assert not default_reply_to.archived

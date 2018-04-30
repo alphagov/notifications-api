@@ -485,6 +485,30 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
     ]
 
 
+def test_post_sms_notification_with_archived_reply_to_id_returns_400(client, sample_template, mocker):
+    archived_sender = create_service_sms_sender(
+        sample_template.service,
+        '12345',
+        is_default=False,
+        archived=True)
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        "phone_number": '+447700900855',
+        "template_id": sample_template.id,
+        'sms_sender_id': archived_sender.id
+    }
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    response = client.post(
+        path="v2/notifications/sms",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert 'sms_sender_id {} does not exist in database for service id {}'. \
+        format(archived_sender.id, sample_template.service_id) in resp_json['errors'][0]['message']
+    assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
 @pytest.mark.parametrize('recipient,label,template_factory,expected_error', [
     ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'Cannot send text messages'),
     ('someone@test.com', 'email_address', sample_template_without_email_permission, 'Cannot send emails')])
@@ -697,6 +721,30 @@ def test_post_email_notification_with_invalid_reply_to_id_returns_400(client, sa
     resp_json = json.loads(response.get_data(as_text=True))
     assert 'email_reply_to_id {} does not exist in database for service id {}'. \
         format(fake_uuid, sample_email_template.service_id) in resp_json['errors'][0]['message']
+    assert 'BadRequestError' in resp_json['errors'][0]['error']
+
+
+def test_post_email_notification_with_archived_reply_to_id_returns_400(client, sample_email_template, mocker):
+    archived_reply_to = create_reply_to_email(
+        sample_email_template.service,
+        'reply_to@test.com',
+        is_default=False,
+        archived=True)
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        "email_address": 'test@test.com',
+        "template_id": sample_email_template.id,
+        'email_reply_to_id': archived_reply_to.id
+    }
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    response = client.post(
+        path="v2/notifications/email",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert 'email_reply_to_id {} does not exist in database for service id {}'. \
+        format(archived_reply_to.id, sample_email_template.service_id) in resp_json['errors'][0]['message']
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 

@@ -20,6 +20,7 @@ from app.dao.api_key_dao import (
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
+    archive_sms_sender,
     dao_add_sms_sender_for_service,
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
@@ -52,11 +53,13 @@ from app.dao.service_whitelist_dao import (
 )
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
+    archive_reply_to_email_address,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
     update_reply_to_email_address
 )
 from app.dao.service_letter_contact_dao import (
+    archive_letter_contact,
     dao_get_letter_contacts_by_service_id,
     dao_get_letter_contact_by_id,
     add_letter_contact_for_service,
@@ -594,6 +597,13 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
     return jsonify(data=new_reply_to.serialize()), 200
 
 
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/<uuid:reply_to_email_id>/archive', methods=['POST'])
+def delete_service_reply_to_email_address(service_id, reply_to_email_id):
+    archived_reply_to = archive_reply_to_email_address(service_id, reply_to_email_id)
+
+    return jsonify(data=archived_reply_to.serialize()), 200
+
+
 @service_blueprint.route('/<uuid:service_id>/letter-contact', methods=["GET"])
 def get_letter_contacts(service_id):
     result = dao_get_letter_contacts_by_service_id(service_id)
@@ -627,6 +637,13 @@ def update_service_letter_contact(service_id, letter_contact_id):
                                          contact_block=form['contact_block'],
                                          is_default=form.get('is_default', True))
     return jsonify(data=new_reply_to.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/letter-contact/<uuid:letter_contact_id>/archive', methods=['POST'])
+def delete_service_letter_contact(service_id, letter_contact_id):
+    archived_letter_contact = archive_letter_contact(service_id, letter_contact_id)
+
+    return jsonify(data=archived_letter_contact.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['POST'])
@@ -675,6 +692,13 @@ def update_service_sms_sender(service_id, sms_sender_id):
                                                    sms_sender=form['sms_sender']
                                                    )
     return jsonify(new_sms_sender.serialize()), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>/archive', methods=['POST'])
+def delete_service_sms_sender(service_id, sms_sender_id):
+    sms_sender = archive_sms_sender(service_id, sms_sender_id)
+
+    return jsonify(data=sms_sender.serialize()), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender/<uuid:sms_sender_id>', methods=['GET'])

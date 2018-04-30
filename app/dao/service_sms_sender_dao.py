@@ -2,6 +2,7 @@ from sqlalchemy import desc
 
 from app import db
 from app.dao.dao_utils import transactional
+from app.exceptions import ArchiveValidationError
 from app.models import ServiceSmsSender
 
 
@@ -19,12 +20,16 @@ def insert_service_sms_sender(service, sms_sender):
 def dao_get_service_sms_senders_by_id(service_id, service_sms_sender_id):
     return ServiceSmsSender.query.filter_by(
         id=service_sms_sender_id,
-        service_id=service_id
+        service_id=service_id,
+        archived=False
     ).one()
 
 
 def dao_get_sms_senders_by_service_id(service_id):
-    return ServiceSmsSender.query.filter_by(service_id=service_id).order_by(desc(ServiceSmsSender.is_default)).all()
+    return ServiceSmsSender.query.filter_by(
+        service_id=service_id,
+        archived=False
+    ).order_by(desc(ServiceSmsSender.is_default)).all()
 
 
 @transactional
@@ -69,6 +74,24 @@ def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sende
     service_sms_sender.inbound_number_id = inbound_number_id
     db.session.add(service_sms_sender)
     return service_sms_sender
+
+
+@transactional
+def archive_sms_sender(service_id, sms_sender_id):
+    sms_sender_to_archive = ServiceSmsSender.query.filter_by(
+        id=sms_sender_id,
+        service_id=service_id
+    ).one()
+
+    if sms_sender_to_archive.inbound_number_id:
+        raise ArchiveValidationError("You cannot delete an inbound number")
+    if sms_sender_to_archive.is_default:
+        raise ArchiveValidationError("You cannot delete a default sms sender")
+
+    sms_sender_to_archive.archived = True
+
+    db.session.add(sms_sender_to_archive)
+    return sms_sender_to_archive
 
 
 def _get_existing_default(service_id):

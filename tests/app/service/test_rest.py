@@ -10,6 +10,7 @@ from freezegun import freeze_time
 
 from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.organisation_dao import dao_add_service_to_organisation
+from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
 from app.dao.services_dao import dao_remove_user_from_service
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -37,6 +38,7 @@ from tests.app.conftest import (
 )
 from tests.app.db import (
     create_service,
+    create_service_with_inbound_number,
     create_template,
     create_notification,
     create_reply_to_email,
@@ -2524,6 +2526,40 @@ def test_update_service_reply_to_email_address_404s_when_invalid_service_id(clie
     assert result['message'] == 'No result found'
 
 
+def test_delete_service_reply_to_email_address_archives_an_email_reply_to(
+    sample_service,
+    admin_request,
+    notify_db_session
+):
+    create_reply_to_email(service=sample_service, email_address="some@email.com")
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com", is_default=False)
+
+    admin_request.post(
+        'service.delete_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+    )
+    assert reply_to.archived is True
+
+
+def test_delete_service_reply_to_email_address_returns_400_if_archiving_default_reply_to(
+    admin_request,
+    notify_db_session,
+    sample_service
+):
+    reply_to = create_reply_to_email(service=sample_service, email_address="some@email.com")
+
+    response = admin_request.post(
+        'service.delete_service_reply_to_email_address',
+        service_id=sample_service.id,
+        reply_to_email_id=reply_to.id,
+        _expected_status=400
+    )
+
+    assert response == {'message': 'You cannot delete a default email reply to address', 'result': 'error'}
+    assert reply_to.archived is False
+
+
 def test_get_email_reply_to_address(client, notify_db, notify_db_session):
     service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')
@@ -2697,6 +2733,38 @@ def test_update_service_letter_contact_returns_404_when_invalid_service_id(clien
     assert result['message'] == 'No result found'
 
 
+def test_delete_service_letter_contact_can_archive_letter_contact(admin_request, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+
+    admin_request.post(
+        'service.delete_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+    )
+
+    assert letter_contact.archived is True
+
+
+def test_delete_service_letter_contact_returns_400_if_archiving_template_default(admin_request, notify_db_session):
+    service = create_service()
+    create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
+    letter_contact = create_letter_contact(service=service, contact_block='Swansea, SN1 3CC', is_default=False)
+    create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+
+    response = admin_request.post(
+        'service.delete_service_letter_contact',
+        service_id=service.id,
+        letter_contact_id=letter_contact.id,
+        _expected_status=400
+    )
+    assert response == {
+        'message': 'You cannot delete the default letter contact block for a template',
+        'result': 'error'}
+    assert letter_contact.archived is False
+
+
 def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_session):
     service = create_service()
     data = {
@@ -2715,9 +2783,10 @@ def test_add_service_sms_sender_can_add_multiple_senders(client, notify_db_sessi
     assert len(senders) == 2
 
 
-def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_sms_sender(
+def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_existing_non_archived_sms_sender(
         client, notify_db_session):
     service = create_service_with_defined_sms_sender(sms_sender_value='GOVUK')
+    create_service_sms_sender(service=service, sms_sender="archived", is_default=False, archived=True)
     inbound_number = create_inbound_number(number='12345')
     data = {
         "sms_sender": str(inbound_number.id),
@@ -2736,7 +2805,7 @@ def test_add_service_sms_sender_when_it_is_an_inbound_number_updates_the_only_ex
     assert resp_json['inbound_number_id'] == str(inbound_number.id)
     assert resp_json['is_default']
 
-    senders = ServiceSmsSender.query.all()
+    senders = dao_get_sms_senders_by_service_id(service.id)
     assert len(senders) == 1
 
 
@@ -2870,6 +2939,35 @@ def test_update_service_sms_sender_return_404_when_service_does_not_exist(client
     result = json.loads(response.get_data(as_text=True))
     assert result['result'] == 'error'
     assert result['message'] == 'No result found'
+
+
+def test_delete_service_sms_sender_can_archive_sms_sender(admin_request, notify_db_session):
+    service = create_service()
+    service_sms_sender = create_service_sms_sender(service=service,
+                                                   sms_sender='5678',
+                                                   is_default=False)
+
+    admin_request.post(
+        'service.delete_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service_sms_sender.id,
+    )
+
+    assert service_sms_sender.archived is True
+
+
+def test_delete_service_sms_sender_returns_400_if_archiving_inbound_number(admin_request, notify_db_session):
+    service = create_service_with_inbound_number(inbound_number='7654321')
+    inbound_number = service.service_sms_senders[0]
+
+    response = admin_request.post(
+        'service.delete_service_sms_sender',
+        service_id=service.id,
+        sms_sender_id=service.service_sms_senders[0].id,
+        _expected_status=400
+    )
+    assert response == {'message': 'You cannot delete an inbound number', 'result': 'error'}
+    assert inbound_number.archived is False
 
 
 def test_get_service_sms_sender_by_id(client, notify_db_session):
