@@ -816,12 +816,15 @@ def test_preview_letter_template_by_id_invalid_file_type(
     assert ['file_type must be pdf or png'] == resp['message']['content']
 
 
+@freeze_time('2012-12-12')
+@pytest.mark.parametrize('file_type', ('png', 'pdf'))
 def test_preview_letter_template_by_id_valid_file_type(
-        notify_api,
-        client,
-        admin_request,
-        sample_letter_notification):
-
+    notify_api,
+    sample_letter_notification,
+    admin_request,
+    file_type,
+):
+    sample_letter_notification.created_at = datetime.utcnow()
     with set_config_values(notify_api, {
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
         'TEMPLATE_PREVIEW_API_KEY': 'test-key'
@@ -830,7 +833,7 @@ def test_preview_letter_template_by_id_valid_file_type(
             content = b'\x00\x01'
 
             mock_post = request_mock.post(
-                'http://localhost/notifications-template-preview/preview.pdf',
+                'http://localhost/notifications-template-preview/preview.{}'.format(file_type),
                 content=content,
                 headers={'X-pdf-page-count': '1'},
                 status_code=200
@@ -840,10 +843,21 @@ def test_preview_letter_template_by_id_valid_file_type(
                 'template.preview_letter_template_by_notification_id',
                 service_id=sample_letter_notification.service_id,
                 notification_id=sample_letter_notification.id,
-                file_type='pdf'
+                file_type=file_type,
             )
 
-            assert mock_post.last_request.json()
+            post_json = mock_post.last_request.json()
+            assert post_json['template']['id'] == str(sample_letter_notification.template_id)
+            assert post_json['values'] == {
+                'address_line_1': 'A1',
+                'address_line_2': 'A2',
+                'address_line_3': 'A3',
+                'address_line_4': 'A4',
+                'address_line_5': 'A5',
+                'address_line_6': 'A6',
+                'postcode': 'A_POST',
+            }
+            assert post_json['date'] == '2012-12-12T00:00:00'
             assert base64.b64decode(resp['content']) == content
 
 
