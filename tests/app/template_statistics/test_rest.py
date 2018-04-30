@@ -37,7 +37,7 @@ def set_up_get_all_from_hash(mock_redis, side_effect):
     {'limit_days': 3.5},
     {'limit_days': 'blurk'},
 ])
-def get_template_statistics_for_service_by_day_with_bad_arg_returns_400(admin_request, query_string):
+def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(admin_request, query_string):
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=uuid.uuid4(),

@@ -30,7 +30,7 @@ register_errors(template_statistics)
 @template_statistics.route('')
 def get_template_statistics_for_service_by_day(service_id):
     try:
-        limit_days = int(request.args.get('limit_days'))
+        limit_days = int(request.args.get('limit_days', ''))
     except ValueError:
         error = '{} is not an integer'.format(request.args.get('limit_days'))
         message = {'limit_days': [error]}
@@ -45,10 +45,6 @@ def get_template_statistics_for_service_by_day(service_id):
 @template_statistics.route('/<template_id>')
 def get_template_statistics_for_template_id(service_id, template_id):
     template = dao_get_template_by_id_and_service_id(template_id, service_id)
-    if not template:
-        message = 'No template found for id {}'.format(template_id)
-        errors = {'template_id': [message]}
-        raise InvalidRequest(errors, status_code=404)
 
     data = None
     notification = dao_get_last_template_usage(template_id, template.template_type)
