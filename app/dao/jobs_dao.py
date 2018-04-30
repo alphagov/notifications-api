@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 
 from app import db
-from app.utils import days_ago
+from app.utils import midnight_n_days_ago
 from app.models import (
     Job,
     JOB_STATUS_PENDING,
@@ -51,7 +51,7 @@ def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50
         Job.original_file_name != current_app.config['ONE_OFF_MESSAGE_FILENAME'],
     ]
     if limit_days is not None:
-        query_filter.append(Job.created_at >= days_ago(limit_days))
+        query_filter.append(Job.created_at >= midnight_n_days_ago(limit_days))
     if statuses is not None and statuses != ['']:
         query_filter.append(
             Job.job_status.in_(statuses)

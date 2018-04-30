@@ -81,7 +81,7 @@ def cache_key_for_service_template_counter(service_id, limit_days=7):
 
 def cache_key_for_service_template_usage_per_day(service_id, datetime):
     """
-    You should probably pass a BST datetime into this function
+    You should pass a BST datetime into this function
     """
     return "service-{}-template-usage-{}".format(service_id, datetime.date().isoformat())
 
@@ -95,7 +95,7 @@ def get_public_notify_type_text(notify_type, plural=False):
     return '{}{}'.format(notify_type_text, 's' if plural else '')
 
 
-def days_ago(number_of_days):
+def midnight_n_days_ago(number_of_days):
     """
     Returns midnight a number of days ago. Takes care of daylight savings etc.
     """

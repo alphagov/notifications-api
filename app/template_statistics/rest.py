@@ -39,7 +39,7 @@ def get_template_statistics_for_service_by_day(service_id):
     if limit_days < 1 or limit_days > 7:
         raise InvalidRequest({'limit_days': ['limit_days must be between 1 and 7']}, status_code=400)
 
-    return jsonify(data=get_template_statistics_for_last_n_days(service_id, limit_days))
+    return jsonify(data=_get_template_statistics_for_last_n_days(service_id, limit_days))
 
 
 @template_statistics.route('/<template_id>')
@@ -58,7 +58,7 @@ def get_template_statistics_for_template_id(service_id, template_id):
     return jsonify(data=data)
 
 
-def get_template_statistics_for_last_n_days(service_id, limit_days):
+def _get_template_statistics_for_last_n_days(service_id, limit_days):
     template_stats_by_id = Counter()
 
     for day in last_n_days(limit_days):
@@ -77,6 +77,7 @@ def get_template_statistics_for_last_n_days(service_id, limit_days):
             # if there is data in db, but not in redis - lets put it in redis so we don't have to do
             # this calc again next time. If there isn't any data, we can't put it in redis.
             # Zero length hashes aren't a thing in redis. (There'll only be no data if the service has no templates)
+            # Nothing is stored if redis is down.
             if stats:
                 redis_store.set_hash_and_expire(
                     key,

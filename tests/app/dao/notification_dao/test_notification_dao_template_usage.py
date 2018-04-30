@@ -72,6 +72,7 @@ def test_last_template_usage_should_be_able_to_get_no_template_usage_history_if_
     assert not results
 
 
+@freeze_time('2018-01-01')
 def test_should_by_able_to_get_template_count(sample_template, sample_email_template):
     create_notification(sample_template)
     create_notification(sample_template)
@@ -80,15 +81,16 @@ def test_should_by_able_to_get_template_count(sample_template, sample_email_temp
     create_notification(sample_email_template)
 
     results = dao_get_template_usage(sample_template.service_id, date.today())
-    assert results[0].name == 'Email Template Name'
-    assert results[0].template_type == 'email'
+    assert results[0].name == sample_email_template.name
+    assert results[0].template_type == sample_email_template.template_type
     assert results[0].count == 2
 
-    assert results[1].name == 'Template Name'
-    assert results[1].template_type == 'sms'
+    assert results[1].name == sample_template.name
+    assert results[1].template_type == sample_template.template_type
     assert results[1].count == 3
 
 
+@freeze_time('2018-01-01')
 def test_template_usage_should_ignore_test_keys(
     sample_team_api_key,
     sample_test_api_key,
@@ -102,8 +104,8 @@ def test_template_usage_should_ignore_test_keys(
     create_notification(sample_template)
 
     results = dao_get_template_usage(sample_template.service_id, date.today())
-    assert results[0].name == 'Template Name'
-    assert results[0].template_type == 'sms'
+    assert results[0].name == sample_template.name
+    assert results[0].template_type == sample_template.template_type
     assert results[0].count == 3
 
 
@@ -148,7 +150,6 @@ def test_template_usage_should_by_able_to_get_zero_count_from_notifications_hist
     assert len(results) == 0
 
 
-@freeze_time('2017-06-10T12:00:00')
 def test_template_usage_should_by_able_to_get_template_count_for_specific_day(sample_template):
     # too early
     create_notification(sample_template, created_at=datetime(2017, 6, 7, 22, 59, 0))
@@ -162,6 +163,24 @@ def test_template_usage_should_by_able_to_get_template_count_for_specific_day(sa
     create_notification(sample_template, created_at=datetime(2017, 6, 8, 23, 0, 0))
 
     results = dao_get_template_usage(sample_template.service_id, day=date(2017, 6, 8))
+
+    assert len(results) == 1
+    assert results[0].count == 5
+
+
+def test_template_usage_should_by_able_to_get_template_count_for_specific_timezone_boundary(sample_template):
+    # too early
+    create_notification(sample_template, created_at=datetime(2018, 3, 24, 23, 59, 0))
+    # just right
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 0, 0, 0))
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 0, 0, 0))
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 22, 59, 0))
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 22, 59, 0))
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 22, 59, 0))
+    # too late
+    create_notification(sample_template, created_at=datetime(2018, 3, 25, 23, 0, 0))
+
+    results = dao_get_template_usage(sample_template.service_id, day=date(2018, 3, 25))
 
     assert len(results) == 1
     assert results[0].count == 5
