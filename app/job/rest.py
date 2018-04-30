@@ -5,6 +5,7 @@ from flask import (
     current_app
 )
 
+from app.aws.s3 import get_job_metadata_from_s3
 from app.dao.jobs_dao import (
     dao_create_job,
     dao_update_job,
@@ -119,10 +120,21 @@ def create_job(service_id):
     data.update({
         "service": service_id
     })
+    try:
+        data.update(
+            **get_job_metadata_from_s3(service_id, data['id'])
+        )
+    except KeyError:
+        raise InvalidRequest({'id': ['Missing data for required field.']}, status_code=400)
+
+    data['template'] = data.pop('template_id')
     template = dao_get_template_by_id(data['template'])
 
     if template.template_type == LETTER_TYPE and service.restricted:
         raise InvalidRequest("Create letter job is not allowed for service in trial mode ", 403)
+
+    if data.get('valid') != 'True':
+        raise InvalidRequest("File is not valid, can't create job", 400)
 
     errors = unarchived_template_schema.validate({'archived': template.archived})
 

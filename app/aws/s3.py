@@ -18,17 +18,25 @@ def get_s3_object(bucket_name, file_location):
     return s3.Object(bucket_name, file_location)
 
 
+def get_job_location(service_id, job_id):
+    return (
+        current_app.config['CSV_UPLOAD_BUCKET_NAME'],
+        FILE_LOCATION_STRUCTURE.format(service_id, job_id),
+    )
+
+
 def get_job_from_s3(service_id, job_id):
-    bucket_name = current_app.config['CSV_UPLOAD_BUCKET_NAME']
-    file_location = FILE_LOCATION_STRUCTURE.format(service_id, job_id)
-    obj = get_s3_object(bucket_name, file_location)
+    obj = get_s3_object(*get_job_location(service_id, job_id))
     return obj.get()['Body'].read().decode('utf-8')
 
 
+def get_job_metadata_from_s3(service_id, job_id):
+    obj = get_s3_object(*get_job_location(service_id, job_id))
+    return obj.get()['Metadata']
+
+
 def remove_job_from_s3(service_id, job_id):
-    bucket_name = current_app.config['CSV_UPLOAD_BUCKET_NAME']
-    file_location = FILE_LOCATION_STRUCTURE.format(service_id, job_id)
-    return remove_s3_object(bucket_name, file_location)
+    return remove_s3_object(*get_job_location(service_id, job_id))
 
 
 def get_s3_bucket_objects(bucket_name, subfolder='', older_than=7, limit_days=2):
