@@ -80,14 +80,11 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
         'template_id': str(sample_template.id),
         'original_file_name': 'thisisatest.csv',
         'notification_count': '1',
+        'valid': 'True',
     })
     data = {
         'id': fake_uuid,
-        'service': str(sample_template.service.id),
-        'template': str(sample_template.id),
-        'original_file_name': 'thisisatest.csv',
-        'notification_count': 1,
-        'created_by': str(sample_template.created_by.id)
+        'created_by': str(sample_template.created_by.id),
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
@@ -124,15 +121,12 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
         'template_id': str(sample_template.id),
         'original_file_name': 'thisisatest.csv',
         'notification_count': '1',
+        'valid': 'True',
     })
     data = {
         'id': fake_uuid,
-        'service': str(sample_template.service.id),
-        'template': str(sample_template.id),
-        'original_file_name': 'thisisatest.csv',
-        'notification_count': 1,
         'created_by': str(sample_template.created_by.id),
-        'scheduled_for': scheduled_date
+        'scheduled_for': scheduled_date,
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
@@ -172,6 +166,42 @@ def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, samp
     mock_job_dao.assert_not_called()
 
 
+@pytest.mark.parametrize('extra_metadata', (
+    {},
+    {'valid': 'anything not the string True'},
+))
+def test_create_job_returns_400_if_file_is_invalid(
+    client,
+    fake_uuid,
+    sample_template,
+    mocker,
+    extra_metadata,
+):
+    mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
+    auth_header = create_authorization_header()
+    metadata = dict(
+        template_id=str(sample_template.id),
+        original_file_name='thisisatest.csv',
+        notification_count=1,
+        **extra_metadata
+    )
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value=metadata)
+    data = {'id': fake_uuid}
+    response = client.post(
+        '/service/{}/job'.format(sample_template.service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 400
+    print(response.get_data(as_text=True))
+    resp_json = json.loads(response.get_data(as_text=True))
+    print(resp_json)
+    assert resp_json['result'] == 'error'
+    assert resp_json['message'] == 'File is not valid, can\'t create job'
+    mock_job_dao.assert_not_called()
+
+
 def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
     client, fake_uuid, sample_trial_letter_template, mocker
 ):
@@ -182,11 +212,7 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
     })
     data = {
         'id': fake_uuid,
-        'service': str(sample_trial_letter_template.service.id),
-        'template': str(sample_trial_letter_template.id),
-        'original_file_name': 'thisisatest.csv',
-        'notification_count': 1,
-        'created_by': str(sample_trial_letter_template.created_by.id)
+        'created_by': str(sample_trial_letter_template.created_by.id),
     }
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
     auth_header = create_authorization_header()
@@ -209,15 +235,12 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(client, sample
         'template_id': str(sample_template.id),
         'original_file_name': 'thisisatest.csv',
         'notification_count': '1',
+        'valid': 'True',
     })
     data = {
         'id': fake_uuid,
-        'service': str(sample_template.service.id),
-        'template': str(sample_template.id),
-        'original_file_name': 'thisisatest.csv',
-        'notification_count': 1,
         'created_by': str(sample_template.created_by.id),
-        'scheduled_for': scheduled_date
+        'scheduled_for': scheduled_date,
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
@@ -245,13 +268,10 @@ def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mo
         'template_id': str(sample_template.id),
         'original_file_name': 'thisisatest.csv',
         'notification_count': '1',
+        'valid': 'True',
     })
     data = {
         'id': fake_uuid,
-        'service': str(sample_template.service.id),
-        'template': str(sample_template.id),
-        'original_file_name': 'thisisatest.csv',
-        'notification_count': 1,
         'created_by': str(sample_template.created_by.id),
         'scheduled_for': scheduled_date
     }
@@ -302,7 +322,7 @@ def test_create_job_returns_400_if_missing_data(client, sample_template, mocker,
     })
     data = {
         'id': fake_uuid,
-        'template': str(sample_template.id),
+        'valid': 'True',
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
@@ -328,7 +348,6 @@ def test_create_job_returns_404_if_template_does_not_exist(client, sample_servic
     })
     data = {
         'id': fake_uuid,
-        'template': str(sample_service.id)
     }
     path = '/service/{}/job'.format(sample_service.id)
     auth_header = create_authorization_header()
@@ -352,7 +371,7 @@ def test_create_job_returns_404_if_missing_service(client, sample_template, mock
         'template_id': str(sample_template.id),
     })
     random_id = str(uuid.uuid4())
-    data = {'template': str(sample_template.id)}
+    data = {}
     path = '/service/{}/job'.format(random_id)
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
@@ -378,7 +397,7 @@ def test_create_job_returns_400_if_archived_template(client, sample_template, mo
     })
     data = {
         'id': fake_uuid,
-        'template': str(sample_template.id)
+        'valid': 'True',
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
