@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from flask import current_app
-from sqlalchemy import func, case, desc, extract
+from sqlalchemy import func, case, desc
 
 from app import db
 from app.dao.date_util import get_financial_year
@@ -33,7 +33,7 @@ def fetch_monthly_billing_for_year(service_id, year):
                 update_fact_billing(data=d, process_day=day)
 
     yearly_data = db.session.query(
-        extract('month', FactBilling.bst_date).label("Month"),
+        func.date_trunc('month', FactBilling.bst_date).label("month"),
         func.sum(FactBilling.notifications_sent).label("notifications_sent"),
         func.sum(FactBilling.billable_units).label("billable_units"),
         FactBilling.service_id,
@@ -46,7 +46,7 @@ def fetch_monthly_billing_for_year(service_id, year):
         FactBilling.bst_date >= year_start_date,
         FactBilling.bst_date <= year_end_date
     ).group_by(
-        'Month',
+        'month',
         FactBilling.service_id,
         FactBilling.rate,
         FactBilling.rate_multiplier,
@@ -54,7 +54,7 @@ def fetch_monthly_billing_for_year(service_id, year):
         FactBilling.notification_type
     ).order_by(
         FactBilling.service_id,
-        'Month',
+        'month',
         FactBilling.notification_type
     ).all()
 

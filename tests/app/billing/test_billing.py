@@ -17,7 +17,9 @@ from tests.app.db import (
     create_monthly_billing_entry,
     create_annual_billing,
     create_letter_rate,
-    create_template
+    create_template,
+    create_service,
+    create_ft_billing
 )
 from app.billing.rest import update_free_sms_fragment_limit_data
 
@@ -409,3 +411,45 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
     assert annual_billing.free_sms_fragment_limit == 9999
+
+
+def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
+    service = create_service()
+    sms_template = create_template(service=service, template_type="sms")
+    email_template = create_template(service=service, template_type="email")
+    letter_template = create_template(service=service, template_type="letter")
+    for month in range(1, 13):
+        mon = str(month).zfill(2)
+        days_in_month = {1: 32, 2: 30, 3: 32, 4: 31, 5: 32, 6: 31, 7: 32, 8: 32, 9: 31, 10: 32, 11: 31, 12: 32}
+        for day in range(1, days_in_month[month]):
+            d = str(day).zfill(2)
+            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
+                              service=service,
+                              template=sms_template,
+                              notification_type='sms',
+                              rate=0.162)
+            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
+                              service=service,
+                              template=email_template,
+                              notification_type='email',
+                              rate=0)
+            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
+                              service=service,
+                              template=letter_template,
+                              notification_type='letter',
+                              rate=0.33)
+
+    response = client.get('service/{}/billing/ft-monthly-usage?year=2016'.format(service.id),
+                          headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    assert json_resp["monthly_usage"][0] == {"month": "April",
+                                             "service_id": str(service.id),
+                                             "notifications_type": 'email',
+                                             "notifications_sent": 30,
+                                             "billable_units": 30,
+                                             "rate": 0.0,
+                                             "rate_multiplier": 1,
+                                             "international": False,
+                                             }

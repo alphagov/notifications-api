@@ -219,7 +219,7 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
 
     assert len(results) == 2
-    assert results[0].Month == 6.0
+    assert str(results[0].month) == "2018-06-01 00:00:00+01:00"
     assert results[0].notifications_sent == 30
     assert results[0].billable_units == Decimal('30')
     assert results[0].service_id == service.id
@@ -228,7 +228,7 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert results[0].international is False
     assert results[0].notification_type == 'sms'
 
-    assert results[1].Month == 7.0
+    assert str(results[1].month) == "2018-07-01 00:00:00+01:00"
     assert results[1].notifications_sent == 31
     assert results[1].billable_units == Decimal('31')
     assert results[1].service_id == service.id
@@ -257,11 +257,11 @@ def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
     assert len(results) == 2
 
 
-def test_fetch_monthly_billing_for_year(notify_db_session):
+def test_fetch_monthly_billing_for_year_return_financial_year(notify_db_session):
     service = create_service()
-    sms_template = create_template(service=service, template_type="email")
+    sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
-    letter_template = create_template(service=service, template_type="email")
+    letter_template = create_template(service=service, template_type="letter")
     for month in range(1, 13):
         mon = str(month).zfill(2)
         days_in_month = {1: 32, 2: 30, 3: 32, 4: 31, 5: 32, 6: 31, 7: 32, 8: 32, 9: 31, 10: 32, 11: 31, 12: 32}
@@ -286,12 +286,13 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     results = fetch_monthly_billing_for_year(service.id, 2016)
     # returns 3 rows, per month, returns financial year april to december
     # Orders by Month
+
     assert len(results) == 27
-    assert results[0][0] == 4
-    assert results[1][0] == 4
-    assert results[2][0] == 4
-    assert results[3][0] == 5
-    assert results[26][0] == 12
-
-
-
+    assert str(results[0].month) == "2016-04-01 00:00:00+01:00"
+    assert results[0].notification_type == 'email'
+    assert str(results[1].month) == "2016-04-01 00:00:00+01:00"
+    assert results[1].notification_type == 'letter'
+    assert str(results[2].month) == "2016-04-01 00:00:00+01:00"
+    assert results[2].notification_type == 'sms'
+    assert str(results[3].month) == "2016-05-01 00:00:00+01:00"
+    assert str(results[26].month) == "2016-12-01 00:00:00+00:00"

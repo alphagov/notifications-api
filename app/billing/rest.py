@@ -32,13 +32,15 @@ register_errors(billing_blueprint)
 
 
 @billing_blueprint.route('/ft-monthly-usage')
-def get_yearly_usage_by_monthy_from_ft_billing(service_id):
+def get_yearly_usage_by_monthly_from_ft_billing(service_id):
     try:
         year = int(request.args.get('year'))
-        results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
-        serialize_ft_billing(results)
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
+
+    results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
+    data = serialize_ft_billing(results)
+    return jsonify(monthly_usage=data)
 
 
 @billing_blueprint.route('/monthly-usage')
@@ -207,16 +209,15 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
 
 def serialize_ft_billing(data):
     results = []
-
     for d in data:
         j = {
-            "Month": d.month,
-            "service_id": d.service_id,
+            "month": (datetime.strftime(d.month, "%B")),
+            "service_id": str(d.service_id),
             "notifications_type": d.notification_type,
-            "notifications_sent": d.notifications_sent,
-            "billable_units": d.billable_units,
-            "rate": d.rate,
-            "rate_multiplier": d.rate_multiplier,
+            "notifications_sent": int(d.notifications_sent),
+            "billable_units": int(d.billable_units),
+            "rate": float(d.rate),
+            "rate_multiplier": int(d.rate_multiplier),
             "international": d.international,
         }
         results.append(j)
