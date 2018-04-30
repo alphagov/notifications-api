@@ -76,6 +76,11 @@ def test_cant_cancel_normal_job(client, sample_job, mocker):
 
 def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+    })
     data = {
         'id': fake_uuid,
         'service': str(sample_template.service.id),
@@ -108,12 +113,18 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json['data']['job_status'] == 'pending'
     assert resp_json['data']['template'] == str(sample_template.id)
     assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
+    assert resp_json['data']['notification_count'] == 1
 
 
 @freeze_time("2016-01-01 12:00:00.000000")
 def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
     scheduled_date = (datetime.utcnow() + timedelta(hours=95, minutes=59)).isoformat()
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+    })
     data = {
         'id': fake_uuid,
         'service': str(sample_template.service.id),
@@ -143,6 +154,7 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json['data']['job_status'] == 'scheduled'
     assert resp_json['data']['template'] == str(sample_template.id)
     assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
+    assert resp_json['data']['notification_count'] == 1
 
 
 def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
@@ -163,6 +175,11 @@ def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, samp
 def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
     client, fake_uuid, sample_trial_letter_template, mocker
 ):
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_trial_letter_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+    })
     data = {
         'id': fake_uuid,
         'service': str(sample_trial_letter_template.service.id),
@@ -188,6 +205,11 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
 def test_should_not_create_scheduled_job_more_then_24_hours_hence(client, sample_template, mocker, fake_uuid):
     scheduled_date = (datetime.utcnow() + timedelta(hours=96, minutes=1)).isoformat()
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+    })
     data = {
         'id': fake_uuid,
         'service': str(sample_template.service.id),
@@ -219,6 +241,11 @@ def test_should_not_create_scheduled_job_more_then_24_hours_hence(client, sample
 def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mocker, fake_uuid):
     scheduled_date = (datetime.utcnow() - timedelta(minutes=1)).isoformat()
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+    })
     data = {
         'id': fake_uuid,
         'service': str(sample_template.service.id),
@@ -246,10 +273,36 @@ def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mo
     assert resp_json['message']['scheduled_for'] == ['Date cannot be in the past']
 
 
-def test_create_job_returns_400_if_missing_data(client, sample_template, mocker):
+def test_create_job_returns_400_if_missing_id(client, sample_template, mocker):
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+    })
+    data = {}
+    path = '/service/{}/job'.format(sample_template.service.id)
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    response = client.post(
+        path,
+        data=json.dumps(data),
+        headers=headers)
+
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 400
+
+    app.celery.tasks.process_job.apply_async.assert_not_called()
+    assert resp_json['result'] == 'error'
+    assert 'Missing data for required field.' in resp_json['message']['id']
+
+
+def test_create_job_returns_400_if_missing_data(client, sample_template, mocker, fake_uuid):
+    mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+    })
     data = {
-        'template': str(sample_template.id)
+        'id': fake_uuid,
+        'template': str(sample_template.id),
     }
     path = '/service/{}/job'.format(sample_template.service.id)
     auth_header = create_authorization_header()
@@ -268,9 +321,13 @@ def test_create_job_returns_400_if_missing_data(client, sample_template, mocker)
     assert 'Missing data for required field.' in resp_json['message']['notification_count']
 
 
-def test_create_job_returns_404_if_template_does_not_exist(client, sample_service, mocker):
+def test_create_job_returns_404_if_template_does_not_exist(client, sample_service, mocker, fake_uuid):
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_service.id),
+    })
     data = {
+        'id': fake_uuid,
         'template': str(sample_service.id)
     }
     path = '/service/{}/job'.format(sample_service.id)
@@ -291,6 +348,9 @@ def test_create_job_returns_404_if_template_does_not_exist(client, sample_servic
 
 def test_create_job_returns_404_if_missing_service(client, sample_template, mocker):
     mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+    })
     random_id = str(uuid.uuid4())
     data = {'template': str(sample_template.id)}
     path = '/service/{}/job'.format(random_id)
@@ -309,11 +369,15 @@ def test_create_job_returns_404_if_missing_service(client, sample_template, mock
     assert resp_json['message'] == 'No result found'
 
 
-def test_create_job_returns_400_if_archived_template(client, sample_template, mocker):
+def test_create_job_returns_400_if_archived_template(client, sample_template, mocker, fake_uuid):
     mocker.patch('app.celery.tasks.process_job.apply_async')
     sample_template.archived = True
     dao_update_template(sample_template)
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+    })
     data = {
+        'id': fake_uuid,
         'template': str(sample_template.id)
     }
     path = '/service/{}/job'.format(sample_template.service.id)
