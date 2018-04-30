@@ -39,7 +39,7 @@ def get_london_midnight_in_utc(date):
      This function converts date to midnight as BST (British Standard Time) to UTC,
      the tzinfo is lastly removed from the datetime because the database stores the timestamps without timezone.
      :param date: the day to calculate the London midnight in UTC for
-     :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-17 23:00:00
+     :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-16 23:00:00
     """
     return local_timezone.localize(datetime.combine(date, datetime.min.time())).astimezone(
         pytz.UTC).replace(
@@ -80,6 +80,9 @@ def cache_key_for_service_template_counter(service_id, limit_days=7):
 
 
 def cache_key_for_service_template_usage_per_day(service_id, datetime):
+    """
+    You should pass a BST datetime into this function
+    """
     return "service-{}-template-usage-{}".format(service_id, datetime.date().isoformat())
 
 
@@ -90,3 +93,25 @@ def get_public_notify_type_text(notify_type, plural=False):
         notify_type_text = 'text message'
 
     return '{}{}'.format(notify_type_text, 's' if plural else '')
+
+
+def midnight_n_days_ago(number_of_days):
+    """
+    Returns midnight a number of days ago. Takes care of daylight savings etc.
+    """
+    return get_london_midnight_in_utc(datetime.utcnow() - timedelta(days=number_of_days))
+
+
+def last_n_days(limit_days):
+    """
+    Returns the last n dates, oldest first. Takes care of daylight savings (but returns a date, be careful how you
+    manipulate it later! Don't directly use the date for comparing to UTC datetimes!). Includes today.
+    """
+    return [
+        datetime.combine(
+            (convert_utc_to_bst(datetime.utcnow()) - timedelta(days=x)),
+            datetime.min.time()
+        )
+        # reverse the countdown, -1 from first two args to ensure it stays 0-indexed
+        for x in range(limit_days - 1, -1, -1)
+    ]

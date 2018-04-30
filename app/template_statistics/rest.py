@@ -2,7 +2,8 @@ from flask import (
     Blueprint,
     jsonify,
     request,
-    current_app)
+    current_app
+)
 
 from app import redis_store
 from app.dao.notifications_dao import (
@@ -10,15 +11,16 @@ from app.dao.notifications_dao import (
     dao_get_last_template_usage
 )
 from app.dao.templates_dao import (
-    dao_get_templates_for_cache,
+    dao_get_multiple_template_details,
     dao_get_template_by_id_and_service_id
 )
 
 from app.schemas import notification_with_template_schema
-from app.utils import cache_key_for_service_template_counter
+from app.utils import cache_key_for_service_template_usage_per_day, last_n_days
 from app.errors import register_errors, InvalidRequest
+from collections import Counter
 
-template_statistics = Blueprint('template-statistics',
+template_statistics = Blueprint('template_statistics',
                                 __name__,
                                 url_prefix='/service/<service_id>/template-statistics')
 
@@ -27,40 +29,22 @@ register_errors(template_statistics)
 
 @template_statistics.route('')
 def get_template_statistics_for_service_by_day(service_id):
-    if request.args.get('limit_days'):
-        try:
-            limit_days = int(request.args['limit_days'])
-        except ValueError as e:
-            error = '{} is not an integer'.format(request.args['limit_days'])
-            message = {'limit_days': [error]}
-            raise InvalidRequest(message, status_code=400)
-    else:
-        limit_days = None
+    try:
+        limit_days = int(request.args.get('limit_days', ''))
+    except ValueError:
+        error = '{} is not an integer'.format(request.args.get('limit_days'))
+        message = {'limit_days': [error]}
+        raise InvalidRequest(message, status_code=400)
 
-    if limit_days == 7:
-        stats = get_template_statistics_for_7_days(limit_days, service_id)
-    else:
-        stats = dao_get_template_usage(service_id, limit_days=limit_days)
+    if limit_days < 1 or limit_days > 7:
+        raise InvalidRequest({'limit_days': ['limit_days must be between 1 and 7']}, status_code=400)
 
-    def serialize(data):
-        return {
-            'count': data.count,
-            'template_id': str(data.template_id),
-            'template_name': data.name,
-            'template_type': data.template_type,
-            'is_precompiled_letter': data.is_precompiled_letter
-        }
-
-    return jsonify(data=[serialize(row) for row in stats])
+    return jsonify(data=_get_template_statistics_for_last_n_days(service_id, limit_days))
 
 
 @template_statistics.route('/<template_id>')
 def get_template_statistics_for_template_id(service_id, template_id):
     template = dao_get_template_by_id_and_service_id(template_id, service_id)
-    if not template:
-        message = 'No template found for id {}'.format(template_id)
-        errors = {'template_id': [message]}
-        raise InvalidRequest(errors, status_code=404)
 
     data = None
     notification = dao_get_last_template_usage(template_id, template.template_type)
@@ -70,31 +54,46 @@ def get_template_statistics_for_template_id(service_id, template_id):
     return jsonify(data=data)
 
 
-def get_template_statistics_for_7_days(limit_days, service_id):
-    cache_key = cache_key_for_service_template_counter(service_id)
-    template_stats_by_id = redis_store.get_all_from_hash(cache_key)
-    if not template_stats_by_id:
-        stats = dao_get_template_usage(service_id, limit_days=limit_days)
-        cache_values = dict([(x.template_id, x.count) for x in stats])
-        if cache_values:
-            redis_store.set_hash_and_expire(cache_key,
-                                            cache_values,
-                                            current_app.config['EXPIRE_CACHE_TEN_MINUTES'])
-    else:
-        stats = dao_get_templates_for_cache(template_stats_by_id.items())
-    return stats
+def _get_template_statistics_for_last_n_days(service_id, limit_days):
+    template_stats_by_id = Counter()
 
-    # TODO: can only switch to this code when redis has been populated (either through time passing or a manual step)
-    # from collections import Counter
-    # from notifications_utils.redis_client import RedisException
-    # template_stats_by_id = Counter()
-    # for day in last_7_days:
-    #     # "<SERVICE_ID>-template-usage-{YYYY-MM-DD}"
-    #     key = cache_key_for_service_templates_used_per_day(service_id, limit_days)
-    #     try:
-    #         template_stats_by_id += Counter(redis_store.get_all_from_hash(key, raise_exception=True))
-    #     except RedisException:
-    #         # TODO: ????
-    #
-    # # TODO: streamline db query and avoid weird unions if possible.
-    # return dao_get_templates_for_cache(template_stats_by_id.items())
+    for day in last_n_days(limit_days):
+        # "{SERVICE_ID}-template-usage-{YYYY-MM-DD}"
+        key = cache_key_for_service_template_usage_per_day(service_id, day)
+        stats = redis_store.get_all_from_hash(key)
+        if stats:
+            stats = {
+                k.decode('utf-8'): int(v) for k, v in stats.items()
+            }
+        else:
+            # key didn't exist (or redis was down) - lets populate from DB.
+            stats = {
+                str(row.id): row.count for row in dao_get_template_usage(service_id, day=day)
+            }
+            # if there is data in db, but not in redis - lets put it in redis so we don't have to do
+            # this calc again next time. If there isn't any data, we can't put it in redis.
+            # Zero length hashes aren't a thing in redis. (There'll only be no data if the service has no templates)
+            # Nothing is stored if redis is down.
+            if stats:
+                redis_store.set_hash_and_expire(
+                    key,
+                    stats,
+                    current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
+                )
+        template_stats_by_id += Counter(stats)
+
+    # attach count from stats to name/type/etc from database
+    template_details = dao_get_multiple_template_details(template_stats_by_id.keys())
+    return [
+        {
+            'count': template_stats_by_id[str(template.id)],
+            'template_id': str(template.id),
+            'template_name': template.name,
+            'template_type': template.template_type,
+            'is_precompiled_letter': template.is_precompiled_letter
+        }
+        for template in template_details
+        # we don't want to return templates with no count to the front-end,
+        # but they're returned from the DB and might be put in redis like that (if there was no data that day)
+        if template_stats_by_id[str(template.id)] != 0
+    ]

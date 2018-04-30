@@ -21,7 +21,7 @@ from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
-from app.dao import days_ago
+from app.utils import midnight_n_days_ago
 from app.errors import InvalidRequest
 from app.models import (
     Notification,
@@ -46,51 +46,37 @@ from app.models import (
 )
 
 from app.dao.dao_utils import transactional
-from app.utils import convert_utc_to_bst
+from app.utils import convert_utc_to_bst, get_london_midnight_in_utc
 
 
 @statsd(namespace="dao")
-def dao_get_template_usage(service_id, limit_days=None):
-    query_filter = []
-
-    table = NotificationHistory
-
-    if limit_days is not None and limit_days <= 7:
-        table = Notification
-
-        # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
-        if limit_days != 7:
-            query_filter.append(table.created_at >= days_ago(limit_days))
-
-    elif limit_days is not None:
-        # case where not under 7 days, so using NotificationsHistory so limit allowed
-        query_filter.append(table.created_at >= days_ago(limit_days))
-
-    query_filter.append(table.service_id == service_id)
-    query_filter.append(table.key_type != KEY_TYPE_TEST)
-
-    # only limit days if it's not seven days, as 7 days == the whole of Notifications table.
-    if limit_days is not None and limit_days != 7:
-        query_filter.append(table.created_at >= days_ago(limit_days))
+def dao_get_template_usage(service_id, day):
+    start = get_london_midnight_in_utc(day)
+    end = get_london_midnight_in_utc(day + timedelta(days=1))
 
     notifications_aggregate_query = db.session.query(
         func.count().label('count'),
-        table.template_id
+        Notification.template_id
     ).filter(
-        *query_filter
+        Notification.created_at >= start,
+        Notification.created_at < end,
+        Notification.service_id == service_id,
+        Notification.key_type != KEY_TYPE_TEST,
     ).group_by(
-        table.template_id
+        Notification.template_id
     ).subquery()
 
     query = db.session.query(
-        Template.id.label('template_id'),
+        Template.id,
         Template.name,
         Template.template_type,
         Template.is_precompiled_letter,
-        notifications_aggregate_query.c.count
-    ).join(
+        func.coalesce(notifications_aggregate_query.c.count, 0).label('count')
+    ).outerjoin(
         notifications_aggregate_query,
         notifications_aggregate_query.c.template_id == Template.id
+    ).filter(
+        Template.service_id == service_id
     ).order_by(Template.name)
 
     return query.all()
@@ -262,8 +248,7 @@ def get_notifications_for_service(
     filters = [Notification.service_id == service_id]
 
     if limit_days is not None:
-        days_ago = date.today() - timedelta(days=limit_days)
-        filters.append(func.date(Notification.created_at) >= days_ago)
+        filters.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
     if older_than is not None:
         older_than_created_at = db.session.query(

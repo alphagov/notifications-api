@@ -1,281 +1,304 @@
-from datetime import datetime, timedelta
-import json
+import uuid
+from datetime import datetime
+from unittest.mock import Mock, call, ANY
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 
-from app.dao.templates_dao import dao_update_template
-
-from tests import create_authorization_header
-from tests.app.conftest import (
-    sample_template as create_sample_template,
-    sample_notification,
-    sample_notification_history,
-    sample_email_template
+from tests.app.db import (
+    create_notification,
+    create_template,
 )
 
 
-def test_get_all_template_statistics_with_bad_arg_returns_400(client, sample_service):
-    auth_header = create_authorization_header()
+def set_up_get_all_from_hash(mock_redis, side_effect):
+    """
+    redis returns binary strings for both keys and values - so given a list of side effects (return values),
+    make sure
+    """
+    assert type(side_effect) == list
+    side_effects = []
+    for ret_val in side_effect:
+        if ret_val is None:
+            side_effects.append(None)
+        else:
+            side_effects += [{str(k).encode('utf-8'): str(v).encode('utf-8') for k, v in ret_val.items()}]
 
-    response = client.get(
-        '/service/{}/template-statistics'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), auth_header],
-        query_string={'limit_days': 'blurk'}
+    mock_redis.get_all_from_hash.side_effect = side_effects
+
+# get_template_statistics_for_service_by_day
+
+
+@pytest.mark.parametrize('query_string', [
+    {},
+    {'limit_days': 0},
+    {'limit_days': 8},
+    {'limit_days': 3.5},
+    {'limit_days': 'blurk'},
+])
+def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(admin_request, query_string):
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=uuid.uuid4(),
+        **query_string,
+        _expected_status=400
     )
-
-    assert response.status_code == 400
-    json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'limit_days': ['blurk is not an integer']}
+    assert 'limit_days' in json_resp['message']
 
 
-@freeze_time('2016-08-18')
-def test_get_template_statistics_for_service(notify_db, notify_db_session, client, mocker):
-    email, sms = set_up_notifications(notify_db, notify_db_session)
-
-    mocked_redis = mocker.patch('app.redis_store.get_all_from_hash')
-
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics'.format(email.service_id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+def test_get_template_statistics_for_service_by_day_returns_template_info(admin_request, mocker, sample_notification):
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_notification.service_id,
+        limit_days=1
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert len(json_resp['data']) == 2
+    assert len(json_resp['data']) == 1
+
+    assert json_resp['data'][0]['count'] == 1
+    assert json_resp['data'][0]['template_id'] == str(sample_notification.template_id)
+    assert json_resp['data'][0]['template_name'] == 'Template Name'
+    assert json_resp['data'][0]['template_type'] == 'sms'
+    assert json_resp['data'][0]['is_precompiled_letter'] is False
+
+
+@freeze_time('2018-01-01 12:00:00')
+def test_get_template_statistics_for_service_by_day_gets_out_of_redis_if_available(
+    admin_request,
+    mocker,
+    sample_template
+):
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 3}
+    ])
+
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_template.service_id,
+        limit_days=1
+    )
+
+    assert len(json_resp['data']) == 1
     assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_id'] == str(email.id)
-    assert json_resp['data'][0]['template_name'] == email.name
-    assert json_resp['data'][0]['template_type'] == email.template_type
-    assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_id'] == str(sms.id)
-    assert json_resp['data'][1]['template_name'] == sms.name
-    assert json_resp['data'][1]['template_type'] == sms.template_type
-
-    mocked_redis.assert_not_called()
-
-
-@freeze_time('2016-08-18')
-def test_get_template_statistics_for_service_limited_1_day(notify_db, notify_db_session, client,
-                                                           mocker):
-    email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
-
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics'.format(email.service_id),
-        headers=[('Content-Type', 'application/json'), auth_header],
-        query_string={'limit_days': 1}
+    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
+    mock_redis.get_all_from_hash.assert_called_once_with(
+        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))['data']
-    assert len(json_resp) == 2
 
-    assert json_resp[0]['count'] == 1
-    assert json_resp[0]['template_id'] == str(email.id)
-    assert json_resp[0]['template_name'] == email.name
-    assert json_resp[0]['template_type'] == email.template_type
-    assert json_resp[1]['count'] == 1
-    assert json_resp[1]['template_id'] == str(sms.id)
-    assert json_resp[1]['template_name'] == sms.name
-    assert json_resp[1]['template_type'] == sms.template_type
+@freeze_time('2018-01-02 12:00:00')
+def test_get_template_statistics_for_service_by_day_goes_to_db_if_not_in_redis(
+    admin_request,
+    mocker,
+    sample_template
+):
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
-    mock_redis.assert_not_called()
-
-
-@pytest.mark.parametrize("cache_values", [False, True])
-@freeze_time('2016-08-18')
-def test_get_template_statistics_for_service_limit_7_days(notify_db, notify_db_session, client,
-                                                          mocker,
-                                                          cache_values):
-    email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_cache_values = {str.encode(str(sms.id)): str.encode('3'),
-                         str.encode(str(email.id)): str.encode('3')} if cache_values else None
-    mocked_redis_get = mocker.patch('app.redis_store.get_all_from_hash', return_value=mock_cache_values)
-    mocked_redis_set = mocker.patch('app.redis_store.set_hash_and_expire')
-
-    auth_header = create_authorization_header()
-    response_for_a_week = client.get(
-        '/service/{}/template-statistics'.format(email.service_id),
-        headers=[('Content-Type', 'application/json'), auth_header],
-        query_string={'limit_days': 7}
+    # first time it is called redis returns data, second time returns none
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 2},
+        None
+    ])
+    mock_dao = mocker.patch(
+        'app.template_statistics.rest.dao_get_template_usage',
+        return_value=[
+            Mock(id=sample_template.id, count=3)
+        ]
     )
 
-    assert response_for_a_week.status_code == 200
-    json_resp = json.loads(response_for_a_week.get_data(as_text=True))
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_template.service_id,
+        limit_days=2
+    )
+
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['count'] == 5
+    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
+    # first redis call
+    assert mock_redis.get_all_from_hash.mock_calls == [
+        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')),
+        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'))
+    ]
+    # dao only called for 2nd, since redis returned values for first call
+    mock_dao.assert_called_once_with(
+        str(sample_template.service_id), day=datetime(2018, 1, 2)
+    )
+    mock_redis.set_hash_and_expire.assert_called_once_with(
+        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'),
+        # sets the data that the dao returned
+        {str(sample_template.id): 3},
+        current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
+    )
+
+
+def test_get_template_statistics_for_service_by_day_combines_templates_correctly(
+    admin_request,
+    mocker,
+    sample_service
+):
+    t1 = create_template(sample_service, template_name='1')
+    t2 = create_template(sample_service, template_name='2')
+    t3 = create_template(sample_service, template_name='3')  # noqa
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
+
+    # first time it is called redis returns data, second time returns none
+    set_up_get_all_from_hash(mock_redis, [
+        {t1.id: 2},
+        None,
+        {t1.id: 1, t2.id: 4},
+    ])
+    mock_dao = mocker.patch(
+        'app.template_statistics.rest.dao_get_template_usage',
+        return_value=[
+            Mock(id=t1.id, count=8)
+        ]
+    )
+
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_service.id,
+        limit_days=3
+    )
+
     assert len(json_resp['data']) == 2
-    assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
-    assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
+    assert json_resp['data'][0]['template_id'] == str(t1.id)
+    assert json_resp['data'][0]['count'] == 11
+    assert json_resp['data'][1]['template_id'] == str(t2.id)
+    assert json_resp['data'][1]['count'] == 4
 
-    mocked_redis_get.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id))
-    if cache_values:
-        mocked_redis_set.assert_not_called()
-    else:
-        mocked_redis_set.assert_called_once_with("{}-template-counter-limit-7-days".format(email.service_id),
-                                                 {sms.id: 3, email.id: 3}, 600)
+    assert mock_redis.get_all_from_hash.call_count == 3
+    # dao only called for 2nd day
+    assert mock_dao.call_count == 1
 
 
-@freeze_time('2016-08-18')
-def test_get_template_statistics_for_service_limit_30_days(notify_db, notify_db_session, client,
-                                                           mocker):
-    email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
+@freeze_time('2018-03-28 00:00:00')
+def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
+    admin_request,
+    mocker,
+    sample_template
+):
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
-    auth_header = create_authorization_header()
-
-    response_for_a_month = client.get(
-        '/service/{}/template-statistics'.format(email.service_id),
-        headers=[('Content-Type', 'application/json'), auth_header],
-        query_string={'limit_days': 30}
+    # first time it is called redis returns data, second time returns none
+    set_up_get_all_from_hash(mock_redis, [
+        {sample_template.id: 1},
+        None,
+        {sample_template.id: 1},
+        {sample_template.id: 1},
+        {sample_template.id: 1},
+        None,
+        None,
+    ])
+    mock_dao = mocker.patch(
+        'app.template_statistics.rest.dao_get_template_usage',
+        return_value=[
+            Mock(id=sample_template.id, count=2)
+        ]
     )
 
-    assert response_for_a_month.status_code == 200
-    json_resp = json.loads(response_for_a_month.get_data(as_text=True))
-    assert len(json_resp['data']) == 2
-    assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
-    assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
-
-    mock_redis.assert_not_called()
-
-
-@freeze_time('2016-08-18')
-def test_get_template_statistics_for_service_no_limit(notify_db, notify_db_session, client,
-                                                      mocker):
-    email, sms = set_up_notifications(notify_db, notify_db_session)
-    mock_redis = mocker.patch('app.redis_store.get_all_from_hash')
-    auth_header = create_authorization_header()
-    response_for_all = client.get(
-        '/service/{}/template-statistics'.format(email.service_id),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    assert response_for_all.status_code == 200
-    json_resp = json.loads(response_for_all.get_data(as_text=True))
-    assert len(json_resp['data']) == 2
-    assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_name'] == 'New Email Template Name'
-    assert json_resp['data'][1]['count'] == 3
-    assert json_resp['data'][1]['template_name'] == 'New SMS Template Name'
-
-    mock_redis.assert_not_called()
-
-
-def set_up_notifications(notify_db, notify_db_session):
-    sms = create_sample_template(notify_db, notify_db_session)
-    email = sample_email_template(notify_db, notify_db_session)
-    today = datetime.now()
-    a_week_ago = datetime.now() - timedelta(days=7)
-    a_month_ago = datetime.now() - timedelta(days=30)
-    sample_notification(notify_db, notify_db_session, created_at=a_month_ago, template=sms)
-    sample_notification(notify_db, notify_db_session, created_at=a_month_ago, template=email)
-    email.name = 'Updated Email Template Name'
-    dao_update_template(email)
-    sms.name = 'Updated SMS Template Name'
-    dao_update_template(sms)
-    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=sms)
-    sample_notification(notify_db, notify_db_session, created_at=a_week_ago, template=email)
-    email.name = 'New Email Template Name'
-    dao_update_template(email)
-    sms.name = 'New SMS Template Name'
-    dao_update_template(sms)
-    sample_notification(notify_db, notify_db_session, created_at=today, template=sms)
-    sample_notification(notify_db, notify_db_session, created_at=today, template=email)
-    return email, sms
-
-
-@freeze_time('2016-08-18')
-def test_returns_empty_list_if_no_templates_used(client, sample_service, mocker):
-    auth_header = create_authorization_header()
-    mock_redis = mocker.patch('app.redis_store.set_hash_and_expire')
-
-    response = client.get(
-        '/service/{}/template-statistics'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_template.service_id,
+        limit_days=7
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
+    assert len(json_resp['data']) == 1
+    assert json_resp['data'][0]['count'] == 10
+    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
+
+    assert mock_redis.get_all_from_hash.call_count == 7
+
+    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[0][1][0]
+    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
+    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
+    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
+    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
+    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
+    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
+
+    mock_dao.mock_calls == [
+        call(ANY, day=datetime(2018, 3, 23)),
+        call(ANY, day=datetime(2018, 3, 27)),
+        call(ANY, day=datetime(2018, 3, 28))
+    ]
+
+
+def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_templates(
+    admin_request,
+    mocker,
+    sample_service
+):
+    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
+
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_service.id,
+        limit_days=7
+    )
+
     assert len(json_resp['data']) == 0
-    mock_redis.assert_not_called()
+    assert mock_redis.get_all_from_hash.call_count == 7
+    # make sure we don't try and set any empty hashes in redis
+    assert mock_redis.set_hash_and_expire.call_count == 0
+
+# get_template_statistics_for_template
 
 
-def test_get_template_statistics_by_id_returns_last_notification(
-        notify_db,
-        notify_db_session,
-        client):
-    sample_notification(notify_db, notify_db_session)
-    sample_notification(notify_db, notify_db_session)
-    notification_3 = sample_notification(notify_db, notify_db_session)
+def test_get_template_statistics_for_template_returns_last_notification(admin_request, sample_template):
+    create_notification(sample_template)
+    create_notification(sample_template)
+    notification_3 = create_notification(sample_template)
 
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics/{}'.format(notification_3.service_id, notification_3.template_id),
-        headers=[('Content-Type', 'application/json'), auth_header],
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_template_id',
+        service_id=notification_3.service_id,
+        template_id=notification_3.template_id
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))['data']
-    assert json_resp['id'] == str(notification_3.id)
+    assert json_resp['data']['id'] == str(notification_3.id)
 
 
 def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
-    client,
+    admin_request,
     sample_template,
 ):
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics/{}'.format(sample_template.service_id, sample_template.id),
-        headers=[('Content-Type', 'application/json'), auth_header],
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_template_id',
+        service_id=sample_template.service_id,
+        template_id=sample_template.id
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
     assert not json_resp['data']
 
 
-def test_get_template_statistics_raises_error_for_nonexistent_template(
-    client,
+def test_get_template_statistics_for_template_raises_error_for_nonexistent_template(
+    admin_request,
     sample_service,
     fake_uuid
 ):
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics/{}'.format(sample_service.id, fake_uuid),
-        headers=[('Content-Type', 'application/json'), auth_header],
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_template_id',
+        service_id=sample_service.id,
+        template_id=fake_uuid,
+        _expected_status=404
     )
 
-    assert response.status_code == 404
-    json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['message'] == 'No result found'
     assert json_resp['result'] == 'error'
 
 
-def test_get_template_statistics_by_id_returns_empty_for_old_notification(
-    notify_db,
-    notify_db_session,
-    client,
-    sample_template
+def test_get_template_statistics_for_template_returns_empty_for_old_notification(
+    admin_request,
+    sample_notification_history
 ):
-    sample_notification_history(notify_db, notify_db_session, sample_template)
-
-    auth_header = create_authorization_header()
-
-    response = client.get(
-        '/service/{}/template-statistics/{}'.format(sample_template.service.id, sample_template.id),
-        headers=[('Content-Type', 'application/json'), auth_header],
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_template_id',
+        service_id=sample_notification_history.service_id,
+        template_id=sample_notification_history.template_id
     )
 
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))['data']
-    assert not json_resp
+    assert not json_resp['data']
