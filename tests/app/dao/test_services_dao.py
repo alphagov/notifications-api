@@ -628,23 +628,26 @@ def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session,
 def test_fetch_stats_should_not_gather_notifications_older_than_7_days(notify_db, notify_db_session, sample_template):
 
     # 8 days ago
-    create_notification(notify_db, None, to_field='1', status='delivered', created_at='2001-01-02T12:00:00')
+    create_notification(notify_db, None, to_field='1', status='delivered', created_at='2001-04-02T12:00:00')
+    create_notification(notify_db, None, to_field='1', status='delivered', created_at='2001-04-02T22:59:59')
 
+    # 7 days ago BST midnight
+    create_notification(notify_db, None, to_field='1', status='failed', created_at='2001-04-02T23:00:00')
     # 7 days ago, 2hours ago
-    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-01-03T10:00:00')
+    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-04-03T10:00:00')
 
     # 7 days ago
-    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-01-03T12:00:00')
+    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-04-03T12:00:00')
 
     # right_now
-    create_notification(notify_db, None, to_field='3', status='created', created_at='2001-01-09T12:00:00')
+    create_notification(notify_db, None, to_field='3', status='created', created_at='2001-04-09T12:00:00')
 
-    with freeze_time('2001-01-09T12:00:00'):
+    with freeze_time('2001-04-09T12:00:00'):
         stats = dao_fetch_stats_for_service(sample_template.service_id)
 
     stats = {row.status: row.count for row in stats}
     assert 'delivered' not in stats
-    assert stats['failed'] == 2
+    assert stats['failed'] == 3
     assert stats['created'] == 1
 
 

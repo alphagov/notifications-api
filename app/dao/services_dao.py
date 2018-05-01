@@ -254,7 +254,7 @@ def dao_fetch_stats_for_service(service_id):
     # We want 7 days inclusive
     start_date = get_london_midnight_in_utc(date.today() - timedelta(days=6))
     return _stats_for_service_query(service_id).filter(
-        func.date(Notification.created_at) >= start_date
+        Notification.created_at >= start_date
     ).all()
 
 
