@@ -45,6 +45,9 @@ env:
   TEMPLATE_PREVIEW_API_HOST: null
   TEMPLATE_PREVIEW_API_KEY: null
 
+  DOCUMENT_DOWNLOAD_API_HOST: null
+  DOCUMENT_DOWNLOAD_API_KEY: null
+
 instances: 1
 memory: 1G
 
