@@ -1,5 +1,5 @@
 import json
-from monotonic import monotonic
+from time import monotonic
 from requests import (request, RequestException)
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 

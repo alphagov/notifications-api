@@ -1,7 +1,7 @@
 import boto3
 import botocore
 from flask import current_app
-from monotonic import monotonic
+from time import monotonic
 from notifications_utils.recipients import InvalidEmailError
 
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
