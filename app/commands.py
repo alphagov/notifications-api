@@ -7,16 +7,18 @@ from decimal import Decimal
 import click
 import flask
 from click_datetime import Datetime as click_dt
-from flask import current_app
+from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import func
 from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption, redis_store
+from app.billing.rest import get_yearly_usage_by_month, get_yearly_usage_by_monthly_from_ft_billing
 from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
+from app.dao.date_util import get_financial_year
 from app.dao.fact_billing_dao import fetch_billing_data_for_day, update_fact_billing
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
@@ -562,3 +564,39 @@ def rebuild_ft_billing_for_month_and_service(service_id, day):
     transit_data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
     for data in transit_data:
         update_fact_billing(data, day)
+
+
+@notify_command(name='compare-ft-billing-to-monthly-billing')
+@click.option('-y', '--year', required=True)
+@click.option('-s', '--service_id', required=False, type=click.UUID)
+def compare_ft_billing_to_monthly_billing(year, service_id=None):
+    """
+    This command checks the results of monthly_billing to ft_billing for the given year.
+    If service id is not included all services are compared for the given year.
+    """
+
+    def compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response):
+        # Remove the rows with 0 billing_units and rate, ft_billing doesn't populate those rows.
+        mo_json = json.loads(monthly_billing_response.get_data(as_text=True))
+        rm_zero_rows = [x for x in mo_json if x['billing_units'] != 0 and x['rate'] != 0]
+        assert rm_zero_rows == json.loads(ft_billing_response.get_data(as_text=True))
+
+    if not service_id:
+        start_date, end_date = get_financial_year(year=int(year))
+        services = get_service_ids_that_need_billing_populated(start_date, end_date)
+        for service_id in services:
+            with current_app.test_request_context(
+                    path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
+                monthly_billing_response = get_yearly_usage_by_month(service_id)
+            with current_app.test_request_context(
+                    path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
+                ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
+            compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
+    else:
+        with current_app.test_request_context(
+                path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
+            monthly_billing_response = get_yearly_usage_by_month(service_id)
+        with current_app.test_request_context(
+                path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
+            ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
+        compare_ft_billing_to_monthly_billing(ft_billing_response, monthly_billing_response)

@@ -208,6 +208,7 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
                           service=service,
                           template=template,
                           notification_type='sms',
+                          rate_multiplier=2,
                           rate=0.162)
     for i in range(1, 32):
         create_ft_billing(bst_date='2018-07-{}'.format(i),
@@ -221,11 +222,9 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert len(results) == 2
     assert str(results[0].month) == "2018-06-01 00:00:00+01:00"
     assert results[0].notifications_sent == 30
-    assert results[0].billable_units == Decimal('30')
+    assert results[0].billable_units == Decimal('60')
     assert results[0].service_id == service.id
     assert results[0].rate == Decimal('0.162')
-    assert results[0].rate_multiplier == Decimal('1')
-    assert results[0].international is False
     assert results[0].notification_type == 'sms'
 
     assert str(results[1].month) == "2018-07-01 00:00:00+01:00"
@@ -233,8 +232,6 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert results[1].billable_units == Decimal('31')
     assert results[1].service_id == service.id
     assert results[1].rate == Decimal('0.158')
-    assert results[1].rate_multiplier == Decimal('1')
-    assert results[1].international is False
     assert results[1].notification_type == 'sms'
 
 

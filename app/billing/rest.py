@@ -37,10 +37,9 @@ def get_yearly_usage_by_monthly_from_ft_billing(service_id):
         year = int(request.args.get('year'))
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
-
     results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
     data = serialize_ft_billing(results)
-    return jsonify(monthly_usage=data)
+    return jsonify(data)
 
 
 @billing_blueprint.route('/monthly-usage')
@@ -49,13 +48,13 @@ def get_yearly_usage_by_month(service_id):
         year = int(request.args.get('year'))
         results = []
         for month in get_months_for_financial_year(year):
-            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
-            if billing_for_month:
-                results.append(_transform_billing_for_month_sms(billing_for_month))
             letter_billing_for_month = get_monthly_billing_by_notification_type(service_id, month, LETTER_TYPE)
             if letter_billing_for_month:
                 results.extend(_transform_billing_for_month_letters(letter_billing_for_month))
-        return json.dumps(results)
+            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
+            if billing_for_month:
+                results.append(_transform_billing_for_month_sms(billing_for_month))
+        return jsonify(results)
 
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
@@ -209,16 +208,13 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
 
 def serialize_ft_billing(data):
     results = []
-    for d in data:
+    no_emails = [x for x in data if x.notification_type != 'email']
+    for d in no_emails:
         j = {
             "month": (datetime.strftime(d.month, "%B")),
-            "service_id": str(d.service_id),
-            "notifications_type": d.notification_type,
-            "notifications_sent": int(d.notifications_sent),
-            "billable_units": int(d.billable_units),
+            "notification_type": d.notification_type,
+            "billing_units": int(d.billable_units),
             "rate": float(d.rate),
-            "rate_multiplier": int(d.rate_multiplier),
-            "international": d.international,
         }
         results.append(j)
     return results
