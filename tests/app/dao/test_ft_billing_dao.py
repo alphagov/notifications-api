@@ -221,14 +221,14 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
 
     assert len(results) == 2
-    assert str(results[0].month.date()) == "2018-06-01"
+    assert str(results[0].month) == "2018-06-01"
     assert results[0].notifications_sent == 30
     assert results[0].billable_units == Decimal('60')
     assert results[0].service_id == service.id
     assert results[0].rate == Decimal('0.162')
     assert results[0].notification_type == 'sms'
 
-    assert str(results[1].month.date()) == "2018-07-01"
+    assert str(results[1].month) == "2018-07-01"
     assert results[1].notifications_sent == 31
     assert results[1].billable_units == Decimal('31')
     assert results[1].service_id == service.id
@@ -287,20 +287,20 @@ def test_fetch_monthly_billing_for_year_return_financial_year(notify_db_session)
     # Orders by Month
 
     assert len(results) == 36
-    assert str(results[0].month.date()) == "2016-04-01"
+    assert str(results[0].month) == "2016-04-01"
     assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 30
     assert results[0].billable_units == 30
     assert results[0].rate == Decimal('0')
-    assert str(results[1].month.date()) == "2016-04-01"
+    assert str(results[1].month) == "2016-04-01"
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 30
     assert results[1].billable_units == 30
     assert results[1].rate == Decimal('0.33')
-    assert str(results[2].month.date()) == "2016-04-01"
+    assert str(results[2].month) == "2016-04-01"
     assert results[2].notification_type == 'sms'
     assert results[2].notifications_sent == 30
     assert results[2].billable_units == 30
     assert results[2].rate == Decimal('0.162')
-    assert str(results[3].month.date()) == "2016-05-01"
-    assert str(results[35].month.date()) == "2017-03-01"
+    assert str(results[3].month) == "2016-05-01"
+    assert str(results[35].month) == "2017-03-01"
