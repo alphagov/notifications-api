@@ -1,3 +1,4 @@
+from calendar import monthrange
 from datetime import datetime, timedelta
 import json
 
@@ -438,8 +439,7 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
     letter_template = create_template(service=service, template_type="letter")
     for month in range(1, 13):
         mon = str(month).zfill(2)
-        days_in_month = {1: 32, 2: 30, 3: 32, 4: 31, 5: 32, 6: 31, 7: 32, 8: 32, 9: 31, 10: 32, 11: 31, 12: 32}
-        for day in range(1, days_in_month[month]):
+        for day in range(1, monthrange(2016, month)[1] + 1):
             d = str(day).zfill(2)
             create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
                               service=service,
@@ -489,10 +489,9 @@ def test_compare_ft_billing_to_monthly_billing(client, notify_db_session):
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
-    for month in range(4, 9):
+    for month in range(1, 13):
         mon = str(month).zfill(2)
-        days_in_month = {1: 32, 2: 30, 3: 32, 4: 31, 5: 32, 6: 31, 7: 32, 8: 32, 9: 31, 10: 32, 11: 31, 12: 32}
-        for day in range(1, days_in_month[month]):
+        for day in range(1, monthrange(2016, month)[1] + 1):
             d = str(day).zfill(2)
             create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
                               service=service,
@@ -515,7 +514,6 @@ def test_compare_ft_billing_to_monthly_billing(client, notify_db_session):
                               template=letter_template,
                               notification_type='letter',
                               rate=0.33)
-
         start_date, end_date = get_month_start_and_end_date_in_utc(datetime(2016, int(mon), 1))
         create_monthly_billing_entry(service=service, start_date=start_date,
                                      end_date=end_date,

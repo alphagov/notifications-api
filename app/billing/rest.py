@@ -1,25 +1,30 @@
-from datetime import datetime
 import json
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from app.billing.billing_schemas import (
+    create_or_update_free_sms_fragment_limit_schema,
+    serialize_ft_billing_remove_emails
+)
+from app.dao.annual_billing_dao import (
+    dao_get_free_sms_fragment_limit_for_year,
+    dao_get_all_free_sms_fragment_limit,
+    dao_create_or_update_annual_billing_for_year,
+    dao_update_annual_billing_for_future_years
+)
+from app.dao.date_util import get_current_financial_year_start_year
+from app.dao.date_util import get_months_for_financial_year
 from app.dao.fact_billing_dao import fetch_monthly_billing_for_year
 from app.dao.monthly_billing_dao import (
     get_billing_data_for_financial_year,
     get_monthly_billing_by_notification_type
 )
-from app.dao.date_util import get_months_for_financial_year
+from app.errors import InvalidRequest
 from app.errors import register_errors
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
-from app.utils import convert_utc_to_bst
-from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
-                                        dao_get_all_free_sms_fragment_limit,
-                                        dao_create_or_update_annual_billing_for_year,
-                                        dao_update_annual_billing_for_future_years)
-from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
-from app.errors import InvalidRequest
 from app.schema_validation import validate
-from app.dao.date_util import get_current_financial_year_start_year
+from app.utils import convert_utc_to_bst
 
 billing_blueprint = Blueprint(
     'billing',
@@ -38,7 +43,7 @@ def get_yearly_usage_by_monthly_from_ft_billing(service_id):
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
     results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
-    data = serialize_ft_billing(results)
+    data = serialize_ft_billing_remove_emails(results)
     return jsonify(data)
 
 
@@ -204,17 +209,3 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
             free_sms_fragment_limit,
             financial_year_start
         )
-
-
-def serialize_ft_billing(data):
-    results = []
-    no_emails = [x for x in data if x.notification_type != 'email']
-    for d in no_emails:
-        j = {
-            "month": (datetime.strftime(d.month, "%B")),
-            "notification_type": d.notification_type,
-            "billing_units": int(d.billable_units),
-            "rate": float(d.rate),
-        }
-        results.append(j)
-    return results

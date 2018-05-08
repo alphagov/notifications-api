@@ -599,4 +599,4 @@ def compare_ft_billing_to_monthly_billing(year, service_id=None):
         with current_app.test_request_context(
                 path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
             ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
-        compare_ft_billing_to_monthly_billing(ft_billing_response, monthly_billing_response)
+        compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)

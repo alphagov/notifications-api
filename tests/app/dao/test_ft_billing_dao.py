@@ -1,3 +1,4 @@
+from calendar import monthrange
 from decimal import Decimal
 
 from datetime import datetime, timedelta
@@ -259,37 +260,47 @@ def test_fetch_monthly_billing_for_year_return_financial_year(notify_db_session)
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
-    for month in range(1, 13):
-        mon = str(month).zfill(2)
-        days_in_month = {1: 32, 2: 30, 3: 32, 4: 31, 5: 32, 6: 31, 7: 32, 8: 32, 9: 31, 10: 32, 11: 31, 12: 32}
-        for day in range(1, days_in_month[month]):
-            d = str(day).zfill(2)
-            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
-                              service=service,
-                              template=sms_template,
-                              notification_type='sms',
-                              rate=0.162)
-            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
-                              service=service,
-                              template=email_template,
-                              notification_type='email',
-                              rate=0)
-            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
-                              service=service,
-                              template=letter_template,
-                              notification_type='letter',
-                              rate=0.33)
+
+    for year in (2016, 2017):
+        for month in range(1, 13):
+            mon = str(month).zfill(2)
+            for day in range(1, monthrange(year, month)[1] + 1):
+                d = str(day).zfill(2)
+                create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                                  service=service,
+                                  template=sms_template,
+                                  notification_type='sms',
+                                  rate=0.162)
+                create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                                  service=service,
+                                  template=email_template,
+                                  notification_type='email',
+                                  rate=0)
+                create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                                  service=service,
+                                  template=letter_template,
+                                  notification_type='letter',
+                                  rate=0.33)
 
     results = fetch_monthly_billing_for_year(service.id, 2016)
-    # returns 3 rows, per month, returns financial year april to december
+    # returns 3 rows, per month, returns financial year april to end of march
     # Orders by Month
 
-    assert len(results) == 27
+    assert len(results) == 36
     assert str(results[0].month) == "2016-04-01 00:00:00+01:00"
     assert results[0].notification_type == 'email'
+    assert results[0].notifications_sent == 30
+    assert results[0].billable_units == 30
+    assert results[0].rate == Decimal('0')
     assert str(results[1].month) == "2016-04-01 00:00:00+01:00"
     assert results[1].notification_type == 'letter'
+    assert results[1].notifications_sent == 30
+    assert results[1].billable_units == 30
+    assert results[1].rate == Decimal('0.33')
     assert str(results[2].month) == "2016-04-01 00:00:00+01:00"
     assert results[2].notification_type == 'sms'
+    assert results[2].notifications_sent == 30
+    assert results[2].billable_units == 30
+    assert results[2].rate == Decimal('0.162')
     assert str(results[3].month) == "2016-05-01 00:00:00+01:00"
-    assert str(results[26].month) == "2016-12-01 00:00:00+00:00"
+    assert str(results[35].month) == "2017-03-01 00:00:00+00:00"
