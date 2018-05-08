@@ -579,7 +579,10 @@ def compare_ft_billing_to_monthly_billing(year, service_id=None):
         # Remove the rows with 0 billing_units and rate, ft_billing doesn't populate those rows.
         mo_json = json.loads(monthly_billing_response.get_data(as_text=True))
         rm_zero_rows = [x for x in mo_json if x['billing_units'] != 0 and x['rate'] != 0]
-        assert rm_zero_rows == json.loads(ft_billing_response.get_data(as_text=True))
+        try:
+            assert rm_zero_rows == json.loads(ft_billing_response.get_data(as_text=True))
+        except AssertionError:
+            print("Comparison failed for service: {} and year: {}".format(service_id, year))
 
     if not service_id:
         start_date, end_date = get_financial_year(year=int(year))
