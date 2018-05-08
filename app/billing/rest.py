@@ -1,24 +1,30 @@
-from datetime import datetime
 import json
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from app.billing.billing_schemas import (
+    create_or_update_free_sms_fragment_limit_schema,
+    serialize_ft_billing_remove_emails
+)
+from app.dao.annual_billing_dao import (
+    dao_get_free_sms_fragment_limit_for_year,
+    dao_get_all_free_sms_fragment_limit,
+    dao_create_or_update_annual_billing_for_year,
+    dao_update_annual_billing_for_future_years
+)
+from app.dao.date_util import get_current_financial_year_start_year
+from app.dao.date_util import get_months_for_financial_year
+from app.dao.fact_billing_dao import fetch_monthly_billing_for_year
 from app.dao.monthly_billing_dao import (
     get_billing_data_for_financial_year,
     get_monthly_billing_by_notification_type
 )
-from app.dao.date_util import get_months_for_financial_year
+from app.errors import InvalidRequest
 from app.errors import register_errors
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
-from app.utils import convert_utc_to_bst
-from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
-                                        dao_get_all_free_sms_fragment_limit,
-                                        dao_create_or_update_annual_billing_for_year,
-                                        dao_update_annual_billing_for_future_years)
-from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
-from app.errors import InvalidRequest
 from app.schema_validation import validate
-from app.dao.date_util import get_current_financial_year_start_year
+from app.utils import convert_utc_to_bst
 
 billing_blueprint = Blueprint(
     'billing',
@@ -30,19 +36,30 @@ billing_blueprint = Blueprint(
 register_errors(billing_blueprint)
 
 
+@billing_blueprint.route('/ft-monthly-usage')
+def get_yearly_usage_by_monthly_from_ft_billing(service_id):
+    try:
+        year = int(request.args.get('year'))
+    except TypeError:
+        return jsonify(result='error', message='No valid year provided'), 400
+    results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
+    data = serialize_ft_billing_remove_emails(results)
+    return jsonify(data)
+
+
 @billing_blueprint.route('/monthly-usage')
 def get_yearly_usage_by_month(service_id):
     try:
         year = int(request.args.get('year'))
         results = []
         for month in get_months_for_financial_year(year):
-            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
-            if billing_for_month:
-                results.append(_transform_billing_for_month_sms(billing_for_month))
             letter_billing_for_month = get_monthly_billing_by_notification_type(service_id, month, LETTER_TYPE)
             if letter_billing_for_month:
                 results.extend(_transform_billing_for_month_letters(letter_billing_for_month))
-        return json.dumps(results)
+            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
+            if billing_for_month:
+                results.append(_transform_billing_for_month_sms(billing_for_month))
+        return jsonify(results)
 
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400

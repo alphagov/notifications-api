@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from flask import current_app
-from sqlalchemy import func, case, desc, extract
+from sqlalchemy import func, case, desc, Date
 
 from app import db
 from app.dao.date_util import get_financial_year
@@ -20,12 +20,12 @@ from app.models import (
 from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 
-def fetch_montly_billing_for_year(service_id, year):
+def fetch_monthly_billing_for_year(service_id, year):
     year_start_date, year_end_date = get_financial_year(year)
     utcnow = datetime.utcnow()
-    today = convert_utc_to_bst(utcnow).date()
+    today = convert_utc_to_bst(utcnow)
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
-    if year_end_date.date() >= today:
+    if year_end_date >= today:
         yesterday = today - timedelta(days=1)
         for day in [yesterday, today]:
             data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
@@ -33,23 +33,25 @@ def fetch_montly_billing_for_year(service_id, year):
                 update_fact_billing(data=d, process_day=day)
 
     yearly_data = db.session.query(
-        extract('month', FactBilling.bst_date).label("Month"),
+        func.date_trunc('month', FactBilling.bst_date).cast(Date).label("month"),
         func.sum(FactBilling.notifications_sent).label("notifications_sent"),
-        func.sum(FactBilling.billable_units).label("billable_units"),
+        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("billable_units"),
         FactBilling.service_id,
         FactBilling.rate,
-        FactBilling.rate_multiplier,
-        FactBilling.international
+        FactBilling.notification_type
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start_date,
         FactBilling.bst_date <= year_end_date
     ).group_by(
-        'Month',
+        'month',
         FactBilling.service_id,
         FactBilling.rate,
-        FactBilling.rate_multiplier,
-        FactBilling.international
+        FactBilling.notification_type
+    ).order_by(
+        FactBilling.service_id,
+        'month',
+        FactBilling.notification_type
     ).all()
 
     return yearly_data
@@ -119,7 +121,7 @@ def update_fact_billing(data, process_day):
     inserted_records = 0
     updated_records = 0
     non_letter_rates, letter_rates = get_rates_for_billing()
-
+    print("process_day: {} {}".format(type(process_day), process_day))
     update_count = FactBilling.query.filter(
         FactBilling.bst_date == datetime.date(process_day),
         FactBilling.template_id == data.template_id,

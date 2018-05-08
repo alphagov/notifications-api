@@ -100,7 +100,8 @@ def get_yearly_billing_data_for_date_range(
         MonthlyBilling.end_date <= end_date,
         MonthlyBilling.notification_type.in_(notification_types)
     ).order_by(
-        MonthlyBilling.notification_type
+        MonthlyBilling.start_date,
+        MonthlyBilling.notification_type,
     ).all()
 
     return results
