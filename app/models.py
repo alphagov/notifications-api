@@ -1812,3 +1812,16 @@ class DateTimeDimension(db.Model):
 
 
 Index('ix_dm_datetime_yearmonth', DateTimeDimension.year, DateTimeDimension.month)
+
+
+class FactNotificationStatus(db.Model):
+    __tablename__ = "ft_notification_status"
+
+    bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False, )
+    job_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    notification_type = db.Column(db.Text, primary_key=True, nullable=False)
+    key_type = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_status = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_count = db.Column(db.Integer(), nullable=False)
