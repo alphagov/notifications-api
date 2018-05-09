@@ -603,3 +603,83 @@ def compare_ft_billing_to_monthly_billing(year, service_id=None):
                 path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
             ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
         compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
+
+
+@notify_command(name='migrate-data-to-ft-notification-status')
+@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@statsd(namespace="tasks")
+def migrate_data_to_ft_notification_status(start_date, end_date):
+
+    print('Notification statuses migration from date {} to {}'.format(start_date, end_date))
+
+    process_date = start_date
+    total_updated = 0
+
+    while process_date < end_date:
+        sql = \
+            """
+            select count(*) from notification_history
+            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            """
+        num_notifications = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
+
+        sql = \
+            """
+            select count(*) from
+            (select distinct template_id, service_id, job_id, notification_type, key_type, notification_status
+            from notification_history
+            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            ) as distinct_records
+            """
+        predicted_records = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
+
+        start_time = datetime.now()
+        print('ft_notification-status: Migrating date: {}, notifications: {}, expecting {} ft_notification_status rows'
+              .format(process_date.date(), num_notifications, predicted_records))
+
+        # migrate data into ft_notification_status and update if record already exists
+        sql = \
+            """
+            insert into ft_notification_status (bst_date, template_id, service_id, job_id, notification_type, key_type,
+                notification_status, notification_count)
+                select bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status,
+                    sum(notification_count) as notification_count
+                from (
+                    select
+                        da.bst_date,
+                        n.template_id,
+                        n.service_id,
+                        coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
+                        n.notification_type,
+                        n.key_type,
+                        n.notification_status,
+                        1 as notification_count
+                    from public.notification_history n
+                    left join dm_datetime da on n.created_at >= da.utc_daytime_start
+                        and n.created_at < da.utc_daytime_end
+                    where n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
+                            at time zone 'UTC'
+                        and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+                        ) as individual_record
+                group by bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status
+                order by bst_date
+            on conflict on constraint ft_notification_status_pkey do update set
+                notification_count = excluded.notification_count
+            """
+        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
+        db.session.commit()
+        print('ft_notification_status: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
+                                                                                          result.rowcount))
+        if predicted_records != result.rowcount:
+            print('          : ^^^ Result mismatch by {} rows ^^^'
+                  .format(predicted_records - result.rowcount))
+
+        process_date += timedelta(days=1)
+
+        total_updated += result.rowcount
+    print('Total inserted/updated records = {}'.format(total_updated))
