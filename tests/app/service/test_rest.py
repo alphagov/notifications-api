@@ -3085,3 +3085,35 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
     assert json_resp['email'] == {'failed': 1, 'requested': 2, 'delivered': 1}
     assert json_resp['letter'] == {'failed': 0, 'requested': 0, 'delivered': 0}
     assert json_resp['sms'] == {'failed': 0, 'requested': 4, 'delivered': 3}
+
+
+@pytest.mark.parametrize('today_only, stats', [
+    (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
+    (True, {'requested': 1, 'delivered': 0, 'failed': 0})
+], ids=['seven_days', 'today'])
+def test_get_service_notification_statistics(admin_request, sample_template, today_only, stats):
+    with freeze_time('2000-01-01T12:00:00'):
+        create_notification(sample_template, status='delivered')
+    with freeze_time('2000-01-02T12:00:00'):
+        create_notification(sample_template, status='created')
+        resp = admin_request.get(
+            'service.get_service_notification_statistics',
+            service_id=sample_template.service_id,
+            today_only=today_only
+        )
+
+    assert set(resp['data'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
+    assert resp['data'][SMS_TYPE] == stats
+
+
+def test_get_service_notification_statistics_with_unknown_service(admin_request):
+    resp = admin_request.get(
+        'service.get_service_notification_statistics',
+        service_id=uuid.uuid4()
+    )
+
+    assert resp['data'] == {
+        SMS_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+        EMAIL_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+        LETTER_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+    }
