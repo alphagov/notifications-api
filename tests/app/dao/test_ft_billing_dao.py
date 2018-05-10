@@ -7,7 +7,7 @@ from freezegun import freeze_time
 from app import db
 from app.dao.fact_billing_dao import (
     fetch_monthly_billing_for_year, fetch_billing_data_for_day, get_rates_for_billing,
-    get_rate
+    get_rate,
 )
 from app.models import FactBilling
 from app.utils import convert_utc_to_bst

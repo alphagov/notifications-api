@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta, time
 
-from flask import current_app
 from sqlalchemy import func, case, desc, Date
 
 from app import db
@@ -97,6 +96,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
     )
     if service_id:
         transit_data = transit_data.filter(Notification.service_id == service_id)
+
     return transit_data.all()
 
 
@@ -121,7 +121,6 @@ def update_fact_billing(data, process_day):
     inserted_records = 0
     updated_records = 0
     non_letter_rates, letter_rates = get_rates_for_billing()
-    print("process_day: {} {}".format(type(process_day), process_day))
     update_count = FactBilling.query.filter(
         FactBilling.bst_date == datetime.date(process_day),
         FactBilling.template_id == data.template_id,
@@ -147,8 +146,6 @@ def update_fact_billing(data, process_day):
         inserted_records += 1
     updated_records += update_count
     db.session.commit()
-    current_app.logger.info('ft_billing for {}: {} rows updated, {} rows inserted'
-                            .format(process_day, updated_records, inserted_records))
 
 
 def create_billing_record(data, rate, process_day):
