@@ -19,6 +19,31 @@ from app.models import (
 from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 
+def fetch_billing_totals_for_year(service_id, year):
+    year_start_date, year_end_date = get_financial_year(year)
+
+    yearly_data = db.session.query(
+        func.sum(FactBilling.notifications_sent).label("notifications_sent"),
+        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("billable_units"),
+        FactBilling.service_id,
+        FactBilling.rate,
+        FactBilling.notification_type
+    ).filter(
+        FactBilling.service_id == service_id,
+        FactBilling.bst_date >= year_start_date,
+        FactBilling.bst_date <= year_end_date
+    ).group_by(
+        FactBilling.service_id,
+        FactBilling.rate,
+        FactBilling.notification_type
+    ).order_by(
+        FactBilling.service_id,
+        FactBilling.notification_type
+    ).all()
+
+    return yearly_data
+
+
 def fetch_monthly_billing_for_year(service_id, year):
     year_start_date, year_end_date = get_financial_year(year)
     utcnow = datetime.utcnow()

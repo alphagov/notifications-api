@@ -27,4 +27,4 @@ def create_nightly_billing(day_start=None):
             update_fact_billing(data, process_day)
 
         current_app.logger.info(
-            "create-nightly-billing task complete. {} rows updated for day: {}".format(len(transit_data, process_day)))
+            "create-nightly-billing task complete. {} rows updated for day: {}".format(len(transit_data), process_day))
