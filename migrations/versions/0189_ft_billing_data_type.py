@@ -1,7 +1,7 @@
 """
 
 Revision ID: 0189_ft_billing_data_type
-Revises: 0187_another_letter_org
+Revises: 0188_add_ft_notification_status
 Create Date: 2018-05-10 14:57:52.589773
 
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '0189_ft_billing_data_type'
-down_revision = '0187_another_letter_org'
+down_revision = '0188_add_ft_notification_status'
 
 
 def upgrade():
