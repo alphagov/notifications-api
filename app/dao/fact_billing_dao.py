@@ -14,7 +14,8 @@ from app.models import (
     LETTER_TYPE,
     SMS_TYPE,
     Rate,
-    LetterRate
+    LetterRate,
+    NotificationHistory
 )
 from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
@@ -84,43 +85,48 @@ def fetch_monthly_billing_for_year(service_id, year):
 def fetch_billing_data_for_day(process_day, service_id=None):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
+    # use notification_history if process day is older than 7 days
+    # this is useful if we need to rebuild the ft_billing table for a date older than 7 days ago.
+    table = Notification
+    if start_date < datetime.utcnow() - timedelta(days=7):
+        table = NotificationHistory
 
     transit_data = db.session.query(
-        Notification.template_id,
-        Notification.service_id,
-        Notification.notification_type,
-        func.coalesce(Notification.sent_by,
+        table.template_id,
+        table.service_id,
+        table.notification_type,
+        func.coalesce(table.sent_by,
                       case(
                           [
-                              (Notification.notification_type == 'letter', 'dvla'),
-                              (Notification.notification_type == 'sms', 'unknown'),
-                              (Notification.notification_type == 'email', 'ses')
+                              (table.notification_type == 'letter', 'dvla'),
+                              (table.notification_type == 'sms', 'unknown'),
+                              (table.notification_type == 'email', 'ses')
                           ]),
                       ).label('sent_by'),
-        func.coalesce(Notification.rate_multiplier, 1).label('rate_multiplier'),
-        func.coalesce(Notification.international, False).label('international'),
-        func.sum(Notification.billable_units).label('billable_units'),
+        func.coalesce(table.rate_multiplier, 1).label('rate_multiplier'),
+        func.coalesce(table.international, False).label('international'),
+        func.sum(table.billable_units).label('billable_units'),
         func.count().label('notifications_sent'),
         Service.crown,
     ).filter(
-        Notification.status != NOTIFICATION_CREATED,  # at created status, provider information is not available
-        Notification.status != NOTIFICATION_TECHNICAL_FAILURE,
-        Notification.key_type != KEY_TYPE_TEST,
-        Notification.created_at >= start_date,
-        Notification.created_at < end_date
+        table.status != NOTIFICATION_CREATED,  # at created status, provider information is not available
+        table.status != NOTIFICATION_TECHNICAL_FAILURE,
+        table.key_type != KEY_TYPE_TEST,
+        table.created_at >= start_date,
+        table.created_at < end_date
     ).group_by(
-        Notification.template_id,
-        Notification.service_id,
-        Notification.notification_type,
+        table.template_id,
+        table.service_id,
+        table.notification_type,
         'sent_by',
-        Notification.rate_multiplier,
-        Notification.international,
+        table.rate_multiplier,
+        table.international,
         Service.crown
     ).join(
         Service
     )
     if service_id:
-        transit_data = transit_data.filter(Notification.service_id == service_id)
+        transit_data = transit_data.filter(table.service_id == service_id)
 
     return transit_data.all()
 
