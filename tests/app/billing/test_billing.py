@@ -67,23 +67,22 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
     assert len(resp_json) == 3
 
     _assert_dict_equals(resp_json[0], {
-        'notification_type': SMS_TYPE,
-        'billing_units': 8,
-        'rate': 0.12,
-        'letter_total': 0
-    })
-
-    _assert_dict_equals(resp_json[1], {
         'notification_type': EMAIL_TYPE,
         'billing_units': 0,
         'rate': 0,
         'letter_total': 0
     })
-    _assert_dict_equals(resp_json[2], {
+    _assert_dict_equals(resp_json[1], {
         'notification_type': LETTER_TYPE,
         'billing_units': 2,
         'rate': 0,
         'letter_total': 0.72
+    })
+    _assert_dict_equals(resp_json[2], {
+        'notification_type': SMS_TYPE,
+        'billing_units': 8,
+        'rate': 0.12,
+        'letter_total': 0
     })
 
 
@@ -485,6 +484,21 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
 
 
 def test_compare_ft_billing_to_monthly_billing(client, notify_db_session):
+    service = set_up_yearly_data()
+
+    monthly_billing_response = client.get('/service/{}/billing/monthly-usage?year=2016'.format(service.id),
+                                          headers=[create_authorization_header()])
+
+    ft_billing_response = client.get('service/{}/billing/ft-monthly-usage?year=2016'.format(service.id),
+                                     headers=[('Content-Type', 'application/json'), create_authorization_header()])
+
+    monthly_billing_json_resp = json.loads(monthly_billing_response.get_data(as_text=True))
+    ft_billing_json_resp = json.loads(ft_billing_response.get_data(as_text=True))
+
+    assert monthly_billing_json_resp == ft_billing_json_resp
+
+
+def set_up_yearly_data():
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
@@ -542,14 +556,68 @@ def test_compare_ft_billing_to_monthly_billing(client, notify_db_session):
                                           "rate_multiplier": 1, "billing_units": int(d),
                                           "total_cost": 0.33 * int(d)}]
                                      )
+    return service
 
-    monthly_billing_response = client.get('/service/{}/billing/monthly-usage?year=2016'.format(service.id),
+
+def test_get_yearly_billing_usage_summary_from_ft_billing_comapre_to_monthyl_billing(
+        client, notify_db_session
+):
+    service = set_up_yearly_data()
+    monthly_billing_response = client.get('/service/{}/billing/yearly-usage-summary?year=2016'.format(service.id),
                                           headers=[create_authorization_header()])
 
-    ft_billing_response = client.get('service/{}/billing/ft-monthly-usage?year=2016'.format(service.id),
+    ft_billing_response = client.get('service/{}/billing/ft-yearly-usage-summary?year=2016'.format(service.id),
                                      headers=[('Content-Type', 'application/json'), create_authorization_header()])
 
     monthly_billing_json_resp = json.loads(monthly_billing_response.get_data(as_text=True))
     ft_billing_json_resp = json.loads(ft_billing_response.get_data(as_text=True))
 
-    assert monthly_billing_json_resp == ft_billing_json_resp
+    assert len(monthly_billing_json_resp) == 3
+    assert len(ft_billing_json_resp) == 3
+    for i in range(0, 3):
+        assert sorted(monthly_billing_json_resp[i]) == sorted(ft_billing_json_resp[i])
+
+
+def test_get_yearly_billing_usage_summary_from_ft_billing_returns_400_if_missing_year(client, sample_service):
+    response = client.get(
+        '/service/{}/billing/ft-yearly-usage-summary'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'message': 'No valid year provided', 'result': 'error'
+    }
+
+
+def test_get_yearly_billing_usage_summary_from_ft_billing_returns_empty_list_if_no_billing_data(
+        client, sample_service
+):
+    response = client.get(
+        '/service/{}/billing/ft-yearly-usage-summary?year=2016'.format(sample_service.id),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == []
+
+
+def test_get_yearly_billing_usage_summary_from_ft_billing(client, notify_db_session):
+    service = set_up_yearly_data()
+
+    response = client.get('/service/{}/billing/ft-yearly-usage-summary?year=2016'.format(service.id),
+                          headers=[create_authorization_header()]
+                          )
+    assert response.status_code == 200
+    json_response = json.loads(response.get_data(as_text=True))
+    assert len(json_response) == 3
+    assert json_response[0]['notification_type'] == 'email'
+    assert json_response[0]['billing_units'] == 275
+    assert json_response[0]['rate'] == 0
+    assert json_response[0]['letter_total'] == 0
+    assert json_response[1]['notification_type'] == 'letter'
+    assert json_response[1]['billing_units'] == 275
+    assert json_response[1]['rate'] == 0.33
+    assert json_response[1]['letter_total'] == 90.75
+    assert json_response[2]['notification_type'] == 'sms'
+    assert json_response[2]['billing_units'] == 825
+    assert json_response[2]['rate'] == 0.0162
+    assert json_response[2]['letter_total'] == 0
