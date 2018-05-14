@@ -620,4 +620,4 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(client, notify_db_sess
     assert json_response[2]['notification_type'] == 'sms'
     assert json_response[2]['billing_units'] == 825
     assert json_response[2]['rate'] == 0.0162
-    assert json_response[0]['letter_total'] == 0
+    assert json_response[2]['letter_total'] == 0
