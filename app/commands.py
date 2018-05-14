@@ -551,19 +551,26 @@ def populate_redis_template_usage(service_id, day):
         )
 
 
-@notify_command(name='rebuild-ft-billing-for-month-and-service')
-@click.option('-s', '--service_id', required=True, type=click.UUID)
+@notify_command(name='rebuild-ft-billing-for-day')
+@click.option('-s', '--service_id', required=False, type=click.UUID)
 @click.option('-d', '--day', help="The date to recalculate, as YYYY-MM-DD", required=True,
               type=click_dt(format='%Y-%m-%d'))
-def rebuild_ft_billing_for_month_and_service(service_id, day):
+def rebuild_ft_billing_for_day(service_id, day):
     """
     Rebuild the data in ft_billing for the given service_id and date
     """
-    # confirm the service exists
-    dao_fetch_service_by_id(service_id)
-    transit_data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
-    for data in transit_data:
-        update_fact_billing(data, day)
+    def rebuild_ft_data(process_day, service):
+        transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
+        for data in transit_data:
+            update_fact_billing(data, process_day)
+    if service_id:
+        # confirm the service exists
+        dao_fetch_service_by_id(service_id)
+        rebuild_ft_data(day, service_id)
+    else:
+        services = get_service_ids_that_need_billing_populated(day, day)
+        for service_id in services:
+            rebuild_ft_data(day, service_id)
 
 
 @notify_command(name='compare-ft-billing-to-monthly-billing')

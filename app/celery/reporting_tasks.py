@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 
 from app import notify_celery
@@ -24,3 +25,6 @@ def create_nightly_billing(day_start=None):
 
         for data in transit_data:
             update_fact_billing(data, process_day)
+
+        current_app.logger.info(
+            "create-nightly-billing task complete. {} rows updated for day: {}".format(len(transit_data), process_day))

@@ -1784,10 +1784,10 @@ class FactBilling(db.Model):
     service_id = db.Column(UUID(as_uuid=True), nullable=False, index=True)
     notification_type = db.Column(db.Text, nullable=False, primary_key=True)
     provider = db.Column(db.Text, nullable=True, primary_key=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True, primary_key=True)
+    rate_multiplier = db.Column(db.Integer(), nullable=True, primary_key=True)
     international = db.Column(db.Boolean, nullable=False, primary_key=False)
     rate = db.Column(db.Numeric(), nullable=True)
-    billable_units = db.Column(db.Numeric(), nullable=True)
+    billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
 
 
