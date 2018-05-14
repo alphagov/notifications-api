@@ -37,13 +37,12 @@ def test_post_to_get_inbound_sms_with_limit(admin_request, sample_service):
     with freeze_time('2017-01-02'):
         two = create_inbound_sms(sample_service)
 
-    data = {'limit': 1}
-
-    sms = admin_request.post(
-        'inbound_sms.post_query_inbound_sms_for_service',
-        service_id=sample_service.id,
-        _data=data
-    )['data']
+        data = {'limit': 1}
+        sms = admin_request.post(
+            'inbound_sms.post_query_inbound_sms_for_service',
+            service_id=sample_service.id,
+            _data=data
+        )['data']
 
     assert len(sms) == 1
     assert sms[0]['id'] == str(two.id)
@@ -220,10 +219,10 @@ def test_get_inbound_sms_summary(admin_request, sample_service):
     with freeze_time('2017-01-03'):
         create_inbound_sms(other_service)
 
-    summary = admin_request.get(
-        'inbound_sms.get_inbound_sms_summary_for_service',
-        service_id=sample_service.id
-    )
+        summary = admin_request.get(
+            'inbound_sms.get_inbound_sms_summary_for_service',
+            service_id=sample_service.id
+        )
 
     assert summary == {
         'count': 2,

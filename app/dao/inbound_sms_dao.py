@@ -1,6 +1,7 @@
 from datetime import (
     timedelta,
-    datetime
+    datetime,
+    date
 )
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
@@ -10,6 +11,7 @@ from sqlalchemy.orm import aliased
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import InboundSms
+from app.utils import get_london_midnight_in_utc
 
 
 @transactional
@@ -18,8 +20,10 @@ def dao_create_inbound_sms(inbound_sms):
 
 
 def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None):
+    start_date = get_london_midnight_in_utc(date.today() - timedelta(days=6))
     q = InboundSms.query.filter(
-        InboundSms.service_id == service_id
+        InboundSms.service_id == service_id,
+        InboundSms.created_at >= start_date
     ).order_by(
         InboundSms.created_at.desc()
     )
@@ -56,8 +60,10 @@ def dao_get_paginated_inbound_sms_for_service_for_public_api(
 
 
 def dao_count_inbound_sms_for_service(service_id):
+    start_date = get_london_midnight_in_utc(date.today() - timedelta(days=6))
     return InboundSms.query.filter(
-        InboundSms.service_id == service_id
+        InboundSms.service_id == service_id,
+        InboundSms.created_at >= start_date
     ).count()
 
 
@@ -102,6 +108,7 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
     ORDER BY t1.created_at DESC;
     LIMIT 50 OFFSET :page
     """
+    start_date = get_london_midnight_in_utc(date.today() - timedelta(days=6))
     t2 = aliased(InboundSms)
     q = db.session.query(
         InboundSms
@@ -110,11 +117,12 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
         and_(
             InboundSms.user_number == t2.user_number,
             InboundSms.service_id == t2.service_id,
-            InboundSms.created_at < t2.created_at
+            InboundSms.created_at < t2.created_at,
         )
     ).filter(
         t2.id == None,  # noqa
-        InboundSms.service_id == service_id
+        InboundSms.service_id == service_id,
+        InboundSms.created_at >= start_date
     ).order_by(
         InboundSms.created_at.desc()
     )
