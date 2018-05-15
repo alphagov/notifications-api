@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, time
 
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, case, desc, Date
 
 from app import db
@@ -149,33 +150,48 @@ def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None
 
 
 def update_fact_billing(data, process_day):
-    inserted_records = 0
-    updated_records = 0
     non_letter_rates, letter_rates = get_rates_for_billing()
-    update_count = FactBilling.query.filter(
-        FactBilling.bst_date == datetime.date(process_day),
-        FactBilling.template_id == data.template_id,
-        FactBilling.service_id == data.service_id,
-        FactBilling.provider == data.sent_by,  # This could be zero - this is a bug that needs to be fixed.
-        FactBilling.rate_multiplier == data.rate_multiplier,
-        FactBilling.notification_type == data.notification_type,
-        FactBilling.international == data.international
-    ).update(
-        {"notifications_sent": data.notifications_sent,
-         "billable_units": data.billable_units},
-        synchronize_session=False)
+    rate = get_rate(non_letter_rates,
+                    letter_rates,
+                    data.notification_type,
+                    process_day,
+                    data.crown,
+                    data.rate_multiplier)
+    billing_record = create_billing_record(data, rate, process_day)
 
-    if update_count == 0:
-        rate = get_rate(non_letter_rates,
-                        letter_rates,
-                        data.notification_type,
-                        process_day,
-                        data.crown,
-                        data.rate_multiplier)
-        billing_record = create_billing_record(data, rate, process_day)
-        db.session.add(billing_record)
-        inserted_records += 1
-    updated_records += update_count
+    table = FactBilling.__table__
+    '''
+       This uses the Postgres upsert to avoid race conditions when two threads try to insert
+       at the same row. The excluded object refers to values that we tried to insert but were
+       rejected.
+       http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
+    '''
+    stmt = insert(table).values(
+        bst_date=billing_record.bst_date,
+        template_id=billing_record.template_id,
+        service_id=billing_record.service_id,
+        provider=billing_record.provider,
+        rate_multiplier=billing_record.rate_multiplier,
+        notification_type=billing_record.notification_type,
+        international=billing_record.international,
+        billable_units=billing_record.billable_units,
+        notifications_sent=billing_record.notifications_sent,
+        rate=billing_record.rate
+    )
+
+    stmt = stmt.on_conflict_do_update(
+        index_elements=[table.c.bst_date,
+                        table.c.template_id,
+                        table.c.service_id,
+                        table.c.provider,
+                        table.c.rate_multiplier,
+                        table.c.notification_type,
+                        table.c.international],
+        set_={"notifications_sent": stmt.excluded.notifications_sent,
+              "billable_units": stmt.excluded.billable_units
+              }
+    )
+    db.session.connection().execute(stmt)
     db.session.commit()
 
 
