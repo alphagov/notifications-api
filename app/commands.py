@@ -581,13 +581,12 @@ def compare_ft_billing_to_monthly_billing(year, service_id=None):
     This command checks the results of monthly_billing to ft_billing for the given year.
     If service id is not included all services are compared for the given year.
     """
-
-    def compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response):
+    def compare_monthly_billing_to_ft_billing(ft_billing_resp, monthly_billing_resp):
         # Remove the rows with 0 billing_units and rate, ft_billing doesn't populate those rows.
-        mo_json = json.loads(monthly_billing_response.get_data(as_text=True))
+        mo_json = json.loads(monthly_billing_resp.get_data(as_text=True))
         rm_zero_rows = [x for x in mo_json if x['billing_units'] != 0 and x['rate'] != 0]
         try:
-            assert rm_zero_rows == json.loads(ft_billing_response.get_data(as_text=True))
+            assert rm_zero_rows == json.loads(ft_billing_resp.get_data(as_text=True))
         except AssertionError:
             print("Comparison failed for service: {} and year: {}".format(service_id, year))
 
