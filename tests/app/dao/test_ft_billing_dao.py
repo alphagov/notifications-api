@@ -10,7 +10,7 @@ from app.dao.fact_billing_dao import (
     get_rate,
     fetch_billing_totals_for_year,
 )
-from app.models import FactBilling
+from app.models import FactBilling, Notification
 from app.utils import convert_utc_to_bst
 from tests.app.db import (
     create_ft_billing,
@@ -185,6 +185,19 @@ def test_fetch_billing_data_for_day_returns_empty_list(notify_db_session):
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today)
     assert results == []
+
+
+def test_fetch_billing_data_for_day_uses_notification_history(notify_db_session):
+    service = create_service()
+    sms_template = create_template(service=service, template_type='sms')
+    create_notification(template=sms_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=8))
+    create_notification(template=sms_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=8))
+
+    Notification.query.delete()
+    db.session.commit()
+    results = fetch_billing_data_for_day(process_day=datetime.utcnow() - timedelta(days=8), service_id=service.id)
+    assert len(results) == 1
+    assert results[0].notifications_sent == 2
 
 
 def test_fetch_billing_data_for_day_returns_list_for_given_service(notify_db_session):
