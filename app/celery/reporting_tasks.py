@@ -17,7 +17,9 @@ def create_nightly_billing(day_start=None):
     # 3 days of data counting back from day_start is consolidated
     if day_start is None:
         day_start = datetime.today() - timedelta(days=1)
-
+    else:
+        # When calling the task its a string in the format of "YYYY-MM-DD"
+        day_start = datetime.strptime(day_start, "%Y-%m-%d")
     for i in range(0, 3):
         process_day = day_start - timedelta(days=i)
 
