@@ -27,8 +27,8 @@ def fetch_billing_totals_for_year(service_id, year):
     year_start_date, year_end_date = get_financial_year(year)
     """
       Billing for email: only record the total number of emails.
-      Billing for letters: The billing units is used to fetch the correct rate for the sheet count of the letter. 
-            Total cost is notifications_sent * rate.
+      Billing for letters: The billing units is used to fetch the correct rate for the sheet count of the letter.
+      Total cost is notifications_sent * rate.
       Rate multiplier does not apply to email or letters.
     """
     email_and_letters = db.session.query(
