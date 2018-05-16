@@ -116,11 +116,11 @@ def get_monthly_billing_by_notification_type(service_id, billing_month, notifica
 
 @statsd(namespace="dao")
 def get_billing_data_for_financial_year(service_id, year, notification_types=[SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]):
-    # Update totals to the latest so we include data for today
     now = convert_utc_to_bst(datetime.utcnow())
-    create_or_update_monthly_billing(service_id=service_id, billing_month=now)
-
     start_date, end_date = get_financial_year(year)
+    if start_date <= now <= end_date:
+        # Update totals to the latest so we include data for today
+        create_or_update_monthly_billing(service_id=service_id, billing_month=now)
 
     results = get_yearly_billing_data_for_date_range(
         service_id, start_date, end_date, notification_types
