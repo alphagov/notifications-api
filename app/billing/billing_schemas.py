@@ -16,12 +16,12 @@ create_or_update_free_sms_fragment_limit_schema = {
 def serialize_ft_billing_remove_emails(data):
     results = []
     billed_notifications = [x for x in data if x.notification_type != 'email']
-    for notifications in billed_notifications:
+    for notification in billed_notifications:
         json_result = {
-            "month": (datetime.strftime(notifications.month, "%B")),
-            "notification_type": notifications.notification_type,
-            "billing_units": int(notifications.billable_units),
-            "rate": float(notifications.rate),
+            "month": (datetime.strftime(notification.month, "%B")),
+            "notification_type": notification.notification_type,
+            "billing_units": notification.billable_units,
+            "rate": float(notification.rate),
         }
         results.append(json_result)
     return results

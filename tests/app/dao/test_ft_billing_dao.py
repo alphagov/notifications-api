@@ -266,14 +266,12 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert str(results[0].month) == "2018-06-01"
     assert results[0].notifications_sent == 30
     assert results[0].billable_units == Decimal('60')
-    assert results[0].service_id == service.id
     assert results[0].rate == Decimal('0.162')
     assert results[0].notification_type == 'sms'
 
     assert str(results[1].month) == "2018-07-01"
     assert results[1].notifications_sent == 31
     assert results[1].billable_units == Decimal('31')
-    assert results[1].service_id == service.id
     assert results[1].rate == Decimal('0.158')
     assert results[1].notification_type == 'sms'
 
@@ -330,19 +328,16 @@ def test_fetch_billing_totals_for_year(notify_db_session):
 
     assert len(results) == 3
     assert results[0].notification_type == 'email'
-    assert results[0].service_id == service.id
     assert results[0].notifications_sent == 365
     assert results[0].billable_units == 365
     assert results[0].rate == Decimal('0')
 
     assert results[1].notification_type == 'letter'
-    assert results[1].service_id == service.id
     assert results[1].notifications_sent == 365
     assert results[1].billable_units == 365
     assert results[1].rate == Decimal('0.33')
 
     assert results[2].notification_type == 'sms'
-    assert results[2].service_id == service.id
     assert results[2].notifications_sent == 365
     assert results[2].billable_units == 365
     assert results[2].rate == Decimal('0.162')
