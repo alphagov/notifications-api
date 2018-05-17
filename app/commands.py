@@ -465,7 +465,7 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         coalesce(n.rate_multiplier,1) as rate_multiplier,
                         s.crown,
                         coalesce((select rates.rate from rates
-                        where n.notification_type = rates.notification_type and n.sent_at > rates.valid_from
+                        where n.notification_type = rates.notification_type and n.created_at > rates.valid_from
                         order by rates.valid_from desc limit 1), 0) as sms_rate,
                         coalesce((select l.rate from letter_rates l where n.billable_units = l.sheet_count
                         and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
