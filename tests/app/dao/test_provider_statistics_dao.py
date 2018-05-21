@@ -4,7 +4,10 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
-from app.models import NotificationHistory, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, NOTIFICATION_STATUS_TYPES
+from app.models import (
+    NotificationHistory, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
+    NOTIFICATION_STATUS_TYPES_BILLABLE
+)
 from app.dao.provider_statistics_dao import get_fragment_count
 
 
@@ -24,10 +27,10 @@ def test_get_fragment_count_separates_sms_and_email(notify_db, sample_template, 
 
 
 def test_get_fragment_count_filters_on_status(notify_db, sample_template):
-    for status in NOTIFICATION_STATUS_TYPES:
+    for status in NOTIFICATION_STATUS_TYPES_BILLABLE:
         noti_hist(notify_db, sample_template, status=status)
-    # sending, sent, delivered, failed, technical-failure, temporary-failure, permanent-failure
-    assert get_fragment_count(sample_template.service_id)['sms_count'] == 7
+    # sending, sent, delivered, failed, temporary-failure, permanent-failure
+    assert get_fragment_count(sample_template.service_id)['sms_count'] == 6
 
 
 def test_get_fragment_count_filters_on_service_id(notify_db, sample_template, service_factory):

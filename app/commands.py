@@ -446,6 +446,8 @@ def migrate_data_to_ft_billing(start_date, end_date):
                     left join services s on s.id = n.service_id
                     where n.notification_status!='technical-failure'
                         and n.key_type!='test'
+                        and n.notification_status in
+                        ('sending', 'sent', 'delivered', 'temporary-failure', 'permanent-failure', 'failed')
                         and n.notification_status!='created'
                         and n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
                         at time zone 'UTC'
@@ -462,8 +464,8 @@ def migrate_data_to_ft_billing(start_date, end_date):
 
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
-        current_app.logger.info('ft_billing: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
-                                                                              result.rowcount))
+        current_app.logger.info('ft_billing: --- Completed took {}ms. Migrated {} rows for {}'.format(
+            datetime.now() - start_time, result.rowcount, process_date))
 
         process_date += timedelta(days=1)
 

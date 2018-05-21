@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func, case, desc, Date
+from sqlalchemy import func, case, desc, Date, Integer
 
 from app import db
 from app.dao.date_util import get_financial_year
@@ -9,14 +9,13 @@ from app.models import (
     FactBilling,
     Notification,
     Service,
-    NOTIFICATION_CREATED,
-    NOTIFICATION_TECHNICAL_FAILURE,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     SMS_TYPE,
     Rate,
     LetterRate,
-    NotificationHistory
+    NotificationHistory,
+    NOTIFICATION_STATUS_TYPES_BILLABLE
 )
 from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
@@ -104,14 +103,13 @@ def fetch_billing_data_for_day(process_day, service_id=None):
                               (table.notification_type == 'email', 'ses')
                           ]),
                       ).label('sent_by'),
-        func.coalesce(table.rate_multiplier, 1).label('rate_multiplier'),
+        func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
         func.coalesce(table.international, False).label('international'),
         func.sum(table.billable_units).label('billable_units'),
         func.count().label('notifications_sent'),
         Service.crown,
     ).filter(
-        table.status != NOTIFICATION_CREATED,  # at created status, provider information is not available
-        table.status != NOTIFICATION_TECHNICAL_FAILURE,
+        table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
         table.key_type != KEY_TYPE_TEST,
         table.created_at >= start_date,
         table.created_at < end_date
