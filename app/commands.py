@@ -444,11 +444,9 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         1 as notifications_sent
                     from public.notification_history n
                     left join services s on s.id = n.service_id
-                    where n.notification_status!='technical-failure'
-                        and n.key_type!='test'
+                    where n.key_type!='test'
                         and n.notification_status in
                         ('sending', 'sent', 'delivered', 'temporary-failure', 'permanent-failure', 'failed')
-                        and n.notification_status!='created'
                         and n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
                         at time zone 'UTC'
                         and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
