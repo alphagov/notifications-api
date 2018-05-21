@@ -401,43 +401,13 @@ def setup_commands(application):
 @statsd(namespace="tasks")
 def migrate_data_to_ft_billing(start_date, end_date):
 
-    print('Billing migration from date {} to {}'.format(start_date, end_date))
+    current_app.logger.info('Billing migration from date {} to {}'.format(start_date, end_date))
 
     process_date = start_date
     total_updated = 0
 
     while process_date < end_date:
-
-        sql = \
-            """
-            select count(*) from notification_history where notification_status!='technical-failure'
-            and key_type!='test'
-            and notification_status!='created'
-            and created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            """
-        num_notifications = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-        sql = \
-            """
-            select count(*) from
-            (select distinct service_id, template_id, rate_multiplier,
-            sent_by from notification_history
-            where notification_status!='technical-failure'
-            and key_type!='test'
-            and notification_status!='created'
-            and created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            ) as distinct_records
-            """
-
-        predicted_records = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-
-        start_time = datetime.now()
-        print('ft_billing: Migrating date: {}, notifications: {}, expecting {} ft_billing rows'
-              .format(process_date.date(), num_notifications, predicted_records))
-
+        start_time = datetime.utcnow()
         # migrate data into ft_billing, ignore if records already exist - do not do upsert
         sql = \
             """
@@ -449,7 +419,7 @@ def migrate_data_to_ft_billing(start_date, end_date):
                 from (
                     select
                         n.id,
-                        da.bst_date,
+                        (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
                         coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
                         coalesce(n.service_id, '00000000-0000-0000-0000-000000000000') as service_id,
                         n.notification_type,
@@ -465,21 +435,18 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         coalesce(n.rate_multiplier,1) as rate_multiplier,
                         s.crown,
                         coalesce((select rates.rate from rates
-                        where n.notification_type = rates.notification_type and n.sent_at > rates.valid_from
+                        where n.notification_type = rates.notification_type and n.created_at > rates.valid_from
                         order by rates.valid_from desc limit 1), 0) as sms_rate,
-                        coalesce((select l.rate from letter_rates l where n.rate_multiplier = l.sheet_count
+                        coalesce((select l.rate from letter_rates l where n.billable_units = l.sheet_count
                         and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
                         coalesce(n.international, false) as international,
                         n.billable_units,
                         1 as notifications_sent
                     from public.notification_history n
-                    left join templates t on t.id = n.template_id
-                    left join dm_datetime da on n.created_at>= da.utc_daytime_start
-                        and n.created_at < da.utc_daytime_end
                     left join services s on s.id = n.service_id
-                    where n.notification_status!='technical-failure'
-                        and n.key_type!='test'
-                        and n.notification_status!='created'
+                    where n.key_type!='test'
+                        and n.notification_status in
+                        ('sending', 'sent', 'delivered', 'temporary-failure', 'permanent-failure', 'failed')
                         and n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
                         at time zone 'UTC'
                         and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
@@ -495,16 +462,13 @@ def migrate_data_to_ft_billing(start_date, end_date):
 
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
-        print('ft_billing: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
-                                                                              result.rowcount))
-        if predicted_records != result.rowcount:
-            print('          : ^^^ Result mismatch by {} rows ^^^'
-                  .format(predicted_records - result.rowcount))
+        current_app.logger.info('ft_billing: --- Completed took {}ms. Migrated {} rows for {}'.format(
+            datetime.now() - start_time, result.rowcount, process_date))
 
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount
-    print('Total inserted/updated records = {}'.format(total_updated))
+    current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
 
 
 @notify_command()
