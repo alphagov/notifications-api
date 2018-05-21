@@ -222,13 +222,7 @@ def update_fact_billing(data, process_day):
     )
 
     stmt = stmt.on_conflict_do_update(
-        index_elements=[table.c.bst_date,
-                        table.c.template_id,
-                        table.c.service_id,
-                        table.c.provider,
-                        table.c.rate_multiplier,
-                        table.c.notification_type,
-                        table.c.international],
+        constraint="ft_billing_pkey",
         set_={"notifications_sent": stmt.excluded.notifications_sent,
               "billable_units": stmt.excluded.billable_units
               }
