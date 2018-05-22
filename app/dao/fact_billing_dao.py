@@ -149,6 +149,11 @@ def fetch_billing_data_for_day(process_day, service_id=None):
                       ).label('sent_by'),
         func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
         func.coalesce(table.international, False).label('international'),
+        case(
+            [
+                (table.notification_type == 'letter', table.billable_units),
+            ]
+        ).label('letter_page_count'),
         func.sum(table.billable_units).label('billable_units'),
         func.count().label('notifications_sent'),
         Service.crown,
@@ -162,6 +167,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
         table.service_id,
         table.notification_type,
         'sent_by',
+        'letter_page_count',
         table.rate_multiplier,
         table.international,
         Service.crown
@@ -182,9 +188,9 @@ def get_rates_for_billing():
     return non_letter_rates, letter_rates
 
 
-def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
+def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None):
     if notification_type == LETTER_TYPE:
-        return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and rate_multiplier == r[2])
+        return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and letter_page_count == r[2])
     elif notification_type == SMS_TYPE:
         return next(r[2] for r in non_letter_rates if notification_type == r[0] and date > r[1])
     else:
@@ -198,9 +204,8 @@ def update_fact_billing(data, process_day):
                     data.notification_type,
                     process_day,
                     data.crown,
-                    data.rate_multiplier)
+                    data.letter_page_count)
     billing_record = create_billing_record(data, rate, process_day)
-
     table = FactBilling.__table__
     '''
        This uses the Postgres upsert to avoid race conditions when two threads try to insert
