@@ -1774,6 +1774,8 @@ class FactBilling(db.Model):
     rate = db.Column(db.Numeric(), nullable=True)
     billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class DateTimeDimension(db.Model):
