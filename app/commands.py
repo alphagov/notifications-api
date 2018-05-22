@@ -412,10 +412,10 @@ def migrate_data_to_ft_billing(start_date, end_date):
         sql = \
             """
             insert into ft_billing (bst_date, template_id, service_id, notification_type, provider, rate_multiplier,
-                international, billable_units, notifications_sent, rate)
+                international, billable_units, notifications_sent, rate, created_at)
                 select bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
                     sum(billable_units) as billable_units, sum(notifications_sent) as notification_sent,
-                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate
+                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate, created_at
                 from (
                     select
                         n.id,
@@ -441,7 +441,8 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
                         coalesce(n.international, false) as international,
                         n.billable_units,
-                        1 as notifications_sent
+                        1 as notifications_sent,
+                        now() as created_at
                     from public.notification_history n
                     left join services s on s.id = n.service_id
                     where n.key_type!='test'
@@ -452,12 +453,13 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
                     ) as individual_record
                 group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
-                    sms_rate, letter_rate
+                    sms_rate, letter_rate, created_at
                 order by bst_date
             on conflict on constraint ft_billing_pkey do update set
              billable_units = excluded.billable_units,
              notifications_sent = excluded.notifications_sent,
-             rate = excluded.rate
+             rate = excluded.rate,
+             updated_at = now()
             """
 
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
