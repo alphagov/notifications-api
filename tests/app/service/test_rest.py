@@ -1678,26 +1678,6 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
     }
 
 
-@pytest.mark.parametrize('query_string, expected_status, expected_json', [
-    ('', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
-    ('?year=2000', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
-    ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
-])
-def test_get_service_provider_aggregate_statistics(
-        client,
-        sample_service,
-        query_string,
-        expected_status,
-        expected_json,
-):
-    response = client.get(
-        '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == expected_status
-    assert json.loads(response.get_data(as_text=True)) == expected_json
-
-
 @freeze_time('2017-11-11 02:00')
 def test_get_template_usage_by_month_returns_correct_data(
         notify_db,

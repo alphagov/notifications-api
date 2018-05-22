@@ -864,20 +864,6 @@ NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
 notification_types = db.Enum(*NOTIFICATION_TYPE, name='notification_type')
 
 
-class ProviderStatistics(db.Model):
-    __tablename__ = 'provider_statistics'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    day = db.Column(db.Date, nullable=False)
-    provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
-    provider = db.relationship(
-        'ProviderDetails', backref=db.backref('provider_stats', lazy='dynamic')
-    )
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('service_provider_stats', lazy='dynamic'))
-    unit_count = db.Column(db.BigInteger, nullable=False)
-
-
 class ProviderRates(db.Model):
     __tablename__ = 'provider_rates'
 

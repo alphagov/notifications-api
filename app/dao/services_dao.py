@@ -23,7 +23,6 @@ from app.models import (
     Notification,
     NotificationHistory,
     Permission,
-    ProviderStatistics,
     Service,
     ServicePermission,
     ServiceSmsSender,
@@ -223,7 +222,6 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(ServiceSmsSender.query.filter_by(service=service))
-    _delete_commit(ProviderStatistics.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))
     _delete_commit(NotificationHistory.query.filter_by(service=service))
