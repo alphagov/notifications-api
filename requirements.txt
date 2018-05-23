@@ -1,5 +1,5 @@
 cffi==1.11.5
-celery==3.1.25 # pyup: <4
+celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
 Flask-Marshmallow==0.8.0
@@ -12,10 +12,10 @@ gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==2.6.0
 marshmallow-sqlalchemy==0.13.2
-marshmallow==2.15.1
+marshmallow==2.15.3
 psycopg2-binary==2.7.4
 PyJWT==1.6.1
-SQLAlchemy==1.2.6
+SQLAlchemy==1.2.7
 
 notifications-python-client==4.8.2
 

@@ -1678,26 +1678,6 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
     }
 
 
-@pytest.mark.parametrize('query_string, expected_status, expected_json', [
-    ('', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
-    ('?year=2000', 200, {'data': {'email_count': 0, 'sms_count': 0}}),
-    ('?year=abcd', 400, {'message': 'Year must be a number', 'result': 'error'}),
-])
-def test_get_service_provider_aggregate_statistics(
-        client,
-        sample_service,
-        query_string,
-        expected_status,
-        expected_json,
-):
-    response = client.get(
-        '/service/{}/fragment/aggregate_statistics{}'.format(sample_service.id, query_string),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == expected_status
-    assert json.loads(response.get_data(as_text=True)) == expected_json
-
-
 @freeze_time('2017-11-11 02:00')
 def test_get_template_usage_by_month_returns_correct_data(
         notify_db,
@@ -3085,3 +3065,35 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
     assert json_resp['email'] == {'failed': 1, 'requested': 2, 'delivered': 1}
     assert json_resp['letter'] == {'failed': 0, 'requested': 0, 'delivered': 0}
     assert json_resp['sms'] == {'failed': 0, 'requested': 4, 'delivered': 3}
+
+
+@pytest.mark.parametrize('today_only, stats', [
+    (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
+    (True, {'requested': 1, 'delivered': 0, 'failed': 0})
+], ids=['seven_days', 'today'])
+def test_get_service_notification_statistics(admin_request, sample_template, today_only, stats):
+    with freeze_time('2000-01-01T12:00:00'):
+        create_notification(sample_template, status='delivered')
+    with freeze_time('2000-01-02T12:00:00'):
+        create_notification(sample_template, status='created')
+        resp = admin_request.get(
+            'service.get_service_notification_statistics',
+            service_id=sample_template.service_id,
+            today_only=today_only
+        )
+
+    assert set(resp['data'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
+    assert resp['data'][SMS_TYPE] == stats
+
+
+def test_get_service_notification_statistics_with_unknown_service(admin_request):
+    resp = admin_request.get(
+        'service.get_service_notification_statistics',
+        service_id=uuid.uuid4()
+    )
+
+    assert resp['data'] == {
+        SMS_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+        EMAIL_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+        LETTER_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
+    }

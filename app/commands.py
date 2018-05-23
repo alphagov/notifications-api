@@ -7,16 +7,18 @@ from decimal import Decimal
 import click
 import flask
 from click_datetime import Datetime as click_dt
-from flask import current_app
+from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy import func
 from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption, redis_store
+from app.billing.rest import get_yearly_usage_by_month, get_yearly_usage_by_monthly_from_ft_billing
 from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
+from app.dao.date_util import get_financial_year
 from app.dao.fact_billing_dao import fetch_billing_data_for_day, update_fact_billing
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
@@ -399,43 +401,13 @@ def setup_commands(application):
 @statsd(namespace="tasks")
 def migrate_data_to_ft_billing(start_date, end_date):
 
-    print('Billing migration from date {} to {}'.format(start_date, end_date))
+    current_app.logger.info('Billing migration from date {} to {}'.format(start_date, end_date))
 
     process_date = start_date
     total_updated = 0
 
     while process_date < end_date:
-
-        sql = \
-            """
-            select count(*) from notification_history where notification_status!='technical-failure'
-            and key_type!='test'
-            and notification_status!='created'
-            and created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            """
-        num_notifications = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-        sql = \
-            """
-            select count(*) from
-            (select distinct service_id, template_id, rate_multiplier,
-            sent_by from notification_history
-            where notification_status!='technical-failure'
-            and key_type!='test'
-            and notification_status!='created'
-            and created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            ) as distinct_records
-            """
-
-        predicted_records = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-
-        start_time = datetime.now()
-        print('ft_billing: Migrating date: {}, notifications: {}, expecting {} ft_billing rows'
-              .format(process_date.date(), num_notifications, predicted_records))
-
+        start_time = datetime.utcnow()
         # migrate data into ft_billing, ignore if records already exist - do not do upsert
         sql = \
             """
@@ -447,7 +419,7 @@ def migrate_data_to_ft_billing(start_date, end_date):
                 from (
                     select
                         n.id,
-                        da.bst_date,
+                        (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
                         coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
                         coalesce(n.service_id, '00000000-0000-0000-0000-000000000000') as service_id,
                         n.notification_type,
@@ -463,21 +435,18 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         coalesce(n.rate_multiplier,1) as rate_multiplier,
                         s.crown,
                         coalesce((select rates.rate from rates
-                        where n.notification_type = rates.notification_type and n.sent_at > rates.valid_from
+                        where n.notification_type = rates.notification_type and n.created_at > rates.valid_from
                         order by rates.valid_from desc limit 1), 0) as sms_rate,
-                        coalesce((select l.rate from letter_rates l where n.rate_multiplier = l.sheet_count
+                        coalesce((select l.rate from letter_rates l where n.billable_units = l.sheet_count
                         and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
                         coalesce(n.international, false) as international,
                         n.billable_units,
                         1 as notifications_sent
                     from public.notification_history n
-                    left join templates t on t.id = n.template_id
-                    left join dm_datetime da on n.created_at>= da.utc_daytime_start
-                        and n.created_at < da.utc_daytime_end
                     left join services s on s.id = n.service_id
-                    where n.notification_status!='technical-failure'
-                        and n.key_type!='test'
-                        and n.notification_status!='created'
+                    where n.key_type!='test'
+                        and n.notification_status in
+                        ('sending', 'sent', 'delivered', 'temporary-failure', 'permanent-failure', 'failed')
                         and n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
                         at time zone 'UTC'
                         and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
@@ -493,16 +462,13 @@ def migrate_data_to_ft_billing(start_date, end_date):
 
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
-        print('ft_billing: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
-                                                                              result.rowcount))
-        if predicted_records != result.rowcount:
-            print('          : ^^^ Result mismatch by {} rows ^^^'
-                  .format(predicted_records - result.rowcount))
+        current_app.logger.info('ft_billing: --- Completed took {}ms. Migrated {} rows for {}'.format(
+            datetime.now() - start_time, result.rowcount, process_date))
 
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount
-    print('Total inserted/updated records = {}'.format(total_updated))
+    current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
 
 
 @notify_command()
@@ -549,16 +515,141 @@ def populate_redis_template_usage(service_id, day):
         )
 
 
-@notify_command(name='rebuild-ft-billing-for-month-and-service')
-@click.option('-s', '--service_id', required=True, type=click.UUID)
+@notify_command(name='rebuild-ft-billing-for-day')
+@click.option('-s', '--service_id', required=False, type=click.UUID)
 @click.option('-d', '--day', help="The date to recalculate, as YYYY-MM-DD", required=True,
               type=click_dt(format='%Y-%m-%d'))
-def rebuild_ft_billing_for_month_and_service(service_id, day):
+def rebuild_ft_billing_for_day(service_id, day):
     """
     Rebuild the data in ft_billing for the given service_id and date
     """
-    # confirm the service exists
-    dao_fetch_service_by_id(service_id)
-    transit_data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
-    for data in transit_data:
-        update_fact_billing(data, day)
+    def rebuild_ft_data(process_day, service):
+        transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
+        for data in transit_data:
+            update_fact_billing(data, process_day)
+    if service_id:
+        # confirm the service exists
+        dao_fetch_service_by_id(service_id)
+        rebuild_ft_data(day, service_id)
+    else:
+        services = get_service_ids_that_need_billing_populated(day, day)
+        for service_id in services:
+            rebuild_ft_data(day, service_id)
+
+
+@notify_command(name='compare-ft-billing-to-monthly-billing')
+@click.option('-y', '--year', required=True)
+@click.option('-s', '--service_id', required=False, type=click.UUID)
+def compare_ft_billing_to_monthly_billing(year, service_id=None):
+    """
+    This command checks the results of monthly_billing to ft_billing for the given year.
+    If service id is not included all services are compared for the given year.
+    """
+    def compare_monthly_billing_to_ft_billing(ft_billing_resp, monthly_billing_resp):
+        # Remove the rows with 0 billing_units and rate, ft_billing doesn't populate those rows.
+        mo_json = json.loads(monthly_billing_resp.get_data(as_text=True))
+        rm_zero_rows = [x for x in mo_json if x['billing_units'] != 0 and x['rate'] != 0]
+        try:
+            assert rm_zero_rows == json.loads(ft_billing_resp.get_data(as_text=True))
+        except AssertionError:
+            print("Comparison failed for service: {} and year: {}".format(service_id, year))
+
+    if not service_id:
+        start_date, end_date = get_financial_year(year=int(year))
+        services = get_service_ids_that_need_billing_populated(start_date, end_date)
+        for service_id in services:
+            with current_app.test_request_context(
+                    path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
+                monthly_billing_response = get_yearly_usage_by_month(service_id)
+            with current_app.test_request_context(
+                    path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
+                ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
+            compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
+    else:
+        with current_app.test_request_context(
+                path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
+            monthly_billing_response = get_yearly_usage_by_month(service_id)
+        with current_app.test_request_context(
+                path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
+            ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
+        compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
+
+
+@notify_command(name='migrate-data-to-ft-notification-status')
+@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@statsd(namespace="tasks")
+def migrate_data_to_ft_notification_status(start_date, end_date):
+
+    print('Notification statuses migration from date {} to {}'.format(start_date, end_date))
+
+    process_date = start_date
+    total_updated = 0
+
+    while process_date < end_date:
+        sql = \
+            """
+            select count(*) from notification_history
+            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            """
+        num_notifications = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
+
+        sql = \
+            """
+            select count(*) from
+            (select distinct template_id, service_id, job_id, notification_type, key_type, notification_status
+            from notification_history
+            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+            ) as distinct_records
+            """
+        predicted_records = db.session.execute(sql, {"start": process_date,
+                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
+
+        start_time = datetime.now()
+        print('ft_notification-status: Migrating date: {}, notifications: {}, expecting {} ft_notification_status rows'
+              .format(process_date.date(), num_notifications, predicted_records))
+
+        # migrate data into ft_notification_status and update if record already exists
+        sql = \
+            """
+            insert into ft_notification_status (bst_date, template_id, service_id, job_id, notification_type, key_type,
+                notification_status, notification_count)
+                select bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status,
+                    sum(notification_count) as notification_count
+                from (
+                    select
+                        da.bst_date,
+                        n.template_id,
+                        n.service_id,
+                        coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
+                        n.notification_type,
+                        n.key_type,
+                        n.notification_status,
+                        1 as notification_count
+                    from public.notification_history n
+                    left join dm_datetime da on n.created_at >= da.utc_daytime_start
+                        and n.created_at < da.utc_daytime_end
+                    where n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
+                            at time zone 'UTC'
+                        and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+                        ) as individual_record
+                group by bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status
+                order by bst_date
+            on conflict on constraint ft_notification_status_pkey do update set
+                notification_count = excluded.notification_count
+            """
+        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
+        db.session.commit()
+        print('ft_notification_status: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
+                                                                                          result.rowcount))
+        if predicted_records != result.rowcount:
+            print('          : ^^^ Result mismatch by {} rows ^^^'
+                  .format(predicted_records - result.rowcount))
+
+        process_date += timedelta(days=1)
+
+        total_updated += result.rowcount
+    print('Total inserted/updated records = {}'.format(total_updated))

@@ -864,20 +864,6 @@ NOTIFICATION_TYPE = [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]
 notification_types = db.Enum(*NOTIFICATION_TYPE, name='notification_type')
 
 
-class ProviderStatistics(db.Model):
-    __tablename__ = 'provider_statistics'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    day = db.Column(db.Date, nullable=False)
-    provider_id = db.Column(UUID(as_uuid=True), db.ForeignKey('provider_details.id'), index=True, nullable=False)
-    provider = db.relationship(
-        'ProviderDetails', backref=db.backref('provider_stats', lazy='dynamic')
-    )
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref=db.backref('service_provider_stats', lazy='dynamic'))
-    unit_count = db.Column(db.BigInteger, nullable=False)
-
-
 class ProviderRates(db.Model):
     __tablename__ = 'provider_rates'
 
@@ -1068,7 +1054,6 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
 ]
@@ -1784,11 +1769,13 @@ class FactBilling(db.Model):
     service_id = db.Column(UUID(as_uuid=True), nullable=False, index=True)
     notification_type = db.Column(db.Text, nullable=False, primary_key=True)
     provider = db.Column(db.Text, nullable=True, primary_key=True)
-    rate_multiplier = db.Column(db.Numeric(), nullable=True, primary_key=True)
+    rate_multiplier = db.Column(db.Integer(), nullable=True, primary_key=True)
     international = db.Column(db.Boolean, nullable=False, primary_key=False)
     rate = db.Column(db.Numeric(), nullable=True)
-    billable_units = db.Column(db.Numeric(), nullable=True)
+    billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class DateTimeDimension(db.Model):
@@ -1812,3 +1799,16 @@ class DateTimeDimension(db.Model):
 
 
 Index('ix_dm_datetime_yearmonth', DateTimeDimension.year, DateTimeDimension.month)
+
+
+class FactNotificationStatus(db.Model):
+    __tablename__ = "ft_notification_status"
+
+    bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False, )
+    job_id = db.Column(UUID(as_uuid=True), primary_key=True, index=True, nullable=False)
+    notification_type = db.Column(db.Text, primary_key=True, nullable=False)
+    key_type = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_status = db.Column(db.Text, primary_key=True, nullable=False)
+    notification_count = db.Column(db.Integer(), nullable=False)

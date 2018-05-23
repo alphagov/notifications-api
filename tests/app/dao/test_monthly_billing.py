@@ -511,3 +511,13 @@ def test_get_yearly_billing_data_for_year_includes_current_day_totals(sample_tem
     )
 
     assert billing_data[0].monthly_totals[0]['billing_units'] == 3
+
+
+@freeze_time("2017-06-16 13:00:00")
+def test_get_billing_data_for_financial_year_updated_monthly_billing_if_today_is_in_current_year(
+        sample_service,
+        mocker
+):
+    mock = mocker.patch("app.dao.monthly_billing_dao.create_or_update_monthly_billing")
+    get_billing_data_for_financial_year(sample_service.id, 2016)
+    mock.assert_not_called()

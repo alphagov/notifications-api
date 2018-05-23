@@ -65,7 +65,6 @@ from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     update_letter_contact
 )
-from app.dao.provider_statistics_dao import get_fragment_count
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
     InvalidRequest,
@@ -168,6 +167,11 @@ def get_service_by_id(service_id):
 
         data = service_schema.dump(fetched).data
     return jsonify(data=data)
+
+
+@service_blueprint.route('/<uuid:service_id>/statistics')
+def get_service_notification_statistics(service_id):
+    return jsonify(data=get_service_statistics(service_id, request.args.get('today_only') == 'True'))
 
 
 @service_blueprint.route('', methods=['POST'])
@@ -294,17 +298,6 @@ def remove_user_from_service(service_id, user_id):
     return jsonify({}), 204
 
 
-@service_blueprint.route('/<uuid:service_id>/fragment/aggregate_statistics')
-def get_service_provider_aggregate_statistics(service_id):
-    year = request.args.get('year')
-    if year is not None:
-        try:
-            year = int(year)
-        except ValueError:
-            raise InvalidRequest('Year must be a number', status_code=400)
-    return jsonify(data=get_fragment_count(service_id, year=year))
-
-
 # This is placeholder get method until more thought
 # goes into how we want to fetch and view various items in history
 # tables. This is so product owner can pass stories as done
@@ -411,12 +404,16 @@ def get_monthly_notification_stats(service_id):
 
 def get_detailed_service(service_id, today_only=False):
     service = dao_fetch_service_by_id(service_id)
+
+    service.statistics = get_service_statistics(service_id, today_only)
+    return detailed_service_schema.dump(service).data
+
+
+def get_service_statistics(service_id, today_only):
+    # today_only flag is used by the send page to work out if the service will exceed their daily usage by sending a job
     stats_fn = dao_fetch_todays_stats_for_service if today_only else dao_fetch_stats_for_service
     stats = stats_fn(service_id)
-
-    service.statistics = statistics.format_statistics(stats)
-
-    return detailed_service_schema.dump(service).data
+    return statistics.format_statistics(stats)
 
 
 def get_detailed_services(start_date, end_date, only_active=False, include_from_test_key=True):

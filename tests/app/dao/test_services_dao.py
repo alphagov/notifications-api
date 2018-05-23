@@ -37,7 +37,6 @@ from app.dao.services_dao import (
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
 from app.models import (
-    ProviderStatistics,
     VerifyCode,
     ApiKey,
     Template,
@@ -460,14 +459,12 @@ def test_delete_service_and_associated_objects(notify_db,
                                                sample_job,
                                                sample_notification,
                                                sample_invited_user,
-                                               sample_permission,
-                                               sample_provider_statistics):
+                                               sample_permission):
     assert ServicePermission.query.count() == len((
         SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE
     ))
 
     delete_service_and_all_associated_db_objects(sample_service)
-    assert ProviderStatistics.query.count() == 0
     assert VerifyCode.query.count() == 0
     assert ApiKey.query.count() == 0
     assert ApiKey.get_history_model().query.count() == 0

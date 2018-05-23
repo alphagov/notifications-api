@@ -1,4 +1,4 @@
-from datetime import (datetime, date, timedelta)
+from datetime import datetime, timedelta
 import json
 import uuid
 
@@ -22,7 +22,6 @@ from app.models import (
     NotificationHistory,
     InvitedUser,
     Permission,
-    ProviderStatistics,
     ProviderDetails,
     ProviderDetailsHistory,
     ProviderRates,
@@ -837,28 +836,6 @@ def firetext_provider():
 @pytest.fixture(scope='function')
 def mmg_provider():
     return ProviderDetails.query.filter_by(identifier='mmg').one()
-
-
-@pytest.fixture(scope='function')
-def sample_provider_statistics(notify_db,
-                               notify_db_session,
-                               sample_service,
-                               provider=None,
-                               day=None,
-                               unit_count=1):
-
-    if provider is None:
-        provider = ProviderDetails.query.filter_by(identifier='mmg').first()
-    if day is None:
-        day = date.today()
-    stats = ProviderStatistics(
-        service=sample_service,
-        provider_id=provider.id,
-        day=day,
-        unit_count=unit_count)
-    notify_db.session.add(stats)
-    notify_db.session.commit()
-    return stats
 
 
 @pytest.fixture(scope='function')

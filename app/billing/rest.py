@@ -1,24 +1,31 @@
-from datetime import datetime
 import json
+from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
+from app.billing.billing_schemas import (
+    create_or_update_free_sms_fragment_limit_schema,
+    serialize_ft_billing_remove_emails,
+    serialize_ft_billing_yearly_totals,
+)
+from app.dao.annual_billing_dao import (
+    dao_get_free_sms_fragment_limit_for_year,
+    dao_get_all_free_sms_fragment_limit,
+    dao_create_or_update_annual_billing_for_year,
+    dao_update_annual_billing_for_future_years
+)
+from app.dao.date_util import get_current_financial_year_start_year
+from app.dao.date_util import get_months_for_financial_year
+from app.dao.fact_billing_dao import fetch_monthly_billing_for_year, fetch_billing_totals_for_year
 from app.dao.monthly_billing_dao import (
     get_billing_data_for_financial_year,
     get_monthly_billing_by_notification_type
 )
-from app.dao.date_util import get_months_for_financial_year
+from app.errors import InvalidRequest
 from app.errors import register_errors
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
-from app.utils import convert_utc_to_bst
-from app.dao.annual_billing_dao import (dao_get_free_sms_fragment_limit_for_year,
-                                        dao_get_all_free_sms_fragment_limit,
-                                        dao_create_or_update_annual_billing_for_year,
-                                        dao_update_annual_billing_for_future_years)
-from app.billing.billing_schemas import create_or_update_free_sms_fragment_limit_schema
-from app.errors import InvalidRequest
 from app.schema_validation import validate
-from app.dao.date_util import get_current_financial_year_start_year
+from app.utils import convert_utc_to_bst
 
 billing_blueprint = Blueprint(
     'billing',
@@ -30,19 +37,42 @@ billing_blueprint = Blueprint(
 register_errors(billing_blueprint)
 
 
+@billing_blueprint.route('/ft-monthly-usage')
+def get_yearly_usage_by_monthly_from_ft_billing(service_id):
+    try:
+        year = int(request.args.get('year'))
+    except TypeError:
+        return jsonify(result='error', message='No valid year provided'), 400
+    results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
+    data = serialize_ft_billing_remove_emails(results)
+    return jsonify(data)
+
+
+@billing_blueprint.route('/ft-yearly-usage-summary')
+def get_yearly_billing_usage_summary_from_ft_billing(service_id):
+    try:
+        year = int(request.args.get('year'))
+    except TypeError:
+        return jsonify(result='error', message='No valid year provided'), 400
+
+    billing_data = fetch_billing_totals_for_year(service_id, year)
+    data = serialize_ft_billing_yearly_totals(billing_data)
+    return jsonify(data)
+
+
 @billing_blueprint.route('/monthly-usage')
 def get_yearly_usage_by_month(service_id):
     try:
         year = int(request.args.get('year'))
         results = []
         for month in get_months_for_financial_year(year):
-            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
-            if billing_for_month:
-                results.append(_transform_billing_for_month_sms(billing_for_month))
             letter_billing_for_month = get_monthly_billing_by_notification_type(service_id, month, LETTER_TYPE)
             if letter_billing_for_month:
                 results.extend(_transform_billing_for_month_letters(letter_billing_for_month))
-        return json.dumps(results)
+            billing_for_month = get_monthly_billing_by_notification_type(service_id, month, SMS_TYPE)
+            if billing_for_month:
+                results.append(_transform_billing_for_month_sms(billing_for_month))
+        return jsonify(results)
 
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
@@ -53,7 +83,7 @@ def get_yearly_billing_usage_summary(service_id):
     try:
         year = int(request.args.get('year'))
         billing_data = get_billing_data_for_financial_year(service_id, year)
-        notification_types = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+        notification_types = [EMAIL_TYPE, LETTER_TYPE, SMS_TYPE]
         response = [
             _get_total_billable_units_and_rate_for_notification_type(billing_data, notification_type)
             for notification_type in notification_types
@@ -85,8 +115,8 @@ def _get_total_billable_units_and_rate_for_notification_type(billing_data, noti_
     return {
         "notification_type": noti_type,
         "billing_units": total_sent,
-        "rate": rate,
-        "letter_total": letter_total
+        "rate": float(rate),
+        "letter_total": round(float(letter_total), 3)
     }
 
 
@@ -115,7 +145,7 @@ def _transform_billing_for_month_letters(billing_for_month):
             "month": month_name,
             "billing_units": (total['billing_units'] * total['rate_multiplier']),
             "notification_type": billing_for_month.notification_type,
-            "rate": total['rate']
+            "rate": float(total['rate'])
         }
         x.append(y)
     if len(billing_for_month.monthly_totals) == 0:

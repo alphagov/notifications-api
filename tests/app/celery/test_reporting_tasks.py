@@ -76,7 +76,9 @@ def test_create_nightly_billing_sms_rate_multiplier(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing(yesterday)
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
     records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == records_num
     for i, record in enumerate(records):
@@ -124,8 +126,9 @@ def test_create_nightly_billing_different_templates(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-
-    create_nightly_billing(yesterday)
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
     records = FactBilling.query.order_by('rate_multiplier').all()
 
     assert len(records) == 2
@@ -179,7 +182,9 @@ def test_create_nightly_billing_different_sent_by(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing(yesterday)
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
     records = FactBilling.query.order_by('rate_multiplier').all()
 
     assert len(records) == 2
@@ -215,8 +220,9 @@ def test_create_nightly_billing_letter(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-
-    create_nightly_billing(yesterday)
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
     records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == 1
     record = records[0]
@@ -253,7 +259,9 @@ def test_create_nightly_billing_null_sent_by_sms(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing(yesterday)
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
     records = FactBilling.query.all()
 
     assert len(records) == 1
@@ -438,7 +446,22 @@ def test_create_nightly_billing_update_when_record_exists(
 
     assert len(records) == 1
     assert records[0].bst_date == date(2018, 1, 14)
+    assert records[0].billable_units == 1
+
+    sample_notification(
+        notify_db,
+        notify_db_session,
+        created_at=datetime.now() - timedelta(days=1),
+        service=sample_service,
+        template=sample_template,
+        status='delivered',
+        sent_by=None,
+        international=False,
+        rate_multiplier=1.0,
+        billable_units=1,
+    )
 
     # run again, make sure create_nightly_billing() updates with no error
     create_nightly_billing()
     assert len(records) == 1
+    assert records[0].billable_units == 2
