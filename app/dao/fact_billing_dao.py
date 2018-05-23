@@ -229,7 +229,8 @@ def update_fact_billing(data, process_day):
     stmt = stmt.on_conflict_do_update(
         constraint="ft_billing_pkey",
         set_={"notifications_sent": stmt.excluded.notifications_sent,
-              "billable_units": stmt.excluded.billable_units
+              "billable_units": stmt.excluded.billable_units,
+              "updated_at": datetime.utcnow()
               }
     )
     db.session.connection().execute(stmt)

@@ -447,6 +447,7 @@ def test_create_nightly_billing_update_when_record_exists(
     assert len(records) == 1
     assert records[0].bst_date == date(2018, 1, 14)
     assert records[0].billable_units == 1
+    assert not records[0].updated_at
 
     sample_notification(
         notify_db,
@@ -465,3 +466,4 @@ def test_create_nightly_billing_update_when_record_exists(
     create_nightly_billing()
     assert len(records) == 1
     assert records[0].billable_units == 2
+    assert records[0].updated_at
