@@ -618,30 +618,25 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
         sql = \
             """
             insert into ft_notification_status (bst_date, template_id, service_id, job_id, notification_type, key_type,
-                notification_status, notification_count)
-                select bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status,
-                    sum(notification_count) as notification_count
-                from (
-                    select
-                        da.bst_date,
-                        n.template_id,
-                        n.service_id,
-                        coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
-                        n.notification_type,
-                        n.key_type,
-                        n.notification_status,
-                        1 as notification_count
-                    from public.notification_history n
-                    left join dm_datetime da on n.created_at >= da.utc_daytime_start
-                        and n.created_at < da.utc_daytime_end
-                    where n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
-                            at time zone 'UTC'
-                        and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-                        ) as individual_record
+                notification_status, created_at, notification_count)
+                select
+                    (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
+                    n.template_id,
+                    n.service_id,
+                    coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
+                    n.notification_type,
+                    n.key_type,
+                    n.notification_status,
+                    now() as created_at,
+                    count(*) as notification_count
+                from notification_history n
+                where n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
+                    and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
                 group by bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status
                 order by bst_date
             on conflict on constraint ft_notification_status_pkey do update set
-                notification_count = excluded.notification_count
+                notification_count = excluded.notification_count,
+                updated_at = now()
             """
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
