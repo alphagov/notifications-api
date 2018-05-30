@@ -7,6 +7,7 @@ from flask import current_app
 from notifications_utils.s3 import s3upload
 
 from app.models import KEY_TYPE_TEST
+from app.utils import convert_utc_to_bst
 from app.variables import Retention
 
 
@@ -26,7 +27,7 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
         folder_name = ''
     else:
         print_datetime = _now
-        if _now.time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
+        if convert_utc_to_bst(_now).time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
             print_datetime = _now + timedelta(days=1)
         folder_name = '{}/'.format(print_datetime.date())
     return folder_name
