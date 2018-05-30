@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from app.celery.process_ses_receipts_tasks import process_ses_results
+from app.notifications.notifications_ses_callback import remove_emails_from_complaint
 
 from tests.app.db import create_notification
 
@@ -37,6 +38,13 @@ def test_process_ses_results_in_complaint(notify_db, mocker):
     response = json.loads(ses_complaint_callback())
     process_ses_results(response=response)
     assert mocked.call_count == 0
+
+
+def test_remove_emails_from_complaint():
+    test_message = ses_complaint_callback()
+    test_json = json.loads(json.loads(test_message)['Message'])
+    remove_emails_from_complaint(test_json)
+    assert "recipient1@example.com" not in test_json
 
 
 def ses_notification_callback():

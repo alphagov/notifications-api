@@ -35,6 +35,7 @@ def process_ses_response(ses_request):
         if notification_type == 'Bounce':
             notification_type = determine_notification_bounce_type(notification_type, ses_message)
         elif notification_type == 'Complaint':
+            remove_emails_from_complaint(ses_message)
             current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
             return
 
@@ -103,6 +104,10 @@ def determine_notification_bounce_type(notification_type, ses_message):
 def remove_emails_from_bounce(bounce_dict):
     for recip in bounce_dict['bouncedRecipients']:
         recip.pop('emailAddress')
+
+
+def remove_emails_from_complaint(complaint_dict):
+    complaint_dict['complaint'].pop('complainedRecipients')
 
 
 def _check_and_queue_callback_task(notification):
