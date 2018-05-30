@@ -32,6 +32,13 @@ def test_process_ses_results_retry_called(notify_db, mocker):
     assert mocked.call_count != 0
 
 
+def test_process_ses_results_in_complaint(notify_db, mocker):
+    mocked = mocker.patch("app.dao.notifications_dao.update_notification_status_by_reference")
+    response = json.loads(ses_complaint_callback())
+    process_ses_results(response=response)
+    assert mocked.call_count == 0
+
+
 def ses_notification_callback():
     return '{\n  "Type" : "Notification",\n  "MessageId" : "ref1",' \
            '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
@@ -56,3 +63,18 @@ def ses_notification_callback():
            'dd426d95ee9390147a5624348ee.pem",' \
            '\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&S' \
            'ubscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'
+
+
+def ses_complaint_callback():
+    """
+    https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notification-contents.html#complaint-object
+    """
+    return '{\n  "Type" : "Notification",\n  "MessageId" : "ref1",' \
+           '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
+           '\n  "Message" : "{\\"notificationType\\":\\"Complaint\\",' \
+           '\\"complaint\\": {\\"userAgent\\":\\"AnyCompany Feedback Loop (V0.01)\\",' \
+           '\\"complainedRecipients\\":[{\\"emailAddress\\":\\"recipient1@example.com\\"}],' \
+           '\\"complaintFeedbackType\\":\\"abuse\\", ' \
+           '\\"arrivalDate\\":\\"2009-12-03T04:24:21.000-05:00\\", ' \
+           '\\"timestamp\\":\\"2012-05-25T14:59:38.623Z\\", ' \
+           '\\"feedbackId\\":\\"someSESID\\"}}"\n}'

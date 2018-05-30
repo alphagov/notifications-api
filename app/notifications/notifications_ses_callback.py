@@ -38,6 +38,10 @@ def process_ses_response(ses_request):
                 notification_type = ses_message['bounce']['bounceType']  # permanent or not
             else:
                 notification_type = 'Temporary'
+        if notification_type == 'Complaint':
+            current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
+            return
+
         try:
             aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
