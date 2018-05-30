@@ -12,7 +12,8 @@ from app.letters.utils import (
     get_letter_pdf,
     upload_letter_pdf,
     move_scanned_pdf_to_test_or_live_pdf_bucket,
-    ScanErrorType, move_failed_pdf)
+    ScanErrorType, move_failed_pdf, get_folder_name
+)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
 from app.variables import Retention
 
@@ -199,3 +200,22 @@ def test_move_failed_pdf_scan_failed(notify_api):
 
     assert 'FAILURE/' + filename in [o.key for o in bucket.objects.all()]
     assert filename not in [o.key for o in bucket.objects.all()]
+
+
+@pytest.mark.parametrize("freeze_date, expected_folder_name",
+                         [("2018-04-01 17:50:00", "2018-04-02/"),
+                          ("2018-07-02 16:29:00", "2018-07-02/"),
+                          ("2018-07-02 16:30:00", "2018-07-02/"),
+                          ("2018-07-02 16:31:00", "2018-07-03/"),
+                          ("2018-01-02 16:31:00", "2018-01-02/"),
+                          ("2018-01-02 17:31:00", "2018-01-03/"),
+                          ])
+def test_get_folder_name_in_british_summer_time(notify_api, freeze_date, expected_folder_name):
+    with freeze_time(freeze_date):
+        now = datetime.utcnow()
+        folder_name = get_folder_name(_now=now, is_test_or_scan_letter=False)
+    assert folder_name == expected_folder_name
+
+
+def test_get_folder_name_returns_empty_string_for_test_letter():
+    assert '' == get_folder_name(datetime.utcnow(), is_test_or_scan_letter=True)
