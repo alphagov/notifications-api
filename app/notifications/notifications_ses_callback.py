@@ -35,6 +35,8 @@ def process_ses_response(ses_request):
         if notification_type == 'Bounce':
             notification_type = determine_notification_bounce_type(notification_type, ses_message)
         elif notification_type == 'Complaint':
+            # Complaints are going to be stored in a table of it's own,
+            # this will no longer update the status of a notification as it does now.
             remove_emails_from_complaint(ses_message)
             current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
             return

@@ -1814,3 +1814,16 @@ class FactNotificationStatus(db.Model):
     notification_count = db.Column(db.Integer(), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
+class Complaint(db.Model):
+    __tablename__ = 'complaints'
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notification_history.id'),
+                                index=True, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref('complaints'))
+    ses_feedback_id = db.Column(db.Text, nullable=True)
+    complaint_type = db.Column(db.Text, nullable=True)
+    complaint_date = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
