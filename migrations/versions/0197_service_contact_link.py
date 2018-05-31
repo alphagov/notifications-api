@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0196_service_contact_link
-Revises: 0195_ft_notification_timestamps
+Revision ID: 0197_service_contact_link
+Revises: 0196_complaints_table
 Create Date: 2018-05-31 15:01:32.977620
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '0196_service_contact_link'
-down_revision = '0195_ft_notification_timestamps'
+revision = '0197_service_contact_link'
+down_revision = '0196_complaints_table'
 
 
 def upgrade():
