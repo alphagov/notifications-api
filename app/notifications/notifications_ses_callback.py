@@ -33,11 +33,14 @@ def process_ses_response(ses_request):
 
         notification_type = ses_message['notificationType']
         if notification_type == 'Bounce':
-            current_app.logger.info('SES bounce dict: {}'.format(remove_emails_from_bounce(ses_message['bounce'])))
-            if ses_message['bounce']['bounceType'] == 'Permanent':
-                notification_type = ses_message['bounce']['bounceType']  # permanent or not
-            else:
-                notification_type = 'Temporary'
+            notification_type = determine_notification_bounce_type(notification_type, ses_message)
+        elif notification_type == 'Complaint':
+            # Complaints are going to be stored in a table of it's own,
+            # this will no longer update the status of a notification as it does now.
+            remove_emails_from_complaint(ses_message)
+            current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
+            return
+
         try:
             aws_response_dict = get_aws_responses(notification_type)
         except KeyError:
@@ -91,9 +94,22 @@ def process_ses_response(ses_request):
         return error
 
 
+def determine_notification_bounce_type(notification_type, ses_message):
+    current_app.logger.info('SES bounce dict: {}'.format(remove_emails_from_bounce(ses_message['bounce'])))
+    if ses_message['bounce']['bounceType'] == 'Permanent':
+        notification_type = ses_message['bounce']['bounceType']  # permanent or not
+    else:
+        notification_type = 'Temporary'
+    return notification_type
+
+
 def remove_emails_from_bounce(bounce_dict):
     for recip in bounce_dict['bouncedRecipients']:
         recip.pop('emailAddress')
+
+
+def remove_emails_from_complaint(complaint_dict):
+    complaint_dict['complaint'].pop('complainedRecipients')
 
 
 def _check_and_queue_callback_task(notification):
