@@ -7,7 +7,7 @@ from flask import _request_ctx_stack, request, g, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
-from monotonic import monotonic
+from time import monotonic
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
