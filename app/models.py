@@ -342,6 +342,7 @@ class Service(db.Model, Versioned):
     )
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
+    contact_link = db.Column(db.String(255), nullable=True, unique=False)
 
     organisation = db.relationship(
         'Organisation',
