@@ -10,7 +10,10 @@ from app.clients.email.aws_ses import get_aws_responses
 from app.dao import (
     notifications_dao
 )
+from app.dao.complaint_dao import save_complaint
+from app.dao.notifications_dao import dao_get_notification_history_by_reference
 from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.models import Complaint
 from app.notifications.process_client_response import validate_callback_data
 from app.celery.service_callback_tasks import (
     send_delivery_status_to_service,
@@ -35,10 +38,7 @@ def process_ses_response(ses_request):
         if notification_type == 'Bounce':
             notification_type = determine_notification_bounce_type(notification_type, ses_message)
         elif notification_type == 'Complaint':
-            # Complaints are going to be stored in a table of it's own,
-            # this will no longer update the status of a notification as it does now.
-            remove_emails_from_complaint(ses_message)
-            current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
+            handle_complaint(ses_request)
             return
 
         try:
@@ -106,6 +106,29 @@ def determine_notification_bounce_type(notification_type, ses_message):
 def remove_emails_from_bounce(bounce_dict):
     for recip in bounce_dict['bouncedRecipients']:
         recip.pop('emailAddress')
+
+
+def handle_complaint(ses_request):
+    ses_message = json.loads(ses_request['Message'])
+    remove_emails_from_complaint(ses_message)
+    current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
+    # It is possible that the we get a key error, let this fail so we can investigate.
+    try:
+        reference = ses_request['MessageId']
+    except KeyError as e:
+        current_app.logger.exception("Complaint from SES failed to get reference from message", e)
+        return
+    notification = dao_get_notification_history_by_reference(reference)
+    ses_complaint = ses_message.get('complaint', None)
+
+    complaint = Complaint(
+        notification_id=notification.id,
+        service_id=notification.service_id,
+        ses_feedback_id=ses_complaint.get('feedbackId', None) if ses_complaint else None,
+        complaint_type=ses_complaint.get('complaintFeedbackType', None) if ses_complaint else None,
+        complaint_date=ses_complaint.get('timestamp', None) if ses_complaint else None
+    )
+    save_complaint(complaint)
 
 
 def remove_emails_from_complaint(complaint_dict):

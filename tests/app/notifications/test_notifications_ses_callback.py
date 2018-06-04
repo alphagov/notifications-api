@@ -5,13 +5,20 @@ from freezegun import freeze_time
 
 from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
-from app.models import Notification
-from app.notifications.notifications_ses_callback import process_ses_response, remove_emails_from_bounce
+from app.models import Notification, Complaint
+from app.notifications.notifications_ses_callback import (
+    process_ses_response, remove_emails_from_bounce,
+    handle_complaint
+)
 from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
 from app.celery.service_callback_tasks import create_encrypted_callback_data
 
 from tests.app.conftest import sample_notification as create_sample_notification
-from tests.app.db import create_service_callback_api
+from tests.app.db import (
+    create_service_callback_api, create_notification, ses_complaint_callback_malformed_message_id,
+    ses_complaint_callback_with_missing_complaint_type,
+    ses_complaint_callback
+)
 
 
 def test_ses_callback_should_update_notification_status(
@@ -190,3 +197,28 @@ def test_remove_emails_from_bounce():
     remove_emails_from_bounce(message_dict['bounce'])
 
     assert 'not-real@gmail.com' not in json.dumps(message_dict)
+
+
+def test_process_ses_results_in_complaint(sample_email_template):
+    notification = create_notification(template=sample_email_template, reference='ref1')
+    response = json.loads(ses_complaint_callback())
+    handle_complaint(response)
+    complaints = Complaint.query.all()
+    assert len(complaints) == 1
+    assert complaints[0].notification_id == notification.id
+
+
+def test_handle_complaint_does_not_raise_exception_if_reference_is_missing(notify_api):
+    response = json.loads(ses_complaint_callback_malformed_message_id())
+    handle_complaint(response)
+    assert len(Complaint.query.all()) == 0
+
+
+def test_process_ses_results_in_complaint_save_complaint_with_null_complaint_type(notify_api, sample_email_template):
+    notification = create_notification(template=sample_email_template, reference='ref1')
+    response = json.loads(ses_complaint_callback_with_missing_complaint_type())
+    handle_complaint(response)
+    complaints = Complaint.query.all()
+    assert len(complaints) == 1
+    assert complaints[0].notification_id == notification.id
+    assert not complaints[0].complaint_type
