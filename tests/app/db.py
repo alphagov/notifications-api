@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, date
 import uuid
 
@@ -399,10 +400,10 @@ def create_monthly_billing_entry(
 
 
 def create_reply_to_email(
-    service,
-    email_address,
-    is_default=True,
-    archived=False
+        service,
+        email_address,
+        is_default=True,
+        archived=False
 ):
     data = {
         'service': service,
@@ -419,11 +420,11 @@ def create_reply_to_email(
 
 
 def create_service_sms_sender(
-    service,
-    sms_sender,
-    is_default=True,
-    inbound_number_id=None,
-    archived=False
+        service,
+        sms_sender,
+        is_default=True,
+        inbound_number_id=None,
+        archived=False
 ):
     data = {
         'service_id': service.id,
@@ -441,10 +442,10 @@ def create_service_sms_sender(
 
 
 def create_letter_contact(
-    service,
-    contact_block,
-    is_default=True,
-    archived=False
+        service,
+        contact_block,
+        is_default=True,
+        archived=False
 ):
     data = {
         'service': service,
@@ -567,63 +568,61 @@ def create_ft_billing(bst_date,
 
 def create_complaint(service=None,
                      notification=None):
-
     if not service:
-        service=create_service()
+        service = create_service()
     if not notification:
         template = create_template(service=service, template_type='email')
         notification = create_notification(template=template)
 
-
     complaint = Complaint(notification_id=notification.id,
-                            service_id=service.id,
-                            ses_feedback_id=str(uuid.uuid4()),
-                            complaint_type='abuse',
-                            complaint_date=datetime.utcnow()
-                            )
+                          service_id=service.id,
+                          ses_feedback_id=str(uuid.uuid4()),
+                          complaint_type='abuse',
+                          complaint_date=datetime.utcnow()
+                          )
     db.session.add(complaint)
     db.session.commit()
     return complaint
 
 
 def ses_complaint_callback_malformed_message_id():
-    return '{\n  "Type" : "Notification",\n  "msgId" : "ref1",' \
-           '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
-           '\n  "Message" : "{\\"notificationType\\":\\"Complaint\\",' \
-           '\\"complaint\\": {\\"userAgent\\":\\"AnyCompany Feedback Loop (V0.01)\\",' \
-           '\\"complainedRecipients\\":[{\\"emailAddress\\":\\"recipient1@example.com\\"}],' \
-           '\\"arrivalDate\\":\\"2009-12-03T04:24:21.000-05:00\\", ' \
-           '\\"timestamp\\":\\"2012-05-25T14:59:38.623Z\\", ' \
-           '\\"feedbackId\\":\\"someSESID\\"}}"\n}'
-
+    return {
+        'Signature': 'bb',
+        'SignatureVersion': '1', 'MessageAttributes': {}, 'MessageId': '98c6e927-af5d-5f3b-9522-bab736f2cbde',
+        'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
+        'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
+        'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
+        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","badMessageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'SigningCertUrl': 'https://sns.pem'
+    }
 
 def ses_complaint_callback_with_missing_complaint_type():
     """
     https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notification-contents.html#complaint-object
     """
-    return '{\n  "Type" : "Notification",\n  "MessageId" : "ref1",' \
-           '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
-           '\n  "Message" : "{\\"notificationType\\":\\"Complaint\\",' \
-           '\\"complaint\\": {\\"userAgent\\":\\"AnyCompany Feedback Loop (V0.01)\\",' \
-           '\\"complainedRecipients\\":[{\\"emailAddress\\":\\"recipient1@example.com\\"}],' \
-           '\\"arrivalDate\\":\\"2009-12-03T04:24:21.000-05:00\\", ' \
-           '\\"timestamp\\":\\"2012-05-25T14:59:38.623Z\\", ' \
-           '\\"feedbackId\\":\\"someSESID\\"}}"\n}'
-
+    return {
+        'Signature': 'bb',
+        'SignatureVersion': '1', 'MessageAttributes': {}, 'MessageId': '98c6e927-af5d-5f3b-9522-bab736f2cbde',
+        'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
+        'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
+        'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
+        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'SigningCertUrl': 'https://sns.pem'
+    }
 
 def ses_complaint_callback():
     """
     https://docs.aws.amazon.com/ses/latest/DeveloperGuide/notification-contents.html#complaint-object
     """
-    return '{\n  "Type" : "Notification",\n  "MessageId" : "ref1",' \
-           '\n  "TopicArn" : "arn:aws:sns:eu-west-1:123456789012:testing",' \
-           '\n  "Message" : "{\\"notificationType\\":\\"Complaint\\",' \
-           '\\"complaint\\": {\\"userAgent\\":\\"AnyCompany Feedback Loop (V0.01)\\",' \
-           '\\"complainedRecipients\\":[{\\"emailAddress\\":\\"recipient1@example.com\\"}],' \
-           '\\"complaintFeedbackType\\":\\"abuse\\", ' \
-           '\\"arrivalDate\\":\\"2009-12-03T04:24:21.000-05:00\\", ' \
-           '\\"timestamp\\":\\"2012-05-25T14:59:38.623Z\\", ' \
-           '\\"feedbackId\\":\\"someSESID\\"}}"\n}'
+    return {
+        'Signature': 'bb',
+        'SignatureVersion': '1', 'MessageAttributes': {}, 'MessageId': '98c6e927-af5d-5f3b-9522-bab736f2cbde',
+        'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
+        'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
+        'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
+        'Message': '{"notificationType":"Complaint","complaint":{"complaintFeedbackType": "abuse", "complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'SigningCertUrl': 'https://sns.pem'
+    }
 
 
 def ses_notification_callback():

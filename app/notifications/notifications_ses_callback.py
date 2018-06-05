@@ -38,7 +38,7 @@ def process_ses_response(ses_request):
         if notification_type == 'Bounce':
             notification_type = determine_notification_bounce_type(notification_type, ses_message)
         elif notification_type == 'Complaint':
-            handle_complaint(ses_request)
+            handle_complaint(ses_message)
             return
 
         try:
@@ -108,13 +108,12 @@ def remove_emails_from_bounce(bounce_dict):
         recip.pop('emailAddress')
 
 
-def handle_complaint(ses_request):
-    ses_message = json.loads(ses_request['Message'])
+def handle_complaint(ses_message):
     remove_emails_from_complaint(ses_message)
     current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
     # It is possible that the we get a key error, let this fail so we can investigate.
     try:
-        reference = ses_request['MessageId']
+        reference = ses_message['mail']['messageId']
     except KeyError as e:
         current_app.logger.exception("Complaint from SES failed to get reference from message", e)
         return
