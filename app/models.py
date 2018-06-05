@@ -1819,6 +1819,7 @@ class FactNotificationStatus(db.Model):
 
 class Complaint(db.Model):
     __tablename__ = 'complaints'
+
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notification_history.id'),
                                 index=True, nullable=False)
@@ -1828,3 +1829,15 @@ class Complaint(db.Model):
     complaint_type = db.Column(db.Text, nullable=True)
     complaint_date = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'notification_id': str(self.notification_id),
+            'service_id': str(self.service_id),
+            'service_name': self.service.name,
+            'ses_feedback_id': str(self.ses_feedback_id),
+            'complaint_type': self.complaint_type,
+            'complaint_date': self.complaint_date.strftime(DATETIME_FORMAT) if self.complaint_date else None,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+        }

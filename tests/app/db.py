@@ -34,7 +34,8 @@ from app.models import (
     AnnualBilling,
     LetterRate,
     InvitedOrganisationUser,
-    FactBilling
+    FactBilling,
+    Complaint
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -562,6 +563,27 @@ def create_ft_billing(bst_date,
     db.session.add(data)
     db.session.commit()
     return data
+
+
+def create_complaint(service=None,
+                     notification=None):
+
+    if not service:
+        service=create_service()
+    if not notification:
+        template = create_template(service=service, template_type='email')
+        notification = create_notification(template=template)
+
+
+    complaint = Complaint(notification_id=notification.id,
+                            service_id=service.id,
+                            ses_feedback_id=str(uuid.uuid4()),
+                            complaint_type='abuse',
+                            complaint_date=datetime.utcnow()
+                            )
+    db.session.add(complaint)
+    db.session.commit()
+    return complaint
 
 
 def ses_complaint_callback_malformed_message_id():

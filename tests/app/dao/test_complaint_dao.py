@@ -22,7 +22,7 @@ def test_fetch_complaint_by_service_returns_one(sample_service, sample_email_not
     assert complaints[0] == complaint
 
 
-def test_fetch_complaint_by_service_returns_empty_list(sample_service, sample_email_notification):
+def test_fetch_complaint_by_service_returns_empty_list(sample_service):
     complaints = fetch_complaints_by_service(service_id=sample_service.id)
     assert len(complaints) == 0
 
