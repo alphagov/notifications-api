@@ -111,7 +111,6 @@ def remove_emails_from_bounce(bounce_dict):
 def handle_complaint(ses_message):
     remove_emails_from_complaint(ses_message)
     current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
-    # It is possible that the we get a key error, let this fail so we can investigate.
     try:
         reference = ses_message['mail']['messageId']
     except KeyError as e:
@@ -132,6 +131,7 @@ def handle_complaint(ses_message):
 
 def remove_emails_from_complaint(complaint_dict):
     complaint_dict['complaint'].pop('complainedRecipients')
+    complaint_dict['mail'].pop('destination')
 
 
 def _check_and_queue_callback_task(notification):

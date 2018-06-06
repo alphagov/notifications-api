@@ -1,7 +1,9 @@
 from datetime import datetime
 
+import pytest
 from flask import json
 from freezegun import freeze_time
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
@@ -201,7 +203,7 @@ def test_remove_emails_from_bounce():
 
 def test_process_ses_results_in_complaint(sample_email_template):
     notification = create_notification(template=sample_email_template, reference='ref1')
-    handle_complaint(ses_complaint_callback())
+    handle_complaint(json.loads(ses_complaint_callback()['Message']))
     complaints = Complaint.query.all()
     assert len(complaints) == 1
     assert complaints[0].notification_id == notification.id
@@ -211,6 +213,12 @@ def test_handle_complaint_does_not_raise_exception_if_reference_is_missing(notif
     response = json.loads(ses_complaint_callback_malformed_message_id()['Message'])
     handle_complaint(response)
     assert len(Complaint.query.all()) == 0
+
+
+def test_handle_complaint_does_raise_exception_if_notification_not_found(notify_api):
+    response = json.loads(ses_complaint_callback()['Message'])
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        handle_complaint(response)
 
 
 def test_process_ses_results_in_complaint_save_complaint_with_null_complaint_type(notify_api, sample_email_template):

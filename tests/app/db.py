@@ -1,4 +1,3 @@
-import json
 from datetime import datetime, date
 import uuid
 
@@ -592,9 +591,10 @@ def ses_complaint_callback_malformed_message_id():
         'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
         'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
         'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
-        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","badMessageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"recipient1@example.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","badMessageId":"ref1","destination":["recipient1@example.com"]}}',  # noqa
         'SigningCertUrl': 'https://sns.pem'
     }
+
 
 def ses_complaint_callback_with_missing_complaint_type():
     """
@@ -606,9 +606,10 @@ def ses_complaint_callback_with_missing_complaint_type():
         'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
         'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
         'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
-        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'Message': '{"notificationType":"Complaint","complaint":{"complainedRecipients":[{"emailAddress":"recipient1@example.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["recipient1@example.com"]}}',  # noqa
         'SigningCertUrl': 'https://sns.pem'
     }
+
 
 def ses_complaint_callback():
     """
@@ -620,7 +621,7 @@ def ses_complaint_callback():
         'UnsubscribeUrl': 'https://sns.eu-west-1.amazonaws.com',
         'TopicArn': 'arn:ses_notifications', 'Type': 'Notification',
         'Timestamp': '2018-06-05T14:00:15.952Z', 'Subject': None,
-        'Message': '{"notificationType":"Complaint","complaint":{"complaintFeedbackType": "abuse", "complainedRecipients":[{"emailAddress":"someone@hotmail.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["someone@hotmail.com"]}}',  # noqa
+        'Message': '{"notificationType":"Complaint","complaint":{"complaintFeedbackType": "abuse", "complainedRecipients":[{"emailAddress":"recipient1@example.com"}],"timestamp":"2018-06-05T13:59:58.000Z","feedbackId":"ses_feedback_id"},"mail":{"timestamp":"2018-06-05T14:00:15.950Z","source":"\\"Some Service\\" <someservicenotifications.service.gov.uk>","sourceArn":"arn:identity/notifications.service.gov.uk","sourceIp":"52.208.24.161","sendingAccountId":"888450439860","messageId":"ref1","destination":["recipient1@example.com"]}}',  # noqa
         'SigningCertUrl': 'https://sns.pem'
     }
 
