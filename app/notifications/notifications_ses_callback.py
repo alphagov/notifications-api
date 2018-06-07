@@ -104,15 +104,6 @@ def determine_notification_bounce_type(notification_type, ses_message):
     return notification_type
 
 
-def remove_emails_from_bounce(bounce_dict):
-    if bounce_dict.get('mail').get('headers', None):
-        bounce_dict['mail'].pop('headers')
-    if bounce_dict.get('mail').get('commonHeaders'):
-        bounce_dict['mail'].pop('commonHeaders')
-    bounce_dict['mail'].pop('destination')
-    bounce_dict['bounce'].pop('bouncedRecipients')
-
-
 def handle_complaint(ses_message):
     remove_emails_from_complaint(ses_message)
     current_app.logger.info("Complaint from SES: \n{}".format(ses_message))
@@ -134,11 +125,21 @@ def handle_complaint(ses_message):
     save_complaint(complaint)
 
 
+def remove_mail_headers(dict_to_edit):
+    if dict_to_edit['mail'].get('headers'):
+        dict_to_edit['mail'].pop('headers')
+    if dict_to_edit['mail'].get('commonHeaders'):
+        dict_to_edit['mail'].pop('commonHeaders')
+
+
+def remove_emails_from_bounce(bounce_dict):
+    remove_mail_headers(bounce_dict)
+    bounce_dict['mail'].pop('destination')
+    bounce_dict['bounce'].pop('bouncedRecipients')
+
+
 def remove_emails_from_complaint(complaint_dict):
-    if complaint_dict.get('headers', None):
-        complaint_dict.pop('headers')
-    if complaint_dict.get('commonHeaders'):
-        complaint_dict.pop('commonHeaders')
+    remove_mail_headers(complaint_dict)
     complaint_dict['complaint'].pop('complainedRecipients')
     complaint_dict['mail'].pop('destination')
 
