@@ -21,11 +21,12 @@ def get_all_complaints():
     return jsonify([x.serialize() for x in complaints]), 200
 
 
-@complaint_blueprint.route('/total-per-day', methods=['GET'])
+@complaint_blueprint.route('/count-by-date-range', methods=['GET'])
 def get_complaint_count():
     request_json = request.args.to_dict
     start_date = None
     end_date = None
+    # TODO: unit tests have yet to be written, need to test setting start and end date
     if request_json:
         validate(request_json, complaint_count_request)
         start_date = request_json.get('start_date', None)
