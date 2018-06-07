@@ -95,7 +95,8 @@ def process_ses_response(ses_request):
 
 
 def determine_notification_bounce_type(notification_type, ses_message):
-    current_app.logger.info('SES bounce dict: {}'.format(remove_emails_from_bounce(ses_message['bounce'])))
+    remove_emails_from_bounce(ses_message['bounce'])
+    current_app.logger.info('SES bounce dict: {}'.format(ses_message['bounce']))
     if ses_message['bounce']['bounceType'] == 'Permanent':
         notification_type = ses_message['bounce']['bounceType']  # permanent or not
     else:
