@@ -2,8 +2,9 @@ import json
 from datetime import datetime
 
 from app.celery.process_ses_receipts_tasks import process_ses_results
+from app.celery.research_mode_tasks import ses_hard_bounce_callback
 from app.models import Complaint
-from app.notifications.notifications_ses_callback import remove_emails_from_complaint
+from app.notifications.notifications_ses_callback import remove_emails_from_complaint, remove_emails_from_bounce
 
 from tests.app.db import (
     create_notification, ses_complaint_callback,
@@ -51,3 +52,9 @@ def test_remove_emails_from_complaint():
     test_json = json.loads(ses_complaint_callback()['Message'])
     remove_emails_from_complaint(test_json)
     assert "recipient1@example.com" not in json.dumps(test_json)
+
+
+def test_remove_email_from_bounce():
+    test_json = json.loads(ses_hard_bounce_callback(reference='ref1')['Message'])
+    remove_emails_from_bounce(test_json)
+    assert "bounce@simulator.amazonses.com" not in json.dumps(test_json)
