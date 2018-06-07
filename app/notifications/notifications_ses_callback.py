@@ -95,8 +95,8 @@ def process_ses_response(ses_request):
 
 
 def determine_notification_bounce_type(notification_type, ses_message):
-    remove_emails_from_bounce(ses_message['bounce'])
-    current_app.logger.info('SES bounce dict: {}'.format(ses_message['bounce']))
+    remove_emails_from_bounce(ses_message)
+    current_app.logger.info('SES bounce dict: {}'.format(ses_message))
     if ses_message['bounce']['bounceType'] == 'Permanent':
         notification_type = ses_message['bounce']['bounceType']  # permanent or not
     else:
@@ -105,8 +105,12 @@ def determine_notification_bounce_type(notification_type, ses_message):
 
 
 def remove_emails_from_bounce(bounce_dict):
-    for recip in bounce_dict['bouncedRecipients']:
-        recip.pop('emailAddress')
+    if bounce_dict.get('mail').get('headers', None):
+        bounce_dict['mail'].pop('headers')
+    if bounce_dict.get('mail').get('commonHeaders'):
+        bounce_dict['mail'].pop('commonHeaders')
+    bounce_dict['mail'].pop('destination')
+    bounce_dict['bounce'].pop('bouncedRecipients')
 
 
 def handle_complaint(ses_message):
@@ -131,6 +135,10 @@ def handle_complaint(ses_message):
 
 
 def remove_emails_from_complaint(complaint_dict):
+    if complaint_dict.get('headers', None):
+        complaint_dict.pop('headers')
+    if complaint_dict.get('commonHeaders'):
+        complaint_dict.pop('commonHeaders')
     complaint_dict['complaint'].pop('complainedRecipients')
     complaint_dict['mail'].pop('destination')
 

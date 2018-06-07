@@ -9,7 +9,7 @@ from app import statsd_client
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Notification, Complaint
 from app.notifications.notifications_ses_callback import (
-    process_ses_response, remove_emails_from_bounce,
+    process_ses_response,
     handle_complaint
 )
 from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
@@ -190,15 +190,6 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     assert process_ses_response(ses_hard_bounce_callback(reference='ref')) is None
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
     assert send_mock.called
-
-
-def test_remove_emails_from_bounce():
-    # an actual bouncedict example
-    message_dict = json.loads(ses_hard_bounce_callback(reference='ref')['Message'])
-
-    remove_emails_from_bounce(message_dict['bounce'])
-
-    assert 'not-real@gmail.com' not in json.dumps(message_dict)
 
 
 def test_process_ses_results_in_complaint(sample_email_template):
