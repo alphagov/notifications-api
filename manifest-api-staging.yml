@@ -2,6 +2,10 @@
 
 inherit: manifest-api-base.yml
 
+services:
+  - notify-db
+  - logit-ssl-syslog-drain
+
 routes:
   - route: notify-api-staging.cloudapps.digital
   - route: api.staging-notify.works
