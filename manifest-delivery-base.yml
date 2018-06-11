@@ -3,8 +3,11 @@
 buildpack: python_buildpack
 health-check-type: none
 no-route: true
+
 services:
   - notify-db
+  - logit-ssl-syslog-drain
+
 instances: 1
 memory: 1G
 
