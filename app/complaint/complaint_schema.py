@@ -5,7 +5,7 @@ complaint_count_request = {
     "type": "object",
     "title": "Complaint count request",
     "properties": {
-        "start_date": {"type": ["string", "null"], "format": "datetime"},
-        "end_date":  {"type": ["string", "null"], "format": "datetime"},
+        "start_date": {"type": ["string", "null"], "format": "date"},
+        "end_date": {"type": ["string", "null"], "format": "date"},
     }
 }

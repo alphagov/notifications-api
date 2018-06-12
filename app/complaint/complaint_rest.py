@@ -23,19 +23,14 @@ def get_all_complaints():
 
 @complaint_blueprint.route('/count-by-date-range', methods=['GET'])
 def get_complaint_count():
-    request_json = request.args.to_dict
-    start_date = None
-    end_date = None
-    # TODO: unit tests have yet to be written, need to test setting start and end date
-    if request_json:
-        validate(request_json, complaint_count_request)
-        start_date = request_json.get('start_date', None)
-        end_date = request_json.get('end_date', None)
-    if not start_date:
-        start_date = datetime.utcnow().date()
-    if not end_date:
-        end_date = datetime.utcnow().date()
+    if request.args:
+        validate(request.args, complaint_count_request)
 
+    # If start and end date are not set, we are expecting today's stats.
+    today = str(datetime.utcnow().date())
+
+    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
+    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
     count_of_complaints = fetch_count_of_complaints(start_date=start_date, end_date=end_date)
 
     return jsonify(count_of_complaints), 200
