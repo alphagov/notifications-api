@@ -29,7 +29,7 @@ def validate(json_to_validate, schema):
             validate_email_address(instance)
         return True
 
-    @format_checker.checks('datetime', raises=ValidationError)
+    @format_checker.checks('datetime_within_next_day', raises=ValidationError)
     def validate_schema_date_with_hour(instance):
         if isinstance(instance, str):
             try:
