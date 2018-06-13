@@ -1553,20 +1553,34 @@ def test_dao_get_notifications_by_to_field_search_ignores_spaces(sample_template
     assert notification3.id in notification_ids
 
 
-def test_dao_get_notifications_by_to_field_only_searches_for_notification_type(
-    notify_db_session
+@pytest.mark.parametrize('phone_search', (
+    '077', '7-7', '+44(0)7711 111111'
+))
+@pytest.mark.parametrize('email_search', (
+    'example', 'eXaMpLe',
+))
+def test_dao_get_notifications_by_to_field_only_searches_one_notification_type(
+    notify_db_session,
+    phone_search,
+    email_search,
 ):
     service = create_service()
     sms_template = create_template(service=service)
     email_template = create_template(service=service, template_type='email')
-    sms = create_notification(template=sms_template, to_field='0771111111', normalised_to='0771111111')
+    sms = create_notification(template=sms_template, to_field='07711111111', normalised_to='447711111111')
     email = create_notification(
         template=email_template, to_field='077@example.com', normalised_to='077@example.com'
     )
-    results = dao_get_notifications_by_to_field(service.id, "077", notification_type='sms')
+    results = dao_get_notifications_by_to_field(service.id, phone_search, notification_type='sms')
     assert len(results) == 1
     assert results[0].id == sms.id
-    results = dao_get_notifications_by_to_field(service.id, "077", notification_type='email')
+    results = dao_get_notifications_by_to_field(service.id, phone_search)  # should assume SMS
+    assert len(results) == 1
+    assert results[0].id == sms.id
+    results = dao_get_notifications_by_to_field(service.id, '077', notification_type='email')
+    assert len(results) == 1
+    assert results[0].id == email.id
+    results = dao_get_notifications_by_to_field(service.id, email_search)  # should assume email
     assert len(results) == 1
     assert results[0].id == email.id
 
