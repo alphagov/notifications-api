@@ -1,4 +1,5 @@
 import functools
+import string
 from datetime import (
     datetime,
     timedelta,
@@ -425,7 +426,10 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term, notification_type, statuses=None):
+def dao_get_notifications_by_to_field(service_id, search_term, notification_type=None, statuses=None):
+
+    if notification_type is None:
+        notification_type = guess_notification_type(search_term)
 
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
@@ -440,6 +444,7 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
             normalised = validate_and_format_email_address(search_term)
         except InvalidEmailError:
             normalised = search_term.lower()
+
     else:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
@@ -597,3 +602,10 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
         Notification.status == NOTIFICATION_CREATED
     ).all()
     return notifications
+
+
+def guess_notification_type(search_term):
+    if set(search_term) & set(string.ascii_letters + '@'):
+        return EMAIL_TYPE
+    else:
+        return SMS_TYPE
