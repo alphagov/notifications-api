@@ -13,7 +13,7 @@ iso8601==0.1.12
 jsonschema==2.6.0
 marshmallow-sqlalchemy==0.14.0
 marshmallow==2.15.3
-psycopg2-binary==2.7.4
+psycopg2-binary==2.7.5
 PyJWT==1.6.4
 SQLAlchemy==1.2.8
 
