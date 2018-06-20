@@ -1,12 +1,14 @@
 from datetime import datetime, timedelta, date
 from tests.app.conftest import sample_notification
-from app.celery.reporting_tasks import create_nightly_billing
+from app.celery.reporting_tasks import create_nightly_billing, create_nightly_notification_status
 from app.dao.fact_billing_dao import get_rate
-from app.models import (FactBilling,
-                        Notification,
-                        LETTER_TYPE,
-                        EMAIL_TYPE,
-                        SMS_TYPE)
+from app.models import (
+    FactBilling,
+    Notification,
+    LETTER_TYPE,
+    EMAIL_TYPE,
+    SMS_TYPE, FactNotificationStatus
+)
 from decimal import Decimal
 import pytest
 from app.dao.letter_rate_dao import dao_create_letter_rate
@@ -14,6 +16,8 @@ from app.models import LetterRate, Rate
 from app import db
 from freezegun import freeze_time
 from sqlalchemy import desc
+
+from tests.app.db import create_service, create_template, create_notification
 
 
 def test_reporting_should_have_decorated_tasks_functions():
@@ -467,3 +471,46 @@ def test_create_nightly_billing_update_when_record_exists(
     assert len(records) == 1
     assert records[0].billable_units == 2
     assert records[0].updated_at
+
+
+def test_create_nightly_notification_status(notify_db_session):
+    first_service = create_service(service_name='First Service')
+    first_template = create_template(service=first_service)
+    second_service = create_service(service_name='second Service')
+    second_template = create_template(service=second_service, template_type='email')
+    third_service = create_service(service_name='third Service')
+    third_template = create_template(service=third_service, template_type='letter')
+
+    create_notification(template=first_template, status='delivered')
+    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=1))
+    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=2))
+    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=3))
+    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=4))
+
+    create_notification(template=second_template, status='temporary-failure')
+    create_notification(template=second_template, status='temporary-failure',
+                        created_at=datetime.utcnow() - timedelta(days=1))
+    create_notification(template=second_template, status='temporary-failure',
+                        created_at=datetime.utcnow() - timedelta(days=2))
+    create_notification(template=second_template, status='temporary-failure',
+                        created_at=datetime.utcnow() - timedelta(days=3))
+    create_notification(template=second_template, status='temporary-failure',
+                        created_at=datetime.utcnow() - timedelta(days=4))
+
+    create_notification(template=third_template, status='created')
+    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=1))
+    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=2))
+    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=3))
+    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=4))
+
+    assert len(FactNotificationStatus.query.all()) == 0
+
+    create_nightly_notification_status()
+    new_data = FactNotificationStatus.query.order_by(
+        FactNotificationStatus.bst_date,
+        FactNotificationStatus.notification_type
+    ).all()
+    assert len(new_data) == 9
+    assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=3), "%Y-%m-%d")
+    assert str(new_data[3].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
+    assert str(new_data[6].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
