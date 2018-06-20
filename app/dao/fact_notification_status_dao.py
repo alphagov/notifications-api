@@ -73,4 +73,3 @@ def update_fact_notification_status(data, process_day):
         )
         db.session.connection().execute(stmt)
         db.session.commit()
-

@@ -80,4 +80,3 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
                                                               ).all()
     assert len(updated_fact_data) == 1
     assert updated_fact_data[0].notification_count == 2
-
