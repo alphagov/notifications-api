@@ -589,31 +589,7 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
     total_updated = 0
 
     while process_date < end_date:
-        sql = \
-            """
-            select count(*) from notification_history
-            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            """
-        num_notifications = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-
-        sql = \
-            """
-            select count(*) from
-            (select distinct template_id, service_id, job_id, notification_type, key_type, notification_status
-            from notification_history
-            where created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-            ) as distinct_records
-            """
-        predicted_records = db.session.execute(sql, {"start": process_date,
-                                                     "end": process_date + timedelta(days=1)}).fetchall()[0][0]
-
         start_time = datetime.now()
-        print('ft_notification-status: Migrating date: {}, notifications: {}, expecting {} ft_notification_status rows'
-              .format(process_date.date(), num_notifications, predicted_records))
-
         # migrate data into ft_notification_status and update if record already exists
         sql = \
             """
@@ -642,10 +618,6 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
         db.session.commit()
         print('ft_notification_status: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
                                                                                           result.rowcount))
-        if predicted_records != result.rowcount:
-            print('          : ^^^ Result mismatch by {} rows ^^^'
-                  .format(predicted_records - result.rowcount))
-
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount
