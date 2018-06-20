@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import uuid
 import functools
 
@@ -33,7 +33,8 @@ from app.dao.services_dao import (
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_inbound_number,
     dao_fetch_monthly_historical_stats_by_template,
-    dao_fetch_monthly_historical_usage_by_template_for_service)
+    dao_fetch_monthly_historical_usage_by_template_for_service,
+    fetch_new_aggregate_stats_by_date_range_for_all_services)
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -674,7 +675,7 @@ def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_se
 
     result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
 
-    for date, status, count in (
+    for day, status, count in (
         ('2016-04', 'sending', 0),
         ('2016-04', 'delivered', 0),
         ('2016-04', 'pending', 0),
@@ -692,9 +693,9 @@ def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_se
 
         ('2017-03', 'created', 2),
     ):
-        assert result[date]['sms'][status] == count
-        assert result[date]['email'][status] == 0
-        assert result[date]['letter'][status] == 0
+        assert result[day]['sms'][status] == count
+        assert result[day]['email'][status] == 0
+        assert result[day]['letter'][status] == 0
 
     assert result.keys() == {
         '2016-04', '2016-05', '2016-06',
@@ -815,6 +816,66 @@ def test_fetch_stats_by_date_range_for_all_services(notify_db, notify_db_session
     assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
                           result_one.service.research_mode, result_one.service.active,
                           result_one.service.created_at, 'sms', 'created', 2)
+
+
+@pytest.mark.parametrize('table_name, days_ago', [
+    ('Notification', 8),
+    ('NotificationHistory', 3),
+])
+@freeze_time('2018-01-08')
+def test_fetch_new_aggregate_stats_by_date_range_for_all_services_uses_the_correct_table(
+    mocker,
+    notify_db_session,
+    table_name,
+    days_ago
+):
+    start_date = datetime.now().date() - timedelta(days=days_ago)
+    end_date = datetime.now().date()
+
+    # mock the table that should not be used, then check it is not being called
+    unused_table_mock = mocker.patch('app.dao.services_dao.{}'.format(table_name))
+    fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
+
+    unused_table_mock.assert_not_called()
+
+
+def test_fetch_new_aggregate_stats_by_date_range_for_all_services_returns_empty_list_when_no_stats(notify_db_session):
+    start_date = date(2018, 1, 1)
+    end_date = date(2018, 1, 5)
+
+    result = fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
+    assert result == []
+
+
+@freeze_time('2018-01-08')
+def test_fetch_new_aggregate_stats_by_date_range_for_all_services_groups_stats(
+    notify_db,
+    notify_db_session,
+    sample_template,
+    sample_email_template,
+    sample_letter_template,
+):
+    today = datetime.now().date()
+
+    for i in range(3):
+        create_notification(notify_db, notify_db_session, template=sample_email_template, status='permanent-failure',
+                            created_at=today)
+
+    create_notification(notify_db, notify_db_session, template=sample_email_template, status='sent', created_at=today)
+    create_notification(notify_db, notify_db_session, template=sample_template, status='sent', created_at=today)
+    create_notification(notify_db, notify_db_session, template=sample_template, status='sent', created_at=today,
+                        key_type=KEY_TYPE_TEAM)
+    create_notification(notify_db, notify_db_session, template=sample_letter_template, status='virus-scan-failed',
+                        created_at=today)
+
+    result = fetch_new_aggregate_stats_by_date_range_for_all_services(today, today)
+
+    assert len(result) == 5
+    assert result[0] == ('email', 'permanent-failure', 'normal', 3)
+    assert result[1] == ('email', 'sent', 'normal', 1)
+    assert result[2] == ('sms', 'sent', 'normal', 1)
+    assert result[3] == ('sms', 'sent', 'team', 1)
+    assert result[4] == ('letter', 'virus-scan-failed', 'normal', 1)
 
 
 @freeze_time('2001-01-01T23:59:00')
