@@ -597,7 +597,7 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
                 notification_status, created_at, notification_count)
                 select
                     (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
-                    n.template_id,
+                    coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
                     n.service_id,
                     coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
                     n.notification_type,
