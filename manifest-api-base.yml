@@ -2,8 +2,11 @@
 
 buildpack: python_buildpack
 command: scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py application
+
 services:
   - notify-db
+  - logit-ssl-syslog-drain
+
 env:
   NOTIFY_APP_NAME: public-api
   CW_APP_NAME: api
