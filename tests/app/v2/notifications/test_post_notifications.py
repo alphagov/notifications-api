@@ -839,3 +839,12 @@ def test_post_notification_without_document_upload_permission(client, notify_db,
         headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400, response.get_data(as_text=True)
+
+
+def test_post_notification_returns_400_when_get_json_throws_exception(client, sample_email_template, rmock, mocker):
+    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    response = client.post(
+        path="v2/notifications/email",
+        data="[",
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
