@@ -1253,6 +1253,24 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notif
         assert response.status_code == 200
 
 
+def test_get_all_notifications_for_service_formatted_for_csv(client, sample_template):
+    notification = create_notification(template=sample_template)
+    auth_header = create_authorization_header()
+
+    response = client.get(
+        path='/service/{}/notifications?format_for_csv=True'.format(sample_template.service_id),
+        headers=[auth_header])
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert len(resp['notifications']) == 1
+    assert resp['notifications'][0]['recipient'] == notification.to
+    assert not resp['notifications'][0]['row_number']
+    assert resp['notifications'][0]['template_name'] == sample_template.name
+    assert resp['notifications'][0]['template_type'] == notification.notification_type
+    assert resp['notifications'][0]['status'] == 'Sending'
+
+
 def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
     service_1 = create_service(service_name="1", email_from='1')
     response = client.get(

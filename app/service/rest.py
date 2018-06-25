@@ -353,8 +353,13 @@ def get_all_notifications_for_service(service_id):
     )
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
+
+    if data.get('format_for_csv'):
+        notifications = [notification.serialize_for_csv() for notification in pagination.items]
+    else:
+        notifications = notification_with_template_schema.dump(pagination.items, many=True).data
     return jsonify(
-        notifications=notification_with_template_schema.dump(pagination.items, many=True).data,
+        notifications=notifications,
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(
