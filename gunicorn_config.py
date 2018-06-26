@@ -7,6 +7,7 @@ worker_class = "eventlet"
 worker_connections = 256
 errorlog = "/home/vcap/logs/gunicorn_error.log"
 bind = "0.0.0.0:{}".format(os.getenv("PORT"))
+disable_redirect_access_to_syslog = True
 
 
 def on_starting(server):
