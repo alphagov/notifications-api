@@ -18,6 +18,7 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     expire_api_key)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
+from app.dao.notifications_dao import fetch_new_aggregate_stats_by_date_range_for_all_services
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
@@ -44,7 +45,6 @@ from app.dao.services_dao import (
     dao_suspend_service,
     dao_update_service,
     fetch_aggregate_stats_by_date_range_for_all_services,
-    fetch_new_aggregate_stats_by_date_range_for_all_services,
     fetch_stats_by_date_range_for_all_services
 )
 from app.dao.service_whitelist_dao import (

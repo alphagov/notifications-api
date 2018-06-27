@@ -453,34 +453,6 @@ def fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date, i
     return query.all()
 
 
-@statsd(namespace='dao')
-def fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date):
-    start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
-    table = NotificationHistory
-
-    if start_date >= datetime.utcnow() - timedelta(days=7):
-        table = Notification
-
-    query = db.session.query(
-        table.notification_type,
-        table.status,
-        table.key_type,
-        func.count(table.id).label('count')
-    ).filter(
-        table.created_at >= start_date,
-        table.created_at < end_date
-    ).group_by(
-        table.notification_type,
-        table.key_type,
-        table.status
-    ).order_by(
-        table.notification_type,
-    )
-
-    return query.all()
-
-
 @transactional
 @version_class(Service)
 @version_class(ApiKey)
