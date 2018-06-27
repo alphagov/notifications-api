@@ -26,7 +26,9 @@ from app.letters.utils import (
     get_reference_from_filename,
     move_scanned_pdf_to_test_or_live_pdf_bucket,
     upload_letter_pdf,
-    move_failed_pdf, ScanErrorType)
+    move_failed_pdf, ScanErrorType, move_error_pdf_to_scan_bucket,
+    get_file_names_from_error_bucket
+)
 from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
@@ -192,7 +194,9 @@ def process_virus_scan_failed(filename):
             )
         )
 
-    raise VirusScanError('notification id {} Virus scan failed: {}'.format(notification.id, filename))
+    error = VirusScanError('notification id {} Virus scan failed: {}'.format(notification.id, filename))
+    current_app.logger.exception(error)
+    raise error
 
 
 @notify_celery.task(name='process-virus-scan-error')
@@ -208,8 +212,9 @@ def process_virus_scan_error(filename):
                 updated_count
             )
         )
-
-    raise VirusScanError('notification id {} Virus scan error: {}'.format(notification.id, filename))
+    error = VirusScanError('notification id {} Virus scan error: {}'.format(notification.id, filename))
+    current_app.logger.exception(error)
+    raise error
 
 
 def update_letter_pdf_status(reference, status):
@@ -219,3 +224,29 @@ def update_letter_pdf_status(reference, status):
             'status': status,
             'updated_at': datetime.utcnow()
         })
+
+
+def replay_letters_in_error(filename=None):
+    # This method can be used to replay letters that end up in the ERROR directory.
+    # We had an incident where clamAV was not processing the virus scan.
+    if filename:
+        move_error_pdf_to_scan_bucket(filename)
+        # call task to add the filename to anti virus queue
+        current_app.logger.info("Calling scan_file for: {}".format(filename))
+        notify_celery.send_task(
+            name=TaskNames.SCAN_FILE,
+            kwargs={'filename': filename},
+            queue=QueueNames.ANTIVIRUS,
+        )
+    else:
+        error_files = get_file_names_from_error_bucket()
+        for item in error_files:
+            moved_file_name = item.key.split('/')[1]
+            current_app.logger.info("Calling scan_file for: {}".format(moved_file_name))
+            move_error_pdf_to_scan_bucket(moved_file_name)
+            # call task to add the filename to anti virus queue
+            notify_celery.send_task(
+                name=TaskNames.SCAN_FILE,
+                kwargs={'filename': moved_file_name},
+                queue=QueueNames.ANTIVIRUS,
+            )
