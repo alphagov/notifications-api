@@ -566,7 +566,8 @@ def create_ft_billing(bst_date,
 
 
 def create_complaint(service=None,
-                     notification=None):
+                     notification=None,
+                     created_at=None):
     if not service:
         service = create_service()
     if not notification:
@@ -577,7 +578,8 @@ def create_complaint(service=None,
                           service_id=service.id,
                           ses_feedback_id=str(uuid.uuid4()),
                           complaint_type='abuse',
-                          complaint_date=datetime.utcnow()
+                          complaint_date=datetime.utcnow(),
+                          created_at=created_at if created_at else datetime.now()
                           )
     db.session.add(complaint)
     db.session.commit()

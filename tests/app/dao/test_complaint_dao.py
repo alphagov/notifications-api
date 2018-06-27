@@ -1,10 +1,10 @@
 import uuid
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from app.dao.complaint_dao import save_complaint, fetch_complaints_by_service
+from app.dao.complaint_dao import save_complaint, fetch_complaints_by_service, fetch_count_of_complaints
 from app.models import Complaint
-from tests.app.db import create_service, create_template, create_notification
+from tests.app.db import create_service, create_template, create_notification, create_complaint
 
 
 def test_fetch_complaint_by_service_returns_one(sample_service, sample_email_notification):
@@ -51,7 +51,8 @@ def test_fetch_complaint_by_service_return_many(notify_db_session):
                             service_id=service_2.id,
                             ses_feedback_id=str(uuid.uuid4()),
                             complaint_type='abuse',
-                            complaint_date=datetime.utcnow()
+                            complaint_date=datetime.utcnow(),
+                            created_at=datetime.utcnow() + timedelta(minutes=1)
                             )
 
     save_complaint(complaint_1)
@@ -60,5 +61,33 @@ def test_fetch_complaint_by_service_return_many(notify_db_session):
 
     complaints = fetch_complaints_by_service(service_id=service_2.id)
     assert len(complaints) == 2
-    assert complaints[0] == complaint_2
-    assert complaints[1] == complaint_3
+    assert complaints[0] == complaint_3
+    assert complaints[1] == complaint_2
+
+
+def test_fetch_count_of_complaints(sample_email_notification):
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 6, 6, 22, 00, 00))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 6, 6, 23, 00, 00))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 6, 7, 00, 00, 00))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 6, 7, 13, 00, 00))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 6, 7, 23))
+
+    count_of_complaints = fetch_count_of_complaints(start_date=datetime(2018, 6, 7),
+                                                    end_date=datetime(2018, 6, 7))
+    assert count_of_complaints == 3
+
+
+def test_fetch_count_of_complaints_returns_zero(notify_db):
+    count_of_complaints = fetch_count_of_complaints(start_date=datetime(2018, 6, 7),
+                                                    end_date=datetime(2018, 6, 7))
+    assert count_of_complaints == 0
