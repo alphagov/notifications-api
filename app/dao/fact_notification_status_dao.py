@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app import db
 from app.models import Notification, NotificationHistory, FactNotificationStatus
-from app.utils import convert_bst_to_utc
+from app.utils import convert_bst_to_utc, get_london_midnight_in_utc, get_london_month_from_utc_column
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):
@@ -73,3 +73,41 @@ def update_fact_notification_status(data, process_day):
         )
         db.session.connection().execute(stmt)
         db.session.commit()
+
+
+def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
+    return db.session.query(
+        func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date < end_date,
+    ).group_by(
+        func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status
+    ).all()
+
+
+def fetch_notification_status_for_service_for_day(bst_day, service_id):
+    return db.session.query(
+        # return current month as a datetime so the data has the same shape as the ft_notification_status query
+        get_london_month_from_utc_column(func.current_date()),
+        Notification.notification_type,
+        Notification.status,
+        func.count()
+    ).filter(
+        Notification.created_at >= get_london_midnight_in_utc(bst_day),
+        Notification.created_at < get_london_midnight_in_utc(bst_day + timedelta(days=1)),
+        Notification.service_id == service_id
+    ).group_by(
+        Notification.template_id,
+        Notification.service_id,
+        'job_id',
+        Notification.notification_type,
+        Notification.key_type,
+        Notification.status
+    ).all()

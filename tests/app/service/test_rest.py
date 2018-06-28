@@ -1481,36 +1481,18 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     assert service['statistics'][SMS_TYPE] == stats
 
 
-@pytest.mark.parametrize(
-    'url, expected_status, expected_json', [
-        (
-            '/service/{}/notifications/monthly?year=2001',
-            200,
-            {'data': {'foo': 'bar'}},
-        ),
-        (
-            '/service/{}/notifications/monthly?year=baz',
-            400,
-            {'message': 'Year must be a number', 'result': 'error'},
-        ),
-        (
-            '/service/{}/notifications/monthly',
-            400,
-            {'message': 'Year must be a number', 'result': 'error'},
-        ),
-    ]
-)
-def test_get_monthly_notification_stats(mocker, client, sample_service, url, expected_status, expected_json):
-    mocker.patch(
-        'app.service.rest.dao_fetch_monthly_historical_stats_for_service',
-        return_value={'foo': 'bar'},
+@pytest.mark.parametrize('kwargs, expected_json', [
+    ({'year': 'baz'}, {'message': 'Year must be a number', 'result': 'error'}),
+    ({}, {'message': 'Year must be a number', 'result': 'error'}),
+])
+def test_get_monthly_notification_stats_returns_errors(admin_request, sample_service, kwargs, expected_json):
+    response = admin_request.get(
+        'service.get_monthly_notification_stats',
+        service_id=sample_service.id,
+        _expected_status=400,
+        **kwargs
     )
-    response = client.get(
-        url.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == expected_status
-    assert json.loads(response.get_data(as_text=True)) == expected_json
+    assert response == expected_json
 
 
 def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):

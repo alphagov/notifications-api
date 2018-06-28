@@ -12,11 +12,16 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao import notifications_dao
 from app.dao.dao_utils import dao_rollback
+from app.dao.date_util import get_financial_year
 from app.dao.api_key_dao import (
     save_model_api_key,
     get_model_api_keys,
     get_unsigned_secret,
     expire_api_key)
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_status_for_service_by_month,
+    fetch_notification_status_for_service_for_day
+)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
@@ -33,7 +38,6 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
-    dao_fetch_monthly_historical_stats_for_service,
     dao_fetch_monthly_historical_usage_by_template_for_service,
     dao_fetch_service_by_id,
     dao_fetch_stats_for_service,
@@ -89,7 +93,7 @@ from app.schemas import (
     notifications_filter_schema,
     detailed_service_schema
 )
-from app.utils import pagination_links
+from app.utils import pagination_links, convert_utc_to_bst
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -397,14 +401,27 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
 
 @service_blueprint.route('/<uuid:service_id>/notifications/monthly', methods=['GET'])
 def get_monthly_notification_stats(service_id):
-    service = dao_fetch_service_by_id(service_id)
+    # check service_id validity
+    dao_fetch_service_by_id(service_id)
+
     try:
-        return jsonify(data=dao_fetch_monthly_historical_stats_for_service(
-            service.id,
-            int(request.args.get('year', 'NaN'))
-        ))
+        year = int(request.args.get('year', 'NaN'))
     except ValueError:
         raise InvalidRequest('Year must be a number', status_code=400)
+
+    start_date, end_date = get_financial_year(year)
+
+    data = statistics.create_empty_monthly_notification_status_stats_dict(year)
+
+    stats = fetch_notification_status_for_service_by_month(start_date, end_date, service_id)
+    statistics.add_monthly_notification_status_stats(data, stats)
+
+    now = datetime.utcnow()
+    if end_date > now:
+        todays_deltas = fetch_notification_status_for_service_for_day(convert_utc_to_bst(now), service_id=service_id)
+        statistics.add_monthly_notification_status_stats(data, todays_deltas)
+
+    return jsonify(data=data)
 
 
 def get_detailed_service(service_id, today_only=False):
