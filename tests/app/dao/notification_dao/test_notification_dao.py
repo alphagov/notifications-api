@@ -1936,27 +1936,6 @@ def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_
     assert len(results) == 0
 
 
-@pytest.mark.parametrize('table_name, days_ago', [
-    ('Notification', 8),
-    ('NotificationHistory', 3),
-])
-@freeze_time('2018-01-08')
-def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_the_correct_table(
-    mocker,
-    notify_db_session,
-    table_name,
-    days_ago
-):
-    start_date = datetime.now().date() - timedelta(days=days_ago)
-    end_date = datetime.now().date()
-
-    # mock the table that should not be used, then check it is not being called
-    unused_table_mock = mocker.patch('app.dao.services_dao.{}'.format(table_name))
-    fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
-
-    unused_table_mock.assert_not_called()
-
-
 def test_fetch_aggregate_stats_by_date_range_for_all_services_returns_empty_list_when_no_stats(notify_db_session):
     start_date = date(2018, 1, 1)
     end_date = date(2018, 1, 5)
@@ -2003,3 +1982,17 @@ def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_bst_date(samp
 
     assert len(result) == 1
     assert result[0].status == 'sent'
+
+
+@freeze_time('2018-01-08T12:00:00')
+def test_fetch_aggregate_stats_by_date_range_for_all_services_gets_test_notifications_when_start_date_over_7_days_ago(
+    sample_template
+):
+    ten_days_ago = datetime.utcnow().date() - timedelta(days=10)
+    today = datetime.utcnow().date()
+
+    create_notification(sample_template, key_type=KEY_TYPE_TEST, created_at=datetime.utcnow())
+
+    result = fetch_aggregate_stats_by_date_range_for_all_services(ten_days_ago, today)
+
+    assert len(result) == 1
