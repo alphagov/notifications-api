@@ -1,3 +1,5 @@
+import json
+
 from flask import (
     Blueprint,
     request,
@@ -24,6 +26,8 @@ register_errors(invite)
 @invite.route('', methods=['POST'])
 def create_invited_user(service_id):
     request_json = request.get_json()
+    # request_json = request.data
+    print(request_json)
     invited_user, errors = invited_user_schema.load(request_json)
     save_invited_user(invited_user)
 
