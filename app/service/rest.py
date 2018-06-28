@@ -18,7 +18,6 @@ from app.dao.api_key_dao import (
     get_unsigned_secret,
     expire_api_key)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.notifications_dao import fetch_new_aggregate_stats_by_date_range_for_all_services
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
@@ -130,19 +129,6 @@ def get_platform_stats():
 
     result = jsonify(stats)
     return result
-
-
-@service_blueprint.route('/platform-stats-new', methods=['GET'])
-def get_new_platform_stats():
-    # If start and end date are not set, we are expecting today's stats.
-    today = str(datetime.utcnow().date())
-
-    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
-    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
-    data = fetch_new_aggregate_stats_by_date_range_for_all_services(start_date=start_date, end_date=end_date)
-    stats = statistics.format_admin_stats(data)
-
-    return jsonify(stats)
 
 
 @service_blueprint.route('', methods=['GET'])

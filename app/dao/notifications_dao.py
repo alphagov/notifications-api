@@ -612,7 +612,7 @@ def guess_notification_type(search_term):
 
 
 @statsd(namespace='dao')
-def fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date):
+def fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date):
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
     table = NotificationHistory

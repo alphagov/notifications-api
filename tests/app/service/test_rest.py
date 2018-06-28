@@ -3085,28 +3085,6 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
     assert json_resp['sms'] == {'failed': 0, 'requested': 4, 'delivered': 3}
 
 
-@freeze_time('2018-06-01')
-def test_get_new_platform_stats_uses_todays_date_if_no_start_or_end_date_is_provided(admin_request, mocker):
-    today = datetime.now().date()
-    dao_mock = mocker.patch('app.service.rest.fetch_new_aggregate_stats_by_date_range_for_all_services')
-    mocker.patch('app.service.rest.statistics.format_statistics')
-
-    admin_request.get('service.get_new_platform_stats')
-
-    dao_mock.assert_called_once_with(start_date=today, end_date=today)
-
-
-def test_get_new_platform_stats_can_filter_by_date(admin_request, mocker):
-    start_date = date(2017, 1, 1)
-    end_date = date(2018, 1, 1)
-    dao_mock = mocker.patch('app.service.rest.fetch_new_aggregate_stats_by_date_range_for_all_services')
-    mocker.patch('app.service.rest.statistics.format_statistics')
-
-    admin_request.get('service.get_new_platform_stats', start_date=start_date, end_date=end_date)
-
-    dao_mock.assert_called_once_with(start_date=start_date, end_date=end_date)
-
-
 @pytest.mark.parametrize('today_only, stats', [
     (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
     (True, {'requested': 1, 'delivered': 0, 'failed': 0})

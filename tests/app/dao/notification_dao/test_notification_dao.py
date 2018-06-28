@@ -34,7 +34,7 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references,
     dao_get_notification_history_by_reference,
     notifications_not_yet_sent,
-    fetch_new_aggregate_stats_by_date_range_for_all_services,
+    fetch_aggregate_stats_by_date_range_for_all_services,
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -1941,7 +1941,7 @@ def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_
     ('NotificationHistory', 3),
 ])
 @freeze_time('2018-01-08')
-def test_fetch_new_aggregate_stats_by_date_range_for_all_services_uses_the_correct_table(
+def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_the_correct_table(
     mocker,
     notify_db_session,
     table_name,
@@ -1952,21 +1952,21 @@ def test_fetch_new_aggregate_stats_by_date_range_for_all_services_uses_the_corre
 
     # mock the table that should not be used, then check it is not being called
     unused_table_mock = mocker.patch('app.dao.services_dao.{}'.format(table_name))
-    fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
+    fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
 
     unused_table_mock.assert_not_called()
 
 
-def test_fetch_new_aggregate_stats_by_date_range_for_all_services_returns_empty_list_when_no_stats(notify_db_session):
+def test_fetch_aggregate_stats_by_date_range_for_all_services_returns_empty_list_when_no_stats(notify_db_session):
     start_date = date(2018, 1, 1)
     end_date = date(2018, 1, 5)
 
-    result = fetch_new_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
+    result = fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
     assert result == []
 
 
 @freeze_time('2018-01-08')
-def test_fetch_new_aggregate_stats_by_date_range_for_all_services_groups_stats(
+def test_fetch_aggregate_stats_by_date_range_for_all_services_groups_stats(
     sample_template,
     sample_email_template,
     sample_letter_template,
@@ -1984,7 +1984,7 @@ def test_fetch_new_aggregate_stats_by_date_range_for_all_services_groups_stats(
     create_notification(template=sample_letter_template, status='virus-scan-failed',
                         created_at=today)
 
-    result = fetch_new_aggregate_stats_by_date_range_for_all_services(today, today)
+    result = fetch_aggregate_stats_by_date_range_for_all_services(today, today)
 
     assert len(result) == 5
     assert result[0] == ('email', 'permanent-failure', 'normal', 3)
@@ -1994,12 +1994,12 @@ def test_fetch_new_aggregate_stats_by_date_range_for_all_services_groups_stats(
     assert result[4] == ('letter', 'virus-scan-failed', 'normal', 1)
 
 
-def test_fetch_new_aggregate_stats_by_date_range_for_all_services_uses_bst_date(sample_template):
+def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_bst_date(sample_template):
     query_day = datetime(2018, 6, 5).date()
     create_notification(sample_template, status='sent', created_at=datetime(2018, 6, 4, 23, 59))
     create_notification(sample_template, status='created', created_at=datetime(2018, 6, 5, 23, 00))
 
-    result = fetch_new_aggregate_stats_by_date_range_for_all_services(query_day, query_day)
+    result = fetch_aggregate_stats_by_date_range_for_all_services(query_day, query_day)
 
     assert len(result) == 1
     assert result[0].status == 'sent'
