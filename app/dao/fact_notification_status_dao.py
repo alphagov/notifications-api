@@ -3,6 +3,8 @@ from datetime import datetime, timedelta, time
 from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql.expression import literal
+from sqlalchemy.types import DateTime
 
 from app import db
 from app.models import Notification, NotificationHistory, FactNotificationStatus
@@ -95,19 +97,15 @@ def fetch_notification_status_for_service_by_month(start_date, end_date, service
 def fetch_notification_status_for_service_for_day(bst_day, service_id):
     return db.session.query(
         # return current month as a datetime so the data has the same shape as the ft_notification_status query
-        get_london_month_from_utc_column(func.current_date()),
+        literal(bst_day.replace(day=1), type_=DateTime).label('month'),
         Notification.notification_type,
-        Notification.status,
-        func.count()
+        Notification.status.label('notification_status'),
+        func.count().label('count')
     ).filter(
         Notification.created_at >= get_london_midnight_in_utc(bst_day),
         Notification.created_at < get_london_midnight_in_utc(bst_day + timedelta(days=1)),
         Notification.service_id == service_id
     ).group_by(
-        Notification.template_id,
-        Notification.service_id,
-        'job_id',
         Notification.notification_type,
-        Notification.key_type,
         Notification.status
     ).all()

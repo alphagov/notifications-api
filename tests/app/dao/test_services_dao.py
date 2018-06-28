@@ -24,7 +24,6 @@ from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_service,
-    dao_fetch_monthly_historical_stats_for_service,
     fetch_todays_total_message_count,
     dao_fetch_todays_stats_for_all_services,
     fetch_stats_by_date_range_for_all_services,
@@ -80,7 +79,6 @@ from tests.app.conftest import (
 
 
 def test_should_have_decorated_services_dao_functions():
-    assert dao_fetch_monthly_historical_stats_for_service.__wrapped__.__name__ == 'dao_fetch_monthly_historical_stats_for_service'  # noqa
     assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
     assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
 
@@ -646,62 +644,6 @@ def test_fetch_stats_should_not_gather_notifications_older_than_7_days(notify_db
     assert 'delivered' not in stats
     assert stats['failed'] == 3
     assert stats['created'] == 1
-
-
-def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_session, sample_template):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template
-    )
-    # _before_start_of_financial_year
-    notification_history(created_at=datetime(2016, 3, 31))
-    # start_of_financial_year
-    notification_history(created_at=datetime(2016, 4, 1))
-    # start_of_summer
-    notification_history(created_at=datetime(2016, 6, 20))
-    # start_of_autumn
-    notification_history(created_at=datetime(2016, 9, 30, 23, 30, 0))  # October because BST
-    # start_of_winter
-    notification_history(created_at=datetime(2016, 12, 1), status='delivered')
-    # start_of_spring
-    notification_history(created_at=datetime(2017, 3, 11))
-    # end_of_financial_year
-    notification_history(created_at=datetime(2017, 3, 31))
-    # _after_end_of_financial_year
-    notification_history(created_at=datetime(2017, 3, 31, 23, 30))  # after because BST
-
-    result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
-
-    for day, status, count in (
-        ('2016-04', 'sending', 0),
-        ('2016-04', 'delivered', 0),
-        ('2016-04', 'pending', 0),
-        ('2016-04', 'failed', 0),
-        ('2016-04', 'technical-failure', 0),
-        ('2016-04', 'temporary-failure', 0),
-        ('2016-04', 'permanent-failure', 0),
-
-        ('2016-06', 'created', 1),
-
-        ('2016-10', 'created', 1),
-
-        ('2016-12', 'created', 0),
-        ('2016-12', 'delivered', 1),
-
-        ('2017-03', 'created', 2),
-    ):
-        assert result[day]['sms'][status] == count
-        assert result[day]['email'][status] == 0
-        assert result[day]['letter'][status] == 0
-
-    assert result.keys() == {
-        '2016-04', '2016-05', '2016-06',
-        '2016-07', '2016-08', '2016-09',
-        '2016-10', '2016-11', '2016-12',
-        '2017-01', '2017-02', '2017-03',
-    }
 
 
 def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db,

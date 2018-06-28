@@ -291,48 +291,6 @@ def _stats_for_service_query(service_id):
     )
 
 
-@statsd(namespace="dao")
-def dao_fetch_monthly_historical_stats_for_service(service_id, year):
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-
-    start_date, end_date = get_financial_year(year)
-    rows = db.session.query(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        month,
-        func.count(NotificationHistory.id).label('count')
-    ).filter(
-        NotificationHistory.service_id == service_id,
-        NotificationHistory.created_at.between(start_date, end_date)
-    ).group_by(
-        NotificationHistory.notification_type,
-        NotificationHistory.status,
-        month
-    ).order_by(
-        month
-    )
-
-    months = {
-        datetime.strftime(created_date, '%Y-%m'): {
-            template_type: dict.fromkeys(
-                NOTIFICATION_STATUS_TYPES,
-                0
-            )
-            for template_type in TEMPLATE_TYPES
-        }
-        for created_date in [
-            datetime(year, month, 1) for month in range(4, 13)
-        ] + [
-            datetime(year + 1, month, 1) for month in range(1, 4)
-        ]
-    }
-
-    for notification_type, status, created_date, count in rows:
-        months[datetime.strftime(created_date, "%Y-%m")][notification_type][status] = count
-
-    return months
-
-
 @statsd(namespace='dao')
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
     today = date.today()
