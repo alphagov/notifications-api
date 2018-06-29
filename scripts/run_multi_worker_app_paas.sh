@@ -97,6 +97,12 @@ function start_aws_logs_agent {
   echo "AWS logs agent pid: ${AWSLOGS_AGENT_PID}"
 }
 
+function start_logs_tail {
+  exec tail -n0 -f ${LOGS_DIR}/app.log.json &
+  LOGS_TAIL_PID=$!
+  echo "tail pid: ${LOGS_TAIL_PID}"
+}
+
 function run {
   while true; do
     get_celery_pids
@@ -104,6 +110,7 @@ function run {
         kill -0 ${APP_PID} 2&>/dev/null || return 1
     done
     kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
+    kill -0 ${LOGS_TAIL_PID} 2&>/dev/null || start_logs_tail
     sleep 1
   done
 }
@@ -120,5 +127,6 @@ configure_aws_logs
 start_application "$@"
 
 start_aws_logs_agent
+start_logs_tail
 
 run
