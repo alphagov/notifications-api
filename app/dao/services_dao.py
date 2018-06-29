@@ -34,9 +34,7 @@ from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
-    NOTIFICATION_STATUS_TYPES,
     SMS_TYPE,
-    TEMPLATE_TYPES,
     LETTER_TYPE,
 )
 from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc

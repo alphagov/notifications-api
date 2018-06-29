@@ -11,7 +11,7 @@ def get_months_for_financial_year(year):
             get_months_for_year(4, 13, year) +
             get_months_for_year(1, 4, year + 1)
         )
-        if month < datetime.now()
+        if convert_bst_to_utc(month) < datetime.now()
     ]
 
 

@@ -8,7 +8,7 @@ from sqlalchemy.types import DateTime
 
 from app import db
 from app.models import Notification, NotificationHistory, FactNotificationStatus
-from app.utils import convert_bst_to_utc, get_london_midnight_in_utc, get_london_month_from_utc_column
+from app.utils import convert_bst_to_utc, get_london_midnight_in_utc
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):
