@@ -33,7 +33,6 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id
 )
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
-from app.invite.rest import create_invited_user
 from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE, Notification
 from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
 from app.utils import (
@@ -641,7 +640,7 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
     #  platform_admin
     #  view_activity
     # "send_texts,send_emails,send_letters,view_activity"
-
+    from app.invite.rest import create_invited_user
     file = open(file_name)
     for email_address in file:
         data = {
