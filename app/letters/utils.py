@@ -110,6 +110,21 @@ def move_failed_pdf(source_filename, scan_error_type):
     _move_s3_object(scan_bucket, source_filename, scan_bucket, target_filename)
 
 
+def move_error_pdf_to_scan_bucket(source_filename):
+    scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    error_file = 'ERROR/' + source_filename
+
+    _move_s3_object(scan_bucket, error_file, scan_bucket, source_filename)
+
+
+def get_file_names_from_error_bucket():
+    s3 = boto3.resource('s3')
+    scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    bucket = s3.Bucket(scan_bucket)
+
+    return bucket.objects.filter(Prefix="ERROR")
+
+
 def get_letter_pdf(notification):
     is_test_letter = notification.key_type == KEY_TYPE_TEST and notification.template.is_precompiled_letter
     if is_test_letter:
