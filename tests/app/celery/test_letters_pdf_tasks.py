@@ -20,7 +20,8 @@ from app.celery.letters_pdf_tasks import (
     letter_in_created_state,
     process_virus_scan_passed,
     process_virus_scan_failed,
-    process_virus_scan_error)
+    process_virus_scan_error, replay_letters_in_error
+)
 from app.letters.utils import get_letter_pdf_filename, ScanErrorType
 from app.models import (
     KEY_TYPE_NORMAL,
@@ -363,3 +364,25 @@ def test_process_letter_task_check_virus_scan_error(sample_letter_notification, 
     assert "Virus scan error:" in str(e)
     mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.ERROR)
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
+
+
+def test_replay_letters_in_error_for_all_letters_in_error_bucket(notify_api, mocker):
+    import boto3
+    mockObject = boto3.resource('s3').Object('ERROR', 'ERROR/file_name')
+    mocker.patch("app.celery.letters_pdf_tasks.get_file_names_from_error_bucket", return_value=[mockObject])
+    mock_move = mocker.patch("app.celery.letters_pdf_tasks.move_error_pdf_to_scan_bucket")
+    mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+    replay_letters_in_error()
+    mock_move.assert_called_once_with('file_name')
+    mock_celery.assert_called_once_with(name='scan-file', kwargs={'filename': 'file_name'}, queue='antivirus-tasks')
+
+
+def test_replay_letters_in_error_for_one_file(notify_api, mocker):
+    import boto3
+    mockObject = boto3.resource('s3').Object('ERROR', 'ERROR/file_name')
+    mocker.patch("app.celery.letters_pdf_tasks.get_file_names_from_error_bucket", return_value=[mockObject])
+    mock_move = mocker.patch("app.celery.letters_pdf_tasks.move_error_pdf_to_scan_bucket")
+    mock_celery = mocker.patch("app.celery.letters_pdf_tasks.notify_celery.send_task")
+    replay_letters_in_error("file_name")
+    mock_move.assert_called_once_with('file_name')
+    mock_celery.assert_called_once_with(name='scan-file', kwargs={'filename': 'file_name'}, queue='antivirus-tasks')
