@@ -14,6 +14,37 @@ def format_statistics(statistics):
     return counts
 
 
+def format_admin_stats(statistics):
+    counts = create_stats_dict()
+
+    for row in statistics:
+        if row.key_type == 'test':
+            counts[row.notification_type]['test-key'] += row.count
+        else:
+            counts[row.notification_type]['total'] += row.count
+            if row.status in ('technical-failure', 'permanent-failure', 'temporary-failure', 'virus-scan-failed'):
+                counts[row.notification_type]['failures'][row.status] += row.count
+
+    return counts
+
+
+def create_stats_dict():
+    stats_dict = {}
+    for template in TEMPLATE_TYPES:
+        stats_dict[template] = {}
+
+        for status in ('total', 'test-key'):
+            stats_dict[template][status] = 0
+
+        stats_dict[template]['failures'] = {
+            'technical-failure': 0,
+            'permanent-failure': 0,
+            'temporary-failure': 0,
+            'virus-scan-failed': 0,
+        }
+    return stats_dict
+
+
 def format_monthly_template_notification_stats(year, rows):
     stats = {
         datetime.strftime(date, '%Y-%m'): {}

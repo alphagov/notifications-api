@@ -113,6 +113,7 @@ def register_blueprint(application):
     from app.organisation.rest import organisation_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
     from app.complaint.complaint_rest import complaint_blueprint
+    from app.platform_stats.rest import platform_stats_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
@@ -191,6 +192,9 @@ def register_blueprint(application):
 
     complaint_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(complaint_blueprint)
+
+    platform_stats_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(platform_stats_blueprint, url_prefix='/platform-stats')
 
 
 def register_v2_blueprints(application):

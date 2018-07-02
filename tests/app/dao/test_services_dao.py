@@ -674,7 +674,7 @@ def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_se
 
     result = dao_fetch_monthly_historical_stats_for_service(sample_template.service_id, 2016)
 
-    for date, status, count in (
+    for day, status, count in (
         ('2016-04', 'sending', 0),
         ('2016-04', 'delivered', 0),
         ('2016-04', 'pending', 0),
@@ -692,9 +692,9 @@ def test_fetch_monthly_historical_stats_separates_months(notify_db, notify_db_se
 
         ('2017-03', 'created', 2),
     ):
-        assert result[date]['sms'][status] == count
-        assert result[date]['email'][status] == 0
-        assert result[date]['letter'][status] == 0
+        assert result[day]['sms'][status] == count
+        assert result[day]['email'][status] == 0
+        assert result[day]['letter'][status] == 0
 
     assert result.keys() == {
         '2016-04', '2016-05', '2016-06',

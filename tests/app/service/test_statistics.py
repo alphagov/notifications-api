@@ -3,11 +3,14 @@ import collections
 import pytest
 
 from app.service.statistics import (
+    format_admin_stats,
     format_statistics,
+    create_stats_dict,
     create_zeroed_stats_dicts,
 )
 
 StatsRow = collections.namedtuple('row', ('notification_type', 'status', 'count'))
+NewStatsRow = collections.namedtuple('row', ('notification_type', 'status', 'key_type', 'count'))
 
 
 # email_counts and sms_counts are 3-tuple of requested, delivered, failed
@@ -65,5 +68,64 @@ def test_create_zeroed_stats_dicts():
     }
 
 
-def _stats(requested, delivered, failed):
-    return {'requested': requested, 'delivered': delivered, 'failed': failed}
+def test_create_stats_dict():
+    assert create_stats_dict() == {
+        'sms': {'total': 0,
+                'test-key': 0,
+                'failures': {'technical-failure': 0,
+                             'permanent-failure': 0,
+                             'temporary-failure': 0,
+                             'virus-scan-failed': 0}},
+        'email': {'total': 0,
+                  'test-key': 0,
+                  'failures': {'technical-failure': 0,
+                               'permanent-failure': 0,
+                               'temporary-failure': 0,
+                               'virus-scan-failed': 0}},
+        'letter': {'total': 0,
+                   'test-key': 0,
+                   'failures': {'technical-failure': 0,
+                                'permanent-failure': 0,
+                                'temporary-failure': 0,
+                                'virus-scan-failed': 0}}
+    }
+
+
+def test_format_admin_stats_only_includes_test_key_notifications_in_test_key_section():
+    rows = [
+        NewStatsRow('email', 'technical-failure', 'test', 3),
+        NewStatsRow('sms', 'permanent-failure', 'test', 4),
+        NewStatsRow('letter', 'virus-scan-failed', 'test', 5),
+    ]
+    stats_dict = format_admin_stats(rows)
+
+    assert stats_dict['email']['total'] == 0
+    assert stats_dict['email']['failures']['technical-failure'] == 0
+    assert stats_dict['email']['test-key'] == 3
+
+    assert stats_dict['sms']['total'] == 0
+    assert stats_dict['sms']['failures']['permanent-failure'] == 0
+    assert stats_dict['sms']['test-key'] == 4
+
+    assert stats_dict['letter']['total'] == 0
+    assert stats_dict['letter']['failures']['virus-scan-failed'] == 0
+    assert stats_dict['letter']['test-key'] == 5
+
+
+def test_format_admin_stats_counts_non_test_key_notifications_correctly():
+    rows = [
+        NewStatsRow('email', 'technical-failure', 'normal', 1),
+        NewStatsRow('email', 'created', 'team', 3),
+        NewStatsRow('sms', 'temporary-failure', 'normal', 6),
+        NewStatsRow('sms', 'sent', 'normal', 2),
+        NewStatsRow('letter', 'pending-virus-check', 'normal', 1),
+    ]
+    stats_dict = format_admin_stats(rows)
+
+    assert stats_dict['email']['total'] == 4
+    assert stats_dict['email']['failures']['technical-failure'] == 1
+
+    assert stats_dict['sms']['total'] == 8
+    assert stats_dict['sms']['failures']['permanent-failure'] == 0
+
+    assert stats_dict['letter']['total'] == 1
