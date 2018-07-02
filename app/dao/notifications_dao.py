@@ -84,11 +84,15 @@ def dao_get_template_usage(service_id, day):
 
 
 @statsd(namespace="dao")
-def dao_get_last_template_usage(template_id, template_type):
+def dao_get_last_template_usage(template_id, template_type, service_id):
+    # By adding the service_id to the filter the performance of the query is greatly improved.
+    # Using a max(Notification.created_at) is better than order by and limit one.
+    # But the effort to change the endpoint to return a datetime only is more than the gain.
     return Notification.query.filter(
         Notification.template_id == template_id,
         Notification.key_type != KEY_TYPE_TEST,
-        Notification.notification_type == template_type
+        Notification.notification_type == template_type,
+        Notification.service_id == service_id
     ).order_by(
         desc(Notification.created_at)
     ).first()
