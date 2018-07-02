@@ -622,3 +622,47 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
 
         total_updated += result.rowcount
     print('Total inserted/updated records = {}'.format(total_updated))
+
+
+@notify_command(name='bulk-invite-user-to-service')
+@click.option('-f', '--file_name', required=True,
+              help="Full path of the file containing a list of email address for people to invite to a service")
+@click.option('-s', '--service_id', required=True, help='The id of the service that the invite is for')
+@click.option('-u', '--user_id', required=True, help='The id of the user that the invite is from')
+@click.option('-a', '--auth_type', required=False,
+              help='The authentication type for the user, sms_auth or email_auth. Defaults to sms_auth if not provided')
+@click.option('-p', '--permissions', required=True, help='Comma separated list of permissions.')
+def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permissions):
+    #  permissions
+    #  manage_users | manage_templates | manage_settings
+    #  send messages ==> send_texts | send_emails | send_letters
+    #  Access API keys manage_api_keys
+    #  platform_admin
+    #  view_activity
+    # "send_texts,send_emails,send_letters,view_activity"
+    from app.invite.rest import create_invited_user
+    file = open(file_name)
+    for email_address in file:
+        data = {
+            'service': service_id,
+            'email_address': email_address.strip(),
+            'from_user': user_id,
+            'permissions': permissions,
+            'auth_type': auth_type,
+            'invite_link_host': current_app.config['ADMIN_BASE_URL']
+        }
+        with current_app.test_request_context(
+            path='/service/{}/invite/'.format(service_id),
+            method='POST',
+            data=json.dumps(data),
+            headers={"Content-Type": "application/json"}
+        ):
+            try:
+                response = create_invited_user(service_id)
+                if response[1] != 201:
+                    print("*** ERROR occurred for email address: {}".format(email_address.strip()))
+                print(response[0].get_data(as_text=True))
+            except Exception as e:
+                print("*** ERROR occurred for email address: {}. \n{}".format(email_address.strip(), e))
+
+    file.close()
