@@ -2,9 +2,38 @@ import uuid
 
 from datetime import datetime, timedelta
 
-from app.dao.complaint_dao import save_complaint, fetch_complaints_by_service, fetch_count_of_complaints
+from app.dao.complaint_dao import (
+    fetch_complaints_by_service,
+    fetch_count_of_complaints,
+    fetch_paginated_complaints,
+    save_complaint,
+)
 from app.models import Complaint
 from tests.app.db import create_service, create_template, create_notification, create_complaint
+
+
+def test_fetch_paginated_complaints(mocker, sample_email_notification):
+    mocker.patch.dict('app.dao.complaint_dao.current_app.config', {'PAGE_SIZE': 2})
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 1, 1))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 1, 2))
+    create_complaint(service=sample_email_notification.service,
+                     notification=sample_email_notification,
+                     created_at=datetime(2018, 1, 3))
+
+    res = fetch_paginated_complaints(page=1)
+
+    assert len(res.items) == 2
+    assert res.items[0].created_at == datetime(2018, 1, 3)
+    assert res.items[1].created_at == datetime(2018, 1, 2)
+
+    res = fetch_paginated_complaints(page=2)
+
+    assert len(res.items) == 1
+    assert res.items[0].created_at == datetime(2018, 1, 1)
 
 
 def test_fetch_complaint_by_service_returns_one(sample_service, sample_email_notification):
