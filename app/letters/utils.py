@@ -26,9 +26,9 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
     if is_test_or_scan_letter:
         folder_name = ''
     else:
-        print_datetime = _now
-        if convert_utc_to_bst(_now).time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
-            print_datetime = _now + timedelta(days=1)
+        print_datetime = convert_utc_to_bst(_now)
+        if print_datetime.time() > current_app.config.get('LETTER_PROCESSING_DEADLINE'):
+            print_datetime += timedelta(days=1)
         folder_name = '{}/'.format(print_datetime.date())
     return folder_name
 
