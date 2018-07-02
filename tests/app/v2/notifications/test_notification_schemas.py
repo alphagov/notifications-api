@@ -228,6 +228,7 @@ def test_post_email_schema_bad_uuid_and_missing_email_address():
 @pytest.mark.parametrize('email_address, err_msg', [
     ('example', 'email_address Not a valid email address'),
     (12345, 'email_address 12345 is not of type string'),
+    ('with(brackets)@example.com', 'email_address Not a valid email address'),
     (None, 'email_address None is not of type string'),
     ([], 'email_address [] is not of type string'),
     ({}, 'email_address {} is not of type string'),
