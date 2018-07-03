@@ -3,6 +3,7 @@ import functools
 import io
 import math
 
+import werkzeug
 from flask import request, jsonify, current_app, abort
 from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
@@ -104,12 +105,18 @@ def post_precompiled_letter_notification():
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
 def post_notification(notification_type):
+    try:
+        request_json = request.get_json()
+    except werkzeug.exceptions.BadRequest as e:
+        raise BadRequestError(message="Error decoding arguments: {}".format(e.description),
+                              status_code=400)
+
     if notification_type == EMAIL_TYPE:
-        form = validate(request.get_json(), post_email_request)
+        form = validate(request_json, post_email_request)
     elif notification_type == SMS_TYPE:
-        form = validate(request.get_json(), post_sms_request)
+        form = validate(request_json, post_sms_request)
     elif notification_type == LETTER_TYPE:
-        form = validate(request.get_json(), post_letter_request)
+        form = validate(request_json, post_letter_request)
     else:
         abort(404)
 
