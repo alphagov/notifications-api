@@ -21,7 +21,7 @@ from tests.app.db import (
 
 
 def test_last_template_usage_should_get_right_data(sample_notification):
-    results = dao_get_last_template_usage(sample_notification.template_id, 'sms')
+    results = dao_get_last_template_usage(sample_notification.template_id, 'sms', sample_notification.service_id)
     assert results.template.name == 'Template Name'
     assert results.template.template_type == 'sms'
     assert results.created_at == sample_notification.created_at
@@ -36,12 +36,12 @@ def test_last_template_usage_should_be_able_to_get_all_template_usage_history_or
 ):
     template = create_template(sample_service, template_type=notification_type)
 
-    create_notification(template)
-    create_notification(template)
-    create_notification(template)
+    create_notification(template, created_at=datetime.utcnow() - timedelta(seconds=1))
+    create_notification(template, created_at=datetime.utcnow() - timedelta(seconds=2))
+    create_notification(template, created_at=datetime.utcnow() - timedelta(seconds=3))
     most_recent = create_notification(template)
 
-    results = dao_get_last_template_usage(template.id, notification_type)
+    results = dao_get_last_template_usage(template.id, notification_type, template.service_id)
     assert results.id == most_recent.id
 
 
@@ -62,13 +62,13 @@ def test_last_template_usage_should_ignore_test_keys(
         created_at=one_minute_ago,
         api_key=sample_test_api_key)
 
-    results = dao_get_last_template_usage(sample_template.id, 'sms')
+    results = dao_get_last_template_usage(sample_template.id, 'sms', sample_template.service_id)
     assert results.id == team_key.id
 
 
 def test_last_template_usage_should_be_able_to_get_no_template_usage_history_if_no_notifications_using_template(
         sample_template):
-    results = dao_get_last_template_usage(sample_template.id, 'sms')
+    results = dao_get_last_template_usage(sample_template.id, 'sms', sample_template.service_id)
     assert not results
 
 

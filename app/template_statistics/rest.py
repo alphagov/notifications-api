@@ -47,7 +47,7 @@ def get_template_statistics_for_template_id(service_id, template_id):
     template = dao_get_template_by_id_and_service_id(template_id, service_id)
 
     data = None
-    notification = dao_get_last_template_usage(template_id, template.template_type)
+    notification = dao_get_last_template_usage(template_id, template.template_type, template.service_id)
     if notification:
         data = notification_with_template_schema.dump(notification).data
 
