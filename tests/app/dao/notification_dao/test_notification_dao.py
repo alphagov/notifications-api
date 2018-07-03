@@ -1982,17 +1982,3 @@ def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_bst_date(samp
 
     assert len(result) == 1
     assert result[0].status == 'sent'
-
-
-@freeze_time('2018-01-08T12:00:00')
-def test_fetch_aggregate_stats_by_date_range_for_all_services_gets_test_notifications_when_start_date_over_7_days_ago(
-    sample_template
-):
-    ten_days_ago = datetime.utcnow().date() - timedelta(days=10)
-    today = datetime.utcnow().date()
-
-    create_notification(sample_template, key_type=KEY_TYPE_TEST, created_at=datetime.utcnow())
-
-    result = fetch_aggregate_stats_by_date_range_for_all_services(ten_days_ago, today)
-
-    assert len(result) == 1
