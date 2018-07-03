@@ -568,7 +568,7 @@ def create_ft_billing(bst_date,
 
 def create_ft_notification_status(
     bst_date,
-    notification_type,
+    notification_type='sms',
     service=None,
     template=None,
     job=None,
@@ -576,9 +576,12 @@ def create_ft_notification_status(
     notification_status='delivered',
     count=1
 ):
-    if not service:
-        service = create_service()
-    if not template:
+    if template:
+        service = template.service
+        notification_type = template.template_type
+    else:
+        if not service:
+            service = create_service()
         template = create_template(service=service, template_type=notification_type)
 
     data = FactNotificationStatus(

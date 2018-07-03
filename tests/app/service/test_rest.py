@@ -1661,7 +1661,6 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
     }
 
 
-
 def test_search_for_notification_by_to_field(client, sample_template, sample_email_template):
 
     notification1 = create_notification(template=sample_template, to_field='+447700900855',
