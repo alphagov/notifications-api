@@ -7,7 +7,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
 )
-from app.models import FactNotificationStatus
+from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
 
 
@@ -104,6 +104,8 @@ def test_fetch_notification_status_for_service_by_month(notify_db_session):
     create_ft_notification_status(date(2017, 3, 1), 'sms', service_1)
     # not included - wrong service
     create_ft_notification_status(date(2018, 1, 3), 'sms', service_2)
+    # not included - test keys
+    create_ft_notification_status(date(2018, 1, 3), 'sms', service_1, key_type=KEY_TYPE_TEST)
 
     results = sorted(
         fetch_notification_status_for_service_by_month(date(2018, 1, 1), date(2018, 2, 28), service_1.id),
@@ -146,10 +148,14 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
     # included
     create_notification(service_1.templates[0], created_at=datetime(2018, 5, 31, 23, 0, 0))
     create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 22, 59, 0))
-    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 22, 59, 0), status='delivered')
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), key_type=KEY_TYPE_TEAM)
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), status='delivered')
+
+    # test key
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), key_type=KEY_TYPE_TEST)
 
     # wrong service
-    create_notification(service_2.templates[0], created_at=datetime(2018, 5, 31, 23, 0, 0))
+    create_notification(service_2.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0))
 
     # tomorrow (somehow)
     create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 23, 0, 0))
@@ -163,7 +169,7 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
     assert results[0].month == datetime(2018, 6, 1, 0, 0)
     assert results[0].notification_type == 'sms'
     assert results[0].notification_status == 'created'
-    assert results[0].count == 2
+    assert results[0].count == 3
 
     assert results[1].month == datetime(2018, 6, 1, 0, 0)
     assert results[1].notification_type == 'sms'
