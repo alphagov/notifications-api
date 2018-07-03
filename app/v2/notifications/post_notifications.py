@@ -108,7 +108,8 @@ def post_notification(notification_type):
     try:
         request_json = request.get_json()
     except werkzeug.exceptions.BadRequest as e:
-        raise BadRequestError(message=e.description, status_code=400)
+        raise BadRequestError(message="Error decoding arguments: {}".format(e.description),
+                              status_code=400)
 
     if notification_type == EMAIL_TYPE:
         form = validate(request_json, post_email_request)
