@@ -194,13 +194,13 @@ def test_add_monthly_notification_status_stats():
     # this data won't be affected
     data['2018-05']['email']['sending'] = 32
 
-    # this data will get overwritten
+    # this data will get combined with the 8 from row_data
     data['2018-05']['sms']['sending'] = 16
 
     add_monthly_notification_status_stats(data, rows)
 
     assert data == {
         '2018-04': {'sms': {'sending': 1, 'delivered': 2}, 'email': {'sending': 4}, 'letter': {}},
-        '2018-05': {'sms': {'sending': 8}, 'email': {'sending': 32}, 'letter': {}},
+        '2018-05': {'sms': {'sending': 24}, 'email': {'sending': 32}, 'letter': {}},
         '2018-06': {'sms': {}, 'email': {}, 'letter': {}},
     }
