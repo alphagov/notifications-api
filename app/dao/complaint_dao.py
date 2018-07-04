@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from flask import current_app
 from sqlalchemy import desc
 
 from app import db
@@ -11,6 +12,15 @@ from app.utils import get_london_midnight_in_utc
 @transactional
 def save_complaint(complaint):
     db.session.add(complaint)
+
+
+def fetch_paginated_complaints(page=1):
+    return Complaint.query.order_by(
+        desc(Complaint.created_at)
+    ).paginate(
+        page=page,
+        per_page=current_app.config['PAGE_SIZE']
+    )
 
 
 def fetch_complaints_by_service(service_id):

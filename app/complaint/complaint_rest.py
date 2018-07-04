@@ -1,13 +1,12 @@
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
-from sqlalchemy import desc
 
 from app.complaint.complaint_schema import complaint_count_request
-from app.dao.complaint_dao import fetch_count_of_complaints
+from app.dao.complaint_dao import fetch_count_of_complaints, fetch_paginated_complaints
 from app.errors import register_errors
-from app.models import Complaint
 from app.schema_validation import validate
+from app.utils import pagination_links
 
 complaint_blueprint = Blueprint('complaint', __name__, url_prefix='/complaint')
 
@@ -16,9 +15,17 @@ register_errors(complaint_blueprint)
 
 @complaint_blueprint.route('', methods=['GET'])
 def get_all_complaints():
-    complaints = Complaint.query.order_by(desc(Complaint.created_at)).all()
+    page = int(request.args.get('page', 1))
+    pagination = fetch_paginated_complaints(page=page)
 
-    return jsonify([x.serialize() for x in complaints]), 200
+    return jsonify(
+        complaints=[x.serialize() for x in pagination.items],
+        links=pagination_links(
+            pagination,
+            '.get_all_complaints',
+            **request.args.to_dict()
+        )
+    ), 200
 
 
 @complaint_blueprint.route('/count-by-date-range', methods=['GET'])

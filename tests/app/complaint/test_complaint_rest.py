@@ -8,7 +8,7 @@ from tests import create_authorization_header
 from tests.app.db import create_complaint, create_service, create_template, create_notification
 
 
-def test_get_all_complaints_returns_list_for_multiple_services_and_complaints(client, notify_db_session):
+def test_get_all_complaints_returns_complaints_for_multiple_services(client, notify_db_session):
     service = create_service(service_name='service1')
     template = create_template(service=service)
     notification = create_notification(template=template)
@@ -18,14 +18,33 @@ def test_get_all_complaints_returns_list_for_multiple_services_and_complaints(cl
     response = client.get('/complaint', headers=[create_authorization_header()])
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == [complaint_2.serialize(), complaint_1.serialize()]
+    assert json.loads(response.get_data(as_text=True))['complaints'] == [
+        complaint_2.serialize(), complaint_1.serialize()]
 
 
-def test_get_all_complaints_returns_empty_list(client):
+def test_get_all_complaints_returns_empty_complaints_list(client):
     response = client.get('/complaint', headers=[create_authorization_header()])
 
     assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == []
+    assert json.loads(response.get_data(as_text=True))['complaints'] == []
+
+
+def test_get_all_complaints_returns_pagination_links(mocker, client, notify_db_session):
+    mocker.patch.dict('app.dao.complaint_dao.current_app.config', {'PAGE_SIZE': 1})
+    service_1 = create_service(service_name='service1')
+    service_2 = create_service(service_name='service2')
+
+    create_complaint()
+    create_complaint(service=service_1)
+    create_complaint(service=service_2)
+
+    response = client.get(url_for('complaint.get_all_complaints', page=2), headers=[create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True))['links'] == {
+        'last': '/complaint?page=3',
+        'next': '/complaint?page=3',
+        'prev': '/complaint?page=1'}
 
 
 def test_get_complaint_with_start_and_end_date_passes_these_to_dao_function(mocker, client):

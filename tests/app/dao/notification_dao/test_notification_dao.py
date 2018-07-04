@@ -1966,11 +1966,11 @@ def test_fetch_aggregate_stats_by_date_range_for_all_services_groups_stats(
     result = fetch_aggregate_stats_by_date_range_for_all_services(today, today)
 
     assert len(result) == 5
-    assert result[0] == ('email', 'permanent-failure', 'normal', 3)
-    assert result[1] == ('email', 'sent', 'normal', 1)
-    assert result[2] == ('sms', 'sent', 'normal', 1)
-    assert result[3] == ('sms', 'sent', 'team', 1)
-    assert result[4] == ('letter', 'virus-scan-failed', 'normal', 1)
+    assert ('email', 'permanent-failure', 'normal', 3) in result
+    assert ('email', 'sent', 'normal', 1) in result
+    assert ('sms', 'sent', 'normal', 1) in result
+    assert ('sms', 'sent', 'team', 1) in result
+    assert ('letter', 'virus-scan-failed', 'normal', 1) in result
 
 
 def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_bst_date(sample_template):
