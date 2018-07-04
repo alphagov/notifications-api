@@ -217,7 +217,7 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         },
         'create-nightly-notification-status': {
-            'task': 'create-nightly-billing',
+            'task': 'create-nightly-notification-status',
             'schedule': crontab(hour=4, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
