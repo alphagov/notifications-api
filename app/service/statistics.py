@@ -1,6 +1,9 @@
+from collections import defaultdict
 from datetime import datetime
 
 from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
+from app.utils import convert_utc_to_bst
+from app.dao.date_util import get_months_for_financial_year
 
 
 def format_statistics(statistics):
@@ -82,3 +85,24 @@ def _update_statuses_from_row(update_dict, row):
         update_dict['delivered'] += row.count
     elif row.status in ('failed', 'technical-failure', 'temporary-failure', 'permanent-failure'):
         update_dict['failed'] += row.count
+
+
+def create_empty_monthly_notification_status_stats_dict(year):
+    utc_month_starts = get_months_for_financial_year(year)
+    # nested dicts - data[month][template type][status] = count
+    return {
+        convert_utc_to_bst(start).strftime('%Y-%m'): {
+            template_type: defaultdict(int)
+            for template_type in TEMPLATE_TYPES
+        }
+        for start in utc_month_starts
+    }
+
+
+def add_monthly_notification_status_stats(data, stats):
+    for row in stats:
+        month = row.month.strftime('%Y-%m')
+
+        data[month][row.notification_type][row.notification_status] += row.count
+
+    return data

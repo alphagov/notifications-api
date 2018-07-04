@@ -1,9 +1,14 @@
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from uuid import UUID
 
-from app.dao.fact_notification_status_dao import update_fact_notification_status, fetch_notification_status_for_day
-from app.models import FactNotificationStatus
-from tests.app.db import create_notification, create_service, create_template
+from app.dao.fact_notification_status_dao import (
+    update_fact_notification_status,
+    fetch_notification_status_for_day,
+    fetch_notification_status_for_service_by_month,
+    fetch_notification_status_for_service_for_day,
+)
+from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM
+from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
 
 
 def test_update_fact_notification_status(notify_db_session):
@@ -80,3 +85,93 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
                                                               ).all()
     assert len(updated_fact_data) == 1
     assert updated_fact_data[0].notification_count == 2
+
+
+def test_fetch_notification_status_for_service_by_month(notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    service_2 = create_service(service_name='service_2')
+
+    create_ft_notification_status(date(2018, 1, 1), 'sms', service_1, count=4)
+    create_ft_notification_status(date(2018, 1, 2), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 1, 2), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 1, 3), 'email', service_1)
+
+    create_ft_notification_status(date(2018, 2, 2), 'sms', service_1)
+
+    # not included - too early
+    create_ft_notification_status(date(2017, 12, 31), 'sms', service_1)
+    # not included - too late
+    create_ft_notification_status(date(2017, 3, 1), 'sms', service_1)
+    # not included - wrong service
+    create_ft_notification_status(date(2018, 1, 3), 'sms', service_2)
+    # not included - test keys
+    create_ft_notification_status(date(2018, 1, 3), 'sms', service_1, key_type=KEY_TYPE_TEST)
+
+    results = sorted(
+        fetch_notification_status_for_service_by_month(date(2018, 1, 1), date(2018, 2, 28), service_1.id),
+        key=lambda x: (x.month, x.notification_type, x.notification_status)
+    )
+
+    assert len(results) == 4
+
+    assert results[0].month.date() == date(2018, 1, 1)
+    assert results[0].notification_type == 'email'
+    assert results[0].notification_status == 'delivered'
+    assert results[0].count == 1
+
+    assert results[1].month.date() == date(2018, 1, 1)
+    assert results[1].notification_type == 'sms'
+    assert results[1].notification_status == 'created'
+    assert results[1].count == 1
+
+    assert results[2].month.date() == date(2018, 1, 1)
+    assert results[2].notification_type == 'sms'
+    assert results[2].notification_status == 'delivered'
+    assert results[2].count == 14
+
+    assert results[3].month.date() == date(2018, 2, 1)
+    assert results[3].notification_type == 'sms'
+    assert results[3].notification_status == 'delivered'
+    assert results[3].count == 1
+
+
+def test_fetch_notification_status_for_service_for_day(notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    service_2 = create_service(service_name='service_2')
+
+    create_template(service=service_1)
+    create_template(service=service_2)
+
+    # too early
+    create_notification(service_1.templates[0], created_at=datetime(2018, 5, 31, 22, 59, 0))
+
+    # included
+    create_notification(service_1.templates[0], created_at=datetime(2018, 5, 31, 23, 0, 0))
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 22, 59, 0))
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), key_type=KEY_TYPE_TEAM)
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), status='delivered')
+
+    # test key
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0), key_type=KEY_TYPE_TEST)
+
+    # wrong service
+    create_notification(service_2.templates[0], created_at=datetime(2018, 6, 1, 12, 0, 0))
+
+    # tomorrow (somehow)
+    create_notification(service_1.templates[0], created_at=datetime(2018, 6, 1, 23, 0, 0))
+
+    results = sorted(
+        fetch_notification_status_for_service_for_day(datetime(2018, 6, 1), service_1.id),
+        key=lambda x: x.notification_status
+    )
+    assert len(results) == 2
+
+    assert results[0].month == datetime(2018, 6, 1, 0, 0)
+    assert results[0].notification_type == 'sms'
+    assert results[0].notification_status == 'created'
+    assert results[0].count == 3
+
+    assert results[1].month == datetime(2018, 6, 1, 0, 0)
+    assert results[1].notification_type == 'sms'
+    assert results[1].notification_status == 'delivered'
+    assert results[1].count == 1

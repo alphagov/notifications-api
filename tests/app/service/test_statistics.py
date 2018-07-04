@@ -1,5 +1,8 @@
 import collections
+from datetime import datetime
+from unittest.mock import Mock
 
+from freezegun import freeze_time
 import pytest
 
 from app.service.statistics import (
@@ -7,6 +10,8 @@ from app.service.statistics import (
     format_statistics,
     create_stats_dict,
     create_zeroed_stats_dicts,
+    create_empty_monthly_notification_status_stats_dict,
+    add_monthly_notification_status_stats
 )
 
 StatsRow = collections.namedtuple('row', ('notification_type', 'status', 'count'))
@@ -129,3 +134,73 @@ def test_format_admin_stats_counts_non_test_key_notifications_correctly():
     assert stats_dict['sms']['failures']['permanent-failure'] == 0
 
     assert stats_dict['letter']['total'] == 1
+
+
+def _stats(requested, delivered, failed):
+    return {'requested': requested, 'delivered': delivered, 'failed': failed}
+
+
+@pytest.mark.parametrize('year, expected_years', [
+    (
+        2018,
+        [
+            '2018-04',
+            '2018-05',
+            '2018-06'
+        ]
+    ),
+    (
+        2017,
+        [
+            '2017-04',
+            '2017-05',
+            '2017-06',
+            '2017-07',
+            '2017-08',
+            '2017-09',
+            '2017-10',
+            '2017-11',
+            '2017-12',
+            '2018-01',
+            '2018-02',
+            '2018-03'
+        ]
+    )
+])
+@freeze_time('2018-05-31 23:59:59')
+def test_create_empty_monthly_notification_status_stats_dict(year, expected_years):
+    output = create_empty_monthly_notification_status_stats_dict(year)
+    assert sorted(output.keys()) == expected_years
+    for v in output.values():
+        assert v == {'sms': {}, 'email': {}, 'letter': {}}
+
+
+@freeze_time('2018-05-31 23:59:59')
+def test_add_monthly_notification_status_stats():
+    row_data = [
+        {'month': datetime(2018, 4, 1), 'notification_type': 'sms', 'notification_status': 'sending', 'count': 1},
+        {'month': datetime(2018, 4, 1), 'notification_type': 'sms', 'notification_status': 'delivered', 'count': 2},
+        {'month': datetime(2018, 4, 1), 'notification_type': 'email', 'notification_status': 'sending', 'count': 4},
+        {'month': datetime(2018, 5, 1), 'notification_type': 'sms', 'notification_status': 'sending', 'count': 8},
+    ]
+    rows = []
+    for r in row_data:
+        m = Mock(spec=[])
+        for k, v in r.items():
+            setattr(m, k, v)
+        rows.append(m)
+
+    data = create_empty_monthly_notification_status_stats_dict(2018)
+    # this data won't be affected
+    data['2018-05']['email']['sending'] = 32
+
+    # this data will get combined with the 8 from row_data
+    data['2018-05']['sms']['sending'] = 16
+
+    add_monthly_notification_status_stats(data, rows)
+
+    assert data == {
+        '2018-04': {'sms': {'sending': 1, 'delivered': 2}, 'email': {'sending': 4}, 'letter': {}},
+        '2018-05': {'sms': {'sending': 24}, 'email': {'sending': 32}, 'letter': {}},
+        '2018-06': {'sms': {}, 'email': {}, 'letter': {}},
+    }

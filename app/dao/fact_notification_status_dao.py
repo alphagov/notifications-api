@@ -3,10 +3,12 @@ from datetime import datetime, timedelta, time
 from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.sql.expression import literal
+from sqlalchemy.types import DateTime
 
 from app import db
-from app.models import Notification, NotificationHistory, FactNotificationStatus
-from app.utils import convert_bst_to_utc
+from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST
+from app.utils import convert_bst_to_utc, get_london_midnight_in_utc
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):
@@ -73,3 +75,39 @@ def update_fact_notification_status(data, process_day):
         )
         db.session.connection().execute(stmt)
         db.session.commit()
+
+
+def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
+    return db.session.query(
+        func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date < end_date,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST
+    ).group_by(
+        func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status
+    ).all()
+
+
+def fetch_notification_status_for_service_for_day(bst_day, service_id):
+    return db.session.query(
+        # return current month as a datetime so the data has the same shape as the ft_notification_status query
+        literal(bst_day.replace(day=1), type_=DateTime).label('month'),
+        Notification.notification_type,
+        Notification.status.label('notification_status'),
+        func.count().label('count')
+    ).filter(
+        Notification.created_at >= get_london_midnight_in_utc(bst_day),
+        Notification.created_at < get_london_midnight_in_utc(bst_day + timedelta(days=1)),
+        Notification.service_id == service_id,
+        Notification.key_type != KEY_TYPE_TEST
+    ).group_by(
+        Notification.notification_type,
+        Notification.status
+    ).all()

@@ -8,7 +8,6 @@ import pytest
 from flask import url_for, current_app
 from freezegun import freeze_time
 
-from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
 from app.dao.services_dao import dao_remove_user_from_service
@@ -27,13 +26,11 @@ from app.models import (
     DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    PRECOMPILED_TEMPLATE_NAME
 )
 from tests import create_authorization_header
 from tests.app.conftest import (
     sample_user_service_permission as create_user_service_permission,
     sample_notification as create_sample_notification,
-    sample_notification_history as create_notification_history,
     sample_notification_with_job
 )
 from tests.app.db import (
@@ -197,7 +194,7 @@ def test_get_service_by_id_and_user(client, sample_service, sample_user):
         headers=[auth_header]
     )
     assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+    json_resp = resp.json
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
 
@@ -212,7 +209,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
                 headers=[auth_header]
             )
             assert resp.status_code == 404
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'No result found'
 
@@ -233,7 +230,7 @@ def test_create_service(client, sample_user):
         '/service',
         data=json.dumps(data),
         headers=headers)
-    json_resp = json.loads(resp.get_data(as_text=True))
+    json_resp = resp.json
     assert resp.status_code == 201
     assert json_resp['data']['id']
     assert json_resp['data']['name'] == 'created service'
@@ -252,7 +249,7 @@ def test_create_service(client, sample_user):
         headers=[auth_header_fetch]
     )
     assert resp.status_code == 200
-    json_resp = json.loads(resp.get_data(as_text=True))
+    json_resp = resp.json
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
 
@@ -278,7 +275,7 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['user_id']
@@ -301,7 +298,7 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['created_by']
@@ -328,7 +325,7 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 404
             assert json_resp['result'] == 'error'
             assert json_resp['message'] == 'No result found'
@@ -346,7 +343,7 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 400
             assert json_resp['result'] == 'error'
             assert 'Missing data for required field.' in json_resp['message']['name']
@@ -374,7 +371,7 @@ def test_should_not_create_service_with_duplicate_name(notify_api,
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert json_resp['result'] == 'error'
             assert "Duplicate service name '{}'".format(sample_service.name) in json_resp['message']['name']
 
@@ -401,7 +398,7 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert json_resp['result'] == 'error'
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
@@ -429,7 +426,7 @@ def test_update_service(client, notify_db, sample_service):
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
     assert resp.status_code == 200
     assert result['data']['name'] == 'updated service name'
     assert result['data']['email_from'] == 'updated.service.name'
@@ -472,7 +469,7 @@ def test_update_service_flags(client, sample_service):
         '/service/{}'.format(sample_service.id),
         headers=[auth_header]
     )
-    json_resp = json.loads(resp.get_data(as_text=True))
+    json_resp = resp.json
     assert resp.status_code == 200
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['research_mode'] is False
@@ -489,7 +486,7 @@ def test_update_service_flags(client, sample_service):
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
     assert resp.status_code == 200
     assert result['data']['research_mode'] is True
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
@@ -510,7 +507,7 @@ def test_update_service_sets_crown(client, sample_service, org_type, expected):
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
     assert resp.status_code == 200
     assert result['data']['crown'] is expected
 
@@ -531,7 +528,7 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 200
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
@@ -553,7 +550,7 @@ def test_update_service_flags_will_remove_service_permissions(client, notify_db,
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 200
     assert INTERNATIONAL_SMS_TYPE not in result['data']['permissions']
@@ -574,7 +571,7 @@ def test_update_permissions_will_override_permission_flags(client, service_with_
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 200
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
@@ -592,7 +589,7 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 200
     assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE])
@@ -640,7 +637,7 @@ def test_update_permissions_with_an_invalid_permission_will_raise_error(client, 
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 400
     assert result['result'] == 'error'
@@ -659,7 +656,7 @@ def test_update_permissions_with_duplicate_permissions_will_raise_error(client, 
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header]
     )
-    result = json.loads(resp.get_data(as_text=True))
+    result = resp.json
 
     assert resp.status_code == 400
     assert result['result'] == 'error'
@@ -674,7 +671,7 @@ def test_update_service_research_mode_throws_validation_error(notify_api, sample
                 '/service/{}'.format(sample_service.id),
                 headers=[auth_header]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 200
             assert json_resp['data']['name'] == sample_service.name
             assert not json_resp['data']['research_mode']
@@ -690,7 +687,7 @@ def test_update_service_research_mode_throws_validation_error(notify_api, sample
                 data=json.dumps(data),
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             assert result['message']['research_mode'][0] == "Not a valid boolean."
             assert resp.status_code == 400
 
@@ -720,7 +717,7 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
             assert resp.status_code == 400
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert json_resp['result'] == 'error'
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
@@ -752,7 +749,7 @@ def test_should_not_update_service_with_duplicate_email_from(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header]
             )
             assert resp.status_code == 400
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert json_resp['result'] == 'error'
             assert (
                 "Duplicate service name '{}'".format(service_name) in json_resp['message']['name'] or
@@ -791,7 +788,7 @@ def test_get_users_by_service(notify_api, sample_service):
             )
 
             assert resp.status_code == 200
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             assert len(result['data']) == 1
             assert result['data'][0]['name'] == user_on_service.name
             assert result['data'][0]['email_address'] == user_on_service.email_address
@@ -852,7 +849,7 @@ def test_default_permissions_are_added_for_user_service(notify_api,
                 '/service',
                 data=json.dumps(data),
                 headers=headers)
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == 201
             assert json_resp['data']['id']
             assert json_resp['data']['name'] == 'created service'
@@ -893,7 +890,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             )
 
             assert resp.status_code == 200
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             assert len(result['data']) == 1
             assert result['data'][0]['email_address'] == user_already_in_service.email_address
 
@@ -934,7 +931,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
                 headers=[('Content-Type', 'application/json'), auth_header],
             )
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert str(user_to_add.id) in json_resp['data']['users']
 
             # check user has all permissions
@@ -943,7 +940,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
                               headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
                                     'manage_settings', 'manage_templates', 'manage_api_keys', 'view_activity']
@@ -986,7 +983,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
                               headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
 
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['send_texts', 'send_emails', 'send_letters']
@@ -1029,7 +1026,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
                               headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
 
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['manage_users', 'manage_settings', 'manage_templates']
@@ -1070,7 +1067,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
                               headers=[('Content-Type', 'application/json'), auth_header])
 
             assert resp.status_code == 200
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
 
             permissions = json_resp['data']['permissions'][str(sample_service.id)]
             expected_permissions = ['manage_api_keys']
@@ -1102,7 +1099,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
                 data=json.dumps(data)
             )
 
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             expected_message = 'No result found'
 
             assert resp.status_code == 404
@@ -1124,7 +1121,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
                 data=json.dumps(data)
             )
 
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             expected_message = 'User id: {} already part of service id: {}'.format(existing_user_id, sample_service.id)
 
             assert resp.status_code == 400
@@ -1146,7 +1143,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
                 data=json.dumps(data)
             )
 
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             expected_message = 'No result found'
 
             assert resp.status_code == 404
@@ -1204,7 +1201,7 @@ def test_cannot_remove_only_user_from_service(notify_api,
                 endpoint,
                 headers=[('Content-Type', 'application/json'), auth_header])
             assert resp.status_code == 400
-            result = json.loads(resp.get_data(as_text=True))
+            result = resp.json
             assert result['message'] == 'You cannot remove the only user for a service'
 
 
@@ -1474,43 +1471,11 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
             )
 
     assert resp.status_code == 200
-    service = json.loads(resp.get_data(as_text=True))['data']
+    service = resp.json['data']
     assert service['id'] == str(sample_service.id)
     assert 'statistics' in service.keys()
     assert set(service['statistics'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
     assert service['statistics'][SMS_TYPE] == stats
-
-
-@pytest.mark.parametrize(
-    'url, expected_status, expected_json', [
-        (
-            '/service/{}/notifications/monthly?year=2001',
-            200,
-            {'data': {'foo': 'bar'}},
-        ),
-        (
-            '/service/{}/notifications/monthly?year=baz',
-            400,
-            {'message': 'Year must be a number', 'result': 'error'},
-        ),
-        (
-            '/service/{}/notifications/monthly',
-            400,
-            {'message': 'Year must be a number', 'result': 'error'},
-        ),
-    ]
-)
-def test_get_monthly_notification_stats(mocker, client, sample_service, url, expected_status, expected_json):
-    mocker.patch(
-        'app.service.rest.dao_fetch_monthly_historical_stats_for_service',
-        return_value={'foo': 'bar'},
-    )
-    response = client.get(
-        url.format(sample_service.id),
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == expected_status
-    assert json.loads(response.get_data(as_text=True)) == expected_json
 
 
 def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
@@ -1525,7 +1490,7 @@ def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
     )
 
     assert resp.status_code == 200
-    data = json.loads(resp.get_data(as_text=True))['data']
+    data = resp.json['data']
     assert len(data) == 1
     assert data[0]['name'] == 'Sample service'
     assert data[0]['id'] == str(notifications[0].service_id)
@@ -1550,7 +1515,7 @@ def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, not
         )
 
     assert resp.status_code == 200
-    data = json.loads(resp.get_data(as_text=True))['data']
+    data = resp.json['data']
     assert len(data) == 1
     assert data[0]['statistics'] == {
         EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
@@ -1694,225 +1659,6 @@ def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_
         SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
         LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
     }
-
-
-@freeze_time('2017-11-11 02:00')
-def test_get_template_usage_by_month_returns_correct_data(
-        notify_db,
-        notify_db_session,
-        client,
-        sample_template
-):
-
-    # add a historical notification for template
-    not1 = create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2016, 4, 1),
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='sending'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='permanent-failure'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='temporary-failure'
-    )
-
-    daily_stats_template_usage_by_month()
-
-    create_notification(
-        sample_template,
-        created_at=datetime.utcnow()
-    )
-
-    resp = client.get(
-        '/service/{}/notifications/templates_usage/monthly?year=2017'.format(not1.service_id),
-        headers=[create_authorization_header()]
-    )
-    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
-
-    assert resp.status_code == 200
-    assert len(resp_json) == 2
-
-    assert resp_json[0]["template_id"] == str(sample_template.id)
-    assert resp_json[0]["name"] == sample_template.name
-    assert resp_json[0]["type"] == sample_template.template_type
-    assert resp_json[0]["month"] == 4
-    assert resp_json[0]["year"] == 2017
-    assert resp_json[0]["count"] == 3
-
-    assert resp_json[1]["template_id"] == str(sample_template.id)
-    assert resp_json[1]["name"] == sample_template.name
-    assert resp_json[1]["type"] == sample_template.template_type
-    assert resp_json[1]["month"] == 11
-    assert resp_json[1]["year"] == 2017
-    assert resp_json[1]["count"] == 1
-
-
-@freeze_time('2017-11-11 02:00')
-def test_get_template_usage_by_month_returns_no_data(
-        notify_db,
-        notify_db_session,
-        client,
-        sample_template
-):
-
-    # add a historical notification for template
-    not1 = create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2016, 4, 1),
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='sending'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='permanent-failure'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='temporary-failure'
-    )
-
-    daily_stats_template_usage_by_month()
-
-    create_notification(
-        sample_template,
-        created_at=datetime.utcnow()
-    )
-
-    resp = client.get(
-        '/service/{}/notifications/templates_usage/monthly?year=2015'.format(not1.service_id),
-        headers=[create_authorization_header()]
-    )
-    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
-
-    assert resp.status_code == 200
-    assert len(resp_json) == 0
-
-
-@freeze_time('2017-11-11 02:00')
-def test_get_template_usage_by_month_returns_two_templates(
-        notify_db,
-        notify_db_session,
-        client,
-        sample_template,
-        sample_service
-):
-
-    template_one = create_template(
-        sample_service,
-        template_type=LETTER_TYPE,
-        template_name=PRECOMPILED_TEMPLATE_NAME,
-        hidden=True
-    )
-
-    # add a historical notification for template
-    not1 = create_notification_history(
-        notify_db,
-        notify_db_session,
-        template_one,
-        created_at=datetime(2017, 4, 1),
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='sending'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='permanent-failure'
-    )
-
-    create_notification_history(
-        notify_db,
-        notify_db_session,
-        sample_template,
-        created_at=datetime(2017, 4, 1),
-        status='temporary-failure'
-    )
-
-    daily_stats_template_usage_by_month()
-
-    create_notification(
-        sample_template,
-        created_at=datetime.utcnow()
-    )
-
-    resp = client.get(
-        '/service/{}/notifications/templates_usage/monthly?year=2017'.format(not1.service_id),
-        headers=[create_authorization_header()]
-    )
-    resp_json = json.loads(resp.get_data(as_text=True)).get('stats')
-
-    assert resp.status_code == 200
-    assert len(resp_json) == 3
-
-    resp_json = sorted(resp_json, key=lambda k: (k.get('year', 0), k.get('month', 0), k.get('count', 0)))
-
-    assert resp_json[0]["template_id"] == str(template_one.id)
-    assert resp_json[0]["name"] == template_one.name
-    assert resp_json[0]["type"] == template_one.template_type
-    assert resp_json[0]["month"] == 4
-    assert resp_json[0]["year"] == 2017
-    assert resp_json[0]["count"] == 1
-    assert resp_json[0]["is_precompiled_letter"] is True
-
-    assert resp_json[1]["template_id"] == str(sample_template.id)
-    assert resp_json[1]["name"] == sample_template.name
-    assert resp_json[1]["type"] == sample_template.template_type
-    assert resp_json[1]["month"] == 4
-    assert resp_json[1]["year"] == 2017
-    assert resp_json[1]["count"] == 3
-    assert resp_json[1]["is_precompiled_letter"] is False
-
-    assert resp_json[2]["template_id"] == str(sample_template.id)
-    assert resp_json[2]["name"] == sample_template.name
-    assert resp_json[2]["type"] == sample_template.template_type
-    assert resp_json[2]["month"] == 11
-    assert resp_json[2]["year"] == 2017
-    assert resp_json[2]["count"] == 1
-    assert resp_json[2]["is_precompiled_letter"] is False
 
 
 def test_search_for_notification_by_to_field(client, sample_template, sample_email_template):
@@ -3083,35 +2829,3 @@ def test_get_platform_stats_creates_zero_stats(client, notify_db_session):
     assert json_resp['email'] == {'failed': 1, 'requested': 2, 'delivered': 1}
     assert json_resp['letter'] == {'failed': 0, 'requested': 0, 'delivered': 0}
     assert json_resp['sms'] == {'failed': 0, 'requested': 4, 'delivered': 3}
-
-
-@pytest.mark.parametrize('today_only, stats', [
-    (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
-    (True, {'requested': 1, 'delivered': 0, 'failed': 0})
-], ids=['seven_days', 'today'])
-def test_get_service_notification_statistics(admin_request, sample_template, today_only, stats):
-    with freeze_time('2000-01-01T12:00:00'):
-        create_notification(sample_template, status='delivered')
-    with freeze_time('2000-01-02T12:00:00'):
-        create_notification(sample_template, status='created')
-        resp = admin_request.get(
-            'service.get_service_notification_statistics',
-            service_id=sample_template.service_id,
-            today_only=today_only
-        )
-
-    assert set(resp['data'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
-    assert resp['data'][SMS_TYPE] == stats
-
-
-def test_get_service_notification_statistics_with_unknown_service(admin_request):
-    resp = admin_request.get(
-        'service.get_service_notification_statistics',
-        service_id=uuid.uuid4()
-    )
-
-    assert resp['data'] == {
-        SMS_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
-        EMAIL_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
-        LETTER_TYPE: {'requested': 0, 'delivered': 0, 'failed': 0},
-    }
