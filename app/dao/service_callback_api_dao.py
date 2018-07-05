@@ -32,3 +32,8 @@ def get_service_callback_api(service_callback_api_id, service_id):
 
 def get_service_callback_api_for_service(service_id):
     return ServiceCallbackApi.query.filter_by(service_id=service_id).first()
+
+
+@transactional
+def delete_service_callback_api(service_callback_api):
+    db.session.delete(service_callback_api)
