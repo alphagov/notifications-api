@@ -616,8 +616,11 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
             """
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
-        print('ft_notification_status: --- Completed took {}ms. Migrated {} rows.'.format(datetime.now() - start_time,
-                                                                                          result.rowcount))
+        print('ft_notification_status: --- Completed took {}ms. Migrated {} rows for {}.'.format(
+            datetime.now() - start_time,
+            result.rowcount,
+            process_date
+        ))
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount

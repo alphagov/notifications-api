@@ -33,3 +33,8 @@ def get_service_inbound_api(service_inbound_api_id, service_id):
 
 def get_service_inbound_api_for_service(service_id):
     return ServiceInboundApi.query.filter_by(service_id=service_id).first()
+
+
+@transactional
+def delete_service_inbound_api(service_inbound_api):
+    db.session.delete(service_inbound_api)

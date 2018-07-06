@@ -1106,7 +1106,7 @@ def admin_request(client):
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 headers=[create_authorization_header()]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
+            json_resp = resp.json
             assert resp.status_code == _expected_status
             return json_resp
 
@@ -1118,7 +1118,7 @@ def admin_request(client):
                 headers=[('Content-Type', 'application/json'), create_authorization_header()]
             )
             if resp.get_data():
-                json_resp = json.loads(resp.get_data(as_text=True))
+                json_resp = resp.json
             else:
                 json_resp = None
             assert resp.status_code == _expected_status
@@ -1130,7 +1130,10 @@ def admin_request(client):
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 headers=[create_authorization_header()]
             )
-            json_resp = json.loads(resp.get_data(as_text=True))
+            if resp.get_data():
+                json_resp = resp.json
+            else:
+                json_resp = None
             assert resp.status_code == _expected_status, json_resp
             return json_resp
 
