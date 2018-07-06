@@ -620,30 +620,23 @@ def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session,
     assert stats['created'] == 1
 
 
-def test_fetch_stats_should_not_gather_notifications_older_than_7_days(notify_db, notify_db_session, sample_template):
+@pytest.mark.parametrize('created_at, rows_returned', [
+    ('Sunday 8th July 2018 12:00', 0),
+    ('Sunday 8th July 2018 22:59', 0),
+    ('Sunday 8th July 2018 23:00', 1),
+    ('Monday 9th July 2018 09:00', 1),
+    ('Monday 9th July 2018 15:00', 1),
+    ('Monday 16th July 2018 12:00', 1),
+])
+def test_fetch_stats_should_not_gather_notifications_older_than_7_days(sample_template, created_at, rows_returned):
+    # It's monday today. Things made last monday should still show
+    with freeze_time(created_at):
+        create_notification_db(sample_template,)
 
-    # 8 days ago
-    create_notification(notify_db, None, to_field='1', status='delivered', created_at='2001-04-02T12:00:00')
-    create_notification(notify_db, None, to_field='1', status='delivered', created_at='2001-04-02T22:59:59')
-
-    # 7 days ago BST midnight
-    create_notification(notify_db, None, to_field='1', status='failed', created_at='2001-04-02T23:00:00')
-    # 7 days ago, 2hours ago
-    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-04-03T10:00:00')
-
-    # 7 days ago
-    create_notification(notify_db, None, to_field='2', status='failed', created_at='2001-04-03T12:00:00')
-
-    # right_now
-    create_notification(notify_db, None, to_field='3', status='created', created_at='2001-04-09T12:00:00')
-
-    with freeze_time('2001-04-09T12:00:00'):
+    with freeze_time('Monday 16th July 2018 12:00'):
         stats = dao_fetch_stats_for_service(sample_template.service_id)
 
-    stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 3
-    assert stats['created'] == 1
+    assert len(stats) == rows_returned
 
 
 def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db,

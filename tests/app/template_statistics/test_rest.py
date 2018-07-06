@@ -33,7 +33,7 @@ def set_up_get_all_from_hash(mock_redis, side_effect):
 @pytest.mark.parametrize('query_string', [
     {},
     {'limit_days': 0},
-    {'limit_days': 8},
+    {'limit_days': 9},
     {'limit_days': 3.5},
     {'limit_days': 'blurk'},
 ])
@@ -190,6 +190,7 @@ def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
         {sample_template.id: 1},
         {sample_template.id: 1},
         {sample_template.id: 1},
+        {sample_template.id: 1},
         None,
         None,
     ])
@@ -203,25 +204,26 @@ def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_template.service_id,
-        limit_days=7
+        limit_days=8
     )
 
     assert len(json_resp['data']) == 1
-    assert json_resp['data'][0]['count'] == 10
+    assert json_resp['data'][0]['count'] == 11
     assert json_resp['data'][0]['template_id'] == str(sample_template.id)
 
-    assert mock_redis.get_all_from_hash.call_count == 7
+    assert mock_redis.get_all_from_hash.call_count == 8
 
-    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[0][1][0]
-    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
-    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
-    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
-    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
-    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
-    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
+    assert '2018-03-21' in mock_redis.get_all_from_hash.mock_calls[0][1][0]  # last wednesday
+    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
+    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
+    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
+    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
+    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
+    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
+    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[7][1][0]  # current day (wednesday)
 
     mock_dao.mock_calls == [
-        call(ANY, day=datetime(2018, 3, 23)),
+        call(ANY, day=datetime(2018, 3, 22)),
         call(ANY, day=datetime(2018, 3, 27)),
         call(ANY, day=datetime(2018, 3, 28))
     ]
@@ -237,11 +239,11 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_service.id,
-        limit_days=7
+        limit_days=8
     )
 
     assert len(json_resp['data']) == 0
-    assert mock_redis.get_all_from_hash.call_count == 7
+    assert mock_redis.get_all_from_hash.call_count == 8
     # make sure we don't try and set any empty hashes in redis
     assert mock_redis.set_hash_and_expire.call_count == 0
 

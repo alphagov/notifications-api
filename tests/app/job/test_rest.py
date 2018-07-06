@@ -619,28 +619,24 @@ def test_get_jobs(client, notify_db, notify_db_session, sample_template):
     assert len(resp_json['data']) == 5
 
 
-def test_get_jobs_with_limit_days(client, notify_db, notify_db_session, sample_template):
-    create_job(
-        notify_db,
-        notify_db_session,
-        service=sample_template.service,
-        template=sample_template,
-    )
-    create_job(
-        notify_db,
-        notify_db_session,
-        service=sample_template.service,
-        template=sample_template,
-        created_at=datetime.now() - timedelta(days=7))
+def test_get_jobs_with_limit_days(admin_request, notify_db, notify_db_session, sample_template):
+    for time in [
+        'Sunday 1st July 2018 22:59',
+        'Sunday 2nd July 2018 23:00',  # beginning of monday morning
+        'Monday 3rd July 2018 12:00'
+    ]:
+        with freeze_time(time):
+            create_job(
+                notify_db,
+                notify_db_session,
+                service=sample_template.service,
+                template=sample_template,
+            )
 
-    service_id = sample_template.service.id
+    with freeze_time('Monday 9th July 2018 12:00'):
+        resp_json = admin_request.get('job.get_jobs_by_service', service_id=sample_template.service_id, limit_days=7)
 
-    path = '/service/{}/job'.format(service_id)
-    auth_header = create_authorization_header()
-    response = client.get(path, headers=[auth_header], query_string={'limit_days': 5})
-    assert response.status_code == 200
-    resp_json = json.loads(response.get_data(as_text=True))
-    assert len(resp_json['data']) == 1
+    assert len(resp_json['data']) == 2
 
 
 def test_get_jobs_should_return_statistics(client, notify_db, notify_db_session, notify_api, sample_service):

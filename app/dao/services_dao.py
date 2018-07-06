@@ -37,7 +37,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc
+from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -247,8 +247,8 @@ def delete_service_and_all_associated_db_objects(service):
 
 @statsd(namespace="dao")
 def dao_fetch_stats_for_service(service_id):
-    # We want 7 days inclusive
-    start_date = get_london_midnight_in_utc(date.today() - timedelta(days=6))
+    # We always want between seven and eight days
+    start_date = midnight_n_days_ago(7)
     return _stats_for_service_query(service_id).filter(
         Notification.created_at >= start_date
     ).all()
