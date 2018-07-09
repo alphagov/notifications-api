@@ -97,6 +97,10 @@ def get_user_by_email(email):
     return User.query.filter(func.lower(User.email_address) == func.lower(email)).one()
 
 
+def get_users_by_partial_email(email):
+    return User.query.filter(User.email_address.ilike("\%{}\%".format(email))).all()
+
+
 def increment_failed_login_count(user):
     user.failed_login_count += 1
     db.session.add(user)
