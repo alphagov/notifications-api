@@ -29,17 +29,18 @@ register_errors(template_statistics)
 
 @template_statistics.route('')
 def get_template_statistics_for_service_by_day(service_id):
+    whole_days = request.args.get('whole_days', request.args.get('limit_days', ''))
     try:
-        limit_days = int(request.args.get('limit_days', ''))
+        whole_days = int(whole_days)
     except ValueError:
-        error = '{} is not an integer'.format(request.args.get('limit_days'))
-        message = {'limit_days': [error]}
+        error = '{} is not an integer'.format(whole_days)
+        message = {'whole_days': [error]}
         raise InvalidRequest(message, status_code=400)
 
-    if limit_days < 1 or limit_days > 7:
-        raise InvalidRequest({'limit_days': ['limit_days must be between 1 and 7']}, status_code=400)
+    if whole_days < 0 or whole_days > 7:
+        raise InvalidRequest({'whole_days': ['whole_days must be between 0 and 7']}, status_code=400)
 
-    return jsonify(data=_get_template_statistics_for_last_n_days(service_id, limit_days))
+    return jsonify(data=_get_template_statistics_for_last_n_days(service_id, whole_days))
 
 
 @template_statistics.route('/<template_id>')
@@ -54,10 +55,12 @@ def get_template_statistics_for_template_id(service_id, template_id):
     return jsonify(data=data)
 
 
-def _get_template_statistics_for_last_n_days(service_id, limit_days):
+def _get_template_statistics_for_last_n_days(service_id, whole_days):
     template_stats_by_id = Counter()
 
-    for day in last_n_days(limit_days):
+    # 0 whole_days = last 1 days (ie since midnight today) = today.
+    # 7 whole days = last 8 days (ie since midnight this day last week) = a week and a bit
+    for day in last_n_days(whole_days + 1):
         # "{SERVICE_ID}-template-usage-{YYYY-MM-DD}"
         key = cache_key_for_service_template_usage_per_day(service_id, day)
         stats = redis_store.get_all_from_hash(key)
