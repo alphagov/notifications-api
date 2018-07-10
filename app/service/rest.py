@@ -47,7 +47,6 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_suspend_service,
     dao_update_service,
-    fetch_aggregate_stats_by_date_range_for_all_services,
     fetch_stats_by_date_range_for_all_services
 )
 from app.dao.service_whitelist_dao import (
@@ -114,25 +113,6 @@ def handle_integrity_error(exc):
         ), 400
     current_app.logger.exception(exc)
     return jsonify(result='error', message="Internal server error"), 500
-
-
-@service_blueprint.route('/platform-stats', methods=['GET'])
-def get_platform_stats():
-    include_from_test_key = request.args.get('include_from_test_key', 'True') != 'False'
-
-    # If start and end date are not set, we are expecting today's stats.
-    today = str(datetime.utcnow().date())
-
-    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
-    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
-    data = fetch_aggregate_stats_by_date_range_for_all_services(start_date=start_date,
-                                                                end_date=end_date,
-                                                                include_from_test_key=include_from_test_key
-                                                                )
-    stats = statistics.format_statistics(data)
-
-    result = jsonify(stats)
-    return result
 
 
 @service_blueprint.route('', methods=['GET'])
