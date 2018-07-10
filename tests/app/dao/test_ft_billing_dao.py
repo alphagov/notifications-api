@@ -18,7 +18,6 @@ from tests.app.db import (
     create_template,
     create_notification,
     create_rate,
-    create_letter_rate
 )
 
 
@@ -223,18 +222,16 @@ def test_get_rates_for_billing(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=12, notification_type='email')
     create_rate(start_date=datetime.utcnow(), value=22, notification_type='sms')
     create_rate(start_date=datetime.utcnow(), value=33, notification_type='email')
-    create_letter_rate(start_date=datetime.utcnow())
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
-    assert len(letter_rates) == 1
+    assert len(letter_rates) == 10
 
 
 def test_get_rate(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=1.2, notification_type='email')
     create_rate(start_date=datetime.utcnow(), value=2.2, notification_type='sms')
     create_rate(start_date=datetime.utcnow(), value=3.3, notification_type='email')
-    create_letter_rate(start_date=datetime.utcnow(), rate=4.4)
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates, notification_type='sms',
                     date=datetime.utcnow())
@@ -245,7 +242,7 @@ def test_get_rate(notify_db_session):
                            date=datetime.utcnow())
 
     assert rate == 2.2
-    assert letter_rate == Decimal('4.4')
+    assert letter_rate == Decimal('0.3')
 
 
 def test_fetch_monthly_billing_for_year(notify_db_session):
