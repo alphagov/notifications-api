@@ -17,14 +17,14 @@ def upgrade():
     op.create_table('service_data_retention',
                     sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
                     sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=False),
-                    sa.Column('notification_type',
-                              postgresql.ENUM(name='notification_type', create_type=False),
+                    sa.Column('notification_type', postgresql.ENUM(name='notification_type', create_type=False),
                               nullable=False),
                     sa.Column('days_of_retention', sa.Integer(), nullable=False),
                     sa.Column('created_at', sa.DateTime(), nullable=False),
                     sa.Column('updated_at', sa.DateTime(), nullable=True),
                     sa.ForeignKeyConstraint(['service_id'], ['services.id'], ),
-                    sa.PrimaryKeyConstraint('id')
+                    sa.PrimaryKeyConstraint('id'),
+                    sa.UniqueConstraint('service_id', 'notification_type', name='uix_service_data_retention')
                     )
     op.create_index(op.f('ix_service_data_retention_service_id'), 'service_data_retention', ['service_id'],
                     unique=False)

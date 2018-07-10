@@ -1854,4 +1854,8 @@ class ServiceDataRetention(db.Model):
     notification_type = db.Column(notification_types, nullable=False)
     days_of_retention = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'notification_type', name='uix_service_data_retention'),
+    )
