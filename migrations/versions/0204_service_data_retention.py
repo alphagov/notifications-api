@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0202_service_data_retention
-Revises: 0201_another_letter_org
+Revision ID: 0204_service_data_retention
+Revises: 0203_fix_old_incomplete_jobs
 Create Date: 2018-07-10 11:22:01.761829
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0202_service_data_retention'
-down_revision = '0201_another_letter_org'
+revision = '0204_service_data_retention'
+down_revision = '0203_fix_old_incomplete_jobs'
 
 
 def upgrade():
