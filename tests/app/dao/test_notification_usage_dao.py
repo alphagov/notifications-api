@@ -14,7 +14,7 @@ from app.models import (
     Rate,
     SMS_TYPE,
 )
-from tests.app.db import create_notification, create_rate, create_letter_rate, create_template, create_service
+from tests.app.db import create_notification, create_rate, create_template, create_service
 
 
 def test_get_rates_for_daterange(notify_db, notify_db_session):
@@ -217,7 +217,6 @@ def test_get_monthly_billing_data_where_start_date_before_rate_returns_empty(
 def test_billing_letter_data_per_month_query(
         notify_db_session
 ):
-    create_letter_rate()
     service = create_service()
     template = create_template(service=service, template_type='letter')
     create_notification(template=template, billable_units=1, created_at=datetime(2017, 2, 1, 13, 21),
@@ -232,5 +231,5 @@ def test_billing_letter_data_per_month_query(
                                                   end_date=datetime(2017, 2, 28))
 
     assert len(results) == 1
-    assert results[0].rate == 0.31
+    assert results[0].rate == 0.3
     assert results[0].billing_units == 3

@@ -18,7 +18,7 @@ from tests.app.db import (
     create_service,
     create_template,
     create_monthly_billing_entry,
-    create_letter_rate)
+)
 
 FEB_2016_MONTH_START = datetime(2016, 2, 1)
 FEB_2016_MONTH_END = datetime(2016, 2, 29, 23, 59, 59, 99999)
@@ -154,7 +154,6 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
 ):
     create_rate(start_date=JAN_2017_MONTH_START, value=0.0158, notification_type=SMS_TYPE)
     letter_template = sample_letter_template(sample_template.service)
-    create_letter_rate(crown=False)
     create_notification(
         template=sample_template, created_at=JAN_2017_MONTH_START,
         billable_units=1, rate_multiplier=2, status='delivered'
@@ -201,8 +200,8 @@ def test_add_monthly_billing_for_single_month_populates_correctly(
         "billing_units": 1,
         "rate_multiplier": 1,
         "international": False,
-        "rate": 0.31,
-        "total_cost": 1 * 0.31
+        "rate": 0.33,
+        "total_cost": 1 * 0.33
     })
 
 
@@ -286,7 +285,6 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
     create_notification(template=sample_email_template, created_at=JAN_2017_MONTH_START, status='delivered')
     create_notification(template=letter_template, created_at=JAN_2017_MONTH_START, status='delivered',
                         billable_units=1)
-    create_letter_rate(start_date=JAN_2017_MONTH_START, crown=False)
 
     create_or_update_monthly_billing(service_id=sample_template.service_id, billing_month=JAN_2017_MONTH_START)
 
@@ -329,8 +327,8 @@ def test_add_monthly_billing_with_multiple_rates_populate_correctly(
         "billing_units": 1,
         "rate_multiplier": 1,
         "international": False,
-        "rate": 0.31,
-        "total_cost": 0.31
+        "rate": 0.33,
+        "total_cost": 0.33
     })
 
 

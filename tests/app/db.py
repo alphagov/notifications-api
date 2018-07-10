@@ -32,7 +32,6 @@ from app.models import (
     SMS_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
-    LetterRate,
     InvitedOrganisationUser,
     FactBilling,
     FactNotificationStatus,
@@ -473,28 +472,6 @@ def create_annual_billing(
     db.session.commit()
 
     return annual_billing
-
-
-def create_letter_rate(
-        start_date=datetime(2017, 1, 1, 00, 00, 00),
-        end_date=None,
-        sheet_count=1,
-        rate=0.31,
-        crown=True,
-        post_class='second'
-):
-    rate = LetterRate(
-        start_date=start_date,
-        end_date=end_date,
-        sheet_count=sheet_count,
-        rate=rate,
-        crown=crown,
-        post_class=post_class
-    )
-    db.session.add(rate)
-    db.session.commit()
-
-    return rate
 
 
 def create_organisation(name='test_org_1', active=True):

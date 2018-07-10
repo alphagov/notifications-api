@@ -11,7 +11,6 @@ from app.models import (
 )
 from decimal import Decimal
 import pytest
-from app.dao.letter_rate_dao import dao_create_letter_rate
 from app.models import LetterRate, Rate
 from app import db
 from freezegun import freeze_time
@@ -316,38 +315,20 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
     assert records[-1].bst_date == date(2018, 1, 14)
 
 
-def test_get_rate_for_letter_latest(notify_db, notify_db_session):
-    letter_rate = LetterRate(start_date=datetime(2017, 12, 1),
-                             rate=Decimal(0.33),
-                             crown=True,
-                             sheet_count=1,
-                             post_class='second')
-
-    dao_create_letter_rate(letter_rate)
-    letter_rate = LetterRate(start_date=datetime(2016, 12, 1),
-                             end_date=datetime(2017, 12, 1),
-                             rate=Decimal(0.30),
-                             crown=True,
-                             sheet_count=1,
-                             post_class='second')
-    dao_create_letter_rate(letter_rate)
-
+def test_get_rate_for_letter_latest(notify_db_session):
     non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
                         Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate) for r in
-                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
+
+    # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count & rate
+    new_letter_rate = (datetime(2017, 12, 1), True, 1, Decimal(0.33))
+    old_letter_rate = (datetime(2016, 12, 1), True, 1, Decimal(0.30))
+    letter_rates = [new_letter_rate, old_letter_rate]
 
     rate = get_rate(non_letter_rates, letter_rates, LETTER_TYPE, datetime(2018, 1, 1), True, 1)
     assert rate == Decimal(0.33)
 
 
 def test_get_rate_for_sms_and_email(notify_db, notify_db_session):
-    letter_rate = LetterRate(start_date=datetime(2017, 12, 1),
-                             rate=Decimal(0.33),
-                             crown=True,
-                             sheet_count=1,
-                             post_class='second')
-    dao_create_letter_rate(letter_rate)
     sms_rate = Rate(valid_from=datetime(2017, 12, 1),
                     rate=Decimal(0.15),
                     notification_type=SMS_TYPE)

@@ -17,7 +17,6 @@ from tests.app.db import (
     create_rate,
     create_monthly_billing_entry,
     create_annual_billing,
-    create_letter_rate,
     create_template,
     create_service,
     create_ft_billing
@@ -47,8 +46,6 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
         template=sample_template, created_at=IN_JUN_2016,
         billable_units=2, rate_multiplier=3, status='delivered'
     )
-    create_letter_rate(crown=False, start_date=IN_MAY_2016, end_date=IN_JUN_2016)
-    create_letter_rate(crown=False, start_date=IN_JUN_2016, rate=0.41)
 
     letter_template = create_template(service=sample_template.service, template_type=LETTER_TYPE)
     create_notification(template=letter_template, created_at=IN_MAY_2016, status='delivered', billable_units=1)
@@ -76,7 +73,7 @@ def test_get_yearly_billing_summary_returns_correct_breakdown(client, sample_tem
         'notification_type': LETTER_TYPE,
         'billing_units': 2,
         'rate': 0,
-        'letter_total': 0.72
+        'letter_total': 0.66
     })
     _assert_dict_equals(resp_json[2], {
         'notification_type': SMS_TYPE,
