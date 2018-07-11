@@ -24,6 +24,7 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.service_data_retention_dao import insert_service_data_retention, update_service_data_retention
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
     dao_add_sms_sender_for_service,
@@ -77,6 +78,10 @@ from app.errors import (
 from app.models import Service, EmailBranding
 from app.schema_validation import validate
 from app.service import statistics
+from app.service.service_data_retention_schema import (
+    add_service_data_retention_request,
+    update_service_data_retention_request
+)
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
@@ -752,6 +757,42 @@ def is_service_name_unique():
 
     result = not (name_exists or email_from_exists)
     return jsonify(result=result), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention', methods=['POST'])
+def create_service_data_retention(service_id):
+    form = validate(request.get_json(), add_service_data_retention_request)
+    try:
+        new_data_retention = insert_service_data_retention(
+            service_id=service_id,
+            notification_type=form.get("notification_type"),
+            days_of_retention=form.get("days_of_retention")
+        )
+    except IntegrityError:
+        raise InvalidRequest(
+            message="Service already has data retention for {} notification type".format(form.get("notification_type")),
+            status_code=400
+        )
+
+    return jsonify(result=new_data_retention.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention/<uuid:data_retention_id>', methods=['POST'])
+def modify_service_data_retention(service_id, data_retention_id):
+    form = validate(request.get_json(), update_service_data_retention_request)
+
+    update_count = update_service_data_retention(
+        service_data_retention_id=data_retention_id,
+        service_id=service_id,
+        days_of_retention=form.get("days_of_retention")
+    )
+    if update_count == 0:
+        raise InvalidRequest(
+            message="The service data retention for id: {} was not found for service: {}".format(data_retention_id,
+                                                                                                 service_id),
+            status_code=404)
+
+    return '', 204
 
 
 def check_request_args(request):

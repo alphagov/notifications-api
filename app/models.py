@@ -1859,3 +1859,14 @@ class ServiceDataRetention(db.Model):
     __table_args__ = (
         UniqueConstraint('service_id', 'notification_type', name='uix_service_data_retention'),
     )
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "service_id": str(self.service_id),
+            "service_name": self.service.name,
+            "notification_type": self.notification_type,
+            "days_of_retention": self.days_of_retention,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }
