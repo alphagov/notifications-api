@@ -32,10 +32,10 @@ def set_up_get_all_from_hash(mock_redis, side_effect):
 
 @pytest.mark.parametrize('query_string', [
     {},
-    {'limit_days': 0},
-    {'limit_days': 8},
-    {'limit_days': 3.5},
-    {'limit_days': 'blurk'},
+    {'whole_days': -1},
+    {'whole_days': 8},
+    {'whole_days': 3.5},
+    {'whole_days': 'blurk'},
 ])
 def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(admin_request, query_string):
     json_resp = admin_request.get(
@@ -45,14 +45,14 @@ def test_get_template_statistics_for_service_by_day_with_bad_arg_returns_400(adm
         _expected_status=400
     )
     assert json_resp['result'] == 'error'
-    assert 'limit_days' in json_resp['message']
+    assert 'whole_days' in json_resp['message']
 
 
 def test_get_template_statistics_for_service_by_day_returns_template_info(admin_request, mocker, sample_notification):
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_notification.service_id,
-        limit_days=1
+        whole_days=1
     )
 
     assert len(json_resp['data']) == 1
@@ -62,6 +62,22 @@ def test_get_template_statistics_for_service_by_day_returns_template_info(admin_
     assert json_resp['data'][0]['template_name'] == 'Template Name'
     assert json_resp['data'][0]['template_type'] == 'sms'
     assert json_resp['data'][0]['is_precompiled_letter'] is False
+
+
+@pytest.mark.parametrize('var_name', ['limit_days', 'whole_days'])
+def test_get_template_statistics_for_service_by_day_accepts_old_query_string(
+    admin_request,
+    mocker,
+    sample_notification,
+    var_name
+):
+    json_resp = admin_request.get(
+        'template_statistics.get_template_statistics_for_service_by_day',
+        service_id=sample_notification.service_id,
+        **{var_name: 1}
+    )
+
+    assert len(json_resp['data']) == 1
 
 
 @freeze_time('2018-01-01 12:00:00')
@@ -78,7 +94,7 @@ def test_get_template_statistics_for_service_by_day_gets_out_of_redis_if_availab
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_template.service_id,
-        limit_days=1
+        whole_days=0
     )
 
     assert len(json_resp['data']) == 1
@@ -112,7 +128,7 @@ def test_get_template_statistics_for_service_by_day_goes_to_db_if_not_in_redis(
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_template.service_id,
-        limit_days=2
+        whole_days=1
     )
 
     assert len(json_resp['data']) == 1
@@ -161,7 +177,7 @@ def test_get_template_statistics_for_service_by_day_combines_templates_correctly
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_service.id,
-        limit_days=3
+        whole_days=2
     )
 
     assert len(json_resp['data']) == 2
@@ -185,13 +201,14 @@ def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
 
     # first time it is called redis returns data, second time returns none
     set_up_get_all_from_hash(mock_redis, [
-        {sample_template.id: 1},
+        {sample_template.id: 1},  # last weds
         None,
         {sample_template.id: 1},
         {sample_template.id: 1},
         {sample_template.id: 1},
+        {sample_template.id: 1},
         None,
-        None,
+        None,  # current day
     ])
     mock_dao = mocker.patch(
         'app.template_statistics.rest.dao_get_template_usage',
@@ -203,25 +220,26 @@ def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_template.service_id,
-        limit_days=7
+        whole_days=7
     )
 
     assert len(json_resp['data']) == 1
-    assert json_resp['data'][0]['count'] == 10
+    assert json_resp['data'][0]['count'] == 11
     assert json_resp['data'][0]['template_id'] == str(sample_template.id)
 
-    assert mock_redis.get_all_from_hash.call_count == 7
+    assert mock_redis.get_all_from_hash.call_count == 8
 
-    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[0][1][0]
-    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
-    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
-    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
-    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
-    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
-    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
+    assert '2018-03-21' in mock_redis.get_all_from_hash.mock_calls[0][1][0]  # last wednesday
+    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
+    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
+    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
+    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
+    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
+    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
+    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[7][1][0]  # current day (wednesday)
 
     mock_dao.mock_calls == [
-        call(ANY, day=datetime(2018, 3, 23)),
+        call(ANY, day=datetime(2018, 3, 22)),
         call(ANY, day=datetime(2018, 3, 27)),
         call(ANY, day=datetime(2018, 3, 28))
     ]
@@ -237,11 +255,11 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_service.id,
-        limit_days=7
+        whole_days=7
     )
 
     assert len(json_resp['data']) == 0
-    assert mock_redis.get_all_from_hash.call_count == 7
+    assert mock_redis.get_all_from_hash.call_count == 8
     # make sure we don't try and set any empty hashes in redis
     assert mock_redis.set_hash_and_expire.call_count == 0
 
