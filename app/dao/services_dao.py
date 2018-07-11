@@ -380,35 +380,6 @@ def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_fro
     return query.all()
 
 
-@statsd(namespace='dao')
-def fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True):
-    start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
-    table = NotificationHistory
-
-    if start_date >= datetime.utcnow() - timedelta(days=7):
-        table = Notification
-
-    query = db.session.query(
-        table.notification_type,
-        table.status,
-        func.count(table.id).label('count')
-    ).filter(
-        table.created_at >= start_date,
-        table.created_at < end_date
-    ).group_by(
-        table.notification_type,
-        table.status
-    ).order_by(
-        table.notification_type
-    )
-
-    if not include_from_test_key:
-        query = query.filter(table.key_type != KEY_TYPE_TEST)
-
-    return query.all()
-
-
 @transactional
 @version_class(Service)
 @version_class(ApiKey)
