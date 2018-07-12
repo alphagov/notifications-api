@@ -5,7 +5,6 @@ from datetime import (
 )
 
 import pytz
-from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_, func
@@ -72,11 +71,6 @@ from app.utils import (
     convert_utc_to_bst
 )
 from app.v2.errors import JobIncompleteError
-
-
-@worker_process_shutdown.connect
-def worker_process_shutdown(sender, signal, pid, exitcode):
-    current_app.logger.info('Scheduled tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="remove_csv_files")
