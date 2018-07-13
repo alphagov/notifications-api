@@ -4,8 +4,63 @@ from datetime import datetime
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from app.dao.service_data_retention_dao import insert_service_data_retention, update_service_data_retention
+from app.dao.service_data_retention_dao import (
+    fetch_service_data_retention,
+    insert_service_data_retention,
+    update_service_data_retention,
+    fetch_service_data_retention_by_id
+)
 from app.models import ServiceDataRetention
+from tests.app.db import create_service
+
+
+def test_fetch_service_data_retention(sample_service):
+    email_data_retention = insert_service_data_retention(sample_service.id, 'email', 3)
+    letter_data_retention = insert_service_data_retention(sample_service.id, 'letter', 30)
+    sms_data_retention = insert_service_data_retention(sample_service.id, 'sms', 5)
+
+    list_of_data_retention = fetch_service_data_retention(sample_service.id)
+
+    assert len(list_of_data_retention) == 3
+    assert list_of_data_retention[0] == email_data_retention
+    assert list_of_data_retention[1] == sms_data_retention
+    assert list_of_data_retention[2] == letter_data_retention
+
+
+def test_fetch_service_data_retention_only_returns_row_for_service(sample_service):
+    another_service = create_service(service_name="Another service")
+    email_data_retention = insert_service_data_retention(sample_service.id, 'email', 3)
+    letter_data_retention = insert_service_data_retention(sample_service.id, 'letter', 30)
+    insert_service_data_retention(another_service.id, 'sms', 5)
+
+    list_of_data_retention = fetch_service_data_retention(sample_service.id)
+    assert len(list_of_data_retention) == 2
+    assert list_of_data_retention[0] == email_data_retention
+    assert list_of_data_retention[1] == letter_data_retention
+
+
+def test_fetch_service_data_retention_returns_empty_list_when_no_rows_for_service(sample_service):
+    empty_list = fetch_service_data_retention(sample_service.id)
+    assert not empty_list
+
+
+def test_fetch_service_data_retention_by_id(sample_service):
+    email_data_retention = insert_service_data_retention(sample_service.id, 'email', 3)
+    insert_service_data_retention(sample_service.id, 'sms', 13)
+    result = fetch_service_data_retention_by_id(sample_service.id, email_data_retention.id)
+    assert result == email_data_retention
+
+
+def test_fetch_service_data_retention_by_id_returns_none_if_not_found(sample_service):
+    result = fetch_service_data_retention_by_id(sample_service.id, uuid.uuid4())
+    assert not result
+
+
+def test_fetch_service_data_retention_by_id_returns_none_if_id_not_for_service(sample_service):
+    another_service = create_service(service_name="Another service")
+    email_data_retention = insert_service_data_retention(sample_service.id, 'email', 3)
+    result = fetch_service_data_retention_by_id(another_service.id, email_data_retention.id)
+    assert not result
 
 
 def test_insert_service_data_retention(sample_service):

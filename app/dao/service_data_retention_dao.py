@@ -5,9 +5,19 @@ from app.dao.dao_utils import transactional
 from app.models import ServiceDataRetention
 
 
-def get_service_data_retention(service_id):
-    data_retention = ServiceDataRetention.query.filter_by(service_id=service_id).all()
+def fetch_service_data_retention_by_id(service_id, data_retention_id):
+    data_retention = ServiceDataRetention.query.filter_by(service_id=service_id, id=data_retention_id).first()
     return data_retention
+
+
+def fetch_service_data_retention(service_id):
+    data_retention_list = ServiceDataRetention.query.filter_by(
+        service_id=service_id
+    ).order_by(
+        # in the order that models.notification_types are created (email, sms, letter)
+        ServiceDataRetention.notification_type
+    ).all()
+    return data_retention_list
 
 
 @transactional

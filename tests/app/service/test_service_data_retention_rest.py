@@ -6,6 +6,58 @@ from tests import create_authorization_header
 from tests.app.db import create_service_data_retention
 
 
+def test_get_service_data_retention(client, sample_service):
+    sms_data_retention = create_service_data_retention(service_id=sample_service.id)
+    email_data_retention = create_service_data_retention(service_id=sample_service.id, notification_type='email',
+                                                         days_of_retention=10)
+    letter_data_retention = create_service_data_retention(service_id=sample_service.id, notification_type='letter',
+                                                          days_of_retention=30)
+
+    response = client.get(
+        '/service/{}/data-retention'.format(str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+    )
+
+    assert response.status_code == 200
+    json_response = json.loads(response.get_data(as_text=True))
+    assert len(json_response) == 3
+    assert json_response[0] == email_data_retention.serialize()
+    assert json_response[1] == sms_data_retention.serialize()
+    assert json_response[2] == letter_data_retention.serialize()
+
+
+def test_get_service_data_retention_returns_empty_list(client, sample_service):
+    response = client.get(
+        '/service/{}/data-retention'.format(str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+    )
+    assert response.status_code == 200
+    assert len(json.loads(response.get_data(as_text=True))) == 0
+
+
+def test_get_service_data_retention_by_id(client, sample_service):
+    sms_data_retention = create_service_data_retention(service_id=sample_service.id)
+    create_service_data_retention(service_id=sample_service.id, notification_type='email',
+                                  days_of_retention=10)
+    create_service_data_retention(service_id=sample_service.id, notification_type='letter',
+                                  days_of_retention=30)
+    response = client.get(
+        '/service/{}/data-retention/{}'.format(str(sample_service.id), sms_data_retention.id),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == sms_data_retention.serialize()
+
+
+def test_get_service_data_retention_by_id_returns_none_when_no_data_retention_exists(client, sample_service):
+    response = client.get(
+        '/service/{}/data-retention/{}'.format(str(sample_service.id), uuid.uuid4()),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+    )
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == {}
+
+
 def test_create_service_data_retention(client, sample_service):
     data = {
         "notification_type": 'sms',

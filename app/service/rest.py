@@ -24,7 +24,12 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.service_data_retention_dao import insert_service_data_retention, update_service_data_retention
+from app.dao.service_data_retention_dao import (
+    fetch_service_data_retention,
+    fetch_service_data_retention_by_id,
+    insert_service_data_retention,
+    update_service_data_retention,
+)
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
     dao_add_sms_sender_for_service,
@@ -757,6 +762,18 @@ def is_service_name_unique():
 
     result = not (name_exists or email_from_exists)
     return jsonify(result=result), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention', methods=['GET'])
+def get_data_retention_for_service(service_id):
+    data_retention_list = fetch_service_data_retention(service_id)
+    return jsonify([data_retention.serialize() for data_retention in data_retention_list]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention/<uuid:data_retention_id>', methods=['GET'])
+def get_data_retention_for_service_by_id(service_id, data_retention_id):
+    data_retention = fetch_service_data_retention_by_id(service_id, data_retention_id)
+    return jsonify(data_retention.serialize() if data_retention else {}), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/data-retention', methods=['POST'])
