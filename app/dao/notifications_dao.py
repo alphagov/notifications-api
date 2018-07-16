@@ -22,7 +22,7 @@ from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
-from app.utils import midnight_n_days_ago
+from app.utils import midnight_n_days_ago, escape_special_characters
 from app.errors import InvalidRequest
 from app.models import (
     Notification,
@@ -452,11 +452,7 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
     else:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
-    for special_character in ('\\', '_', '%', '/'):
-        normalised = normalised.replace(
-            special_character,
-            '\{}'.format(special_character)
-        )
+    normalised = escape_special_characters(normalised)
 
     filters = [
         Notification.service_id == service_id,

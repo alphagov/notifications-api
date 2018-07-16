@@ -731,3 +731,71 @@ def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request,
             }
         ]
     }
+
+
+def test_find_users_by_email_finds_user_by_partial_email(notify_db, client):
+    create_user(email='findel.mestro@foo.com')
+    create_user(email='me.ignorra@foo.com')
+    data = json.dumps({"email": "findel"})
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        url_for("user.find_users_by_email"),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    users = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert len(users['data']) == 1
+    assert users['data'][0]['email_address'] == 'findel.mestro@foo.com'
+
+
+def test_find_users_by_email_finds_user_by_full_email(notify_db, client):
+    create_user(email='findel.mestro@foo.com')
+    create_user(email='me.ignorra@foo.com')
+    data = json.dumps({"email": "findel.mestro@foo.com"})
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        url_for("user.find_users_by_email"),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    users = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert len(users['data']) == 1
+    assert users['data'][0]['email_address'] == 'findel.mestro@foo.com'
+
+
+def test_find_users_by_email_handles_no_results(notify_db, client):
+    create_user(email='findel.mestro@foo.com')
+    create_user(email='me.ignorra@foo.com')
+    data = json.dumps({"email": "rogue"})
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        url_for("user.find_users_by_email"),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    users = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 200
+    assert users['data'] == []
+
+
+def test_search_for_users_by_email_handles_incorrect_data_format(notify_db, client):
+    create_user(email='findel.mestro@foo.com')
+    data = json.dumps({"email": 1})
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        url_for("user.find_users_by_email"),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))['message'] == {'email': ['Not a valid string.']}

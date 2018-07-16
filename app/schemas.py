@@ -564,8 +564,14 @@ class EmailDataSchema(ma.Schema):
 
     email = fields.Str(required=True)
 
+    def __init__(self, partial_email=False):
+        super().__init__()
+        self.partial_email = partial_email
+
     @validates('email')
     def validate_email(self, value):
+        if self.partial_email:
+            return
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
@@ -686,6 +692,7 @@ notification_with_personalisation_schema = NotificationWithPersonalisationSchema
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
+partial_email_data_request_schema = EmailDataSchema(partial_email=True)
 notifications_filter_schema = NotificationsFilterSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()
