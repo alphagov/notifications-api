@@ -225,6 +225,17 @@ def test_letter_notification_serializes_with_address(client, sample_letter_notif
     assert res['postcode'] == 'SW1 1AA'
 
 
+def test_notification_serializes_created_by_name_with_no_created_by_id(client, sample_notification):
+    res = sample_notification.serialize()
+    assert res['created_by_name'] is None
+
+
+def test_notification_serializes_created_by_name_with_created_by_id(client, sample_notification, sample_user):
+    sample_notification.created_by_id = sample_user.id
+    res = sample_notification.serialize()
+    assert res['created_by_name'] == sample_user.name
+
+
 def test_sms_notification_serializes_without_subject(client, sample_template):
     res = sample_template.serialize()
     assert res['subject'] is None
