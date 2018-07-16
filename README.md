@@ -97,6 +97,19 @@ That will run flake8 for code analysis and our unit test suite. If you wish to r
 [notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
 
 
+## To update application dependencies
+
+`requirements.txt` file is generated from the `requirements-app.txt` in order to pin
+versions of all nested dependencies. If `requirements-app.txt` has been changed (or
+we want to update the unpinned nested dependencies) `requirements.txt` should be
+regenerated with
+
+```
+make freeze-requirements
+```
+
+`requirements.txt` should be committed alongside `requirements-app.txt` changes.
+
 
 ## To run one off tasks
 
