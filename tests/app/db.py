@@ -3,6 +3,7 @@ import uuid
 
 from app import db
 from app.dao.jobs_dao import dao_create_job
+from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
@@ -35,7 +36,7 @@ from app.models import (
     InvitedOrganisationUser,
     FactBilling,
     FactNotificationStatus,
-    Complaint
+    Complaint,
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -663,3 +664,16 @@ def ses_notification_callback():
            'dd426d95ee9390147a5624348ee.pem",' \
            '\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&S' \
            'subscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'
+
+
+def create_service_data_retention(
+        service_id,
+        notification_type='sms',
+        days_of_retention=3
+):
+    data_retention = insert_service_data_retention(
+        service_id=service_id,
+        notification_type=notification_type,
+        days_of_retention=days_of_retention
+    )
+    return data_retention
