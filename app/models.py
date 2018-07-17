@@ -57,6 +57,10 @@ SMS_AUTH_TYPE = 'sms_auth'
 EMAIL_AUTH_TYPE = 'email_auth'
 USER_AUTH_TYPE = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE]
 
+DELIVERY_STATUS_CALLBACK_TYPE = 'delivery_status'
+COMPLAINT_CALLBACK_TYPE = 'complaint'
+SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
+
 
 def filter_null_value_fields(obj):
     return dict(
@@ -596,6 +600,7 @@ class ServiceCallbackApi(db.Model, Versioned):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
     service = db.relationship('Service', backref='service_callback_api')
     url = db.Column(db.String(), nullable=False)
+    callback_type = db.Column(db.String(), db.ForeignKey('service_callback_type.name'), nullable=True)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
@@ -622,6 +627,12 @@ class ServiceCallbackApi(db.Model, Versioned):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
         }
+
+
+class ServiceCallbackType(db.Model):
+    __tablename__ = 'service_callback_type'
+
+    name = db.Column(db.String, primary_key=True)
 
 
 class ApiKey(db.Model, Versioned):
