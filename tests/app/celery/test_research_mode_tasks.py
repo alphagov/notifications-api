@@ -15,7 +15,13 @@ from app.celery.research_mode_tasks import (
     ses_notification_callback,
     create_fake_letter_response_file,
 )
-from tests.conftest import set_config_values
+from tests.conftest import set_config_values, Matcher
+
+
+dvla_response_file_matcher = Matcher(
+    'dvla_response_file',
+    lambda x: 'NOTIFY-20180125140000-RSP.TXT' < x <= 'NOTIFY-20180125140030-RSP.TXT'
+)
 
 
 def test_make_mmg_callback(notify_api, rmock):
@@ -108,12 +114,11 @@ def test_failure_firetext_callback(phone_number):
     }
 
 
-@freeze_time("2018-01-25 14:00:00")
+@freeze_time("2018-01-25 14:00:30")
 def test_create_fake_letter_response_file_uploads_response_file_s3(
         notify_api, mocker):
     mocker.patch('app.celery.research_mode_tasks.file_exists', return_value=False)
     mock_s3upload = mocker.patch('app.celery.research_mode_tasks.s3upload')
-    filename = 'NOTIFY-20180125140000-RSP.TXT'
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post(
@@ -128,16 +133,15 @@ def test_create_fake_letter_response_file_uploads_response_file_s3(
             filedata='random-ref|Sent|0|Sorted',
             region=current_app.config['AWS_REGION'],
             bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
-            file_location=filename
+            file_location=dvla_response_file_matcher
         )
 
 
-@freeze_time("2018-01-25 14:00:00")
+@freeze_time("2018-01-25 14:00:30")
 def test_create_fake_letter_response_file_calls_dvla_callback_on_development(
         notify_api, mocker):
     mocker.patch('app.celery.research_mode_tasks.file_exists', return_value=False)
     mocker.patch('app.celery.research_mode_tasks.s3upload')
-    filename = 'NOTIFY-20180125140000-RSP.TXT'
 
     with set_config_values(notify_api, {
         'NOTIFY_ENVIRONMENT': 'development'
@@ -154,11 +158,22 @@ def test_create_fake_letter_response_file_calls_dvla_callback_on_development(
             assert request_mock.last_request.json() == {
                 "Type": "Notification",
                 "MessageId": "some-message-id",
-                "Message": '{"Records":[{"s3":{"object":{"key":"' + filename + '"}}}]}'
+                "Message": ANY
+            }
+            assert json.loads(request_mock.last_request.json()['Message']) == {
+                "Records": [
+                    {
+                        "s3": {
+                            "object": {
+                                "key": dvla_response_file_matcher
+                            }
+                        }
+                    }
+                ]
             }
 
 
-@freeze_time("2018-01-25 14:00:00")
+@freeze_time("2018-01-25 14:00:30")
 def test_create_fake_letter_response_file_does_not_call_dvla_callback_on_preview(
         notify_api, mocker):
     mocker.patch('app.celery.research_mode_tasks.file_exists', return_value=False)
@@ -181,15 +196,15 @@ def test_create_fake_letter_response_file_tries_to_create_files_with_other_filen
     create_fake_letter_response_file('random-ref')
 
     assert mock_file_exists.mock_calls == [
-        call('test.notify.com-ftp', 'NOTIFY-20180125140030-RSP.TXT'),
-        call('test.notify.com-ftp', 'NOTIFY-20180125140029-RSP.TXT'),
-        call('test.notify.com-ftp', 'NOTIFY-20180125140028-RSP.TXT'),
+        call('test.notify.com-ftp', dvla_response_file_matcher),
+        call('test.notify.com-ftp', dvla_response_file_matcher),
+        call('test.notify.com-ftp', dvla_response_file_matcher),
     ]
     mock_s3upload.assert_called_once_with(
         filedata=ANY,
         region=ANY,
         bucket_name=ANY,
-        file_location='NOTIFY-20180125140028-RSP.TXT'
+        file_location=dvla_response_file_matcher
     )
 
 
