@@ -65,7 +65,7 @@ pycparser==2.18
 PyPDF2==1.26.0
 python-dateutil==2.7.3
 python-editor==1.0.3
-python-json-logger==0.1.8
+python-json-logger==0.1.9
 pytz==2018.5
 PyYAML==3.12
 redis==2.10.6
