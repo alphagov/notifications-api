@@ -593,6 +593,7 @@ class NotificationsFilterSchema(ma.Schema):
     older_than = fields.UUID(required=False)
     format_for_csv = fields.String()
     to = fields.String()
+    include_one_off = fields.Boolean(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):

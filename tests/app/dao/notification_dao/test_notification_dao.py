@@ -957,6 +957,21 @@ def test_should_return_notifications_excluding_jobs_by_default(sample_template, 
     assert exclude_jobs_manually[0].id == without_job.id
 
 
+def test_should_return_notifications_including_one_offs_by_default(sample_user, sample_template):
+    create_notification(sample_template, one_off=True, created_by_id=sample_user.id)
+    not_one_off = create_notification(sample_template)
+
+    exclude_one_offs = get_notifications_for_service(sample_template.service_id, include_one_off=False).items
+    assert len(exclude_one_offs) == 1
+    assert exclude_one_offs[0].id == not_one_off.id
+
+    include_one_offs_manually = get_notifications_for_service(sample_template.service_id, include_one_off=True).items
+    assert len(include_one_offs_manually) == 2
+
+    include_one_offs_by_default = get_notifications_for_service(sample_template.service_id).items
+    assert len(include_one_offs_by_default) == 2
+
+
 def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excluding_test_key_notifications(
         notify_db,
         notify_db_session,
