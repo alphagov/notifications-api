@@ -8,7 +8,7 @@ from app.dao.service_callback_api_dao import (
     save_service_callback_api,
     reset_service_callback_api,
     get_service_callback_api,
-    get_service_callback_api_for_service)
+    get_service_delivery_status_callback_api_for_service)
 from app.models import ServiceCallbackApi
 from tests.app.db import create_service_callback_api
 
@@ -118,9 +118,9 @@ def test_get_service_callback_api(sample_service):
     assert callback_api.updated_at is None
 
 
-def test_get_service_callback_api_for_service(sample_service):
+def test_get_service_delivery_status_callback_api_for_service(sample_service):
     service_callback_api = create_service_callback_api(service=sample_service)
-    result = get_service_callback_api_for_service(sample_service.id)
+    result = get_service_delivery_status_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url
     assert result.bearer_token == service_callback_api.bearer_token
