@@ -26,7 +26,7 @@ from app.dao.monthly_billing_dao import (
     get_service_ids_that_need_billing_populated
 )
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user,
@@ -349,7 +349,7 @@ def replay_create_pdf_letters(notification_id):
               help="""The service that the callbacks are for""")
 def replay_service_callbacks(file_name, service_id):
     print("Start send service callbacks for service: ", service_id)
-    callback_api = get_service_callback_api_for_service(service_id=service_id)
+    callback_api = get_service_delivery_status_callback_api_for_service(service_id=service_id)
     if not callback_api:
         print("Callback api was not found for service: {}".format(service_id))
         return

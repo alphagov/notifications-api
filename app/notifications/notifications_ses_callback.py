@@ -12,7 +12,7 @@ from app.dao import (
 )
 from app.dao.complaint_dao import save_complaint
 from app.dao.notifications_dao import dao_get_notification_history_by_reference
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.models import Complaint
 from app.notifications.process_client_response import validate_callback_data
 from app.celery.service_callback_tasks import (
@@ -146,7 +146,7 @@ def remove_emails_from_complaint(complaint_dict):
 
 def _check_and_queue_callback_task(notification):
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+    service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:
         encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
         send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],

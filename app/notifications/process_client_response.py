@@ -14,7 +14,7 @@ from app.celery.service_callback_tasks import (
 )
 from app.config import QueueNames
 from app.dao.notifications_dao import dao_update_notification
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -95,7 +95,7 @@ def _process_for_status(notification_status, client_name, provider_reference):
         )
 
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+    service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
 
     if service_callback_api:
         encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
