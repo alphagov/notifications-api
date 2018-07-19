@@ -129,11 +129,11 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
     assert resp_json[2]["is_precompiled_letter"] is False
 
 
-@pytest.mark.parametrize('today_only, stats', [
-    (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
-    (True, {'requested': 1, 'delivered': 0, 'failed': 0})
+@pytest.mark.parametrize('today_only, limit_days, stats', [
+    (False, 7, {'requested': 2, 'delivered': 1, 'failed': 0}),
+    (True, 7, {'requested': 1, 'delivered': 0, 'failed': 0})
 ], ids=['seven_days', 'today'])
-def test_get_service_notification_statistics(admin_request, sample_template, today_only, stats):
+def test_get_service_notification_statistics(admin_request, sample_template, today_only, limit_days, stats):
     with freeze_time('2000-01-01T12:00:00'):
         create_notification(sample_template, status='delivered')
     with freeze_time('2000-01-02T12:00:00'):
@@ -141,7 +141,8 @@ def test_get_service_notification_statistics(admin_request, sample_template, tod
         resp = admin_request.get(
             'service.get_service_notification_statistics',
             service_id=sample_template.service_id,
-            today_only=today_only
+            today_only=today_only,
+            limit_days=limit_days
         )
 
     assert set(resp['data'].keys()) == {SMS_TYPE, EMAIL_TYPE, LETTER_TYPE}
@@ -151,7 +152,8 @@ def test_get_service_notification_statistics(admin_request, sample_template, tod
 def test_get_service_notification_statistics_with_unknown_service(admin_request):
     resp = admin_request.get(
         'service.get_service_notification_statistics',
-        service_id=uuid.uuid4()
+        service_id=uuid.uuid4(),
+        limit_days=7
     )
 
     assert resp['data'] == {

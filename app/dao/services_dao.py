@@ -246,9 +246,8 @@ def delete_service_and_all_associated_db_objects(service):
 
 
 @statsd(namespace="dao")
-def dao_fetch_stats_for_service(service_id):
-    # We always want between seven and eight days
-    start_date = midnight_n_days_ago(7)
+def dao_fetch_stats_for_service(service_id, limit_days):
+    start_date = midnight_n_days_ago(limit_days)
     return _stats_for_service_query(service_id).filter(
         Notification.created_at >= start_date
     ).all()
