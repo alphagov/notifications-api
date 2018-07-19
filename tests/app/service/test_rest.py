@@ -1384,15 +1384,21 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 def test_get_only_api_created_notifications_for_service(
     admin_request,
     sample_job,
-    sample_template
+    sample_template,
+    sample_user,
 ):
+    # notification sent as a job
     create_notification(sample_template, job=sample_job)
+    # notification sent as a one-off
+    create_notification(sample_template, one_off=True, created_by_id=sample_user.id)
+    # notification sent via API
     without_job = create_notification(sample_template)
 
     resp = admin_request.get(
         'service.get_all_notifications_for_service',
         service_id=sample_template.service_id,
-        include_jobs=False
+        include_jobs=False,
+        include_one_off=False
     )
     assert len(resp['notifications']) == 1
     assert resp['notifications'][0]['id'] == str(without_job.id)

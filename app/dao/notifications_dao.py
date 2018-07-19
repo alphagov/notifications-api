@@ -31,7 +31,6 @@ from app.models import (
     Service,
     Template,
     TemplateHistory,
-    KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -245,7 +244,8 @@ def get_notifications_for_service(
     include_jobs=False,
     include_from_test_key=False,
     older_than=None,
-    client_reference=None
+    client_reference=None,
+    include_one_off=True
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -260,9 +260,11 @@ def get_notifications_for_service(
             Notification.created_at).filter(Notification.id == older_than).as_scalar()
         filters.append(Notification.created_at < older_than_created_at)
 
-    if not include_jobs or (key_type and key_type != KEY_TYPE_NORMAL):
-        # we can't say "job_id == None" here, because letters sent via the API still have a job_id :(
-        filters.append(Notification.api_key_id != None)  # noqa
+    if not include_jobs:
+        filters.append(Notification.job_id == None)  # noqa
+
+    if not include_one_off:
+        filters.append(Notification.created_by_id == None)  # noqa
 
     if key_type is not None:
         filters.append(Notification.key_type == key_type)
