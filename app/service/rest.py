@@ -29,6 +29,7 @@ from app.dao.service_data_retention_dao import (
     fetch_service_data_retention_by_id,
     insert_service_data_retention,
     update_service_data_retention,
+    fetch_service_data_retention_by_notification_type
 )
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
@@ -324,15 +325,20 @@ def get_service_history(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service(service_id):
     data = notifications_filter_schema.load(request.args).data
+    notification_type = data.get('template_type')[0] if data.get('template_type') else None
     if data.get('to'):
-        notification_type = data.get('template_type')[0] if data.get('template_type') else None
         return search_for_notification_by_to_field(service_id=service_id,
                                                    search_term=data['to'],
                                                    statuses=data.get('status'),
                                                    notification_type=notification_type)
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
-    limit_days = data.get('limit_days')
+    days_of_retention = None
+    if notification_type:
+        days_of_retention = fetch_service_data_retention_by_notification_type(
+            service_id=service_id,
+            notification_type=notification_type).days_of_retention
+    limit_days = days_of_retention if days_of_retention else data.get('limit_days')
     include_jobs = data.get('include_jobs', True)
     include_from_test_key = data.get('include_from_test_key', False)
     include_one_off = data.get('include_one_off', True)

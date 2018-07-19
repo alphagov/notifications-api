@@ -8,10 +8,11 @@ from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     insert_service_data_retention,
     update_service_data_retention,
-    fetch_service_data_retention_by_id
+    fetch_service_data_retention_by_id,
+    fetch_service_data_retention_by_notification_type
 )
 from app.models import ServiceDataRetention
-from tests.app.db import create_service
+from tests.app.db import create_service, create_service_data_retention
 
 
 def test_fetch_service_data_retention(sample_service):
@@ -131,3 +132,17 @@ def test_update_service_data_retention_does_not_update_row_if_data_retention_is_
                                                   service_id=uuid.uuid4(),
                                                   days_of_retention=5)
     assert updated_count == 0
+
+
+@pytest.mark.parametrize('notification_type, alternate',
+                         [('sms', 'email'),
+                          ('email', 'sms'), ('letter', 'email')])
+def test_fetch_service_data_retention_by_notification_type(sample_service, notification_type, alternate):
+    data_retention = create_service_data_retention(service_id=sample_service.id, notification_type=notification_type)
+    create_service_data_retention(service_id=sample_service.id, notification_type=alternate)
+    result = fetch_service_data_retention_by_notification_type(sample_service.id, notification_type)
+    assert result == data_retention
+
+
+def test_fetch_service_data_retention_by_notification_type_returns_none_when_no_rows(sample_service):
+    assert not fetch_service_data_retention_by_notification_type(sample_service.id, 'email')

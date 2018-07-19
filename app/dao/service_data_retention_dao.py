@@ -20,6 +20,14 @@ def fetch_service_data_retention(service_id):
     return data_retention_list
 
 
+def fetch_service_data_retention_by_notification_type(service_id, notification_type):
+    data_retention_list = ServiceDataRetention.query.filter_by(
+        service_id=service_id,
+        notification_type=notification_type
+    ).first()
+    return data_retention_list
+
+
 @transactional
 def insert_service_data_retention(service_id, notification_type, days_of_retention):
     new_data_retention = ServiceDataRetention(service_id=service_id,
