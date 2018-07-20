@@ -162,3 +162,15 @@ def set_config_values(app, dict):
     finally:
         for key in dict:
             app.config[key] = old_values[key]
+
+
+class Matcher:
+    def __init__(self, description, key):
+        self.description = description
+        self.key = key
+
+    def __eq__(self, other):
+        return self.key(other)
+
+    def __repr__(self):
+        return '<Matcher: {}>'.format(self.description)

@@ -1,4 +1,3 @@
-from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.recipients import InvalidEmailError
 from notifications_utils.statsd_decorators import statsd
@@ -11,11 +10,6 @@ from app.dao.notifications_dao import update_notification_status_by_id
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import NOTIFICATION_TECHNICAL_FAILURE
-
-
-@worker_process_shutdown.connect
-def worker_process_shutdown(sender, signal, pid, exitcode):
-    current_app.logger.info('Provider worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
