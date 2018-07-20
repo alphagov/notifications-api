@@ -38,7 +38,7 @@ def test_send_delivery_status_to_service_post_https_request_to_service_with_encr
         send_delivery_status_to_service(notification.id, encrypted_status_update=encrypted_status_update)
 
     mock_data = {
-        "notification_id": str(notification.id),
+        "id": str(notification.id),
         "reference": notification.client_reference,
         "to": notification.to,
         "status": notification.status,

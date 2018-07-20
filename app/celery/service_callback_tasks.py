@@ -23,7 +23,7 @@ def send_delivery_status_to_service(
     status_update = encryption.decrypt(encrypted_status_update)
 
     data = {
-        "notification_id": str(notification_id),
+        "id": str(notification_id),
         "reference": status_update['notification_client_reference'],
         "to": status_update['notification_to'],
         "status": status_update['notification_status'],
@@ -64,7 +64,7 @@ def send_complaint_to_service(self, complaint_data):
 
 
 def _send_data_to_service_callback_api(self, data, service_callback_url, token, function_name):
-    notification_id = data["notification_id"]
+    notification_id = (data["notification_id"] if "notification_id" in data else data["id"])
     try:
         response = request(
             method="POST",
