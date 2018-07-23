@@ -61,8 +61,7 @@ from app.utils import get_london_midnight_in_utc
 from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.v2.errors import JobIncompleteError
 from tests.app.db import (
-    create_notification, create_service, create_template, create_job, create_rate,
-    create_service_callback_api
+    create_notification, create_service, create_template, create_job, create_service_callback_api
 )
 
 from tests.app.conftest import (

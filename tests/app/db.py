@@ -14,7 +14,6 @@ from app.models import (
     InboundSms,
     InboundNumber,
     Job,
-    MonthlyBilling,
     Notification,
     EmailBranding,
     Organisation,
@@ -380,27 +379,6 @@ def create_inbound_number(number, provider='mmg', active=True, service_id=None):
     db.session.add(inbound_number)
     db.session.commit()
     return inbound_number
-
-
-def create_monthly_billing_entry(
-        service,
-        start_date,
-        end_date,
-        notification_type,
-        monthly_totals=[]
-):
-    entry = MonthlyBilling(
-        service_id=service.id,
-        notification_type=notification_type,
-        monthly_totals=monthly_totals,
-        start_date=start_date,
-        end_date=end_date
-    )
-
-    db.session.add(entry)
-    db.session.commit()
-
-    return entry
 
 
 def create_reply_to_email(

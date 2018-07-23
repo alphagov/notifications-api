@@ -13,7 +13,6 @@ from sqlalchemy import func
 from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption, redis_store
-from app.billing.rest import get_yearly_usage_by_month, get_yearly_usage_by_monthly_from_ft_billing
 from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
@@ -33,7 +32,7 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id
 )
 from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
-from app.models import PROVIDERS, User, SMS_TYPE, EMAIL_TYPE, Notification
+from app.models import PROVIDERS, User, Notification
 from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
 from app.utils import (
     cache_key_for_service_template_usage_per_day,
