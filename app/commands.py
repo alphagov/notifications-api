@@ -24,11 +24,7 @@ from app.dao.fact_billing_dao import (
     update_fact_billing,
     delete_billing_data_for_service_for_day
 )
-from app.dao.monthly_billing_dao import (
-    create_or_update_monthly_billing,
-    get_monthly_billing_by_notification_type,
-    get_service_ids_that_need_billing_populated
-)
+
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.dao.services_dao import (
@@ -189,51 +185,6 @@ def fix_notification_statuses_not_in_sync():
         print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
-
-
-@notify_command()
-@click.option('-y', '--year', required=True, help="e.g. 2017", type=int)
-@click.option('-s', '--service_id', required=False, help="Enter the service id", type=click.UUID)
-@click.option('-m', '--month', required=False, help="e.g. 1 for January", type=int)
-def populate_monthly_billing(year, service_id=None, month=None):
-    """
-    Populate monthly billing table for all services for a given year.
-    If service_id and month provided then only rebuild monthly billing for that month.
-    """
-    def populate(service_id, year, month):
-        create_or_update_monthly_billing(service_id, datetime(year, month, 1))
-        sms_res = get_monthly_billing_by_notification_type(
-            service_id, datetime(year, month, 1), SMS_TYPE
-        )
-        email_res = get_monthly_billing_by_notification_type(
-            service_id, datetime(year, month, 1), EMAIL_TYPE
-        )
-        letter_res = get_monthly_billing_by_notification_type(
-            service_id, datetime(year, month, 1), 'letter'
-        )
-
-        print("Finished populating data for {}-{} for service id {}".format(month, year, str(service_id)))
-        print('SMS: {}'.format(sms_res.monthly_totals))
-        print('Email: {}'.format(email_res.monthly_totals))
-        print('Letter: {}'.format(letter_res.monthly_totals))
-
-    if service_id and month:
-            populate(service_id, year, month)
-    else:
-        service_ids = get_service_ids_that_need_billing_populated(
-            start_date=datetime(2016, 5, 1), end_date=datetime(2017, 8, 16)
-        )
-        start, end = 1, 13
-
-        if year == 2016:
-            start = 4
-
-        for service_id in service_ids:
-            print('Starting to populate data for service {}'.format(str(service_id)))
-            print('Starting populating monthly billing for {}'.format(year))
-            for i in range(start, end):
-                print('Population for {}-{}'.format(i, year))
-                populate(service_id, year, i)
 
 
 @notify_command()
@@ -558,44 +509,6 @@ def rebuild_ft_billing_for_day(service_id, day):
         )
         for row in services:
             rebuild_ft_data(day, row.service_id)
-
-
-@notify_command(name='compare-ft-billing-to-monthly-billing')
-@click.option('-y', '--year', required=True)
-@click.option('-s', '--service_id', required=False, type=click.UUID)
-def compare_ft_billing_to_monthly_billing(year, service_id=None):
-    """
-    This command checks the results of monthly_billing to ft_billing for the given year.
-    If service id is not included all services are compared for the given year.
-    """
-    def compare_monthly_billing_to_ft_billing(ft_billing_resp, monthly_billing_resp):
-        # Remove the rows with 0 billing_units and rate, ft_billing doesn't populate those rows.
-        mo_json = json.loads(monthly_billing_resp.get_data(as_text=True))
-        rm_zero_rows = [x for x in mo_json if x['billing_units'] != 0 and x['rate'] != 0]
-        try:
-            assert rm_zero_rows == json.loads(ft_billing_resp.get_data(as_text=True))
-        except AssertionError:
-            print("Comparison failed for service: {} and year: {}".format(service_id, year))
-
-    if not service_id:
-        start_date, end_date = get_financial_year(year=int(year))
-        services = get_service_ids_that_need_billing_populated(start_date, end_date)
-        for service_id in services:
-            with current_app.test_request_context(
-                    path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
-                monthly_billing_response = get_yearly_usage_by_month(service_id)
-            with current_app.test_request_context(
-                    path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
-                ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
-            compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
-    else:
-        with current_app.test_request_context(
-                path='/service/{}/billing/monthly-usage?year={}'.format(service_id, year)):
-            monthly_billing_response = get_yearly_usage_by_month(service_id)
-        with current_app.test_request_context(
-                path='/service/{}/billing/ft-monthly-usage?year={}'.format(service_id, year)):
-            ft_billing_response = get_yearly_usage_by_monthly_from_ft_billing(service_id)
-        compare_monthly_billing_to_ft_billing(ft_billing_response, monthly_billing_response)
 
 
 @notify_command(name='migrate-data-to-ft-notification-status')

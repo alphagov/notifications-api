@@ -380,18 +380,6 @@ def raise_alert_if_letter_notifications_still_sending():
             current_app.logger.info(message)
 
 
-@notify_celery.task(name="populate_monthly_billing")
-@statsd(namespace="tasks")
-def populate_monthly_billing():
-    # for every service with billable units this month update billing totals for yesterday
-    # this will overwrite the existing amount.
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    yesterday_in_bst = convert_utc_to_bst(yesterday)
-    start_date, end_date = get_month_start_and_end_date_in_utc(yesterday_in_bst)
-    services = get_service_ids_that_need_billing_populated(start_date=start_date, end_date=end_date)
-    [create_or_update_monthly_billing(service_id=s.service_id, billing_month=end_date) for s in services]
-
-
 @notify_celery.task(name="run-letter-jobs")
 @statsd(namespace="tasks")
 def run_letter_jobs():
