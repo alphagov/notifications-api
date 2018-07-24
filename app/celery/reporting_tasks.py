@@ -21,7 +21,7 @@ def create_nightly_billing(day_start=None):
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d")
-    for i in range(0, 3):
+    for i in range(0, 10):
         process_day = day_start - timedelta(days=i)
 
         transit_data = fetch_billing_data_for_day(process_day=process_day)
