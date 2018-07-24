@@ -34,7 +34,7 @@ git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 alembic==1.0.0
 amqp==1.4.9
 anyjson==0.3.3
-awscli==1.15.59
+awscli==1.15.64
 bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
