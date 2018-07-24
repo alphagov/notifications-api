@@ -60,7 +60,7 @@ from app.models import (
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
-from app.celery.service_callback_tasks import create_encrypted_callback_data
+from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.v2.errors import JobIncompleteError
 from tests.app.db import (
     create_notification, create_service, create_template, create_job, create_rate,
@@ -224,7 +224,7 @@ def test_timeout_notifications_sends_status_update_to_service(client, sample_tem
             seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
     timeout_notifications()
 
-    encrypted_data = create_encrypted_callback_data(notification, callback_api)
+    encrypted_data = create_delivery_status_callback_data(notification, callback_api)
     mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
