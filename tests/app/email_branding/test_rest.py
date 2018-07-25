@@ -22,7 +22,7 @@ def test_get_email_branding_options(admin_request, notify_db, notify_db_session)
 
 
 def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
-    email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='My Org')
+    email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Some Org', text='My Org')
     notify_db.session.add(email_branding)
     notify_db.session.commit()
 
@@ -32,10 +32,11 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
         email_branding_id=email_branding.id
     )
 
-    assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id'}
+    assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text'}
     assert response['email_branding']['colour'] == '#FFFFFF'
     assert response['email_branding']['logo'] == '/path/image.png'
-    assert response['email_branding']['name'] == 'My Org'
+    assert response['email_branding']['name'] == 'Some Org'
+    assert response['email_branding']['text'] == 'My Org'
     assert response['email_branding']['id'] == str(email_branding.id)
 
 
