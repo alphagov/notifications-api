@@ -56,6 +56,49 @@ def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db, no
         save_service_callback_api(service_callback_api)
 
 
+def test_update_service_callback_api_unique_constraint(sample_service):
+    service_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/callback_endpoint",
+        bearer_token="some_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    save_service_callback_api(service_callback_api)
+    another = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/another_callback_endpoint",
+        bearer_token="different_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        save_service_callback_api(another)
+
+
+def test_update_service_callback_can_add_two_api_of_different_types(sample_service):
+    delivery_status = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/callback_endpoint",
+        bearer_token="some_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    save_service_callback_api(delivery_status)
+    complaint = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/another_callback_endpoint",
+        bearer_token="different_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='complaint'
+    )
+    save_service_callback_api(complaint)
+    results = ServiceCallbackApi.query.order_by(ServiceCallbackApi.callback_type).all()
+    assert len(results) == 2
+    assert results[0].serialize() == complaint.serialize()
+    assert results[1].serialize() == delivery_status.serialize()
+
+
 def test_update_service_callback_api(sample_service):
     service_callback_api = ServiceCallbackApi(
         service_id=sample_service.id,
