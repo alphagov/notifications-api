@@ -491,8 +491,10 @@ def check_billable_units(notification_update):
     if int(notification_update.page_count) != notification.billable_units:
         msg = 'Notification with id {} had {} billable_units but a page count of {}'.format(
             notification.id, notification.billable_units, notification_update.page_count)
-
-        current_app.logger.error(msg)
+        try:
+            raise DVLAException(msg)
+        except DVLAException:
+            current_app.logger.exception(msg)
 
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
