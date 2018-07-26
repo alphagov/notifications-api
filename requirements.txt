@@ -60,7 +60,7 @@ mistune==0.8.3
 monotonic==1.5
 orderedset==2.0.1
 phonenumbers==8.9.4
-pyasn1==0.4.3
+pyasn1==0.4.4
 pycparser==2.18
 PyPDF2==1.26.0
 python-dateutil==2.7.3
