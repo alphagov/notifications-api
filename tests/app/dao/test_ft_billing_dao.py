@@ -6,9 +6,12 @@ from freezegun import freeze_time
 
 from app import db
 from app.dao.fact_billing_dao import (
-    fetch_monthly_billing_for_year, fetch_billing_data_for_day, get_rates_for_billing,
-    get_rate,
+    delete_billing_data_for_service_for_day,
+    fetch_billing_data_for_day,
     fetch_billing_totals_for_year,
+    fetch_monthly_billing_for_year,
+    get_rate,
+    get_rates_for_billing,
 )
 from app.models import FactBilling, Notification
 from app.utils import convert_utc_to_bst
@@ -353,3 +356,25 @@ def test_fetch_billing_totals_for_year(notify_db_session):
     assert results[3].notifications_sent == 365
     assert results[3].billable_units == 365
     assert results[3].rate == Decimal('0.162')
+
+
+def test_delete_billing_data(notify_db_session):
+    service_1 = create_service(service_name='1')
+    service_2 = create_service(service_name='2')
+    sms_template = create_template(service_1, 'sms')
+    email_template = create_template(service_1, 'email')
+    other_service_template = create_template(service_2, 'sms')
+
+    existing_rows_to_delete = [  # noqa
+        create_ft_billing('2018-01-01', 'sms', sms_template, service_1, billable_unit=1),
+        create_ft_billing('2018-01-01', 'email', email_template, service_1, billable_unit=2)
+    ]
+    other_day = create_ft_billing('2018-01-02', 'sms', sms_template, service_1, billable_unit=3)
+    other_service = create_ft_billing('2018-01-01', 'sms', other_service_template, service_2, billable_unit=4)
+
+    delete_billing_data_for_service_for_day('2018-01-01', service_1.id)
+
+    current_rows = FactBilling.query.all()
+    assert sorted(x.billable_units for x in current_rows) == sorted(
+        [other_day.billable_units, other_service.billable_units]
+    )

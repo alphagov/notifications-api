@@ -19,7 +19,11 @@ from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
 from app.dao.date_util import get_financial_year
-from app.dao.fact_billing_dao import fetch_billing_data_for_day, update_fact_billing
+from app.dao.fact_billing_dao import (
+    fetch_billing_data_for_day,
+    update_fact_billing,
+    delete_billing_data_for_service_for_day
+)
 from app.dao.monthly_billing_dao import (
     create_or_update_monthly_billing,
     get_monthly_billing_by_notification_type,
@@ -526,17 +530,34 @@ def rebuild_ft_billing_for_day(service_id, day):
     Rebuild the data in ft_billing for the given service_id and date
     """
     def rebuild_ft_data(process_day, service):
+        deleted_rows = delete_billing_data_for_service_for_day(process_day, service)
+        current_app.logger.info('deleted {} existing billing rows for {} on {}'.format(
+            deleted_rows,
+            service,
+            process_day
+        ))
         transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
+        # transit_data = every row that should exist
         for data in transit_data:
+            # upsert existing rows
             update_fact_billing(data, process_day)
+        current_app.logger.info('added/updated {} billing rows for {} on {}'.format(
+            len(transit_data),
+            service,
+            process_day
+        ))
+
     if service_id:
         # confirm the service exists
         dao_fetch_service_by_id(service_id)
         rebuild_ft_data(day, service_id)
     else:
-        services = get_service_ids_that_need_billing_populated(day, day)
-        for service_id in services:
-            rebuild_ft_data(day, service_id)
+        services = get_service_ids_that_need_billing_populated(
+            get_london_midnight_in_utc(day),
+            get_london_midnight_in_utc(day + timedelta(days=1))
+        )
+        for row in services:
+            rebuild_ft_data(day, row.service_id)
 
 
 @notify_command(name='compare-ft-billing-to-monthly-billing')
