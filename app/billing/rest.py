@@ -33,6 +33,7 @@ register_errors(billing_blueprint)
 
 
 @billing_blueprint.route('/ft-monthly-usage')
+@billing_blueprint.route('/monthly-usage')
 def get_yearly_usage_by_monthly_from_ft_billing(service_id):
     try:
         year = int(request.args.get('year'))
@@ -44,6 +45,7 @@ def get_yearly_usage_by_monthly_from_ft_billing(service_id):
 
 
 @billing_blueprint.route('/ft-yearly-usage-summary')
+@billing_blueprint.route('/yearly-usage-summary')
 def get_yearly_billing_usage_summary_from_ft_billing(service_id):
     try:
         year = int(request.args.get('year'))

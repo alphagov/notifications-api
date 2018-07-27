@@ -17,11 +17,11 @@ from app.celery.scheduled_tasks import send_total_sent_notifications_to_performa
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
-from app.dao.date_util import get_financial_year
 from app.dao.fact_billing_dao import (
+    delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
+    get_service_ids_that_need_billing_populated,
     update_fact_billing,
-    delete_billing_data_for_service_for_day
 )
 
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
@@ -31,9 +31,9 @@ from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
     dao_fetch_service_by_id
 )
-from app.dao.users_dao import (delete_model_user, delete_user_verify_codes)
+from app.dao.users_dao import delete_model_user, delete_user_verify_codes
 from app.models import PROVIDERS, User, Notification
-from app.performance_platform.processing_time import (send_processing_time_for_start_and_end)
+from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import (
     cache_key_for_service_template_usage_per_day,
     get_london_midnight_in_utc,
