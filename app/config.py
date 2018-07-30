@@ -238,11 +238,6 @@ class Config(object):
             'schedule': crontab(hour=4, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'populate_monthly_billing': {
-            'task': 'populate_monthly_billing',
-            'schedule': crontab(hour=5, minute=10),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
             'schedule': crontab(hour=16, minute=30),

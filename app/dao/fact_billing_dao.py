@@ -200,6 +200,17 @@ def get_rates_for_billing():
     return non_letter_rates, letter_rates
 
 
+def get_service_ids_that_need_billing_populated(start_date, end_date):
+    return db.session.query(
+        NotificationHistory.service_id
+    ).filter(
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date,
+        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
+        NotificationHistory.billable_units != 0
+    ).distinct().all()
+
+
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None):
     if notification_type == LETTER_TYPE:
         return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and letter_page_count == r[2])
