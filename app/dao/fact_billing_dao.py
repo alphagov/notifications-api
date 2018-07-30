@@ -125,6 +125,18 @@ def fetch_monthly_billing_for_year(service_id, year):
     return yearly_data
 
 
+def delete_billing_data_for_service_for_day(process_day, service_id):
+    """
+    Delete all ft_billing data for a given service on a given bst_date
+
+    Returns how many rows were deleted
+    """
+    return FactBilling.query.filter(
+        FactBilling.bst_date == process_day,
+        FactBilling.service_id == service_id
+    ).delete()
+
+
 def fetch_billing_data_for_day(process_day, service_id=None):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
