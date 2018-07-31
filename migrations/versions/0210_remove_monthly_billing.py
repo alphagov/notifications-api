@@ -1,16 +1,16 @@
 """
 
-Revision ID: 0209_remove_monthly_billing
-Revises: 84c3b6eb16b3
-Create Date: 2018-07-27 14:46:30.109811
+Revision ID: 0210_remove_monthly_billing
+Revises: 0209_add_cancelled_status
+Create Date: 2018-07-31 16:43:00.568972
 
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0209_remove_monthly_billing'
-down_revision = '84c3b6eb16b3'
+revision = '0210_remove_monthly_billing'
+down_revision = '0209_add_cancelled_status'
 
 
 def upgrade():
