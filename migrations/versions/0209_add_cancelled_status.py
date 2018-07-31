@@ -1,13 +1,13 @@
 """
 
-Revision ID: add_cancelled_status
+Revision ID: 0209_add_cancelled_status
 Revises: 84c3b6eb16b3
 Create Date: 2018-07-31 13:34:00.018447
 
 """
 from alembic import op
 
-revision = 'add_cancelled_status'
+revision = '0209_add_cancelled_status'
 down_revision = '84c3b6eb16b3'
 
 
