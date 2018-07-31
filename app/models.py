@@ -597,7 +597,7 @@ class ServiceInboundApi(db.Model, Versioned):
 class ServiceCallbackApi(db.Model, Versioned):
     __tablename__ = 'service_callback_api'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref='service_callback_api')
     url = db.Column(db.String(), nullable=False)
     callback_type = db.Column(db.String(), db.ForeignKey('service_callback_type.name'), nullable=True)
@@ -606,6 +606,10 @@ class ServiceCallbackApi(db.Model, Versioned):
     updated_at = db.Column(db.DateTime, nullable=True)
     updated_by = db.relationship('User')
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'callback_type', name='uix_service_callback_type'),
+    )
 
     @property
     def bearer_token(self):
@@ -1637,35 +1641,6 @@ class LetterRate(db.Model):
     rate = db.Column(db.Numeric(), nullable=False)
     crown = db.Column(db.Boolean, nullable=False)
     post_class = db.Column(db.String, nullable=False)
-
-
-class MonthlyBilling(db.Model):
-    __tablename__ = 'monthly_billing'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref='monthly_billing')
-    start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=False)
-    notification_type = db.Column(notification_types, nullable=False)
-    monthly_totals = db.Column(JSON, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-
-    __table_args__ = (
-        UniqueConstraint('service_id', 'start_date', 'notification_type', name='uix_monthly_billing'),
-    )
-
-    def serialized(self):
-        return {
-            "start_date": self.start_date,
-            "end_date": self.end_date,
-            "service_id": str(self.service_id),
-            "notification_type": self.notification_type,
-            "monthly_totals": self.monthly_totals
-        }
-
-    def __repr__(self):
-        return str(self.serialized())
 
 
 class ServiceEmailReplyTo(db.Model):

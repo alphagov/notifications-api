@@ -232,7 +232,6 @@ class ServiceSchema(BaseSchema):
             'service_provider_stats',
             'service_notification_stats',
             'service_sms_senders',
-            'monthly_billing',
             'reply_to_email_addresses',
             'letter_contacts',
             'complaints',

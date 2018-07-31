@@ -308,7 +308,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
     mocker,
     notification_update
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
 
     notification = create_notification(sample_letter_template, reference='REFERENCE_ABC', billable_units=3)
 

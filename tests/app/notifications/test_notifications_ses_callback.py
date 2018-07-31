@@ -5,7 +5,7 @@ from flask import json
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import statsd_client
+from app import statsd_client, encryption
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Notification, Complaint
 from app.notifications.notifications_ses_callback import (
@@ -13,7 +13,7 @@ from app.notifications.notifications_ses_callback import (
     handle_complaint
 )
 from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
-from app.celery.service_callback_tasks import create_encrypted_callback_data
+from app.celery.service_callback_tasks import create_delivery_status_callback_data
 
 from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.db import (
@@ -55,7 +55,7 @@ def test_ses_callback_should_update_notification_status(
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         updated_notification = Notification.query.get(notification.id)
-        encrypted_data = create_encrypted_callback_data(updated_notification, callback_api)
+        encrypted_data = create_delivery_status_callback_data(updated_notification, callback_api)
         send_mock.assert_called_once_with([str(notification.id), encrypted_data], queue="service-callbacks")
 
 
@@ -220,3 +220,28 @@ def test_process_ses_results_in_complaint_save_complaint_with_null_complaint_typ
     assert len(complaints) == 1
     assert complaints[0].notification_id == notification.id
     assert not complaints[0].complaint_type
+
+
+def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mocker):
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_complaint_to_service.apply_async'
+    )
+    create_service_callback_api(
+        service=sample_email_template.service, url="https://original_url.com", callback_type="complaint"
+    )
+
+    notification = create_notification(template=sample_email_template, reference='ref1')
+    response = ses_complaint_callback()
+    errors = process_ses_response(response)
+    assert errors is None
+
+    assert send_mock.call_count == 1
+    assert encryption.decrypt(send_mock.call_args[0][0][0]) == {
+        'complaint_date': '2018-06-05T13:59:58.000000Z',
+        'complaint_id': str(Complaint.query.one().id),
+        'notification_id': str(notification.id),
+        'reference': None,
+        'service_callback_api_bearer_token': 'some_super_secret',
+        'service_callback_api_url': 'https://original_url.com',
+        'to': 'recipient1@example.com'
+    }
