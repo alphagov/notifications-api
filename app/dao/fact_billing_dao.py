@@ -213,6 +213,8 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
 
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None):
     if notification_type == LETTER_TYPE:
+        if letter_page_count == 0:
+            return 0
         return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and letter_page_count == r[2])
     elif notification_type == SMS_TYPE:
         return next(r[2] for r in non_letter_rates if notification_type == r[0] and date > r[1])

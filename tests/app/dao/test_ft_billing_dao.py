@@ -248,6 +248,16 @@ def test_get_rate(notify_db_session):
     assert letter_rate == Decimal('0.3')
 
 
+def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):
+    non_letter_rates, letter_rates = get_rates_for_billing()
+    letter_rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates,
+                           notification_type='letter',
+                           crown=True,
+                           letter_page_count=0,
+                           date=datetime.utcnow())
+    assert letter_rate == 0
+
+
 def test_fetch_monthly_billing_for_year(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="sms")
