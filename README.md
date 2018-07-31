@@ -16,13 +16,13 @@ To run the API you will need appropriate AWS credentials. You should receive the
 
 Your aws credentials should be stored in a folder located at `~/.aws`. Follow [Amazon's instructions](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-config-files) for storing them correctly.
 
-### Virtualenv
+### Virtualenv
 
 ```
 mkvirtualenv -p /usr/local/bin/python3 notifications-api
 ```
 
-### `environment.sh`
+### `environment.sh`
 
 Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. Your AWS credentials should be set up for notify-tools (the development/CI AWS account).
 
