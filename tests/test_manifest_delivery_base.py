@@ -13,11 +13,8 @@ def test_queue_names_set_in_manifest_delivery_base_correctly():
             start_of_queue_arg = command.find(search)
             if start_of_queue_arg > 0:
                 start_of_queue_names = start_of_queue_arg + len(search)
-                queues = command[start_of_queue_names:].split(',')
-                for q in queues:
-                    if "2>" in q:
-                        q = q.split("2>")[0].strip()
-                    watched_queues.add(q)
+                end_of_queue_names = command.find('2>') if '2>' in command else len(command)
+                watched_queues.update({q.strip() for q in command[start_of_queue_names:end_of_queue_names].split(',')})
 
         # ses-callbacks isn't used in api (only used in SNS lambda)
         ignored_queues = {'ses-callbacks'}
