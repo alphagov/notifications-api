@@ -11,6 +11,10 @@ def dao_get_email_branding_by_id(email_branding_id):
     return EmailBranding.query.filter_by(id=email_branding_id).one()
 
 
+def dao_get_email_branding_by_name(email_branding_name):
+    return EmailBranding.query.filter_by(name=email_branding_name).one()
+
+
 @transactional
 def dao_create_email_branding(email_branding):
     db.session.add(email_branding)

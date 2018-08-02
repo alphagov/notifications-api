@@ -37,6 +37,8 @@ def create_email_branding():
     validate(data, post_create_email_branding_schema)
 
     email_branding = EmailBranding(**data)
+    if not data.get('text'):
+        email_branding.text = email_branding.name
 
     dao_create_email_branding(email_branding)
     return jsonify(data=email_branding.serialize()), 201
@@ -49,6 +51,8 @@ def update_email_branding(email_branding_id):
     validate(data, post_update_email_branding_schema)
 
     fetched_email_branding = dao_get_email_branding_by_id(email_branding_id)
+    if not data.get('text') and data.get('name'):
+        data['text'] = data['name']
     dao_update_email_branding(fetched_email_branding, **data)
 
     return jsonify(data=fetched_email_branding.serialize()), 200

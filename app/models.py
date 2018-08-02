@@ -205,6 +205,7 @@ class EmailBranding(db.Model):
     colour = db.Column(db.String(7), nullable=True)
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
+    text = db.Column(db.String(255), nullable=True)
 
     def serialize(self):
         serialized = {
@@ -212,6 +213,7 @@ class EmailBranding(db.Model):
             "colour": self.colour,
             "logo": self.logo,
             "name": self.name,
+            "text": self.text,
         }
 
         return serialized
