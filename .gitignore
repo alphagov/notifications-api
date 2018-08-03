@@ -5,6 +5,7 @@ __pycache__/
 *.py[cod]
 
 venv/
+venv-freeze/
 
 # C extensions
 *.so
