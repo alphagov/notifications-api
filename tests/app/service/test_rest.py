@@ -42,8 +42,7 @@ from tests.app.db import (
     create_letter_contact,
     create_inbound_number,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender,
-    create_service_data_retention
+    create_service_with_defined_sms_sender
 )
 from tests.app.db import create_user
 
@@ -1226,29 +1225,29 @@ def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_sessio
             assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
 
 
-def test_get_all_notifications_for_service_in_order(client, notify_db_session):
-    service_1 = create_service(service_name="1", email_from='1')
-    service_2 = create_service(service_name="2", email_from='2')
-    template_1 = create_template(service=service_1)
-    template_2 = create_template(service=service_2)
-    create_notification(template=template_2)
+def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
+    with notify_api.test_request_context(), notify_api.test_client() as client:
+        service_1 = create_service(service_name="1", email_from='1')
+        service_2 = create_service(service_name="2", email_from='2')
 
-    notification_1 = create_notification(template=template_1)
-    notification_2 = create_notification(template=template_1)
-    notification_3 = create_notification(template=template_1)
+        create_sample_notification(notify_db, notify_db_session, service=service_2)
 
-    auth_header = create_authorization_header()
+        notification_1 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+        notification_2 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+        notification_3 = create_sample_notification(notify_db, notify_db_session, service=service_1)
 
-    response = client.get(
-        path='/service/{}/notifications'.format(service_1.id),
-        headers=[auth_header])
+        auth_header = create_authorization_header()
 
-    resp = json.loads(response.get_data(as_text=True))
-    assert len(resp['notifications']) == 3
-    assert resp['notifications'][0]['id'] == str(notification_3.id)
-    assert resp['notifications'][1]['id'] == str(notification_2.id)
-    assert resp['notifications'][2]['id'] == str(notification_1.id)
-    assert response.status_code == 200
+        response = client.get(
+            path='/service/{}/notifications'.format(service_1.id),
+            headers=[auth_header])
+
+        resp = json.loads(response.get_data(as_text=True))
+        assert len(resp['notifications']) == 3
+        assert resp['notifications'][0]['to'] == notification_3.to
+        assert resp['notifications'][1]['to'] == notification_2.to
+        assert resp['notifications'][2]['to'] == notification_1.to
+        assert response.status_code == 200
 
 
 def test_get_all_notifications_for_service_formatted_for_csv(client, sample_template):
@@ -1267,19 +1266,6 @@ def test_get_all_notifications_for_service_formatted_for_csv(client, sample_temp
     assert resp['notifications'][0]['template_name'] == sample_template.name
     assert resp['notifications'][0]['template_type'] == notification.notification_type
     assert resp['notifications'][0]['status'] == 'Sending'
-
-
-def test_get_all_notifications_for_service_limits_days_for_number_of_days_of_retention(client, sample_template):
-    create_service_data_retention(service_id=sample_template.service_id, notification_type='sms', days_of_retention=9)
-    create_notification(template=sample_template)
-    create_notification(template=sample_template, created_at=datetime.utcnow() + timedelta(days=8))
-
-    response = client.get(
-        path='/service/{}/notifications?template_type=sms&limit_days=7'.format(sample_template.service_id),
-        headers=[create_authorization_header()])
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert len(json_resp['notifications']) == 2
 
 
 def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):

@@ -7,6 +7,7 @@ from datetime import (
 )
 
 from flask import current_app
+
 from notifications_utils.recipients import (
     validate_and_format_email_address,
     InvalidEmailError,
@@ -41,8 +42,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT,
     SMS_TYPE,
-    EMAIL_TYPE,
-    ServiceDataRetention
+    EMAIL_TYPE
 )
 
 from app.dao.dao_utils import transactional
@@ -310,26 +310,10 @@ def _filter_query(query, filter_dict=None):
 @statsd(namespace="dao")
 @transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
-    flexible_data_retention = ServiceDataRetention.query.filter(
-        ServiceDataRetention.notification_type == notification_type
-    ).all()
-
-    deleted = 0
-    for f in flexible_data_retention:
-        days_of_retention = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
-        deleted += db.session.query(Notification).filter(
-            func.date(Notification.created_at) < days_of_retention,
-            Notification.notification_type == f.notification_type,
-            Notification.service_id == f.service_id
-        ).delete(synchronize_session='fetch')
-
     seven_days_ago = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7)
-    services_with_data_retention = [x.service_id for x in flexible_data_retention]
-
-    deleted += db.session.query(Notification).filter(
+    deleted = db.session.query(Notification).filter(
         func.date(Notification.created_at) < seven_days_ago,
         Notification.notification_type == notification_type,
-        Notification.service_id.notin_(services_with_data_retention)
     ).delete(synchronize_session='fetch')
     return deleted
 
