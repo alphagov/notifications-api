@@ -10,7 +10,7 @@ Flask-Migrate==2.2.1
 Flask-SQLAlchemy==2.3.2
 Flask==1.0.2
 click-datetime==0.2
-eventlet==0.23.0
+eventlet==0.24.0
 gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==2.6.0
