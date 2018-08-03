@@ -35,15 +35,6 @@ def test_get_service_data_retention_returns_empty_list(client, sample_service):
     assert len(json.loads(response.get_data(as_text=True))) == 0
 
 
-def test_get_data_retention_for_service_notification_type(client, sample_service):
-    data_retention = create_service_data_retention(service_id=sample_service.id)
-    response = client.get('/service/{}/data-retention/notification-type/{}'.format(sample_service.id, 'sms'),
-                          headers=[('Content-Type', 'application/json'), create_authorization_header()],
-                          )
-    assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == data_retention.serialize()
-
-
 def test_get_service_data_retention_by_id(client, sample_service):
     sms_data_retention = create_service_data_retention(service_id=sample_service.id)
     create_service_data_retention(service_id=sample_service.id, notification_type='email',
