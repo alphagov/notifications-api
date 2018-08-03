@@ -125,6 +125,18 @@ def fetch_monthly_billing_for_year(service_id, year):
     return yearly_data
 
 
+def delete_billing_data_for_service_for_day(process_day, service_id):
+    """
+    Delete all ft_billing data for a given service on a given bst_date
+
+    Returns how many rows were deleted
+    """
+    return FactBilling.query.filter(
+        FactBilling.bst_date == process_day,
+        FactBilling.service_id == service_id
+    ).delete()
+
+
 def fetch_billing_data_for_day(process_day, service_id=None):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
@@ -188,8 +200,21 @@ def get_rates_for_billing():
     return non_letter_rates, letter_rates
 
 
+def get_service_ids_that_need_billing_populated(start_date, end_date):
+    return db.session.query(
+        NotificationHistory.service_id
+    ).filter(
+        NotificationHistory.created_at >= start_date,
+        NotificationHistory.created_at <= end_date,
+        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
+        NotificationHistory.billable_units != 0
+    ).distinct().all()
+
+
 def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None):
     if notification_type == LETTER_TYPE:
+        if letter_page_count == 0:
+            return 0
         return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and letter_page_count == r[2])
     elif notification_type == SMS_TYPE:
         return next(r[2] for r in non_letter_rates if notification_type == r[0] and date > r[1])

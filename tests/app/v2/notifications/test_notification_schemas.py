@@ -42,7 +42,7 @@ def test_get_notifications_request_invalid_statuses(
         invalid_statuses, valid_statuses
 ):
     partial_error_status = "is not one of " \
-        "[created, sending, sent, delivered, pending, failed, " \
+        "[cancelled, created, sending, sent, delivered, pending, failed, " \
         "technical-failure, temporary-failure, permanent-failure, pending-virus-check, " \
         "virus-scan-failed, accepted, received]"
 
@@ -90,7 +90,7 @@ def test_get_notifications_request_invalid_statuses_and_template_types():
 
     error_messages = [error['message'] for error in errors]
     for invalid_status in ["elephant", "giraffe"]:
-        assert "status {} is not one of [created, sending, sent, delivered, " \
+        assert "status {} is not one of [cancelled, created, sending, sent, delivered, " \
             "pending, failed, technical-failure, temporary-failure, permanent-failure, " \
             "pending-virus-check, virus-scan-failed, accepted, received]".format(
                 invalid_status

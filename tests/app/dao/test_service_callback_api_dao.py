@@ -8,7 +8,7 @@ from app.dao.service_callback_api_dao import (
     save_service_callback_api,
     reset_service_callback_api,
     get_service_callback_api,
-    get_service_callback_api_for_service)
+    get_service_delivery_status_callback_api_for_service)
 from app.models import ServiceCallbackApi
 from tests.app.db import create_service_callback_api
 
@@ -54,6 +54,49 @@ def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db, no
 
     with pytest.raises(SQLAlchemyError):
         save_service_callback_api(service_callback_api)
+
+
+def test_update_service_callback_api_unique_constraint(sample_service):
+    service_callback_api = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/callback_endpoint",
+        bearer_token="some_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    save_service_callback_api(service_callback_api)
+    another = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/another_callback_endpoint",
+        bearer_token="different_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        save_service_callback_api(another)
+
+
+def test_update_service_callback_can_add_two_api_of_different_types(sample_service):
+    delivery_status = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/callback_endpoint",
+        bearer_token="some_unique_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='delivery_status'
+    )
+    save_service_callback_api(delivery_status)
+    complaint = ServiceCallbackApi(
+        service_id=sample_service.id,
+        url="https://some_service/another_callback_endpoint",
+        bearer_token="different_string",
+        updated_by_id=sample_service.users[0].id,
+        callback_type='complaint'
+    )
+    save_service_callback_api(complaint)
+    results = ServiceCallbackApi.query.order_by(ServiceCallbackApi.callback_type).all()
+    assert len(results) == 2
+    assert results[0].serialize() == complaint.serialize()
+    assert results[1].serialize() == delivery_status.serialize()
 
 
 def test_update_service_callback_api(sample_service):
@@ -118,9 +161,9 @@ def test_get_service_callback_api(sample_service):
     assert callback_api.updated_at is None
 
 
-def test_get_service_callback_api_for_service(sample_service):
+def test_get_service_delivery_status_callback_api_for_service(sample_service):
     service_callback_api = create_service_callback_api(service=sample_service)
-    result = get_service_callback_api_for_service(sample_service.id)
+    result = get_service_delivery_status_callback_api_for_service(sample_service.id)
     assert result.id == service_callback_api.id
     assert result.url == service_callback_api.url
     assert result.bearer_token == service_callback_api.bearer_token

@@ -16,6 +16,7 @@ from app.dao.users_dao import (
     increment_failed_login_count,
     reset_failed_login_count,
     get_user_by_email,
+    get_users_by_partial_email,
     create_secret_code,
     save_user_attribute,
     update_user_password,
@@ -32,6 +33,7 @@ from app.notifications.process_notifications import (
 )
 from app.schemas import (
     email_data_request_schema,
+    partial_email_data_request_schema,
     create_user_schema,
     permission_schema,
     user_update_schema_load_json,
@@ -354,6 +356,14 @@ def get_by_email():
     fetched_user = get_user_by_email(email)
     result = fetched_user.serialize()
     return jsonify(data=result)
+
+
+@user_blueprint.route('/find-users-by-email', methods=['POST'])
+def find_users_by_email():
+    email, errors = partial_email_data_request_schema.load(request.get_json())
+    fetched_users = get_users_by_partial_email(email['email'])
+    result = [user.serialize() for user in fetched_users]
+    return jsonify(data=result), 200
 
 
 @user_blueprint.route('/reset-password', methods=['POST'])

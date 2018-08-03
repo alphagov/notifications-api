@@ -27,7 +27,6 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     run_letter_jobs,
     trigger_letter_pdfs_for_day,
-    populate_monthly_billing,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -48,7 +47,6 @@ from app.dao.provider_details_dao import (
 )
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
-    MonthlyBilling,
     NotificationHistory,
     Service,
     StatsTemplateUsageByMonth,
@@ -60,11 +58,10 @@ from app.models import (
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
-from app.celery.service_callback_tasks import create_encrypted_callback_data
+from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.v2.errors import JobIncompleteError
 from tests.app.db import (
-    create_notification, create_service, create_template, create_job, create_rate,
-    create_service_callback_api
+    create_notification, create_service, create_template, create_job, create_service_callback_api
 )
 
 from tests.app.conftest import (
@@ -125,8 +122,6 @@ def test_should_have_decorated_tasks_functions():
         'remove_transformed_dvla_files'
     assert delete_dvla_response_files_older_than_seven_days.__wrapped__.__name__ == \
         'delete_dvla_response_files_older_than_seven_days'
-    assert populate_monthly_billing.__wrapped__.__name__ == \
-        'populate_monthly_billing'
 
 
 @pytest.fixture(scope='function')
@@ -224,7 +219,7 @@ def test_timeout_notifications_sends_status_update_to_service(client, sample_tem
             seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
     timeout_notifications()
 
-    encrypted_data = create_encrypted_callback_data(notification, callback_api)
+    encrypted_data = create_delivery_status_callback_data(notification, callback_api)
     mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
@@ -749,85 +744,6 @@ def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_lett
         message="There are 1 letters in the 'sending' state from Friday 12 January",
         ticket_type='incident'
     )
-
-
-@freeze_time("2017-07-12 02:00:00")
-def test_populate_monthly_billing_populates_correctly(sample_template):
-    yesterday = datetime(2017, 7, 11, 13, 30)
-    jul_month_start = datetime(2017, 6, 30, 23)
-    jul_month_end = datetime(2017, 7, 31, 22, 59, 59, 99999)
-    create_rate(datetime(2016, 1, 1), 0.0123, 'sms')
-
-    create_notification(template=sample_template, status='delivered', created_at=yesterday)
-    create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=1))
-    create_notification(template=sample_template, status='delivered', created_at=yesterday + timedelta(days=1))
-    # not included in billing
-    create_notification(template=sample_template, status='delivered', created_at=yesterday - timedelta(days=30))
-
-    populate_monthly_billing()
-
-    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
-
-    assert len(monthly_billing) == 3
-
-    assert monthly_billing[0].service_id == sample_template.service_id
-    assert monthly_billing[0].start_date == jul_month_start
-    assert monthly_billing[0].end_date == jul_month_end
-    assert monthly_billing[0].notification_type == 'email'
-    assert monthly_billing[0].monthly_totals == []
-
-    assert monthly_billing[1].service_id == sample_template.service_id
-    assert monthly_billing[1].start_date == jul_month_start
-    assert monthly_billing[1].end_date == jul_month_end
-    assert monthly_billing[1].notification_type == 'sms'
-    assert sorted(monthly_billing[1].monthly_totals[0]) == sorted(
-        {
-            'international': False,
-            'rate_multiplier': 1,
-            'billing_units': 3,
-            'rate': 0.0123,
-            'total_cost': 0.0369
-        }
-    )
-
-    assert monthly_billing[2].service_id == sample_template.service_id
-    assert monthly_billing[2].start_date == jul_month_start
-    assert monthly_billing[2].end_date == jul_month_end
-    assert monthly_billing[2].notification_type == 'letter'
-    assert monthly_billing[2].monthly_totals == []
-
-
-@freeze_time("2016-04-01 23:00:00")
-def test_populate_monthly_billing_updates_correct_month_in_bst(sample_template):
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    apr_month_start = datetime(2016, 3, 31, 23)
-    apr_month_end = datetime(2016, 4, 30, 22, 59, 59, 99999)
-    create_rate(datetime(2016, 1, 1), 0.0123, 'sms')
-    create_notification(template=sample_template, status='delivered', created_at=yesterday)
-    populate_monthly_billing()
-
-    monthly_billing = MonthlyBilling.query.order_by(MonthlyBilling.notification_type).all()
-
-    assert len(monthly_billing) == 3
-
-    assert monthly_billing[0].service_id == sample_template.service_id
-    assert monthly_billing[0].start_date == apr_month_start
-    assert monthly_billing[0].end_date == apr_month_end
-    assert monthly_billing[0].notification_type == 'email'
-    assert monthly_billing[0].monthly_totals == []
-
-    assert monthly_billing[1].service_id == sample_template.service_id
-    assert monthly_billing[1].start_date == apr_month_start
-    assert monthly_billing[1].end_date == apr_month_end
-    assert monthly_billing[1].notification_type == 'sms'
-    assert monthly_billing[1].monthly_totals[0]['billing_units'] == 1
-    assert monthly_billing[1].monthly_totals[0]['total_cost'] == 0.0123
-
-    assert monthly_billing[2].service_id == sample_template.service_id
-    assert monthly_billing[2].start_date == apr_month_start
-    assert monthly_billing[2].end_date == apr_month_end
-    assert monthly_billing[2].notification_type == 'letter'
-    assert monthly_billing[2].monthly_totals == []
 
 
 def test_run_letter_jobs(client, mocker, sample_letter_template):

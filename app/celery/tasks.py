@@ -2,9 +2,7 @@ import json
 from datetime import datetime
 from collections import namedtuple, defaultdict
 
-from celery.signals import worker_process_shutdown
 from flask import current_app
-
 from notifications_utils.recipients import (
     RecipientCSV
 )
@@ -72,11 +70,6 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
 from app.utils import convert_utc_to_bst
-
-
-@worker_process_shutdown.connect
-def worker_process_shutdown(sender, signal, pid, exitcode):
-    current_app.logger.info('Tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="process-job")
@@ -498,8 +491,10 @@ def check_billable_units(notification_update):
     if int(notification_update.page_count) != notification.billable_units:
         msg = 'Notification with id {} had {} billable_units but a page count of {}'.format(
             notification.id, notification.billable_units, notification_update.page_count)
-
-        current_app.logger.error(msg)
+        try:
+            raise DVLAException(msg)
+        except DVLAException:
+            current_app.logger.exception(msg)
 
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)

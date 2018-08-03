@@ -106,7 +106,8 @@ def notify_db_session(notify_db):
                             "service_permission_types",
                             "auth_type",
                             "invite_status_type",
-                            "letter_rates"]:
+                            "letter_rates",
+                            "service_callback_type"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 
@@ -161,3 +162,15 @@ def set_config_values(app, dict):
     finally:
         for key in dict:
             app.config[key] = old_values[key]
+
+
+class Matcher:
+    def __init__(self, description, key):
+        self.description = description
+        self.key = key
+
+    def __eq__(self, other):
+        return self.key(other)
+
+    def __repr__(self):
+        return '<Matcher: {}>'.format(self.description)

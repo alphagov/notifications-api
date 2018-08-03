@@ -70,6 +70,7 @@ def test_get_notification_by_id_returns_200(
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
         'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
+        'created_by_name': None,
         'body': sample_notification.template.content,
         "subject": None,
         'sent_at': sample_notification.sent_at,
@@ -120,6 +121,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         'status': '{}'.format(sample_notification.status),
         'template': expected_template_response,
         'created_at': sample_notification.created_at.strftime(DATETIME_FORMAT),
+        'created_by_name': None,
         'body': "Hello Bob\nThis is an email from GOV.UK",
         "subject": "Bob",
         'sent_at': sample_notification.sent_at,
@@ -147,6 +149,24 @@ def test_get_notification_by_reference_returns_200(client, sample_template):
 
     assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
     assert json_response['notifications'][0]['reference'] == "some-client-reference"
+
+
+def test_get_notification_by_id_returns_created_by_name_if_notification_created_by_id(
+    client,
+    sample_user,
+    sample_template,
+):
+    sms_notification = create_notification(template=sample_template)
+    sms_notification.created_by_id = sample_user.id
+
+    auth_header = create_authorization_header(service_id=sms_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_notification_by_id', notification_id=sms_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    json_response = response.get_json()
+    assert json_response['created_by_name'] == 'Test User'
 
 
 def test_get_notifications_returns_scheduled_for(client, sample_template):
@@ -421,9 +441,9 @@ def test_get_all_notifications_filter_by_status_invalid_status(client, sample_no
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
-    assert json_response['errors'][0]['message'] == "status elephant is not one of [created, sending, sent, " \
-        "delivered, pending, failed, technical-failure, temporary-failure, permanent-failure, pending-virus-check, " \
-        "virus-scan-failed, accepted, received]"
+    assert json_response['errors'][0]['message'] == "status elephant is not one of [cancelled, created, sending, " \
+        "sent, delivered, pending, failed, technical-failure, temporary-failure, permanent-failure, " \
+        "pending-virus-check, virus-scan-failed, accepted, received]"
 
 
 def test_get_all_notifications_filter_by_multiple_statuses(client, sample_template):

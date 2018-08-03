@@ -1,6 +1,7 @@
 from app.dao.email_branding_dao import (
     dao_get_email_branding_options,
     dao_get_email_branding_by_id,
+    dao_get_email_branding_by_name,
     dao_update_email_branding,
 )
 from app.models import EmailBranding
@@ -23,6 +24,14 @@ def test_get_email_branding_by_id_gets_correct_email_branding(notify_db, notify_
     email_branding = create_email_branding()
 
     email_branding_from_db = dao_get_email_branding_by_id(email_branding.id)
+
+    assert email_branding_from_db == email_branding
+
+
+def test_get_email_branding_by_name_gets_correct_email_branding(notify_db, notify_db_session):
+    email_branding = create_email_branding(name="Crystal Gems")
+
+    email_branding_from_db = dao_get_email_branding_by_name("Crystal Gems")
 
     assert email_branding_from_db == email_branding
 

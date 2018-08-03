@@ -232,7 +232,6 @@ class ServiceSchema(BaseSchema):
             'service_provider_stats',
             'service_notification_stats',
             'service_sms_senders',
-            'monthly_billing',
             'reply_to_email_addresses',
             'letter_contacts',
             'complaints',
@@ -564,8 +563,14 @@ class EmailDataSchema(ma.Schema):
 
     email = fields.Str(required=True)
 
+    def __init__(self, partial_email=False):
+        super().__init__()
+        self.partial_email = partial_email
+
     @validates('email')
     def validate_email(self, value):
+        if self.partial_email:
+            return
         try:
             validate_email_address(value)
         except InvalidEmailError as e:
@@ -587,6 +592,7 @@ class NotificationsFilterSchema(ma.Schema):
     older_than = fields.UUID(required=False)
     format_for_csv = fields.String()
     to = fields.String()
+    include_one_off = fields.Boolean(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):
@@ -686,6 +692,7 @@ notification_with_personalisation_schema = NotificationWithPersonalisationSchema
 invited_user_schema = InvitedUserSchema()
 permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
+partial_email_data_request_schema = EmailDataSchema(partial_email=True)
 notifications_filter_schema = NotificationsFilterSchema()
 service_history_schema = ServiceHistorySchema()
 api_key_history_schema = ApiKeyHistorySchema()

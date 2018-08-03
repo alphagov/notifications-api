@@ -5,6 +5,7 @@ post_create_email_branding_schema = {
     "properties": {
         "colour": {"type": ["string", "null"]},
         "name": {"type": ["string", "null"]},
+        "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]}
     },
     "required": []
@@ -17,6 +18,7 @@ post_update_email_branding_schema = {
     "properties": {
         "colour": {"type": ["string", "null"]},
         "name": {"type": ["string", "null"]},
+        "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]}
     },
     "required": []

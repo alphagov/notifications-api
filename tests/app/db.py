@@ -3,6 +3,7 @@ import uuid
 
 from app import db
 from app.dao.jobs_dao import dao_create_job
+from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
@@ -13,7 +14,6 @@ from app.models import (
     InboundSms,
     InboundNumber,
     Job,
-    MonthlyBilling,
     Notification,
     EmailBranding,
     Organisation,
@@ -35,7 +35,7 @@ from app.models import (
     InvitedOrganisationUser,
     FactBilling,
     FactNotificationStatus,
-    Complaint
+    Complaint,
 )
 from app.dao.users_dao import save_model_user
 from app.dao.notifications_dao import (
@@ -175,7 +175,8 @@ def create_notification(
         normalised_to=None,
         one_off=False,
         sms_sender_id=None,
-        reply_to_text=None
+        reply_to_text=None,
+        created_by_id=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -220,7 +221,8 @@ def create_notification(
         'international': international,
         'phone_prefix': phone_prefix,
         'normalised_to': normalised_to,
-        'reply_to_text': reply_to_text
+        'reply_to_text': reply_to_text,
+        'created_by_id': created_by_id
     }
     notification = Notification(**data)
     dao_create_notification(notification)
@@ -315,21 +317,24 @@ def create_service_callback_api(
         service,
         url="https://something.com",
         bearer_token="some_super_secret",
+        callback_type="delivery_status"
 ):
     service_callback_api = ServiceCallbackApi(service_id=service.id,
                                               url=url,
                                               bearer_token=bearer_token,
-                                              updated_by_id=service.users[0].id
+                                              updated_by_id=service.users[0].id,
+                                              callback_type=callback_type
                                               )
     save_service_callback_api(service_callback_api)
     return service_callback_api
 
 
-def create_email_branding(colour='blue', logo='test_x2.png', name='test_org_1'):
+def create_email_branding(colour='blue', logo='test_x2.png', name='test_org_1', text='DisplayName'):
     data = {
         'colour': colour,
         'logo': logo,
-        'name': name
+        'name': name,
+        'text': text,
     }
     email_branding = EmailBranding(**data)
     dao_create_email_branding(email_branding)
@@ -375,27 +380,6 @@ def create_inbound_number(number, provider='mmg', active=True, service_id=None):
     db.session.add(inbound_number)
     db.session.commit()
     return inbound_number
-
-
-def create_monthly_billing_entry(
-        service,
-        start_date,
-        end_date,
-        notification_type,
-        monthly_totals=[]
-):
-    entry = MonthlyBilling(
-        service_id=service.id,
-        notification_type=notification_type,
-        monthly_totals=monthly_totals,
-        start_date=start_date,
-        end_date=end_date
-    )
-
-    db.session.add(entry)
-    db.session.commit()
-
-    return entry
 
 
 def create_reply_to_email(
@@ -663,3 +647,16 @@ def ses_notification_callback():
            'dd426d95ee9390147a5624348ee.pem",' \
            '\n  "UnsubscribeURL" : "https://sns.eu-west-1.amazonaws.com/?Action=Unsubscribe&S' \
            'subscriptionArn=arn:aws:sns:eu-west-1:302763885840:preview-emails:d6aad3ef-83d6-4cf3-a470-54e2e75916da"\n}'
+
+
+def create_service_data_retention(
+        service_id,
+        notification_type='sms',
+        days_of_retention=3
+):
+    data_retention = insert_service_data_retention(
+        service_id=service_id,
+        notification_type=notification_type,
+        days_of_retention=days_of_retention
+    )
+    return data_retention

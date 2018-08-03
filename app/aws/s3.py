@@ -4,6 +4,7 @@ from flask import current_app
 
 import pytz
 from boto3 import client, resource
+import botocore
 
 FILE_LOCATION_STRUCTURE = 'service-{}-notify/{}.csv'
 
@@ -16,6 +17,17 @@ def get_s3_file(bucket_name, file_location):
 def get_s3_object(bucket_name, file_location):
     s3 = resource('s3')
     return s3.Object(bucket_name, file_location)
+
+
+def file_exists(bucket_name, file_location):
+    try:
+        # try and access metadata of object
+        get_s3_object(bucket_name, file_location).metadata
+        return True
+    except botocore.exceptions.ClientError as e:
+        if e.response['ResponseMetadata']['HTTPStatusCode'] == 404:
+            return False
+        raise
 
 
 def get_job_location(service_id, job_id):

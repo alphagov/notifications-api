@@ -5,7 +5,6 @@ from datetime import (
 )
 
 import pytz
-from celery.signals import worker_process_shutdown
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_, func
@@ -16,11 +15,10 @@ from app import performance_platform_client, zendesk_client
 from app.aws import s3
 from app.celery.service_callback_tasks import (
     send_delivery_status_to_service,
-    create_encrypted_callback_data,
+    create_delivery_status_callback_data,
 )
 from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
-from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -30,10 +28,6 @@ from app.dao.jobs_dao import (
     dao_get_jobs_older_than_limited_by
 )
 from app.dao.jobs_dao import dao_update_job
-from app.dao.monthly_billing_dao import (
-    get_service_ids_that_need_billing_populated,
-    create_or_update_monthly_billing
-)
 from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
@@ -47,7 +41,7 @@ from app.dao.provider_details_dao import (
     get_current_provider,
     dao_toggle_sms_provider
 )
-from app.dao.service_callback_api_dao import get_service_callback_api_for_service
+from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.dao.services_dao import (
     dao_fetch_monthly_historical_stats_by_template
 )
@@ -68,15 +62,7 @@ from app.models import (
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.performance_platform import total_sent_notifications, processing_time
-from app.utils import (
-    convert_utc_to_bst
-)
 from app.v2.errors import JobIncompleteError
-
-
-@worker_process_shutdown.connect
-def worker_process_shutdown(sender, signal, pid, exitcode):
-    current_app.logger.info('Scheduled tasks worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 @notify_celery.task(name="remove_csv_files")
@@ -210,9 +196,9 @@ def timeout_notifications():
     notifications = technical_failure_notifications + temporary_failure_notifications
     for notification in notifications:
         # queue callback task only if the service_callback_api exists
-        service_callback_api = get_service_callback_api_for_service(service_id=notification.service_id)
+        service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
         if service_callback_api:
-            encrypted_notification = create_encrypted_callback_data(notification, service_callback_api)
+            encrypted_notification = create_delivery_status_callback_data(notification, service_callback_api)
             send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],
                                                         queue=QueueNames.CALLBACKS)
 
@@ -384,18 +370,6 @@ def raise_alert_if_letter_notifications_still_sending():
             )
         else:
             current_app.logger.info(message)
-
-
-@notify_celery.task(name="populate_monthly_billing")
-@statsd(namespace="tasks")
-def populate_monthly_billing():
-    # for every service with billable units this month update billing totals for yesterday
-    # this will overwrite the existing amount.
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    yesterday_in_bst = convert_utc_to_bst(yesterday)
-    start_date, end_date = get_month_start_and_end_date_in_utc(yesterday_in_bst)
-    services = get_service_ids_that_need_billing_populated(start_date=start_date, end_date=end_date)
-    [create_or_update_monthly_billing(service_id=s.service_id, billing_month=end_date) for s in services]
 
 
 @notify_celery.task(name="run-letter-jobs")

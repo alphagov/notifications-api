@@ -11,7 +11,8 @@ from app.errors import (
 )
 from app.models import (
     ServiceInboundApi,
-    ServiceCallbackApi
+    ServiceCallbackApi,
+    DELIVERY_STATUS_CALLBACK_TYPE,
 )
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
@@ -88,6 +89,7 @@ def create_service_callback_api(service_id):
     data = request.get_json()
     validate(data, create_service_callback_api_schema)
     data["service_id"] = service_id
+    data["callback_type"] = DELIVERY_STATUS_CALLBACK_TYPE
     callback_api = ServiceCallbackApi(**data)
     try:
         save_service_callback_api(callback_api)

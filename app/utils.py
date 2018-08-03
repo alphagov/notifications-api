@@ -115,3 +115,12 @@ def last_n_days(limit_days):
         # reverse the countdown, -1 from first two args to ensure it stays 0-indexed
         for x in range(limit_days - 1, -1, -1)
     ]
+
+
+def escape_special_characters(string):
+    for special_character in ('\\', '_', '%', '/'):
+        string = string.replace(
+            special_character,
+            '\{}'.format(special_character)
+        )
+    return string

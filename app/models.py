@@ -57,6 +57,10 @@ SMS_AUTH_TYPE = 'sms_auth'
 EMAIL_AUTH_TYPE = 'email_auth'
 USER_AUTH_TYPE = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE]
 
+DELIVERY_STATUS_CALLBACK_TYPE = 'delivery_status'
+COMPLAINT_CALLBACK_TYPE = 'complaint'
+SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
+
 
 def filter_null_value_fields(obj):
     return dict(
@@ -201,6 +205,7 @@ class EmailBranding(db.Model):
     colour = db.Column(db.String(7), nullable=True)
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
+    text = db.Column(db.String(255), nullable=True)
 
     def serialize(self):
         serialized = {
@@ -208,6 +213,7 @@ class EmailBranding(db.Model):
             "colour": self.colour,
             "logo": self.logo,
             "name": self.name,
+            "text": self.text,
         }
 
         return serialized
@@ -593,14 +599,19 @@ class ServiceInboundApi(db.Model, Versioned):
 class ServiceCallbackApi(db.Model, Versioned):
     __tablename__ = 'service_callback_api'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False, unique=True)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
     service = db.relationship('Service', backref='service_callback_api')
     url = db.Column(db.String(), nullable=False)
+    callback_type = db.Column(db.String(), db.ForeignKey('service_callback_type.name'), nullable=True)
     _bearer_token = db.Column("bearer_token", db.String(), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True)
     updated_by = db.relationship('User')
     updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('service_id', 'callback_type', name='uix_service_callback_type'),
+    )
 
     @property
     def bearer_token(self):
@@ -622,6 +633,12 @@ class ServiceCallbackApi(db.Model, Versioned):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
         }
+
+
+class ServiceCallbackType(db.Model):
+    __tablename__ = 'service_callback_type'
+
+    name = db.Column(db.String, primary_key=True)
 
 
 class ApiKey(db.Model, Versioned):
@@ -1019,6 +1036,7 @@ class VerifyCode(db.Model):
         return check_hash(cde, self._code)
 
 
+NOTIFICATION_CANCELLED = 'cancelled'
 NOTIFICATION_CREATED = 'created'
 NOTIFICATION_SENDING = 'sending'
 NOTIFICATION_SENT = 'sent'
@@ -1062,6 +1080,7 @@ NOTIFICATION_STATUS_TYPES_BILLABLE = [
 ]
 
 NOTIFICATION_STATUS_TYPES = [
+    NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
@@ -1288,6 +1307,12 @@ class Notification(db.Model):
             # Currently can only be technical-failure
             return self.status
 
+    def get_created_by_name(self):
+        if self.created_by:
+            return self.created_by.name
+        else:
+            return None
+
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
@@ -1327,6 +1352,7 @@ class Notification(db.Model):
             "body": self.content,
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "created_by_name": self.get_created_by_name(),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
             "scheduled_for": (
@@ -1621,35 +1647,6 @@ class LetterRate(db.Model):
     post_class = db.Column(db.String, nullable=False)
 
 
-class MonthlyBilling(db.Model):
-    __tablename__ = 'monthly_billing'
-
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, nullable=False)
-    service = db.relationship('Service', backref='monthly_billing')
-    start_date = db.Column(db.DateTime, nullable=False)
-    end_date = db.Column(db.DateTime, nullable=False)
-    notification_type = db.Column(notification_types, nullable=False)
-    monthly_totals = db.Column(JSON, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-
-    __table_args__ = (
-        UniqueConstraint('service_id', 'start_date', 'notification_type', name='uix_monthly_billing'),
-    )
-
-    def serialized(self):
-        return {
-            "start_date": self.start_date,
-            "end_date": self.end_date,
-            "service_id": str(self.service_id),
-            "notification_type": self.notification_type,
-            "monthly_totals": self.monthly_totals
-        }
-
-    def __repr__(self):
-        return str(self.serialized())
-
-
 class ServiceEmailReplyTo(db.Model):
     __tablename__ = "service_email_reply_to"
 
@@ -1859,3 +1856,14 @@ class ServiceDataRetention(db.Model):
     __table_args__ = (
         UniqueConstraint('service_id', 'notification_type', name='uix_service_data_retention'),
     )
+
+    def serialize(self):
+        return {
+            "id": str(self.id),
+            "service_id": str(self.service_id),
+            "service_name": self.service.name,
+            "notification_type": self.notification_type,
+            "days_of_retention": self.days_of_retention,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+        }

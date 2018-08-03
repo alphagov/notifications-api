@@ -287,7 +287,7 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # create records from 11th to 15th
-    for i in range(0, 5):
+    for i in range(0, 11):
         sample_notification(
             notify_db,
             notify_db_session,
@@ -302,7 +302,7 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
         )
 
     notification = Notification.query.order_by(Notification.created_at).all()
-    assert datetime.date(notification[0].created_at) == date(2018, 1, 11)
+    assert datetime.date(notification[0].created_at) == date(2018, 1, 5)
 
     records = FactBilling.query.all()
     assert len(records) == 0
@@ -310,8 +310,8 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
     create_nightly_billing()
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
-    assert len(records) == 3
-    assert records[0].bst_date == date(2018, 1, 12)
+    assert len(records) == 10
+    assert records[0].bst_date == date(2018, 1, 5)
     assert records[-1].bst_date == date(2018, 1, 14)
 
 

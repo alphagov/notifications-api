@@ -1,4 +1,5 @@
-from datetime import datetime
+import random
+from datetime import datetime, timedelta
 import json
 
 from flask import current_app
@@ -7,6 +8,7 @@ from requests import request, RequestException, HTTPError
 from notifications_utils.s3 import s3upload
 
 from app import notify_celery
+from app.aws.s3 import file_exists
 from app.models import SMS_TYPE
 from app.config import QueueNames
 from app.celery.process_ses_receipts_tasks import process_ses_results
@@ -123,7 +125,18 @@ def firetext_callback(notification_id, to):
 def create_fake_letter_response_file(self, reference):
     now = datetime.utcnow()
     dvla_response_data = '{}|Sent|0|Sorted'.format(reference)
-    upload_file_name = 'NOTIFY-{}-RSP.TXT'.format(now.strftime('%Y%m%d%H%M%S'))
+
+    # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds
+    for i in sorted(range(30), key=lambda _: random.random()):
+        upload_file_name = 'NOTIFY-{}-RSP.TXT'.format((now - timedelta(seconds=i)).strftime('%Y%m%d%H%M%S'))
+        if not file_exists(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], upload_file_name):
+            break
+    else:
+        raise ValueError(
+            'cant create fake letter response file for {} - too many files for that time already exist on s3'.format(
+                reference
+            )
+        )
 
     s3upload(
         filedata=dvla_response_data,
