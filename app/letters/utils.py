@@ -8,7 +8,6 @@ from notifications_utils.s3 import s3upload
 
 from app.models import KEY_TYPE_TEST
 from app.utils import convert_utc_to_bst
-from app.variables import Retention
 
 
 class ScanErrorType(Enum):
@@ -83,8 +82,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
         filedata=pdf_data,
         region=current_app.config['AWS_REGION'],
         bucket_name=bucket_name,
-        file_location=upload_file_name,
-        tags={Retention.KEY: Retention.ONE_WEEK}
+        file_location=upload_file_name
     )
 
     current_app.logger.info("Uploaded letters PDF {} to {} for notification id {}".format(

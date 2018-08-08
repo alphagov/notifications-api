@@ -11,7 +11,6 @@ from requests import RequestException
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.errors import VirusScanError
-from app.variables import Retention
 from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
@@ -112,8 +111,7 @@ def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
         bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
         file_location=filename,
         filedata=b'\x00\x01',
-        region=current_app.config['AWS_REGION'],
-        tags={Retention.KEY: Retention.ONE_WEEK}
+        region=current_app.config['AWS_REGION']
     )
 
 

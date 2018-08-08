@@ -22,6 +22,8 @@ from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
+from app.aws.s3 import get_s3_object_by_prefix
+from app.letters.utils import LETTERS_PDF_FILE_LOCATION_STRUCTURE
 from app.utils import midnight_n_days_ago, escape_special_characters
 from app.errors import InvalidRequest
 from app.models import (
@@ -235,18 +237,18 @@ def get_notifications(filter_dict=None):
 
 @statsd(namespace="dao")
 def get_notifications_for_service(
-    service_id,
-    filter_dict=None,
-    page=1,
-    page_size=None,
-    limit_days=None,
-    key_type=None,
-    personalisation=False,
-    include_jobs=False,
-    include_from_test_key=False,
-    older_than=None,
-    client_reference=None,
-    include_one_off=True
+        service_id,
+        filter_dict=None,
+        page=1,
+        page_size=None,
+        limit_days=None,
+        key_type=None,
+        personalisation=False,
+        include_jobs=False,
+        include_from_test_key=False,
+        older_than=None,
+        client_reference=None,
+        include_one_off=True
 ):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -317,19 +319,41 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     deleted = 0
     for f in flexible_data_retention:
         days_of_retention = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
-        deleted += db.session.query(Notification).filter(
+        query = db.session.query(Notification).filter(
             func.date(Notification.created_at) < days_of_retention,
-            Notification.notification_type == f.notification_type,
-            Notification.service_id == f.service_id
-        ).delete(synchronize_session='fetch')
+            Notification.notification_type == f.notification_type, Notification.service_id == f.service_id)
+        _delete_letters_from_s3(notification_type, query)
+        deleted += query.delete(synchronize_session='fetch')
+
     seven_days_ago = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7)
     services_with_data_retention = [x.service_id for x in flexible_data_retention]
-    deleted = db.session.query(Notification).filter(
-        func.date(Notification.created_at) < seven_days_ago,
-        Notification.notification_type == notification_type,
-        Notification.service_id.notin_(services_with_data_retention)
-    ).delete(synchronize_session='fetch')
+    query = db.session.query(Notification).filter(func.date(Notification.created_at) < seven_days_ago,
+                                                  Notification.notification_type == notification_type,
+                                                  Notification.service_id.notin_(
+                                                      services_with_data_retention))
+    _delete_letters_from_s3(notification_type=notification_type, query=query)
+    deleted = query.delete(synchronize_session='fetch')
     return deleted
+
+
+def _delete_letters_from_s3(notification_type, query):
+    if notification_type == LETTER_TYPE:
+        letters_to_delete_from_s3 = query.all()
+        for letter in letters_to_delete_from_s3:
+            bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+            sent_at = str(letter.sent_at.date())
+            prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
+                folder=sent_at,
+                reference=letter.reference,
+                duplex="D",
+                letter_class="2",
+                colour="C",
+                crown="C" if letter.service.crown else "N",
+                date=''
+            ).upper()[:-5]
+            s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
+            for s3_object in s3_objects:
+                s3_object.delete()
 
 
 @statsd(namespace="dao")
@@ -344,7 +368,6 @@ def dao_delete_notifications_and_history_by_id(notification_id):
 
 
 def _timeout_notifications(current_statuses, new_status, timeout_start, updated_at):
-
     notifications = Notification.query.filter(
         Notification.created_at < timeout_start,
         Notification.status.in_(current_statuses),
@@ -407,12 +430,12 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
 
 
 def is_delivery_slow_for_provider(
-    sent_at,
-    provider,
-    threshold,
-    delivery_time,
-    service_id,
-    template_id
+        sent_at,
+        provider,
+        threshold,
+        delivery_time,
+        service_id,
+        template_id
 ):
     count = db.session.query(Notification).filter(
         Notification.service_id == service_id,
@@ -447,7 +470,6 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 @statsd(namespace="dao")
 def dao_get_notifications_by_to_field(service_id, search_term, notification_type=None, statuses=None):
-
     if notification_type is None:
         notification_type = guess_notification_type(search_term)
 
