@@ -135,14 +135,15 @@ def get_letter_pdf(notification):
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
 
-    for item in bucket.objects.filter(Prefix=get_bucket_prefix_for_notification(notification, is_test_letter)):
-        obj = s3.Object(
-            bucket_name=bucket_name,
-            key=item.key
-        )
-        file_content = obj.get()["Body"].read()
+    item = next(x for x in bucket.objects.filter(
+        Prefix=get_bucket_prefix_for_notification(notification, is_test_letter)
+    ))
 
-    return file_content
+    obj = s3.Object(
+        bucket_name=bucket_name,
+        key=item.key
+    )
+    return obj.get()["Body"].read()
 
 
 def _move_s3_object(source_bucket, source_filename, target_bucket, target_filename):

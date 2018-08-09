@@ -21,13 +21,13 @@ FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 
 
 @pytest.fixture()
-@freeze_time(FROZEN_DATE_TIME)
 def sample_precompiled_letter_notification_using_test_key(sample_letter_notification):
     sample_letter_notification.template.hidden = True
     sample_letter_notification.template.name = PRECOMPILED_TEMPLATE_NAME
     sample_letter_notification.key_type = KEY_TYPE_TEST
     sample_letter_notification.reference = 'foo'
-    sample_letter_notification.created_at = datetime.utcnow()
+    with freeze_time(FROZEN_DATE_TIME):
+        sample_letter_notification.created_at = datetime.utcnow()
     return sample_letter_notification
 
 
