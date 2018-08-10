@@ -245,7 +245,6 @@ EMAIL_AUTH = 'email_auth'
 LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
 UPLOAD_DOCUMENT = 'upload_document'
-CASEWORKING = 'caseworking'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -258,7 +257,6 @@ SERVICE_PERMISSION_TYPES = [
     LETTERS_AS_PDF,
     PRECOMPILED_LETTER,
     UPLOAD_DOCUMENT,
-    CASEWORKING,
 ]
 
 
