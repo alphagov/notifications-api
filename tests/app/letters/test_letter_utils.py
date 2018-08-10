@@ -15,7 +15,6 @@ from app.letters.utils import (
     ScanErrorType, move_failed_pdf, get_folder_name
 )
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
-from app.variables import Retention
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 
@@ -135,8 +134,7 @@ def test_upload_letter_pdf_to_correct_bucket(
         bucket_name=current_app.config[bucket_config_name],
         file_location=filename,
         filedata=b'\x00\x01',
-        region=current_app.config['AWS_REGION'],
-        tags={Retention.KEY: Retention.ONE_WEEK}
+        region=current_app.config['AWS_REGION']
     )
 
 

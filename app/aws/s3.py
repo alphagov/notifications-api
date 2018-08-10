@@ -66,6 +66,17 @@ def get_s3_bucket_objects(bucket_name, subfolder='', older_than=7, limit_days=2)
     return all_objects_in_bucket
 
 
+def get_s3_object_by_prefix(bucket_name, prefix):
+    boto_client = client('s3', current_app.config['AWS_REGION'])
+    paginator = boto_client.get_paginator('list_objects_v2')
+    page_iterator = paginator.paginate(
+        Bucket=bucket_name,
+        Prefix=prefix
+    )
+
+    return page_iterator
+
+
 def filter_s3_bucket_objects_within_date_range(bucket_objects, older_than=7, limit_days=2):
     """
     S3 returns the Object['LastModified'] as an 'offset-aware' timestamp so the
