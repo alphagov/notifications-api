@@ -322,7 +322,8 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
         query = db.session.query(Notification).filter(
             func.date(Notification.created_at) < days_of_retention,
             Notification.notification_type == f.notification_type, Notification.service_id == f.service_id)
-        _delete_letters_from_s3(notification_type, query)
+        if notification_type == LETTER_TYPE:
+            _delete_letters_from_s3(query)
         deleted += query.delete(synchronize_session='fetch')
 
     seven_days_ago = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7)
@@ -331,29 +332,29 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
                                                   Notification.notification_type == notification_type,
                                                   Notification.service_id.notin_(
                                                       services_with_data_retention))
-    _delete_letters_from_s3(notification_type=notification_type, query=query)
+    if notification_type == LETTER_TYPE:
+        _delete_letters_from_s3(query=query)
     deleted = query.delete(synchronize_session='fetch')
     return deleted
 
 
-def _delete_letters_from_s3(notification_type, query):
-    if notification_type == LETTER_TYPE:
-        letters_to_delete_from_s3 = query.all()
-        for letter in letters_to_delete_from_s3:
-            bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-            sent_at = str(letter.sent_at.date())
-            prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-                folder=sent_at,
-                reference=letter.reference,
-                duplex="D",
-                letter_class="2",
-                colour="C",
-                crown="C" if letter.service.crown else "N",
-                date=''
-            ).upper()[:-5]
-            s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
-            for s3_object in s3_objects:
-                s3_object.delete()
+def _delete_letters_from_s3(query):
+    letters_to_delete_from_s3 = query.all()
+    for letter in letters_to_delete_from_s3:
+        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+        sent_at = str(letter.sent_at.date())
+        prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
+            folder=sent_at,
+            reference=letter.reference,
+            duplex="D",
+            letter_class="2",
+            colour="C",
+            crown="C" if letter.service.crown else "N",
+            date=''
+        ).upper()[:-5]
+        s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
+        for s3_object in s3_objects:
+            s3_object.delete()
 
 
 @statsd(namespace="dao")
