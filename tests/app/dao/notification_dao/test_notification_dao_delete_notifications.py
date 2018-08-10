@@ -176,6 +176,16 @@ def test_delete_notifications_delete_notification_type_for_default_time_if_no_da
     assert len(Notification.query.filter_by(notification_type='email').all()) == 1
 
 
+def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_been_sent(sample_service, mocker):
+    mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_object_by_prefix")
+    letter_template = create_template(service=sample_service, template_type='letter')
+
+    create_notification(template=letter_template, status='sending',
+                        reference='LETTER_REF')
+    delete_notifications_created_more_than_a_week_ago_by_type('email')
+    mock_get_s3.assert_not_called()
+
+
 def _create_templates(sample_service):
     email_template = create_template(service=sample_service, template_type='email')
     sms_template = create_template(service=sample_service)

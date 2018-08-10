@@ -334,7 +334,7 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
                                                       services_with_data_retention))
     if notification_type == LETTER_TYPE:
         _delete_letters_from_s3(query=query)
-    deleted = query.delete(synchronize_session='fetch')
+    deleted += query.delete(synchronize_session='fetch')
     return deleted
 
 
@@ -342,19 +342,21 @@ def _delete_letters_from_s3(query):
     letters_to_delete_from_s3 = query.all()
     for letter in letters_to_delete_from_s3:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        sent_at = str(letter.sent_at.date())
-        prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-            folder=sent_at,
-            reference=letter.reference,
-            duplex="D",
-            letter_class="2",
-            colour="C",
-            crown="C" if letter.service.crown else "N",
-            date=''
-        ).upper()[:-5]
-        s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
-        for s3_object in s3_objects:
-            s3_object.delete()
+        # If the letter has not been sent there isn't a letter to delete from S3
+        if letter.sent_at:
+            sent_at = str(letter.sent_at.date())
+            prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
+                folder=sent_at,
+                reference=letter.reference,
+                duplex="D",
+                letter_class="2",
+                colour="C",
+                crown="C" if letter.service.crown else "N",
+                date=''
+            ).upper()[:-5]
+            s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
+            for s3_object in s3_objects:
+                s3_object.delete()
 
 
 @statsd(namespace="dao")
