@@ -534,7 +534,7 @@ def test_fetch_stats_filters_on_service(sample_notification):
                           message_limit=1000)
     dao_create_service(service_two, sample_notification.service.created_by)
 
-    stats = dao_fetch_stats_for_service(service_two.id)
+    stats = dao_fetch_stats_for_service(service_two.id, 7)
     assert len(stats) == 0
 
 
@@ -546,7 +546,7 @@ def test_fetch_stats_ignores_historical_notification_data(sample_notification):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
 
-    stats = dao_fetch_stats_for_service(service_id)
+    stats = dao_fetch_stats_for_service(service_id, 7)
     assert len(stats) == 0
 
 
@@ -557,7 +557,7 @@ def test_fetch_stats_counts_correctly(notify_db, notify_db_session, sample_templ
     create_notification(notify_db, notify_db_session, template=sample_email_template, status='technical-failure')
     create_notification(notify_db, notify_db_session, template=sample_template, status='created')
 
-    stats = dao_fetch_stats_for_service(sample_template.service_id)
+    stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
     stats = sorted(stats, key=lambda x: (x.notification_type, x.status))
     assert len(stats) == 3
 
@@ -591,7 +591,7 @@ def test_fetch_stats_counts_should_ignore_team_key(
     create_notification(
         notify_db, notify_db_session)
 
-    stats = dao_fetch_stats_for_service(sample_template.service_id)
+    stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
     assert len(stats) == 1
     assert stats[0].notification_type == 'sms'
     assert stats[0].status == 'created'
@@ -634,7 +634,7 @@ def test_fetch_stats_should_not_gather_notifications_older_than_7_days(sample_te
         create_notification_db(sample_template,)
 
     with freeze_time('Monday 16th July 2018 12:00'):
-        stats = dao_fetch_stats_for_service(sample_template.service_id)
+        stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
 
     assert len(stats) == rows_returned
 
