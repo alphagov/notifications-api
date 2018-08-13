@@ -421,7 +421,8 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
     sample_service.branding = branding_type
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
+                                   text='League of Justice')
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -430,7 +431,7 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
     assert options['govuk_banner'] == govuk_banner
     assert options['brand_colour'] == '#000000'
-    assert options['brand_name'] == 'Justice League'
+    assert options['brand_name'] == 'League of Justice'
 
     if sample_service.branding == BRANDING_ORG_BANNER:
         assert options['brand_banner'] is True
@@ -440,7 +441,8 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
     sample_service.branding = BRANDING_GOVUK
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
+                                   text='League of Justice')
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -452,9 +454,11 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
 
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png',
+                                   name='Justice League',
+                                   text='League of Justice')
     service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
@@ -464,9 +468,9 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
 
-    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League')
+    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League', text='League of Justice')
     service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)

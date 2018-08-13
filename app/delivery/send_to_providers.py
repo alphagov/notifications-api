@@ -201,7 +201,7 @@ def get_html_email_options(service):
         branding = {
             'brand_colour': service.email_branding.colour,
             'brand_logo': logo_url,
-            'brand_name': service.email_branding.name,
+            'brand_name': service.email_branding.text,
         }
     else:
         branding = {}
