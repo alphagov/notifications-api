@@ -6,6 +6,7 @@ from datetime import (
     date
 )
 
+from boto.exception import BotoClientError
 from flask import current_app
 
 from notifications_utils.recipients import (
@@ -345,7 +346,7 @@ def _delete_letters_from_s3(query):
         if letter.sent_at:
             sent_at = str(letter.sent_at.date())
             prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-                folder=sent_at,
+                folder=sent_at + "/",
                 reference=letter.reference,
                 duplex="D",
                 letter_class="2",
@@ -355,7 +356,11 @@ def _delete_letters_from_s3(query):
             ).upper()[:-5]
             s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
             for s3_object in s3_objects:
-                remove_s3_object(bucket_name, s3_object['Key'])
+                try:
+                    remove_s3_object(bucket_name, s3_object['Key'])
+                except BotoClientError:
+                    current_app.logger.exception(
+                        "Could not delete S3 object with filename: {}".format(s3_object['Key']))
 
 
 @statsd(namespace="dao")

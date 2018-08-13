@@ -114,7 +114,7 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
     assert len(Notification.query.filter_by(notification_type=notification_type).all()) == 1
     if notification_type == 'letter':
         mock_get_s3.assert_called_with(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                       subfolder="{}NOTIFY.LETTER_REF.D.2.C.C".format(str(datetime.utcnow().date()))
+                                       subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C".format(str(datetime.utcnow().date()))
                                        )
         assert mock_get_s3.call_count == 2
     else:

@@ -61,7 +61,8 @@ def get_s3_bucket_objects(bucket_name, subfolder='', older_than=7, limit_days=2)
 
     all_objects_in_bucket = []
     for page in page_iterator:
-        all_objects_in_bucket.extend(page['Contents'])
+        if page.get('Contents'):
+            all_objects_in_bucket.extend(page['Contents'])
 
     return all_objects_in_bucket
 
