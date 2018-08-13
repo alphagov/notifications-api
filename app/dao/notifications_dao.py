@@ -22,7 +22,7 @@ from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 
 from app import db, create_uuid
-from app.aws.s3 import get_s3_object_by_prefix
+from app.aws.s3 import remove_s3_object, get_s3_bucket_objects
 from app.letters.utils import LETTERS_PDF_FILE_LOCATION_STRUCTURE
 from app.utils import midnight_n_days_ago, escape_special_characters
 from app.errors import InvalidRequest
@@ -352,9 +352,9 @@ def _delete_letters_from_s3(query):
             crown="C" if letter.service.crown else "N",
             date=''
         ).upper()[:-5]
-        s3_objects = get_s3_object_by_prefix(bucket_name=bucket_name, prefix=prefix)
+        s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
         for s3_object in s3_objects:
-            s3_object.delete()
+            remove_s3_object(bucket_name, s3_object['Key'])
 
 
 @statsd(namespace="dao")
