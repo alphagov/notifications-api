@@ -120,6 +120,24 @@ def test_post_create_email_branding_with_text_and_name(admin_request, notify_db_
     assert response['data']['text'] == 'text for brand'
 
 
+def test_post_create_email_branding_with_text_as_none_and_name(admin_request, notify_db_session):
+    data = {
+        'name': 'name for brand',
+        'text': None,
+        'logo': 'images/text_x2.png'
+    }
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=201
+    )
+
+    assert response['data']['logo'] == data['logo']
+    assert response['data']['name'] == 'name for brand'
+    assert response['data']['colour'] is None
+    assert response['data']['text'] is None
+
+
 @pytest.mark.parametrize('data_update', [
     ({'name': 'test email_branding 1'}),
     ({'logo': 'images/text_x3.png', 'colour': '#ffffff'}),
@@ -155,6 +173,7 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
 @pytest.mark.parametrize('data_update', [
     ({'text': 'text email branding'}),
     ({'text': 'new text', 'name': 'new name'}),
+    ({'text': None, 'name': 'test name'}),
 ])
 def test_post_update_email_branding_updates_field_with_text(admin_request, notify_db_session, data_update):
     data = {
