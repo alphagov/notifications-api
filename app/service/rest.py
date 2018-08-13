@@ -27,6 +27,7 @@ from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
+    fetch_service_data_retention_by_notification_type,
     insert_service_data_retention,
     update_service_data_retention,
 )
@@ -757,6 +758,12 @@ def is_service_name_unique():
 def get_data_retention_for_service(service_id):
     data_retention_list = fetch_service_data_retention(service_id)
     return jsonify([data_retention.serialize() for data_retention in data_retention_list]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention/notification-type/<notification_type>', methods=['GET'])
+def get_data_retention_for_service_notification_type(service_id, notification_type):
+    data_retention = fetch_service_data_retention_by_notification_type(service_id, notification_type)
+    return jsonify(data_retention.serialize() if data_retention else {}), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/data-retention/<uuid:data_retention_id>', methods=['GET'])
