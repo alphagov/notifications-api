@@ -620,21 +620,25 @@ def test_fetch_stats_for_today_only_includes_today(notify_db, notify_db_session,
     assert stats['created'] == 1
 
 
-@pytest.mark.parametrize('created_at, rows_returned', [
-    ('Sunday 8th July 2018 12:00', 0),
-    ('Sunday 8th July 2018 22:59', 0),
-    ('Sunday 8th July 2018 23:00', 1),
-    ('Monday 9th July 2018 09:00', 1),
-    ('Monday 9th July 2018 15:00', 1),
-    ('Monday 16th July 2018 12:00', 1),
+@pytest.mark.parametrize('created_at, limit_days, rows_returned', [
+    ('Sunday 8th July 2018 12:00', 7, 0),
+    ('Sunday 8th July 2018 22:59', 7, 0),
+    ('Sunday 1th July 2018 12:00', 10, 0),
+    ('Sunday 8th July 2018 23:00', 7, 1),
+    ('Monday 9th July 2018 09:00', 7, 1),
+    ('Monday 9th July 2018 15:00', 7, 1),
+    ('Monday 16th July 2018 12:00', 7, 1),
+    ('Sunday 8th July 2018 12:00', 10, 1),
 ])
-def test_fetch_stats_should_not_gather_notifications_older_than_7_days(sample_template, created_at, rows_returned):
+def test_fetch_stats_should_not_gather_notifications_older_than_7_days(
+    sample_template, created_at, limit_days, rows_returned
+):
     # It's monday today. Things made last monday should still show
     with freeze_time(created_at):
         create_notification_db(sample_template,)
 
     with freeze_time('Monday 16th July 2018 12:00'):
-        stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
+        stats = dao_fetch_stats_for_service(sample_template.service_id, limit_days)
 
     assert len(stats) == rows_returned
 
