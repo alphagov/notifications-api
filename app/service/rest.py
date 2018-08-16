@@ -27,6 +27,7 @@ from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
+    fetch_service_data_retention_by_notification_type,
     insert_service_data_retention,
     update_service_data_retention,
 )
@@ -165,7 +166,11 @@ def get_service_by_id(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/statistics')
 def get_service_notification_statistics(service_id):
-    return jsonify(data=get_service_statistics(service_id, request.args.get('today_only') == 'True'))
+    return jsonify(data=get_service_statistics(
+        service_id,
+        request.args.get('today_only') == 'True',
+        int(request.args.get('limit_days', 7))
+    ))
 
 
 @service_blueprint.route('', methods=['POST'])
@@ -423,10 +428,13 @@ def get_detailed_service(service_id, today_only=False):
     return detailed_service_schema.dump(service).data
 
 
-def get_service_statistics(service_id, today_only):
+def get_service_statistics(service_id, today_only, limit_days=7):
     # today_only flag is used by the send page to work out if the service will exceed their daily usage by sending a job
-    stats_fn = dao_fetch_todays_stats_for_service if today_only else dao_fetch_stats_for_service
-    stats = stats_fn(service_id)
+    if today_only:
+        stats = dao_fetch_todays_stats_for_service(service_id)
+    else:
+        stats = dao_fetch_stats_for_service(service_id, limit_days=limit_days)
+
     return statistics.format_statistics(stats)
 
 
@@ -750,6 +758,12 @@ def is_service_name_unique():
 def get_data_retention_for_service(service_id):
     data_retention_list = fetch_service_data_retention(service_id)
     return jsonify([data_retention.serialize() for data_retention in data_retention_list]), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/data-retention/notification-type/<notification_type>', methods=['GET'])
+def get_data_retention_for_service_notification_type(service_id, notification_type):
+    data_retention = fetch_service_data_retention_by_notification_type(service_id, notification_type)
+    return jsonify(data_retention.serialize() if data_retention else {}), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/data-retention/<uuid:data_retention_id>', methods=['GET'])
