@@ -2,6 +2,7 @@ import uuid
 from unittest.mock import Mock
 
 import pytest
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.recipients import InvalidPhoneError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
@@ -191,14 +192,15 @@ def test_send_one_off_notification_raises_if_message_too_long(persist_mock, noti
     post_data = {
         'template_id': str(template.id),
         'to': '07700 900 001',
-        'personalisation': {'name': '🚫' * 500},
+        'personalisation': {'name': '🚫' * 700},
         'created_by': str(service.created_by_id)
     }
 
     with pytest.raises(BadRequestError) as e:
         send_one_off_notification(service.id, post_data)
 
-    assert e.value.message == 'Content for template has a character count greater than the limit of 495'
+    assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
+        SMS_CHAR_COUNT_LIMIT)
 
 
 def test_send_one_off_notification_fails_if_created_by_other_service(sample_template):

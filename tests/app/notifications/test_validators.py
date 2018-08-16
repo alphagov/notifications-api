@@ -1,6 +1,7 @@
 import pytest
 from freezegun import freeze_time
 from flask import current_app
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
 from app.models import INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
@@ -264,18 +265,18 @@ def test_service_can_send_to_recipient_fails_when_mobile_number_is_not_on_team(n
     assert e.value.fields == []
 
 
-@pytest.mark.parametrize('char_count', [495, 0, 494, 200])
+@pytest.mark.parametrize('char_count', [612, 0, 494, 200])
 def test_check_sms_content_char_count_passes(char_count, notify_api):
     assert check_sms_content_char_count(char_count) is None
 
 
-@pytest.mark.parametrize('char_count', [496, 500, 6000])
+@pytest.mark.parametrize('char_count', [613, 700, 6000])
 def test_check_sms_content_char_count_fails(char_count, notify_api):
     with pytest.raises(BadRequestError) as e:
         check_sms_content_char_count(char_count)
     assert e.value.status_code == 400
     assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
-        notify_api.config['SMS_CHAR_COUNT_LIMIT'])
+        SMS_CHAR_COUNT_LIMIT)
     assert e.value.fields == []
 
 
