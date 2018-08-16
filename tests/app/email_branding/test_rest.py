@@ -32,7 +32,8 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
         email_branding_id=email_branding.id
     )
 
-    assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text'}
+    assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text',
+                                                      'banner_colour', 'single_id_colour', 'domain'}
     assert response['email_branding']['colour'] == '#FFFFFF'
     assert response['email_branding']['logo'] == '/path/image.png'
     assert response['email_branding']['name'] == 'Some Org'
