@@ -6,6 +6,7 @@ from datetime import datetime
 from flask import (json, current_app)
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
 from app.dao import notifications_dao
@@ -1020,7 +1021,6 @@ def test_create_template_raises_invalid_request_when_content_too_large(
         content="((long_text))",
         template_type=template_type
     )
-    limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
     template = Template.query.get(sample.id)
     from app.notifications.rest import create_template_object_for_notification
     try:
@@ -1028,13 +1028,14 @@ def test_create_template_raises_invalid_request_when_content_too_large(
                                                 {'long_text':
                                                     ''.join(
                                                         random.choice(string.ascii_uppercase + string.digits) for _ in
-                                                        range(limit + 1))})
+                                                        range(SMS_CHAR_COUNT_LIMIT + 1))})
         if should_error:
             pytest.fail("expected an InvalidRequest")
     except InvalidRequest as e:
         if not should_error:
             pytest.fail("do not expect an InvalidRequest")
-        assert e.message == {'content': ['Content has a character count greater than the limit of {}'.format(limit)]}
+        assert e.message == {'content': ['Content has a character count greater than the limit of {}'.format(
+            SMS_CHAR_COUNT_LIMIT)]}
 
 
 @pytest.mark.parametrize("notification_type, send_to",

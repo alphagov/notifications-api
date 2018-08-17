@@ -39,6 +39,7 @@ from app.schemas import (
 from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
 
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.recipients import get_international_phone_info
 
 notifications = Blueprint('notifications', __name__)
@@ -198,10 +199,9 @@ def create_template_object_for_notification(template, personalisation):
 
     if (
         template_object.template_type == SMS_TYPE and
-        template_object.content_count > current_app.config.get('SMS_CHAR_COUNT_LIMIT')
+        template_object.content_count > SMS_CHAR_COUNT_LIMIT
     ):
-        char_count = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
-        message = 'Content has a character count greater than the limit of {}'.format(char_count)
+        message = 'Content has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
     return template_object

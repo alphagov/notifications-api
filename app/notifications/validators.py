@@ -1,5 +1,6 @@
 from sqlalchemy.orm.exc import NoResultFound
 from flask import current_app
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.recipients import (
     validate_and_format_phone_number,
     validate_and_format_email_address,
@@ -115,9 +116,8 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
 
 
 def check_sms_content_char_count(content_count):
-    char_count_limit = current_app.config.get('SMS_CHAR_COUNT_LIMIT')
-    if content_count > char_count_limit:
-        message = 'Content for template has a character count greater than the limit of {}'.format(char_count_limit)
+    if content_count > SMS_CHAR_COUNT_LIMIT:
+        message = 'Content for template has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)
         raise BadRequestError(message=message)
 
 

@@ -9,6 +9,8 @@ import pytest
 import requests_mock
 from PyPDF2.utils import PdfReadError
 from freezegun import freeze_time
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
+
 
 from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
@@ -471,9 +473,7 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
 
 
 def test_create_400_for_over_limit_content(client, notify_api, sample_user, sample_service, fake_uuid):
-
-    limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
-    content = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1))
+    content = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(SMS_CHAR_COUNT_LIMIT + 1))
     data = {
         'name': 'too big template',
         'template_type': SMS_TYPE,
@@ -493,14 +493,13 @@ def test_create_400_for_over_limit_content(client, notify_api, sample_user, samp
     json_resp = json.loads(response.get_data(as_text=True))
     assert (
         'Content has a character count greater than the limit of {}'
-    ).format(limit) in json_resp['message']['content']
+    ).format(SMS_CHAR_COUNT_LIMIT) in json_resp['message']['content']
 
 
 def test_update_400_for_over_limit_content(client, notify_api, sample_user, sample_template):
-
-    limit = notify_api.config.get('SMS_CHAR_COUNT_LIMIT')
     json_data = json.dumps({
-        'content': ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(limit + 1)),
+        'content': ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(
+            SMS_CHAR_COUNT_LIMIT + 1)),
         'created_by': str(sample_user.id)
     })
     auth_header = create_authorization_header()
@@ -513,7 +512,7 @@ def test_update_400_for_over_limit_content(client, notify_api, sample_user, samp
     json_resp = json.loads(resp.get_data(as_text=True))
     assert (
         'Content has a character count greater than the limit of {}'
-    ).format(limit) in json_resp['message']['content']
+    ).format(SMS_CHAR_COUNT_LIMIT) in json_resp['message']['content']
 
 
 def test_should_return_all_template_versions_for_service_and_template_id(client, sample_template):
