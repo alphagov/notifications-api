@@ -9,6 +9,7 @@ from requests import (
 )
 
 from notifications_utils.statsd_decorators import statsd
+from notifications_utils.s3 import s3upload
 
 from app import notify_celery
 from app.aws import s3
@@ -24,9 +25,11 @@ from app.dao.notifications_dao import (
 from app.errors import VirusScanError
 from app.letters.utils import (
     get_reference_from_filename,
-    move_scanned_pdf_to_test_or_live_pdf_bucket,
+    get_folder_name,
     upload_letter_pdf,
-    move_failed_pdf, ScanErrorType, move_error_pdf_to_scan_bucket,
+    move_failed_pdf,
+    ScanErrorType,
+    move_error_pdf_to_scan_bucket,
     get_file_names_from_error_bucket
 )
 from app.models import (
@@ -34,7 +37,8 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
-    NOTIFICATION_TECHNICAL_FAILURE
+    NOTIFICATION_TECHNICAL_FAILURE,
+    # NOTIFICATION_VALIDATION_FAILED
 )
 
 
@@ -163,21 +167,82 @@ def letter_in_created_state(filename):
     return False
 
 
-@notify_celery.task(name='process-virus-scan-passed')
-def process_virus_scan_passed(filename):
+@notify_celery.task(bind=True, name='process-virus-scan-passed', max_retries=15, default_retry_delay=300)
+def process_virus_scan_passed(self, filename):
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
     current_app.logger.info('notification id {} Virus scan passed: {}'.format(notification.id, filename))
 
     is_test_key = notification.key_type == KEY_TYPE_TEST
-    move_scanned_pdf_to_test_or_live_pdf_bucket(
+
+    scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
+    old_pdf = scan_pdf_object.get()['Body'].read()
+
+    new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
+
+    if not new_pdf:
+        current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
+        # update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
+        # move_scan_to_invalid_pdf_bucket()  # TODO: implement this (and create bucket etc)
+        # scan_pdf_object.delete()
+        # return
+
+    current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
+
+    # temporarily upload original pdf while testing sanitise flow.
+    _upload_pdf_to_test_or_live_pdf_bucket(
+        old_pdf,  # TODO: change to new_pdf
         filename,
-        is_test_letter=is_test_key
-    )
+        is_test_letter=is_test_key)
+
     update_letter_pdf_status(
         reference,
         NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED
     )
+
+    scan_pdf_object.delete()
+
+
+def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
+    target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
+    target_bucket_name = current_app.config[target_bucket_config]
+    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + filename
+
+    s3upload(
+        filedata=pdf_data,
+        region=current_app.config['AWS_REGION'],
+        bucket_name=target_bucket_name,
+        file_location=target_filename
+    )
+
+
+def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
+    try:
+        resp = requests_post(
+            '{}/precompiled/sanitise'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST']
+            ),
+            data=precompiled_pdf,
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+        )
+        resp.raise_for_status()
+        return resp.content
+    except RequestException as ex:
+        if ex.status_code == 400:
+            # validation error
+            return None
+
+        try:
+            current_app.logger.exception(
+                "sanitise_precomiled_pdf failed for notification: {}".format(notification.id)
+            )
+            self.retry(queue=QueueNames.RETRY)
+        except self.MaxRetriesExceededError:
+            current_app.logger.exception(
+                "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
+            )
+            update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise
 
 
 @notify_celery.task(name='process-virus-scan-failed')
