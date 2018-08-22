@@ -16,7 +16,7 @@ eventlet==0.23.0
 gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==2.6.0
-marshmallow-sqlalchemy==0.14.0
+marshmallow-sqlalchemy==0.14.1
 marshmallow==2.15.4
 psycopg2-binary==2.7.5
 PyJWT==1.6.4
@@ -35,12 +35,12 @@ git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 alembic==1.0.0
 amqp==1.4.9
 anyjson==0.3.3
-awscli==1.15.81
+awscli==1.15.83
 bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
 boto3==1.6.16
-botocore==1.10.80
+botocore==1.10.82
 certifi==2018.8.13
 chardet==3.0.4
 click==6.7
@@ -79,4 +79,3 @@ statsd==3.2.2
 urllib3==1.23
 webencodings==0.5.1
 Werkzeug==0.14.1
-wheel==0.24.0
