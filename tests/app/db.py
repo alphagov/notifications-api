@@ -77,7 +77,8 @@ def create_service(
         email_from=None,
         prefix_sms=True,
         message_limit=1000,
-        organisation_type='central'
+        organisation_type='central',
+        branding=None
 ):
     service = Service(
         name=service_name,
@@ -86,7 +87,8 @@ def create_service(
         email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         prefix_sms=prefix_sms,
-        organisation_type=organisation_type
+        organisation_type=organisation_type,
+        branding=branding
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)

@@ -13,6 +13,7 @@ from app import mmg_client, firetext_client
 from app.dao import (provider_details_dao, notifications_dao)
 from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
 from app.delivery import send_to_providers
+from app.delivery.send_to_providers import _set_colour
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     Notification,
@@ -202,6 +203,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
 def test_should_call_send_sms_response_task_if_research_mode(
         notify_db, sample_service, sample_notification, mocker, research_mode, key_type
 ):
+    sample_service.branding = BRANDING_GOVUK
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
@@ -454,11 +456,13 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text', 'banner_colour', 'single_id_colour'])
 
     email_branding = EmailBranding(colour='#000000', logo='justice-league.png',
                                    name='Justice League',
-                                   text='League of Justice')
+                                   text='League of Justice',
+                                   banner_colour='#ABEBC6',
+                                   single_id_colour='#DB6849')
     service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
@@ -468,10 +472,12 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
+    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text', 'banner_colour', 'single_id_colour'])
 
-    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League', text='League of Justice')
-    service = Service(branding=BRANDING_ORG, email_branding=email_branding)
+    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League', text='League of Justice',
+                                   banner_colour='#ABEBC6',
+                                   single_id_colour='#DB6849')
+    service = Service(branding=BRANDING_ORG_BANNER, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
 
@@ -746,3 +752,26 @@ def test_send_email_to_provider_should_format_email_address(sample_email_notific
         html_body=ANY,
         reply_to_address=ANY,
     )
+
+
+@pytest.mark.parametrize('colour, banner_colour, single_id_colour, branding_type, expected_colour', [
+    ('black', 'yellow', 'red', 'org', 'red'),
+    ('black', 'yellow', None, 'org', 'black'),
+    ('black', 'yellow', 'red', 'org_banner', 'yellow'),
+    ('black', None, 'red', 'org_banner', 'black'),
+    ('black', 'yellow', 'red', 'govuk', None),
+    ('black', 'yellow', 'red', 'both', 'red'),
+    ('black', 'yellow', None, 'both', 'black'),
+])
+def test_set_colour(notify_db_session, colour, banner_colour, single_id_colour, branding_type, expected_colour):
+    Service = namedtuple('Service', ['branding', 'email_branding'])
+    email_branding = EmailBranding(colour=colour,
+                                   logo='justice-league.png',
+                                   name='Justice League',
+                                   text='League of Justice',
+                                   banner_colour=banner_colour,
+                                   single_id_colour=single_id_colour)
+    service = Service(branding=branding_type, email_branding=email_branding)
+
+    colour = _set_colour(service)
+    assert colour == expected_colour
