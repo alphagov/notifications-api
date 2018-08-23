@@ -406,7 +406,7 @@ class Preview(Config):
     LETTERS_SCAN_BUCKET_NAME = 'preview-letters-scan'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
-    CHECK_PROXY_HEADER = True
+    CHECK_PROXY_HEADER = False
 
 
 class Staging(Config):
