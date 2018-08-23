@@ -7,7 +7,7 @@ Revises: 0213_brand_colour_domain_
 
 # revision identifiers, used by Alembic.
 revision = '0214_another_letter_org'
-down_revision = '0213_brand_colour_domain_'
+down_revision = '0213_brand_colour_domain'
 
 from alembic import op
 
