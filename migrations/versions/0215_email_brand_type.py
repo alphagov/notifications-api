@@ -1,15 +1,15 @@
 """
 
-Revision ID: 0214_email_brand_type
-Revises: 0213_brand_colour_domain
+Revision ID: 0215_email_brand_type
+Revises: 0214_another_letter_org
 Create Date: 2018-08-23 11:48:00.800968
 
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = '0214_email_brand_type'
-down_revision = '0213_brand_colour_domain'
+revision = '0215_email_brand_type'
+down_revision = '0214_another_letter_org'
 
 
 def upgrade():
