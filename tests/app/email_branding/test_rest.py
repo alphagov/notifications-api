@@ -1,6 +1,7 @@
 import pytest
 
-from app.models import EmailBranding
+from app.models import EmailBranding, BRANDING_GOVUK, BRANDING_ORG
+from tests.app.db import create_email_branding
 
 
 def test_get_email_branding_options(admin_request, notify_db, notify_db_session):
@@ -33,12 +34,13 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
     )
 
     assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text',
-                                                      'banner_colour', 'single_id_colour', 'domain'}
+                                                      'banner_colour', 'single_id_colour', 'domain', 'brand_type'}
     assert response['email_branding']['colour'] == '#FFFFFF'
     assert response['email_branding']['logo'] == '/path/image.png'
     assert response['email_branding']['name'] == 'Some Org'
     assert response['email_branding']['text'] == 'My Org'
     assert response['email_branding']['id'] == str(email_branding.id)
+    assert response['email_branding']['brand_type'] == str(email_branding.brand_type)
 
 
 def test_post_create_email_branding(admin_request, notify_db_session):
@@ -48,7 +50,8 @@ def test_post_create_email_branding(admin_request, notify_db_session):
         'banner_colour': '#808080',
         'single_id_colour': '#FF0000',
         'logo': '/images/test_x2.png',
-        'domain': 'gov.uk'
+        'domain': 'gov.uk',
+        'brand_type': BRANDING_ORG
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -62,6 +65,24 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert data['logo'] == response['data']['logo']
     assert data['name'] == response['data']['text']
     assert data['domain'] == response['data']['domain']
+    assert data['brand_type'] == response['data']['brand_type']
+
+
+def test_post_create_email_branding_without_brand_type_defaults(admin_request, notify_db_session):
+    data = {
+        'name': 'test email_branding',
+        'colour': '#0000ff',
+        'banner_colour': '#808080',
+        'single_id_colour': '#FF0000',
+        'logo': '/images/test_x2.png',
+        'domain': 'gov.uk',
+    }
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=201
+    )
+    assert BRANDING_GOVUK == response['data']['brand_type']
 
 
 def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_session):
@@ -69,11 +90,12 @@ def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_
         'name': 'test email_branding',
         'colour': '#0000ff',
     }
-    admin_request.post(
+    response = admin_request.post(
         'email_branding.create_email_branding',
         _data=data,
         _expected_status=201,
     )
+    assert not response['data']['logo']
 
 
 def test_post_create_email_branding_without_name_or_colour_is_valid(admin_request, notify_db_session):
@@ -150,6 +172,7 @@ def test_post_create_email_branding_with_text_as_none_and_name(admin_request, no
     ({'logo': 'images/text_x3.png', 'colour': '#ffffff'}),
     ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080'}),
     ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080', 'domain': 'gov.uk'}),
+    ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080', 'brand_type': 'org'}),
 ])
 def test_post_update_email_branding_updates_field(admin_request, notify_db_session, data_update):
     data = {
@@ -164,7 +187,7 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
 
     email_branding_id = response['data']['id']
 
-    response = admin_request.post(
+    admin_request.post(
         'email_branding.update_email_branding',
         _data=data_update,
         email_branding_id=email_branding_id
@@ -197,7 +220,7 @@ def test_post_update_email_branding_updates_field_with_text(admin_request, notif
 
     email_branding_id = response['data']['id']
 
-    response = admin_request.post(
+    admin_request.post(
         'email_branding.update_email_branding',
         _data=data_update,
         email_branding_id=email_branding_id
@@ -209,3 +232,34 @@ def test_post_update_email_branding_updates_field_with_text(admin_request, notif
     assert str(email_branding[0].id) == email_branding_id
     for key in data_update.keys():
         assert getattr(email_branding[0], key) == data_update[key]
+
+
+def test_create_email_branding_reject_invalid_brand_type(admin_request):
+    data = {
+        'name': 'test email_branding',
+        'brand_type': 'NOT A TYPE'
+
+    }
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [govuk, org, both, org_banner]'
+
+
+def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_db_session):
+    email_branding = create_email_branding()
+    data = {
+        'brand_type': 'NOT A TYPE'
+
+    }
+    response = admin_request.post(
+        'email_branding.update_email_branding',
+        _data=data,
+        _expected_status=400,
+        email_branding_id=email_branding.id
+    )
+
+    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [govuk, org, both, org_banner]'

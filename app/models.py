@@ -192,6 +192,7 @@ BRANDING_GOVUK = 'govuk'
 BRANDING_ORG = 'org'
 BRANDING_BOTH = 'both'
 BRANDING_ORG_BANNER = 'org_banner'
+BRANDING_TYPES = [BRANDING_GOVUK, BRANDING_ORG, BRANDING_BOTH, BRANDING_ORG_BANNER]
 
 
 class BrandingTypes(db.Model):
@@ -209,6 +210,13 @@ class EmailBranding(db.Model):
     name = db.Column(db.String(255), nullable=True)
     text = db.Column(db.String(255), nullable=True)
     domain = db.Column(db.Text, nullable=True)
+    brand_type = db.Column(
+        db.String(255),
+        db.ForeignKey('branding_type.name'),
+        index=True,
+        nullable=True,
+        default=BRANDING_GOVUK
+    )
 
     def serialize(self):
         serialized = {
@@ -219,7 +227,8 @@ class EmailBranding(db.Model):
             "text": self.text,
             "banner_colour": self.banner_colour,
             "single_id_colour": self.single_id_colour,
-            "domain": self.domain
+            "domain": self.domain,
+            "brand_type": self.brand_type
         }
 
         return serialized
