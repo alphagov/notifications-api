@@ -34,7 +34,7 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
     )
 
     assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text',
-                                                      'banner_colour', 'single_id_colour', 'domain', 'brand_type'}
+                                                      'domain', 'brand_type'}
     assert response['email_branding']['colour'] == '#FFFFFF'
     assert response['email_branding']['logo'] == '/path/image.png'
     assert response['email_branding']['name'] == 'Some Org'
@@ -47,8 +47,6 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     data = {
         'name': 'test email_branding',
         'colour': '#0000ff',
-        'banner_colour': '#808080',
-        'single_id_colour': '#FF0000',
         'logo': '/images/test_x2.png',
         'domain': 'gov.uk',
         'brand_type': BRANDING_ORG
@@ -60,8 +58,6 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     )
     assert data['name'] == response['data']['name']
     assert data['colour'] == response['data']['colour']
-    assert data['banner_colour'] == response['data']['banner_colour']
-    assert data['single_id_colour'] == response['data']['single_id_colour']
     assert data['logo'] == response['data']['logo']
     assert data['name'] == response['data']['text']
     assert data['domain'] == response['data']['domain']
@@ -72,8 +68,6 @@ def test_post_create_email_branding_without_brand_type_defaults(admin_request, n
     data = {
         'name': 'test email_branding',
         'colour': '#0000ff',
-        'banner_colour': '#808080',
-        'single_id_colour': '#FF0000',
         'logo': '/images/test_x2.png',
         'domain': 'gov.uk',
     }
@@ -170,9 +164,9 @@ def test_post_create_email_branding_with_text_as_none_and_name(admin_request, no
 @pytest.mark.parametrize('data_update', [
     ({'name': 'test email_branding 1'}),
     ({'logo': 'images/text_x3.png', 'colour': '#ffffff'}),
-    ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080'}),
-    ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080', 'domain': 'gov.uk'}),
-    ({'logo': 'images/text_x3.png', 'banner_colour': '#ffffff', 'single_id_colour': '#808080', 'brand_type': 'org'}),
+    ({'logo': 'images/text_x3.png'}),
+    ({'logo': 'images/text_x3.png', 'domain': 'gov.uk'}),
+    ({'logo': 'images/text_x3.png', 'brand_type': 'org'}),
 ])
 def test_post_update_email_branding_updates_field(admin_request, notify_db_session, data_update):
     data = {
