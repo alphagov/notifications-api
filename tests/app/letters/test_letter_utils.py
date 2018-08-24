@@ -11,7 +11,6 @@ from app.letters.utils import (
     get_letter_pdf_filename,
     get_letter_pdf,
     upload_letter_pdf,
-    move_scanned_pdf_to_test_or_live_pdf_bucket,
     ScanErrorType, move_failed_pdf, get_folder_name
 )
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
@@ -136,32 +135,6 @@ def test_upload_letter_pdf_to_correct_bucket(
         filedata=b'\x00\x01',
         region=current_app.config['AWS_REGION']
     )
-
-
-@mock_s3
-@pytest.mark.parametrize('is_test_letter,bucket_config_name,folder_date_name', [
-    (False, 'LETTERS_PDF_BUCKET_NAME', '2018-03-14/'),
-    (True, 'TEST_LETTERS_BUCKET_NAME', '')
-])
-@freeze_time(FROZEN_DATE_TIME)
-def test_move_scanned_letter_pdf_to_processing_bucket(
-    notify_api, is_test_letter, bucket_config_name, folder_date_name
-):
-    filename = 'test.pdf'
-    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-    target_bucket_name = current_app.config[bucket_config_name]
-
-    conn = boto3.resource('s3', region_name='eu-west-1')
-    source_bucket = conn.create_bucket(Bucket=source_bucket_name)
-    target_bucket = conn.create_bucket(Bucket=target_bucket_name)
-
-    s3 = boto3.client('s3', region_name='eu-west-1')
-    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
-
-    move_scanned_pdf_to_test_or_live_pdf_bucket(filename, is_test_letter=is_test_letter)
-
-    assert folder_date_name + filename in [o.key for o in target_bucket.objects.all()]
-    assert filename not in [o.key for o in source_bucket.objects.all()]
 
 
 @mock_s3

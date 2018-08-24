@@ -7,7 +7,7 @@ from requests import (
     post as requests_post,
     RequestException
 )
-
+from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
 
@@ -70,7 +70,7 @@ def create_letters_pdf(self, notification_id):
                 "Letters PDF notification creation for id: {} failed".format(notification_id)
             )
             self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except MaxRetriesExceededError:
             current_app.logger.exception(
                 "RETRY FAILED: task create_letters_pdf failed for notification {}".format(notification_id),
             )
@@ -228,7 +228,7 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
         resp.raise_for_status()
         return resp.content
     except RequestException as ex:
-        if ex.status_code == 400:
+        if ex.response is not None and ex.response.status_code == 400:
             # validation error
             return None
 
@@ -237,7 +237,7 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
                 "sanitise_precomiled_pdf failed for notification: {}".format(notification.id)
             )
             self.retry(queue=QueueNames.RETRY)
-        except self.MaxRetriesExceededError:
+        except MaxRetriesExceededError:
             current_app.logger.exception(
                 "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
             )
