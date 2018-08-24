@@ -204,8 +204,6 @@ class EmailBranding(db.Model):
     __tablename__ = 'email_branding'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     colour = db.Column(db.String(7), nullable=True)
-    banner_colour = db.Column(db.String(7), nullable=True)
-    single_id_colour = db.Column(db.String(7), nullable=True)
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
     text = db.Column(db.String(255), nullable=True)
@@ -225,8 +223,6 @@ class EmailBranding(db.Model):
             "logo": self.logo,
             "name": self.name,
             "text": self.text,
-            "banner_colour": self.banner_colour,
-            "single_id_colour": self.single_id_colour,
             "domain": self.domain,
             "brand_type": self.brand_type
         }

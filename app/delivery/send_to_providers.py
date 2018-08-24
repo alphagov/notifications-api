@@ -30,8 +30,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENT,
-    NOTIFICATION_SENDING,
-    BRANDING_BOTH
+    NOTIFICATION_SENDING
 )
 
 
@@ -199,10 +198,8 @@ def get_html_email_options(service):
             service.email_branding.logo
         ) if service.email_branding.logo else None
 
-        colour = _set_colour(service)
-
         branding = {
-            'brand_colour': colour,
+            'brand_colour': service.email_branding.colour,
             'brand_logo': logo_url,
             'brand_name': service.email_branding.text,
         }
@@ -210,15 +207,6 @@ def get_html_email_options(service):
         branding = {}
 
     return dict(govuk_banner=govuk_banner, brand_banner=brand_banner, **branding)
-
-
-def _set_colour(service):
-    if service.branding in [BRANDING_BOTH, BRANDING_ORG]:
-        return service.email_branding.single_id_colour or service.email_branding.colour
-    elif service.branding == BRANDING_ORG_BANNER:
-        return service.email_branding.banner_colour or service.email_branding.colour
-    elif service.branding == BRANDING_GOVUK:
-        return None
 
 
 def technical_failure(notification):
