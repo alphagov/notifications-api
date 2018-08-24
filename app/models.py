@@ -213,7 +213,6 @@ class EmailBranding(db.Model):
         db.ForeignKey('branding_type.name'),
         index=True,
         nullable=True,
-        default=BRANDING_GOVUK
     )
 
     def serialize(self):

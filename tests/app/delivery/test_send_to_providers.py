@@ -67,8 +67,8 @@ def test_should_return_highest_priority_active_provider(restore_provider_details
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
-    sample_sms_template_with_html,
-    mocker
+        sample_sms_template_with_html,
+        mocker
 ):
     db_notification = create_notification(template=sample_sms_template_with_html,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
@@ -98,8 +98,8 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
 
 
 def test_should_send_personalised_template_to_correct_email_provider_and_persist(
-    sample_email_template_with_html,
-    mocker
+        sample_email_template_with_html,
+        mocker
 ):
     db_notification = create_notification(
         template=sample_email_template_with_html,
@@ -251,7 +251,6 @@ def test_should_leave_as_created_if_fake_callback_function_fails(sample_notifica
 ])
 def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
         notify_db, sample_service, sample_notification, mocker, research_mode, key_type):
-
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
@@ -268,8 +267,8 @@ def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
 
 
 def test_should_not_send_to_provider_when_status_is_not_created(
-    sample_template,
-    mocker
+        sample_template,
+        mocker
 ):
     notification = create_notification(template=sample_template, status='sending')
     mocker.patch('app.mmg_client.send_sms')
@@ -370,8 +369,8 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
 
 
 def test_send_email_to_provider_should_not_send_to_provider_when_status_is_not_created(
-    sample_email_template,
-    mocker
+        sample_email_template,
+        mocker
 ):
     notification = create_notification(template=sample_email_template, status='sending')
     mocker.patch('app.aws_ses_client.send_email')
@@ -423,7 +422,7 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
     sample_service.branding = branding_type
     email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
-                                   text='League of Justice')
+                                   text='League of Justice', brand_type=None)
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -443,7 +442,7 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
     sample_service.branding = BRANDING_GOVUK
     email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
-                                   text='League of Justice')
+                                   text='League of Justice', brand_type=None)
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -455,11 +454,10 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
-
     email_branding = EmailBranding(colour='#000000', logo='justice-league.png',
                                    name='Justice League',
-                                   text='League of Justice')
+                                   text='League of Justice',
+                                   brand_type=None)
     service = Service(branding=BRANDING_ORG, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
@@ -469,14 +467,36 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
-
-    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League', text='League of Justice')
+    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League',
+                                   text='League of Justice', brand_type=None)
     service = Service(branding=BRANDING_ORG_BANNER, email_branding=email_branding)
 
     renderer = send_to_providers.get_html_email_options(service)
 
     assert renderer['brand_logo'] is None
+
+
+@pytest.mark.parametrize('branding_type, govuk_banner, service_branding', [
+    (BRANDING_ORG, False, BRANDING_BOTH),
+    (BRANDING_BOTH, True, BRANDING_ORG),
+    (BRANDING_ORG_BANNER, False, BRANDING_GOVUK)
+])
+def test_get_html_email_renderer_uses_email_branding_brand_type(
+        branding_type, govuk_banner, service_branding, notify_db, sample_service
+):
+    sample_service.branding = service_branding
+    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
+                                   text='League of Justice',
+                                   brand_type=branding_type)
+    sample_service.email_branding = email_branding
+    notify_db.session.add_all([sample_service, email_branding])
+    notify_db.session.commit()
+
+    options = send_to_providers.get_html_email_options(sample_service)
+
+    assert options['govuk_banner'] == govuk_banner
+    assert options['brand_colour'] == '#000000'
+    assert options['brand_name'] == 'League of Justice'
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
@@ -520,13 +540,13 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     (False, KEY_TYPE_TEAM, 1)
 ])
 def test_should_update_billable_units_according_to_research_mode_and_key_type(
-    notify_db,
-    sample_service,
-    sample_notification,
-    mocker,
-    research_mode,
-    key_type,
-    billable_units
+        notify_db,
+        sample_service,
+        sample_notification,
+        mocker,
+        research_mode,
+        key_type,
+        billable_units
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
@@ -545,10 +565,10 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(
 
 
 def test_should_send_sms_to_international_providers(
-    restore_provider_details,
-    sample_sms_template_with_html,
-    sample_user,
-    mocker
+        restore_provider_details,
+        sample_sms_template_with_html,
+        sample_user,
+        mocker
 ):
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
 
@@ -607,9 +627,9 @@ def test_should_send_sms_to_international_providers(
 
 
 def test_should_send_international_sms_with_formatted_phone_number(
-    notify_db,
-    sample_template,
-    mocker
+        notify_db,
+        sample_template,
+        mocker
 ):
     notification = create_notification(
         template=sample_template,
@@ -628,9 +648,9 @@ def test_should_send_international_sms_with_formatted_phone_number(
 
 
 def test_should_set_international_phone_number_to_sent_status(
-    notify_db,
-    sample_template,
-    mocker
+        notify_db,
+        sample_template,
+        mocker
 ):
     notification = create_notification(
         template=sample_template,
@@ -658,12 +678,12 @@ def test_should_set_international_phone_number_to_sent_status(
     ('testing', 'testing', False, 'bar'),
 ])
 def test_should_handle_sms_sender_and_prefix_message(
-    mocker,
-    sms_sender,
-    prefix_sms,
-    expected_sender,
-    expected_content,
-    notify_db_session
+        mocker,
+        sms_sender,
+        prefix_sms,
+        expected_sender,
+        expected_content,
+        notify_db_session
 ):
     mocker.patch('app.mmg_client.send_sms')
     service = create_service_with_defined_sms_sender(sms_sender_value=sms_sender, prefix_sms=prefix_sms)
