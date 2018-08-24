@@ -189,9 +189,13 @@ def get_logo_url(base_url, logo_file):
 
 
 def get_html_email_options(service):
-    govuk_banner = service.branding not in (BRANDING_ORG, BRANDING_ORG_BANNER)
-    brand_banner = service.branding == BRANDING_ORG_BANNER
-    if service.branding != BRANDING_GOVUK and service.email_branding:
+    if service.email_branding:
+        brand_type = service.email_branding.brand_type or service.branding or BRANDING_GOVUK
+    else:
+        brand_type = service.branding or BRANDING_GOVUK
+    govuk_banner = brand_type not in (BRANDING_ORG, BRANDING_ORG_BANNER)
+    brand_banner = brand_type == BRANDING_ORG_BANNER
+    if brand_type != BRANDING_GOVUK and service.email_branding:
 
         logo_url = get_logo_url(
             current_app.config['ADMIN_BASE_URL'],

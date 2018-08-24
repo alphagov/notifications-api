@@ -1,6 +1,6 @@
 import pytest
 
-from app.models import EmailBranding, BRANDING_GOVUK, BRANDING_ORG
+from app.models import EmailBranding, BRANDING_ORG
 from tests.app.db import create_email_branding
 
 
@@ -23,7 +23,8 @@ def test_get_email_branding_options(admin_request, notify_db, notify_db_session)
 
 
 def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
-    email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Some Org', text='My Org')
+    email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Some Org', text='My Org',
+                                   brand_type=BRANDING_ORG)
     notify_db.session.add(email_branding)
     notify_db.session.commit()
 
@@ -64,19 +65,20 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert data['brand_type'] == response['data']['brand_type']
 
 
-def test_post_create_email_branding_without_brand_type_defaults(admin_request, notify_db_session):
+def test_post_create_email_branding_without_brand_type_does_not_default(admin_request, notify_db_session):
     data = {
         'name': 'test email_branding',
         'colour': '#0000ff',
         'logo': '/images/test_x2.png',
         'domain': 'gov.uk',
+
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
         _data=data,
         _expected_status=201
     )
-    assert BRANDING_GOVUK == response['data']['brand_type']
+    assert not response['data']['brand_type']
 
 
 def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_session):
