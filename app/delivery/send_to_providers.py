@@ -23,7 +23,7 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     SMS_TYPE,
     KEY_TYPE_TEST,
-    BRANDING_ORG,
+    BRANDING_BOTH,
     BRANDING_ORG_BANNER,
     BRANDING_GOVUK,
     EMAIL_TYPE,
@@ -189,24 +189,28 @@ def get_logo_url(base_url, logo_file):
 
 
 def get_html_email_options(service):
-    govuk_banner = service.branding not in (BRANDING_ORG, BRANDING_ORG_BANNER)
-    brand_banner = service.branding == BRANDING_ORG_BANNER
-    if service.branding != BRANDING_GOVUK and service.email_branding:
 
-        logo_url = get_logo_url(
-            current_app.config['ADMIN_BASE_URL'],
-            service.email_branding.logo
-        ) if service.email_branding.logo else None
-
-        branding = {
-            'brand_colour': service.email_branding.colour,
-            'brand_logo': logo_url,
-            'brand_name': service.email_branding.text,
+    if (
+        service.email_branding is None or
+        service.email_branding.brand_type == BRANDING_GOVUK
+    ):
+        return {
+            'govuk_banner': True,
+            'brand_banner': False,
         }
-    else:
-        branding = {}
 
-    return dict(govuk_banner=govuk_banner, brand_banner=brand_banner, **branding)
+    logo_url = get_logo_url(
+        current_app.config['ADMIN_BASE_URL'],
+        service.email_branding.logo
+    ) if service.email_branding.logo else None
+
+    return {
+        'govuk_banner': service.email_branding.brand_type == BRANDING_BOTH,
+        'brand_banner': service.email_branding.brand_type == BRANDING_ORG_BANNER,
+        'brand_colour': service.email_branding.colour,
+        'brand_logo': logo_url,
+        'brand_name': service.email_branding.text,
+    }
 
 
 def technical_failure(notification):

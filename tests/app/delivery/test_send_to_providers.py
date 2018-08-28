@@ -409,7 +409,7 @@ def test_send_email_should_use_service_reply_to_email(
 
 def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
     options = send_to_providers.get_html_email_options(sample_service)
-    assert options['govuk_banner']
+    assert options['govuk_banner'] is True
     assert 'brand_colour' not in options.keys()
     assert 'brand_logo' not in options.keys()
     assert 'brand_name' not in options.keys()
@@ -421,9 +421,16 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
     (BRANDING_ORG_BANNER, False)
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
-    sample_service.branding = branding_type
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
-                                   text='League of Justice')
+
+    sample_service.branding = BRANDING_GOVUK  # Expected to be ignored
+
+    email_branding = EmailBranding(
+        brand_type=branding_type,
+        colour='#000000',
+        logo='justice-league.png',
+        name='Justice League',
+        text='League of Justice',
+    )
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -434,7 +441,7 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
     assert options['brand_colour'] == '#000000'
     assert options['brand_name'] == 'League of Justice'
 
-    if sample_service.branding == BRANDING_ORG_BANNER:
+    if branding_type == BRANDING_ORG_BANNER:
         assert options['brand_banner'] is True
     else:
         assert options['brand_banner'] is False
@@ -442,8 +449,13 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
     sample_service.branding = BRANDING_GOVUK
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League',
-                                   text='League of Justice')
+    email_branding = EmailBranding(
+        brand_type=BRANDING_GOVUK,
+        colour='#000000',
+        logo='justice-league.png',
+        name='Justice League',
+        text='League of Justice',
+    )
     sample_service.email_branding = email_branding
     notify_db.session.add_all([sample_service, email_branding])
     notify_db.session.commit()
@@ -455,12 +467,19 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
+    EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
-    email_branding = EmailBranding(colour='#000000', logo='justice-league.png',
-                                   name='Justice League',
-                                   text='League of Justice')
-    service = Service(branding=BRANDING_ORG, email_branding=email_branding)
+    email_branding = EmailBranding(
+        brand_type=BRANDING_ORG,
+        colour='#000000',
+        logo='justice-league.png',
+        name='Justice League',
+        text='League of Justice',
+    )
+    service = Service(
+        branding=BRANDING_GOVUK,  # expected to be ignored
+        email_branding=email_branding,
+    )
 
     renderer = send_to_providers.get_html_email_options(service)
 
@@ -469,14 +488,27 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
     Service = namedtuple('Service', ['branding', 'email_branding'])
-    EmailBranding = namedtuple('EmailBranding', ['colour', 'name', 'logo', 'text'])
+    EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
-    email_branding = EmailBranding(colour='#000000', logo=None, name='Justice League', text='League of Justice')
-    service = Service(branding=BRANDING_ORG_BANNER, email_branding=email_branding)
+    email_branding = EmailBranding(
+        brand_type=BRANDING_ORG_BANNER,
+        colour='#000000',
+        logo=None,
+        name='Justice League',
+        text='League of Justice',
+    )
+    service = Service(
+        branding=BRANDING_GOVUK,  # Expected to be ignored
+        email_branding=email_branding,
+    )
 
     renderer = send_to_providers.get_html_email_options(service)
 
+    assert renderer['govuk_banner'] is False
+    assert renderer['brand_banner'] is True
     assert renderer['brand_logo'] is None
+    assert renderer['brand_name'] == 'League of Justice'
+    assert renderer['brand_colour'] == '#000000'
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
