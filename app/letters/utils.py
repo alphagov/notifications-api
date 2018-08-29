@@ -90,16 +90,6 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     return upload_file_name
 
 
-def move_scanned_pdf_to_test_or_live_pdf_bucket(source_filename, is_test_letter=False):
-    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-    target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
-    target_bucket_name = current_app.config[target_bucket_config]
-
-    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + source_filename
-
-    _move_s3_object(source_bucket_name, source_filename, target_bucket_name, target_filename)
-
-
 def move_failed_pdf(source_filename, scan_error_type):
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
 
