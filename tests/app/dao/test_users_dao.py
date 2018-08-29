@@ -16,7 +16,8 @@ from app.dao.users_dao import (
     get_user_by_email,
     delete_codes_older_created_more_than_a_day_ago,
     update_user_password,
-    count_user_verify_codes)
+    count_user_verify_codes,
+    create_secret_code)
 
 from app.models import User, VerifyCode
 
@@ -156,3 +157,14 @@ def test_count_user_verify_codes(sample_user):
         [make_verify_code(sample_user) for i in range(5)]
 
     assert count_user_verify_codes(sample_user) == 5
+
+
+def test_create_secret_code_different_subsequent_codes():
+    code1 = create_secret_code()
+    code2 = create_secret_code()
+    assert code1 != code2
+
+
+def test_create_secret_code_returns_5_digits():
+    code = create_secret_code()
+    assert len(str(code)) == 5
