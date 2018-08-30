@@ -339,7 +339,7 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
     provider = get_current_provider(LETTER_TYPE)
 
-    updated_count = dao_update_notifications_by_reference(
+    updated_count, _ = dao_update_notifications_by_reference(
         notification_references,
         {
             'status': NOTIFICATION_SENDING,
@@ -357,7 +357,7 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
 def update_letter_notifications_to_error(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
 
-    updated_count = dao_update_notifications_by_reference(
+    updated_count, _ = dao_update_notifications_by_reference(
         notification_references,
         {
             'status': NOTIFICATION_TECHNICAL_FAILURE,
@@ -465,7 +465,7 @@ def update_letter_notification(filename, temporary_failures, update):
         status = NOTIFICATION_TEMPORARY_FAILURE
         temporary_failures.append(update.reference)
 
-    updated_count = dao_update_notifications_by_reference(
+    updated_count, _ = dao_update_notifications_by_reference(
         references=[update.reference],
         update_dict={"status": status,
                      "billable_units": update.page_count,

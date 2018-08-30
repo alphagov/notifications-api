@@ -288,7 +288,7 @@ def update_letter_pdf_status(reference, status):
         update_dict={
             'status': status,
             'updated_at': datetime.utcnow()
-        })
+        })[0]
 
 
 def replay_letters_in_error(filename=None):
