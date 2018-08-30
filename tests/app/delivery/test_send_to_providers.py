@@ -422,8 +422,6 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
 
-    sample_service.branding = BRANDING_GOVUK  # Expected to be ignored
-
     email_branding = EmailBranding(
         brand_type=branding_type,
         colour='#000000',
@@ -448,7 +446,6 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
-    sample_service.branding = BRANDING_GOVUK
     email_branding = EmailBranding(
         brand_type=BRANDING_GOVUK,
         colour='#000000',
@@ -466,7 +463,7 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
-    Service = namedtuple('Service', ['branding', 'email_branding'])
+    Service = namedtuple('Service', ['email_branding'])
     EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
     email_branding = EmailBranding(
@@ -477,7 +474,6 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
         text='League of Justice',
     )
     service = Service(
-        branding=BRANDING_GOVUK,  # expected to be ignored
         email_branding=email_branding,
     )
 
@@ -487,7 +483,7 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
-    Service = namedtuple('Service', ['branding', 'email_branding'])
+    Service = namedtuple('Service', ['email_branding'])
     EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
     email_branding = EmailBranding(
@@ -498,7 +494,6 @@ def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api)
         text='League of Justice',
     )
     service = Service(
-        branding=BRANDING_GOVUK,  # Expected to be ignored
         email_branding=email_branding,
     )
 

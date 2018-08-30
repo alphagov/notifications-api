@@ -346,13 +346,6 @@ class Service(db.Model, Versioned):
         default=DVLA_ORG_HM_GOVERNMENT
     )
     dvla_organisation = db.relationship('DVLAOrganisation')
-    branding = db.Column(
-        db.String(255),
-        db.ForeignKey('branding_type.name'),
-        index=True,
-        nullable=False,
-        default=BRANDING_GOVUK
-    )
     organisation_type = db.Column(
         db.String(255),
         nullable=True,

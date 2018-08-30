@@ -204,7 +204,6 @@ class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
-    branding = field_for(models.Service, 'branding')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
     permissions = fields.Method("service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
