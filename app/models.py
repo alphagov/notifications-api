@@ -188,11 +188,11 @@ user_to_organisation = db.Table(
 )
 
 
-BRANDING_GOVUK = 'govuk'
+BRANDING_GOVUK = 'govuk'  # Deprecated outside migrations
 BRANDING_ORG = 'org'
 BRANDING_BOTH = 'both'
 BRANDING_ORG_BANNER = 'org_banner'
-BRANDING_TYPES = [BRANDING_GOVUK, BRANDING_ORG, BRANDING_BOTH, BRANDING_ORG_BANNER]
+BRANDING_TYPES = [BRANDING_ORG, BRANDING_BOTH, BRANDING_ORG_BANNER]
 
 
 class BrandingTypes(db.Model):
@@ -213,7 +213,7 @@ class EmailBranding(db.Model):
         db.ForeignKey('branding_type.name'),
         index=True,
         nullable=True,
-        default=BRANDING_GOVUK
+        default=BRANDING_ORG
     )
 
     def serialize(self):
@@ -346,13 +346,6 @@ class Service(db.Model, Versioned):
         default=DVLA_ORG_HM_GOVERNMENT
     )
     dvla_organisation = db.relationship('DVLAOrganisation')
-    branding = db.Column(
-        db.String(255),
-        db.ForeignKey('branding_type.name'),
-        index=True,
-        nullable=False,
-        default=BRANDING_GOVUK
-    )
     organisation_type = db.Column(
         db.String(255),
         nullable=True,

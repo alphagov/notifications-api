@@ -21,7 +21,6 @@ from app.models import (
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     BRANDING_ORG,
-    BRANDING_GOVUK,
     BRANDING_BOTH,
     BRANDING_ORG_BANNER
 )
@@ -202,7 +201,6 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
 def test_should_call_send_sms_response_task_if_research_mode(
         notify_db, sample_service, sample_notification, mocker, research_mode, key_type
 ):
-    sample_service.branding = BRANDING_GOVUK
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
@@ -422,8 +420,6 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
 ])
 def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
 
-    sample_service.branding = BRANDING_GOVUK  # Expected to be ignored
-
     email_branding = EmailBranding(
         brand_type=branding_type,
         colour='#000000',
@@ -448,16 +444,8 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
 
 def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
-    sample_service.branding = BRANDING_GOVUK
-    email_branding = EmailBranding(
-        brand_type=BRANDING_GOVUK,
-        colour='#000000',
-        logo='justice-league.png',
-        name='Justice League',
-        text='League of Justice',
-    )
-    sample_service.email_branding = email_branding
-    notify_db.session.add_all([sample_service, email_branding])
+    sample_service.email_branding = None
+    notify_db.session.add_all([sample_service])
     notify_db.session.commit()
 
     options = send_to_providers.get_html_email_options(sample_service)
@@ -466,7 +454,7 @@ def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_o
 
 
 def test_get_html_email_renderer_prepends_logo_path(notify_api):
-    Service = namedtuple('Service', ['branding', 'email_branding'])
+    Service = namedtuple('Service', ['email_branding'])
     EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
     email_branding = EmailBranding(
@@ -477,7 +465,6 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
         text='League of Justice',
     )
     service = Service(
-        branding=BRANDING_GOVUK,  # expected to be ignored
         email_branding=email_branding,
     )
 
@@ -487,7 +474,7 @@ def test_get_html_email_renderer_prepends_logo_path(notify_api):
 
 
 def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api):
-    Service = namedtuple('Service', ['branding', 'email_branding'])
+    Service = namedtuple('Service', ['email_branding'])
     EmailBranding = namedtuple('EmailBranding', ['brand_type', 'colour', 'name', 'logo', 'text'])
 
     email_branding = EmailBranding(
@@ -498,7 +485,6 @@ def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api)
         text='League of Justice',
     )
     service = Service(
-        branding=BRANDING_GOVUK,  # Expected to be ignored
         email_branding=email_branding,
     )
 
