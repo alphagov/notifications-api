@@ -27,6 +27,7 @@ from app.celery.tasks import (
     get_template_class,
     s3,
     send_inbound_sms_to_service,
+    process_returned_letters_list,
 )
 from app.config import QueueNames
 from app.dao import jobs_dao, services_dao
@@ -1551,3 +1552,14 @@ def test_process_incomplete_jobs_sets_status_to_in_progress_and_resets_processin
     assert job2.processing_started == datetime.utcnow()
 
     assert mock_process_incomplete_job.mock_calls == [call(str(job1.id)), call(str(job2.id))]
+
+
+def test_process_returned_letters_list(mocker, sample_letter_template):
+    create_notification(sample_letter_template, reference='ref1')
+    create_notification(sample_letter_template, reference='ref2')
+
+    process_returned_letters_list(['ref1', 'ref2', 'unknown-ref'])
+
+    assert [
+        n.status for n in Notification.query.all()
+    ] == ['returned-letter', 'returned-letter']

@@ -1309,7 +1309,7 @@ class Notification(db.Model):
 
         if self.status in [NOTIFICATION_CREATED, NOTIFICATION_SENDING]:
             return NOTIFICATION_STATUS_LETTER_ACCEPTED
-        elif self.status == NOTIFICATION_DELIVERED:
+        elif self.status in [NOTIFICATION_DELIVERED, NOTIFICATION_RETURNED_LETTER]:
             return NOTIFICATION_STATUS_LETTER_RECEIVED
         else:
             # Currently can only be technical-failure
