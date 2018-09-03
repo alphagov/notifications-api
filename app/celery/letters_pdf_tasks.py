@@ -38,8 +38,10 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    # NOTIFICATION_VALIDATION_FAILED
+    NOTIFICATION_VALIDATION_FAILED
 )
+
+from app.letters.utils import move_scan_to_invalid_pdf_bucket
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -187,19 +189,18 @@ def process_virus_scan_passed(self, filename):
 
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        # update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
-        # move_scan_to_invalid_pdf_bucket()  # TODO: implement this (and create bucket etc)
-        # scan_pdf_object.delete()
-        # return
+        update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
+        move_scan_to_invalid_pdf_bucket(scan_pdf_object)
+        scan_pdf_object.delete()
+        return
     else:
         current_app.logger.info(
             "Validation was successful for precompiled pdf {} ({})".format(notification.id, filename))
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
-    # temporarily upload original pdf while testing sanitise flow.
     _upload_pdf_to_test_or_live_pdf_bucket(
-        old_pdf,  # TODO: change to new_pdf
+        new_pdf,
         filename,
         is_test_letter=is_test_key)
 
@@ -237,7 +238,9 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
         return resp.content
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
-            # validation error
+            current_app.logger.exception(
+                "sanitise_precomiled_pdf validation error for notification: {}".format(notification.id)
+            )
             return None
 
         try:

@@ -354,16 +354,16 @@ def test_process_letter_task_check_virus_scan_passed(
     sample_letter_notification.status = 'pending-virus-check'
     sample_letter_notification.key_type = key_type
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf')
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value="success")
 
     process_virus_scan_passed(filename)
 
     assert sample_letter_notification.status == noti_status
     mock_s3upload.assert_called_once_with(
-        filedata=b'pdf_content',
-        region='eu-west-1',
         bucket_name=target_bucket_name,
-        file_location=destination_folder + filename
+        filedata="success",
+        file_location=destination_folder + filename,
+        region='eu-west-1',
     )
     mock_sanitise.assert_called_once_with(
         ANY,

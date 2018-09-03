@@ -337,6 +337,7 @@ class Development(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'development-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'development-letters-invalid-pdf'
 
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     SECRET_KEY = 'dev-notify-secret-key'
@@ -379,6 +380,7 @@ class Test(Development):
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'test-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'test-letters-invalid-pdf'
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
@@ -407,6 +409,7 @@ class Preview(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'preview-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'preview-letters-invalid-pdf'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
@@ -421,6 +424,7 @@ class Staging(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'staging-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'staging-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
@@ -437,6 +441,7 @@ class Live(Config):
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'production-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
@@ -460,6 +465,7 @@ class Sandbox(CloudFoundryConfig):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'cf-sandbox-letters-invalid-pdf'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
 
