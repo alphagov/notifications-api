@@ -20,7 +20,7 @@ psycopg2-binary==2.7.5
 PyJWT==1.6.4
 SQLAlchemy==1.2.10
 
-notifications-python-client==5.0.0
+notifications-python-client==5.0.1
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
