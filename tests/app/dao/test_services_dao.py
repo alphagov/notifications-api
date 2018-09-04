@@ -49,7 +49,6 @@ from app.models import (
     Service,
     ServicePermission,
     ServicePermissionTypes,
-    BRANDING_GOVUK,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -97,7 +96,6 @@ def test_create_service(sample_user):
     service_db = Service.query.one()
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.branding == BRANDING_GOVUK
     assert service_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_db.email_from == 'email_from'
     assert service_db.research_mode is False
@@ -349,9 +347,7 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
     assert service_from_db.version == service_history.version
     assert sample_user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
-    assert service_from_db.branding == BRANDING_GOVUK
     assert service_from_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
-    assert service_history.branding == BRANDING_GOVUK
     assert service_history.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
 
 

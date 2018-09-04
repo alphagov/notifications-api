@@ -25,7 +25,6 @@ from app.models import (
     KEY_TYPE_TEST,
     BRANDING_BOTH,
     BRANDING_ORG_BANNER,
-    BRANDING_GOVUK,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -190,10 +189,7 @@ def get_logo_url(base_url, logo_file):
 
 def get_html_email_options(service):
 
-    if (
-        service.email_branding is None or
-        service.email_branding.brand_type == BRANDING_GOVUK
-    ):
+    if service.email_branding is None:
         return {
             'govuk_banner': True,
             'brand_banner': False,

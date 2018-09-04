@@ -1,6 +1,6 @@
 import pytest
 
-from app.models import EmailBranding, BRANDING_GOVUK, BRANDING_ORG
+from app.models import EmailBranding, BRANDING_ORG
 from tests.app.db import create_email_branding
 
 
@@ -76,7 +76,7 @@ def test_post_create_email_branding_without_brand_type_defaults(admin_request, n
         _data=data,
         _expected_status=201
     )
-    assert BRANDING_GOVUK == response['data']['brand_type']
+    assert BRANDING_ORG == response['data']['brand_type']
 
 
 def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_session):
@@ -240,7 +240,7 @@ def test_create_email_branding_reject_invalid_brand_type(admin_request):
         _expected_status=400
     )
 
-    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [govuk, org, both, org_banner]'
+    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [org, both, org_banner]'
 
 
 def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_db_session):
@@ -256,4 +256,4 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
         email_branding_id=email_branding.id
     )
 
-    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [govuk, org, both, org_banner]'
+    assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [org, both, org_banner]'
