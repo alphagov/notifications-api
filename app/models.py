@@ -207,7 +207,7 @@ class EmailBranding(db.Model):
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), nullable=True)
     text = db.Column(db.String(255), nullable=True)
-    domain = db.Column(db.Text, unique=True, nullable=True)
+    domain = db.Column(db.Text, nullable=True)
     brand_type = db.Column(
         db.String(255),
         db.ForeignKey('branding_type.name'),
