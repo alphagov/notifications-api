@@ -257,3 +257,30 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
     )
 
     assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [org, both, org_banner]'
+
+
+def test_400_for_duplicate_domain(admin_request, notify_db_session):
+    branding_1 = create_email_branding()
+    branding_2 = create_email_branding()
+    admin_request.post(
+        'email_branding.update_email_branding',
+        _data={'domain': 'example.com'},
+        email_branding_id=branding_1.id,
+    )
+
+    response = admin_request.post(
+        'email_branding.update_email_branding',
+        _data={'domain': 'example.com'},
+        email_branding_id=branding_2.id,
+        _expected_status=400,
+    )
+    assert response['result'] == 'error'
+    assert response['message']['name'] == ["Duplicate domain 'example.com'"]
+
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data={'domain': 'example.com'},
+        _expected_status=400,
+    )
+    assert response['result'] == 'error'
+    assert response['message']['name'] == ["Duplicate domain 'example.com'"]
