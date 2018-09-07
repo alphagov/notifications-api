@@ -815,4 +815,5 @@ def test_get_all_notifications_for_job_returns_csv_format(
     assert len(resp['notifications']) == 1
     notification = resp['notifications'][0]
     assert set(notification.keys()) == \
-        set(['created_at', 'template_type', 'template_name', 'job_name', 'status', 'row_number', 'recipient'])
+        set(['created_at', 'created_by_name', 'template_type',
+             'template_name', 'job_name', 'status', 'row_number', 'recipient'])
