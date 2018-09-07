@@ -1324,7 +1324,8 @@ class Notification(db.Model):
             "template_type": self.template.template_type,
             "job_name": self.job.original_file_name if self.job else '',
             "status": self.formatted_status,
-            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple())
+            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple()),
+            "created_by_name": self.get_created_by_name(),
         }
 
         return serialized
