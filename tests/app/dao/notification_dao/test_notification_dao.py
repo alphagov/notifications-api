@@ -1705,6 +1705,18 @@ def test_dao_update_notifications_by_reference_set_returned_letter_status(sample
     assert Notification.query.get(notification.id).status == 'returned-letter'
 
 
+def test_dao_update_notifications_by_reference_set_returned_letter_status(sample_letter_template):
+    notification = create_notification(template=sample_letter_template, reference='ref')
+
+    updated_count = dao_update_notifications_by_reference(
+        references=['ref'],
+        update_dict={"status": "returned-letter"}
+    )
+
+    assert updated_count == 1
+    assert Notification.query.get(notification.id).status == 'returned-letter'
+
+
 def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template, notify_db):
     create_notification(template=sample_letter_template, reference='REF1')
     notification = dao_get_notification_by_reference('REF1')
