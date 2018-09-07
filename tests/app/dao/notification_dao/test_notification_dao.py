@@ -1653,10 +1653,13 @@ def test_dao_update_notifications_by_reference_updated_notificaitons_and_history
     notification_1 = create_notification(template=sample_template, reference='ref')
     notification_2 = create_notification(template=sample_template, reference='ref')
 
-    updated_count = dao_update_notifications_by_reference(references=['ref'],
-                                                          update_dict={"status": "delivered",
-                                                                       "billable_units": 2}
-                                                          )
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref'],
+        update_dict={
+            "status": "delivered",
+            "billable_units": 2
+        }
+    )
     assert updated_count == 2
     updated_1 = Notification.query.get(notification_1.id)
     assert updated_1.billable_units == 2
@@ -1665,6 +1668,7 @@ def test_dao_update_notifications_by_reference_updated_notificaitons_and_history
     assert updated_2.billable_units == 2
     assert updated_2.status == 'delivered'
 
+    assert updated_history_count == 2
     updated_history_1 = NotificationHistory.query.get(notification_1.id)
     assert updated_history_1.billable_units == 2
     assert updated_history_1.status == 'delivered'
@@ -1676,11 +1680,29 @@ def test_dao_update_notifications_by_reference_updated_notificaitons_and_history
 
 
 def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db):
-    updated_count = dao_update_notifications_by_reference(references=['ref'],
-                                                          update_dict={"status": "delivered",
-                                                                       "billable_units": 2}
-                                                          )
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref'],
+        update_dict={
+            "status": "delivered",
+            "billable_units": 2
+        }
+    )
+
     assert updated_count == 0
+    assert updated_history_count == 0
+
+
+def test_dao_update_notifications_by_reference_set_returned_letter_status(sample_letter_template):
+    notification = create_notification(template=sample_letter_template, reference='ref')
+
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref'],
+        update_dict={"status": "returned-letter"}
+    )
+
+    assert updated_count == 1
+    assert updated_history_count == 1
+    assert Notification.query.get(notification.id).status == 'returned-letter'
 
 
 def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template, notify_db):
