@@ -438,8 +438,9 @@ def update_letter_notifications_statuses(self, filename):
 
 
 def get_billing_date_in_bst_from_filename(filename):
-    datetime_string = filename.split('-')[1]
-    datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M%S')
+    # exclude seconds from the date since we don't need it. We got a date ending in 60 second - which is not valid.
+    datetime_string = filename.split('-')[1][:-2]
+    datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M')
     return convert_utc_to_bst(datetime_obj).date()
 
 
