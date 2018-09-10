@@ -2,11 +2,12 @@ from flask import Blueprint, jsonify
 from flask import request
 
 from app import notify_celery
+from app.celery.tasks import process_returned_letters_list
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_all_letter_jobs
 from app.schemas import job_schema
 from app.v2.errors import register_errors
-from app.letters.letter_schemas import letter_job_ids
+from app.letters.letter_schemas import letter_job_ids, letter_references
 from app.schema_validation import validate
 
 letter_job = Blueprint("letter-job", __name__)
@@ -27,3 +28,12 @@ def get_letter_jobs():
     data = job_schema.dump(letter_jobs, many=True).data
 
     return jsonify(data=data), 200
+
+
+@letter_job.route('/letters/returned', methods=['POST'])
+def create_process_returned_letters_job():
+    references = validate(request.get_json(), letter_references)
+
+    process_returned_letters_list.apply_async([references['references']], queue=QueueNames.DATABASE)
+
+    return jsonify(references=references['references']), 200

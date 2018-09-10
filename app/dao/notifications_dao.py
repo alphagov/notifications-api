@@ -465,14 +465,14 @@ def dao_update_notifications_by_reference(references, update_dict):
         synchronize_session=False
     )
 
-    NotificationHistory.query.filter(
+    updated_history_count = NotificationHistory.query.filter(
         NotificationHistory.reference.in_(references)
     ).update(
         update_dict,
         synchronize_session=False
     )
 
-    return updated_count
+    return updated_count, updated_history_count
 
 
 @statsd(namespace="dao")
