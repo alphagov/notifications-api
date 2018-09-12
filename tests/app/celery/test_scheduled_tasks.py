@@ -26,7 +26,6 @@ from app.celery.scheduled_tasks import (
     remove_transformed_dvla_files,
     run_scheduled_jobs,
     run_letter_jobs,
-    trigger_letter_pdfs_for_day,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -761,32 +760,6 @@ def test_run_letter_jobs(client, mocker, sample_letter_template):
     mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
                                         args=(job_ids,),
                                         queue=QueueNames.PROCESS_FTP)
-
-
-@freeze_time("2017-12-18 17:50")
-def test_trigger_letter_pdfs_for_day(client, mocker, sample_letter_template):
-    create_notification(template=sample_letter_template, created_at='2017-12-17 17:30:00')
-    create_notification(template=sample_letter_template, created_at='2017-12-18 17:29:59')
-
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    trigger_letter_pdfs_for_day()
-
-    mock_celery.assert_called_once_with(name='collate-letter-pdfs-for-day',
-                                        args=('2017-12-18',),
-                                        queue=QueueNames.LETTERS)
-
-
-@freeze_time("2017-12-18 17:50")
-def test_trigger_letter_pdfs_for_day_send_task_not_called_if_no_notis_for_day(
-        client, mocker, sample_letter_template):
-    create_notification(template=sample_letter_template, created_at='2017-12-15 17:30:00')
-
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    trigger_letter_pdfs_for_day()
-
-    assert not mock_celery.called
 
 
 def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):

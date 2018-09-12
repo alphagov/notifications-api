@@ -199,6 +199,14 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     )
 
 
+@freeze_time('2018-09-12 17:50:00')
+def test_collate_letter_pdfs_for_day_works_without_date_param(notify_api, mocker):
+    mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects')
+    collate_letter_pdfs_for_day()
+    expected_date = '2018-09-12'
+    mock_s3.assert_called_once_with('test-letters-pdf', subfolder=expected_date)
+
+
 def test_group_letters_splits_on_file_size(notify_api, mocker):
     mocker.patch('app.celery.letters_pdf_tasks.letter_in_created_state', return_value=True)
     letters = [

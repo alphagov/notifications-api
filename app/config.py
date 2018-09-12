@@ -242,8 +242,10 @@ class Config(object):
             'schedule': crontab(hour=16, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'trigger-letter-pdfs-for-day': {
-            'task': 'trigger-letter-pdfs-for-day',
+        # The collate-letter-pdf does assume it is called in an hour that BST does not make a
+        # difference to the truncate date which translates to the filename to process
+        'collate-letter-pdfs-for-day': {
+            'task': 'collate-letter-pdfs-for-day',
             'schedule': crontab(hour=17, minute=50),
             'options': {'queue': QueueNames.PERIODIC}
         },
