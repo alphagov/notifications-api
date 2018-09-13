@@ -1409,7 +1409,7 @@ class NotificationHistory(db.Model, HistoryModel):
     created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
-    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
+    updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     status = db.Column(
         'notification_status',
         db.String,

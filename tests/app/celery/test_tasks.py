@@ -34,6 +34,7 @@ from app.dao import jobs_dao, services_dao
 from app.models import (
     Job,
     Notification,
+    NotificationHistory,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -1560,6 +1561,11 @@ def test_process_returned_letters_list(mocker, sample_letter_template):
 
     process_returned_letters_list(['ref1', 'ref2', 'unknown-ref'])
 
-    assert [
-        n.status for n in Notification.query.all()
-    ] == ['returned-letter', 'returned-letter']
+    notifications = Notification.query.all()
+    history = NotificationHistory.query.all()
+
+    assert [n.status for n in notifications] == ['returned-letter', 'returned-letter']
+    assert all(n.updated_at for n in notifications)
+
+    assert [n.status for n in history] == ['returned-letter', 'returned-letter']
+    assert all(n.updated_at for n in history)
