@@ -105,7 +105,12 @@ def get_letters_pdf(template, contact_block, org_id, values):
 
 
 @notify_celery.task(name='collate-letter-pdfs-for-day')
-def collate_letter_pdfs_for_day(date):
+def collate_letter_pdfs_for_day(date=None):
+    if not date:
+        # Using the truncated date is ok because UTC to BST does not make a difference to the date,
+        # since it is triggered mid afternoon.
+        date = datetime.utcnow().strftime("%Y-%m-%d")
+
     letter_pdfs = s3.get_s3_bucket_objects(
         current_app.config['LETTERS_PDF_BUCKET_NAME'],
         subfolder=date

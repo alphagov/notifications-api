@@ -1,5 +1,4 @@
 from datetime import (
-    date,
     datetime,
     timedelta
 )
@@ -32,7 +31,6 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     is_delivery_slow_for_provider,
     delete_notifications_created_more_than_a_week_ago_by_type,
-    dao_get_count_of_letters_to_process_for_date,
     dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
     notifications_not_yet_sent
@@ -383,20 +381,6 @@ def run_letter_jobs():
             queue=QueueNames.PROCESS_FTP
         )
         current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
-
-
-@notify_celery.task(name="trigger-letter-pdfs-for-day")
-@statsd(namespace="tasks")
-def trigger_letter_pdfs_for_day():
-    letter_pdfs_count = dao_get_count_of_letters_to_process_for_date()
-    if letter_pdfs_count:
-        notify_celery.send_task(
-            name='collate-letter-pdfs-for-day',
-            args=(date.today().strftime("%Y-%m-%d"),),
-            queue=QueueNames.LETTERS
-        )
-    current_app.logger.info("{} letter pdfs to be process by {} task".format(
-        letter_pdfs_count, 'collate-letter-pdfs-for-day'))
 
 
 @notify_celery.task(name='check-job-status')
