@@ -9,11 +9,12 @@ revision = '0226_new_letter_rates'
 down_revision = '0225_another_letter_org'
 
 import uuid
+import pytz
 from datetime import datetime
 from alembic import op
 
 
-start = datetime(2018, 10, 1, 0, 0, tzinfo=timezone.utc)
+start = datetime(2018, 10, 1, 0, 0, tzinfo=pytz.utc)
 
 NEW_RATES = [
     (uuid.uuid4(), start, 1, 0.30, True, 'second'),

@@ -195,7 +195,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
 def get_rates_for_billing():
     non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
                         Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate) for r in
+    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate, r.post_class) for r in
                     LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
     return non_letter_rates, letter_rates
 
@@ -211,11 +211,16 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
     ).distinct().all()
 
 
-def get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None):
+def get_rate(
+    non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None, post_class='second'
+):
     if notification_type == LETTER_TYPE:
         if letter_page_count == 0:
             return 0
-        return next(r[3] for r in letter_rates if date > r[0] and crown == r[1] and letter_page_count == r[2])
+        return next(
+            r[3] for r in letter_rates if date > r[0] and crown == r[1]
+            and letter_page_count == r[2] and post_class == r[4]
+        )
     elif notification_type == SMS_TYPE:
         return next(r[2] for r in non_letter_rates if notification_type == r[0] and date > r[1])
     else:
@@ -229,7 +234,8 @@ def update_fact_billing(data, process_day):
                     data.notification_type,
                     process_day,
                     data.crown,
-                    data.letter_page_count)
+                    data.letter_page_count,
+                    "second")
     billing_record = create_billing_record(data, rate, process_day)
     table = FactBilling.__table__
     '''
