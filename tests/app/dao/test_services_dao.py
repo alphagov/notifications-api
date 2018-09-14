@@ -100,6 +100,7 @@ def test_create_service(sample_user):
     assert service_db.email_from == 'email_from'
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
+    assert service_db.letter_class == 'second'
     assert service.active is True
     assert sample_user in service_db.users
     assert service_db.organisation_type == 'central'
@@ -345,10 +346,12 @@ def test_create_service_creates_a_history_record_with_current_data(sample_user):
     assert service_from_db.name == service_history.name
     assert service_from_db.version == 1
     assert service_from_db.version == service_history.version
+    assert service_from_db.letter_class == 'second'
     assert sample_user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
     assert service_from_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_history.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
+    assert service_history.letter_class == 'second'
 
 
 def test_update_service_creates_a_history_record_with_current_data(sample_user):
@@ -422,6 +425,25 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
 
     assert len(Service.get_history_model().query.filter_by(name='service_name').all()) == 3
     assert Service.get_history_model().query.filter_by(name='service_name').all()[2].version == 3
+
+
+def test_update_service_sets_letter_class_to_default(sample_user):
+    assert Service.query.count() == 0
+    assert Service.get_history_model().query.count() == 0
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      restricted=False,
+                      created_by=sample_user)
+    dao_create_service(service, sample_user)
+
+    service_from_db = Service.query.first()
+    service_from_db.letter_class = None
+    dao_update_service(service_from_db)
+    service_with_update = Service.query.first()
+    assert service_with_update.letter_class == 'second'
+    service_history_with_update = Service.get_history_model().query.filter_by(version=2).first()
+    assert service_history_with_update.letter_class == 'second'
 
 
 def test_create_service_and_history_is_transactional(sample_user):
