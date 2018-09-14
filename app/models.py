@@ -353,7 +353,7 @@ class Service(db.Model, Versioned):
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
     contact_link = db.Column(db.String(255), nullable=True, unique=False)
-    letter_class = db.Column(db.String(255), index=False, nullable=True)
+    letter_class = db.Column(db.String(255), index=False, nullable=False, default='second')
 
     organisation = db.relationship(
         'Organisation',
@@ -366,6 +366,8 @@ class Service(db.Model, Versioned):
         secondary=service_email_branding,
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
+
+    CheckConstraint("'letter_class' in ('first', 'second')")
 
     @classmethod
     def from_json(cls, data):

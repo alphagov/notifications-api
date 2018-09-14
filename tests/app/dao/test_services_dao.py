@@ -427,7 +427,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(sa
     assert Service.get_history_model().query.filter_by(name='service_name').all()[2].version == 3
 
 
-def test_update_service_set_letter_class_to_default(sample_user):
+def test_update_service_sets_letter_class_to_default(sample_user):
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     service = Service(name="service_name",
@@ -442,7 +442,7 @@ def test_update_service_set_letter_class_to_default(sample_user):
     dao_update_service(service_from_db)
     service_with_update = Service.query.first()
     assert service_with_update.letter_class == 'second'
-    service_history_with_update = Service.get_history_model().query.filter_by(version=2)
+    service_history_with_update = Service.get_history_model().query.filter_by(version=2).first()
     assert service_history_with_update.letter_class == 'second'
 
 
