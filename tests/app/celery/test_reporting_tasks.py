@@ -23,7 +23,9 @@ def test_reporting_should_have_decorated_tasks_functions():
     assert create_nightly_billing.__wrapped__.__name__ == 'create_nightly_billing'
 
 
-def mocker_get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None, post_class="second"):
+def mocker_get_rate(
+    non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None, post_class="second"
+):
     if notification_type == LETTER_TYPE:
         return Decimal(2.1)
     elif notification_type == SMS_TYPE:
@@ -327,6 +329,21 @@ def test_get_rate_for_letter_latest(notify_db_session):
 
     rate = get_rate(non_letter_rates, letter_rates, LETTER_TYPE, datetime(2018, 1, 1), True, 1)
     assert rate == Decimal(0.33)
+
+
+@pytest.mark.parametrize(
+    "letter_post_class,expected_rate", [("first", 0.42), ("second", 0.33)]
+)
+def test_get_rate_filters_letters_byl_post_class(notify_db_session, letter_post_class, expected_rate):
+    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
+                        Rate.query.order_by(desc(Rate.valid_from)).all()]
+
+    letter_rates = [
+        (datetime(2017, 12, 1), True, 1, Decimal(0.42), 'first'),
+        (datetime(2017, 12, 1), True, 1, Decimal(0.33), 'second')
+    ]
+    rate = get_rate(non_letter_rates, letter_rates, LETTER_TYPE, datetime(2018, 1, 1), True, 1, letter_post_class)
+    assert rate == Decimal(expected_rate)
 
 
 def test_get_rate_for_sms_and_email(notify_db, notify_db_session):
