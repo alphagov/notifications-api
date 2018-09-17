@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0225_letter_class
-Revises: 0224_returned_letter_status
+Revision ID: 0226_letter_class
+Revises: 0225_another_letter_org
 Create Date: 2018-09-13 16:23:59.168877
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '0225_letter_class'
-down_revision = '0224_returned_letter_status'
+revision = '0226_letter_class'
+down_revision = '0225_another_letter_org'
 
 
 def upgrade():

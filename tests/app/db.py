@@ -2,6 +2,7 @@ from datetime import datetime, date
 import uuid
 
 from app import db
+from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
@@ -36,8 +37,9 @@ from app.models import (
     FactBilling,
     FactNotificationStatus,
     Complaint,
+    InvitedUser
 )
-from app.dao.users_dao import save_model_user
+from app.dao.users_dao import save_model_user, create_secret_code, create_user_code
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_created_scheduled_notification
@@ -660,3 +662,44 @@ def create_service_data_retention(
         days_of_retention=days_of_retention
     )
     return data_retention
+
+
+def create_sample_inbound_numbers(service=None):
+    if not service:
+        service = create_service(service_name='sample service 2')
+    service_2 = create_service(service_name='service 2 for inbound')
+    inbound_numbers = list()
+    inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
+    inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
+    inbound_numbers.append(create_inbound_number(number='3', provider='firetext',
+                                                 service_id=service_2.id))
+    return inbound_numbers
+
+
+def create_code(code_type, usr=None, code=None):
+    if code is None:
+        code = create_secret_code()
+    if usr is None:
+        usr = create_user()
+    return create_user_code(usr, code, code_type), code
+
+
+def create_invited_user(service=None,
+                        to_email_address=None):
+
+    if service is None:
+        service = create_service()
+    if to_email_address is None:
+        to_email_address = 'invited_user@digital.gov.uk'
+
+    from_user = service.users[0]
+
+    data = {
+        'service': service,
+        'email_address': to_email_address,
+        'from_user': from_user,
+        'permissions': 'send_messages,manage_service,manage_api_keys'
+    }
+    invited_user = InvitedUser(**data)
+    save_invited_user(invited_user)
+    return invited_user
