@@ -167,6 +167,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
     service.active = True
     service.research_mode = False
     service.crown = service.organisation_type == 'central'
+    service.postage = 'second'
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)
@@ -180,6 +181,7 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
 @transactional
 @version_class(Service)
 def dao_update_service(service):
+    service.postage = service.postage or 'second'
     db.session.add(service)
 
 

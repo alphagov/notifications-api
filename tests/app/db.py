@@ -1,13 +1,25 @@
-from datetime import datetime, date
 import uuid
+from datetime import datetime, date
 
 from app import db
+from app.dao.email_branding_dao import dao_create_email_branding
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
+from app.dao.invited_org_user_dao import save_invited_org_user
+from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_created_scheduled_notification
+)
+from app.dao.organisation_dao import dao_create_organisation
+from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
-from app.dao.service_callback_api_dao import save_service_callback_api
+from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
-from app.dao.invited_org_user_dao import save_invited_org_user
+from app.dao.services_dao import dao_create_service
+from app.dao.templates_dao import dao_create_template
+from app.dao.users_dao import save_model_user
 from app.models import (
     ApiKey,
     DailySortedLetter,
@@ -36,18 +48,8 @@ from app.models import (
     FactBilling,
     FactNotificationStatus,
     Complaint,
+    InvitedUser
 )
-from app.dao.users_dao import save_model_user
-from app.dao.notifications_dao import (
-    dao_create_notification,
-    dao_created_scheduled_notification
-)
-from app.dao.templates_dao import dao_create_template
-from app.dao.services_dao import dao_create_service
-from app.dao.service_permissions_dao import dao_add_service_permission
-from app.dao.inbound_sms_dao import dao_create_inbound_sms
-from app.dao.email_branding_dao import dao_create_email_branding
-from app.dao.organisation_dao import dao_create_organisation
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active', id_=None):
@@ -660,3 +662,24 @@ def create_service_data_retention(
         days_of_retention=days_of_retention
     )
     return data_retention
+
+
+def create_invited_user(service=None,
+                        to_email_address=None):
+
+    if service is None:
+        service = create_service()
+    if to_email_address is None:
+        to_email_address = 'invited_user@digital.gov.uk'
+
+    from_user = service.users[0]
+
+    data = {
+        'service': service,
+        'email_address': to_email_address,
+        'from_user': from_user,
+        'permissions': 'send_messages,manage_service,manage_api_keys'
+    }
+    invited_user = InvitedUser(**data)
+    save_invited_user(invited_user)
+    return invited_user

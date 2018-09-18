@@ -1,16 +1,26 @@
-from datetime import datetime, timedelta
 import json
 import uuid
-
-from flask import current_app, url_for
+from datetime import datetime, timedelta
 
 import pytest
 import pytz
 import requests_mock
+from flask import current_app, url_for
 from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
 
 from app import db
+from app.clients.sms.firetext import FiretextClient
+from app.dao.api_key_dao import save_model_api_key
+from app.dao.invited_user_dao import save_invited_user
+from app.dao.jobs_dao import dao_create_job
+from app.dao.notifications_dao import dao_create_notification
+from app.dao.organisation_dao import dao_create_organisation
+from app.dao.provider_rates_dao import create_provider_rates
+from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
+from app.dao.templates_dao import dao_create_template
+from app.dao.users_dao import create_secret_code, create_user_code
+from app.history_meta import create_history
 from app.models import (
     Service,
     Template,
@@ -39,17 +49,6 @@ from app.models import (
     SERVICE_PERMISSION_TYPES,
     ServiceEmailReplyTo
 )
-from app.dao.users_dao import (create_user_code, create_secret_code)
-from app.dao.organisation_dao import dao_create_organisation
-from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
-from app.dao.templates_dao import dao_create_template
-from app.dao.api_key_dao import save_model_api_key
-from app.dao.jobs_dao import dao_create_job
-from app.dao.notifications_dao import dao_create_notification
-from app.dao.invited_user_dao import save_invited_user
-from app.dao.provider_rates_dao import create_provider_rates
-from app.clients.sms.firetext import FiretextClient
-from app.history_meta import create_history
 from tests import create_authorization_header
 from tests.app.db import (
     create_user,
