@@ -181,7 +181,6 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
 @transactional
 @version_class(Service)
 def dao_update_service(service):
-    print("service.postage: ", service.postage)
     service.postage = service.postage or 'second'
     db.session.add(service)
 
