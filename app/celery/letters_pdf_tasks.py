@@ -191,6 +191,9 @@ def process_virus_scan_passed(self, filename):
         # move_scan_to_invalid_pdf_bucket()  # TODO: implement this (and create bucket etc)
         # scan_pdf_object.delete()
         # return
+    else:
+        current_app.logger.info(
+            "Validation was successful for precompiled pdf {} ({})".format(notification.id, filename))
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
