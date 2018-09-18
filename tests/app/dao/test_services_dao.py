@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
-from sqlalchemy.orm.exc import FlushError, NoResultFound
-from sqlalchemy.exc import IntegrityError
 from freezegun import freeze_time
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import FlushError, NoResultFound
+
 from app import db
 from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.dao.inbound_numbers_dao import (
@@ -12,6 +13,7 @@ from app.dao.inbound_numbers_dao import (
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_active_flag
 )
+from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
@@ -33,8 +35,7 @@ from app.dao.services_dao import (
     dao_fetch_monthly_historical_stats_by_template,
     dao_fetch_monthly_historical_usage_by_template_for_service
 )
-from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
-from app.dao.users_dao import save_model_user
+from app.dao.users_dao import save_model_user, create_user_code
 from app.models import (
     VerifyCode,
     ApiKey,
@@ -59,7 +60,6 @@ from app.models import (
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES
 )
-
 from tests.app.db import (
     create_inbound_number,
     create_user,
@@ -69,8 +69,6 @@ from tests.app.db import (
     create_template,
     create_notification,
     create_api_key,
-    create_sample_inbound_numbers,
-    create_code,
     create_invited_user
 )
 
@@ -98,7 +96,7 @@ def test_create_service(notify_db_session):
     assert service_db.email_from == 'email_from'
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
-    assert service_db.letter_class == 'second'
+    assert service_db.postage == 'second'
     assert service.active is True
     assert user in service_db.users
     assert service_db.organisation_type == 'central'
@@ -356,12 +354,12 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     assert service_from_db.name == service_history.name
     assert service_from_db.version == 1
     assert service_from_db.version == service_history.version
-    assert service_from_db.letter_class == 'second'
+    assert service_from_db.postage == 'second'
     assert user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
     assert service_from_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_history.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
-    assert service_history.letter_class == 'second'
+    assert service_history.postage == 'second'
 
 
 def test_update_service_creates_a_history_record_with_current_data(notify_db_session):
@@ -439,7 +437,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
     assert Service.get_history_model().query.filter_by(name='service_name').all()[2].version == 3
 
 
-def test_update_service_set_letter_class_to_default(notify_db_session):
+def test_update_service_set_postage_to_default(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
@@ -451,12 +449,12 @@ def test_update_service_set_letter_class_to_default(notify_db_session):
     dao_create_service(service, user)
 
     service_from_db = Service.query.first()
-    service_from_db.letter_class = None
+    service_from_db.postage = None
     dao_update_service(service_from_db)
     service_with_update = Service.query.first()
-    assert service_with_update.letter_class == 'second'
+    assert service_with_update.postage == 'second'
     service_history_with_update = Service.get_history_model().query.filter_by(version=2).one()
-    assert service_history_with_update.letter_class == 'second'
+    assert service_history_with_update.postage == 'second'
 
 
 def test_create_service_and_history_is_transactional(notify_db_session):
@@ -480,8 +478,8 @@ def test_create_service_and_history_is_transactional(notify_db_session):
 def test_delete_service_and_associated_objects(notify_db_session):
     user = create_user()
     service = create_service(user=user, service_permissions=None)
-    create_code(code_type='email', usr=user)
-    create_code(code_type='sms', usr=user)
+    create_user_code(user=user, code='somecode', code_type='email')
+    create_user_code(user=user, code='somecode', code_type='sms')
     template = create_template(service=service)
     api_key = create_api_key(service=service)
     create_notification(template=template, api_key=api_key)
@@ -936,8 +934,10 @@ def test_dao_fetch_service_by_inbound_number_with_inactive_number_returns_empty(
     assert service is None
 
 
-def test_dao_allocating_inbound_numer_shows_on_service(notify_db_session):
-    create_sample_inbound_numbers()
+def test_dao_allocating_inbound_number_shows_on_service(notify_db_session):
+    create_service_with_inbound_number()
+    create_inbound_number(number='07700900003')
+
     inbound_numbers = dao_get_available_inbound_numbers()
 
     service = create_service(service_name='test service')

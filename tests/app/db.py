@@ -1,14 +1,25 @@
-from datetime import datetime, date
 import uuid
+from datetime import datetime, date
 
 from app import db
+from app.dao.email_branding_dao import dao_create_email_branding
+from app.dao.inbound_sms_dao import dao_create_inbound_sms
+from app.dao.invited_org_user_dao import save_invited_org_user
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
+from app.dao.notifications_dao import (
+    dao_create_notification,
+    dao_created_scheduled_notification
+)
+from app.dao.organisation_dao import dao_create_organisation
+from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
-from app.dao.service_callback_api_dao import save_service_callback_api
+from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
-from app.dao.invited_org_user_dao import save_invited_org_user
+from app.dao.services_dao import dao_create_service
+from app.dao.templates_dao import dao_create_template
+from app.dao.users_dao import save_model_user
 from app.models import (
     ApiKey,
     DailySortedLetter,
@@ -39,17 +50,6 @@ from app.models import (
     Complaint,
     InvitedUser
 )
-from app.dao.users_dao import save_model_user, create_secret_code, create_user_code
-from app.dao.notifications_dao import (
-    dao_create_notification,
-    dao_created_scheduled_notification
-)
-from app.dao.templates_dao import dao_create_template
-from app.dao.services_dao import dao_create_service
-from app.dao.service_permissions_dao import dao_add_service_permission
-from app.dao.inbound_sms_dao import dao_create_inbound_sms
-from app.dao.email_branding_dao import dao_create_email_branding
-from app.dao.organisation_dao import dao_create_organisation
 
 
 def create_user(mobile_number="+447700900986", email="notify@digital.cabinet-office.gov.uk", state='active', id_=None):
@@ -662,26 +662,6 @@ def create_service_data_retention(
         days_of_retention=days_of_retention
     )
     return data_retention
-
-
-def create_sample_inbound_numbers(service=None):
-    if not service:
-        service = create_service(service_name='sample service 2')
-    service_2 = create_service(service_name='service 2 for inbound')
-    inbound_numbers = list()
-    inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
-    inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
-    inbound_numbers.append(create_inbound_number(number='3', provider='firetext',
-                                                 service_id=service_2.id))
-    return inbound_numbers
-
-
-def create_code(code_type, usr=None, code=None):
-    if code is None:
-        code = create_secret_code()
-    if usr is None:
-        usr = create_user()
-    return create_user_code(usr, code, code_type), code
 
 
 def create_invited_user(service=None,
