@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import FlushError, NoResultFound
 
 from app import db
@@ -437,7 +437,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
     assert Service.get_history_model().query.filter_by(name='service_name').all()[2].version == 3
 
 
-def test_update_service_set_postage_to_default(notify_db_session):
+def test_service_postage_constraint_on_create(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
@@ -445,16 +445,18 @@ def test_update_service_set_postage_to_default(notify_db_session):
                       email_from="email_from",
                       message_limit=1000,
                       restricted=False,
-                      created_by=user)
-    dao_create_service(service, user)
+                      created_by=user,
+                      postage='third')
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_create_service(service, user)
 
+
+def test_service_postage_constraint_on_update(notify_db_session):
+    create_service()
     service_from_db = Service.query.first()
-    service_from_db.postage = None
-    dao_update_service(service_from_db)
-    service_with_update = Service.query.first()
-    assert service_with_update.postage == 'second'
-    service_history_with_update = Service.get_history_model().query.filter_by(version=2).one()
-    assert service_history_with_update.postage == 'second'
+    service_from_db.postage = 'third'
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_update_service(service_from_db)
 
 
 def test_create_service_and_history_is_transactional(notify_db_session):
