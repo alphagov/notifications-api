@@ -58,6 +58,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
     assert len(notifications) == 1
     assert notifications[0].status == NOTIFICATION_CREATED
     notification_id = notifications[0].id
+    assert notifications[0].postage is None
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
     assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
@@ -309,6 +310,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert validate(resp_json, post_email_response) == resp_json
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_CREATED
+    assert notification.postage is None
     assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert notification.reference is None
