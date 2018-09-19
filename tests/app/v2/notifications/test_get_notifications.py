@@ -9,11 +9,6 @@ from tests.app.db import (
     create_template,
 )
 
-from tests.app.conftest import (
-    sample_notification,
-    sample_email_notification,
-)
-
 
 @pytest.mark.parametrize('billable_units, provider', [
     (1, 'mmg'),
@@ -75,7 +70,8 @@ def test_get_notification_by_id_returns_200(
         "subject": None,
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
-        'scheduled_for': '2017-05-12T14:15:00.000000Z'
+        'scheduled_for': '2017-05-12T14:15:00.000000Z',
+        'postage': None,
     }
 
     assert json_response == expected_response
@@ -126,7 +122,8 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         "subject": "Bob",
         'sent_at': sample_notification.sent_at,
         'completed_at': sample_notification.completed_at(),
-        'scheduled_for': None
+        'scheduled_for': None,
+        'postage': None,
     }
 
     assert json_response == expected_response
@@ -267,17 +264,22 @@ def test_get_notification_adds_delivery_estimate_for_letters(
     assert json_response['estimated_delivery'] == estimated_delivery
 
 
-@pytest.mark.parametrize('notification_mock', [
-    sample_notification,
-    sample_email_notification,
-])
-def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
-    client,
-    notify_db,
-    notify_db_session,
-    notification_mock,
-):
-    mocked_notification = notification_mock(notify_db, notify_db_session)
+def test_get_notification_by_id_returns_postage_class_for_letters(client, sample_letter_notification):
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path='/v2/notifications/{}'.format(sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 200
+    assert response.json['postage'] == 'second'
+
+
+@pytest.mark.parametrize('template_type', ['sms', 'email'])
+def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(client, sample_service, template_type):
+    template = create_template(service=sample_service, template_type=template_type)
+    mocked_notification = create_notification(template=template)
+
     auth_header = create_authorization_header(service_id=mocked_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(mocked_notification.id),

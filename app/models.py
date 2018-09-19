@@ -212,7 +212,7 @@ class EmailBranding(db.Model):
         db.String(255),
         db.ForeignKey('branding_type.name'),
         index=True,
-        nullable=True,
+        nullable=False,
         default=BRANDING_ORG
     )
 
@@ -1182,6 +1182,9 @@ class Notification(db.Model):
 
     reply_to_text = db.Column(db.String, nullable=True)
 
+    postage = db.Column(db.String, nullable=True)
+    CheckConstraint("notification_type != 'letter' or postage in ('first', 'second')")
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ['template_id', 'template_version'],
@@ -1373,7 +1376,8 @@ class Notification(db.Model):
                 ).strftime(DATETIME_FORMAT)
                 if self.scheduled_notification
                 else None
-            )
+            ),
+            "postage": self.postage
         }
 
         if self.notification_type == LETTER_TYPE:
@@ -1431,6 +1435,9 @@ class NotificationHistory(db.Model, HistoryModel):
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+
+    postage = db.Column(db.String, nullable=True, default='second')
+    CheckConstraint("notification_type != 'letter' or postage in ('first', 'second')")
 
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -1783,7 +1790,7 @@ class FactBilling(db.Model):
     provider = db.Column(db.Text, nullable=True, primary_key=True)
     rate_multiplier = db.Column(db.Integer(), nullable=True, primary_key=True)
     international = db.Column(db.Boolean, nullable=False, primary_key=False)
-    rate = db.Column(db.Numeric(), nullable=True)
+    rate = db.Column(db.Numeric(), nullable=False)
     billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
