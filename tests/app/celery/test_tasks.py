@@ -982,6 +982,32 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     assert notification_db.reply_to_text == contact_block.contact_block
 
 
+@pytest.mark.parametrize('postage', ['first', 'second'])
+def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, sample_letter_job, postage):
+    sample_letter_job.service.postage = postage
+
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+
+    notification_json = _notification_json(
+        template=sample_letter_job.template,
+        to='Foo',
+        personalisation={'addressline1': 'Foo', 'addressline2': 'Bar', 'postcode': 'Flob'},
+        job_id=sample_letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+
+    save_letter(
+        sample_letter_job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.id == notification_id
+    assert notification_db.postage == postage
+
+
 def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_session):
     service = create_service()
     create_letter_contact(service=service, contact_block="Address contact", is_default=True)

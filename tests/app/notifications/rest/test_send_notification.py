@@ -161,11 +161,12 @@ def test_send_notification_with_placeholders_replaced(notify_api, sample_email_t
         ),
         '6',
     ),
-    pytest.mark.xfail((
+    pytest.param(
         None,
         ('we consider None equivalent to missing personalisation'),
         '',
-    )),
+        marks=pytest.mark.xfail
+    ),
 ])
 def test_send_notification_with_placeholders_replaced_with_unusual_types(
     client,

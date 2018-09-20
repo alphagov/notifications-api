@@ -87,7 +87,7 @@ def process_job(job_id):
     if not service.active:
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
-        current_app.logger.warn(
+        current_app.logger.warning(
             "Job {} has been cancelled, service {} is inactive".format(job_id, service.id))
         return
 

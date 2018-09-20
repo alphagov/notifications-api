@@ -25,6 +25,7 @@ def test_create_letter_notification_creates_notification(sample_letter_template,
     assert notification.key_type == sample_api_key.key_type
     assert notification.reference is not None
     assert notification.client_reference is None
+    assert notification.postage == 'second'
 
 
 def test_create_letter_notification_sets_reference(sample_letter_template, sample_api_key):

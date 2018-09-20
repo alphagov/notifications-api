@@ -9,6 +9,7 @@ from app.config import TaskNames, QueueNames
 from app.models import (
     Job,
     Notification,
+    NotificationHistory,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -76,12 +77,11 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     assert Job.query.count() == 0
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_CREATED
-    notification_id = notification.id
-    assert resp_json['id'] == str(notification_id)
+    assert resp_json['id'] == str(notification.id)
     assert resp_json['reference'] == reference
     assert resp_json['content']['subject'] == sample_letter_template.subject
     assert resp_json['content']['body'] == sample_letter_template.content
-    assert 'v2/notifications/{}'.format(notification_id) in resp_json['uri']
+    assert 'v2/notifications/{}'.format(notification.id) in resp_json['uri']
     assert resp_json['template']['id'] == str(sample_letter_template.id)
     assert resp_json['template']['version'] == sample_letter_template.version
     assert (
@@ -93,6 +93,28 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     assert not resp_json['scheduled_for']
     assert not notification.reply_to_text
     mock.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+
+@pytest.mark.parametrize('postage', ['first', 'second'])
+def test_post_letter_notification_sets_postage(client, sample_letter_template, mocker, postage):
+    sample_letter_template.service.postage = postage
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    data = {
+        'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'SW1 1AA',
+            'name': 'Lizzie'
+        }
+    }
+
+    resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
+
+    assert validate(resp_json, post_letter_response) == resp_json
+    notification = Notification.query.one()
+    assert notification.postage == postage
 
 
 @pytest.mark.parametrize('env', [
@@ -441,8 +463,10 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
     assert not Notification.query.first()
 
 
-def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker):
+@pytest.mark.parametrize('postage', ['first', 'second'])
+def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker, postage):
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_service.postage = postage
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=5)
     mocker.patch("app.letters.rest.notify_celery.send_task")
@@ -460,10 +484,14 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
-    notification = Notification.query.first()
+    notification = Notification.query.one()
 
     assert notification.billable_units == 3
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+    assert notification.postage == postage
+
+    notification_history = NotificationHistory.query.one()
+    assert notification_history.postage == postage
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}

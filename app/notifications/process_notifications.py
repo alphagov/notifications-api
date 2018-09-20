@@ -18,6 +18,7 @@ from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_TEST,
     SMS_TYPE,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
     Notification,
     ScheduledNotification
@@ -107,6 +108,8 @@ def persist_notification(
         notification.rate_multiplier = recipient_info.billable_units
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
+    elif notification_type == LETTER_TYPE:
+        notification.postage = service.postage
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:

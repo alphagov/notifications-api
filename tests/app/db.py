@@ -178,7 +178,8 @@ def create_notification(
         one_off=False,
         sms_sender_id=None,
         reply_to_text=None,
-        created_by_id=None
+        created_by_id=None,
+        postage=None
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -195,6 +196,9 @@ def create_notification(
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:
             api_key = create_api_key(template.service, key_type=key_type)
+
+    if template.template_type == 'letter' and postage is None:
+        postage = 'second'
 
     data = {
         'id': uuid.uuid4(),
@@ -224,7 +228,8 @@ def create_notification(
         'phone_prefix': phone_prefix,
         'normalised_to': normalised_to,
         'reply_to_text': reply_to_text,
-        'created_by_id': created_by_id
+        'created_by_id': created_by_id,
+        'postage': postage
     }
     notification = Notification(**data)
     dao_create_notification(notification)
