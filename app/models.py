@@ -1436,7 +1436,7 @@ class NotificationHistory(db.Model, HistoryModel):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
-    postage = db.Column(db.String, nullable=True, default='second')
+    postage = db.Column(db.String, nullable=True)
     CheckConstraint("notification_type != 'letter' or postage in ('first', 'second')")
 
     __table_args__ = (

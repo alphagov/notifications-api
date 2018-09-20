@@ -9,6 +9,7 @@ from app.config import TaskNames, QueueNames
 from app.models import (
     Job,
     Notification,
+    NotificationHistory,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -483,11 +484,14 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
-    notification = Notification.query.first()
+    notification = Notification.query.one()
 
     assert notification.billable_units == 3
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
     assert notification.postage == postage
+
+    notification_history = NotificationHistory.query.one()
+    assert notification_history.postage == postage
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}
