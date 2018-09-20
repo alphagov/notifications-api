@@ -16,7 +16,6 @@ from alembic import op
 start = datetime(2018, 9, 30, 23, 0)
 
 NEW_RATES = [
-    (uuid.uuid4(), start, 1, 0.30, True, 'second'),
     (uuid.uuid4(), start, 1, 0.30, False, 'second'),
     (uuid.uuid4(), start, 2, 0.35, True, 'second'),
     (uuid.uuid4(), start, 2, 0.35, False, 'second'),
