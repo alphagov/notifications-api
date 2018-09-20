@@ -500,3 +500,22 @@ def test_persist_notification_increments_and_expires_redis_template_usage(
         'service-{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
         current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
     )
+
+
+def test_persist_notification_with_billable_units_stores_correct_info(
+    sample_template,
+):
+    persist_notification(
+        template_id=sample_template.id,
+        template_version=sample_template.version,
+        recipient="123 Main Street",
+        service=sample_template.service,
+        personalisation=None,
+        notification_type='letter',
+        api_key_id=None,
+        key_type="normal",
+        billable_units=3
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.billable_units == 3
