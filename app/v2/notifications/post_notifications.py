@@ -11,7 +11,7 @@ from notifications_utils.recipients import try_validate_and_format_phone_number
 from app import api_user, authenticated_service, notify_celery, document_download_client
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
-from app.dao.notifications_dao import dao_update_notification, update_notification_status_by_reference
+from app.dao.notifications_dao import update_notification_status_by_reference
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import get_user_by_id
 from app.letters.utils import upload_letter_pdf
@@ -300,17 +300,16 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, template, 
         current_app.logger.exception(msg='Invalid PDF received')
         raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
 
+    pages_per_sheet = 2
+    billable_units = math.ceil(pages / pages_per_sheet)
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
                                               api_key=api_key,
                                               status=status,
-                                              reply_to_text=reply_to_text)
+                                              reply_to_text=reply_to_text,
+                                              billable_units=billable_units)
 
     filename = upload_letter_pdf(notification, letter_content, precompiled=True)
-    pages_per_sheet = 2
-    notification.billable_units = math.ceil(pages / pages_per_sheet)
-
-    dao_update_notification(notification)
 
     current_app.logger.info('Calling task scan-file for {}'.format(filename))
 
