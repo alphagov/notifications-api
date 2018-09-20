@@ -1,20 +1,19 @@
 """empty message
 
-Revision ID: 0226_new_letter_rates
-Revises: 0225_another_letter_org
+Revision ID: 0229_new_letter_rates
+Revises: 0228_notification_postage
 
 """
 
-revision = '0226_new_letter_rates'
-down_revision = '0225_another_letter_org'
+revision = '0229_new_letter_rates'
+down_revision = '0228_notification_postage'
 
 import uuid
-import pytz
 from datetime import datetime
 from alembic import op
 
 
-start = datetime(2018, 10, 1, 0, 0, tzinfo=pytz.utc)
+start = datetime(2018, 9, 30, 23, 0)
 
 NEW_RATES = [
     (uuid.uuid4(), start, 1, 0.30, True, 'second'),
