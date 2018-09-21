@@ -230,7 +230,7 @@ def test_get_rates_for_billing(notify_db_session):
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
-    assert len(letter_rates) == 30
+    assert len(letter_rates) == 29
 
 
 def test_get_rate(notify_db_session):

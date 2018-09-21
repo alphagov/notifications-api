@@ -35,7 +35,6 @@ NEW_RATES = [
     (uuid.uuid4(), start, 4, 0.71, False, 'first'),
     (uuid.uuid4(), start, 5, 0.76, True, 'first'),
     (uuid.uuid4(), start, 5, 0.76, False, 'first'),
-
 ]
 
 
