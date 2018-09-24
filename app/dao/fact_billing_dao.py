@@ -218,11 +218,11 @@ def get_rate(
         if letter_page_count == 0:
             return 0
         return next(
-            r[3] for r in letter_rates if date > r[0] and crown == r[1]
+            r[3] for r in letter_rates if date >= r[0] and crown == r[1]
             and letter_page_count == r[2] and post_class == r[4]
         )
     elif notification_type == SMS_TYPE:
-        return next(r[2] for r in non_letter_rates if notification_type == r[0] and date > r[1])
+        return next(r[2] for r in non_letter_rates if notification_type == r[0] and date >= r[1])
     else:
         return 0
 
