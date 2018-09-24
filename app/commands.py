@@ -602,3 +602,49 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
                 print("*** ERROR occurred for email address: {}. \n{}".format(email_address.strip(), e))
 
     file.close()
+
+
+@notify_command(name='populate-notification-postage')
+@click.option(
+    '-s',
+    '--start_date',
+    default=datetime(2017, 2, 1),
+    help="start date inclusive",
+    type=click_dt(format='%Y-%m-%d')
+)
+@statsd(namespace="tasks")
+def populate_notification_postage(start_date):
+    current_app.logger.info('populating historical notification postage')
+
+    total_updated = 0
+
+    while start_date < datetime.utcnow():
+        # process in ten day chunks
+        end_date = start_date + timedelta(days=10)
+
+        sql = \
+            """
+            UPDATE {}
+            SET postage = 'second'
+            WHERE notification_type = 'letter' AND
+            postage IS NULL AND
+            created_at BETWEEN :start AND :end
+            """
+
+        execution_start = datetime.utcnow()
+
+        if end_date > datetime.utcnow() - timedelta(days=8):
+            print('Updating notifications table as well')
+            db.session.execute(sql.format('notifications'), {'start': start_date, 'end': end_date})
+
+        result = db.session.execute(sql.format('notification_history'), {'start': start_date, 'end': end_date})
+        db.session.commit()
+
+        current_app.logger.info('notification postage took {}ms. Migrated {} rows for {} to {}'.format(
+            datetime.utcnow() - execution_start, result.rowcount, start_date, end_date))
+
+        start_date += timedelta(days=10)
+
+        total_updated += result.rowcount
+
+    current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
