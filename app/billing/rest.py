@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from flask import Blueprint, jsonify, request
 
 from app.billing.billing_schemas import (
@@ -18,9 +16,7 @@ from app.dao.fact_billing_dao import fetch_monthly_billing_for_year, fetch_billi
 
 from app.errors import InvalidRequest
 from app.errors import register_errors
-from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.schema_validation import validate
-from app.utils import convert_utc_to_bst
 
 billing_blueprint = Blueprint(
     'billing',
@@ -55,69 +51,6 @@ def get_yearly_billing_usage_summary_from_ft_billing(service_id):
     billing_data = fetch_billing_totals_for_year(service_id, year)
     data = serialize_ft_billing_yearly_totals(billing_data)
     return jsonify(data)
-
-
-def _get_total_billable_units_and_rate_for_notification_type(billing_data, noti_type):
-    total_sent = 0
-    rate = 0
-    letter_total = 0
-    for entry in billing_data:
-        for monthly_total in entry.monthly_totals:
-            if entry.notification_type == noti_type:
-                if entry.notification_type == EMAIL_TYPE:
-                    total_sent += monthly_total['billing_units']
-                    rate = monthly_total['rate']
-                elif entry.notification_type == SMS_TYPE:
-                    total_sent += (monthly_total['billing_units'] * monthly_total['rate_multiplier'])
-                    rate = monthly_total['rate']
-                elif entry.notification_type == LETTER_TYPE:
-                    total_sent += monthly_total['billing_units']
-                    letter_total += (monthly_total['billing_units'] * monthly_total['rate'])
-
-    return {
-        "notification_type": noti_type,
-        "billing_units": total_sent,
-        "rate": float(rate),
-        "letter_total": round(float(letter_total), 3)
-    }
-
-
-def _transform_billing_for_month_sms(billing_for_month):
-    month_name = datetime.strftime(convert_utc_to_bst(billing_for_month.start_date), "%B")
-    billing_units = rate = 0
-
-    for total in billing_for_month.monthly_totals:
-        billing_units += (total['billing_units'] * total['rate_multiplier'])
-        rate = total['rate']
-
-    return {
-        "month": month_name,
-        "billing_units": billing_units,
-        "notification_type": billing_for_month.notification_type,
-        "rate": rate
-    }
-
-
-def _transform_billing_for_month_letters(billing_for_month):
-    month_name = datetime.strftime(convert_utc_to_bst(billing_for_month.start_date), "%B")
-    x = list()
-
-    for total in billing_for_month.monthly_totals:
-        y = {
-            "month": month_name,
-            "billing_units": (total['billing_units'] * total['rate_multiplier']),
-            "notification_type": billing_for_month.notification_type,
-            "rate": float(total['rate'])
-        }
-        x.append(y)
-    if len(billing_for_month.monthly_totals) == 0:
-        x.append({
-            "month": month_name,
-            "billing_units": 0,
-            "notification_type": billing_for_month.notification_type,
-            "rate": 0
-        })
-    return x
 
 
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["GET"])
