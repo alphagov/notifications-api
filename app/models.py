@@ -1811,6 +1811,7 @@ class FactBilling(db.Model):
     rate_multiplier = db.Column(db.Integer(), nullable=False, primary_key=True)
     international = db.Column(db.Boolean, nullable=False, primary_key=True)
     rate = db.Column(db.Numeric(), nullable=False, primary_key=True)
+    postage = db.Column(db.String)
     billable_units = db.Column(db.Integer(), nullable=True)
     notifications_sent = db.Column(db.Integer(), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
