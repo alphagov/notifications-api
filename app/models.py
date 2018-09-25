@@ -1193,7 +1193,7 @@ class Notification(db.Model):
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN notification_type = 'letter' THEN
-            postage in ('first', 'second')
+            postage is not null and postage in ('first', 'second')
         ELSE
             postage is null
         END
@@ -1453,7 +1453,7 @@ class NotificationHistory(db.Model, HistoryModel):
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN notification_type = 'letter' THEN
-            postage in ('first', 'second')
+            postage is not null and postage in ('first', 'second')
         ELSE
             postage is null
         END

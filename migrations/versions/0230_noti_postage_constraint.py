@@ -17,7 +17,7 @@ def upgrade():
         ALTER TABLE notifications ADD CONSTRAINT "chk_notifications_postage_null"
         CHECK (
             CASE WHEN notification_type = 'letter' THEN
-                postage in ('first', 'second')
+                postage is not null and postage in ('first', 'second')
             ELSE
                 postage is null
             END
@@ -28,7 +28,7 @@ def upgrade():
         ALTER TABLE notification_history ADD CONSTRAINT "chk_notification_history_postage_null"
         CHECK (
             CASE WHEN notification_type = 'letter' THEN
-                postage in ('first', 'second')
+                postage is not null and postage in ('first', 'second')
             ELSE
                 postage is null
             END
