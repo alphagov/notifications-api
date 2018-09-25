@@ -194,9 +194,7 @@ def test_create_job_returns_400_if_file_is_invalid(
     )
 
     assert response.status_code == 400
-    print(response.get_data(as_text=True))
     resp_json = json.loads(response.get_data(as_text=True))
-    print(resp_json)
     assert resp_json['result'] == 'error'
     assert resp_json['message'] == 'File is not valid, can\'t create job'
     mock_job_dao.assert_not_called()
