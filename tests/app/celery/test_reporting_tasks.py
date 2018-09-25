@@ -23,7 +23,9 @@ def test_reporting_should_have_decorated_tasks_functions():
     assert create_nightly_billing.__wrapped__.__name__ == 'create_nightly_billing'
 
 
-def mocker_get_rate(non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None):
+def mocker_get_rate(
+    non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None, post_class="second"
+):
     if notification_type == LETTER_TYPE:
         return Decimal(2.1)
     elif notification_type == SMS_TYPE:
@@ -319,9 +321,10 @@ def test_get_rate_for_letter_latest(notify_db_session):
     non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
                         Rate.query.order_by(desc(Rate.valid_from)).all()]
 
-    # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count & rate
-    new_letter_rate = (datetime(2017, 12, 1), True, 1, Decimal(0.33))
-    old_letter_rate = (datetime(2016, 12, 1), True, 1, Decimal(0.30))
+    # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count,
+    # rate and post_class
+    new_letter_rate = (datetime(2017, 12, 1), True, 1, Decimal(0.33), 'second')
+    old_letter_rate = (datetime(2016, 12, 1), True, 1, Decimal(0.30), 'second')
     letter_rates = [new_letter_rate, old_letter_rate]
 
     rate = get_rate(non_letter_rates, letter_rates, LETTER_TYPE, datetime(2018, 1, 1), True, 1)

@@ -4,6 +4,8 @@ from decimal import Decimal
 from datetime import datetime, timedelta
 from freezegun import freeze_time
 
+import pytest
+
 from app import db
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
@@ -228,7 +230,7 @@ def test_get_rates_for_billing(notify_db_session):
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
-    assert len(letter_rates) == 10
+    assert len(letter_rates) == 29
 
 
 def test_get_rate(notify_db_session):
@@ -246,6 +248,20 @@ def test_get_rate(notify_db_session):
 
     assert rate == 2.2
     assert letter_rate == Decimal('0.3')
+
+
+@pytest.mark.parametrize("letter_post_class,expected_rate", [("first", "0.61"), ("second", "0.35")])
+def test_get_rate_filters_letters_by_post_class(notify_db_session, letter_post_class, expected_rate):
+    non_letter_rates, letter_rates = get_rates_for_billing()
+    rate = get_rate(non_letter_rates, letter_rates, "letter", datetime(2018, 10, 1), True, 2, letter_post_class)
+    assert rate == Decimal(expected_rate)
+
+
+@pytest.mark.parametrize("date,expected_rate", [(datetime(2018, 9, 30), '0.33'), (datetime(2018, 10, 1), '0.35')])
+def test_get_rate_chooses_right_rate_depending_on_date(notify_db_session, date, expected_rate):
+    non_letter_rates, letter_rates = get_rates_for_billing()
+    rate = get_rate(non_letter_rates, letter_rates, "letter", date, True, 2, "second")
+    assert rate == Decimal(expected_rate)
 
 
 def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):

@@ -342,6 +342,9 @@ class Development(Config):
     SECRET_KEY = 'dev-notify-secret-key'
     DANGEROUS_SALT = 'dev-notify-salt'
 
+    MMG_INBOUND_SMS_AUTH = ['testkey']
+    MMG_INBOUND_SMS_USERNAME = ['username']
+
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFY_LOG_PATH = 'application.log'
     NOTIFICATION_QUEUE_PREFIX = 'development'
@@ -392,8 +395,6 @@ class Test(Development):
 
     SMS_INBOUND_WHITELIST = ['203.0.113.195']
     FIRETEXT_INBOUND_SMS_AUTH = ['testkey']
-    MMG_INBOUND_SMS_AUTH = ['testkey']
-    MMG_INBOUND_SMS_USERNAME = ['username']
     TEMPLATE_PREVIEW_API_HOST = 'http://localhost:9999'
 
 
