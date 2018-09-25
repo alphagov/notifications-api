@@ -1,5 +1,4 @@
 from datetime import datetime
-from functools import partial
 
 from freezegun import freeze_time
 
@@ -9,9 +8,7 @@ from app.performance_platform.total_sent_notifications import (
     get_total_sent_notifications_for_day
 )
 
-from tests.app.conftest import (
-    sample_notification_history as create_notification_history
-)
+from tests.app.db import create_template, create_notification
 
 
 def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(mocker, client):
@@ -37,32 +34,24 @@ def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(
 
 
 @freeze_time("2016-01-11 12:30:00")
-def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        status='delivered'
-    )
+def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(sample_service):
+    sms = create_template(sample_service, template_type='sms')
+    email = create_template(sample_service, template_type='email')
+    letter = create_template(sample_service, template_type='letter')
 
-    notification_history(notification_type='email')
-    notification_history(notification_type='sms')
+    create_notification(email, status='delivered')
+    create_notification(sms, status='delivered')
 
     # Create some notifications for the day before
     yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
     ereyesterday = datetime(2016, 1, 9, 15, 30, 0, 0)
     with freeze_time(yesterday):
-        notification_history(notification_type='letter')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
+        create_notification(letter, status='delivered')
+        create_notification(sms, status='delivered')
+        create_notification(sms, status='delivered')
+        create_notification(email, status='delivered')
+        create_notification(email, status='delivered')
+        create_notification(email, status='delivered')
 
     total_count_dict = get_total_sent_notifications_for_day(yesterday)
 

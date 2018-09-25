@@ -21,16 +21,14 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     PRECOMPILED_TEMPLATE_NAME
 )
-from tests.app.conftest import (
-    sample_template as create_sample_template,
-    sample_notification_with_job as create_sample_notification_with_job
-)
+
 from tests.app.db import (
     create_notification,
     create_service,
     create_inbound_number,
     create_reply_to_email,
-    create_letter_contact
+    create_letter_contact,
+    create_template
 )
 
 
@@ -99,26 +97,17 @@ def test_status_conversion(initial_statuses, expected_statuses):
     ('sms', '+447700900855'),
     ('email', 'foo@bar.com'),
 ])
-def test_notification_for_csv_returns_correct_type(notify_db, notify_db_session, template_type, recipient):
-    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
-    notification = create_sample_notification_with_job(
-        notify_db,
-        notify_db_session,
-        template=template,
-        to_field=recipient
-    )
+def test_notification_for_csv_returns_correct_type(sample_service, template_type, recipient):
+    template = create_template(sample_service, template_type=template_type)
+    notification = create_notification(template, to_field=recipient)
 
     serialized = notification.serialize_for_csv()
     assert serialized['template_type'] == template_type
 
 
 @freeze_time("2016-01-01 11:09:00.000000")
-def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_db_session):
-    notification = create_sample_notification_with_job(
-        notify_db,
-        notify_db_session,
-        job_row_number=0
-    )
+def test_notification_for_csv_returns_correct_job_row_number(sample_job):
+    notification = create_notification(sample_job.template, sample_job, job_row_number=0)
 
     serialized = notification.serialize_for_csv()
     assert serialized['row_number'] == 1
@@ -139,32 +128,21 @@ def test_notification_for_csv_returns_correct_job_row_number(notify_db, notify_d
     ('letter', 'delivered', 'Received')
 ])
 def test_notification_for_csv_returns_formatted_status(
-    notify_db,
-    notify_db_session,
+    sample_service,
     template_type,
     status,
     expected_status
 ):
-    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
-    notification = create_sample_notification_with_job(
-        notify_db,
-        notify_db_session,
-        status=status,
-        template=template
-    )
+    template = create_template(sample_service, template_type=template_type)
+    notification = create_notification(template, status=status)
 
     serialized = notification.serialize_for_csv()
     assert serialized['status'] == expected_status
 
 
 @freeze_time("2017-03-26 23:01:53.321312")
-def test_notification_for_csv_returns_bst_correctly(notify_db, notify_db_session):
-    notification = create_sample_notification_with_job(
-        notify_db,
-        notify_db_session,
-        job_row_number=100,
-        status='permanent-failure'
-    )
+def test_notification_for_csv_returns_bst_correctly(sample_template):
+    notification = create_notification(sample_template)
 
     serialized = notification.serialize_for_csv()
     assert serialized['created_at'] == 'Monday 27 March 2017 at 00:01'
