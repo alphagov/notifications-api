@@ -14,6 +14,7 @@ from app.letters.utils import (
     ScanErrorType, move_failed_pdf, get_folder_name
 )
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
+from tests.app.db import create_notification
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 
@@ -65,6 +66,18 @@ def test_get_letter_pdf_filename_returns_correct_filename(
     filename = get_letter_pdf_filename(reference='foo', crown=crown_flag)
 
     assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
+
+
+@pytest.mark.parametrize('postage,expected_postage', [
+    ('second', 2),
+    ('first', 1),
+])
+@freeze_time("2017-12-04 17:29:00")
+def test_get_letter_pdf_filename_returns_correct_postage_for_filename(
+        notify_api, postage, expected_postage):
+    filename = get_letter_pdf_filename(reference='foo', crown=True, postage=postage)
+
+    assert filename == '2017-12-04/NOTIFY.FOO.D.{}.C.C.20171204172900.PDF'.format(expected_postage)
 
 
 @freeze_time("2017-12-04 17:29:00")
@@ -131,6 +144,33 @@ def test_upload_letter_pdf_to_correct_bucket(
 
     mock_s3.assert_called_once_with(
         bucket_name=current_app.config[bucket_config_name],
+        file_location=filename,
+        filedata=b'\x00\x01',
+        region=current_app.config['AWS_REGION']
+    )
+
+
+@pytest.mark.parametrize('postage,expected_postage', [
+    ('second', 2),
+    ('first', 1)
+])
+def test_upload_letter_pdf_uses_postage_from_notification(
+    sample_letter_template, mocker, postage, expected_postage
+):
+    letter_notification = create_notification(template=sample_letter_template, postage=postage)
+    mock_s3 = mocker.patch('app.letters.utils.s3upload')
+
+    filename = get_letter_pdf_filename(
+        reference=letter_notification.reference,
+        crown=letter_notification.service.crown,
+        is_scan_letter=False,
+        postage=letter_notification.postage
+    )
+
+    upload_letter_pdf(letter_notification, b'\x00\x01', precompiled=False)
+
+    mock_s3.assert_called_once_with(
+        bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
         file_location=filename,
         filedata=b'\x00\x01',
         region=current_app.config['AWS_REGION']

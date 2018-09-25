@@ -1113,6 +1113,14 @@ NOTIFICATION_STATUS_LETTER_RECEIVED = 'received'
 
 DVLA_RESPONSE_STATUS_SENT = 'Sent'
 
+FIRST_CLASS = 'first'
+SECOND_CLASS = 'second'
+POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS]
+RESOLVE_POSTAGE_FOR_FILE_NAME = {
+    FIRST_CLASS: 1,
+    SECOND_CLASS: 2
+}
+
 
 class NotificationStatusTypes(db.Model):
     __tablename__ = 'notification_status_types'

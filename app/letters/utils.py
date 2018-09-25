@@ -6,7 +6,7 @@ from flask import current_app
 
 from notifications_utils.s3 import s3upload
 
-from app.models import KEY_TYPE_TEST
+from app.models import KEY_TYPE_TEST, SECOND_CLASS, RESOLVE_POSTAGE_FOR_FILE_NAME
 from app.utils import convert_utc_to_bst
 
 
@@ -32,14 +32,14 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
     return folder_name
 
 
-def get_letter_pdf_filename(reference, crown, is_scan_letter=False):
+def get_letter_pdf_filename(reference, crown, is_scan_letter=False, postage=SECOND_CLASS):
     now = datetime.utcnow()
 
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
         folder=get_folder_name(now, is_scan_letter),
         reference=reference,
         duplex="D",
-        letter_class="2",
+        letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
         colour="C",
         crown="C" if crown else "N",
         date=now.strftime('%Y%m%d%H%M%S')
@@ -71,7 +71,9 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     upload_file_name = get_letter_pdf_filename(
         notification.reference,
         notification.service.crown,
-        is_scan_letter=precompiled)
+        is_scan_letter=precompiled,
+        postage=notification.postage
+    )
 
     if precompiled:
         bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
