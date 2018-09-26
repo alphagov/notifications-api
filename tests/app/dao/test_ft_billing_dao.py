@@ -50,12 +50,14 @@ def set_up_yearly_data():
                                   service=service,
                                   template=letter_template,
                                   notification_type='letter',
-                                  rate=0.33)
+                                  rate=0.33,
+                                  postage='second')
                 create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
                                   service=service,
                                   template=letter_template,
                                   notification_type='letter',
-                                  rate=0.30)
+                                  rate=0.30,
+                                  postage='second')
     return service
 
 
@@ -188,6 +190,34 @@ def test_fetch_billing_data_for_day_is_grouped_by_notification_type(notify_db_se
     assert len(results) == 3
     notification_types = [x[2] for x in results if x[2] in ['email', 'sms', 'letter']]
     assert len(notification_types) == 3
+
+
+def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
+    service = create_service()
+    letter_template = create_template(service=service, template_type='letter')
+    email_template = create_template(service=service, template_type='email')
+    create_notification(template=letter_template, status='delivered', postage='first')
+    create_notification(template=letter_template, status='delivered', postage='first')
+    create_notification(template=letter_template, status='delivered', postage='second')
+    create_notification(template=email_template, status='delivered')
+
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(today)
+    assert len(results) == 3
+
+
+def test_fetch_billing_data_for_day_sets_postage_for_emails_and_sms_to_none(notify_db_session):
+    service = create_service()
+    sms_template = create_template(service=service, template_type='sms')
+    email_template = create_template(service=service, template_type='email')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=email_template, status='delivered')
+
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(today)
+    assert len(results) == 2
+    assert results[0].postage == 'none'
+    assert results[1].postage == 'none'
 
 
 def test_fetch_billing_data_for_day_returns_empty_list(notify_db_session):

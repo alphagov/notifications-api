@@ -535,7 +535,8 @@ def sample_notification(
     client_reference=None,
     rate_multiplier=1.0,
     scheduled_for=None,
-    normalised_to=None
+    normalised_to=None,
+    postage=None,
 ):
     if created_at is None:
         created_at = datetime.utcnow()
@@ -580,7 +581,8 @@ def sample_notification(
         'updated_at': created_at if status in NOTIFICATION_STATUS_TYPES_COMPLETED else None,
         'client_reference': client_reference,
         'rate_multiplier': rate_multiplier,
-        'normalised_to': normalised_to
+        'normalised_to': normalised_to,
+        'postage': postage,
     }
     if job_row_number is not None:
         data['job_row_number'] = job_row_number

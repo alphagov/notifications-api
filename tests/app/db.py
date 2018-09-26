@@ -512,7 +512,8 @@ def create_ft_billing(bst_date,
                       international=False,
                       rate=0,
                       billable_unit=1,
-                      notifications_sent=1
+                      notifications_sent=1,
+                      postage='none',
                       ):
     if not service:
         service = create_service()
@@ -528,7 +529,8 @@ def create_ft_billing(bst_date,
                        international=international,
                        rate=rate,
                        billable_units=billable_unit,
-                       notifications_sent=notifications_sent)
+                       notifications_sent=notifications_sent,
+                       postage=postage)
     db.session.add(data)
     db.session.commit()
     return data
