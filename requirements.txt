@@ -26,6 +26,7 @@ notifications-python-client==5.0.0
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
+botocore<1.11.0
 
 git+https://github.com/alphagov/notifications-utils.git@30.3.1#egg=notifications-utils==30.3.1
 
@@ -35,15 +36,14 @@ git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 alembic==1.0.0
 amqp==1.4.9
 anyjson==0.3.3
-awscli==1.16.20
+awscli==1.16.22
 bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
 boto3==1.6.16
-botocore==1.12.10
 certifi==2018.8.24
 chardet==3.0.4
-click==6.7
+Click==7.0
 colorama==0.3.9
 docutils==0.14
 Flask-Redis==0.3.0
