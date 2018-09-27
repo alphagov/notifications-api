@@ -329,12 +329,14 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert results[0].billable_units == Decimal('60')
     assert results[0].rate == Decimal('0.162')
     assert results[0].notification_type == 'sms'
+    assert results[0].postage == 'none'
 
     assert str(results[1].month) == "2018-07-01"
     assert results[1].notifications_sent == 31
     assert results[1].billable_units == Decimal('31')
     assert results[1].rate == Decimal('0.158')
     assert results[1].notification_type == 'sms'
+    assert results[1].postage == 'none'
 
 
 @freeze_time('2018-08-01 13:30:00')

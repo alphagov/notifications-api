@@ -214,12 +214,14 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
     expected_sms_april = {"month": "April",
                           "notification_type": "sms",
                           "billing_units": 30,
-                          "rate": 0.162
+                          "rate": 0.162,
+                          "postage": "none"
                           }
     expected_letter_april = {"month": "April",
                              "notification_type": "letter",
                              "billing_units": 30,
-                             "rate": 0.33
+                             "rate": 0.33,
+                             "postage": "second"
                              }
 
     for k in keys:
@@ -321,26 +323,31 @@ def test_get_yearly_usage_by_monthly_from_ft_billing_all_cases(client, notify_db
     assert json_response[0]['notification_type'] == 'letter'
     assert json_response[0]['rate'] == 0.33
     assert json_response[0]['billing_units'] == 1
+    assert json_response[0]['postage'] == 'second'
 
     assert json_response[1]['month'] == 'May'
     assert json_response[1]['notification_type'] == 'letter'
     assert json_response[1]['rate'] == 0.36
     assert json_response[1]['billing_units'] == 1
+    assert json_response[1]['postage'] == 'second'
 
     assert json_response[2]['month'] == 'May'
     assert json_response[2]['notification_type'] == 'letter'
     assert json_response[2]['rate'] == 0.39
     assert json_response[2]['billing_units'] == 1
+    assert json_response[2]['postage'] == 'first'
 
     assert json_response[3]['month'] == 'May'
     assert json_response[3]['notification_type'] == 'sms'
     assert json_response[3]['rate'] == 0.0150
     assert json_response[3]['billing_units'] == 4
+    assert json_response[3]['postage'] == 'none'
 
     assert json_response[4]['month'] == 'May'
     assert json_response[4]['notification_type'] == 'sms'
     assert json_response[4]['rate'] == 0.162
     assert json_response[4]['billing_units'] == 5
+    assert json_response[4]['postage'] == 'none'
 
 
 def test_get_yearly_billing_usage_summary_from_ft_billing_all_cases(client, notify_db_session):
@@ -452,5 +459,5 @@ def set_up_data_for_all_cases():
                       rate=0.39,
                       billable_unit=3,
                       notifications_sent=1,
-                      postage='second')
+                      postage='first')
     return service

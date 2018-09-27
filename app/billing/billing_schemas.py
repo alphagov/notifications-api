@@ -22,6 +22,7 @@ def serialize_ft_billing_remove_emails(data):
             "notification_type": notification.notification_type,
             "billing_units": notification.billable_units,
             "rate": float(notification.rate),
+            "postage": notification.postage,
         }
         results.append(json_result)
     return results
