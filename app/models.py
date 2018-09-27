@@ -1191,7 +1191,13 @@ class Notification(db.Model):
     reply_to_text = db.Column(db.String, nullable=True)
 
     postage = db.Column(db.String, nullable=True)
-    CheckConstraint("notification_type != 'letter' or postage in ('first', 'second')")
+    CheckConstraint("""
+        CASE WHEN notification_type = 'letter' THEN
+            postage is not null and postage in ('first', 'second')
+        ELSE
+            postage is null
+        END
+    """)
 
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -1445,7 +1451,13 @@ class NotificationHistory(db.Model, HistoryModel):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
     postage = db.Column(db.String, nullable=True)
-    CheckConstraint("notification_type != 'letter' or postage in ('first', 'second')")
+    CheckConstraint("""
+        CASE WHEN notification_type = 'letter' THEN
+            postage is not null and postage in ('first', 'second')
+        ELSE
+            postage is null
+        END
+    """)
 
     __table_args__ = (
         db.ForeignKeyConstraint(

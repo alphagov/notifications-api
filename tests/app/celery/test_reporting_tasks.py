@@ -1,5 +1,10 @@
 from datetime import datetime, timedelta, date
-from tests.app.conftest import sample_notification
+from decimal import Decimal
+
+import pytest
+from freezegun import freeze_time
+from sqlalchemy import desc
+
 from app.celery.reporting_tasks import create_nightly_billing, create_nightly_notification_status
 from app.dao.fact_billing_dao import get_rate
 from app.models import (
@@ -9,12 +14,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE, FactNotificationStatus
 )
-from decimal import Decimal
-import pytest
 from app.models import LetterRate, Rate
 from app import db
-from freezegun import freeze_time
-from sqlalchemy import desc
 
 from tests.app.db import create_service, create_template, create_notification
 
@@ -38,8 +39,6 @@ def mocker_get_rate(
                          [(1.0, 1, 2, [1]),
                           (2.0, 2, 1, [1, 2])])
 def test_create_nightly_billing_sms_rate_multiplier(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker,
@@ -53,11 +52,8 @@ def test_create_nightly_billing_sms_rate_multiplier(
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # These are sms notifications
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by='mmg',
@@ -65,11 +61,8 @@ def test_create_nightly_billing_sms_rate_multiplier(
         rate_multiplier=1.0,
         billable_units=1,
     )
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by='mmg',
@@ -94,8 +87,6 @@ def test_create_nightly_billing_sms_rate_multiplier(
 
 
 def test_create_nightly_billing_different_templates(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         sample_email_template,
@@ -104,11 +95,8 @@ def test_create_nightly_billing_different_templates(
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by='mmg',
@@ -116,11 +104,8 @@ def test_create_nightly_billing_different_templates(
         rate_multiplier=1.0,
         billable_units=1,
     )
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_email_template,
         status='delivered',
         sent_by='ses',
@@ -148,8 +133,6 @@ def test_create_nightly_billing_different_templates(
 
 
 def test_create_nightly_billing_different_sent_by(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         sample_email_template,
@@ -159,11 +142,8 @@ def test_create_nightly_billing_different_sent_by(
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
     # These are sms notifications
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by='mmg',
@@ -171,11 +151,8 @@ def test_create_nightly_billing_different_sent_by(
         rate_multiplier=1.0,
         billable_units=1,
     )
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by='firetext',
@@ -201,8 +178,6 @@ def test_create_nightly_billing_different_sent_by(
 
 
 def test_create_nightly_billing_letter(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_letter_template,
         mocker):
@@ -210,11 +185,8 @@ def test_create_nightly_billing_letter(
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_letter_template,
         status='delivered',
         sent_by='dvla',
@@ -239,8 +211,6 @@ def test_create_nightly_billing_letter(
 
 
 def test_create_nightly_billing_null_sent_by_sms(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker):
@@ -248,11 +218,8 @@ def test_create_nightly_billing_null_sent_by_sms(
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=yesterday,
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by=None,
@@ -280,8 +247,6 @@ def test_create_nightly_billing_null_sent_by_sms(
 
 @freeze_time('2018-01-15T03:30:00')
 def test_create_nightly_billing_consolidate_from_3_days_delta(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker):
@@ -290,11 +255,8 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
 
     # create records from 11th to 15th
     for i in range(0, 11):
-        sample_notification(
-            notify_db,
-            notify_db_session,
+        create_notification(
             created_at=datetime.now() - timedelta(days=i),
-            service=sample_service,
             template=sample_template,
             status='delivered',
             sent_by=None,
@@ -331,7 +293,7 @@ def test_get_rate_for_letter_latest(notify_db_session):
     assert rate == Decimal(0.33)
 
 
-def test_get_rate_for_sms_and_email(notify_db, notify_db_session):
+def test_get_rate_for_sms_and_email(notify_db_session):
     sms_rate = Rate(valid_from=datetime(2017, 12, 1),
                     rate=Decimal(0.15),
                     notification_type=SMS_TYPE)
@@ -356,19 +318,14 @@ def test_get_rate_for_sms_and_email(notify_db, notify_db_session):
 @freeze_time('2018-03-27T03:30:00')
 # summer time starts on 2018-03-25
 def test_create_nightly_billing_use_BST(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker):
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=datetime(2018, 3, 25, 12, 0),
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by=None,
@@ -377,11 +334,8 @@ def test_create_nightly_billing_use_BST(
         billable_units=1,
     )
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=datetime(2018, 3, 25, 23, 5),
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by=None,
@@ -405,19 +359,14 @@ def test_create_nightly_billing_use_BST(
 
 @freeze_time('2018-01-15T03:30:00')
 def test_create_nightly_billing_update_when_record_exists(
-        notify_db,
-        notify_db_session,
         sample_service,
         sample_template,
         mocker):
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=datetime.now() - timedelta(days=1),
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by=None,
@@ -437,11 +386,8 @@ def test_create_nightly_billing_update_when_record_exists(
     assert records[0].billable_units == 1
     assert not records[0].updated_at
 
-    sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
         created_at=datetime.now() - timedelta(days=1),
-        service=sample_service,
         template=sample_template,
         status='delivered',
         sent_by=None,
