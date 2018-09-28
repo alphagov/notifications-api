@@ -177,6 +177,52 @@ def test_create_nightly_billing_different_sent_by(
         assert record.rate_multiplier == 1.0
 
 
+def test_create_nightly_billing_different_letter_postage(
+        notify_db_session,
+        sample_letter_template,
+        mocker):
+    yesterday = datetime.now() - timedelta(days=1)
+    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+
+    for i in range(2):
+        create_notification(
+            created_at=yesterday,
+            template=sample_letter_template,
+            status='delivered',
+            sent_by='dvla',
+            billable_units=2,
+            postage='first'
+        )
+    create_notification(
+        created_at=yesterday,
+        template=sample_letter_template,
+        status='delivered',
+        sent_by='dvla',
+        billable_units=2,
+        postage='second'
+    )
+
+    records = FactBilling.query.all()
+    assert len(records) == 0
+    # Celery expects the arguments to be a string or primitive type.
+    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
+    create_nightly_billing(yesterday_str)
+
+    records = FactBilling.query.order_by('postage').all()
+    assert len(records) == 2
+    assert records[0].notification_type == LETTER_TYPE
+    assert records[0].bst_date == datetime.date(yesterday)
+    assert records[0].postage == 'first'
+    assert records[0].notifications_sent == 2
+    assert records[0].billable_units == 4
+
+    assert records[1].notification_type == LETTER_TYPE
+    assert records[1].bst_date == datetime.date(yesterday)
+    assert records[1].postage == 'second'
+    assert records[1].notifications_sent == 1
+    assert records[1].billable_units == 2
+
+
 def test_create_nightly_billing_letter(
         sample_service,
         sample_letter_template,
