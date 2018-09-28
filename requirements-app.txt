@@ -24,7 +24,7 @@ notifications-python-client==5.0.0
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
-botocore<1.11.0
+botocore==1.12.13
 
 git+https://github.com/alphagov/notifications-utils.git@30.4.0#egg=notifications-utils==30.4.0
 
