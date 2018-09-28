@@ -172,9 +172,9 @@ def test_update_letter_notifications_statuses_builds_updates_list(notify_api, mo
 
 def test_update_letter_notifications_statuses_persisted(notify_api, mocker, sample_letter_template):
     sent_letter = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
-                                      billable_units=0)
+                                      billable_units=1)
     failed_letter = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING,
-                                        billable_units=0)
+                                        billable_units=2)
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     valid_file = '{}|Sent|1|Unsorted\n{}|Failed|2|Sorted'.format(
         sent_letter.reference, failed_letter.reference)
@@ -315,7 +315,7 @@ def test_check_billable_units_when_billable_units_does_not_match_page_count(
     check_billable_units(notification_update)
 
     mock_logger.assert_called_once_with(
-        'Notification with id {} had 3 billable_units but a page count of 1'.format(notification.id)
+        'Notification with id {} has 3 billable_units but DVLA says page count is 1'.format(notification.id)
     )
 
 

@@ -470,7 +470,6 @@ def update_letter_notification(filename, temporary_failures, update):
     updated_count, _ = dao_update_notifications_by_reference(
         references=[update.reference],
         update_dict={"status": status,
-                     "billable_units": update.page_count,
                      "updated_at": datetime.utcnow()
                      }
     )
@@ -491,7 +490,7 @@ def check_billable_units(notification_update):
         notification = dao_get_notification_history_by_reference(notification_update.reference)
 
     if int(notification_update.page_count) != notification.billable_units:
-        msg = 'Notification with id {} had {} billable_units but a page count of {}'.format(
+        msg = 'Notification with id {} has {} billable_units but DVLA says page count is {}'.format(
             notification.id, notification.billable_units, notification_update.page_count)
         try:
             raise DVLAException(msg)
