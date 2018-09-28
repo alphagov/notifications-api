@@ -362,14 +362,14 @@ def migrate_data_to_ft_billing(start_date, end_date):
 
     while process_date < end_date:
         start_time = datetime.utcnow()
-        # migrate data into ft_billing, ignore if records already exist - do not do upsert
+        # migrate data into ft_billing, upserting the data if it the record already exists
         sql = \
             """
             insert into ft_billing (bst_date, template_id, service_id, notification_type, provider, rate_multiplier,
-                international, billable_units, notifications_sent, rate, created_at)
+                international, billable_units, notifications_sent, rate, postage, created_at)
                 select bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
                     sum(billable_units) as billable_units, sum(notifications_sent) as notification_sent,
-                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate, created_at
+                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate, postage, created_at
                 from (
                     select
                         n.id,
@@ -392,10 +392,13 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         where n.notification_type = rates.notification_type and n.created_at > rates.valid_from
                         order by rates.valid_from desc limit 1), 0) as sms_rate,
                         coalesce((select l.rate from letter_rates l where n.billable_units = l.sheet_count
-                        and s.crown = l.crown and n.notification_type='letter'), 0) as letter_rate,
+                        and s.crown = l.crown and n.postage = l.post_class and n.created_at >= l.start_date
+                        and n.created_at < coalesce(l.end_date, now()) and n.notification_type='letter'), 0)
+                        as letter_rate,
                         coalesce(n.international, false) as international,
                         n.billable_units,
                         1 as notifications_sent,
+                        coalesce(n.postage, 'none') as postage,
                         now() as created_at
                     from public.notification_history n
                     left join services s on s.id = n.service_id
@@ -407,7 +410,7 @@ def migrate_data_to_ft_billing(start_date, end_date):
                         and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
                     ) as individual_record
                 group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
-                    sms_rate, letter_rate, created_at
+                    sms_rate, letter_rate, postage, created_at
                 order by bst_date
             on conflict on constraint ft_billing_pkey do update set
              billable_units = excluded.billable_units,

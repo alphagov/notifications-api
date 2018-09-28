@@ -169,6 +169,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
         func.sum(table.billable_units).label('billable_units'),
         func.count().label('notifications_sent'),
         Service.crown,
+        func.coalesce(table.postage, 'none').label('postage')
     ).filter(
         table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
         table.key_type != KEY_TYPE_TEST,
@@ -182,7 +183,8 @@ def fetch_billing_data_for_day(process_day, service_id=None):
         'letter_page_count',
         table.rate_multiplier,
         table.international,
-        Service.crown
+        Service.crown,
+        table.postage,
     ).join(
         Service
     )
@@ -254,7 +256,8 @@ def update_fact_billing(data, process_day):
         international=billing_record.international,
         billable_units=billing_record.billable_units,
         notifications_sent=billing_record.notifications_sent,
-        rate=billing_record.rate
+        rate=billing_record.rate,
+        postage=billing_record.postage,
     )
 
     stmt = stmt.on_conflict_do_update(
@@ -279,6 +282,7 @@ def create_billing_record(data, rate, process_day):
         international=data.international,
         billable_units=data.billable_units,
         notifications_sent=data.notifications_sent,
-        rate=rate
+        rate=rate,
+        postage=data.postage,
     )
     return billing_record

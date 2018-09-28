@@ -200,7 +200,8 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
                               template=letter_template,
                               notification_type='letter',
                               billable_unit=1,
-                              rate=0.33)
+                              rate=0.33,
+                              postage='second')
 
     response = client.get('service/{}/billing/ft-monthly-usage?year=2016'.format(service.id),
                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
@@ -257,7 +258,8 @@ def set_up_yearly_data():
                               service=service,
                               template=letter_template,
                               notification_type='letter',
-                              rate=0.33)
+                              rate=0.33,
+                              postage='second')
         start_date, end_date = get_month_start_and_end_date_in_utc(datetime(2016, int(mon), 1))
     return service
 
@@ -429,7 +431,8 @@ def set_up_data_for_all_cases():
                       international=False,
                       rate=0.33,
                       billable_unit=1,
-                      notifications_sent=1)
+                      notifications_sent=1,
+                      postage='second')
     create_ft_billing(bst_date='2018-05-17',
                       notification_type='letter',
                       template=letter_template,
@@ -438,7 +441,8 @@ def set_up_data_for_all_cases():
                       international=False,
                       rate=0.36,
                       billable_unit=2,
-                      notifications_sent=1)
+                      notifications_sent=1,
+                      postage='second')
     create_ft_billing(bst_date='2018-05-18',
                       notification_type='letter',
                       template=letter_template,
@@ -447,5 +451,6 @@ def set_up_data_for_all_cases():
                       international=False,
                       rate=0.39,
                       billable_unit=3,
-                      notifications_sent=1)
+                      notifications_sent=1,
+                      postage='second')
     return service
