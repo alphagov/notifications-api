@@ -1404,7 +1404,7 @@ class Notification(db.Model):
             serialized['line_6'] = col.get('address_line_6')
             serialized['postcode'] = col.get('postcode')
             serialized['estimated_delivery'] = \
-                get_letter_timings(serialized['created_at'])\
+                get_letter_timings(serialized['created_at'], postage=self.postage)\
                 .earliest_delivery\
                 .strftime(DATETIME_FORMAT)
 
