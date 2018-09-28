@@ -237,7 +237,7 @@ def update_fact_billing(data, process_day):
                     process_day,
                     data.crown,
                     data.letter_page_count,
-                    "second")
+                    data.postage)
     billing_record = create_billing_record(data, rate, process_day)
     table = FactBilling.__table__
     '''
