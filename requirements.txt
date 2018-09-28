@@ -16,13 +16,13 @@ eventlet==0.23.0
 gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==2.6.0
-marshmallow-sqlalchemy==0.14.0
-marshmallow==2.15.4
+marshmallow-sqlalchemy==0.14.1
+marshmallow==2.15.6
 psycopg2-binary==2.7.5
 PyJWT==1.6.4
-SQLAlchemy==1.2.11
+SQLAlchemy==1.2.12
 
-notifications-python-client==5.0.0
+notifications-python-client==5.2.0
 
 # PaaS
 awscli==1.15.82
@@ -79,3 +79,4 @@ statsd==3.2.2
 urllib3==1.23
 webencodings==0.5.1
 Werkzeug==0.14.1
+wheel==0.24.0
