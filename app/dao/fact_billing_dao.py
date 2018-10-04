@@ -87,7 +87,8 @@ def fetch_monthly_billing_for_year(service_id, year):
         func.sum(FactBilling.notifications_sent).label("notifications_sent"),
         func.sum(FactBilling.notifications_sent).label("billable_units"),
         FactBilling.rate.label('rate'),
-        FactBilling.notification_type.label('notification_type')
+        FactBilling.notification_type.label('notification_type'),
+        FactBilling.postage
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start_date,
@@ -96,7 +97,8 @@ def fetch_monthly_billing_for_year(service_id, year):
     ).group_by(
         'month',
         FactBilling.rate,
-        FactBilling.notification_type
+        FactBilling.notification_type,
+        FactBilling.postage
     )
 
     sms = db.session.query(
@@ -104,7 +106,8 @@ def fetch_monthly_billing_for_year(service_id, year):
         func.sum(FactBilling.notifications_sent).label("notifications_sent"),
         func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("billable_units"),
         FactBilling.rate,
-        FactBilling.notification_type
+        FactBilling.notification_type,
+        FactBilling.postage
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start_date,
@@ -113,7 +116,8 @@ def fetch_monthly_billing_for_year(service_id, year):
     ).group_by(
         'month',
         FactBilling.rate,
-        FactBilling.notification_type
+        FactBilling.notification_type,
+        FactBilling.postage
     )
 
     yearly_data = email_and_letters.union_all(sms).order_by(
