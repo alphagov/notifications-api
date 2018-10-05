@@ -150,9 +150,9 @@ class Config(object):
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
-        'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
+        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
+        'wait_time_seconds': 20  # enable long polling, with a wait time of 20 seconds
     }
     CELERY_ENABLE_UTC = True
     CELERY_TIMEZONE = 'Europe/London'
@@ -270,7 +270,9 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
-    CELERY_QUEUES = []
+
+    # this is overriden by the -Q command, but locally, we should read from all queues
+    CELERY_QUEUES = [Queue(queue, Exchange('default'), routing_key=queue) for queue in QueueNames.all_queues()]
 
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
@@ -358,11 +360,6 @@ class Development(Config):
     STATSD_PORT = 1000
     STATSD_PREFIX = "stats-prefix"
 
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
-
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
 
@@ -384,11 +381,6 @@ class Test(Development):
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
     BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
-
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"

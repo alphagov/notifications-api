@@ -5,7 +5,7 @@ from datetime import (
     timedelta,
 )
 
-from boto.exception import BotoClientError
+from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 
 from notifications_utils.recipients import (
