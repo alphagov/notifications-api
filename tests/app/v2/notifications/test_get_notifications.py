@@ -281,37 +281,7 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(client, 
     assert 'estimated_delivery' not in json.loads(response.get_data(as_text=True))
 
 
-def test_get_all_notifications_except_job_notifications_returns_200(client, sample_template, sample_job):
-    create_notification(template=sample_template, job=sample_job)  # should not return this job notification
-    notifications = [create_notification(template=sample_template) for _ in range(2)]
-    notification = notifications[-1]
-
-    auth_header = create_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications',
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
-    assert json_response['links']['current'].endswith("/v2/notifications")
-    assert 'next' in json_response['links'].keys()
-    assert len(json_response['notifications']) == 2
-
-    assert json_response['notifications'][0]['id'] == str(notification.id)
-    assert json_response['notifications'][0]['status'] == "created"
-    assert json_response['notifications'][0]['template'] == {
-        'id': str(notification.template.id),
-        'uri': notification.template.get_link(),
-        'version': 1
-    }
-    assert json_response['notifications'][0]['phone_number'] == "+447700900855"
-    assert json_response['notifications'][0]['type'] == "sms"
-    assert not json_response['notifications'][0]['scheduled_for']
-
-
-def test_get_all_notifications_with_include_jobs_arg_returns_200(
+def test_get_all_notifications_includes_jobs(
     client, sample_template, sample_job
 ):
     notifications = [
@@ -322,21 +292,15 @@ def test_get_all_notifications_with_include_jobs_arg_returns_200(
 
     auth_header = create_authorization_header(service_id=notification.service_id)
     response = client.get(
-        path='/v2/notifications?include_jobs=true',
+        path='/v2/notifications',
         headers=[('Content-Type', 'application/json'), auth_header])
 
     json_response = json.loads(response.get_data(as_text=True))
 
     assert response.status_code == 200
-    assert json_response['links']['current'].endswith("/v2/notifications?include_jobs=true")
+    assert json_response['links']['current'].endswith("/v2/notifications")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 2
-
-    assert json_response['notifications'][0]['id'] == str(notification.id)
-    assert json_response['notifications'][0]['status'] == notification.status
-    assert json_response['notifications'][0]['phone_number'] == notification.to
-    assert json_response['notifications'][0]['type'] == notification.template.template_type
-    assert not json_response['notifications'][0]['scheduled_for']
 
 
 def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):

@@ -20,7 +20,6 @@ valid_get_with_optionals_json = {
     "reference": "test reference",
     "status": [NOTIFICATION_CREATED],
     "template_type": [EMAIL_TYPE],
-    "include_jobs": "true",
     "older_than": "a5149c32-f03b-4711-af49-ad6993797d45"
 }
 
