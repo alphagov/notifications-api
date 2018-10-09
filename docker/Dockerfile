@@ -22,7 +22,6 @@ RUN \
 		libffi-dev \
 		python-dev \
 		jq \
-		libcurl4-openssl-dev \
 	&& echo "Clean up" \
 	&& rm -rf /var/lib/apt/lists/* /tmp/*
 
