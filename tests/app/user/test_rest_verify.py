@@ -346,15 +346,15 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
 @pytest.mark.parametrize('data, expected_auth_url', (
     (
         {},
-        'http://localhost:6012/email-auth/.',
+        'http://localhost:6012/email-auth/%2E',
     ),
     (
         {'to': None},
-        'http://localhost:6012/email-auth/.',
+        'http://localhost:6012/email-auth/%2E',
     ),
     (
         {'to': None, 'email_auth_link_host': 'https://example.com'},
-        'https://example.com/email-auth/.',
+        'https://example.com/email-auth/%2E',
     ),
 ))
 def test_send_user_email_code(
