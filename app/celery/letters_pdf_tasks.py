@@ -187,6 +187,11 @@ def process_virus_scan_passed(self, filename):
 
     new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
 
+    # TODO: Remove this once CYSP update their template to not cross over the margins
+    if notification.service_id == 'fe44178f-3b45-4625-9f85-2264a36dd9ec':  # CYSP
+        # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
+        new_pdf = old_pdf
+
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
         update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
