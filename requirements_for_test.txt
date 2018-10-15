@@ -7,7 +7,7 @@ pytest-mock==1.10.0
 pytest-cov==2.6.0
 pytest-xdist==1.23.0
 coveralls==1.5.0
-freezegun==0.3.10
+freezegun==0.3.11
 requests-mock==1.5.2
 # optional requirements for jsonschema
 strict-rfc3339==0.7
