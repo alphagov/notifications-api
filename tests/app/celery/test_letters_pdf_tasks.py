@@ -1,6 +1,7 @@
 from unittest.mock import Mock, call, ANY
 
 import boto3
+from PyPDF2.utils import PdfReadError
 from moto import mock_s3
 from flask import current_app
 from freezegun import freeze_time
@@ -22,7 +23,8 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_failed,
     process_virus_scan_error,
     replay_letters_in_error,
-    _sanitise_precomiled_pdf
+    _sanitise_precomiled_pdf,
+    _get_page_count
 )
 from app.letters.utils import get_letter_pdf_filename, ScanErrorType
 from app.models import (
@@ -31,9 +33,12 @@ from app.models import (
     Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_VIRUS_SCAN_FAILED,
+    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE)
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
+)
+from tests.app.db import create_notification
 
 from tests.conftest import set_config_values
 
@@ -333,14 +338,17 @@ def test_letter_in_created_state_fails_if_notification_doesnt_exist(sample_notif
 
 @freeze_time('2018-01-01 18:00')
 @mock_s3
-@pytest.mark.parametrize('key_type,is_test_letter,noti_status,bucket_config_name,destination_folder', [
-    (KEY_TYPE_NORMAL, False, NOTIFICATION_CREATED, 'LETTERS_PDF_BUCKET_NAME', '2018-01-02/'),
-    (KEY_TYPE_TEST, True, NOTIFICATION_DELIVERED, 'TEST_LETTERS_BUCKET_NAME', '')
+@pytest.mark.parametrize('key_type, noti_status,bucket_config_name,destination_folder', [
+    (KEY_TYPE_NORMAL, NOTIFICATION_CREATED, 'LETTERS_PDF_BUCKET_NAME', '2018-01-02/'),
+    (KEY_TYPE_TEST, NOTIFICATION_DELIVERED, 'TEST_LETTERS_BUCKET_NAME', '')
 ])
 def test_process_letter_task_check_virus_scan_passed(
-    sample_letter_notification, mocker, key_type, is_test_letter, noti_status, bucket_config_name, destination_folder
+    sample_letter_template, mocker, key_type, noti_status, bucket_config_name, destination_folder
 ):
-    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    letter_notification = create_notification(template=sample_letter_template, billable_units=0,
+                                              status='pending-virus-check', key_type=key_type,
+                                              reference='{} letter'.format(key_type))
+    filename = 'NOTIFY.{}'.format(letter_notification.reference)
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     target_bucket_name = current_app.config[bucket_config_name]
 
@@ -351,14 +359,14 @@ def test_process_letter_task_check_virus_scan_passed(
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
 
-    sample_letter_notification.status = 'pending-virus-check'
-    sample_letter_notification.key_type = key_type
+    mocker.patch('app.celery.letters_pdf_tasks.pdf_page_count', return_value=1)
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
     mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf')
 
     process_virus_scan_passed(filename)
 
-    assert sample_letter_notification.status == noti_status
+    assert letter_notification.status == noti_status
+    assert letter_notification.billable_units == 1
     mock_s3upload.assert_called_once_with(
         filedata=b'pdf_content',
         region='eu-west-1',
@@ -367,9 +375,18 @@ def test_process_letter_task_check_virus_scan_passed(
     )
     mock_sanitise.assert_called_once_with(
         ANY,
-        sample_letter_notification,
+        letter_notification,
         b'pdf_content'
     )
+
+
+def test_get_page_count_set_notification_to_permanent_failure_when_not_pdf(
+        sample_letter_notification
+):
+    with pytest.raises(expected_exception=PdfReadError):
+        _get_page_count(sample_letter_notification, b'pdf_content')
+    updated_notification = Notification.query.filter_by(id=sample_letter_notification.id).first()
+    assert updated_notification.status == NOTIFICATION_PERMANENT_FAILURE
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):

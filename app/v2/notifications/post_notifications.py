@@ -1,14 +1,13 @@
 import base64
 import functools
-import io
-import math
 
 import werkzeug
 from flask import request, jsonify, current_app, abort
-from notifications_utils.pdf import pdf_page_count, PdfReadError
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
+from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import update_notification_status_by_reference
@@ -30,16 +29,14 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
-from app.celery.letters_pdf_tasks import create_letters_pdf
-from app.celery.research_mode_tasks import create_fake_letter_response_file
+from app.notifications.process_letter_notifications import (
+    create_letter_notification
+)
 from app.notifications.process_notifications import (
     persist_notification,
     persist_scheduled_notification,
     send_notification_to_queue,
     simulated_recipient
-)
-from app.notifications.process_letter_notifications import (
-    create_letter_notification
 )
 from app.notifications.validators import (
     validate_and_format_recipient,
@@ -53,16 +50,16 @@ from app.notifications.validators import (
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
+from app.v2.notifications.create_response import (
+    create_post_sms_response_from_notification,
+    create_post_email_response_from_notification,
+    create_post_letter_response_from_notification
+)
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     post_email_request,
     post_letter_request,
     post_precompiled_letter_request
-)
-from app.v2.notifications.create_response import (
-    create_post_sms_response_from_notification,
-    create_post_email_response_from_notification,
-    create_post_letter_response_from_notification
 )
 
 
@@ -293,21 +290,14 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, template, 
     try:
         status = NOTIFICATION_PENDING_VIRUS_CHECK
         letter_content = base64.b64decode(letter_data['content'])
-        pages = pdf_page_count(io.BytesIO(letter_content))
     except ValueError:
         raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
-    except PdfReadError:
-        current_app.logger.exception(msg='Invalid PDF received')
-        raise BadRequestError(message='Letter content is not a valid PDF', status_code=400)
 
-    pages_per_sheet = 2
-    billable_units = math.ceil(pages / pages_per_sheet)
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
                                               api_key=api_key,
                                               status=status,
-                                              reply_to_text=reply_to_text,
-                                              billable_units=billable_units)
+                                              reply_to_text=reply_to_text)
 
     filename = upload_letter_pdf(notification, letter_content, precompiled=True)
 

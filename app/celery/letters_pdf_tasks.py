@@ -1,8 +1,11 @@
+import io
 import math
 from datetime import datetime
 
+from PyPDF2.utils import PdfReadError
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
+from notifications_utils.pdf import pdf_page_count
 from requests import (
     post as requests_post,
     RequestException
@@ -38,7 +41,7 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    # NOTIFICATION_VALIDATION_FAILED
+    NOTIFICATION_PERMANENT_FAILURE
 )
 
 
@@ -197,18 +200,35 @@ def process_virus_scan_passed(self, filename):
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
-    # temporarily upload original pdf while testing sanitise flow.
     _upload_pdf_to_test_or_live_pdf_bucket(
         old_pdf,  # TODO: change to new_pdf
         filename,
         is_test_letter=is_test_key)
 
+    billable_units = _get_page_count(notification, old_pdf)
+
     update_letter_pdf_status(
-        reference,
-        NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED
+        reference=reference,
+        status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
+        billable_units=billable_units
     )
 
     scan_pdf_object.delete()
+
+
+def _get_page_count(notification, old_pdf):
+    try:
+        pages = pdf_page_count(io.BytesIO(old_pdf))
+        pages_per_sheet = 2
+        billable_units = math.ceil(pages / pages_per_sheet)
+        return billable_units
+    except PdfReadError as e:
+        current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
+        update_letter_pdf_status(
+            reference=notification.reference,
+            status=NOTIFICATION_PERMANENT_FAILURE
+        )
+        raise e
 
 
 def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
@@ -290,11 +310,12 @@ def process_virus_scan_error(filename):
     raise error
 
 
-def update_letter_pdf_status(reference, status):
+def update_letter_pdf_status(reference, status, billable_units=0):
     return dao_update_notifications_by_reference(
         references=[reference],
         update_dict={
             'status': status,
+            'billable_units': billable_units,
             'updated_at': datetime.utcnow()
         })[0]
 
