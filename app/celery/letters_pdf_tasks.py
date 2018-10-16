@@ -27,8 +27,9 @@ from app.letters.utils import (
     get_reference_from_filename,
     get_folder_name,
     upload_letter_pdf,
-    move_failed_pdf,
     ScanErrorType,
+    move_failed_pdf,
+    move_scan_to_invalid_pdf_bucket,
     move_error_pdf_to_scan_bucket,
     get_file_names_from_error_bucket
 )
@@ -40,8 +41,6 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED
 )
-
-from app.letters.utils import move_scan_to_invalid_pdf_bucket
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -194,8 +193,11 @@ def process_virus_scan_passed(self, filename):
 
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
-        move_scan_to_invalid_pdf_bucket(scan_pdf_object)
+
+        notification.status = NOTIFICATION_VALIDATION_FAILED
+        dao_update_notification(notification)
+
+        move_scan_to_invalid_pdf_bucket(filename)
         scan_pdf_object.delete()
         return
     else:
@@ -257,7 +259,9 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
             current_app.logger.exception(
                 "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
             )
-            update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+
+            notification.status = NOTIFICATION_TECHNICAL_FAILURE
+            dao_update_notification(notification)
             raise
 
 
