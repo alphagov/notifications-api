@@ -139,6 +139,7 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['prefix_sms'] is True
     assert json_resp['data']['postage'] == 'second'
+    assert json_resp['data']['letter_logo_filename'] == 'hm-government'
 
 
 @pytest.mark.parametrize('detailed', [True, False])
