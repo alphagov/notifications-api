@@ -247,6 +247,7 @@ class DVLAOrganisation(db.Model):
     __tablename__ = 'dvla_organisation'
     id = db.Column(db.String, primary_key=True)
     name = db.Column(db.String(255), nullable=True)
+    filename = db.Column(db.String(255), nullable=True)
 
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
