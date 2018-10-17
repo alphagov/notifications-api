@@ -189,22 +189,20 @@ def sample_service(
     return service
 
 
-@pytest.fixture(scope='function')
-def sample_service_full_permissions(notify_db, notify_db_session):
-    return sample_service(
-        notify_db,
-        notify_db_session,
-        # ensure name doesn't clash with regular sample service
+@pytest.fixture(scope='function', name='sample_service_full_permissions')
+def _sample_service_full_permissions(notify_db_session):
+    service = create_service(
         service_name="sample service full permissions",
-        permissions=set(SERVICE_PERMISSION_TYPES)
+        service_permissions=set(SERVICE_PERMISSION_TYPES)
     )
-
-
-@pytest.fixture(scope='function')
-def sample_service_custom_letter_contact_block(notify_db, notify_db_session):
-    service = sample_service(notify_db, notify_db_session)
-    create_letter_contact(service, contact_block='((contact block))')
+    create_inbound_number('12345', service_id=service.id)
     return service
+
+
+@pytest.fixture(scope='function', name='sample_service_custom_letter_contact_block')
+def _sample_service_custom_letter_contact_block(sample_service):
+    create_letter_contact(sample_service, contact_block='((contact block))')
+    return sample_service
 
 
 @pytest.fixture(scope='function')
@@ -226,7 +224,9 @@ def sample_template(
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session, permissions=permissions)
+        service = Service.query.filter_by(name='Sample service').first()
+        if not service:
+            service = create_service(service_permissions=permissions)
     if created_by is None:
         created_by = create_user()
 

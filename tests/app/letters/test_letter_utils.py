@@ -7,33 +7,39 @@ from freezegun import freeze_time
 from moto import mock_s3
 
 from app.letters.utils import (
-    get_bucket_prefix_for_notification,
+    get_bucket_name_and_prefix_for_notification,
     get_letter_pdf_filename,
     get_letter_pdf,
     upload_letter_pdf,
     ScanErrorType, move_failed_pdf, get_folder_name
 )
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME
+from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME, NOTIFICATION_VALIDATION_FAILED
 from tests.app.db import create_notification
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"
 
 
-@pytest.fixture()
-def sample_precompiled_letter_notification_using_test_key(sample_letter_notification):
+@pytest.fixture(name='sample_precompiled_letter_notification')
+def _sample_precompiled_letter_notification(sample_letter_notification):
     sample_letter_notification.template.hidden = True
     sample_letter_notification.template.name = PRECOMPILED_TEMPLATE_NAME
-    sample_letter_notification.key_type = KEY_TYPE_TEST
     sample_letter_notification.reference = 'foo'
     with freeze_time(FROZEN_DATE_TIME):
         sample_letter_notification.created_at = datetime.utcnow()
     return sample_letter_notification
 
 
-def test_get_bucket_prefix_for_notification_valid_notification(sample_notification):
+@pytest.fixture(name='sample_precompiled_letter_notification_using_test_key')
+def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_letter_notification):
+    sample_precompiled_letter_notification.key_type = KEY_TYPE_TEST
+    return sample_precompiled_letter_notification
 
-    bucket_prefix = get_bucket_prefix_for_notification(sample_notification)
 
+def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_notification):
+
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
+
+    assert bucket == current_app.config['LETTERS_PDF_BUCKET_NAME']
     assert bucket_prefix == '{folder}/NOTIFY.{reference}'.format(
         folder=sample_notification.created_at.date(),
         reference=sample_notification.reference
@@ -41,19 +47,44 @@ def test_get_bucket_prefix_for_notification_valid_notification(sample_notificati
 
 
 @freeze_time(FROZEN_DATE_TIME)
-def test_get_bucket_prefix_for_notification_precompiled_letter_using_test_key(
+def test_get_bucket_name_and_prefix_for_notification_precompiled_letter_using_test_key(
     sample_precompiled_letter_notification_using_test_key
 ):
-    bucket_prefix = get_bucket_prefix_for_notification(
-        sample_precompiled_letter_notification_using_test_key, is_test_letter=True)
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(
+        sample_precompiled_letter_notification_using_test_key)
 
+    assert bucket == current_app.config['TEST_LETTERS_BUCKET_NAME']
     assert bucket_prefix == 'NOTIFY.{}'.format(
         sample_precompiled_letter_notification_using_test_key.reference).upper()
 
 
-def test_get_bucket_prefix_for_notification_invalid_notification():
+@freeze_time(FROZEN_DATE_TIME)
+def test_get_bucket_name_and_prefix_for_failed_validation(sample_precompiled_letter_notification):
+    sample_precompiled_letter_notification.status = NOTIFICATION_VALIDATION_FAILED
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_precompiled_letter_notification)
+
+    assert bucket == current_app.config['INVALID_PDF_BUCKET_NAME']
+    assert bucket_prefix == 'NOTIFY.{}'.format(
+        sample_precompiled_letter_notification.reference).upper()
+
+
+@freeze_time(FROZEN_DATE_TIME)
+def test_get_bucket_name_and_prefix_for_test_noti_with_failed_validation(
+    sample_precompiled_letter_notification_using_test_key
+):
+    sample_precompiled_letter_notification_using_test_key.status = NOTIFICATION_VALIDATION_FAILED
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(
+        sample_precompiled_letter_notification_using_test_key
+    )
+
+    assert bucket == current_app.config['INVALID_PDF_BUCKET_NAME']
+    assert bucket_prefix == 'NOTIFY.{}'.format(
+        sample_precompiled_letter_notification_using_test_key.reference).upper()
+
+
+def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
     with pytest.raises(AttributeError):
-        get_bucket_prefix_for_notification(None)
+        get_bucket_name_and_prefix_for_notification(None)
 
 
 @pytest.mark.parametrize('crown_flag,expected_crown_text', [

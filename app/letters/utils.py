@@ -6,7 +6,7 @@ from flask import current_app
 
 from notifications_utils.s3 import s3upload
 
-from app.models import KEY_TYPE_TEST, SECOND_CLASS, RESOLVE_POSTAGE_FOR_FILE_NAME
+from app.models import KEY_TYPE_TEST, SECOND_CLASS, RESOLVE_POSTAGE_FOR_FILE_NAME, NOTIFICATION_VALIDATION_FAILED
 from app.utils import convert_utc_to_bst
 
 
@@ -48,14 +48,23 @@ def get_letter_pdf_filename(reference, crown, is_scan_letter=False, postage=SECO
     return upload_file_name
 
 
-def get_bucket_prefix_for_notification(notification, is_test_letter=False):
+def get_bucket_name_and_prefix_for_notification(notification):
+    is_test_letter = notification.key_type == KEY_TYPE_TEST and notification.template.is_precompiled_letter
+    folder = ''
+    if notification.status == NOTIFICATION_VALIDATION_FAILED:
+        bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
+    elif is_test_letter:
+        bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
+    else:
+        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+        folder = '{}/'.format(notification.created_at.date())
+
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
-        folder='' if is_test_letter else
-               '{}/'.format(notification.created_at.date()),
+        folder=folder,
         reference=notification.reference
     ).upper()
 
-    return upload_file_name
+    return bucket_name, upload_file_name
 
 
 def get_reference_from_filename(filename):
@@ -122,18 +131,12 @@ def get_file_names_from_error_bucket():
 
 
 def get_letter_pdf(notification):
-    is_test_letter = notification.key_type == KEY_TYPE_TEST and notification.template.is_precompiled_letter
-    if is_test_letter:
-        bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
-    else:
-        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
 
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
 
-    item = next(x for x in bucket.objects.filter(
-        Prefix=get_bucket_prefix_for_notification(notification, is_test_letter)
-    ))
+    item = next(x for x in bucket.objects.filter(Prefix=prefix))
 
     obj = s3.Object(
         bucket_name=bucket_name,
