@@ -32,8 +32,11 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_SENDING,
-    NOTIFICATION_TECHNICAL_FAILURE)
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
+)
 
 from tests.conftest import set_config_values
 
@@ -351,30 +354,68 @@ def test_process_letter_task_check_virus_scan_passed(
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
 
-    sample_letter_notification.status = 'pending-virus-check'
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     sample_letter_notification.key_type = key_type
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf')
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value="success")
 
     process_virus_scan_passed(filename)
 
     assert sample_letter_notification.status == noti_status
-    mock_s3upload.assert_called_once_with(
-        filedata=b'pdf_content',
-        region='eu-west-1',
-        bucket_name=target_bucket_name,
-        file_location=destination_folder + filename
-    )
     mock_sanitise.assert_called_once_with(
         ANY,
         sample_letter_notification,
         b'pdf_content'
     )
+    mock_s3upload.assert_called_once_with(
+        bucket_name=target_bucket_name,
+        filedata="success",
+        file_location=destination_folder + filename,
+        region='eu-west-1',
+    )
+
+
+@freeze_time('2018-01-01 18:00')
+@mock_s3
+@pytest.mark.parametrize('key_type,is_test_letter', [
+    (KEY_TYPE_NORMAL, False), (KEY_TYPE_TEST, True)
+])
+def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
+    sample_letter_notification, mocker, key_type, is_test_letter
+):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=source_bucket_name)
+    conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.key_type = key_type
+    mock_move_s3 = mocker.patch('app.letters.utils._move_s3_object')
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value=None)
+
+    process_virus_scan_passed(filename)
+
+    assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
+    mock_sanitise.assert_called_once_with(
+        ANY,
+        sample_letter_notification,
+        b'pdf_content'
+    )
+    mock_move_s3.assert_called_once_with(
+        source_bucket_name, filename,
+        target_bucket_name, filename
+    )
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
-    sample_letter_notification.status = 'pending-virus-check'
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
 
     with pytest.raises(VirusScanError) as e:
@@ -387,7 +428,7 @@ def test_process_letter_task_check_virus_scan_failed(sample_letter_notification,
 
 def test_process_letter_task_check_virus_scan_error(sample_letter_notification, mocker):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
-    sample_letter_notification.status = 'pending-virus-check'
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     mock_move_failed_pdf = mocker.patch('app.celery.letters_pdf_tasks.move_failed_pdf')
 
     with pytest.raises(VirusScanError) as e:
@@ -419,6 +460,7 @@ def test_replay_letters_in_error_for_one_file(notify_api, mocker):
 
 
 def test_sanitise_precompiled_pdf_returns_data_from_template_preview(rmock, sample_letter_notification):
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=200)
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
@@ -429,6 +471,7 @@ def test_sanitise_precompiled_pdf_returns_data_from_template_preview(rmock, samp
 
 
 def test_sanitise_precompiled_pdf_returns_none_on_validation_error(rmock, sample_letter_notification):
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=400)
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
@@ -438,6 +481,7 @@ def test_sanitise_precompiled_pdf_returns_none_on_validation_error(rmock, sample
 
 
 def test_sanitise_precompiled_pdf_retries_on_http_error(rmock, sample_letter_notification):
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=500)
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
@@ -449,6 +493,7 @@ def test_sanitise_precompiled_pdf_sets_notification_to_technical_failure_after_t
     rmock,
     sample_letter_notification
 ):
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=500)
     mock_celery = Mock(**{'retry.side_effect': MaxRetriesExceededError})
 

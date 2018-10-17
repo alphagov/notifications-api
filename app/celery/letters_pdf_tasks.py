@@ -27,8 +27,9 @@ from app.letters.utils import (
     get_reference_from_filename,
     get_folder_name,
     upload_letter_pdf,
-    move_failed_pdf,
     ScanErrorType,
+    move_failed_pdf,
+    move_scan_to_invalid_pdf_bucket,
     move_error_pdf_to_scan_bucket,
     get_file_names_from_error_bucket
 )
@@ -38,7 +39,7 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    # NOTIFICATION_VALIDATION_FAILED
+    NOTIFICATION_VALIDATION_FAILED
 )
 
 
@@ -185,21 +186,28 @@ def process_virus_scan_passed(self, filename):
 
     new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
 
+    # TODO: Remove this once CYSP update their template to not cross over the margins
+    if notification.service_id == 'fe44178f-3b45-4625-9f85-2264a36dd9ec':  # CYSP
+        # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
+        new_pdf = old_pdf
+
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        # update_notification_status_by_id(notification.id, NOTIFICATION_VALIDATION_FAILED)
-        # move_scan_to_invalid_pdf_bucket()  # TODO: implement this (and create bucket etc)
-        # scan_pdf_object.delete()
-        # return
+
+        notification.status = NOTIFICATION_VALIDATION_FAILED
+        dao_update_notification(notification)
+
+        move_scan_to_invalid_pdf_bucket(filename)
+        scan_pdf_object.delete()
+        return
     else:
         current_app.logger.info(
             "Validation was successful for precompiled pdf {} ({})".format(notification.id, filename))
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
-    # temporarily upload original pdf while testing sanitise flow.
     _upload_pdf_to_test_or_live_pdf_bucket(
-        old_pdf,  # TODO: change to new_pdf
+        new_pdf,
         filename,
         is_test_letter=is_test_key)
 
@@ -237,7 +245,9 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
         return resp.content
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
-            # validation error
+            current_app.logger.exception(
+                "sanitise_precomiled_pdf validation error for notification: {}".format(notification.id)
+            )
             return None
 
         try:
@@ -249,7 +259,9 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
             current_app.logger.exception(
                 "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
             )
-            update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+
+            notification.status = NOTIFICATION_TECHNICAL_FAILURE
+            dao_update_notification(notification)
             raise
 
 
