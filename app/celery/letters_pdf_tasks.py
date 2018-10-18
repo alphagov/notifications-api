@@ -185,7 +185,7 @@ def process_virus_scan_passed(self, filename):
     scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
     old_pdf = scan_pdf_object.get()['Body'].read()
 
-    new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
+    new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
 
     # TODO: Remove this once CYSP update their template to not cross over the margins
     if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
@@ -233,7 +233,7 @@ def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
     )
 
 
-def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
+def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
     try:
         resp = requests_post(
             '{}/precompiled/sanitise'.format(
@@ -246,19 +246,20 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
         return resp.content
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
-            current_app.logger.exception(
-                "sanitise_precomiled_pdf validation error for notification: {}".format(notification.id)
-            )
-            return None
+            if notification.service_id != UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):
+                current_app.logger.exception(
+                    "sanitise_precompiled_pdf validation error for notification: {}".format(notification.id)
+                )
+                return None
 
         try:
             current_app.logger.exception(
-                "sanitise_precomiled_pdf failed for notification: {}".format(notification.id)
+                "sanitise_precompiled_pdf failed for notification: {}".format(notification.id)
             )
             self.retry(queue=QueueNames.RETRY)
         except MaxRetriesExceededError:
             current_app.logger.exception(
-                "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
+                "RETRY FAILED: sanitise_precompiled_pdf failed for notification {}".format(notification.id),
             )
 
             notification.status = NOTIFICATION_TECHNICAL_FAILURE
