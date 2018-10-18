@@ -150,9 +150,9 @@ class Config(object):
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
+        'polling_interval': 1,  # 1 second
         'visibility_timeout': 310,
-        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
-        'wait_time_seconds': 20  # enable long polling, with a wait time of 20 seconds
+        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
     }
     CELERY_ENABLE_UTC = True
     CELERY_TIMEZONE = 'Europe/London'
@@ -270,9 +270,7 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         }
     }
-
-    # this is overriden by the -Q command, but locally, we should read from all queues
-    CELERY_QUEUES = [Queue(queue, Exchange('default'), routing_key=queue) for queue in QueueNames.all_queues()]
+    CELERY_QUEUES = []
 
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
@@ -334,11 +332,11 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
 
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'development-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'development-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'development-letters-invalid-pdf'
 
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     SECRET_KEY = 'dev-notify-secret-key'
@@ -360,6 +358,11 @@ class Development(Config):
     STATSD_PORT = 1000
     STATSD_PREFIX = "stats-prefix"
 
+    for queue in QueueNames.all_queues():
+        Config.CELERY_QUEUES.append(
+            Queue(queue, Exchange('default'), routing_key=queue)
+        )
+
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
 
@@ -371,16 +374,21 @@ class Test(Development):
     TESTING = True
 
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'test-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'test-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'test-letters-invalid-pdf'
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
     BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
+
+    for queue in QueueNames.all_queues():
+        Config.CELERY_QUEUES.append(
+            Queue(queue, Exchange('default'), routing_key=queue)
+        )
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"
@@ -394,11 +402,11 @@ class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'preview-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'preview-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'preview-letters-invalid-pdf'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
@@ -408,11 +416,11 @@ class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'staging-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'staging-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'staging-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
@@ -424,11 +432,11 @@ class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
-    LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'production-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'production-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
     FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
@@ -452,6 +460,7 @@ class Sandbox(CloudFoundryConfig):
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
+    INVALID_PDF_BUCKET_NAME = 'cf-sandbox-letters-invalid-pdf'
     FROM_NUMBER = 'sandbox'
     REDIS_ENABLED = False
 
