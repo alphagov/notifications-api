@@ -246,11 +246,10 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
         return resp.content
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
-            if notification.service_id != UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):
-                current_app.logger.exception(
-                    "sanitise_precompiled_pdf validation error for notification: {}".format(notification.id)
-                )
-                return None
+            current_app.logger.info(
+                "sanitise_precompiled_pdf validation error for notification: {}".format(notification.id)
+            )
+            return None
 
         try:
             current_app.logger.exception(
