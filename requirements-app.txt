@@ -23,7 +23,7 @@ SQLAlchemy==1.2.12
 notifications-python-client==5.2.0
 
 # PaaS
-awscli==1.15.82
+awscli==1.16.37
 awscli-cwlogs>=1.4,<1.5
 botocore<1.11.0
 
