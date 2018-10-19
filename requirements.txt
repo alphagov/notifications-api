@@ -29,7 +29,7 @@ awscli==1.15.82
 awscli-cwlogs>=1.4,<1.5
 botocore<1.11.0
 
-git+https://github.com/alphagov/notifications-utils.git@30.5.4#egg=notifications-utils==30.5.4
+git+https://github.com/alphagov/notifications-utils.git@30.5.5#egg=notifications-utils==30.5.5
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 
@@ -41,7 +41,7 @@ bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
 boto3==1.6.16
-certifi==2018.8.24
+certifi==2018.10.15
 chardet==3.0.4
 Click==7.0
 colorama==0.3.9
