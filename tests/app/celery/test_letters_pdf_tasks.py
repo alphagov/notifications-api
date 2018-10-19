@@ -50,6 +50,7 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
         notify_api, mocker, client, sample_letter_template, personalisation):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
     dvla_org_id = '002'
+    filename = 'opg'
 
     with set_config_values(notify_api, {
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
@@ -60,12 +61,17 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
                 'http://localhost/notifications-template-preview/print.pdf', content=b'\x00\x01', status_code=200)
 
             get_letters_pdf(
-                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, values=personalisation)
+                sample_letter_template,
+                contact_block=contact_block,
+                org_id=dvla_org_id,
+                filename=filename,
+                values=personalisation)
 
     assert mock_post.last_request.json() == {
         'values': personalisation,
         'letter_contact_block': contact_block,
         'dvla_org_id': dvla_org_id,
+        'filename': filename,
         'template': {
             'subject': sample_letter_template.subject,
             'content': sample_letter_template.content
@@ -82,6 +88,7 @@ def test_get_letters_pdf_calculates_billing_units(
         notify_api, mocker, client, sample_letter_template, page_count, expected_billable_units):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
     dvla_org_id = '002'
+    filename = 'opg'
 
     with set_config_values(notify_api, {
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
@@ -96,7 +103,7 @@ def test_get_letters_pdf_calculates_billing_units(
             )
 
             _, billable_units = get_letters_pdf(
-                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, values=None)
+                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, filename=filename, values=None)
 
     assert billable_units == expected_billable_units
 

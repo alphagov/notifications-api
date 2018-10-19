@@ -247,6 +247,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             'template': template_for_letter_print,
             'values': notification.personalisation,
             'date': notification.created_at.isoformat(),
+            'filename': service.dvla_organisation.filename,
             'dvla_org_id': service.dvla_organisation_id,
         }
 
