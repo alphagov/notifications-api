@@ -386,7 +386,7 @@ def handle_exception(task, notification, notification_id, exc):
         try:
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
-            current_app.logger.exception('Retry' + retry_msg)
+            current_app.logger.error('Max retry failed' + retry_msg)
 
 
 def get_template_class(template_type):
@@ -546,7 +546,11 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
             try:
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
-                current_app.logger.exception('Retry: send_inbound_sms_to_service has retried the max number of times')
+                current_app.logger.error(
+                    'Retry: send_inbound_sms_to_service has retried the max number of times for inbound_sms {}'.format(
+                        inbound_sms_id
+                    )
+                )
 
 
 @notify_celery.task(name='process-incomplete-jobs')
