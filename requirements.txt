@@ -29,6 +29,10 @@ awscli==1.15.82  # pyup: ignore
 awscli-cwlogs>=1.4,<1.5
 botocore<1.11.0  # pyup: ignore
 
+
+# Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
+itsdangerous==0.24  # pyup: <1.0.0
+
 git+https://github.com/alphagov/notifications-utils.git@30.5.5#egg=notifications-utils==30.5.5
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
@@ -51,7 +55,6 @@ future==0.16.0
 greenlet==0.4.15
 html5lib==1.0.1
 idna==2.7
-ItsDangerous==1.0.0
 Jinja2==2.10
 jmespath==0.9.3
 kombu==3.0.37
