@@ -74,7 +74,7 @@ def create_letters_pdf(self, notification_id):
             )
             self.retry(queue=QueueNames.RETRY)
         except MaxRetriesExceededError:
-            current_app.logger.exception(
+            current_app.logger.error(
                 "RETRY FAILED: task create_letters_pdf failed for notification {}".format(notification_id),
             )
             update_notification_status_by_id(notification_id, 'technical-failure')
@@ -259,7 +259,7 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
             )
             self.retry(queue=QueueNames.RETRY)
         except MaxRetriesExceededError:
-            current_app.logger.exception(
+            current_app.logger.error(
                 "RETRY FAILED: sanitise_precompiled_pdf failed for notification {}".format(notification.id),
             )
 
