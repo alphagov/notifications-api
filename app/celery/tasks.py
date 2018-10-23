@@ -274,10 +274,10 @@ def save_email(self,
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def save_letter(
-    self,
-    service_id,
-    notification_id,
-    encrypted_notification,
+        self,
+        service_id,
+        notification_id,
+        encrypted_notification,
 ):
     notification = encryption.decrypt(encrypted_notification)
 
@@ -536,7 +536,8 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "send_inbound_sms_to_service request failed for service_id: {} and url: {}. exc: {}".format(
+            "send_inbound_sms_to_service failed for service_id: {} for inbound_sms_id: {} and url: {}. exc: {}".format(
+                inbound_sms_id,
                 service_id,
                 inbound_api.url,
                 e
@@ -570,7 +571,6 @@ def process_incomplete_jobs(job_ids):
 
 
 def process_incomplete_job(job_id):
-
     job = dao_get_job_by_id(job_id)
 
     last_notification_added = dao_get_last_notification_added_for_job_id(job_id)
