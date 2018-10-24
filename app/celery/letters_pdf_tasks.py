@@ -41,7 +41,6 @@ from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
@@ -189,6 +188,8 @@ def process_virus_scan_passed(self, filename):
     scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
     old_pdf = scan_pdf_object.get()['Body'].read()
 
+    billable_units = _get_page_count(notification, old_pdf)
+
     new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
 
     # TODO: Remove this once CYSP update their template to not cross over the margins
@@ -213,11 +214,9 @@ def process_virus_scan_passed(self, filename):
 
     # temporarily upload original pdf while testing sanitise flow.
     _upload_pdf_to_test_or_live_pdf_bucket(
-        old_pdf,  # TODO: change to new_pdf
+        new_pdf,
         filename,
         is_test_letter=is_test_key)
-
-    billable_units = _get_page_count(notification, old_pdf)
 
     update_letter_pdf_status(
         reference=reference,
@@ -238,7 +237,7 @@ def _get_page_count(notification, old_pdf):
         current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
         update_letter_pdf_status(
             reference=notification.reference,
-            status=NOTIFICATION_PERMANENT_FAILURE
+            status=NOTIFICATION_VALIDATION_FAILED
         )
         raise e
 

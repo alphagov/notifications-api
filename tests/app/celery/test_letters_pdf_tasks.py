@@ -34,7 +34,6 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
@@ -362,9 +361,9 @@ def test_process_letter_task_check_virus_scan_passed(
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
 
-    mocker.patch('app.celery.letters_pdf_tasks.pdf_page_count', return_value=1)
+    mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=1)
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value="pdf_content")
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value=b'pdf_content')
 
     process_virus_scan_passed(filename)
 
@@ -380,6 +379,10 @@ def test_process_letter_task_check_virus_scan_passed(
         filedata=b'pdf_content',
         file_location=destination_folder + filename,
         region='eu-west-1',
+    )
+    mock_get_page_count.assert_called_once_with(
+        letter_notification,
+        b'pdf_content'
     )
 
 
@@ -406,6 +409,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
     sample_letter_notification.key_type = key_type
     mock_move_s3 = mocker.patch('app.letters.utils._move_s3_object')
     mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value=None)
+    mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=2)
 
     process_virus_scan_passed(filename)
 
@@ -420,6 +424,10 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
         target_bucket_name, filename
     )
 
+    mock_get_page_count.assert_called_once_with(
+        sample_letter_notification, b'pdf_content'
+    )
+
 
 def test_get_page_count_set_notification_to_permanent_failure_when_not_pdf(
         sample_letter_notification
@@ -427,7 +435,7 @@ def test_get_page_count_set_notification_to_permanent_failure_when_not_pdf(
     with pytest.raises(expected_exception=PdfReadError):
         _get_page_count(sample_letter_notification, b'pdf_content')
     updated_notification = Notification.query.filter_by(id=sample_letter_notification.id).first()
-    assert updated_notification.status == NOTIFICATION_PERMANENT_FAILURE
+    assert updated_notification.status == NOTIFICATION_VALIDATION_FAILED
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
