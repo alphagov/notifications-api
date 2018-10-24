@@ -23,8 +23,8 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_failed,
     process_virus_scan_error,
     replay_letters_in_error,
-    _sanitise_precomiled_pdf,
-    _get_page_count
+    _get_page_count,
+    _sanitise_precompiled_pdf
 )
 from app.letters.utils import get_letter_pdf_filename, ScanErrorType
 from app.models import (
@@ -54,6 +54,7 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
         notify_api, mocker, client, sample_letter_template, personalisation):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
     dvla_org_id = '002'
+    filename = 'opg'
 
     with set_config_values(notify_api, {
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
@@ -64,12 +65,17 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
                 'http://localhost/notifications-template-preview/print.pdf', content=b'\x00\x01', status_code=200)
 
             get_letters_pdf(
-                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, values=personalisation)
+                sample_letter_template,
+                contact_block=contact_block,
+                org_id=dvla_org_id,
+                filename=filename,
+                values=personalisation)
 
     assert mock_post.last_request.json() == {
         'values': personalisation,
         'letter_contact_block': contact_block,
         'dvla_org_id': dvla_org_id,
+        'filename': filename,
         'template': {
             'subject': sample_letter_template.subject,
             'content': sample_letter_template.content
@@ -86,6 +92,7 @@ def test_get_letters_pdf_calculates_billing_units(
         notify_api, mocker, client, sample_letter_template, page_count, expected_billable_units):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
     dvla_org_id = '002'
+    filename = 'opg'
 
     with set_config_values(notify_api, {
         'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
@@ -100,7 +107,7 @@ def test_get_letters_pdf_calculates_billing_units(
             )
 
             _, billable_units = get_letters_pdf(
-                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, values=None)
+                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, filename=filename, values=None)
 
     assert billable_units == expected_billable_units
 
@@ -363,7 +370,7 @@ def test_process_letter_task_check_virus_scan_passed(
 
     mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=1)
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value=b'pdf_content')
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=b'pdf_content')
 
     process_virus_scan_passed(filename)
 
@@ -408,7 +415,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     sample_letter_notification.key_type = key_type
     mock_move_s3 = mocker.patch('app.letters.utils._move_s3_object')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precomiled_pdf', return_value=None)
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=None)
     mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=2)
 
     process_virus_scan_passed(filename)
@@ -489,7 +496,7 @@ def test_sanitise_precompiled_pdf_returns_data_from_template_preview(rmock, samp
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=200)
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
-    res = _sanitise_precomiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+    res = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
 
     assert res == b'new_pdf'
     assert rmock.last_request.text == 'old_pdf'
@@ -500,7 +507,7 @@ def test_sanitise_precompiled_pdf_returns_none_on_validation_error(rmock, sample
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=400)
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
-    res = _sanitise_precomiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+    res = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
 
     assert res is None
 
@@ -511,7 +518,7 @@ def test_sanitise_precompiled_pdf_retries_on_http_error(rmock, sample_letter_not
     mock_celery = Mock(**{'retry.side_effect': Retry})
 
     with pytest.raises(Retry):
-        _sanitise_precomiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+        _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
 
 
 def test_sanitise_precompiled_pdf_sets_notification_to_technical_failure_after_too_many_errors(
@@ -523,6 +530,6 @@ def test_sanitise_precompiled_pdf_sets_notification_to_technical_failure_after_t
     mock_celery = Mock(**{'retry.side_effect': MaxRetriesExceededError})
 
     with pytest.raises(MaxRetriesExceededError):
-        _sanitise_precomiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+        _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE

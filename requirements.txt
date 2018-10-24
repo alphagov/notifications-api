@@ -8,7 +8,7 @@ celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.9.0
-Flask-Migrate==2.2.1
+Flask-Migrate==2.3.0
 Flask-SQLAlchemy==2.3.2
 Flask==1.0.2
 click-datetime==0.2
@@ -17,7 +17,7 @@ gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==2.6.0
 marshmallow-sqlalchemy==0.14.1
-marshmallow==2.15.6
+marshmallow==2.16.0
 psycopg2-binary==2.7.5
 PyJWT==1.6.4
 SQLAlchemy==1.2.12
@@ -25,23 +25,27 @@ SQLAlchemy==1.2.12
 notifications-python-client==5.2.0
 
 # PaaS
-awscli==1.15.82
+awscli==1.15.82  # pyup: ignore
 awscli-cwlogs>=1.4,<1.5
-botocore<1.11.0
+botocore<1.11.0  # pyup: ignore
 
-git+https://github.com/alphagov/notifications-utils.git@30.5.4#egg=notifications-utils==30.5.4
+
+# Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
+itsdangerous==0.24  # pyup: <1.0.0
+
+git+https://github.com/alphagov/notifications-utils.git@30.5.5#egg=notifications-utils==30.5.5
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 
 ## The following requirements were added by pip freeze:
-alembic==1.0.0
+alembic==1.0.1
 amqp==1.4.9
 anyjson==0.3.3
 bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
 boto3==1.6.16
-certifi==2018.8.24
+certifi==2018.10.15
 chardet==3.0.4
 Click==7.0
 colorama==0.3.9
@@ -51,7 +55,6 @@ future==0.16.0
 greenlet==0.4.15
 html5lib==1.0.1
 idna==2.7
-itsdangerous==0.24
 Jinja2==2.10
 jmespath==0.9.3
 kombu==3.0.37
@@ -70,12 +73,12 @@ python-json-logger==0.1.8
 pytz==2018.5
 PyYAML==3.13
 redis==2.10.6
-requests==2.19.1
+requests==2.20.0
 rsa==3.4.2
 s3transfer==0.1.13
 six==1.11.0
 smartypants==2.0.1
 statsd==3.2.2
-urllib3==1.23
+urllib3==1.24
 webencodings==0.5.1
 Werkzeug==0.14.1

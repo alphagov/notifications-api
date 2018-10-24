@@ -57,6 +57,7 @@ def create_letters_pdf(self, notification_id):
             notification.template,
             contact_block=notification.reply_to_text,
             org_id=notification.service.dvla_organisation.id,
+            filename=notification.service.dvla_organisation.filename,
             values=notification.personalisation
         )
 
@@ -76,13 +77,13 @@ def create_letters_pdf(self, notification_id):
             )
             self.retry(queue=QueueNames.RETRY)
         except MaxRetriesExceededError:
-            current_app.logger.exception(
+            current_app.logger.error(
                 "RETRY FAILED: task create_letters_pdf failed for notification {}".format(notification_id),
             )
             update_notification_status_by_id(notification_id, 'technical-failure')
 
 
-def get_letters_pdf(template, contact_block, org_id, values):
+def get_letters_pdf(template, contact_block, org_id, filename, values):
     template_for_letter_print = {
         "subject": template.subject,
         "content": template.content
@@ -92,6 +93,7 @@ def get_letters_pdf(template, contact_block, org_id, values):
         'letter_contact_block': contact_block,
         'template': template_for_letter_print,
         'values': values,
+        'filename': filename,
         'dvla_org_id': org_id,
     }
     resp = requests_post(
@@ -189,8 +191,7 @@ def process_virus_scan_passed(self, filename):
     old_pdf = scan_pdf_object.get()['Body'].read()
 
     billable_units = _get_page_count(notification, old_pdf)
-
-    new_pdf = _sanitise_precomiled_pdf(self, notification, old_pdf)
+    new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
 
     # TODO: Remove this once CYSP update their template to not cross over the margins
     if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
@@ -212,7 +213,6 @@ def process_virus_scan_passed(self, filename):
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
-    # temporarily upload original pdf while testing sanitise flow.
     _upload_pdf_to_test_or_live_pdf_bucket(
         new_pdf,
         filename,
@@ -237,7 +237,8 @@ def _get_page_count(notification, old_pdf):
         current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
         update_letter_pdf_status(
             reference=notification.reference,
-            status=NOTIFICATION_VALIDATION_FAILED
+            status=NOTIFICATION_VALIDATION_FAILED,
+            billable_units=0
         )
         raise e
 
@@ -255,7 +256,7 @@ def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
     )
 
 
-def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
+def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
     try:
         resp = requests_post(
             '{}/precompiled/sanitise'.format(
@@ -268,19 +269,19 @@ def _sanitise_precomiled_pdf(self, notification, precompiled_pdf):
         return resp.content
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
-            current_app.logger.exception(
-                "sanitise_precomiled_pdf validation error for notification: {}".format(notification.id)
+            current_app.logger.info(
+                "sanitise_precompiled_pdf validation error for notification: {}".format(notification.id)
             )
             return None
 
         try:
             current_app.logger.exception(
-                "sanitise_precomiled_pdf failed for notification: {}".format(notification.id)
+                "sanitise_precompiled_pdf failed for notification: {}".format(notification.id)
             )
             self.retry(queue=QueueNames.RETRY)
         except MaxRetriesExceededError:
-            current_app.logger.exception(
-                "RETRY FAILED: sanitise_precomiled_pdf failed for notification {}".format(notification.id),
+            current_app.logger.error(
+                "RETRY FAILED: sanitise_precompiled_pdf failed for notification {}".format(notification.id),
             )
 
             notification.status = NOTIFICATION_TECHNICAL_FAILURE
@@ -325,7 +326,7 @@ def process_virus_scan_error(filename):
     raise error
 
 
-def update_letter_pdf_status(reference, status, billable_units=0):
+def update_letter_pdf_status(reference, status, billable_units):
     return dao_update_notifications_by_reference(
         references=[reference],
         update_dict={
