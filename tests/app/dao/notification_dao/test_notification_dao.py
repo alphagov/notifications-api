@@ -141,6 +141,14 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
+def test_should_update_status_by_id_and_set_sent_by(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='sending')
+
+    updated = update_notification_status_by_id(notification.id, 'delivered', sent_by='mmg')
+    assert updated.status == 'delivered'
+    assert updated.sent_by == 'mmg'
+
+
 def test_should_not_update_status_by_reference_if_from_country_with_no_delivery_receipts(sample_template):
     notification = create_notification(
         sample_template,
