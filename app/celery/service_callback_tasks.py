@@ -97,8 +97,9 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    "Retry: {} has retried the max num of times for notification: {}".format(
+                    "Retry: {} has retried the max num of times for callback url {} and notification_id: {}".format(
                         function_name,
+                        service_callback_url,
                         notification_id
                     )
                 )
