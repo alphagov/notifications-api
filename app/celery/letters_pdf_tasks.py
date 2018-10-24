@@ -293,7 +293,7 @@ def process_virus_scan_failed(filename):
     move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED, billable_units=0)
 
     if updated_count != 1:
         raise Exception(
@@ -312,7 +312,7 @@ def process_virus_scan_error(filename):
     move_failed_pdf(filename, ScanErrorType.ERROR)
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE, billable_units=0)
 
     if updated_count != 1:
         raise Exception(
