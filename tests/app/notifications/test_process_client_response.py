@@ -89,6 +89,13 @@ def test_process_sms_response_return_success_for_send_sms_code_reference(mocker)
     assert error is None
 
 
+def test_process_sms_response_does_not_send_status_update_for_pending(sample_notification, mocker):
+    send_mock = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+    process_sms_client_response(
+        status='2', provider_reference=str(sample_notification.id), client_name='firetext')
+    send_mock.assert_not_called()
+
+
 def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(notify_db, sample_notification):
     sample_notification.sent_by = None
     success, error = process_sms_client_response(
