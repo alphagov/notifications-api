@@ -49,7 +49,6 @@ def test_should_have_decorated_tasks_functions():
 def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
         notify_api, mocker, client, sample_letter_template, personalisation):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
-    dvla_org_id = '002'
     filename = 'opg'
 
     with set_config_values(notify_api, {
@@ -63,14 +62,12 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
             get_letters_pdf(
                 sample_letter_template,
                 contact_block=contact_block,
-                org_id=dvla_org_id,
                 filename=filename,
                 values=personalisation)
 
     assert mock_post.last_request.json() == {
         'values': personalisation,
         'letter_contact_block': contact_block,
-        'dvla_org_id': dvla_org_id,
         'filename': filename,
         'template': {
             'subject': sample_letter_template.subject,
@@ -87,7 +84,6 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
 def test_get_letters_pdf_calculates_billing_units(
         notify_api, mocker, client, sample_letter_template, page_count, expected_billable_units):
     contact_block = 'Mr Foo,\n1 Test Street,\nLondon\nN1'
-    dvla_org_id = '002'
     filename = 'opg'
 
     with set_config_values(notify_api, {
@@ -103,7 +99,7 @@ def test_get_letters_pdf_calculates_billing_units(
             )
 
             _, billable_units = get_letters_pdf(
-                sample_letter_template, contact_block=contact_block, org_id=dvla_org_id, filename=filename, values=None)
+                sample_letter_template, contact_block=contact_block, filename=filename, values=None)
 
     assert billable_units == expected_billable_units
 

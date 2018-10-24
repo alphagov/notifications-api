@@ -53,7 +53,6 @@ def create_letters_pdf(self, notification_id):
         pdf_data, billable_units = get_letters_pdf(
             notification.template,
             contact_block=notification.reply_to_text,
-            org_id=notification.service.dvla_organisation.id,
             filename=notification.service.dvla_organisation.filename,
             values=notification.personalisation
         )
@@ -80,7 +79,7 @@ def create_letters_pdf(self, notification_id):
             update_notification_status_by_id(notification_id, 'technical-failure')
 
 
-def get_letters_pdf(template, contact_block, org_id, filename, values):
+def get_letters_pdf(template, contact_block, filename, values):
     template_for_letter_print = {
         "subject": template.subject,
         "content": template.content
@@ -91,7 +90,6 @@ def get_letters_pdf(template, contact_block, org_id, filename, values):
         'template': template_for_letter_print,
         'values': values,
         'filename': filename,
-        'dvla_org_id': org_id,
     }
     resp = requests_post(
         '{}/print.pdf'.format(
