@@ -246,8 +246,8 @@ DVLA_ORG_LAND_REGISTRY = '500'
 class DVLAOrganisation(db.Model):
     __tablename__ = 'dvla_organisation'
     id = db.Column(db.String, primary_key=True)
-    name = db.Column(db.String(255), nullable=True)
-    filename = db.Column(db.String(255), nullable=True)
+    name = db.Column(db.String(255), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
 
 
 INTERNATIONAL_SMS_TYPE = 'international_sms'
