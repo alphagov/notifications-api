@@ -382,7 +382,6 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
 ):
     sample_letter_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf', return_value='test.pdf')
-    mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=1)
     mock_celery = mocker.patch("app.letters.rest.notify_celery.send_task")
     data = {
         "reference": "letter-reference",
@@ -468,7 +467,6 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     sample_service.postage = postage
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    mocker.patch('app.v2.notifications.post_notifications.pdf_page_count', return_value=5)
     mocker.patch("app.letters.rest.notify_celery.send_task")
     data = {
         "reference": "letter-reference",
@@ -486,7 +484,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     notification = Notification.query.one()
 
-    assert notification.billable_units == 3
+    assert notification.billable_units == 0
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
     assert notification.postage == postage
 
@@ -495,26 +493,3 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}
-
-
-def test_post_precompiled_letter_notification_returns_400_with_invalid_pdf(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    data = {
-        "reference": "letter-reference",
-        "content": "bGV0dGVyLWNvbnRlbnQ="
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    resp_json = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    assert resp_json['errors'][0]['message'] == 'Letter content is not a valid PDF'
-
-    assert s3mock.called is False
-
-    assert Notification.query.count() == 0

@@ -1,9 +1,12 @@
-from uuid import UUID
+import io
 import math
 from datetime import datetime
+from uuid import UUID
 
+from PyPDF2.utils import PdfReadError
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
+from notifications_utils.pdf import pdf_page_count
 from requests import (
     post as requests_post,
     RequestException
@@ -38,9 +41,9 @@ from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_VIRUS_SCAN_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_VALIDATION_FAILED
+    NOTIFICATION_VALIDATION_FAILED,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 
 
@@ -185,6 +188,7 @@ def process_virus_scan_passed(self, filename):
     scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
     old_pdf = scan_pdf_object.get()['Body'].read()
 
+    billable_units = _get_page_count(notification, old_pdf)
     new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
 
     # TODO: Remove this once CYSP update their template to not cross over the margins
@@ -213,11 +217,28 @@ def process_virus_scan_passed(self, filename):
         is_test_letter=is_test_key)
 
     update_letter_pdf_status(
-        reference,
-        NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED
+        reference=reference,
+        status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
+        billable_units=billable_units
     )
 
     scan_pdf_object.delete()
+
+
+def _get_page_count(notification, old_pdf):
+    try:
+        pages = pdf_page_count(io.BytesIO(old_pdf))
+        pages_per_sheet = 2
+        billable_units = math.ceil(pages / pages_per_sheet)
+        return billable_units
+    except PdfReadError as e:
+        current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
+        update_letter_pdf_status(
+            reference=notification.reference,
+            status=NOTIFICATION_VALIDATION_FAILED,
+            billable_units=0
+        )
+        raise e
 
 
 def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
@@ -271,7 +292,7 @@ def process_virus_scan_failed(filename):
     move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED, billable_units=0)
 
     if updated_count != 1:
         raise Exception(
@@ -290,7 +311,7 @@ def process_virus_scan_error(filename):
     move_failed_pdf(filename, ScanErrorType.ERROR)
     reference = get_reference_from_filename(filename)
     notification = dao_get_notification_by_reference(reference)
-    updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE)
+    updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE, billable_units=0)
 
     if updated_count != 1:
         raise Exception(
@@ -303,11 +324,12 @@ def process_virus_scan_error(filename):
     raise error
 
 
-def update_letter_pdf_status(reference, status):
+def update_letter_pdf_status(reference, status, billable_units):
     return dao_update_notifications_by_reference(
         references=[reference],
         update_dict={
             'status': status,
+            'billable_units': billable_units,
             'updated_at': datetime.utcnow()
         })[0]
 
