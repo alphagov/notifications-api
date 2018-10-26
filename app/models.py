@@ -706,6 +706,27 @@ class TemplateProcessTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+class TemplateFolder(db.Model):
+    __tablename__ = 'template_folder'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), nullable=False)
+    name = db.Column(db.String, nullable=False)
+    parent_id = db.Column(UUID(as_uuid=True), db.ForeignKey('template_folder.id'), nullable=True)
+
+    service = db.relationship('Service')
+    parent = db.relationship('TemplateFolder', remote_side=[id], backref='children')
+
+
+template_folder_map = db.Table(
+    'template_folder_map',
+    db.Model.metadata,
+    # template_id is a primary key as a template can only belong in one folder
+    db.Column('template_id', UUID(as_uuid=True), db.ForeignKey('templates.id'), primary_key=True, nullable=False),
+    db.Column('template_folder_id', UUID(as_uuid=True), db.ForeignKey('template_folder.id'), nullable=False),
+)
+
+
 PRECOMPILED_TEMPLATE_NAME = 'Pre-compiled PDF'
 
 
@@ -836,6 +857,13 @@ class Template(TemplateBase):
 
     service = db.relationship('Service', backref='templates')
     version = db.Column(db.Integer, default=0, nullable=False)
+
+    folder = db.relationship(
+        'TemplateFolder',
+        secondary=template_folder_map,
+        uselist=False,
+        backref=db.backref('templates', lazy='dynamic')
+    )
 
     def get_link(self):
         # TODO: use "/v2/" route once available
