@@ -1,8 +1,9 @@
+import pytest
 from flask import json
 
 
-def test_get_status_all_ok(client):
-    path = '/_status'
+@pytest.mark.parametrize('path', ['/', '/_status'])
+def test_get_status_all_ok(client, notify_db_session, path):
     response = client.get(path)
     assert response.status_code == 200
     resp_json = json.loads(response.get_data(as_text=True))
