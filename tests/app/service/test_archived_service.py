@@ -17,13 +17,13 @@ from tests.app.conftest import (
 )
 
 
-def test_archive_only_allows_post(client):
+def test_archive_only_allows_post(client, notify_db_session):
     auth_header = create_authorization_header()
     response = client.get('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 405
 
 
-def test_archive_service_errors_with_bad_service_id(client):
+def test_archive_service_errors_with_bad_service_id(client, notify_db_session):
     auth_header = create_authorization_header()
     response = client.post('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 404
