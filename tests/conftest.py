@@ -132,7 +132,7 @@ def os_environ():
 
 def pytest_generate_tests(metafunc):
     # Copied from https://gist.github.com/pfctdayelise/5719730
-    idparametrize = getattr(metafunc.function, 'idparametrize', None)
+    idparametrize = metafunc.definition.get_closest_marker('idparametrize')
     if idparametrize:
         argnames, testdata = idparametrize.args
         ids, argvalues = zip(*sorted(testdata.items()))

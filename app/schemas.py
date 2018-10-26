@@ -205,12 +205,12 @@ class ServiceSchema(BaseSchema):
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
     dvla_organisation = field_for(models.Service, 'dvla_organisation')
-    letter_logo_filename = fields.Method(method_name='get_letter_logo_filename')
+    letter_logo_filename = fields.Method(serialize='get_letter_logo_filename')
     permissions = fields.Method("service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
     organisation = field_for(models.Service, 'organisation')
     override_flag = False
-    letter_contact_block = fields.Method(method_name="get_letter_contact")
+    letter_contact_block = fields.Method(serialize="get_letter_contact")
 
     def get_letter_logo_filename(self, service):
         return service.dvla_organisation.filename
