@@ -11,19 +11,16 @@ from app.dao.api_key_dao import expire_api_key
 from app.dao.templates_dao import dao_update_template
 
 from tests import create_authorization_header, unwrap_function
-from tests.app.conftest import (
-    sample_template as create_template,
-    sample_api_key as create_api_key
-)
+from tests.app.db import create_template, create_api_key
 
 
-def test_archive_only_allows_post(client):
+def test_archive_only_allows_post(client, notify_db_session):
     auth_header = create_authorization_header()
     response = client.get('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 405
 
 
-def test_archive_service_errors_with_bad_service_id(client):
+def test_archive_service_errors_with_bad_service_id(client, notify_db_session):
     auth_header = create_authorization_header()
     response = client.post('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 404
@@ -38,11 +35,13 @@ def test_deactivating_inactive_service_does_nothing(client, sample_service):
 
 
 @pytest.fixture
-def archived_service(client, notify_db, notify_db_session, sample_service):
-    create_template(notify_db, notify_db_session, template_name='a')
-    create_template(notify_db, notify_db_session, template_name='b')
-    create_api_key(notify_db, notify_db_session)
-    create_api_key(notify_db, notify_db_session)
+def archived_service(client, notify_db, sample_service):
+    create_template(sample_service, template_name='a')
+    create_template(sample_service, template_name='b')
+    create_api_key(sample_service)
+    create_api_key(sample_service)
+
+    notify_db.session.commit()
 
     auth_header = create_authorization_header()
     response = client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
@@ -83,10 +82,10 @@ def test_deactivating_service_creates_history(archived_service):
 
 
 @pytest.fixture
-def archived_service_with_deleted_stuff(client, notify_db, notify_db_session, sample_service):
+def archived_service_with_deleted_stuff(client, sample_service):
     with freeze_time('2001-01-01'):
-        template = create_template(notify_db, notify_db_session, template_name='a')
-        api_key = create_api_key(notify_db, notify_db_session)
+        template = create_template(sample_service, template_name='a')
+        api_key = create_api_key(sample_service)
 
         expire_api_key(sample_service.id, api_key.id)
 

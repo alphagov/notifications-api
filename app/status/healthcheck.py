@@ -9,6 +9,7 @@ from app import db, version
 status = Blueprint('status', __name__)
 
 
+@status.route('/', methods=['GET'])
 @status.route('/_status', methods=['GET', 'POST'])
 def show_status():
     if request.args.get('simple', None):
