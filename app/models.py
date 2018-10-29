@@ -862,6 +862,8 @@ class Template(TemplateBase):
         'TemplateFolder',
         secondary=template_folder_map,
         uselist=False,
+        # eagerly load the folder whenever the template object is fetched
+        lazy='joined',
         backref=db.backref('templates', lazy='dynamic')
     )
 
