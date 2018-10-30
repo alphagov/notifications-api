@@ -154,10 +154,7 @@ def test_fetch_notification_status_for_service_for_7_days(notify_db_session):
     create_ft_notification_status(date(2018, 10, 29), 'sms', service_2)
     # not included - test keys
     create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, key_type=KEY_TYPE_TEST)
-    results = sorted(
-        fetch_notification_status_for_service_for_7_days(service_1.id),
-        key=lambda x: (x.bst_date, x.notification_type, x.notification_status)
-    )
+    results = fetch_notification_status_for_service_for_7_days(service_1.id)
 
     assert len(results) == 5
 
