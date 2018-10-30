@@ -5,9 +5,11 @@ from app.dao.fact_notification_status_dao import (
     update_fact_notification_status,
     fetch_notification_status_for_day,
     fetch_notification_status_for_service_by_month,
+    fetch_notification_status_for_service_for_7_days,
     fetch_notification_status_for_service_for_day,
 )
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM
+from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
 
 
@@ -133,6 +135,56 @@ def test_fetch_notification_status_for_service_by_month(notify_db_session):
     assert results[3].notification_type == 'sms'
     assert results[3].notification_status == 'delivered'
     assert results[3].count == 1
+
+
+@freeze_time('2018-10-30T10:00:00')
+def test_fetch_notification_status_for_service_for_7_days(notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    service_2 = create_service(service_name='service_2')
+
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 10, 23), 'sms', service_1, count=8)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
+    create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
+
+    # not included - too early
+    create_ft_notification_status(date(2018, 10, 22), 'sms', service_1)
+    # not included - wrong service
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_2)
+    # not included - test keys
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, key_type=KEY_TYPE_TEST)
+    results = sorted(
+        fetch_notification_status_for_service_for_7_days(service_1.id),
+        key=lambda x: (x.bst_date, x.notification_type, x.notification_status)
+    )
+
+    assert len(results) == 5
+
+    assert results[2].bst_date == date(2018, 10, 29)
+    assert results[2].notification_type == 'email'
+    assert results[2].notification_status == 'delivered'
+    assert results[2].count == 3
+
+    assert results[1].bst_date == date(2018, 10, 26)
+    assert results[1].notification_type == 'letter'
+    assert results[1].notification_status == 'delivered'
+    assert results[1].count == 5
+
+    assert results[3].bst_date == date(2018, 10, 29)
+    assert results[3].notification_type == 'sms'
+    assert results[3].notification_status == 'created'
+    assert results[3].count == 1
+
+    assert results[0].bst_date == date(2018, 10, 23)
+    assert results[0].notification_type == 'sms'
+    assert results[0].notification_status == 'delivered'
+    assert results[0].count == 8
+
+    assert results[4].bst_date == date(2018, 10, 29)
+    assert results[4].notification_type == 'sms'
+    assert results[4].notification_status == 'delivered'
+    assert results[4].count == 10
 
 
 def test_fetch_notification_status_for_service_for_day(notify_db_session):

@@ -8,7 +8,7 @@ from sqlalchemy.types import DateTime
 
 from app import db
 from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST
-from app.utils import convert_bst_to_utc, get_london_midnight_in_utc
+from app.utils import convert_bst_to_utc, get_london_midnight_in_utc, midnight_n_days_ago
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):
@@ -92,6 +92,24 @@ def fetch_notification_status_for_service_by_month(start_date, end_date, service
         func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
         FactNotificationStatus.notification_type,
         FactNotificationStatus.notification_status
+    ).all()
+
+
+def fetch_notification_status_for_service_for_7_days(service_id):
+    start_date = midnight_n_days_ago(7)
+    return db.session.query(
+        FactNotificationStatus.bst_date,
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST
+    ).group_by(
+        FactNotificationStatus.bst_date,
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
     ).all()
 
 
