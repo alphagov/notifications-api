@@ -15,7 +15,11 @@ from app.dao.fact_billing_dao import (
     get_rate,
     get_rates_for_billing,
 )
-from app.models import FactBilling, Notification
+from app.models import (
+    FactBilling,
+    Notification,
+    NOTIFICATION_STATUS_TYPES,
+)
 from app.utils import convert_utc_to_bst
 from tests.app.db import (
     create_ft_billing,
@@ -251,6 +255,26 @@ def test_fetch_billing_data_for_day_returns_list_for_given_service(notify_db_ses
     results = fetch_billing_data_for_day(process_day=today, service_id=service.id)
     assert len(results) == 1
     assert results[0].service_id == service.id
+
+
+def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session):
+    service = create_service()
+    sms_template = create_template(service=service, template_type='sms')
+    email_template = create_template(service=service, template_type='email')
+    letter_template = create_template(service=service, template_type='letter')
+    for status in NOTIFICATION_STATUS_TYPES:
+        create_notification(template=sms_template, status=status)
+        create_notification(template=email_template, status=status)
+        create_notification(template=letter_template, status=status)
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(process_day=today, service_id=service.id)
+
+    sms_results = [x for x in results if x[2] == 'sms']
+    email_results = [x for x in results if x[2] == 'email']
+    letter_results = [x for x in results if x[2] == 'letter']
+    assert 7 == sms_results[0][7]
+    assert 7 == email_results[0][7]
+    assert 3 == letter_results[0][7]
 
 
 def test_get_rates_for_billing(notify_db_session):

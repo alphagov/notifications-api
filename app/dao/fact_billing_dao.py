@@ -17,7 +17,8 @@ from app.models import (
     LetterRate,
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     NotificationHistory,
-    EMAIL_TYPE
+    EMAIL_TYPE,
+    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
 )
 from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
@@ -150,52 +151,61 @@ def fetch_billing_data_for_day(process_day, service_id=None):
     table = Notification
     if start_date < datetime.utcnow() - timedelta(days=7):
         table = NotificationHistory
+    transit_data = []
+    for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+        billable_type_list = {
+            SMS_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
+            EMAIL_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
+            LETTER_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
+        }
+        query = db.session.query(
+            table.template_id,
+            table.service_id,
+            table.notification_type,
+            func.coalesce(table.sent_by,
+                          case(
+                              [
+                                  (table.notification_type == 'letter', 'dvla'),
+                                  (table.notification_type == 'sms', 'unknown'),
+                                  (table.notification_type == 'email', 'ses')
+                              ]),
+                          ).label('sent_by'),
+            func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
+            func.coalesce(table.international, False).label('international'),
+            case(
+                [
+                    (table.notification_type == 'letter', table.billable_units),
+                ]
+            ).label('letter_page_count'),
+            func.sum(table.billable_units).label('billable_units'),
+            func.count().label('notifications_sent'),
+            Service.crown,
+            func.coalesce(table.postage, 'none').label('postage')
+        ).filter(
+            table.status.in_(billable_type_list[notification_type]),
+            table.key_type != KEY_TYPE_TEST,
+            table.created_at >= start_date,
+            table.created_at < end_date,
+            table.notification_type == notification_type
+        ).group_by(
+            table.template_id,
+            table.service_id,
+            table.notification_type,
+            'sent_by',
+            'letter_page_count',
+            table.rate_multiplier,
+            table.international,
+            Service.crown,
+            table.postage,
+        ).join(
+            Service
+        )
+        if service_id:
+            query = query.filter(table.service_id == service_id)
 
-    transit_data = db.session.query(
-        table.template_id,
-        table.service_id,
-        table.notification_type,
-        func.coalesce(table.sent_by,
-                      case(
-                          [
-                              (table.notification_type == 'letter', 'dvla'),
-                              (table.notification_type == 'sms', 'unknown'),
-                              (table.notification_type == 'email', 'ses')
-                          ]),
-                      ).label('sent_by'),
-        func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
-        func.coalesce(table.international, False).label('international'),
-        case(
-            [
-                (table.notification_type == 'letter', table.billable_units),
-            ]
-        ).label('letter_page_count'),
-        func.sum(table.billable_units).label('billable_units'),
-        func.count().label('notifications_sent'),
-        Service.crown,
-        func.coalesce(table.postage, 'none').label('postage')
-    ).filter(
-        table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE),
-        table.key_type != KEY_TYPE_TEST,
-        table.created_at >= start_date,
-        table.created_at < end_date
-    ).group_by(
-        table.template_id,
-        table.service_id,
-        table.notification_type,
-        'sent_by',
-        'letter_page_count',
-        table.rate_multiplier,
-        table.international,
-        Service.crown,
-        table.postage,
-    ).join(
-        Service
-    )
-    if service_id:
-        transit_data = transit_data.filter(table.service_id == service_id)
+        transit_data = transit_data + query.all()
 
-    return transit_data.all()
+    return transit_data
 
 
 def get_rates_for_billing():
