@@ -10,6 +10,10 @@ Get and update notification status.
 
 ## Setting Up
 
+### Python version
+
+This codebase is Python 3 only. At the moment we run 3.5 in production. You will run into problems if you try to use Python 3.4 or older, or Python 3.7 or newer.
+
 ### AWS credentials
 
 To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an access key id and a secret access key.
