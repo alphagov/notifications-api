@@ -11,6 +11,14 @@ uuid = {
     "link": "link to our error documentation not yet implemented"
 }
 
+nullable_uuid = {
+    "type": ["string", "null"],
+    "format": "validate_uuid",
+    "validationMessage": "is not a valid UUID",
+    "code": "1001",  # yet to be implemented
+    "link": "link to our error documentation not yet implemented"
+}
+
 
 personalisation = {
     "type": "object",

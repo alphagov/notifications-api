@@ -48,7 +48,8 @@ from app.models import (
     FactBilling,
     FactNotificationStatus,
     Complaint,
-    InvitedUser
+    InvitedUser,
+    TemplateFolder,
 )
 
 
@@ -690,3 +691,10 @@ def create_invited_user(service=None,
     invited_user = InvitedUser(**data)
     save_invited_user(invited_user)
     return invited_user
+
+
+def create_template_folder(service, name='foo', parent=None):
+    tf = TemplateFolder(name=name, service=service, parent=parent)
+    db.session.add(tf)
+    db.session.commit()
+    return tf
