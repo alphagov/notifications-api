@@ -51,7 +51,7 @@ NOTES:
 
 ### Postgres
 
-Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
+Install [Postgres.app](http://postgresapp.com/) version 9.6. You will need admin on your machine to do this.
 
 ### Redis
 
