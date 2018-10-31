@@ -1,12 +1,12 @@
 [![Requirements Status](https://requires.io/github/alphagov/notifications-api/requirements.svg?branch=master)](https://requires.io/github/alphagov/notifications-api/requirements/?branch=master)
 [![Coverage Status](https://coveralls.io/repos/alphagov/notifications-api/badge.svg?branch=master&service=github)](https://coveralls.io/github/alphagov/notifications-api?branch=master)
 
-# notifications-api
-Notifications api
-Application for the notification api.
+# GOV.UK Notify API
 
-Read and write notifications/status queue.
-Get and update notification status.
+Contains:
+- the public-facing REST API for GOV.UK Notify, which teams can integrate with using [our clients](https://www.notifications.service.gov.uk/documentation)
+- an internal-only REST API built using Flask to manage services, users, templates, etc (this is what the [admin app](http://github.com/alphagov/notifications-admin) talks to)
+- asynchronous workers built using Celery to put things on queues and read them off to be processed, sent to providers, updated, etc
 
 ## Setting Up
 
