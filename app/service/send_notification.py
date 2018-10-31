@@ -1,6 +1,7 @@
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.config import QueueNames
+from app.dao.notifications_dao import _update_notification_status
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.notifications.validators import (
@@ -17,6 +18,8 @@ from app.models import (
     PRIORITY,
     SMS_TYPE,
     EMAIL_TYPE,
+    LETTER_TYPE,
+    NOTIFICATION_DELIVERED,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
@@ -78,11 +81,18 @@ def send_one_off_notification(service_id, post_data):
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-    send_notification_to_queue(
-        notification=notification,
-        research_mode=service.research_mode,
-        queue=queue_name
-    )
+
+    if template.template_type == LETTER_TYPE and service.research_mode:
+        _update_notification_status(
+            notification,
+            NOTIFICATION_DELIVERED,
+        )
+    else:
+        send_notification_to_queue(
+            notification=notification,
+            research_mode=service.research_mode,
+            queue=queue_name,
+        )
 
     return {'id': str(notification.id)}
 

@@ -258,6 +258,22 @@ def test_send_one_off_letter_notification_should_use_template_reply_to_text(samp
     assert notification.reply_to_text == "Edinburgh, ED1 1AA"
 
 
+def test_send_one_off_letter_should_not_make_pdf_in_research_mode(sample_letter_template):
+
+    sample_letter_template.service.research_mode = True
+
+    data = {
+        'to': 'A. Name',
+        'template_id': str(sample_letter_template.id),
+        'created_by': str(sample_letter_template.service.created_by_id)
+    }
+
+    notification = send_one_off_notification(service_id=sample_letter_template.service.id, post_data=data)
+    notification = Notification.query.get(notification['id'])
+
+    assert notification.status == "delivered"
+
+
 def test_send_one_off_sms_notification_should_use_sms_sender_reply_to_text(sample_service, celery_mock):
     template = create_template(service=sample_service, template_type=SMS_TYPE)
     sms_sender = create_service_sms_sender(
