@@ -714,8 +714,16 @@ class TemplateFolder(db.Model):
     name = db.Column(db.String, nullable=False)
     parent_id = db.Column(UUID(as_uuid=True), db.ForeignKey('template_folder.id'), nullable=True)
 
-    service = db.relationship('Service')
-    parent = db.relationship('TemplateFolder', remote_side=[id], backref='children')
+    service = db.relationship('Service', backref='all_template_folders')
+    parent = db.relationship('TemplateFolder', remote_side=[id], backref='subfolders')
+
+    def serialize(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'parent_id': self.parent_id,
+            'service_id': self.service_id
+        }
 
 
 template_folder_map = db.Table(
@@ -864,7 +872,7 @@ class Template(TemplateBase):
         uselist=False,
         # eagerly load the folder whenever the template object is fetched
         lazy='joined',
-        backref=db.backref('templates', lazy='dynamic')
+        backref=db.backref('templates')
     )
 
     def get_link(self):
