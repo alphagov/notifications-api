@@ -181,14 +181,12 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
 def save_sms(self,
              service_id,
              notification_id,
-             encrypted_notification,
-             api_key_id=None,
-             key_type=KEY_TYPE_NORMAL):
+             encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
-    if not service_allowed_to_send_to(notification['to'], service, key_type):
+    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.debug(
             "SMS {} failed as restricted service".format(notification_id)
         )
@@ -202,8 +200,8 @@ def save_sms(self,
             service=service,
             personalisation=notification.get('personalisation'),
             notification_type=SMS_TYPE,
-            api_key_id=api_key_id,
-            key_type=key_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
@@ -232,15 +230,13 @@ def save_sms(self,
 def save_email(self,
                service_id,
                notification_id,
-               encrypted_notification,
-               api_key_id=None,
-               key_type=KEY_TYPE_NORMAL):
+               encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
-    if not service_allowed_to_send_to(notification['to'], service, key_type):
+    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
@@ -252,8 +248,8 @@ def save_email(self,
             service=service,
             personalisation=notification.get('personalisation'),
             notification_type=EMAIL_TYPE,
-            api_key_id=api_key_id,
-            key_type=key_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
