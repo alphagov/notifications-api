@@ -12,6 +12,7 @@ from notifications_utils.recipients import (
 
 from app import redis_store
 from app.celery import provider_tasks
+from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
 
 from app.models import (
@@ -149,6 +150,10 @@ def send_notification_to_queue(notification, research_mode, queue=None):
         if not queue:
             queue = QueueNames.SEND_EMAIL
         deliver_task = provider_tasks.deliver_email
+    if notification.notification_type == LETTER_TYPE:
+        if not queue:
+            queue = QueueNames.CREATE_LETTERS_PDF
+        deliver_task = create_letters_pdf
 
     try:
         deliver_task.apply_async([str(notification.id)], queue=queue)
