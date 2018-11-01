@@ -30,7 +30,7 @@ from app.celery.tasks import (
     process_returned_letters_list,
 )
 from app.config import QueueNames
-from app.dao import jobs_dao, services_dao
+from app.dao import jobs_dao, services_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import (
     Job,
     Notification,
@@ -739,6 +739,46 @@ def test_should_use_email_template_subject_placeholders(sample_email_template_wi
     )
 
 
+def test_save_email_uses_the_reply_to_text_when_provided(sample_email_template, mocker):
+    notification = _notification_json(sample_email_template, "my_email@my_email.com")
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    service = sample_email_template.service
+    notification_id = uuid.uuid4()
+    service_email_reply_to_dao.add_reply_to_email_address_for_service(service.id, 'default@example.com', True)
+    other_email_reply_to = service_email_reply_to_dao.add_reply_to_email_address_for_service(
+        service.id, 'other@example.com', False)
+
+    save_email(
+        sample_email_template.service_id,
+        notification_id,
+        encryption.encrypt(notification),
+        sender_id=other_email_reply_to.id,
+    )
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.notification_type == 'email'
+    assert persisted_notification.reply_to_text == 'other@example.com'
+
+
+def test_save_email_uses_the_default_reply_to_text_if_sender_id_is_none(sample_email_template, mocker):
+    notification = _notification_json(sample_email_template, "my_email@my_email.com")
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    service = sample_email_template.service
+    notification_id = uuid.uuid4()
+    service_email_reply_to_dao.add_reply_to_email_address_for_service(service.id, 'default@example.com', True)
+
+    save_email(
+        sample_email_template.service_id,
+        notification_id,
+        encryption.encrypt(notification),
+        sender_id=None,
+    )
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.notification_type == 'email'
+    assert persisted_notification.reply_to_text == 'default@example.com'
+
+
 def test_should_use_email_template_and_persist_without_personalisation(sample_email_template, mocker):
     notification = _notification_json(sample_email_template, "my_email@my_email.com")
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
@@ -1029,6 +1069,26 @@ def test_save_sms_uses_sms_sender_reply_to_text(mocker, notify_db_session):
 
     persisted_notification = Notification.query.one()
     assert persisted_notification.reply_to_text == '447123123123'
+
+
+def test_save_sms_uses_non_default_sms_sender_reply_to_text_if_provided(mocker, notify_db_session):
+    service = create_service_with_defined_sms_sender(sms_sender_value='07123123123')
+    template = create_template(service=service)
+    new_sender = service_sms_sender_dao.dao_add_sms_sender_for_service(service.id, 'new-sender', False)
+
+    notification = _notification_json(template, to="07700 900205")
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    notification_id = uuid.uuid4()
+    save_sms(
+        service.id,
+        notification_id,
+        encryption.encrypt(notification),
+        sender_id=new_sender.id,
+    )
+
+    persisted_notification = Notification.query.one()
+    assert persisted_notification.reply_to_text == 'new-sender'
 
 
 @pytest.mark.parametrize('env', ['staging', 'live'])
