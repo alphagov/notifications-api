@@ -172,7 +172,8 @@ def test_should_error_if_created_by_missing(client, sample_user, sample_service)
     )
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
-    assert json_resp['result'] == 'error'
+    assert json_resp["errors"][0]["error"] == 'ValidationError'
+    assert json_resp["errors"][0]["message"] == 'created_by is a required property'
 
 
 def test_should_be_error_if_service_does_not_exist_on_update(client, fake_uuid):
@@ -211,15 +212,14 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
         data=data
     )
     json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'subject': ['Invalid template subject']}
+    assert json_resp['errors'][0]['error'] == "ValidationError"
+    assert json_resp['errors'][0]["message"] == 'subject is a required property'
 
 
 def test_update_should_update_a_template(client, sample_user, sample_template):
     data = {
         'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
-        'created_by': str(sample_user.id)
+        'created_by_id': str(sample_user.id)
     }
     data = json.dumps(data)
     auth_header = create_authorization_header()

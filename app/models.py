@@ -884,6 +884,20 @@ class Template(TemplateBase):
             _external=True
         )
 
+    @classmethod
+    def from_json(cls, data):
+        """
+        Assumption: data has been validated appropriately.
+
+        Returns a Template object based on the provided data.
+        """
+        fields = data.copy()
+
+        fields['created_by_id'] = fields.pop('created_by')
+        fields['service_id'] = fields.pop('service')
+
+        return cls(**fields)
+
 
 class TemplateRedacted(db.Model):
     __tablename__ = 'template_redacted'

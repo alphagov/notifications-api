@@ -15,7 +15,7 @@ click-datetime==0.2
 eventlet==0.23.0
 gunicorn==19.7.1
 iso8601==0.1.12
-jsonschema==2.6.0
+jsonschema==3.0.0a3
 marshmallow-sqlalchemy==0.14.1
 marshmallow==2.16.0
 psycopg2-binary==2.7.5
@@ -39,6 +39,7 @@ git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 alembic==1.0.2
 amqp==1.4.9
 anyjson==0.3.3
+attrs==18.2.0
 awscli==1.16.49
 bcrypt==3.1.4
 billiard==3.3.0.23
@@ -67,6 +68,7 @@ phonenumbers==8.9.4
 pyasn1==0.4.4
 pycparser==2.19
 PyPDF2==1.26.0
+pyrsistent==0.14.5
 python-dateutil==2.7.5
 python-editor==1.0.3
 python-json-logger==0.1.8

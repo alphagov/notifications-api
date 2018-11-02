@@ -29,9 +29,11 @@ from app.errors import (
     InvalidRequest
 )
 from app.letters.utils import get_letter_pdf
-from app.models import SMS_TYPE
+from app.models import SMS_TYPE, Template
 from app.notifications.validators import service_has_permission, check_reply_to
+from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
+from app.template.template_schemas import post_create_template_schema
 from app.utils import get_template_instance, get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -49,9 +51,9 @@ def _content_count_greater_than_limit(content, template_type):
 @template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    # permissions needs to be placed here otherwise marshmallow will intefere with versioning
+    # permissions needs to be placed here otherwise marshmallow will interfere with versioning
     permissions = fetched_service.permissions
-    new_template = template_schema.load(request.get_json()).data
+    new_template = Template.from_json(validate(request.get_json(), post_create_template_schema))
 
     if not service_has_permission(new_template.template_type, permissions):
         message = "Creating {} templates is not allowed".format(
@@ -60,6 +62,7 @@ def create_template(service_id):
         raise InvalidRequest(errors, 403)
 
     new_template.service = fetched_service
+
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
         message = 'Content has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)

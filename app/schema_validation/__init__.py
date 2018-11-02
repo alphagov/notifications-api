@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from uuid import UUID
 
 from iso8601 import iso8601, ParseError
-from jsonschema import (Draft4Validator, ValidationError, FormatChecker)
+from jsonschema import (Draft7Validator, ValidationError, FormatChecker)
 from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
                                             InvalidEmailError)
 
@@ -43,7 +43,7 @@ def validate(json_to_validate, schema):
                                       "https://en.wikipedia.org/wiki/ISO_8601")
         return True
 
-    validator = Draft4Validator(schema, format_checker=format_checker)
+    validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:
         raise ValidationError(build_error_message(errors))
