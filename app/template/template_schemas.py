@@ -16,7 +16,8 @@ post_create_template_schema = {
         "process_type": {"emun": TEMPLATE_PROCESS_TYPE},
         "content": {"type": "string"},
         "subject": {"type": "string"},
-        "created_by": uuid
+        "created_by": uuid,
+        "parent_folder_id": uuid
     },
     "if": {
         "properties": {

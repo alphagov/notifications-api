@@ -29,7 +29,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.letters.utils import get_letter_pdf
-from app.models import SMS_TYPE, Template
+from app.models import SMS_TYPE, Template, TemplateFolder
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
@@ -48,12 +48,19 @@ def _content_count_greater_than_limit(content, template_type):
     return template.content_count > SMS_CHAR_COUNT_LIMIT
 
 
+def validate_parent_folder(parent_folder_id, service_id):
+    return TemplateFolder.query.filter_by(service_id=service_id, id=parent_folder_id).one()
+
+
 @template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
     # permissions needs to be placed here otherwise marshmallow will interfere with versioning
     permissions = fetched_service.permissions
-    new_template = Template.from_json(validate(request.get_json(), post_create_template_schema))
+    template_json = validate(request.get_json(), post_create_template_schema)
+    folder = validate_parent_folder(parent_folder_id=template_json['parent_folder_id'],
+                                    service_id=template_json['service'])
+    new_template = Template.from_json(template_json, folder)
 
     if not service_has_permission(new_template.template_type, permissions):
         message = "Creating {} templates is not allowed".format(
@@ -72,6 +79,7 @@ def create_template(service_id):
     check_reply_to(service_id, new_template.reply_to, new_template.template_type)
 
     dao_create_template(new_template)
+
     return jsonify(data=template_schema.dump(new_template).data), 201
 
 

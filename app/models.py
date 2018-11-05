@@ -885,7 +885,7 @@ class Template(TemplateBase):
         )
 
     @classmethod
-    def from_json(cls, data):
+    def from_json(cls, data, folder):
         """
         Assumption: data has been validated appropriately.
 
@@ -895,7 +895,8 @@ class Template(TemplateBase):
 
         fields['created_by_id'] = fields.pop('created_by')
         fields['service_id'] = fields.pop('service')
-
+        if fields.pop("parent_folder_id"):
+            fields['folder'] = folder
         return cls(**fields)
 
 
