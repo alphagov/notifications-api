@@ -98,6 +98,7 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
 
     app.celery.tasks.process_job.apply_async.assert_called_once_with(
         ([str(fake_uuid)]),
+        {'sender_id': None},
         queue="job-tasks"
     )
 
@@ -111,6 +112,36 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json['data']['template'] == str(sample_template.id)
     assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
     assert resp_json['data']['notification_count'] == 1
+
+
+def test_create_unscheduled_job_with_sender_id_in_metadata(client, sample_template, mocker, fake_uuid):
+    mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id),
+        'original_file_name': 'thisisatest.csv',
+        'notification_count': '1',
+        'valid': 'True',
+        'sender_id': fake_uuid
+    })
+    data = {
+        'id': fake_uuid,
+        'created_by': str(sample_template.created_by.id),
+    }
+    path = '/service/{}/job'.format(sample_template.service.id)
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+
+    response = client.post(
+        path,
+        data=json.dumps(data),
+        headers=headers)
+    assert response.status_code == 201
+
+    app.celery.tasks.process_job.apply_async.assert_called_once_with(
+        ([str(fake_uuid)]),
+        {'sender_id': fake_uuid},
+        queue="job-tasks"
+    )
 
 
 @freeze_time("2016-01-01 12:00:00.000000")
