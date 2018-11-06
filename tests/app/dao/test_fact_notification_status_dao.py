@@ -200,23 +200,23 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
 
     results = sorted(
         fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id),
-        key=lambda x: (x.notification_type, x.notification_status)
+        key=lambda x: (x.notification_type, x.status)
     )
 
     assert len(results) == 4
 
     assert results[0].notification_type == 'email'
-    assert results[0].notification_status == 'delivered'
+    assert results[0].status == 'delivered'
     assert results[0].count == 4
 
     assert results[1].notification_type == 'letter'
-    assert results[1].notification_status == 'delivered'
+    assert results[1].status == 'delivered'
     assert results[1].count == 5
 
     assert results[2].notification_type == 'sms'
-    assert results[2].notification_status == 'created'
+    assert results[2].status == 'created'
     assert results[2].count == 2
 
     assert results[3].notification_type == 'sms'
-    assert results[3].notification_status == 'delivered'
+    assert results[3].status == 'delivered'
     assert results[3].count == 19

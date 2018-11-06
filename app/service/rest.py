@@ -20,7 +20,8 @@ from app.dao.api_key_dao import (
     expire_api_key)
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
-    fetch_notification_status_for_service_for_day
+    fetch_notification_status_for_service_for_day,
+    fetch_notification_status_for_service_for_today_and_7_previous_days
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
@@ -433,7 +434,7 @@ def get_service_statistics(service_id, today_only, limit_days=7):
     if today_only:
         stats = dao_fetch_todays_stats_for_service(service_id)
     else:
-        stats = dao_fetch_stats_for_service(service_id, limit_days=limit_days)
+        stats = fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, limit_days=limit_days)
 
     return statistics.format_statistics(stats)
 
