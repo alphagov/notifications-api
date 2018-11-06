@@ -6,8 +6,10 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_day,
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
+    fetch_notification_status_for_service_for_today_and_7_previous_days
 )
-from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM
+from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE
+from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
 
 
@@ -175,3 +177,46 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
     assert results[1].notification_type == 'sms'
     assert results[1].notification_status == 'delivered'
     assert results[1].count == 1
+
+
+@freeze_time('2018-10-31T18:00:00')
+def test_fetch_notification_status_for_service_for_today_and_7_previous_days(notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
+
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 10, 24), 'sms', service_1, count=8)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
+    create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
+
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
+
+    # too early, shouldn't be included
+    create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status='delivered')
+
+    results = sorted(
+        fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id),
+        key=lambda x: (x.notification_type, x.status)
+    )
+
+    assert len(results) == 4
+
+    assert results[0].notification_type == 'email'
+    assert results[0].status == 'delivered'
+    assert results[0].count == 4
+
+    assert results[1].notification_type == 'letter'
+    assert results[1].status == 'delivered'
+    assert results[1].count == 5
+
+    assert results[2].notification_type == 'sms'
+    assert results[2].status == 'created'
+    assert results[2].count == 2
+
+    assert results[3].notification_type == 'sms'
+    assert results[3].status == 'delivered'
+    assert results[3].count == 19

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 
 import pytest
 from freezegun import freeze_time
@@ -133,9 +133,8 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
     (False, {'requested': 2, 'delivered': 1, 'failed': 0}),
     (True, {'requested': 1, 'delivered': 0, 'failed': 0})
 ], ids=['seven_days', 'today'])
-def test_get_service_notification_statistics(admin_request, sample_template, today_only, stats):
-    with freeze_time('2000-01-01T12:00:00'):
-        create_notification(sample_template, status='delivered')
+def test_get_service_notification_statistics(admin_request, sample_service, sample_template, today_only, stats):
+    create_ft_notification_status(date(2000, 1, 1), 'sms', sample_service, count=1)
     with freeze_time('2000-01-02T12:00:00'):
         create_notification(sample_template, status='created')
         resp = admin_request.get(
