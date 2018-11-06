@@ -34,6 +34,7 @@ from tests.app.conftest import (
     sample_notification_with_job
 )
 from tests.app.db import (
+    create_ft_notification_status,
     create_service,
     create_service_with_inbound_number,
     create_template,
@@ -1469,8 +1470,7 @@ def test_set_sms_prefixing_for_service_cant_be_none(
 ], ids=['seven_days', 'today'])
 def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
-        with freeze_time('2000-01-01T12:00:00'):
-            create_sample_notification(notify_db, notify_db_session, status='delivered')
+        create_ft_notification_status(date(2000, 1, 1), 'sms', sample_service, count=1)
         with freeze_time('2000-01-02T12:00:00'):
             create_sample_notification(notify_db, notify_db_session, status='created')
             resp = client.get(
