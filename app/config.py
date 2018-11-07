@@ -175,49 +175,66 @@ class Config(object):
             'schedule': timedelta(minutes=66),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'delete-sms-notifications': {
-            'task': 'delete-sms-notifications',
-            'schedule': crontab(hour=0, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-email-notifications': {
-            'task': 'delete-email-notifications',
-            'schedule': crontab(hour=0, minute=20),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-letter-notifications': {
-            'task': 'delete-letter-notifications',
-            'schedule': crontab(hour=0, minute=40),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-inbound-sms': {
-            'task': 'delete-inbound-sms',
-            'schedule': crontab(hour=1, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'send-daily-performance-platform-stats': {
-            'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(hour=2, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'switch-current-sms-provider-on-slow-delivery': {
             'task': 'switch-current-sms-provider-on-slow-delivery',
             'schedule': crontab(),  # Every minute
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'check-job-status': {
+            'task': 'check-job-status',
+            'schedule': crontab(),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'replay-created-notifications': {
+            'task': 'replay-created-notifications',
+            'schedule': crontab(minute='0, 15, 30, 45'),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        # nightly tasks:
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
-            'schedule': crontab(hour=3, minute=0),
+            'schedule': crontab(hour=0, minute=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'daily-stats-template-usage-by-month': {
+            'task': 'daily-stats-template-usage-by-month',
+            'schedule': crontab(hour=0, minute=10),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'create-nightly-billing': {
             'task': 'create-nightly-billing',
-            'schedule': crontab(hour=3, minute=30),
+            'schedule': crontab(hour=0, minute=15),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'create-nightly-notification-status': {
             'task': 'create-nightly-notification-status',
-            'schedule': crontab(hour=4, minute=30),
+            'schedule': crontab(hour=0, minute=30), # after 'timeout-sending-notifications'
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-sms-notifications': {
+            'task': 'delete-sms-notifications',
+            'schedule': crontab(hour=0, minute=45), # after 'create-nightly-notification-status'
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-email-notifications': {
+            'task': 'delete-email-notifications',
+            'schedule': crontab(hour=1, minute=0), # after 'create-nightly-notification-status'
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-letter-notifications': {
+            'task': 'delete-letter-notifications',
+            'schedule': crontab(hour=1, minute=20), # after 'create-nightly-notification-status'
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'delete-inbound-sms': {
+            'task': 'delete-inbound-sms',
+            'schedule': crontab(hour=1, minute=40),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+
+        'send-daily-performance-platform-stats': {
+            'task': 'send-daily-performance-platform-stats',
+            'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'remove_sms_email_jobs': {
@@ -254,21 +271,6 @@ class Config(object):
             'schedule': crontab(hour=23, minute=00),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'check-job-status': {
-            'task': 'check-job-status',
-            'schedule': crontab(),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'daily-stats-template-usage-by-month': {
-            'task': 'daily-stats-template-usage-by-month',
-            'schedule': crontab(hour=0, minute=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'replay-created-notifications': {
-            'task': 'replay-created-notifications',
-            'schedule': crontab(minute='0, 15, 30, 45'),
-            'options': {'queue': QueueNames.PERIODIC}
-        }
     }
     CELERY_QUEUES = []
 
