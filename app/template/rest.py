@@ -15,6 +15,7 @@ from requests import post as requests_post
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.template_folder_dao import dao_get_template_folder_by_id_and_service_id
 from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
@@ -29,7 +30,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.letters.utils import get_letter_pdf
-from app.models import SMS_TYPE, Template, TemplateFolder
+from app.models import SMS_TYPE, Template
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
@@ -50,10 +51,8 @@ def _content_count_greater_than_limit(content, template_type):
 
 def validate_parent_folder(template_json):
     if template_json.get("parent_folder_id"):
-        return TemplateFolder.query.filter_by(
-            service_id=template_json['service'],
-            id=template_json.pop("parent_folder_id")
-        ).one()
+        return dao_get_template_folder_by_id_and_service_id(template_folder_id=template_json.pop("parent_folder_id"),
+                                                            service_id=template_json['service'])
     else:
         return None
 
