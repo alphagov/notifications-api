@@ -12,6 +12,7 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import SMSMessageTemplate
 from requests import post as requests_post
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -51,8 +52,13 @@ def _content_count_greater_than_limit(content, template_type):
 
 def validate_parent_folder(template_json):
     if template_json.get("parent_folder_id"):
-        return dao_get_template_folder_by_id_and_service_id(template_folder_id=template_json.pop("parent_folder_id"),
-                                                            service_id=template_json['service'])
+        try:
+            return dao_get_template_folder_by_id_and_service_id(
+                template_folder_id=template_json.pop("parent_folder_id"),
+                service_id=template_json['service']
+            )
+        except NoResultFound:
+            raise InvalidRequest("parent_folder_id not found", status_code=400)
     else:
         return None
 

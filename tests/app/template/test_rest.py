@@ -107,7 +107,7 @@ def test_should_create_a_new_template_for_a_service_adds_folder_relationship(
     assert template.folder == parent_folder
 
 
-def test_create_template_should_return_404_if_folder_is_for_a_different_service(
+def test_create_template_should_return_400_if_folder_is_for_a_different_service(
         client, sample_service
 ):
     service2 = create_service(service_name='second service')
@@ -129,10 +129,11 @@ def test_create_template_should_return_404_if_folder_is_for_a_different_service(
         headers=[('Content-Type', 'application/json'), auth_header],
         data=data
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))['message'] == 'parent_folder_id not found'
 
 
-def test_create_template_should_return_404_if_folder_does_not_exist(
+def test_create_template_should_return_400_if_folder_does_not_exist(
         client, sample_service
 ):
     data = {
@@ -151,7 +152,8 @@ def test_create_template_should_return_404_if_folder_does_not_exist(
         headers=[('Content-Type', 'application/json'), auth_header],
         data=data
     )
-    assert response.status_code == 404
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))['message'] == 'parent_folder_id not found'
 
 
 def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_user, fake_uuid):
