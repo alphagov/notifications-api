@@ -25,9 +25,7 @@ SQLAlchemy==1.2.12
 notifications-python-client==5.2.0
 
 # PaaS
-awscli==1.15.82  # pyup: ignore
 awscli-cwlogs>=1.4,<1.5
-botocore<1.11.0  # pyup: ignore
 
 
 # Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
@@ -38,20 +36,22 @@ git+https://github.com/alphagov/notifications-utils.git@30.5.6#egg=notifications
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 
 ## The following requirements were added by pip freeze:
-alembic==1.0.1
+alembic==1.0.2
 amqp==1.4.9
 anyjson==0.3.3
+awscli==1.16.49
 bcrypt==3.1.4
 billiard==3.3.0.23
 bleach==2.1.3
 boto3==1.6.16
+botocore==1.12.39
 certifi==2018.10.15
 chardet==3.0.4
 Click==7.0
 colorama==0.3.9
 docutils==0.14
 Flask-Redis==0.3.0
-future==0.16.0
+future==0.17.1
 greenlet==0.4.15
 html5lib==1.0.1
 idna==2.7
@@ -59,7 +59,7 @@ Jinja2==2.10
 jmespath==0.9.3
 kombu==3.0.37
 Mako==1.0.7
-MarkupSafe==1.0
+MarkupSafe==1.1.0
 mistune==0.8.3
 monotonic==1.5
 orderedset==2.0.1
@@ -67,11 +67,11 @@ phonenumbers==8.9.4
 pyasn1==0.4.4
 pycparser==2.19
 PyPDF2==1.26.0
-python-dateutil==2.7.3
+python-dateutil==2.7.5
 python-editor==1.0.3
 python-json-logger==0.1.8
-pytz==2018.6
-PyYAML==3.13
+pytz==2018.7
+PyYAML==3.12
 redis==2.10.6
 requests==2.20.0
 rsa==3.4.2
@@ -79,6 +79,6 @@ s3transfer==0.1.13
 six==1.11.0
 smartypants==2.0.1
 statsd==3.2.2
-urllib3==1.24
+urllib3==1.24.1
 webencodings==0.5.1
 Werkzeug==0.14.1

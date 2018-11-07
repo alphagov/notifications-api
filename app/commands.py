@@ -316,7 +316,7 @@ def replay_service_callbacks(file_name, service_id):
         try:
             notification = Notification.query.filter_by(client_reference=ref.strip()).one()
             notifications.append(notification)
-        except NoResultFound as e:
+        except NoResultFound:
             errors.append("Reference: {} was not found in notifications.".format(ref))
 
     for e in errors:
