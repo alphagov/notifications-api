@@ -48,8 +48,14 @@ def _content_count_greater_than_limit(content, template_type):
     return template.content_count > SMS_CHAR_COUNT_LIMIT
 
 
-def validate_parent_folder(parent_folder_id, service_id):
-    return TemplateFolder.query.filter_by(service_id=service_id, id=parent_folder_id).one()
+def validate_parent_folder(template_json):
+    if template_json.get("parent_folder_id"):
+        return TemplateFolder.query.filter_by(
+            service_id=template_json['service'],
+            id=template_json.pop("parent_folder_id")
+        ).one()
+    else:
+        return None
 
 
 @template_blueprint.route('', methods=['POST'])
@@ -58,8 +64,7 @@ def create_template(service_id):
     # permissions needs to be placed here otherwise marshmallow will interfere with versioning
     permissions = fetched_service.permissions
     template_json = validate(request.get_json(), post_create_template_schema)
-    folder = validate_parent_folder(parent_folder_id=template_json['parent_folder_id'],
-                                    service_id=template_json['service'])
+    folder = validate_parent_folder(template_json=template_json)
     new_template = Template.from_json(template_json, folder)
 
     if not service_has_permission(new_template.template_type, permissions):

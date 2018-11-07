@@ -2,6 +2,7 @@ import base64
 import json
 import random
 import string
+import uuid
 from datetime import datetime, timedelta
 
 import botocore
@@ -12,7 +13,13 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 
-from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory, TemplateFolder
+from app.models import (
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    SMS_TYPE,
+    Template,
+    TemplateHistory
+)
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
 from tests import create_authorization_header
@@ -113,6 +120,28 @@ def test_create_template_should_return_404_if_folder_is_for_a_different_service(
         'service': str(sample_service.id),
         'created_by': str(sample_service.users[0].id),
         'parent_folder_id': str(parent_folder.id)
+    }
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 404
+
+
+def test_create_template_should_return_404_if_folder_does_not_exist(
+        client, sample_service
+):
+    data = {
+        'name': 'my template',
+        'template_type': 'sms',
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id),
+        'parent_folder_id': str(uuid.uuid4())
     }
     data = json.dumps(data)
     auth_header = create_authorization_header()

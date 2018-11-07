@@ -888,15 +888,13 @@ class Template(TemplateBase):
     def from_json(cls, data, folder):
         """
         Assumption: data has been validated appropriately.
-
         Returns a Template object based on the provided data.
         """
         fields = data.copy()
 
         fields['created_by_id'] = fields.pop('created_by')
         fields['service_id'] = fields.pop('service')
-        if fields.pop("parent_folder_id"):
-            fields['folder'] = folder
+        fields['folder'] = folder
         return cls(**fields)
 
 
