@@ -1,14 +1,15 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.template_folder_dao import (
     dao_create_template_folder,
-    dao_get_template_folder_by_id,
+    dao_get_template_folder_by_id_and_service_id,
     dao_update_template_folder,
     dao_delete_template_folder
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.errors import register_errors
+from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
     post_create_template_folder_schema,
@@ -46,6 +47,12 @@ def create_template_folder(service_id):
 
     validate(data, post_create_template_folder_schema)
 
+    if data.get('parent_id') is not None:
+        try:
+            dao_get_template_folder_by_id_and_service_id(data['parent_id'], service_id)
+        except NoResultFound:
+            raise InvalidRequest("parent_id not found", status_code=400)
+
     template_folder = TemplateFolder(
         service_id=service_id,
         name=data['name'].strip(),
@@ -63,7 +70,7 @@ def rename_template_folder(service_id, template_folder_id):
 
     validate(data, post_rename_template_folder_schema)
 
-    template_folder = dao_get_template_folder_by_id(template_folder_id)
+    template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
     template_folder.name = data['name']
 
     dao_update_template_folder(template_folder)
@@ -73,7 +80,7 @@ def rename_template_folder(service_id, template_folder_id):
 
 @template_folder_blueprint.route('/<uuid:template_folder_id>', methods=['DELETE'])
 def delete_template_folder(service_id, template_folder_id):
-    template_folder = dao_get_template_folder_by_id(template_folder_id)
+    template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
 
     # don't allow deleting if there's anything in the folder (even if it's just more empty subfolders)
     if template_folder.subfolders or template_folder.templates:

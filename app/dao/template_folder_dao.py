@@ -3,8 +3,11 @@ from app.dao.dao_utils import transactional
 from app.models import TemplateFolder
 
 
-def dao_get_template_folder_by_id(template_folder_id):
-    return TemplateFolder.query.filter(TemplateFolder.id == template_folder_id).one()
+def dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id):
+    return TemplateFolder.query.filter(
+        TemplateFolder.id == template_folder_id,
+        TemplateFolder.service_id == service_id
+    ).one()
 
 
 @transactional

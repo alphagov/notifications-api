@@ -74,13 +74,25 @@ def test_create_template_folder_fails_if_missing_fields(admin_request, sample_se
 
 
 def test_create_template_folder_fails_if_unknown_parent_id(admin_request, sample_service):
-    # create existing folder
-    create_template_folder(sample_service)
-
     resp = admin_request.post(
         'template_folder.create_template_folder',
         service_id=sample_service.id,
         _data={'name': 'bar', 'parent_id': str(uuid.uuid4())},
+        _expected_status=400
+    )
+
+    assert resp['result'] == 'error'
+    assert resp['message'] == 'parent_id not found'
+
+
+def test_create_template_folder_fails_if_parent_id_from_different_service(admin_request, sample_service):
+    s1 = create_service(service_name='a')
+    parent_folder_id = create_template_folder(s1).id
+
+    resp = admin_request.post(
+        'template_folder.create_template_folder',
+        service_id=sample_service.id,
+        _data={'name': 'bar', 'parent_id': str(parent_folder_id)},
         _expected_status=400
     )
 
