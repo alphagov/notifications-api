@@ -97,7 +97,7 @@ def test_create_template_folder_fails_if_parent_id_from_different_service(admin_
     )
 
     assert resp['result'] == 'error'
-    assert resp['message'] == 'parent_id belongs to a different service'
+    assert resp['message'] == 'parent_id not found'
 
 
 def test_rename_template_folder(admin_request, sample_service):
