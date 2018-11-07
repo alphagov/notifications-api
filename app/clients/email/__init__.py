@@ -14,7 +14,7 @@ class EmailClient(Client):
     '''
 
     def send_email(self, *args, **kwargs):
-        raise NotImplemented('TODO Need to implement.')
+        raise NotImplementedError('TODO Need to implement.')
 
     def get_name(self):
-        raise NotImplemented('TODO Need to implement.')
+        raise NotImplementedError('TODO Need to implement.')

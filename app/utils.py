@@ -121,6 +121,6 @@ def escape_special_characters(string):
     for special_character in ('\\', '_', '%', '/'):
         string = string.replace(
             special_character,
-            '\{}'.format(special_character)
+            r'\{}'.format(special_character)
         )
     return string

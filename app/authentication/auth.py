@@ -113,7 +113,7 @@ def __get_token_issuer(auth_token):
         client = get_token_issuer(auth_token)
     except TokenIssuerError:
         raise AuthError("Invalid token: iss field not provided", 403)
-    except TokenDecodeError as e:
+    except TokenDecodeError:
         raise AuthError("Invalid token: signature, api token is not valid", 403)
     return client
 
@@ -123,5 +123,5 @@ def handle_admin_key(auth_token, secret):
         decode_jwt_token(auth_token, secret)
     except TokenExpiredError:
         raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
-    except TokenDecodeError as e:
+    except TokenDecodeError:
         raise AuthError("Invalid token: signature, api token is not valid", 403)
