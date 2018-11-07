@@ -57,6 +57,8 @@ NOTES:
 
 Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
 
+Choose the version with Additional Releases - you want 9.6. Once you run the app, open the sidebar, remove the default v11 server and create and initialise a v9.6 server.
+
 ### Redis
 
 To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
