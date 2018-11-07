@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.template_folder_dao import (
     dao_create_template_folder,
@@ -8,7 +9,7 @@ from app.dao.template_folder_dao import (
     dao_delete_template_folder
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.errors import register_errors
+from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
     post_create_template_folder_schema,
@@ -45,6 +46,15 @@ def create_template_folder(service_id):
     data = request.get_json()
 
     validate(data, post_create_template_folder_schema)
+
+    if data.get('parent_id') is not None:
+        try:
+            parent_folder = dao_get_template_folder_by_id(data['parent_id'])
+        except NoResultFound:
+            raise InvalidRequest("parent_id not found", status_code=400)
+
+        if parent_folder.service_id != service_id:
+            raise InvalidRequest("parent_id belongs to a different service", status_code=400)
 
     template_folder = TemplateFolder(
         service_id=service_id,
