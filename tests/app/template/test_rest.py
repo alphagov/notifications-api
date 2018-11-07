@@ -302,7 +302,7 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
 def test_update_should_update_a_template(client, sample_user, sample_template):
     data = {
         'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
-        'created_by_id': str(sample_user.id)
+        'created_by': str(sample_user.id)
     }
     data = json.dumps(data)
     auth_header = create_authorization_header()
