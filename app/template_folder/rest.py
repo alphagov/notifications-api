@@ -111,18 +111,20 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
         try:
             template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
         except NoResultFound:
-            current_app.logger.error('Could not move to folder: No folder found with id {} for service {}'.format(
+            msg = 'Could not move to folder: No folder found with id {} for service {}'.format(
                 template_folder_id,
                 service_id
-            ))
-            abort(400)
+            )
+            current_app.logger.error(msg)
+            raise InvalidRequest(msg, status_code=400)
 
         if target_template_folder and template_folder.is_parent_of(target_template_folder):
-            current_app.logger.error('Could not move to folder: {} is an ancestor of target folder {}'.format(
+            msg = 'Could not move to folder: {} is an ancestor of target folder {}'.format(
                 template_folder_id,
                 target_template_folder_id
-            ))
-            abort(400)
+            )
+            current_app.logger.error(msg)
+            raise InvalidRequest(msg, status_code=400)
 
         template_folder.parent = target_template_folder
 
@@ -130,11 +132,12 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
         try:
             template = dao_get_template_by_id_and_service_id(template_id, service_id)
         except NoResultFound:
-            current_app.logger.error('Could not move to folder: No template found with id {} for service {}'.format(
+            msg = 'Could not move to folder: No template found with id {} for service {}'.format(
                 template_id,
                 service_id
-            ))
-            abort(400)
+            )
+            current_app.logger.error(msg)
+            raise InvalidRequest(msg, status_code=400)
 
         if template.archived:
             current_app.logger.error('Could not move to folder: Template {} is archived. (Skipping)'.format(
