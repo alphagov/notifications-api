@@ -2,6 +2,7 @@ import base64
 import json
 import random
 import string
+import uuid
 from datetime import datetime, timedelta
 
 import botocore
@@ -12,7 +13,13 @@ from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 
-from app.models import Template, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, TemplateHistory
+from app.models import (
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    SMS_TYPE,
+    Template,
+    TemplateHistory
+)
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
 from tests import create_authorization_header
@@ -21,7 +28,10 @@ from tests.app.conftest import (
     sample_template_without_email_permission,
     sample_template_without_letter_permission,
     sample_template_without_sms_permission)
-from tests.app.db import create_service, create_letter_contact, create_template, create_notification
+from tests.app.db import (
+    create_service, create_letter_contact, create_template, create_notification,
+    create_template_folder,
+)
 from tests.conftest import set_config_values
 
 
@@ -69,6 +79,81 @@ def test_should_create_a_new_template_for_a_service(
     template = Template.query.get(json_resp['data']['id'])
     from app.schemas import template_schema
     assert sorted(json_resp['data']) == sorted(template_schema.dump(template).data)
+
+
+def test_should_create_a_new_template_for_a_service_adds_folder_relationship(
+    client, sample_service
+):
+    parent_folder = create_template_folder(service=sample_service, name='parent folder')
+
+    data = {
+        'name': 'my template',
+        'template_type': 'sms',
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id),
+        'parent_folder_id': str(parent_folder.id)
+    }
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 201
+    template = Template.query.filter(Template.name == 'my template').first()
+    assert template.folder == parent_folder
+
+
+def test_create_template_should_return_400_if_folder_is_for_a_different_service(
+        client, sample_service
+):
+    service2 = create_service(service_name='second service')
+    parent_folder = create_template_folder(service=service2)
+
+    data = {
+        'name': 'my template',
+        'template_type': 'sms',
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id),
+        'parent_folder_id': str(parent_folder.id)
+    }
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))['message'] == 'parent_folder_id not found'
+
+
+def test_create_template_should_return_400_if_folder_does_not_exist(
+        client, sample_service
+):
+    data = {
+        'name': 'my template',
+        'template_type': 'sms',
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id),
+        'parent_folder_id': str(uuid.uuid4())
+    }
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True))['message'] == 'parent_folder_id not found'
 
 
 def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_user, fake_uuid):
@@ -172,7 +257,8 @@ def test_should_error_if_created_by_missing(client, sample_user, sample_service)
     )
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
-    assert json_resp['result'] == 'error'
+    assert json_resp["errors"][0]["error"] == 'ValidationError'
+    assert json_resp["errors"][0]["message"] == 'created_by is a required property'
 
 
 def test_should_be_error_if_service_does_not_exist_on_update(client, fake_uuid):
@@ -211,9 +297,8 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
         data=data
     )
     json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == {'subject': ['Invalid template subject']}
+    assert json_resp['errors'][0]['error'] == "ValidationError"
+    assert json_resp['errors'][0]["message"] == 'subject is a required property'
 
 
 def test_update_should_update_a_template(client, sample_user, sample_template):

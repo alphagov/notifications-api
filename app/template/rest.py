@@ -12,9 +12,11 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import SMSMessageTemplate
 from requests import post as requests_post
+from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.template_folder_dao import dao_get_template_folder_by_id_and_service_id
 from app.dao.templates_dao import (
     dao_update_template,
     dao_create_template,
@@ -29,9 +31,11 @@ from app.errors import (
     InvalidRequest
 )
 from app.letters.utils import get_letter_pdf
-from app.models import SMS_TYPE
+from app.models import SMS_TYPE, Template
 from app.notifications.validators import service_has_permission, check_reply_to
+from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
+from app.template.template_schemas import post_create_template_schema
 from app.utils import get_template_instance, get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
@@ -46,12 +50,27 @@ def _content_count_greater_than_limit(content, template_type):
     return template.content_count > SMS_CHAR_COUNT_LIMIT
 
 
+def validate_parent_folder(template_json):
+    if template_json.get("parent_folder_id"):
+        try:
+            return dao_get_template_folder_by_id_and_service_id(
+                template_folder_id=template_json.pop("parent_folder_id"),
+                service_id=template_json['service']
+            )
+        except NoResultFound:
+            raise InvalidRequest("parent_folder_id not found", status_code=400)
+    else:
+        return None
+
+
 @template_blueprint.route('', methods=['POST'])
 def create_template(service_id):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    # permissions needs to be placed here otherwise marshmallow will intefere with versioning
+    # permissions needs to be placed here otherwise marshmallow will interfere with versioning
     permissions = fetched_service.permissions
-    new_template = template_schema.load(request.get_json()).data
+    template_json = validate(request.get_json(), post_create_template_schema)
+    folder = validate_parent_folder(template_json=template_json)
+    new_template = Template.from_json(template_json, folder)
 
     if not service_has_permission(new_template.template_type, permissions):
         message = "Creating {} templates is not allowed".format(
@@ -60,6 +79,7 @@ def create_template(service_id):
         raise InvalidRequest(errors, 403)
 
     new_template.service = fetched_service
+
     over_limit = _content_count_greater_than_limit(new_template.content, new_template.template_type)
     if over_limit:
         message = 'Content has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)
@@ -69,6 +89,7 @@ def create_template(service_id):
     check_reply_to(service_id, new_template.reply_to, new_template.template_type)
 
     dao_create_template(new_template)
+
     return jsonify(data=template_schema.dump(new_template).data), 201
 
 
