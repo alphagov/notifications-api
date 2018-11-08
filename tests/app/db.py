@@ -18,7 +18,7 @@ from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
 from app.dao.services_dao import dao_create_service
-from app.dao.templates_dao import dao_create_template
+from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.users_dao import save_model_user
 from app.models import (
     ApiKey,
@@ -137,7 +137,9 @@ def create_template(
         subject='Template subject',
         content='Dear Sir/Madam, Hello. Yours Truly, The Government.',
         reply_to=None,
-        hidden=False
+        hidden=False,
+        archived=False,
+        folder=None,
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -146,12 +148,18 @@ def create_template(
         'service': service,
         'created_by': service.created_by,
         'reply_to': reply_to,
-        'hidden': hidden
+        'hidden': hidden,
+        'folder': folder,
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject
     template = Template(**data)
     dao_create_template(template)
+
+    if archived:
+        template.archived = archived
+        dao_update_template(template)
+
     return template
 
 

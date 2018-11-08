@@ -1,7 +1,9 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, abort, current_app
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.dao.dao_utils import transactional
+from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.template_folder_dao import (
     dao_create_template_folder,
     dao_get_template_folder_by_id_and_service_id,
@@ -13,7 +15,8 @@ from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
     post_create_template_folder_schema,
-    post_rename_template_folder_schema
+    post_rename_template_folder_schema,
+    post_move_template_folder_schema,
 )
 from app.schema_validation import validate
 
@@ -89,3 +92,54 @@ def delete_template_folder(service_id, template_folder_id):
     dao_delete_template_folder(template_folder)
 
     return '', 204
+
+
+@template_folder_blueprint.route('/move-to-folder', methods=['POST'])
+@template_folder_blueprint.route('/move-to-folder/<uuid:target_template_folder_id>', methods=['POST'])
+@transactional
+def move_to_template_folder(service_id, target_template_folder_id=None):
+    data = request.get_json()
+
+    validate(data, post_move_template_folder_schema)
+
+    if target_template_folder_id:
+        target_template_folder = dao_get_template_folder_by_id_and_service_id(target_template_folder_id, service_id)
+    else:
+        target_template_folder = None
+
+    for template_folder_id in data['folders']:
+        try:
+            template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
+        except NoResultFound:
+            current_app.logger.error('Could not move to folder: No folder found with id {} for service {}'.format(
+                template_folder_id,
+                service_id
+            ))
+            abort(400)
+
+        if target_template_folder and template_folder.is_parent_of(target_template_folder):
+            current_app.logger.error('Could not move to folder: {} is an ancestor of target folder {}'.format(
+                template_folder_id,
+                target_template_folder_id
+            ))
+            abort(400)
+
+        template_folder.parent = target_template_folder
+
+    for template_id in data['templates']:
+        try:
+            template = dao_get_template_by_id_and_service_id(template_id, service_id)
+        except NoResultFound:
+            current_app.logger.error('Could not move to folder: No template found with id {} for service {}'.format(
+                template_id,
+                service_id
+            ))
+            abort(400)
+
+        if template.archived:
+            current_app.logger.error('Could not move to folder: Template {} is archived. (Skipping)'.format(
+                template_id
+            ))
+        else:
+            template.folder = target_template_folder
+    return '', 200

@@ -4,7 +4,7 @@ import pytest
 
 from app.models import TemplateFolder
 
-from tests.app.db import create_service, create_template_folder
+from tests.app.db import create_service, create_template_folder, create_template
 
 
 def test_get_folders_for_service(admin_request, notify_db_session):
@@ -188,3 +188,157 @@ def test_delete_template_folder_fails_if_folder_contains_templates(admin_request
     }
 
     assert TemplateFolder.query.count() == 1
+
+
+@pytest.mark.parametrize('data', [
+    {},
+    {'templates': None, 'folders': []},
+    {'folders': []},
+    {'templates': [], 'folders': [None]},
+    {'templates': [], 'folders': ['not a uuid']},
+])
+def test_move_to_folder_validates_schema(data, admin_request, notify_db_session):
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=uuid.uuid4(),
+        target_template_folder_id=uuid.uuid4(),
+        _data=data,
+        _expected_status=400
+    )
+
+
+def test_move_to_folder_moves_folders_and_templates(admin_request, sample_service):
+    target_folder = create_template_folder(sample_service, name='target')
+    f1 = create_template_folder(sample_service, name='f1')
+    f2 = create_template_folder(sample_service, name='f2')
+
+    t1 = create_template(sample_service, template_name='t1', folder=f1)
+    t2 = create_template(sample_service, template_name='t2', folder=f1)
+    t3 = create_template(sample_service, template_name='t3', folder=f2)
+    t4 = create_template(sample_service, template_name='t4', folder=target_folder)
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=sample_service.id,
+        target_template_folder_id=target_folder.id,
+        _data={
+            'templates': [str(t1.id)],
+            'folders': [str(f1.id)]
+        }
+    )
+
+    assert target_folder.parent is None
+    assert f1.parent == target_folder
+    assert f2.parent is None  # unchanged
+
+    assert t1.folder == target_folder  # moved out of f1, even though f1 is also being moved
+    assert t2.folder == f1  # stays in f1, though f1 has moved
+    assert t3.folder == f2  # unchanged
+    assert t4.folder == target_folder  # unchanged
+
+    # versions are all unchanged
+    assert t1.version == 1
+    assert t2.version == 1
+    assert t3.version == 1
+    assert t4.version == 1
+
+
+def test_move_to_folder_moves_folders_and_templates_to_top_level_if_no_target(admin_request, sample_service):
+    f1 = create_template_folder(sample_service, name='f1')
+    f2 = create_template_folder(sample_service, name='f2')
+
+    t1 = create_template(sample_service, template_name='t1', folder=f1)
+    t2 = create_template(sample_service, template_name='t2', folder=f1)
+    t3 = create_template(sample_service, template_name='t3', folder=f2)
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=sample_service.id,
+        target_template_folder_id=None,
+        _data={
+            'templates': [str(t1.id)],
+            'folders': [str(f1.id)]
+        }
+    )
+
+    assert f1.parent is None
+    assert f2.parent is None  # unchanged
+
+    assert t1.folder is None  # moved out of f1, even though f1 is also being moved
+    assert t2.folder == f1  # stays in f1, though f1 has moved
+    assert t3.folder == f2  # unchanged
+
+
+def test_move_to_folder_rejects_folder_from_other_service(admin_request, notify_db_session):
+    s1 = create_service(service_name='s1')
+    s2 = create_service(service_name='s2')
+
+    f2 = create_template_folder(s2)
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=s1.id,
+        target_template_folder_id=None,
+        _data={
+            'templates': [],
+            'folders': [str(f2.id)]
+        },
+        _expected_status=400
+    )
+
+
+def test_move_to_folder_rejects_template_from_other_service(admin_request, notify_db_session):
+    s1 = create_service(service_name='s1')
+    s2 = create_service(service_name='s2')
+
+    t2 = create_template(s2)
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=s1.id,
+        target_template_folder_id=None,
+        _data={
+            'templates': [],
+            'folders': [str(t2.id)]
+        },
+        _expected_status=400
+    )
+
+
+def test_move_to_folder_rejects_if_it_would_cause_folder_loop(admin_request, sample_service):
+    f1 = create_template_folder(sample_service, name='f1')
+    target_folder = create_template_folder(sample_service, name='target', parent=f1)
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=sample_service.id,
+        target_template_folder_id=target_folder.id,
+        _data={
+            'folders': [str(f1.id)]
+        },
+        _expected_status=400
+    )
+
+
+def test_move_to_folder_skips_archived_templates(admin_request, sample_service):
+    target_folder = create_template_folder(sample_service)
+    other_folder = create_template_folder(sample_service)
+
+    archived_template = create_template(sample_service, archived=True, folder=None)
+    unarchived_template = create_template(sample_service, archived=False, folder=other_folder)
+
+    archived_timestamp = archived_template.updated_at
+
+    admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=sample_service.id,
+        target_template_folder_id=target_folder.id,
+        _data={
+            'templates': [str(archived_template.id), str(unarchived_template.id)],
+            'folders': []
+        }
+    )
+
+    assert archived_template.updated_at == archived_timestamp
+    assert archived_template.folder is None
+    assert unarchived_template.folder == target_folder
