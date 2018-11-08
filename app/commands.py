@@ -527,6 +527,12 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
     while process_date < end_date:
         start_time = datetime.now()
         # migrate data into ft_notification_status and update if record already exists
+
+        db.session.execute(
+            'delete from ft_notification_status where bst_date = :process_date',
+            {"process_date": process_date}
+        )
+
         sql = \
             """
             insert into ft_notification_status (bst_date, template_id, service_id, job_id, notification_type, key_type,
@@ -546,9 +552,6 @@ def migrate_data_to_ft_notification_status(start_date, end_date):
                     and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
                 group by bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status
                 order by bst_date
-            on conflict on constraint ft_notification_status_pkey do update set
-                notification_count = excluded.notification_count,
-                updated_at = now()
             """
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
