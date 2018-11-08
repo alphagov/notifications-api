@@ -49,12 +49,9 @@ def fetch_notification_status_for_day(process_day, service_id=None):
 
 def update_fact_notification_status(data, process_day):
     table = FactNotificationStatus.__table__
-    '''
-       This uses the Postgres upsert to avoid race conditions when two threads try to insert
-       at the same row. The excluded object refers to values that we tried to insert but were
-       rejected.
-       http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
-    '''
+    FactNotificationStatus.query.filter(
+        FactNotificationStatus.bst_date == process_day.date()
+    ).delete()
     for row in data:
         stmt = insert(table).values(
             bst_date=process_day.date(),
@@ -65,13 +62,6 @@ def update_fact_notification_status(data, process_day):
             key_type=row.key_type,
             notification_status=row.status,
             notification_count=row.notification_count,
-        )
-
-        stmt = stmt.on_conflict_do_update(
-            constraint="ft_notification_status_pkey",
-            set_={"notification_count": stmt.excluded.notification_count,
-                  "updated_at": datetime.utcnow()
-                  }
         )
         db.session.connection().execute(stmt)
         db.session.commit()

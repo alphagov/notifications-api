@@ -460,8 +460,8 @@ def test_create_nightly_notification_status(notify_db_session):
     create_notification(template=first_template, status='delivered')
     create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=1))
     create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=2))
-    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=3))
     create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=4))
+    create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=5))
 
     create_notification(template=second_template, status='temporary-failure')
     create_notification(template=second_template, status='temporary-failure',
@@ -469,15 +469,15 @@ def test_create_nightly_notification_status(notify_db_session):
     create_notification(template=second_template, status='temporary-failure',
                         created_at=datetime.utcnow() - timedelta(days=2))
     create_notification(template=second_template, status='temporary-failure',
-                        created_at=datetime.utcnow() - timedelta(days=3))
-    create_notification(template=second_template, status='temporary-failure',
                         created_at=datetime.utcnow() - timedelta(days=4))
+    create_notification(template=second_template, status='temporary-failure',
+                        created_at=datetime.utcnow() - timedelta(days=5))
 
     create_notification(template=third_template, status='created')
     create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=1))
     create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=2))
-    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=3))
     create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=4))
+    create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=5))
 
     assert len(FactNotificationStatus.query.all()) == 0
 
@@ -487,6 +487,6 @@ def test_create_nightly_notification_status(notify_db_session):
         FactNotificationStatus.notification_type
     ).all()
     assert len(new_data) == 9
-    assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=3), "%Y-%m-%d")
+    assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=4), "%Y-%m-%d")
     assert str(new_data[3].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
     assert str(new_data[6].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
