@@ -15,6 +15,7 @@ from app.dao.templates_dao import (
 )
 from app.models import (
     Template,
+    TemplateFolder,
     TemplateHistory,
     TemplateRedacted
 )
@@ -91,6 +92,35 @@ def test_update_template(sample_service, sample_user):
     created.name = 'new name'
     dao_update_template(created)
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'new name'
+
+
+def test_update_template_in_a_folder_to_archived(sample_service, sample_user):
+    template_data = {
+        'name': 'Sample Template',
+        'template_type': "sms",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user
+    }
+    template = Template(**template_data)
+
+    template_folder_data = {
+        'name': 'My Folder',
+        'service_id': sample_service.id,
+    }
+    template_folder = TemplateFolder(**template_folder_data)
+
+    template.folder = template_folder
+    dao_create_template(template)
+
+    template.archived = True
+    dao_update_template(template)
+
+    template_folder = TemplateFolder.query.one()
+    archived_template = Template.query.one()
+
+    assert template_folder
+    assert not archived_template.folder
 
 
 def test_dao_update_template_reply_to_none_to_some(sample_service, sample_user):

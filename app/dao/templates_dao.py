@@ -38,6 +38,9 @@ def dao_create_template(template):
 @transactional
 @version_class(Template, TemplateHistory)
 def dao_update_template(template):
+    if template.archived:
+        template.folder = None
+
     db.session.add(template)
 
 
