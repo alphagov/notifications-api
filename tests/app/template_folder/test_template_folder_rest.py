@@ -266,9 +266,9 @@ def test_move_to_folder_moves_folders_and_templates_to_top_level_if_no_target(ad
     assert f1.parent is None  # unchanged
     assert f2.parent is None
 
-    assert t1.folder is None  # moved out of f1, even though f1 is also being moved
-    assert t2.folder == f1  # stays in f1, though f1 has moved
-    assert t3.folder == f2  # unchanged
+    assert t1.folder is None  # moved out of f1
+    assert t2.folder == f1  # unchanged
+    assert t3.folder == f2  # stayed in f2 even though the parent changed
 
 
 def test_move_to_folder_rejects_folder_from_other_service(admin_request, notify_db_session):
