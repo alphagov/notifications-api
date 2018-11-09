@@ -51,4 +51,7 @@ def create_nightly_notification_status(day_start=None):
         update_fact_notification_status(transit_data, process_day)
 
         current_app.logger.info(
-            "create-nightly-notification-status task: {} rows updated for day: {}")
+            "create-nightly-notification-status task: {} rows updated for day: {}".format(
+                len(transit_data), process_day
+            )
+        )
