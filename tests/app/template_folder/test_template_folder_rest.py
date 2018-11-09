@@ -246,7 +246,7 @@ def test_move_to_folder_moves_folders_and_templates(admin_request, sample_servic
 
 def test_move_to_folder_moves_folders_and_templates_to_top_level_if_no_target(admin_request, sample_service):
     f1 = create_template_folder(sample_service, name='f1')
-    f2 = create_template_folder(sample_service, name='f2')
+    f2 = create_template_folder(sample_service, name='f2', parent=f1)
 
     t1 = create_template(sample_service, template_name='t1', folder=f1)
     t2 = create_template(sample_service, template_name='t2', folder=f1)
@@ -258,13 +258,13 @@ def test_move_to_folder_moves_folders_and_templates_to_top_level_if_no_target(ad
         target_template_folder_id=None,
         _data={
             'templates': [str(t1.id)],
-            'folders': [str(f1.id)]
+            'folders': [str(f2.id)]
         },
         _expected_status=204
     )
 
-    assert f1.parent is None
-    assert f2.parent is None  # unchanged
+    assert f1.parent is None  # unchanged
+    assert f2.parent is None
 
     assert t1.folder is None  # moved out of f1, even though f1 is also being moved
     assert t2.folder == f1  # stays in f1, though f1 has moved
@@ -277,7 +277,7 @@ def test_move_to_folder_rejects_folder_from_other_service(admin_request, notify_
 
     f2 = create_template_folder(s2)
 
-    admin_request.post(
+    response = admin_request.post(
         'template_folder.move_to_template_folder',
         service_id=s1.id,
         target_template_folder_id=None,
@@ -287,6 +287,7 @@ def test_move_to_folder_rejects_folder_from_other_service(admin_request, notify_
         },
         _expected_status=400
     )
+    assert response['message'] == 'No folder found with id {} for service {}'.format(f2.id, s1.id)
 
 
 def test_move_to_folder_rejects_template_from_other_service(admin_request, notify_db_session):
@@ -295,7 +296,7 @@ def test_move_to_folder_rejects_template_from_other_service(admin_request, notif
 
     t2 = create_template(s2)
 
-    admin_request.post(
+    response = admin_request.post(
         'template_folder.move_to_template_folder',
         service_id=s1.id,
         target_template_folder_id=None,
@@ -305,20 +306,27 @@ def test_move_to_folder_rejects_template_from_other_service(admin_request, notif
         },
         _expected_status=400
     )
+    assert response['message'] == 'Could not move to folder: No template found with id {} for service {}'.format(
+        t2.id, s1.id
+    )
 
 
 def test_move_to_folder_rejects_if_it_would_cause_folder_loop(admin_request, sample_service):
     f1 = create_template_folder(sample_service, name='f1')
     target_folder = create_template_folder(sample_service, name='target', parent=f1)
 
-    admin_request.post(
+    response = admin_request.post(
         'template_folder.move_to_template_folder',
         service_id=sample_service.id,
         target_template_folder_id=target_folder.id,
         _data={
+            'templates': [],
             'folders': [str(f1.id)]
         },
         _expected_status=400
+    )
+    assert response['message'] == 'Could not move to folder: {} is an ancestor of target folder {}'.format(
+        f1.id, target_folder.id
     )
 
 

@@ -94,8 +94,8 @@ def delete_template_folder(service_id, template_folder_id):
     return '', 204
 
 
-@template_folder_blueprint.route('/move-to-folder', methods=['POST'])
-@template_folder_blueprint.route('/move-to-folder/<uuid:target_template_folder_id>', methods=['POST'])
+@template_folder_blueprint.route('/contents', methods=['POST'])
+@template_folder_blueprint.route('/<uuid:target_template_folder_id>/contents', methods=['POST'])
 @transactional
 def move_to_template_folder(service_id, target_template_folder_id=None):
     data = request.get_json()
@@ -115,7 +115,6 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
                 template_folder_id,
                 service_id
             )
-            current_app.logger.error(msg)
             raise InvalidRequest(msg, status_code=400)
 
         if target_template_folder and template_folder.is_parent_of(target_template_folder):
@@ -123,7 +122,6 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
                 template_folder_id,
                 target_template_folder_id
             )
-            current_app.logger.error(msg)
             raise InvalidRequest(msg, status_code=400)
 
         template_folder.parent = target_template_folder
@@ -136,7 +134,6 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
                 template_id,
                 service_id
             )
-            current_app.logger.error(msg)
             raise InvalidRequest(msg, status_code=400)
 
         if template.archived:
