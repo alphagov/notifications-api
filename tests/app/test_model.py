@@ -28,7 +28,8 @@ from tests.app.db import (
     create_inbound_number,
     create_reply_to_email,
     create_letter_contact,
-    create_template
+    create_template,
+    create_template_folder
 )
 
 
@@ -329,3 +330,17 @@ def test_is_precompiled_letter_hidden_true_not_name(sample_letter_template):
 def test_is_precompiled_letter_name_correct_not_hidden(sample_letter_template):
     sample_letter_template.name = PRECOMPILED_TEMPLATE_NAME
     assert not sample_letter_template.is_precompiled_letter
+
+
+def test_template_folder_is_parent(sample_service):
+    x = None
+    folders = []
+    for i in range(5):
+        x = create_template_folder(sample_service, name=str(i), parent=x)
+        folders.append(x)
+
+    assert folders[0].is_parent_of(folders[1])
+    assert folders[0].is_parent_of(folders[2])
+    assert folders[0].is_parent_of(folders[4])
+    assert folders[1].is_parent_of(folders[2])
+    assert not folders[1].is_parent_of(folders[0])

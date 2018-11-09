@@ -725,6 +725,13 @@ class TemplateFolder(db.Model):
             'service_id': self.service_id
         }
 
+    def is_parent_of(self, other):
+        while other.parent is not None:
+            if other.parent == self:
+                return True
+            other = other.parent
+        return False
+
 
 template_folder_map = db.Table(
     'template_folder_map',

@@ -1,4 +1,4 @@
-from app.schema_validation.definitions import nullable_uuid
+from app.schema_validation.definitions import nullable_uuid, uuid
 
 post_create_template_folder_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
@@ -19,4 +19,15 @@ post_rename_template_folder_schema = {
         "name": {"type": "string", "minLength": 1},
     },
     "required": ["name"]
+}
+
+post_move_template_folder_schema = {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "POST schema for renaming template_folder",
+    "type": "object",
+    "properties": {
+        "templates": {"type": "array", "items": uuid},
+        "folders": {"type": "array", "items": uuid},
+    },
+    "required": ["templates", "folders"]
 }
