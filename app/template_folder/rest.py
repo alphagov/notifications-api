@@ -111,7 +111,7 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
         try:
             template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
         except NoResultFound:
-            msg = 'Could not move to folder: No folder found with id {} for service {}'.format(
+            msg = 'No folder found with id {} for service {}'.format(
                 template_folder_id,
                 service_id
             )
