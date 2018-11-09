@@ -224,7 +224,8 @@ def test_move_to_folder_moves_folders_and_templates(admin_request, sample_servic
         _data={
             'templates': [str(t1.id)],
             'folders': [str(f1.id)]
-        }
+        },
+        _expected_status=204
     )
 
     assert target_folder.parent is None
@@ -258,7 +259,8 @@ def test_move_to_folder_moves_folders_and_templates_to_top_level_if_no_target(ad
         _data={
             'templates': [str(t1.id)],
             'folders': [str(f1.id)]
-        }
+        },
+        _expected_status=204
     )
 
     assert f1.parent is None
@@ -298,8 +300,8 @@ def test_move_to_folder_rejects_template_from_other_service(admin_request, notif
         service_id=s1.id,
         target_template_folder_id=None,
         _data={
-            'templates': [],
-            'folders': [str(t2.id)]
+            'templates': [str(t2.id)],
+            'folders': []
         },
         _expected_status=400
     )
@@ -336,7 +338,8 @@ def test_move_to_folder_skips_archived_templates(admin_request, sample_service):
         _data={
             'templates': [str(archived_template.id), str(unarchived_template.id)],
             'folders': []
-        }
+        },
+        _expected_status=204
     )
 
     assert archived_template.updated_at == archived_timestamp

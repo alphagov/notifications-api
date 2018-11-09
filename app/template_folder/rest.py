@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, abort, current_app
+from flask import Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -145,4 +145,4 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
             ))
         else:
             template.folder = target_template_folder
-    return '', 200
+    return '', 204
