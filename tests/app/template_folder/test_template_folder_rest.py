@@ -330,6 +330,22 @@ def test_move_to_folder_rejects_if_it_would_cause_folder_loop(admin_request, sam
     )
 
 
+def test_move_to_folder_itself_is_rejected(admin_request, sample_service):
+    target_folder = create_template_folder(sample_service, name='target')
+
+    response = admin_request.post(
+        'template_folder.move_to_template_folder',
+        service_id=sample_service.id,
+        target_template_folder_id=target_folder.id,
+        _data={
+            'templates': [],
+            'folders': [str(target_folder.id)]
+        },
+        _expected_status=400
+    )
+    response['message'] == 'Could not move to folder: {} to itself'.format(target_folder.id)
+
+
 def test_move_to_folder_skips_archived_templates(admin_request, sample_service):
     target_folder = create_template_folder(sample_service)
     other_folder = create_template_folder(sample_service)
