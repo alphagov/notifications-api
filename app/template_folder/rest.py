@@ -141,9 +141,7 @@ def move_to_template_folder(service_id, target_template_folder_id=None):
 
 def _validate_folder_move(target_template_folder, target_template_folder_id, template_folder, template_folder_id):
     if str(target_template_folder_id) == str(template_folder_id):
-        msg = 'Could not move to folder: {} to itself'.format(
-            template_folder_id
-        )
+        msg = 'Could not move to folder to itself'
         raise InvalidRequest(msg, status_code=400)
     if target_template_folder and template_folder.is_parent_of(target_template_folder):
         msg = 'Could not move to folder: {} is an ancestor of target folder {}'.format(
