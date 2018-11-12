@@ -122,10 +122,28 @@ def test_should_process_sms_job(sample_job, mocker):
         (str(sample_job.service_id),
          "uuid",
          "something_encrypted"),
+        {},
         queue="database-tasks"
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == 'finished'
+
+
+def test_should_process_sms_job_with_sender_id(sample_job, mocker, fake_uuid):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.save_sms.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(sample_job.id, sender_id=fake_uuid)
+
+    tasks.save_sms.apply_async.assert_called_once_with(
+        (str(sample_job.service_id),
+         "uuid",
+         "something_encrypted"),
+        {'sender_id': fake_uuid},
+        queue="database-tasks"
+    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -238,6 +256,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db,
             "uuid",
             "something_encrypted",
         ),
+        {},
         queue="database-tasks"
     )
 
@@ -282,10 +301,31 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
             "uuid",
             "something_encrypted",
         ),
+        {},
         queue="database-tasks"
     )
     job = jobs_dao.dao_get_job_by_id(email_job_with_placeholders.id)
     assert job.job_status == 'finished'
+
+
+def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mocker, fake_uuid):
+    email_csv = """email_address,name
+    test@test.com,foo
+    """
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=email_csv)
+    mocker.patch('app.celery.tasks.save_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+
+    process_job(email_job_with_placeholders.id, sender_id=fake_uuid)
+
+    tasks.save_email.apply_async.assert_called_once_with(
+        (str(email_job_with_placeholders.service_id),
+         "uuid",
+         "something_encrypted"),
+        {'sender_id': fake_uuid},
+        queue="database-tasks"
+    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
@@ -393,7 +433,43 @@ def test_process_row_sends_letter_task(template_type, research_mode, expected_fu
             # encrypted data
             encrypt_mock.return_value,
         ),
+        {},
         queue=expected_queue
+    )
+
+
+def test_process_row_when_sender_id_is_provided(mocker, fake_uuid):
+    mocker.patch('app.celery.tasks.create_uuid', return_value='noti_uuid')
+    task_mock = mocker.patch('app.celery.tasks.save_sms.apply_async')
+    encrypt_mock = mocker.patch('app.celery.tasks.encryption.encrypt')
+    template = Mock(id='template_id', template_type=SMS_TYPE)
+    job = Mock(id='job_id', template_version='temp_vers')
+    service = Mock(id='service_id', research_mode=False)
+
+    process_row(
+        Row(
+            {'foo': 'bar', 'to': 'recip'},
+            index='row_num',
+            error_fn=lambda k, v: None,
+            recipient_column_headers=['to'],
+            placeholders={'foo'},
+            template=template,
+        ),
+        template,
+        job,
+        service,
+        sender_id=fake_uuid
+    )
+
+    task_mock.assert_called_once_with(
+        (
+            'service_id',
+            'noti_uuid',
+            # encrypted data
+            encrypt_mock.return_value,
+        ),
+        {'sender_id': fake_uuid},
+        queue='database-tasks'
     )
 # -------- save_sms and save_email tests -------- #
 

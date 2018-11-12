@@ -150,8 +150,10 @@ def create_job(service_id):
 
     dao_create_job(job)
 
+    sender_id = data.get('sender_id')
+
     if job.job_status == JOB_STATUS_PENDING:
-        process_job.apply_async([str(job.id)], queue=QueueNames.JOBS)
+        process_job.apply_async([str(job.id)], {'sender_id': sender_id}, queue=QueueNames.JOBS)
 
     job_json = job_schema.dump(job).data
     job_json['statistics'] = []

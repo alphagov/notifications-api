@@ -112,7 +112,7 @@ def process_job(job_id, sender_id=None):
             template_type=template.template_type,
             placeholders=template.placeholders
     ).rows:
-        process_row(row, template, job, service)
+        process_row(row, template, job, service, sender_id=sender_id)
 
     job_complete(job, start=start)
 
@@ -134,7 +134,7 @@ def job_complete(job, resumed=False, start=None):
         )
 
 
-def process_row(row, template, job, service):
+def process_row(row, template, job, service, sender_id=None):
     template_type = template.template_type
     encrypted = encryption.encrypt({
         'template': str(template.id),
@@ -153,12 +153,17 @@ def process_row(row, template, job, service):
 
     send_fn = send_fns[template_type]
 
+    task_kwargs = {}
+    if sender_id:
+        task_kwargs['sender_id'] = sender_id
+
     send_fn.apply_async(
         (
             str(service.id),
             create_uuid(),
             encrypted,
         ),
+        task_kwargs,
         queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE
     )
 
