@@ -11,9 +11,9 @@ post_create_template_folder_schema = {
     "required": ["name", "parent_id"]
 }
 
-post_rename_template_folder_schema = {
+post_update_template_folder_schema = {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "POST schema for renaming template_folder",
+    "description": "POST schema for updating template_folder",
     "type": "object",
     "properties": {
         "name": {"type": "string", "minLength": 1},

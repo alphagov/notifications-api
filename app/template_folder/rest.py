@@ -15,7 +15,7 @@ from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
     post_create_template_folder_schema,
-    post_rename_template_folder_schema,
+    post_update_template_folder_schema,
     post_move_template_folder_schema,
 )
 from app.schema_validation import validate
@@ -67,11 +67,11 @@ def create_template_folder(service_id):
     return jsonify(data=template_folder.serialize()), 201
 
 
-@template_folder_blueprint.route('/<uuid:template_folder_id>/rename', methods=['POST'])
-def rename_template_folder(service_id, template_folder_id):
+@template_folder_blueprint.route('/<uuid:template_folder_id>', methods=['POST'])
+def update_template_folder(service_id, template_folder_id):
     data = request.get_json()
 
-    validate(data, post_rename_template_folder_schema)
+    validate(data, post_update_template_folder_schema)
 
     template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
     template_folder.name = data['name']

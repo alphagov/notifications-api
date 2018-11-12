@@ -100,11 +100,11 @@ def test_create_template_folder_fails_if_parent_id_from_different_service(admin_
     assert resp['message'] == 'parent_id not found'
 
 
-def test_rename_template_folder(admin_request, sample_service):
+def test_update_template_folder(admin_request, sample_service):
     existing_folder = create_template_folder(sample_service)
 
     resp = admin_request.post(
-        'template_folder.rename_template_folder',
+        'template_folder.update_template_folder',
         service_id=sample_service.id,
         template_folder_id=existing_folder.id,
         _data={
@@ -121,11 +121,11 @@ def test_rename_template_folder(admin_request, sample_service):
     ({'name': None}, 'name None is not of type string'),
     ({'name': ''}, 'name  is too short'),
 ])
-def test_rename_template_folder_fails_if_missing_name(admin_request, sample_service, data, err):
+def test_update_template_folder_fails_if_missing_name(admin_request, sample_service, data, err):
     existing_folder = create_template_folder(sample_service)
 
     resp = admin_request.post(
-        'template_folder.rename_template_folder',
+        'template_folder.update_template_folder',
         service_id=sample_service.id,
         template_folder_id=existing_folder.id,
         _data=data,
