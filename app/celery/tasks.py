@@ -45,7 +45,9 @@ from app.dao.notifications_dao import (
     dao_get_notification_by_reference,
 )
 from app.dao.provider_details_dao import get_current_provider
+from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
@@ -75,7 +77,7 @@ from app.utils import convert_utc_to_bst
 
 @notify_celery.task(name="process-job")
 @statsd(namespace="tasks")
-def process_job(job_id):
+def process_job(job_id, sender_id=None):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
 
@@ -182,13 +184,17 @@ def save_sms(self,
              service_id,
              notification_id,
              encrypted_notification,
-             api_key_id=None,
-             key_type=KEY_TYPE_NORMAL):
+             sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
-    if not service_allowed_to_send_to(notification['to'], service, key_type):
+    if sender_id:
+        reply_to_text = dao_get_service_sms_senders_by_id(service_id, sender_id).sms_sender
+    else:
+        reply_to_text = template.get_reply_to_text()
+
+    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.debug(
             "SMS {} failed as restricted service".format(notification_id)
         )
@@ -202,13 +208,13 @@ def save_sms(self,
             service=service,
             personalisation=notification.get('personalisation'),
             notification_type=SMS_TYPE,
-            api_key_id=api_key_id,
-            key_type=key_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             notification_id=notification_id,
-            reply_to_text=template.get_reply_to_text()
+            reply_to_text=reply_to_text
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -233,14 +239,18 @@ def save_email(self,
                service_id,
                notification_id,
                encrypted_notification,
-               api_key_id=None,
-               key_type=KEY_TYPE_NORMAL):
+               sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
-    if not service_allowed_to_send_to(notification['to'], service, key_type):
+    if sender_id:
+        reply_to_text = dao_get_reply_to_by_id(service_id, sender_id).email_address
+    else:
+        reply_to_text = template.get_reply_to_text()
+
+    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
@@ -252,13 +262,13 @@ def save_email(self,
             service=service,
             personalisation=notification.get('personalisation'),
             notification_type=EMAIL_TYPE,
-            api_key_id=api_key_id,
-            key_type=key_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
             job_id=notification.get('job', None),
             job_row_number=notification.get('row_number', None),
             notification_id=notification_id,
-            reply_to_text=template.get_reply_to_text()
+            reply_to_text=reply_to_text
         )
 
         provider_tasks.deliver_email.apply_async(
