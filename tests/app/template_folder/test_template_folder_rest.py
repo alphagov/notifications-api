@@ -343,7 +343,7 @@ def test_move_to_folder_itself_is_rejected(admin_request, sample_service):
         },
         _expected_status=400
     )
-    response['message'] == 'Could not move to folder: {} to itself'.format(target_folder.id)
+    assert response['message'] == 'Could not move to folder to itself'
 
 
 def test_move_to_folder_skips_archived_templates(admin_request, sample_service):
