@@ -141,6 +141,14 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     assert updated.status == 'failed'
 
 
+def test_should_update_status_by_id_if_pending_virus_check(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='pending-virus-check')
+    assert Notification.query.get(notification.id).status == 'pending-virus-check'
+    updated = update_notification_status_by_id(notification.id, 'cancelled')
+    assert Notification.query.get(notification.id).status == 'cancelled'
+    assert updated.status == 'cancelled'
+
+
 def test_should_update_status_by_id_and_set_sent_by(notify_db, notify_db_session):
     notification = sample_notification(notify_db, notify_db_session, status='sending')
 
