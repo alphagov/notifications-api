@@ -5,6 +5,8 @@ from functools import partial
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
+
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -520,7 +522,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == 'created'
 
 
-def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
+def test_get_notification_with_personalisation_by_id(notify_db, notify_db_session, sample_template):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        template=sample_template,
                                        scheduled_for='2017-05-05 14:15',
@@ -532,6 +534,25 @@ def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
     )
     assert notification == notification_from_db
     assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
+
+
+def test_get_notification_by_id_when_notification_exists(sample_notification):
+    notification_from_db = get_notification_by_id(sample_notification.id)
+
+    assert sample_notification == notification_from_db
+
+
+def test_get_notification_by_id_when_notification_does_not_exist(notify_db_session, fake_uuid):
+    notification_from_db = get_notification_by_id(fake_uuid)
+
+    assert notification_from_db is None
+
+
+def test_get_notification_by_id_when_notification_exists_for_different_service(sample_notification):
+    another_service = create_service(service_name='Another service')
+
+    with pytest.raises(NoResultFound):
+        get_notification_by_id(sample_notification.id, another_service.id, _raise=True)
 
 
 def test_get_notifications_by_reference(sample_template):

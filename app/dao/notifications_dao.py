@@ -227,11 +227,15 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
 
 
 @statsd(namespace="dao")
-def get_notification_by_id(notification_id, _raise=False):
-    if _raise:
-        return Notification.query.filter_by(id=notification_id).one()
-    else:
-        return Notification.query.filter_by(id=notification_id).first()
+def get_notification_by_id(notification_id, service_id=None, _raise=False):
+    filters = [Notification.id == notification_id]
+
+    if service_id:
+        filters.append(Notification.service_id == service_id)
+
+    query = Notification.query.filter(*filters)
+
+    return query.one() if _raise else query.first()
 
 
 def get_notifications(filter_dict=None):
