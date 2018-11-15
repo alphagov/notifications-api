@@ -1,8 +1,8 @@
+import uuid
 from datetime import datetime, timedelta
 from functools import partial
-import pytest
-import uuid
 
+import pytest
 from freezegun import freeze_time
 
 from app.dao.jobs_dao import (
@@ -14,23 +14,18 @@ from app.dao.jobs_dao import (
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
     dao_update_job_status,
-    dao_get_jobs_older_than_limited_by,
-    dao_get_letter_job_ids_by_status)
+    dao_get_jobs_older_than_limited_by
+)
 from app.models import (
     Job,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-    JOB_STATUS_READY_TO_SEND, JOB_STATUS_SENT_TO_DVLA, JOB_STATUS_FINISHED, JOB_STATUS_PENDING
+    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 )
-
-from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_job as create_job
+from tests.app.conftest import sample_notification as create_notification
 from tests.app.conftest import sample_service as create_service
 from tests.app.conftest import sample_template as create_template
 from tests.app.db import (
-    create_user,
-    create_job as create_db_job,
-    create_service as create_db_service,
-    create_template as create_db_template
+    create_user
 )
 
 
@@ -211,7 +206,6 @@ def test_get_jobs_for_service_with_limit_days_edge_case(notify_db, notify_db_ses
 
 
 def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, notify_db_session, sample_template):
-
     _create_job = partial(create_job, notify_db, notify_db_session, sample_template.service, sample_template)
     from_hour = partial(datetime, 2001, 1, 1)
 
@@ -335,11 +329,11 @@ def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_
     'Report',
 ])
 def test_get_jobs_for_service_doesnt_return_test_messages(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    sample_job,
-    file_name,
+        notify_db,
+        notify_db_session,
+        sample_template,
+        sample_job,
+        file_name,
 ):
     create_job(
         notify_db,
@@ -394,26 +388,3 @@ def assert_job_stat(job, result, sent, delivered, failed):
     assert result.sent == sent
     assert result.delivered == delivered
     assert result.failed == failed
-
-
-def test_dao_get_letter_job_ids_by_status(sample_service):
-    another_service = create_db_service(service_name="another service")
-
-    sms_template = create_db_template(service=sample_service, template_type=SMS_TYPE)
-    email_template = create_db_template(service=sample_service, template_type=EMAIL_TYPE)
-    letter_template_1 = create_db_template(service=sample_service, template_type=LETTER_TYPE)
-    letter_template_2 = create_db_template(service=another_service, template_type=LETTER_TYPE)
-    letter_job_1 = create_db_job(letter_template_1, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='1.csv')
-    letter_job_2 = create_db_job(letter_template_2, job_status=JOB_STATUS_READY_TO_SEND, original_file_name='2.csv')
-    ready_letter_job_ids = [str(letter_job_1.id), str(letter_job_2.id)]
-
-    create_db_job(sms_template, job_status=JOB_STATUS_FINISHED)
-    create_db_job(email_template, job_status=JOB_STATUS_FINISHED)
-    create_db_job(letter_template_1, job_status=JOB_STATUS_SENT_TO_DVLA)
-    create_db_job(letter_template_1, job_status=JOB_STATUS_FINISHED)
-    create_db_job(letter_template_2, job_status=JOB_STATUS_PENDING)
-
-    result = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
-
-    assert len(result) == 2
-    assert set(result) == set(ready_letter_job_ids)
