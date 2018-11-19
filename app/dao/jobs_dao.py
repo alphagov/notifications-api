@@ -18,6 +18,7 @@ from app.models import (
     LETTER_TYPE,
     NotificationHistory,
     Template,
+    ServiceDataRetention
 )
 from app.variables import LETTER_TEST_API_FILENAME
 
@@ -115,15 +116,37 @@ def dao_update_job(job):
     db.session.commit()
 
 
-def dao_get_jobs_older_than_limited_by(job_types, older_than=7, limit_days=2):
-    end_date = datetime.utcnow() - timedelta(days=older_than)
-    start_date = end_date - timedelta(days=limit_days)
+def dao_get_jobs_older_than_data_retention(notification_types):
+    flexible_data_retention = ServiceDataRetention.query.filter(
+        ServiceDataRetention.notification_type.in_(notification_types)
+    ).all()
+    jobs = []
+    today = datetime.utcnow().date()
+    for f in flexible_data_retention:
+        end_date = today - timedelta(days=f.days_of_retention)
+        start_date = end_date - timedelta(days=2)
 
-    return Job.query.join(Template).filter(
-        Job.created_at < end_date,
-        Job.created_at >= start_date,
-        Template.template_type.in_(job_types)
-    ).order_by(desc(Job.created_at)).all()
+        jobs.extend(Job.query.join(Template).filter(
+            Job.created_at < end_date,
+            Job.created_at >= start_date,
+            Template.template_type == f.notification_type,
+            Job.service_id == f.service_id
+        ).order_by(desc(Job.created_at)).all())
+
+    end_date = today - timedelta(days=7)
+    start_date = end_date - timedelta(days=2)
+    for notification_type in notification_types:
+        services_with_data_retention = [
+            x.service_id for x in flexible_data_retention if x.notification_type == notification_type
+        ]
+        jobs.extend(Job.query.join(Template).filter(
+            Job.created_at < end_date,
+            Job.created_at >= start_date,
+            Template.template_type == notification_type,
+            Job.service_id.notin_(services_with_data_retention)
+        ).order_by(desc(Job.created_at)).all())
+
+    return jobs
 
 
 def dao_get_all_letter_jobs():

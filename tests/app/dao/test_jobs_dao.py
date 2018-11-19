@@ -13,7 +13,7 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_jobs_older_than_limited_by
+    dao_get_jobs_older_than_data_retention,
 )
 from app.models import (
     Job,
@@ -296,7 +296,7 @@ def test_should_get_jobs_seven_days_old(notify_db, notify_db_session, sample_tem
     job(created_at=nine_days_ago)
     job(created_at=nine_days_one_second_ago)
 
-    jobs = dao_get_jobs_older_than_limited_by(job_types=[sample_template.template_type])
+    jobs = dao_get_jobs_older_than_data_retention(notification_types=[sample_template.template_type])
 
     assert len(jobs) == 1
     assert jobs[0].id == job_to_delete.id
@@ -359,8 +359,8 @@ def test_should_get_jobs_seven_days_old_filters_type(notify_db, notify_db_sessio
     job(template=sms_template)
     job(template=email_template)
 
-    jobs = dao_get_jobs_older_than_limited_by(
-        job_types=[EMAIL_TYPE, SMS_TYPE]
+    jobs = dao_get_jobs_older_than_data_retention(
+        notification_types=[EMAIL_TYPE, SMS_TYPE]
     )
 
     assert len(jobs) == 2

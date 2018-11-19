@@ -52,20 +52,27 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_ERROR,
     LETTER_TYPE,
-    SMS_TYPE
+    SMS_TYPE,
+    EMAIL_TYPE
 )
 from app.utils import get_london_midnight_in_utc
 from app.v2.errors import JobIncompleteError
 from tests.app.aws.test_s3 import single_s3_object_stub
+from tests.app.db import (
+    create_notification,
+    create_service,
+    create_template,
+    create_job,
+    create_service_callback_api,
+    create_service_data_retention
+)
+
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
     sample_template as create_sample_template,
     create_custom_template,
     datetime_in_past
-)
-from tests.app.db import (
-    create_notification, create_service, create_template, create_job, create_service_callback_api
 )
 from tests.conftest import set_config_values
 
@@ -273,10 +280,11 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
 def test_will_remove_csv_files_for_jobs_older_than_seven_days(
         notify_db, notify_db_session, mocker, sample_template
 ):
-    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
     """
     Jobs older than seven days are deleted, but only two day's worth (two-day window)
     """
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     just_under_seven_days = seven_days_ago + timedelta(seconds=1)
     eight_days_ago = seven_days_ago - timedelta(days=1)
@@ -284,7 +292,7 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     just_under_nine_days = nine_days_ago + timedelta(seconds=1)
     nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago)
+    job3_to_delete = create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago)
     job1_to_delete = create_sample_job(notify_db, notify_db_session, created_at=eight_days_ago)
     job2_to_delete = create_sample_job(notify_db, notify_db_session, created_at=just_under_nine_days)
     create_sample_job(notify_db, notify_db_session, created_at=seven_days_ago)
@@ -294,8 +302,55 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
 
     assert s3.remove_job_from_s3.call_args_list == [
         call(job1_to_delete.service_id, job1_to_delete.id),
-        call(job2_to_delete.service_id, job2_to_delete.id)
+        call(job2_to_delete.service_id, job2_to_delete.id),
+        call(job3_to_delete.service_id, job3_to_delete.id)
     ]
+
+
+@freeze_time('2016-10-18T10:00:00')
+def test_will_remove_csv_files_for_jobs_older_than_retention_period(
+    notify_db, notify_db_session, mocker
+):
+    """
+    Jobs older than retention period are deleted, but only two day's worth (two-day window)
+    """
+    mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
+    service_1 = create_service(service_name='service 1')
+    service_2 = create_service(service_name='service 2')
+    create_service_data_retention(service_id=service_1.id, notification_type=SMS_TYPE, days_of_retention=3)
+    create_service_data_retention(service_id=service_2.id, notification_type=EMAIL_TYPE, days_of_retention=30)
+    sms_template_service_1 = create_template(service=service_1)
+    email_template_service_1 = create_template(service=service_1, template_type='email')
+
+    sms_template_service_2 = create_template(service=service_2)
+    email_template_service_2 = create_template(service=service_2, template_type='email')
+
+    four_days_ago = datetime.utcnow() - timedelta(days=4)
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    thirty_one_days_ago = datetime.utcnow() - timedelta(days=31)
+
+    _create_job = partial(
+        create_sample_job,
+        notify_db,
+        notify_db_session,
+    )
+
+    job1_to_delete = _create_job(service=service_1, template=sms_template_service_1, created_at=four_days_ago)
+    job2_to_delete = _create_job(service=service_1, template=email_template_service_1, created_at=eight_days_ago)
+    _create_job(service=service_1, template=email_template_service_1, created_at=four_days_ago)
+
+    _create_job(service=service_2, template=email_template_service_2, created_at=eight_days_ago)
+    job3_to_delete = _create_job(service=service_2, template=email_template_service_2, created_at=thirty_one_days_ago)
+    job4_to_delete = _create_job(service=service_2, template=sms_template_service_2, created_at=eight_days_ago)
+
+    remove_csv_files(job_types=[SMS_TYPE, EMAIL_TYPE])
+
+    s3.remove_job_from_s3.assert_has_calls([
+        call(job1_to_delete.service_id, job1_to_delete.id),
+        call(job2_to_delete.service_id, job2_to_delete.id),
+        call(job3_to_delete.service_id, job3_to_delete.id),
+        call(job4_to_delete.service_id, job4_to_delete.id)
+    ], any_order=True)
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mocker):
@@ -545,17 +600,18 @@ def test_remove_dvla_transformed_files_removes_expected_files(mocker, sample_ser
     just_over_seven_days = seven_days_ago - timedelta(seconds=1)
     eight_days_ago = seven_days_ago - timedelta(days=1)
     nine_days_ago = eight_days_ago - timedelta(days=1)
+    ten_days_ago = nine_days_ago - timedelta(days=1)
     just_under_nine_days = nine_days_ago + timedelta(seconds=1)
     just_over_nine_days = nine_days_ago - timedelta(seconds=1)
+    just_over_ten_days = ten_days_ago - timedelta(seconds=1)
 
-    job(created_at=seven_days_ago)
     job(created_at=just_under_seven_days)
-    job_to_delete_1 = job(created_at=just_over_seven_days)
-    job_to_delete_2 = job(created_at=eight_days_ago)
-    job_to_delete_3 = job(created_at=nine_days_ago)
-    job_to_delete_4 = job(created_at=just_under_nine_days)
-    job(created_at=just_over_nine_days)
-
+    job(created_at=just_over_seven_days)
+    job_to_delete_1 = job(created_at=eight_days_ago)
+    job_to_delete_2 = job(created_at=nine_days_ago)
+    job_to_delete_3 = job(created_at=just_under_nine_days)
+    job_to_delete_4 = job(created_at=just_over_nine_days)
+    job(created_at=just_over_ten_days)
     remove_transformed_dvla_files()
 
     s3.remove_transformed_dvla_file.assert_has_calls([
