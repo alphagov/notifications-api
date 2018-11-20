@@ -512,8 +512,8 @@ def test_post_sms_notification_with_archived_reply_to_id_returns_400(client, sam
 
 
 @pytest.mark.parametrize('recipient,label,template_factory,expected_error', [
-    ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'Cannot send text messages'),
-    ('someone@test.com', 'email_address', sample_template_without_email_permission, 'Cannot send emails')])
+    ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'text messages'),
+    ('someone@test.com', 'email_address', sample_template_without_email_permission, 'emails')])
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
         client, template_factory, recipient, label, expected_error, notify_db, notify_db_session):
     sample_template_without_permission = template_factory(notify_db, notify_db_session)
@@ -534,7 +534,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
-        {"error": "BadRequestError", "message": expected_error}
+        {"error": "BadRequestError", "message": "Service is not allowed to send {}".format(expected_error)}
     ]
 
 

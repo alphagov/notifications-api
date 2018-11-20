@@ -87,10 +87,14 @@ def cache_key_for_service_template_usage_per_day(service_id, datetime):
 
 
 def get_public_notify_type_text(notify_type, plural=False):
-    from app.models import SMS_TYPE
+    from app.models import (SMS_TYPE, UPLOAD_DOCUMENT, PRECOMPILED_LETTER)
     notify_type_text = notify_type
     if notify_type == SMS_TYPE:
         notify_type_text = 'text message'
+    if notify_type == UPLOAD_DOCUMENT:
+        notify_type_text = 'document'
+    if notify_type == PRECOMPILED_LETTER:
+        notify_type_text = 'precompiled letter'
 
     return '{}{}'.format(notify_type_text, 's' if plural else '')
 
