@@ -461,7 +461,7 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
 def test_post_precompiled_letter_notification_returns_201(client, notify_user, mocker, postage):
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
     sample_service.postage = postage
-    mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     data = {
         "reference": "letter-reference",
@@ -475,7 +475,7 @@ def test_post_precompiled_letter_notification_returns_201(client, notify_user, m
 
     assert response.status_code == 201, response.get_data(as_text=True)
 
-    # s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
+    s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
     notification = Notification.query.one()
 
