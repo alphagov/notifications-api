@@ -22,7 +22,6 @@ from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
-    dao_get_letter_job_ids_by_status,
     dao_set_scheduled_jobs_to_pending,
     dao_get_jobs_older_than_limited_by
 )
@@ -52,7 +51,6 @@ from app.models import (
     NOTIFICATION_SENDING,
     LETTER_TYPE,
     JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_ERROR,
     SMS_TYPE,
     EMAIL_TYPE,
@@ -336,7 +334,6 @@ def delete_dvla_response_files_older_than_seven_days():
 @notify_celery.task(name="raise-alert-if-letter-notifications-still-sending")
 @statsd(namespace="tasks")
 def raise_alert_if_letter_notifications_still_sending():
-
     today = datetime.utcnow().date()
 
     # Do nothing on the weekend
@@ -368,19 +365,6 @@ def raise_alert_if_letter_notifications_still_sending():
             )
         else:
             current_app.logger.info(message)
-
-
-@notify_celery.task(name="run-letter-jobs")
-@statsd(namespace="tasks")
-def run_letter_jobs():
-    job_ids = dao_get_letter_job_ids_by_status(JOB_STATUS_READY_TO_SEND)
-    if job_ids:
-        notify_celery.send_task(
-            name=TaskNames.DVLA_JOBS,
-            args=(job_ids,),
-            queue=QueueNames.PROCESS_FTP
-        )
-        current_app.logger.info("Queued {} ready letter job ids onto {}".format(len(job_ids), QueueNames.PROCESS_FTP))
 
 
 @notify_celery.task(name='check-job-status')
@@ -446,14 +430,13 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                               subfolder=datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                               suffix='.TXT'):
-
-        subname = key.split('/')[-1]    # strip subfolder in name
+        subname = key.split('/')[-1]  # strip subfolder in name
         zip_file_set.add(subname.upper().rstrip('.TXT'))
 
     # get acknowledgement file
     ack_file_set = set()
 
-    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)   # AWS datetime format
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
@@ -465,7 +448,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     for key in ack_file_set:
         if today_str in key:
             content = s3.get_s3_file(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], key)
-            for zip_file in content.split('\n'):    # each line
+            for zip_file in content.split('\n'):  # each line
                 s = zip_file.split('|')
                 ack_content_set.add(s[0].upper())
 

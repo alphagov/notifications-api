@@ -1,11 +1,11 @@
+import functools
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
-import functools
 
+import pytest
 import pytz
 from flask import current_app
-import pytest
 from freezegun import freeze_time
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 
@@ -25,7 +25,6 @@ from app.celery.scheduled_tasks import (
     remove_csv_files,
     remove_transformed_dvla_files,
     run_scheduled_jobs,
-    run_letter_jobs,
     s3,
     send_daily_performance_platform_stats,
     send_scheduled_notifications,
@@ -36,6 +35,7 @@ from app.celery.scheduled_tasks import (
     letter_raise_alert_if_no_ack_file_for_zip,
     replay_created_notifications
 )
+from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -49,20 +49,14 @@ from app.models import (
     NotificationHistory,
     Service,
     StatsTemplateUsageByMonth,
-    JOB_STATUS_READY_TO_SEND,
     JOB_STATUS_IN_PROGRESS,
-    JOB_STATUS_SENT_TO_DVLA,
     JOB_STATUS_ERROR,
     LETTER_TYPE,
     SMS_TYPE
 )
 from app.utils import get_london_midnight_in_utc
-from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.v2.errors import JobIncompleteError
-from tests.app.db import (
-    create_notification, create_service, create_template, create_job, create_service_callback_api
-)
-
+from tests.app.aws.test_s3 import single_s3_object_stub
 from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_notification_history as create_notification_history,
@@ -70,7 +64,9 @@ from tests.app.conftest import (
     create_custom_template,
     datetime_in_past
 )
-from tests.app.aws.test_s3 import single_s3_object_stub
+from tests.app.db import (
+    create_notification, create_service, create_template, create_job, create_service_callback_api
+)
 from tests.conftest import set_config_values
 
 
@@ -275,7 +271,7 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_
 
 @freeze_time('2016-10-18T10:00:00')
 def test_will_remove_csv_files_for_jobs_older_than_seven_days(
-    notify_db, notify_db_session, mocker, sample_template
+        notify_db, notify_db_session, mocker, sample_template
 ):
     mocker.patch('app.celery.scheduled_tasks.s3.remove_job_from_s3')
     """
@@ -303,12 +299,13 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
 
 
 def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mocker):
-    send_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
+    send_mock = mocker.patch(
+        'app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
     with patch.object(
-        PerformancePlatformClient,
-        'active',
-        new_callable=PropertyMock
+            PerformancePlatformClient,
+            'active',
+            new_callable=PropertyMock
     ) as mock_active:
         mock_active.return_value = False
         send_daily_performance_platform_stats()
@@ -318,12 +315,13 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mo
 
 @freeze_time("2016-01-11 12:30:00")
 def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    mocker
+        notify_db,
+        notify_db_session,
+        sample_template,
+        mocker
 ):
-    perf_mock = mocker.patch('app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
+    perf_mock = mocker.patch(
+        'app.celery.scheduled_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
     notification_history = partial(
         create_notification_history,
@@ -346,9 +344,9 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         notification_history(notification_type='email')
 
     with patch.object(
-        PerformancePlatformClient,
-        'active',
-        new_callable=PropertyMock
+            PerformancePlatformClient,
+            'active',
+            new_callable=PropertyMock
     ) as mock_active:
         mock_active.return_value = True
         send_total_sent_notifications_to_performance_platform(yesterday)
@@ -360,8 +358,8 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
 
 
 def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_unset(
-    notify_api,
-    mocker
+        notify_api,
+        mocker
 ):
     get_notifications_mock = mocker.patch(
         'app.celery.scheduled_tasks.is_delivery_slow_for_provider'
@@ -379,9 +377,9 @@ def test_switch_current_sms_provider_on_slow_delivery_does_not_run_if_config_uns
 
 
 def test_switch_providers_on_slow_delivery_runs_if_config_set(
-    notify_api,
-    mocker,
-    prepare_current_provider
+        notify_api,
+        mocker,
+        prepare_current_provider
 ):
     get_notifications_mock = mocker.patch(
         'app.celery.scheduled_tasks.is_delivery_slow_for_provider',
@@ -398,10 +396,10 @@ def test_switch_providers_on_slow_delivery_runs_if_config_set(
 
 
 def test_switch_providers_triggers_on_slow_notification_delivery(
-    notify_api,
-    mocker,
-    prepare_current_provider,
-    sample_user
+        notify_api,
+        mocker,
+        prepare_current_provider,
+        sample_user
 ):
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     starting_provider = get_current_provider('sms')
@@ -420,10 +418,10 @@ def test_switch_providers_triggers_on_slow_notification_delivery(
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
-    notify_api,
-    mocker,
-    prepare_current_provider,
-    sample_user
+        notify_api,
+        mocker,
+        prepare_current_provider,
+        sample_user
 ):
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     starting_provider = get_current_provider('sms')
@@ -444,10 +442,10 @@ def test_switch_providers_on_slow_delivery_does_not_switch_if_already_switched(
 
 
 def test_switch_providers_on_slow_delivery_does_not_switch_based_on_older_notifications(
-    notify_api,
-    mocker,
-    prepare_current_provider,
-    sample_user,
+        notify_api,
+        mocker,
+        prepare_current_provider,
+        sample_user,
 
 ):
     """
@@ -745,33 +743,6 @@ def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_lett
     )
 
 
-def test_run_letter_jobs(client, mocker, sample_letter_template):
-    jobs = [create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND),
-            create_job(template=sample_letter_template, job_status=JOB_STATUS_READY_TO_SEND)]
-    job_ids = [str(j.id) for j in jobs]
-    mocker.patch(
-        "app.celery.scheduled_tasks.dao_get_letter_job_ids_by_status",
-        return_value=job_ids
-    )
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    run_letter_jobs()
-
-    mock_celery.assert_called_once_with(name=TaskNames.DVLA_JOBS,
-                                        args=(job_ids,),
-                                        queue=QueueNames.PROCESS_FTP)
-
-
-def test_run_letter_jobs_does_nothing_if_no_ready_jobs(client, mocker, sample_letter_template):
-    create_job(sample_letter_template, job_status=JOB_STATUS_IN_PROGRESS)
-    create_job(sample_letter_template, job_status=JOB_STATUS_SENT_TO_DVLA)
-    mock_celery = mocker.patch("app.celery.tasks.notify_celery.send_task")
-
-    run_letter_jobs()
-
-    assert not mock_celery.called
-
-
 def test_check_job_status_task_raises_job_incomplete_error(mocker, sample_template):
     mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
     job = create_job(template=sample_template, notification_count=3,
@@ -1040,7 +1011,6 @@ def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_cou
 
 
 def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):
-
     if subfolder == '2018-01-11/zips_sent':
         return ['NOTIFY.20180111175007.ZIP.TXT', 'NOTIFY.20180111175008.ZIP.TXT']
     if subfolder == 'root/dispatch':
@@ -1064,7 +1034,7 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
-    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)   # Datatime format on AWS
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # Datatime format on AWS
     subfoldername = datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent'
     assert mock_file_list.call_count == 2
     assert mock_file_list.call_args_list == [
