@@ -84,7 +84,7 @@ def service_has_permission(notify_type, permissions):
 
 def check_service_has_permission(notify_type, permissions):
     if not service_has_permission(notify_type, permissions):
-        raise BadRequestError(message="Cannot send {}".format(
+        raise BadRequestError(message="Service is not allowed to send {}".format(
             get_public_notify_type_text(notify_type, plural=True)))
 
 

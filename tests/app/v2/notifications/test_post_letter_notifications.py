@@ -314,7 +314,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
-        {'error': 'BadRequestError', 'message': 'Cannot send letters'}
+        {'error': 'BadRequestError', 'message': 'Service is not allowed to send letters'}
     ]
 
 
@@ -438,7 +438,7 @@ def test_post_precompiled_letter_requires_permission(client, sample_service, not
 
     assert response.status_code == 400, response.get_data(as_text=True)
     resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json['errors'][0]['message'] == 'Cannot send precompiled_letters'
+    assert resp_json['errors'][0]['message'] == 'Service is not allowed to send precompiled letters'
 
 
 def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):
