@@ -416,7 +416,7 @@ class Preview(Config):
 class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
-    CSV_UPLOAD_BUCKET_NAME = 'staging-notify-csv-upload'
+    CSV_UPLOAD_BUCKET_NAME = 'staging-notifications-csv-upload'
     TEST_LETTERS_BUCKET_NAME = 'staging-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
