@@ -305,8 +305,8 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
         call(job2_to_delete.service_id, job2_to_delete.id),
         call(job3_to_delete.service_id, job3_to_delete.id)
     ]
-    assert job1_to_delete.archived == True
-    assert dont_delete_me_1.archived == False
+    assert job1_to_delete.archived is True
+    assert dont_delete_me_1.archived is False
 
 
 @freeze_time('2016-10-18T10:00:00')

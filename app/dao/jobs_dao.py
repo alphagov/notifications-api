@@ -66,6 +66,7 @@ def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50
 def dao_get_job_by_id(job_id):
     return Job.query.filter_by(id=job_id).one()
 
+
 def dao_archive_job(job):
     job.archived = True
     db.session.add(job)
