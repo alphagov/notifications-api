@@ -38,7 +38,8 @@ NewStatsRow = collections.namedtuple('row', ('notification_type', 'status', 'key
         StatsRow('letter', 'validation-failed', 1),
         StatsRow('letter', 'virus-scan-failed', 1),
         StatsRow('letter', 'permanent-failure', 1),
-    ], [4, 0, 4], [0, 0, 0], [3, 0, 3]),
+        StatsRow('letter', 'cancelled', 1),
+    ], [4, 0, 4], [0, 0, 0], [4, 0, 4]),
     'convert_sent_to_delivered': ([
         StatsRow('sms', 'sending', 1),
         StatsRow('sms', 'delivered', 1),
