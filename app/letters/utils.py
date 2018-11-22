@@ -162,3 +162,16 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
 
     current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
         source_bucket, source_filename, target_bucket, target_filename))
+
+
+def letter_print_day(created_at):
+    bst_print_datetime = convert_utc_to_bst(created_at) + timedelta(hours=6, minutes=30)
+    bst_print_date = bst_print_datetime.date()
+
+    current_bst_date = convert_utc_to_bst(datetime.utcnow()).date()
+
+    if bst_print_date >= current_bst_date:
+        return 'today'
+    else:
+        print_date = bst_print_datetime.strftime('%d %B').lstrip('0')
+        return 'on {}'.format(print_date)

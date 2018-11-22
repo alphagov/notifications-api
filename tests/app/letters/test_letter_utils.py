@@ -10,6 +10,7 @@ from app.letters.utils import (
     get_bucket_name_and_prefix_for_notification,
     get_letter_pdf_filename,
     get_letter_pdf,
+    letter_print_day,
     upload_letter_pdf,
     ScanErrorType, move_failed_pdf, get_folder_name
 )
@@ -274,3 +275,27 @@ def test_get_folder_name_in_british_summer_time(notify_api, freeze_date, expecte
 
 def test_get_folder_name_returns_empty_string_for_test_letter():
     assert '' == get_folder_name(datetime.utcnow(), is_test_or_scan_letter=True)
+
+
+@freeze_time('2017-07-07 20:00:00')
+def test_letter_print_day_returns_today_if_letter_was_printed_after_1730_yesterday():
+    created_at = datetime(2017, 7, 6, 17, 30)
+    assert letter_print_day(created_at) == 'today'
+
+
+@freeze_time('2017-07-07 16:30:00')
+def test_letter_print_day_returns_today_if_letter_was_printed_today():
+    created_at = datetime(2017, 7, 7, 12, 0)
+    assert letter_print_day(created_at) == 'today'
+
+
+@pytest.mark.parametrize('created_at, formatted_date', [
+    (datetime(2017, 7, 5, 16, 30), 'on 6 July'),
+    (datetime(2017, 7, 6, 16, 29), 'on 6 July'),
+    (datetime(2016, 8, 8, 10, 00), 'on 8 August'),
+    (datetime(2016, 12, 12, 17, 29), 'on 12 December'),
+    (datetime(2016, 12, 12, 17, 30), 'on 13 December'),
+])
+@freeze_time('2017-07-07 16:30:00')
+def test_letter_print_day_returns_formatted_date_if_letter_printed_before_1730_yesterday(created_at, formatted_date):
+    assert letter_print_day(created_at) == formatted_date

@@ -7,6 +7,8 @@ from flask import (
     current_app,
     Blueprint
 )
+from notifications_utils.letter_timings import letter_can_be_cancelled
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -80,7 +82,8 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service, EmailBranding
+from app.letters.utils import letter_print_day
+from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Service, EmailBranding
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_data_retention_schema import (
@@ -103,7 +106,7 @@ from app.schemas import (
     notifications_filter_schema,
     detailed_service_schema
 )
-from app.utils import pagination_links, convert_utc_to_bst
+from app.utils import pagination_links
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -381,6 +384,31 @@ def get_notification_for_service(service_id, notification_id):
     )
     return jsonify(
         notification_with_template_schema.dump(notification).data,
+    ), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/<uuid:notification_id>/cancel', methods=['POST'])
+def cancel_notification_for_service(service_id, notification_id):
+    notification = notifications_dao.get_notification_by_id(notification_id, service_id)
+
+    if not notification:
+        raise InvalidRequest('Notification not found', status_code=404)
+    elif notification.notification_type != LETTER_TYPE:
+        raise InvalidRequest('Notification cannot be cancelled - only letters can be cancelled', status_code=400)
+    elif not letter_can_be_cancelled(notification.status, notification.created_at):
+        print_day = letter_print_day(notification.created_at)
+
+        raise InvalidRequest(
+            "It’s too late to cancel this letter. Printing started {} at 5.30pm".format(print_day),
+            status_code=400)
+
+    updated_notification = notifications_dao.update_notification_status_by_id(
+        notification_id,
+        NOTIFICATION_CANCELLED,
+    )
+
+    return jsonify(
+        notification_with_template_schema.dump(updated_notification).data
     ), 200
 
 
