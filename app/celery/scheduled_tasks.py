@@ -23,7 +23,8 @@ from app.dao.invited_org_user_dao import delete_org_invitations_created_more_tha
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
-    dao_get_jobs_older_than_data_retention
+    dao_get_jobs_older_than_data_retention,
+    dao_archive_job
 )
 from app.dao.jobs_dao import dao_update_job
 from app.dao.notifications_dao import (
@@ -67,7 +68,7 @@ def remove_csv_files(job_types):
     jobs = dao_get_jobs_older_than_data_retention(notification_types=job_types)
     for job in jobs:
         s3.remove_job_from_s3(job.service_id, job.id)
-        # job.archived = true; commit;
+        dao_archive_job(job)
         current_app.logger.info("Job ID {} has been removed from s3.".format(job.id))
 
 
