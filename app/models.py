@@ -1067,6 +1067,7 @@ class Job(db.Model):
     job_status = db.Column(
         db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=False, default='pending'
     )
+    archived = db.Column(db.Boolean, nullable=False, default=False)
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
