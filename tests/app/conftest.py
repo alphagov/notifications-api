@@ -371,7 +371,8 @@ def sample_job(
     job_status='pending',
     scheduled_for=None,
     processing_started=None,
-    original_file_name='some.csv'
+    original_file_name='some.csv',
+    archived=False
 ):
     if service is None:
         service = sample_service(notify_db, notify_db_session)
@@ -390,7 +391,8 @@ def sample_job(
         'created_by': service.created_by,
         'job_status': job_status,
         'scheduled_for': scheduled_for,
-        'processing_started': processing_started
+        'processing_started': processing_started,
+        'archived': archived
     }
     job = Job(**data)
     dao_create_job(job)

@@ -293,8 +293,8 @@ def test_should_get_jobs_seven_days_old(notify_db, notify_db_session, sample_tem
     job(created_at=seven_days_ago)
     job(created_at=within_seven_days)
     job_to_delete = job(created_at=eight_days_ago)
-    job(created_at=nine_days_ago)
-    job(created_at=nine_days_one_second_ago)
+    job(created_at=nine_days_ago, archived=True)
+    job(created_at=nine_days_one_second_ago, archived=True)
 
     jobs = dao_get_jobs_older_than_data_retention(notification_types=[sample_template.template_type])
 

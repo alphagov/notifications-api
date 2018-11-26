@@ -292,7 +292,7 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     just_under_nine_days = nine_days_ago + timedelta(seconds=1)
     nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    job3_to_delete = create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago)
+    create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago, archived=True)
     job1_to_delete = create_sample_job(notify_db, notify_db_session, created_at=eight_days_ago)
     job2_to_delete = create_sample_job(notify_db, notify_db_session, created_at=just_under_nine_days)
     dont_delete_me_1 = create_sample_job(notify_db, notify_db_session, created_at=seven_days_ago)
@@ -303,7 +303,6 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     assert s3.remove_job_from_s3.call_args_list == [
         call(job1_to_delete.service_id, job1_to_delete.id),
         call(job2_to_delete.service_id, job2_to_delete.id),
-        call(job3_to_delete.service_id, job3_to_delete.id)
     ]
     assert job1_to_delete.archived is True
     assert dont_delete_me_1.archived is False
