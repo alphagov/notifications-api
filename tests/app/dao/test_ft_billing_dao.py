@@ -6,6 +6,8 @@ from freezegun import freeze_time
 
 import pytest
 
+from notifications_utils.timezones import convert_utc_to_bst
+
 from app import db
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
@@ -20,7 +22,6 @@ from app.models import (
     Notification,
     NOTIFICATION_STATUS_TYPES,
 )
-from app.utils import convert_utc_to_bst
 from tests.app.db import (
     create_ft_billing,
     create_service,

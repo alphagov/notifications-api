@@ -20,6 +20,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import case
 from sqlalchemy.sql import functions
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db, create_uuid
 from app.aws.s3 import remove_s3_object, get_s3_bucket_objects
@@ -48,7 +49,7 @@ from app.models import (
 )
 
 from app.dao.dao_utils import transactional
-from app.utils import convert_utc_to_bst, get_london_midnight_in_utc
+from app.utils import get_london_midnight_in_utc
 
 
 @statsd(namespace="dao")

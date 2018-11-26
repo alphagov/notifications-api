@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 
+from notifications_utils.timezones import convert_bst_to_utc
 import pytz
-
-from app.utils import convert_bst_to_utc
 
 
 def get_months_for_financial_year(year):

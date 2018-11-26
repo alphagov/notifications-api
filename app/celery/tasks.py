@@ -11,6 +11,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
     WithSubjectTemplate,
 )
+from notifications_utils.timezones import convert_utc_to_bst
 from requests import (
     HTTPError,
     request,
@@ -72,7 +73,6 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
-from app.utils import convert_utc_to_bst
 
 
 @notify_celery.task(name="process-job")

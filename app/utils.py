@@ -4,6 +4,7 @@ import pytz
 from flask import url_for
 from sqlalchemy import func
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.timezones import convert_utc_to_bst
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -49,14 +50,6 @@ def get_london_midnight_in_utc(date):
 def get_midnight_for_day_before(date):
     day_before = date - timedelta(1)
     return get_london_midnight_in_utc(day_before)
-
-
-def convert_utc_to_bst(utc_dt):
-    return pytz.utc.localize(utc_dt).astimezone(local_timezone).replace(tzinfo=None)
-
-
-def convert_bst_to_utc(date):
-    return local_timezone.localize(date).astimezone(pytz.UTC).replace(tzinfo=None)
 
 
 def get_london_month_from_utc_column(column):
