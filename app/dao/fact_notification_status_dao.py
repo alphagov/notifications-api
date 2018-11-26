@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from flask import current_app
+from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import literal
@@ -8,7 +9,7 @@ from sqlalchemy.types import DateTime, Integer
 
 from app import db
 from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST
-from app.utils import convert_bst_to_utc, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):

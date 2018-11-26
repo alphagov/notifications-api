@@ -26,6 +26,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
     LetterPrintTemplate,
 )
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
 from app.encryption import (
     hashpw,
@@ -38,7 +39,6 @@ from app import (
 )
 
 from app.history_meta import Versioned
-from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'

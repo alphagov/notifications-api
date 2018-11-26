@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from flask import current_app
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, case, desc, Date, Integer
 
@@ -20,7 +21,6 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
 )
-from app.utils import convert_utc_to_bst, convert_bst_to_utc
 
 
 def fetch_billing_totals_for_year(service_id, year):

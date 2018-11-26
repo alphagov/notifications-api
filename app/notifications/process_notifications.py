@@ -9,6 +9,7 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number,
     format_email_address
 )
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -34,8 +35,6 @@ from app.v2.errors import BadRequestError
 from app.utils import (
     cache_key_for_service_template_counter,
     cache_key_for_service_template_usage_per_day,
-    convert_bst_to_utc,
-    convert_utc_to_bst,
     get_template_instance,
 )
 
