@@ -35,13 +35,18 @@ def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_le
     return sample_precompiled_letter_notification
 
 
-def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_notification):
+@pytest.mark.parametrize('created_at,folder', [
+    (datetime(2017, 1, 1, 17, 29), '2017-01-01'),
+    (datetime(2017, 1, 1, 17, 31), '2017-01-02'),
+])
+def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_notification, created_at, folder):
+    sample_notification.created_at = created_at
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
     assert bucket == current_app.config['LETTERS_PDF_BUCKET_NAME']
     assert bucket_prefix == '{folder}/NOTIFY.{reference}'.format(
-        folder=sample_notification.created_at.date(),
+        folder=folder,
         reference=sample_notification.reference
     ).upper()
 
