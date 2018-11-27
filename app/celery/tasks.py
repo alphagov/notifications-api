@@ -35,7 +35,6 @@ from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
 from app.dao.jobs_dao import (
     dao_update_job,
     dao_get_job_by_id,
-    dao_update_job_status
 )
 from app.dao.notifications_dao import (
     get_notification_by_id,
@@ -59,7 +58,6 @@ from app.models import (
     JOB_STATUS_FINISHED,
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
-    JOB_STATUS_ERROR,
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -340,13 +338,6 @@ def save_letter(
         current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
-
-
-@notify_celery.task(bind=True, name='update-letter-job-to-error')
-@statsd(namespace="tasks")
-def update_dvla_job_to_error(self, job_id):
-    dao_update_job_status(job_id, JOB_STATUS_ERROR)
-    current_app.logger.info("Updated {} job to {}".format(job_id, JOB_STATUS_ERROR))
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
