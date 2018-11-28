@@ -236,6 +236,11 @@ class Config(object):
             'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'remove_transformed_dvla_files': {
+            'task': 'remove_transformed_dvla_files',
+            'schedule': crontab(hour=3, minute=40),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'remove_sms_email_jobs': {
             'task': 'remove_csv_files',
             'schedule': crontab(hour=4, minute=0),
@@ -244,14 +249,10 @@ class Config(object):
         },
         'remove_letter_jobs': {
             'task': 'remove_csv_files',
-            'schedule': crontab(hour=4, minute=20),
+            'schedule': crontab(hour=4, minute=20),  # this has to run AFTER remove_transformed_dvla_files
+            # since we mark jobs as archived
             'options': {'queue': QueueNames.PERIODIC},
             'kwargs': {'job_types': [LETTER_TYPE]}
-        },
-        'remove_transformed_dvla_files': {
-            'task': 'remove_transformed_dvla_files',
-            'schedule': crontab(hour=4, minute=40),
-            'options': {'queue': QueueNames.PERIODIC}
         },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',

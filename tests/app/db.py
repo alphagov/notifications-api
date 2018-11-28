@@ -261,7 +261,8 @@ def create_job(
         job_status='pending',
         scheduled_for=None,
         processing_started=None,
-        original_file_name='some.csv'
+        original_file_name='some.csv',
+        archived=False
 ):
     data = {
         'id': uuid.uuid4(),
@@ -275,7 +276,8 @@ def create_job(
         'created_by': template.created_by,
         'job_status': job_status,
         'scheduled_for': scheduled_for,
-        'processing_started': processing_started
+        'processing_started': processing_started,
+        'archived': archived
     }
     job = Job(**data)
     dao_create_job(job)

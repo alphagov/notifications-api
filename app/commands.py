@@ -654,3 +654,33 @@ def populate_notification_postage(start_date):
         total_updated += result.rowcount
 
     current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
+
+
+@notify_command(name='archive-jobs-created-between-dates')
+@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@statsd(namespace="tasks")
+def update_jobs_archived_flag(start_date, end_date):
+    current_app.logger.info('Archiving jobs created between {} to {}'.format(start_date, end_date))
+
+    process_date = start_date
+    total_updated = 0
+
+    while process_date < end_date:
+        start_time = datetime.utcnow()
+        sql = """update
+                    jobs set archived = true
+                where
+                    created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
+                    at time zone 'UTC'
+                    and created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'"""
+
+        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
+        db.session.commit()
+        current_app.logger.info('jobs: --- Completed took {}ms. Archived {} jobs for {}'.format(
+            datetime.now() - start_time, result.rowcount, process_date))
+
+        process_date += timedelta(days=1)
+
+        total_updated += result.rowcount
+    current_app.logger.info('Total archived jobs = {}'.format(total_updated))
