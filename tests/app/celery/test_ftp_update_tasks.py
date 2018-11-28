@@ -7,7 +7,6 @@ from flask import current_app
 
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
-    Job,
     Notification,
     NotificationHistory,
     NOTIFICATION_CREATED,
@@ -21,7 +20,6 @@ from app.celery.tasks import (
     get_billing_date_in_bst_from_filename,
     persist_daily_sorted_letter_counts,
     process_updates_from_file,
-    update_dvla_job_to_error,
     update_letter_notifications_statuses,
     update_letter_notifications_to_error,
     update_letter_notifications_to_sent_to_dvla
@@ -39,19 +37,6 @@ def notification_update():
     """
     NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
     return NotificationUpdate('REFERENCE_ABC', 'sent', '1', 'cost')
-
-
-def test_update_dvla_job_to_error(sample_letter_template, sample_letter_job):
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    create_notification(template=sample_letter_template, job=sample_letter_job)
-    update_dvla_job_to_error(job_id=sample_letter_job.id)
-
-    updated_notifications = Notification.query.all()
-    for n in updated_notifications:
-        assert n.status == 'created'
-        assert not n.sent_by
-
-    assert Job.query.filter_by(id=sample_letter_job.id).one().job_status == 'error'
 
 
 def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_api, mocker):

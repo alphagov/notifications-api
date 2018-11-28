@@ -13,7 +13,6 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_update_job_status,
     dao_get_jobs_older_than_limited_by
 )
 from app.models import (
@@ -346,13 +345,6 @@ def test_get_jobs_for_service_doesnt_return_test_messages(
     jobs = dao_get_jobs_by_service_id(sample_job.service_id).items
 
     assert jobs == [sample_job]
-
-
-def test_dao_update_job_status(sample_job):
-    dao_update_job_status(sample_job.id, 'sent to dvla')
-    updated_job = Job.query.get(sample_job.id)
-    assert updated_job.job_status == 'sent to dvla'
-    assert updated_job.updated_at
 
 
 @freeze_time('2016-10-31 10:00:00')

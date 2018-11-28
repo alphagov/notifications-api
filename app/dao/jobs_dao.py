@@ -115,11 +115,6 @@ def dao_update_job(job):
     db.session.commit()
 
 
-def dao_update_job_status(job_id, status):
-    db.session.query(Job).filter_by(id=job_id).update({'job_status': status})
-    db.session.commit()
-
-
 def dao_get_jobs_older_than_limited_by(job_types, older_than=7, limit_days=2):
     end_date = datetime.utcnow() - timedelta(days=older_than)
     start_date = end_date - timedelta(days=limit_days)
