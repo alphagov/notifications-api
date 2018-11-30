@@ -4,7 +4,7 @@ import string
 import uuid
 
 from flask import _request_ctx_stack, request, g, jsonify
-from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
+from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from time import monotonic
@@ -26,13 +26,6 @@ from app.encryption import Encryption
 
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
-
-
-class SQLAlchemy(_SQLAlchemy):
-    def apply_pool_defaults(self, app, options):
-        _SQLAlchemy.apply_pool_defaults(self, app, options)
-        options["pool_pre_ping"] = True
-
 
 db = SQLAlchemy()
 migrate = Migrate()
