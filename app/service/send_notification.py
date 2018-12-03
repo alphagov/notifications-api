@@ -39,9 +39,9 @@ def validate_created_by(service, created_by_id):
 
 
 def create_one_off_reference(template_type):
-    if template_type != LETTER_TYPE:
-        return None
-    return create_random_identifier()
+    if template_type == LETTER_TYPE:
+        return create_random_identifier()
+    return None
 
 
 def send_one_off_notification(service_id, post_data):
