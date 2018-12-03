@@ -1,14 +1,17 @@
 from datetime import timedelta, datetime, date
 from uuid import UUID
 
+import pytest
+
 from app.dao.fact_notification_status_dao import (
     update_fact_notification_status,
     fetch_notification_status_for_day,
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
-    fetch_notification_status_for_service_for_today_and_7_previous_days
+    fetch_notification_status_for_service_for_today_and_7_previous_days,
+    fetch_notification_status_totals_for_all_services
 )
-from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE
+from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
 
@@ -220,3 +223,68 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     assert results[3].notification_type == 'sms'
     assert results[3].status == 'delivered'
     assert results[3].count == 19
+
+
+@pytest.mark.parametrize(
+    "start_date, end_date, expected_email, expected_letters, expected_sms, expected_created_sms",
+    [
+        (29, 30, 3, 10, 10, 1),  # not including today
+        (29, 31, 4, 10, 11, 2),  # today included
+        (26, 31, 4, 15, 11, 2),
+    ]
+
+)
+@freeze_time('2018-10-31 14:00')
+def test_fetch_notification_status_totals_for_all_services(
+        notify_db_session,
+        start_date,
+        end_date,
+        expected_email,
+        expected_letters,
+        expected_sms,
+        expected_created_sms
+):
+    set_up_data()
+
+    results = sorted(
+        fetch_notification_status_totals_for_all_services(
+            start_date=date(2018, 10, start_date), end_date=date(2018, 10, end_date)),
+        key=lambda x: (x.notification_type, x.status)
+    )
+
+    assert len(results) == 4
+
+    assert results[0].notification_type == 'email'
+    assert results[0].status == 'delivered'
+    assert results[0].count == expected_email
+
+    assert results[1].notification_type == 'letter'
+    assert results[1].status == 'delivered'
+    assert results[1].count == expected_letters
+
+    assert results[2].notification_type == 'sms'
+    assert results[2].status == 'created'
+    assert results[2].count == expected_created_sms
+
+    assert results[3].notification_type == 'sms'
+    assert results[3].status == 'delivered'
+    assert results[3].count == expected_sms
+
+
+def set_up_data():
+    service_2 = create_service(service_name='service_2')
+    create_template(service=service_2, template_type=LETTER_TYPE)
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
+    create_ft_notification_status(date(2018, 10, 24), 'sms', service_1, count=8)
+    create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
+    create_ft_notification_status(date(2018, 10, 29), 'letter', service_2, count=10)
+
+    create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status='delivered')
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
