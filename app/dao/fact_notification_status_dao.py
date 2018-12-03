@@ -138,3 +138,49 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
     ).all()
+
+
+def fetch_notification_status_totals_for_all_services(start_date, end_date):
+    stats = db.session.query(
+        FactNotificationStatus.notification_type.label('notification_type'),
+        FactNotificationStatus.notification_status.label('status'),
+        FactNotificationStatus.key_type,
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date <= end_date
+    ).group_by(
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
+        FactNotificationStatus.key_type,
+    ).order_by(
+        FactNotificationStatus.notification_type
+    )
+    today = get_london_midnight_in_utc(datetime.utcnow())
+    if start_date <= today.date() <= end_date:
+        stats_for_today = db.session.query(
+            Notification.notification_type.cast(db.Text).label('notification_type'),
+            Notification.status,
+            Notification.key_type,
+            func.count().label('count')
+        ).filter(
+            Notification.created_at >= today
+        ).group_by(
+            Notification.notification_type.cast(db.Text),
+            Notification.status,
+            Notification.key_type,
+        )
+        all_stats_table = stats.union_all(stats_for_today).subquery()
+        query = db.session.query(
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+            func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
+        ).group_by(
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+        ).order_by(
+            all_stats_table.c.notification_type
+        )
+    else:
+        query = stats
+    return query.all()
