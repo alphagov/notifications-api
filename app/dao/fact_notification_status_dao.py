@@ -144,7 +144,7 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
     stats = db.session.query(
         FactNotificationStatus.notification_type.label('notification_type'),
         FactNotificationStatus.notification_status.label('status'),
-        FactNotificationStatus.key_type,
+        FactNotificationStatus.key_type.label('key_type'),
         func.sum(FactNotificationStatus.notification_count).label('count')
     ).filter(
         FactNotificationStatus.bst_date >= start_date,
@@ -174,10 +174,12 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
         query = db.session.query(
             all_stats_table.c.notification_type,
             all_stats_table.c.status,
+            all_stats_table.c.key_type,
             func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
         ).group_by(
             all_stats_table.c.notification_type,
             all_stats_table.c.status,
+            all_stats_table.c.key_type,
         ).order_by(
             all_stats_table.c.notification_type
         )
