@@ -2790,3 +2790,114 @@ def test_get_organisation_for_service_id_return_empty_dict_if_service_not_in_org
         service_id=fake_uuid
     )
     assert response == {}
+
+
+def test_cancel_notification_for_service_raises_invalid_request_when_notification_is_not_found(
+    admin_request,
+    sample_service,
+    fake_uuid,
+):
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_service.id,
+        notification_id=fake_uuid,
+        _expected_status=404
+    )
+    assert response['message'] == 'Notification not found'
+    assert response['result'] == 'error'
+
+
+def test_cancel_notification_for_service_raises_invalid_request_when_notification_is_not_a_letter(
+    admin_request,
+    sample_notification,
+):
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_notification.service_id,
+        notification_id=sample_notification.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'Notification cannot be cancelled - only letters can be cancelled'
+    assert response['result'] == 'error'
+
+
+@pytest.mark.parametrize('notification_status', [
+    'cancelled',
+    'sending',
+    'sent',
+    'delivered',
+    'pending',
+    'failed',
+    'technical-failure',
+    'temporary-failure',
+    'permanent-failure',
+    'validation-failed',
+    'virus-scan-failed',
+    'returned-letter',
+])
+@freeze_time('2018-07-07 12:00:00')
+def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_in_wrong_state_to_be_cancelled(
+    admin_request,
+    sample_letter_notification,
+    notification_status,
+):
+    sample_letter_notification.status = notification_status
+
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_letter_notification.service_id,
+        notification_id=sample_letter_notification.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'It’s too late to cancel this letter. Printing started today at 5.30pm'
+    assert response['result'] == 'error'
+
+
+@pytest.mark.parametrize('notification_status', ['created', 'pending-virus-check'])
+@freeze_time('2018-07-07 16:00:00')
+def test_cancel_notification_for_service_updates_letter_if_letter_is_in_cancellable_state(
+    admin_request,
+    sample_letter_notification,
+    notification_status,
+):
+    sample_letter_notification.status = notification_status
+    sample_letter_notification.created_at = datetime.now()
+
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_letter_notification.service_id,
+        notification_id=sample_letter_notification.id,
+    )
+    assert response['status'] == 'cancelled'
+
+
+@freeze_time('2017-12-12 17:30:00')
+def test_cancel_notification_for_service_raises_error_if_its_too_late_to_cancel(
+    admin_request,
+    sample_letter_notification,
+):
+    sample_letter_notification.created_at = datetime(2017, 12, 11, 17, 0)
+
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_letter_notification.service_id,
+        notification_id=sample_letter_notification.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'It’s too late to cancel this letter. Printing started on 11 December at 5.30pm'
+    assert response['result'] == 'error'
+
+
+@freeze_time('2018-7-7 16:00:00')
+def test_cancel_notification_for_service_updates_letter_if_still_time_to_cancel(
+    admin_request,
+    sample_letter_notification,
+):
+    sample_letter_notification.created_at = datetime(2018, 7, 7, 10, 0)
+
+    response = admin_request.post(
+        'service.cancel_notification_for_service',
+        service_id=sample_letter_notification.service_id,
+        notification_id=sample_letter_notification.id,
+    )
+    assert response['status'] == 'cancelled'

@@ -86,7 +86,7 @@ def _update_statuses_from_row(update_dict, row):
         update_dict['delivered'] += row.count
     elif row.status in (
             'failed', 'technical-failure', 'temporary-failure',
-            'permanent-failure', 'validation-failed', 'virus-scan-failed'):
+            'permanent-failure', 'validation-failed', 'virus-scan-failed', 'cancelled'):
         update_dict['failed'] += row.count
 
 

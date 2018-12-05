@@ -39,6 +39,7 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
@@ -145,13 +146,14 @@ def _update_notification_status(notification, status):
 @statsd(namespace="dao")
 @transactional
 def update_notification_status_by_id(notification_id, status, sent_by=None):
-    notification = Notification.query.with_lockmode("update").filter(
+    notification = Notification.query.with_for_update().filter(
         Notification.id == notification_id,
         or_(
             Notification.status == NOTIFICATION_CREATED,
             Notification.status == NOTIFICATION_SENDING,
             Notification.status == NOTIFICATION_PENDING,
-            Notification.status == NOTIFICATION_SENT
+            Notification.status == NOTIFICATION_SENT,
+            Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
         )).first()
 
     if not notification:
@@ -225,11 +227,15 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
 
 
 @statsd(namespace="dao")
-def get_notification_by_id(notification_id, _raise=False):
-    if _raise:
-        return Notification.query.filter_by(id=notification_id).one()
-    else:
-        return Notification.query.filter_by(id=notification_id).first()
+def get_notification_by_id(notification_id, service_id=None, _raise=False):
+    filters = [Notification.id == notification_id]
+
+    if service_id:
+        filters.append(Notification.service_id == service_id)
+
+    query = Notification.query.filter(*filters)
+
+    return query.one() if _raise else query.first()
 
 
 def get_notifications(filter_dict=None):
