@@ -420,6 +420,7 @@ def test_switch_providers_on_slow_delivery_runs_if_config_set(
     assert get_notifications_mock.called is True
 
 
+@pytest.mark.skip(reason="Not switching it on yet")
 def test_switch_providers_on_slow_delivery_switches_once_then_does_not_switch_if_already_switched(
         notify_api,
         mocker,
