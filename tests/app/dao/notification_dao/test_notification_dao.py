@@ -1179,9 +1179,6 @@ def test_get_total_sent_notifications_for_email_excludes_sms_counts(
     assert total_count == 2
 
 
-def test_is_delivery_slow_for_provider_not_slow_when_no_notifications(notify_db_session):
-    assert not is_delivery_slow_for_provider(datetime.utcnow(), "firetext", 0.1, timedelta(minutes=4))
-
 @pytest.mark.parametrize(
     "normal_sending,slow_sending,normal_delivered,slow_delivered,threshold,expected_result",
     [
@@ -1195,7 +1192,7 @@ def test_is_delivery_slow_for_provider_not_slow_when_no_notifications(notify_db_
     ]
 )
 @freeze_time("2018-12-04 12:00:00.000000")
-def test_delivery_is_delivery_slow_for_provider(
+def test_is_delivery_slow_for_provider(
     notify_db_session,
     sample_template,
     normal_sending,
@@ -1230,8 +1227,8 @@ def test_delivery_is_delivery_slow_for_provider(
     for _ in range(slow_delivered):
         slow_notification(status='delivered')
 
-
     assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", threshold, timedelta(minutes=4)) is expected_result
+
 
 @pytest.mark.parametrize("options,expected_result", [
     ({"status": NOTIFICATION_TEMPORARY_FAILURE, "sent_by": "mmg"}, False),

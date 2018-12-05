@@ -256,28 +256,25 @@ def switch_current_sms_provider_on_slow_delivery():
     Switch providers if there are at least two slow delivery notifications (more than four minutes)
     in the last ten minutes. Search from the time we last switched to the current provider.
     """
-    functional_test_provider_service_id = current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SERVICE_ID')
-    functional_test_provider_template_id = current_app.config.get('FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID')
+    current_provider = get_current_provider('sms')
+    if current_provider.updated_at > datetime.utcnow() - timedelta(minutes=10):
+        current_app.logger.info("Slow delivery provider switched less than 10 minutes ago.")
+        return
+    slow_delivery_notifications = is_delivery_slow_for_provider(
+        provider=current_provider.identifier,
+        threshold=0.1,
+        created_at=datetime.utcnow() - timedelta(minutes=10),
+        delivery_time=timedelta(minutes=4),
+    )
 
-    if functional_test_provider_service_id and functional_test_provider_template_id:
-        current_provider = get_current_provider('sms')
-        slow_delivery_notifications = is_delivery_slow_for_provider(
-            provider=current_provider.identifier,
-            threshold=2,
-            sent_at=max(datetime.utcnow() - timedelta(minutes=10), current_provider.updated_at),
-            delivery_time=timedelta(minutes=4),
-            service_id=functional_test_provider_service_id,
-            template_id=functional_test_provider_template_id
+    if slow_delivery_notifications:
+        current_app.logger.warning(
+            'Slow delivery notifications detected for provider {}'.format(
+                current_provider.identifier
+            )
         )
 
-        if slow_delivery_notifications:
-            current_app.logger.warning(
-                'Slow delivery notifications detected for provider {}'.format(
-                    current_provider.identifier
-                )
-            )
-
-            dao_toggle_sms_provider(current_provider.identifier)
+        dao_toggle_sms_provider(current_provider.identifier)
 
 
 @notify_celery.task(name="delete-inbound-sms")

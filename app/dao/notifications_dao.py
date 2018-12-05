@@ -459,7 +459,6 @@ def is_delivery_slow_for_provider(
         Notification.key_type != KEY_TYPE_TEST
     ).group_by("slow").all()
 
-    print(count)
     counts = {c[0]: c[1] for c in count}
     total_notifications = sum(counts.values())
     if total_notifications:
