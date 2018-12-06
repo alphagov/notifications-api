@@ -1413,6 +1413,12 @@ class Notification(db.Model):
         else:
             return None
 
+    def get_created_by_email_address(self):
+        if self.created_by:
+            return self.created_by.email_address
+        else:
+            return None
+
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
@@ -1424,6 +1430,7 @@ class Notification(db.Model):
             "status": self.formatted_status,
             "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple()),
             "created_by_name": self.get_created_by_name(),
+            "created_by_email_address": self.get_created_by_email_address(),
         }
 
         return serialized
@@ -1454,6 +1461,7 @@ class Notification(db.Model):
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "created_by_name": self.get_created_by_name(),
+            "created_by_email_address": self.get_created_by_email_address(),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
             "scheduled_for": (
