@@ -1,5 +1,4 @@
 import itertools
-import time
 import uuid
 import datetime
 from flask import url_for, current_app
@@ -1428,7 +1427,7 @@ class Notification(db.Model):
             "template_type": self.template.template_type,
             "job_name": self.job.original_file_name if self.job else '',
             "status": self.formatted_status,
-            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple()),
+            "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
             "created_by_name": self.get_created_by_name(),
             "created_by_email_address": self.get_created_by_email_address(),
         }
@@ -1461,7 +1460,6 @@ class Notification(db.Model):
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "created_by_name": self.get_created_by_name(),
-            "created_by_email_address": self.get_created_by_email_address(),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
             "scheduled_for": (
