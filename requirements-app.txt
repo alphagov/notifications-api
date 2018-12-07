@@ -17,7 +17,7 @@ jsonschema==3.0.0a3
 marshmallow-sqlalchemy==0.15.0
 marshmallow==2.16.3
 psycopg2-binary==2.7.5
-PyJWT==1.6.4
+PyJWT==1.7.1
 SQLAlchemy==1.2.14
 
 notifications-python-client==5.2.0
