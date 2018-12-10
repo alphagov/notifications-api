@@ -7,26 +7,25 @@ from datetime import (
 
 from boto.exception import BotoClientError
 from flask import current_app
-
+from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 from notifications_utils.recipients import (
     validate_and_format_email_address,
     InvalidEmailError,
     try_validate_and_format_phone_number
 )
 from notifications_utils.statsd_decorators import statsd
-from werkzeug.datastructures import MultiDict
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import (desc, func, or_, asc)
 from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import case
 from sqlalchemy.sql import functions
-from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
-from notifications_utils.timezones import convert_utc_to_bst
+from sqlalchemy.sql.expression import case
+from werkzeug.datastructures import MultiDict
 
 from app import db, create_uuid
 from app.aws.s3 import remove_s3_object, get_s3_bucket_objects
-from app.letters.utils import LETTERS_PDF_FILE_LOCATION_STRUCTURE
-from app.utils import midnight_n_days_ago, escape_special_characters
+from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
+from app.letters.utils import LETTERS_PDF_FILE_LOCATION_STRUCTURE
 from app.models import (
     Notification,
     NotificationHistory,
@@ -47,9 +46,8 @@ from app.models import (
     EMAIL_TYPE,
     ServiceDataRetention
 )
-
-from app.dao.dao_utils import transactional
 from app.utils import get_london_midnight_in_utc
+from app.utils import midnight_n_days_ago, escape_special_characters
 
 
 @statsd(namespace="dao")
@@ -623,31 +621,3 @@ def guess_notification_type(search_term):
         return EMAIL_TYPE
     else:
         return SMS_TYPE
-
-
-@statsd(namespace='dao')
-def fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date):
-    start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
-    table = NotificationHistory
-
-    if start_date >= datetime.utcnow() - timedelta(days=7):
-        table = Notification
-
-    query = db.session.query(
-        table.notification_type,
-        table.status,
-        table.key_type,
-        func.count(table.id).label('count')
-    ).filter(
-        table.created_at >= start_date,
-        table.created_at < end_date
-    ).group_by(
-        table.notification_type,
-        table.key_type,
-        table.status
-    ).order_by(
-        table.notification_type,
-    )
-
-    return query.all()
