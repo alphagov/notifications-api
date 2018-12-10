@@ -1,5 +1,4 @@
 import itertools
-import time
 import uuid
 import datetime
 from flask import url_for, current_app
@@ -1413,6 +1412,12 @@ class Notification(db.Model):
         else:
             return None
 
+    def get_created_by_email_address(self):
+        if self.created_by:
+            return self.created_by.email_address
+        else:
+            return None
+
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
@@ -1422,8 +1427,9 @@ class Notification(db.Model):
             "template_type": self.template.template_type,
             "job_name": self.job.original_file_name if self.job else '',
             "status": self.formatted_status,
-            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple()),
+            "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
             "created_by_name": self.get_created_by_name(),
+            "created_by_email_address": self.get_created_by_email_address(),
         }
 
         return serialized
