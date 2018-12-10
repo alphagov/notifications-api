@@ -325,9 +325,7 @@ def test_move_to_folder_rejects_if_it_would_cause_folder_loop(admin_request, sam
         },
         _expected_status=400
     )
-    assert response['message'] == 'Could not move to folder: {} is an ancestor of target folder {}'.format(
-        f1.id, target_folder.id
-    )
+    assert response['message'] == 'You cannot move a folder to one of its subfolders'
 
 
 def test_move_to_folder_itself_is_rejected(admin_request, sample_service):
@@ -343,7 +341,7 @@ def test_move_to_folder_itself_is_rejected(admin_request, sample_service):
         },
         _expected_status=400
     )
-    assert response['message'] == 'Could not move folder to itself'
+    assert response['message'] == 'You cannot move a folder to itself'
 
 
 def test_move_to_folder_skips_archived_templates(admin_request, sample_service):
