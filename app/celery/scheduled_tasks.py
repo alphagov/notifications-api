@@ -37,7 +37,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
-    # dao_toggle_sms_provider
+    dao_toggle_sms_provider
 )
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.dao.services_dao import (
@@ -274,7 +274,7 @@ def switch_current_sms_provider_on_slow_delivery():
             )
         )
 
-        # dao_toggle_sms_provider(current_provider.identifier)
+        dao_toggle_sms_provider(current_provider.identifier)
 
 
 @notify_celery.task(name="delete-inbound-sms")
