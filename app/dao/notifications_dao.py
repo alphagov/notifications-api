@@ -443,22 +443,34 @@ def get_total_sent_notifications_in_date_range(start_date, end_date, notificatio
 
 
 def is_delivery_slow_for_provider(
-        sent_at,
+        created_at,
         provider,
         threshold,
         delivery_time,
-        service_id,
-        template_id
 ):
-    count = db.session.query(Notification).filter(
-        Notification.service_id == service_id,
-        Notification.template_id == template_id,
-        Notification.sent_at >= sent_at,
-        Notification.status == NOTIFICATION_DELIVERED,
+    count = db.session.query(
+        case(
+            [(
+                Notification.status == NOTIFICATION_DELIVERED,
+                (Notification.updated_at - Notification.sent_at) >= delivery_time
+            )],
+            else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time
+        ).label("slow"), func.count()
+
+    ).filter(
+        Notification.created_at >= created_at,
+        Notification.sent_at.isnot(None),
+        Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_SENDING]),
         Notification.sent_by == provider,
-        (Notification.updated_at - Notification.sent_at) >= delivery_time,
-    ).count()
-    return count >= threshold
+        Notification.key_type != KEY_TYPE_TEST
+    ).group_by("slow").all()
+
+    counts = {c[0]: c[1] for c in count}
+    total_notifications = sum(counts.values())
+    if total_notifications:
+        return counts.get(True, 0) / total_notifications >= threshold
+    else:
+        return False
 
 
 @statsd(namespace="dao")

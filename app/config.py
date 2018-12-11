@@ -290,9 +290,6 @@ class Config(object):
 
     SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
 
-    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = None
-    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = None
-
     DVLA_BUCKETS = {
         'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
         'notification': '{}-dvla-letter-api-files'.format(os.getenv('NOTIFY_ENVIRONMENT'))
@@ -438,8 +435,6 @@ class Live(Config):
     INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
-    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
-    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True

@@ -45,6 +45,8 @@ from app.models import (
     ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
@@ -1206,131 +1208,85 @@ def test_get_total_sent_notifications_for_email_excludes_sms_counts(
     assert total_count == 2
 
 
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_returns_for_sent_notifications(
-    sample_template
+@pytest.mark.parametrize(
+    "normal_sending,slow_sending,normal_delivered,slow_delivered,threshold,expected_result",
+    [
+        (0, 0, 0, 0, 0.1, False),
+        (1, 0, 0, 0, 0.1, False),
+        (1, 1, 0, 0, 0.1, True),
+        (0, 0, 1, 1, 0.1, True),
+        (1, 1, 1, 1, 0.5, True),
+        (1, 1, 1, 1, 0.6, False),
+        (45, 5, 45, 5, 0.1, True),
+    ]
+)
+@freeze_time("2018-12-04 12:00:00.000000")
+def test_is_delivery_slow_for_provider(
+    notify_db_session,
+    sample_template,
+    normal_sending,
+    slow_sending,
+    normal_delivered,
+    slow_delivered,
+    threshold,
+    expected_result
 ):
-    now = datetime.utcnow()
-    one_minute_from_now = now + timedelta(minutes=1)
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
+    normal_notification = partial(
         create_notification,
         template=sample_template,
-        status='delivered',
         sent_by='mmg',
-        updated_at=five_minutes_from_now
+        sent_at=datetime.now(),
+        updated_at=datetime.now()
     )
 
-    notification_five_minutes_to_deliver(sent_at=now)
-    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
-    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=one_minute_from_now,
-        provider='mmg',
-        threshold=2,
-        delivery_time=timedelta(minutes=3),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert slow_delivery
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_observes_threshold(
-    sample_template
-):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
+    slow_notification = partial(
         create_notification,
         template=sample_template,
-        status='delivered',
-        sent_at=now,
         sent_by='mmg',
-        updated_at=five_minutes_from_now
+        sent_at=datetime.now() - timedelta(minutes=5),
+        updated_at=datetime.now()
     )
 
-    notification_five_minutes_to_deliver()
-    notification_five_minutes_to_deliver()
+    for _ in range(normal_sending):
+        normal_notification(status='sending')
+    for _ in range(slow_sending):
+        slow_notification(status='sending')
+    for _ in range(normal_delivered):
+        normal_notification(status='delivered')
+    for _ in range(slow_delivered):
+        slow_notification(status='delivered')
 
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='mmg',
-        threshold=3,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert not slow_delivery
+    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", threshold, timedelta(minutes=4)) is expected_result
 
 
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_returns_for_delivered_notifications_only(
-    sample_template
+@pytest.mark.parametrize("options,expected_result", [
+    ({"status": NOTIFICATION_TEMPORARY_FAILURE, "sent_by": "mmg"}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "firetext"}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "sent_at": None}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "firetext"}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "sent_at": None}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
+])
+@freeze_time("2018-12-04 12:00:00.000000")
+def test_delivery_is_delivery_slow_for_provider_filters_out_notifications_it_should_not_count(
+    notify_db_session,
+    sample_template,
+    options,
+    expected_result
 ):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
-        create_notification,
-        template=sample_template,
-        sent_at=now,
-        sent_by='firetext',
-        created_at=now,
-        updated_at=five_minutes_from_now
+    create_notification_with = {
+        "template": sample_template,
+        "sent_at": datetime.now() - timedelta(minutes=5),
+        "updated_at": datetime.now(),
+    }
+    create_notification_with.update(options)
+    create_notification(
+        **create_notification_with
     )
-
-    notification_five_minutes_to_deliver(status='sending')
-    notification_five_minutes_to_deliver(status='delivered')
-    notification_five_minutes_to_deliver(status='delivered')
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='firetext',
-        threshold=2,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert slow_delivery
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
-    sample_template
-):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification = partial(
-        create_notification,
-        template=sample_template,
-        created_at=now,
-        sent_at=now,
-        sent_by='mmg',
-        status='delivered'
-    )
-
-    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    notification(updated_at=five_minutes_from_now)
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='mmg',
-        threshold=2,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert not slow_delivery
+    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", 0.1, timedelta(minutes=4)) is expected_result
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
