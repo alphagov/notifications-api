@@ -19,11 +19,52 @@ from app.models import (
     Job,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 )
-from tests.app.db import create_job, create_service, create_template
+from tests.app.db import create_job, create_service, create_template, create_notification
 
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_notification_outcomes_for_job.__wrapped__.__name__ == 'dao_get_notification_outcomes_for_job'  # noqa
+
+
+def test_should_count_of_statuses_for_notifications_associated_with_job(sample_template, sample_job):
+    create_notification(sample_template, job=sample_job, status='created')
+    create_notification(sample_template, job=sample_job, status='created')
+    create_notification(sample_template, job=sample_job, status='created')
+    create_notification(sample_template, job=sample_job, status='sending')
+    create_notification(sample_template, job=sample_job, status='delivered')
+
+    results = dao_get_notification_outcomes_for_job(sample_template.service_id, sample_job.id)
+    assert {row.status: row.count for row in results} == {
+        'created': 3,
+        'sending': 1,
+        'delivered': 1,
+    }
+
+
+def test_should_return_zero_length_array_if_no_notifications_for_job(sample_service, sample_job):
+    assert len(dao_get_notification_outcomes_for_job(sample_job.id, sample_service.id)) == 0
+
+
+def test_should_return_notifications_only_for_this_job(sample_template):
+    job_1 = create_job(sample_template)
+    job_2 = create_job(sample_template)
+
+    create_notification(sample_template, job=job_1, status='created')
+    create_notification(sample_template, job=job_2, status='sent')
+
+    results = dao_get_notification_outcomes_for_job(sample_template.service_id, job_1.id)
+    assert {row.status: row.count for row in results} == {'created': 1}
+
+
+def test_should_return_notifications_only_for_this_service(sample_notification_with_job):
+    other_service = create_service(service_name='one')
+    other_template = create_template(service=other_service)
+    other_job = create_job(other_template)
+
+    create_notification(other_template, job=other_job)
+
+    assert len(dao_get_notification_outcomes_for_job(sample_notification_with_job.service_id, other_job.id)) == 0
+    assert len(dao_get_notification_outcomes_for_job(other_service.id, sample_notification_with_job.id)) == 0
 
 
 def test_create_sample_job(sample_template):

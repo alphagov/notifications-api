@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from freezegun import freeze_time
 import pytest
@@ -12,7 +12,7 @@ from app.models import JOB_STATUS_TYPES, JOB_STATUS_PENDING
 
 from tests import create_authorization_header
 from tests.conftest import set_config
-from tests.app.db import create_job, create_notification
+from tests.app.db import create_ft_notification_status, create_job, create_notification
 
 
 def test_get_job_with_invalid_service_id_returns404(client, sample_service):
@@ -690,3 +690,32 @@ def test_get_all_notifications_for_job_returns_csv_format(admin_request, sample_
         'row_number',
         'recipient'
     }
+
+
+@freeze_time('2017-06-10 12:00')
+def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin_request, sample_template):
+    # it's the 10th today, so 3 days should include all of 7th, 8th, 9th, and some of 10th.
+    just_three_days_ago = datetime(2017, 6, 6, 22, 59, 59)
+    not_quite_three_days_ago = just_three_days_ago + timedelta(seconds=1)
+
+    job_1 = create_job(sample_template, created_at=just_three_days_ago)
+    job_2 = create_job(sample_template, created_at=not_quite_three_days_ago)
+
+    # some notifications created more than three days ago, some created after the midnight cutoff
+    create_ft_notification_status(date(2017, 6, 6), job=job_1, notification_status='delivered', count=2)
+    create_ft_notification_status(date(2017, 6, 7), job=job_1, notification_status='delivered', count=4)
+    # job2's new enough
+    create_notification(job=job_2, status='created', created_at=not_quite_three_days_ago)
+
+    # this isn't picked up because the job is too new
+    create_ft_notification_status(date(2017, 6, 7), job=job_2, notification_status='delivered', count=8)
+
+    # this isn't picked up because we're using the ft status table for job_1 as it's old
+    create_notification(job=job_1, status='created', created_at=not_quite_three_days_ago)
+
+    resp_json = admin_request.get('job.get_jobs_by_service', service_id=sample_template.service_id)
+
+    assert resp_json['data'][0]['id'] == str(job_2.id)
+    assert resp_json['data'][0]['statistics'] == [{'status': 'created', 'count': 1}]
+    assert resp_json['data'][1]['id'] == str(job_1.id)
+    assert resp_json['data'][1]['statistics'] == [{'status': 'delivered', 'count': 6}]

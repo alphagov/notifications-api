@@ -9,11 +9,12 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
     fetch_notification_status_for_service_for_today_and_7_previous_days,
-    fetch_notification_status_totals_for_all_services
+    fetch_notification_status_totals_for_all_services,
+    fetch_notification_statuses_for_job,
 )
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
-from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status
+from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
 
 
 def test_update_fact_notification_status(notify_db_session):
@@ -288,3 +289,18 @@ def set_up_data():
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
     create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
+
+
+def test_fetch_notification_statuses_for_job(sample_template):
+    j1 = create_job(sample_template)
+    j2 = create_job(sample_template)
+
+    create_ft_notification_status(date(2018, 10, 1), job=j1, notification_status='created', count=1)
+    create_ft_notification_status(date(2018, 10, 1), job=j1, notification_status='delivered', count=2)
+    create_ft_notification_status(date(2018, 10, 2), job=j1, notification_status='created', count=4)
+    create_ft_notification_status(date(2018, 10, 1), job=j2, notification_status='created', count=8)
+
+    assert {x.status: x.count for x in fetch_notification_statuses_for_job(j1.id)} == {
+        'created': 5,
+        'delivered': 2
+    }
