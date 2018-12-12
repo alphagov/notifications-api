@@ -32,7 +32,6 @@ from app.models import (
     NotificationHistory,
     ScheduledNotification,
     Template,
-    TemplateHistory,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -312,7 +311,7 @@ def _filter_query(query, filter_dict=None):
     # filter by template
     template_types = multidict.getlist('template_type')
     if template_types:
-        query = query.join(TemplateHistory).filter(TemplateHistory.template_type.in_(template_types))
+        query = query.filter(Notification.notification_type.in_(template_types))
 
     return query
 
