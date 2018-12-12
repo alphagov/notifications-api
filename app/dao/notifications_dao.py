@@ -466,8 +466,13 @@ def is_delivery_slow_for_provider(
 
     counts = {c[0]: c[1] for c in count}
     total_notifications = sum(counts.values())
+    slow_notifications = counts.get(True, 0)
+
     if total_notifications:
-        return counts.get(True, 0) / total_notifications >= threshold
+        current_app.logger.info("Slow delivery notifications count: {} out of {}. Ratio {}".format(
+            slow_notifications, total_notifications, slow_notifications / total_notifications
+        ))
+        return slow_notifications / total_notifications >= threshold
     else:
         return False
 
