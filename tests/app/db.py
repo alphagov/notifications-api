@@ -164,7 +164,7 @@ def create_template(
 
 
 def create_notification(
-        template,
+        template=None,
         job=None,
         job_row_number=None,
         to_field=None,
@@ -190,6 +190,10 @@ def create_notification(
         created_by_id=None,
         postage=None
 ):
+    assert job or template
+    if job:
+        template = job.template
+
     if created_at is None:
         created_at = datetime.utcnow()
 
@@ -557,6 +561,8 @@ def create_ft_notification_status(
     notification_status='delivered',
     count=1
 ):
+    if job:
+        template = job.template
     if template:
         service = template.service
         notification_type = template.template_type
