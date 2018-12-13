@@ -631,11 +631,13 @@ def test_get_orgs_and_services_nests_services(admin_request, sample_user):
                 'services': [
                     {
                         'name': service1.name,
-                        'id': str(service1.id)
+                        'id': str(service1.id),
+                        'restricted': False,
                     },
                     {
                         'name': service2.name,
-                        'id': str(service2.id)
+                        'id': str(service2.id),
+                        'restricted': False,
                     }
                 ]
             },
@@ -648,7 +650,8 @@ def test_get_orgs_and_services_nests_services(admin_request, sample_user):
         'services_without_organisations': [
             {
                 'name': service3.name,
-                'id': str(service3.id)
+                'id': str(service3.id),
+                'restricted': False,
             }
         ]
     }
@@ -683,7 +686,8 @@ def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
                 'services': [
                     {
                         'name': service1.name,
-                        'id': str(service1.id)
+                        'id': str(service1.id),
+                        'restricted': False,
                     }
                 ]
             }
@@ -691,7 +695,8 @@ def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
         'services_without_organisations': [
             {
                 'name': service4.name,
-                'id': str(service4.id)
+                'id': str(service4.id),
+                'restricted': False,
             }
         ]
     }
@@ -727,7 +732,8 @@ def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request,
         'services_without_organisations': [
             {
                 'name': service1.name,
-                'id': str(service1.id)
+                'id': str(service1.id),
+                'restricted': False,
             }
         ]
     }
