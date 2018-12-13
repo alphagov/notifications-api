@@ -449,7 +449,8 @@ def get_orgs_and_services(user):
                 'services': [
                     {
                         'id': service.id,
-                        'name': service.name
+                        'name': service.name,
+                        'restricted': service.restricted,
                     }
                     for service in org.services
                     if service.active and service in user.services
@@ -460,7 +461,8 @@ def get_orgs_and_services(user):
         'services_without_organisations': [
             {
                 'id': service.id,
-                'name': service.name
+                'name': service.name,
+                'restricted': service.restricted,
             } for service in user.services
             if (
                 service.active and
