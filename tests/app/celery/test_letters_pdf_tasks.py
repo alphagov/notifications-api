@@ -508,6 +508,27 @@ def test_sanitise_precompiled_pdf_returns_none_on_validation_error(rmock, sample
     assert res is None
 
 
+def test_sanitise_precompiled_pdf_passes_the_service_id_and_notification_id_to_template_preview(
+    mocker,
+    sample_letter_notification,
+):
+    tp_mock = mocker.patch('app.celery.letters_pdf_tasks.requests_post')
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    mock_celery = Mock(**{'retry.side_effect': Retry})
+    _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+
+    service_id = str(sample_letter_notification.service_id)
+    notification_id = str(sample_letter_notification.id)
+
+    tp_mock.assert_called_once_with(
+        'http://localhost:9999/precompiled/sanitise',
+        data=b'old_pdf',
+        headers={'Authorization': 'Token my-secret-key',
+                 'Service-ID': service_id,
+                 'Notification-ID': notification_id}
+    )
+
+
 def test_sanitise_precompiled_pdf_retries_on_http_error(rmock, sample_letter_notification):
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
     rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=500)
