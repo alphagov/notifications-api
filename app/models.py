@@ -257,6 +257,7 @@ LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
 UPLOAD_DOCUMENT = 'upload_document'
 EDIT_FOLDERS = 'edit_folders'
+CHOOSE_POSTAGE = 'choose_postage'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -270,6 +271,7 @@ SERVICE_PERMISSION_TYPES = [
     PRECOMPILED_LETTER,
     UPLOAD_DOCUMENT,
     EDIT_FOLDERS,
+    CHOOSE_POSTAGE
 ]
 
 
@@ -762,6 +764,15 @@ class TemplateBase(db.Model):
     archived = db.Column(db.Boolean, nullable=False, default=False)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
+    postage = db.Column(db.String, nullable=True)
+    CheckConstraint("""
+        CASE WHEN template_type = 'letter' THEN
+            postage in ('first', 'second') OR
+            postage is null
+        ELSE
+            postage is null
+        END
+    """)
 
     @declared_attr
     def service_id(cls):
@@ -861,6 +872,7 @@ class TemplateBase(db.Model):
                 }
                 for key in self._as_utils_template().placeholders
             },
+            "postage": self.postage,
         }
 
         return serialized
