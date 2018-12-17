@@ -17,7 +17,6 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
-    CHOOSE_POSTAGE,
     Template,
     TemplateHistory
 )

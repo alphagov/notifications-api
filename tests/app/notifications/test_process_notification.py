@@ -13,7 +13,9 @@ from app.models import (
     Notification,
     NotificationHistory,
     ScheduledNotification,
-    Template
+    Template,
+    LETTER_TYPE,
+    CHOOSE_POSTAGE
 )
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -26,6 +28,8 @@ from notifications_utils.recipients import validate_and_format_phone_number, val
 from app.utils import cache_key_for_service_template_counter
 from app.v2.errors import BadRequestError
 from tests.app.conftest import sample_api_key as create_api_key
+
+from tests.app.db import create_service, create_template
 
 
 def test_create_content_for_notification_passes(sample_email_template):
@@ -475,6 +479,41 @@ def test_persist_email_notification_stores_normalised_email(
 
     assert persisted_notification.to == recipient
     assert persisted_notification.normalised_to == expected_recipient_normalised
+
+
+@pytest.mark.parametrize(
+    "service_permissions, template_postage, expected_postage",
+    [
+        ([LETTER_TYPE], "first", "second"),
+        ([LETTER_TYPE, CHOOSE_POSTAGE], "first", "first"),
+        ([LETTER_TYPE, CHOOSE_POSTAGE], None, "second"),
+    ]
+)
+def test_persist_letter_notification_finds_correct_postage(
+    mocker,
+    notify_db,
+    notify_db_session,
+    service_permissions,
+    template_postage,
+    expected_postage
+):
+    service = create_service(service_permissions=service_permissions, postage="second")
+    api_key = create_api_key(notify_db, notify_db_session, service=service)
+    template = create_template(service, template_type=LETTER_TYPE, postage=template_postage)
+    mocker.patch('app.dao.templates_dao.dao_get_template_by_id', return_value=template)
+    persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient="Jane Doe, 10 Downing Street, London",
+        service=service,
+        personalisation=None,
+        notification_type=LETTER_TYPE,
+        api_key_id=api_key.id,
+        key_type=api_key.key_type,
+    )
+    persisted_notification = Notification.query.all()[0]
+
+    assert persisted_notification.postage == expected_postage
 
 
 @pytest.mark.parametrize('utc_time, day_in_key', [
