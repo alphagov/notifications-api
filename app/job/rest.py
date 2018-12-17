@@ -173,8 +173,12 @@ def get_paginated_jobs(service_id, limit_days, statuses, page):
     )
     data = job_schema.dump(pagination.items, many=True).data
     for job_data in data:
-        created_at = dateutil.parser.parse(job_data['created_at']).replace(tzinfo=None)
-        if created_at < midnight_n_days_ago(3):
+        start = job_data['processing_started']
+        start = dateutil.parser.parse(start).replace(tzinfo=None) if start else None
+
+        if start is None:
+            statistics = []
+        elif start.replace(tzinfo=None) < midnight_n_days_ago(3):
             # ft_notification_status table
             statistics = fetch_notification_statuses_for_job(job_data['id'])
         else:
