@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from freezegun import freeze_time
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
@@ -523,3 +524,37 @@ def test_get_multiple_template_details_returns_templates_for_list_of_ids(sample_
     assert res[0].template_type
     assert res[0].name
     assert not res[0].is_precompiled_letter
+
+
+@pytest.mark.parametrize("template_type,postage", [('letter', 'third'), ('sms', 'second')])
+def test_template_postage_constraint_on_create(sample_service, sample_user, template_type, postage):
+    data = {
+        'name': 'Sample Template',
+        'template_type': template_type,
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+        'postage': postage
+    }
+    template = Template(**data)
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_create_template(template)
+
+
+def test_template_postage_constraint_on_update(sample_service, sample_user):
+    data = {
+        'name': 'Sample Template',
+        'template_type': "letter",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+        'postage': 'second'
+    }
+    template = Template(**data)
+    dao_create_template(template)
+    created = dao_get_all_templates_for_service(sample_service.id)[0]
+    assert created.name == 'Sample Template'
+
+    created.postage = 'third'
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_update_template(created)
