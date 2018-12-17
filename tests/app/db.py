@@ -140,6 +140,7 @@ def create_template(
         hidden=False,
         archived=False,
         folder=None,
+        postage=None,
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -150,6 +151,7 @@ def create_template(
         'reply_to': reply_to,
         'hidden': hidden,
         'folder': folder,
+        'postage': postage,
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject

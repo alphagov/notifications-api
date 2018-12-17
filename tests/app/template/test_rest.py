@@ -17,6 +17,7 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
+    CHOOSE_POSTAGE,
     Template,
     TemplateHistory
 )
@@ -210,6 +211,34 @@ def test_should_raise_error_on_create_if_no_permission(
     assert json_resp['message'] == expected_error
 
 
+def test_should_raise_error_on_create_if_no_choose_postage_permission(client, sample_user):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    data = {
+        'name': 'my template',
+        'template_type': LETTER_TYPE,
+        'content': 'template content',
+        'service': str(service.id),
+        'created_by': str(sample_user.id),
+        'subject': "Some letter",
+        'postage': 'first',
+    }
+
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 403
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {
+        "template_postage": ["Setting postage on templates is not enabled for this service."]
+    }
+
+
 @pytest.mark.parametrize('template_factory, expected_error', [
     (sample_template_without_sms_permission, {'template_type': ['Updating text message templates is not allowed']}),
     (sample_template_without_email_permission, {'template_type': ['Updating email templates is not allowed']}),
@@ -237,6 +266,33 @@ def test_should_be_error_on_update_if_no_permission(
     assert update_response.status_code == 403
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == expected_error
+
+
+def test_should_be_error_on_update_if_no_choose_postage_permission(client, sample_user):
+    service = create_service(service_name='some_service', service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type=LETTER_TYPE)
+    data = {
+        'content': 'new template content',
+        'created_by': str(sample_user.id),
+        'postage': 'first'
+    }
+
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    update_response = client.post(
+        '/service/{}/template/{}'.format(
+            template.service_id, template.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+
+    json_resp = json.loads(update_response.get_data(as_text=True))
+    assert update_response.status_code == 403
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {
+        "template_postage": ["Setting postage on templates is not enabled for this service."]
+    }
 
 
 def test_should_error_if_created_by_missing(client, sample_user, sample_service):
