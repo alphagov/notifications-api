@@ -1,3 +1,4 @@
+import dateutil
 from flask import (
     Blueprint,
     jsonify,
@@ -13,6 +14,7 @@ from app.dao.jobs_dao import (
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job)
+from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.notifications_dao import get_notifications_for_job
@@ -24,7 +26,7 @@ from app.schemas import (
 )
 from app.celery.tasks import process_job
 from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED, LETTER_TYPE
-from app.utils import pagination_links
+from app.utils import pagination_links, midnight_n_days_ago
 from app.config import QueueNames
 from app.errors import (
     register_errors,
@@ -171,8 +173,14 @@ def get_paginated_jobs(service_id, limit_days, statuses, page):
     )
     data = job_schema.dump(pagination.items, many=True).data
     for job_data in data:
-        statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
-        job_data['statistics'] = [{'status': statistic[1], 'count': statistic[0]} for statistic in statistics]
+        created_at = dateutil.parser.parse(job_data['created_at']).replace(tzinfo=None)
+        if created_at < midnight_n_days_ago(3):
+            # ft_notification_status table
+            statistics = fetch_notification_statuses_for_job(job_data['id'])
+        else:
+            # notifications table
+            statistics = dao_get_notification_outcomes_for_job(service_id, job_data['id'])
+        job_data['statistics'] = [{'status': statistic.status, 'count': statistic.count} for statistic in statistics]
 
     return {
         'data': data,

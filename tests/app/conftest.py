@@ -1101,7 +1101,9 @@ def restore_provider_details(notify_db, notify_db_session):
 
 @pytest.fixture
 def admin_request(client):
+
     class AdminRequest:
+        app = client.application
 
         @staticmethod
         def get(endpoint, _expected_status=200, **endpoint_kwargs):

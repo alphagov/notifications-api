@@ -16,7 +16,7 @@ from app.models import (
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
-    NotificationHistory,
+    Notification,
     Template,
     ServiceDataRetention
 )
@@ -25,19 +25,14 @@ from app.variables import LETTER_TEST_API_FILENAME
 
 @statsd(namespace="dao")
 def dao_get_notification_outcomes_for_job(service_id, job_id):
-    query = db.session.query(
-        func.count(NotificationHistory.status).label('count'),
-        NotificationHistory.status
-    )
-
-    return query.filter(
-        NotificationHistory.service_id == service_id
+    return db.session.query(
+        func.count(Notification.status).label('count'),
+        Notification.status
     ).filter(
-        NotificationHistory.job_id == job_id
+        Notification.service_id == service_id,
+        Notification.job_id == job_id
     ).group_by(
-        NotificationHistory.status
-    ).order_by(
-        asc(NotificationHistory.status)
+        Notification.status
     ).all()
 
 

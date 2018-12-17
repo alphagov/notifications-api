@@ -186,3 +186,14 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
     else:
         query = stats
     return query.all()
+
+
+def fetch_notification_statuses_for_job(job_id):
+    return db.session.query(
+        FactNotificationStatus.notification_status.label('status'),
+        func.sum(FactNotificationStatus.notification_count).label('count'),
+    ).filter(
+        FactNotificationStatus.job_id == job_id,
+    ).group_by(
+        FactNotificationStatus.notification_status
+    ).all()
