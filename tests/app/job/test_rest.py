@@ -574,8 +574,8 @@ def test_get_jobs_with_limit_days(admin_request, sample_template):
 def test_get_jobs_should_return_statistics(admin_request, sample_template):
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)
-    job_1 = create_job(sample_template, created_at=earlier)
-    job_2 = create_job(sample_template, created_at=now)
+    job_1 = create_job(sample_template, processing_started=earlier)
+    job_2 = create_job(sample_template, processing_started=now)
     create_notification(job=job_1, status='created')
     create_notification(job=job_1, status='created')
     create_notification(job=job_1, status='created')
@@ -698,8 +698,10 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     just_three_days_ago = datetime(2017, 6, 6, 22, 59, 59)
     not_quite_three_days_ago = just_three_days_ago + timedelta(seconds=1)
 
-    job_1 = create_job(sample_template, created_at=just_three_days_ago)
-    job_2 = create_job(sample_template, created_at=not_quite_three_days_ago)
+    job_1 = create_job(sample_template, created_at=just_three_days_ago, processing_started=just_three_days_ago)
+    job_2 = create_job(sample_template, created_at=just_three_days_ago, processing_started=not_quite_three_days_ago)
+    # is old but hasn't started yet (probably a scheduled job). We don't have any stats for this job yet.
+    job_3 = create_job(sample_template, created_at=just_three_days_ago, processing_started=None)
 
     # some notifications created more than three days ago, some created after the midnight cutoff
     create_ft_notification_status(date(2017, 6, 6), job=job_1, notification_status='delivered', count=2)
@@ -709,13 +711,17 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
 
     # this isn't picked up because the job is too new
     create_ft_notification_status(date(2017, 6, 7), job=job_2, notification_status='delivered', count=8)
+    # this isn't picked up - while the job is old, it started in last 3 days so we look at notification table instead
+    create_ft_notification_status(date(2017, 6, 7), job=job_3, notification_status='delivered', count=16)
 
     # this isn't picked up because we're using the ft status table for job_1 as it's old
     create_notification(job=job_1, status='created', created_at=not_quite_three_days_ago)
 
     resp_json = admin_request.get('job.get_jobs_by_service', service_id=sample_template.service_id)
 
-    assert resp_json['data'][0]['id'] == str(job_2.id)
-    assert resp_json['data'][0]['statistics'] == [{'status': 'created', 'count': 1}]
-    assert resp_json['data'][1]['id'] == str(job_1.id)
-    assert resp_json['data'][1]['statistics'] == [{'status': 'delivered', 'count': 6}]
+    assert resp_json['data'][0]['id'] == str(job_3.id)
+    assert resp_json['data'][0]['statistics'] == []
+    assert resp_json['data'][1]['id'] == str(job_2.id)
+    assert resp_json['data'][1]['statistics'] == [{'status': 'created', 'count': 1}]
+    assert resp_json['data'][2]['id'] == str(job_1.id)
+    assert resp_json['data'][2]['statistics'] == [{'status': 'delivered', 'count': 6}]
