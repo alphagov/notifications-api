@@ -261,7 +261,9 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
                 current_app.config['TEMPLATE_PREVIEW_API_HOST']
             ),
             data=precompiled_pdf,
-            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
+            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY']),
+                     'Service-ID': str(notification.service_id),
+                     'Notification-ID': str(notification.id)}
         )
         resp.raise_for_status()
         return resp.content
