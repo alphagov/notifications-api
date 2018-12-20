@@ -182,7 +182,7 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
 
     create_notification(template=letter_template, status='sending',
                         reference='LETTER_REF')
-    delete_notifications_created_more_than_a_week_ago_by_type('email')
+    delete_notifications_created_more_than_a_week_ago_by_type('email', qry_limit=1)
     mock_get_s3.assert_not_called()
 
 
