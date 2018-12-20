@@ -315,8 +315,9 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
-@transactional
 def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
+    current_app.logger.info('Deleting {} notifications for services with flexible data retention'.format(notification_type))
+
     flexible_data_retention = ServiceDataRetention.query.filter(
         ServiceDataRetention.notification_type == notification_type
     ).all()
@@ -329,6 +330,9 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
         if notification_type == LETTER_TYPE:
             _delete_letters_from_s3(query)
         deleted += query.delete(synchronize_session='fetch')
+        db.session.commit()
+
+    current_app.logger.info('Deleting {} notifications for services without flexible data retention'.format(notification_type))
 
     seven_days_ago = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7)
     services_with_data_retention = [x.service_id for x in flexible_data_retention]
@@ -339,6 +343,10 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
     if notification_type == LETTER_TYPE:
         _delete_letters_from_s3(query=query)
     deleted += query.delete(synchronize_session='fetch')
+    db.session.commit()
+
+    current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
+
     return deleted
 
 
