@@ -334,7 +334,8 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type,
         )
         if notification_type == LETTER_TYPE:
             _delete_letters_from_s3(query)
-
+        current_app.logger.info(
+            "Deleting {} notifications for service id: {}".format(notification_type, f.service_id))
         deleted += _delete_notifications(deleted, query)
 
     current_app.logger.info(
