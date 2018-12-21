@@ -147,7 +147,7 @@ def delete_email_notifications_older_than_seven_days():
             )
         )
     except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete sms notifications")
+        current_app.logger.exception("Failed to delete email notifications")
         raise
 
 
@@ -166,7 +166,7 @@ def delete_letter_notifications_older_than_seven_days():
             )
         )
     except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete sms notifications")
+        current_app.logger.exception("Failed to delete letter notifications")
         raise
 
 
