@@ -44,7 +44,8 @@ from app.models import (
     NOTIFICATION_SENT,
     SMS_TYPE,
     EMAIL_TYPE,
-    ServiceDataRetention
+    ServiceDataRetention,
+    Service
 )
 from app.utils import get_london_midnight_in_utc
 from app.utils import midnight_n_days_ago, escape_special_characters
@@ -315,8 +316,10 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
-@transactional
-def delete_notifications_created_more_than_a_week_ago_by_type(notification_type):
+def delete_notifications_created_more_than_a_week_ago_by_type(notification_type, qry_limit=10000):
+    current_app.logger.info(
+        'Deleting {} notifications for services with flexible data retention'.format(notification_type))
+
     flexible_data_retention = ServiceDataRetention.query.filter(
         ServiceDataRetention.notification_type == notification_type
     ).all()
@@ -329,16 +332,39 @@ def delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
         if notification_type == LETTER_TYPE:
             _delete_letters_from_s3(query)
         deleted += query.delete(synchronize_session='fetch')
+        db.session.commit()
+
+    current_app.logger.info(
+        'Deleting {} notifications for services without flexible data retention'.format(notification_type))
 
     seven_days_ago = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7)
     services_with_data_retention = [x.service_id for x in flexible_data_retention]
-    query = db.session.query(Notification).filter(func.date(Notification.created_at) < seven_days_ago,
-                                                  Notification.notification_type == notification_type,
-                                                  Notification.service_id.notin_(
-                                                      services_with_data_retention))
-    if notification_type == LETTER_TYPE:
-        _delete_letters_from_s3(query=query)
-    deleted += query.delete(synchronize_session='fetch')
+    service_ids_to_purge = db.session.query(Service.id).filter(Service.id.notin_(services_with_data_retention)).all()
+
+    for service_id in service_ids_to_purge:
+        subquery = db.session.query(
+            Notification
+        ).filter(
+            Notification.notification_type == notification_type,
+            func.date(Notification.created_at) < seven_days_ago,
+            Notification.service_id == service_id
+        ).limit(qry_limit)
+
+        if notification_type == LETTER_TYPE:
+            _delete_letters_from_s3(query=subquery)
+
+        number_deleted = db.session.query(Notification).filter(
+            Notification.id.in_([x.id for x in subquery.all()])).delete(synchronize_session='fetch')
+        deleted += number_deleted
+        db.session.commit()
+        while number_deleted > 0:
+            number_deleted = db.session.query(Notification).filter(
+                Notification.id.in_([x.id for x in subquery.all()])).delete(synchronize_session='fetch')
+            deleted += number_deleted
+            db.session.commit()
+
+    current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
+
     return deleted
 
 
