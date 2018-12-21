@@ -492,9 +492,10 @@ def replay_created_notifications():
             notification_type
         )
 
-        current_app.logger.info("Sending {} {} notifications "
-                                "to the delivery queue because the notification "
-                                "status was created.".format(len(notifications_to_resend), notification_type))
+        if len(notifications_to_resend) > 0:
+            current_app.logger.info("Sending {} {} notifications "
+                                    "to the delivery queue because the notification "
+                                    "status was created.".format(len(notifications_to_resend), notification_type))
 
         for n in notifications_to_resend:
             send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
