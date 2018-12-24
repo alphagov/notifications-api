@@ -158,6 +158,7 @@ def sample_service(
     email_from=None,
     permissions=None,
     research_mode=None,
+    postage="second",
 ):
     if user is None:
         user = create_user()
@@ -170,6 +171,7 @@ def sample_service(
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user,
+        "postage": postage,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
