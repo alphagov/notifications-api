@@ -76,20 +76,26 @@ def service_factory(notify_db, notify_db_session):
                 user = create_user()
             if not email_from:
                 email_from = service_name
-            service = sample_service(notify_db, notify_db_session, service_name, user, email_from=email_from)
+            service = Service.query.filter_by(name=service_name).first()
+            if not service:
+                service = create_service(
+                    email_from=email_from,
+                    service_name=service_name,
+                    service_permissions=None,
+                    user=user,
+                )
             if template_type == 'email':
-                sample_template(
-                    notify_db,
-                    notify_db_session,
+                create_template(
+                    service,
+                    template_name="Template Name",
                     template_type=template_type,
-                    subject_line=service.email_from,
-                    service=service
+                    subject=service.email_from,
                 )
             else:
-                sample_template(
-                    notify_db,
-                    notify_db_session,
-                    service=service
+                create_template(
+                    service,
+                    template_name="Template Name",
+                    template_type='sms',
                 )
             return service
 
