@@ -185,8 +185,7 @@ def update_notification_status_by_reference(reference, status):
 
     if notification.status not in {
         NOTIFICATION_SENDING,
-        NOTIFICATION_PENDING,
-        NOTIFICATION_SENT,
+        NOTIFICATION_PENDING
     }:
         _duplicate_update_warning(notification, status)
         return None
@@ -714,7 +713,7 @@ def _duplicate_update_warning(notification, status):
             id=notification.id,
             old_status=notification.status,
             new_status=status,
-            time_diff=datetime.utcnow() - notification.sent_at,
+            time_diff=datetime.utcnow() - (notification.updated_at or notification.created_at),
             type=notification.notification_type,
             sent_by=notification.sent_by
         )
