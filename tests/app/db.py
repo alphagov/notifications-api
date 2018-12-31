@@ -100,7 +100,7 @@ def create_service(
         service.active = active
         service.research_mode = research_mode
     else:
-        if user not in service.users:
+        if user and user not in service.users:
             dao_add_user_to_service(service, user)
 
     return service

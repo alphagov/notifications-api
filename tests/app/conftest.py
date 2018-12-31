@@ -350,7 +350,7 @@ def sample_api_key(notify_db,
                    key_type=KEY_TYPE_NORMAL,
                    name=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     data = {'service': service, 'name': name or uuid.uuid4(), 'created_by': service.created_by, 'key_type': key_type}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
