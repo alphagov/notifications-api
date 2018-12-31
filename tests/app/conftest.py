@@ -442,7 +442,7 @@ def sample_email_job(notify_db,
                      service=None,
                      template=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     if template is None:
         template = sample_email_template(
             notify_db,
@@ -550,7 +550,7 @@ def sample_notification(
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     if template is None:
         template = sample_template(notify_db, notify_db_session, service=service)
 
@@ -639,7 +639,7 @@ def sample_notification_with_api_key(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_email_notification(notify_db, notify_db_session):
     created_at = datetime.utcnow()
-    service = sample_service(notify_db, notify_db_session)
+    service = create_service()
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
@@ -741,7 +741,7 @@ def sample_invited_user(notify_db,
                         to_email_address=None):
 
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     if to_email_address is None:
         to_email_address = 'invited_user@digital.gov.uk'
 
@@ -781,7 +781,7 @@ def sample_permission(notify_db,
         'permission': permission
     }
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     if service:
         data['service'] = service
     p_model = Permission.query.filter_by(
