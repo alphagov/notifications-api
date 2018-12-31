@@ -382,7 +382,7 @@ def sample_job(
     archived=False
 ):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
     if template is None:
         template = sample_template(notify_db, notify_db_session,
                                    service=service)
