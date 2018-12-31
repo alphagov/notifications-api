@@ -59,7 +59,7 @@ def test_get_template_statistics_for_service_by_day_returns_template_info(admin_
 
     assert json_resp['data'][0]['count'] == 1
     assert json_resp['data'][0]['template_id'] == str(sample_notification.template_id)
-    assert json_resp['data'][0]['template_name'] == 'Template Name'
+    assert json_resp['data'][0]['template_name'] == 'sms Template Name'
     assert json_resp['data'][0]['template_type'] == 'sms'
     assert json_resp['data'][0]['is_precompiled_letter'] is False
 

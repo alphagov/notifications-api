@@ -552,7 +552,7 @@ def sample_notification(
     if service is None:
         service = create_service()
     if template is None:
-        template = sample_template(notify_db, notify_db_session, service=service)
+        template = create_template(service=service)
 
     if job is None and api_key is None:
         # we didn't specify in test - lets create it

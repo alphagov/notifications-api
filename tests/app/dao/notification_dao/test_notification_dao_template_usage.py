@@ -22,7 +22,7 @@ from tests.app.db import (
 
 def test_last_template_usage_should_get_right_data(sample_notification):
     results = dao_get_last_template_usage(sample_notification.template_id, 'sms', sample_notification.service_id)
-    assert results.template.name == 'Template Name'
+    assert results.template.name == 'sms Template Name'
     assert results.template.template_type == 'sms'
     assert results.created_at == sample_notification.created_at
     assert results.template_id == sample_notification.template_id
