@@ -295,7 +295,7 @@ def sample_email_template(
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session, permissions=permissions)
+        service = create_service(user=user, service_permissions=permissions)
     data = {
         'name': template_name,
         'template_type': template_type,
