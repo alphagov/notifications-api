@@ -90,12 +90,11 @@ def create_service(
             message_limit=message_limit,
             restricted=restricted,
             email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
-            created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
+            created_by=user if user else create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,
             postage=postage
         )
-
         dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
         service.active = active
