@@ -11,7 +11,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
-)
+    fetch_stats_for_all_services_by_date_range)
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
@@ -304,3 +304,12 @@ def test_fetch_notification_statuses_for_job(sample_template):
         'created': 5,
         'delivered': 2
     }
+
+
+@freeze_time('2018-10-31 14:00')
+def test_fetch_stats_for_all_services_by_date_range(notify_db_session):
+    set_up_data()
+    results = fetch_stats_for_all_services_by_date_range( start_date=date(2018, 10, 29),
+                                                          end_date=date(2018, 10, 31))
+    print(results)
+    assert len(results) == 2
