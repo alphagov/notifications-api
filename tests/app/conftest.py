@@ -384,8 +384,7 @@ def sample_job(
     if service is None:
         service = create_service()
     if template is None:
-        template = sample_template(notify_db, notify_db_session,
-                                   service=service)
+        template = create_template(service=service)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
