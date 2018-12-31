@@ -1036,7 +1036,7 @@ def notify_service(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_service_whitelist(notify_db, notify_db_session, service=None, email_address=None, mobile_number=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service()
 
     if email_address:
         whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, email_address)
