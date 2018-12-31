@@ -802,7 +802,7 @@ def sample_user_service_permission(
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session, user=user)
+        service = create_service(user=user)
     data = {
         'user': user,
         'service': service,

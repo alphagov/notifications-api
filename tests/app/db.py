@@ -17,7 +17,7 @@ from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
-from app.dao.services_dao import dao_create_service
+from app.dao.services_dao import dao_create_service, dao_add_user_to_service
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -99,6 +99,9 @@ def create_service(
 
         service.active = active
         service.research_mode = research_mode
+    else:
+        if user not in service.users:
+            dao_add_user_to_service(service, user)
 
     return service
 
