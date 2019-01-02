@@ -81,10 +81,12 @@ def create_service(
         prefix_sms=True,
         message_limit=1000,
         organisation_type='central',
-        postage='second'
+        postage='second',
+        check_if_service_exists=False
 ):
-    service = Service.query.filter_by(name=service_name).first()
-    if not service:
+    if check_if_service_exists:
+        service = Service.query.filter_by(name=service_name).first()
+    if (not check_if_service_exists) or (check_if_service_exists and not service):
         service = Service(
             name=service_name,
             message_limit=message_limit,
