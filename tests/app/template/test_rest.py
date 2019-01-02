@@ -18,7 +18,8 @@ from app.models import (
     LETTER_TYPE,
     SMS_TYPE,
     Template,
-    TemplateHistory
+    TemplateHistory,
+    CHOOSE_POSTAGE
 )
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
@@ -43,7 +44,7 @@ from tests.conftest import set_config_values
 def test_should_create_a_new_template_for_a_service(
     client, sample_user, template_type, subject
 ):
-    service = create_service(service_permissions=[template_type])
+    service = create_service(service_permissions=[template_type, CHOOSE_POSTAGE])
     data = {
         'name': 'my template',
         'template_type': template_type,
@@ -53,6 +54,8 @@ def test_should_create_a_new_template_for_a_service(
     }
     if subject:
         data.update({'subject': subject})
+    if template_type == LETTER_TYPE:
+        data.update({'postage': 'first'})
     data = json.dumps(data)
     auth_header = create_authorization_header()
 
@@ -75,6 +78,11 @@ def test_should_create_a_new_template_for_a_service(
         assert json_resp['data']['subject'] == 'subject'
     else:
         assert not json_resp['data']['subject']
+
+    if template_type == LETTER_TYPE:
+        assert json_resp['data']['postage'] == 'first'
+    else:
+        assert not json_resp['data']['postage']
 
     template = Template.query.get(json_resp['data']['id'])
     from app.schemas import template_schema
@@ -210,6 +218,34 @@ def test_should_raise_error_on_create_if_no_permission(
     assert json_resp['message'] == expected_error
 
 
+def test_should_raise_error_on_create_if_no_choose_postage_permission(client, sample_user):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    data = {
+        'name': 'my template',
+        'template_type': LETTER_TYPE,
+        'content': 'template content',
+        'service': str(service.id),
+        'created_by': str(sample_user.id),
+        'subject': "Some letter",
+        'postage': 'first',
+    }
+
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 403
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {
+        "template_postage": ["Setting postage on templates is not enabled for this service."]
+    }
+
+
 @pytest.mark.parametrize('template_factory, expected_error', [
     (sample_template_without_sms_permission, {'template_type': ['Updating text message templates is not allowed']}),
     (sample_template_without_email_permission, {'template_type': ['Updating email templates is not allowed']}),
@@ -237,6 +273,33 @@ def test_should_be_error_on_update_if_no_permission(
     assert update_response.status_code == 403
     assert json_resp['result'] == 'error'
     assert json_resp['message'] == expected_error
+
+
+def test_should_be_error_on_update_if_no_choose_postage_permission(client, sample_user):
+    service = create_service(service_name='some_service', service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type=LETTER_TYPE)
+    data = {
+        'content': 'new template content',
+        'created_by': str(sample_user.id),
+        'postage': 'first'
+    }
+
+    data = json.dumps(data)
+    auth_header = create_authorization_header()
+
+    update_response = client.post(
+        '/service/{}/template/{}'.format(
+            template.service_id, template.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+
+    json_resp = json.loads(update_response.get_data(as_text=True))
+    assert update_response.status_code == 403
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {
+        "template_postage": ["Setting postage on templates is not enabled for this service."]
+    }
 
 
 def test_should_error_if_created_by_missing(client, sample_user, sample_service):
@@ -301,16 +364,19 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
     assert json_resp['errors'][0]["message"] == 'subject is a required property'
 
 
-def test_update_should_update_a_template(client, sample_user, sample_template):
+def test_update_should_update_a_template(client, sample_user):
+    service = create_service(service_permissions=[LETTER_TYPE, CHOOSE_POSTAGE])
+    template = create_template(service, template_type="letter", postage="second")
     data = {
-        'content': 'my template has new content <script type="text/javascript">alert("foo")</script>',
-        'created_by': str(sample_user.id)
+        'content': 'my template has new content, swell!',
+        'created_by': str(sample_user.id),
+        'postage': 'first'
     }
     data = json.dumps(data)
     auth_header = create_authorization_header()
 
     update_response = client.post(
-        '/service/{}/template/{}'.format(sample_template.service_id, sample_template.id),
+        '/service/{}/template/{}'.format(service.id, template.id),
         headers=[('Content-Type', 'application/json'), auth_header],
         data=data
     )
@@ -318,10 +384,11 @@ def test_update_should_update_a_template(client, sample_user, sample_template):
     assert update_response.status_code == 200
     update_json_resp = json.loads(update_response.get_data(as_text=True))
     assert update_json_resp['data']['content'] == (
-        'my template has new content <script type="text/javascript">alert("foo")</script>'
+        'my template has new content, swell!'
     )
-    assert update_json_resp['data']['name'] == sample_template.name
-    assert update_json_resp['data']['template_type'] == sample_template.template_type
+    assert update_json_resp['data']['postage'] == 'first'
+    assert update_json_resp['data']['name'] == template.name
+    assert update_json_resp['data']['template_type'] == template.template_type
     assert update_json_resp['data']['version'] == 2
 
 

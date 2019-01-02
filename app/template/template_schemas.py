@@ -17,7 +17,8 @@ post_create_template_schema = {
         "content": {"type": "string"},
         "subject": {"type": "string"},
         "created_by": uuid,
-        "parent_folder_id": uuid
+        "parent_folder_id": uuid,
+        "postage": {"type": "string"},
     },
     "if": {
         "properties": {

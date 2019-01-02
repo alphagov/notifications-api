@@ -81,6 +81,7 @@ def create_service(
         prefix_sms=True,
         message_limit=1000,
         organisation_type='central',
+        postage='second'
 ):
     service = Service(
         name=service_name,
@@ -90,6 +91,7 @@ def create_service(
         created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
         prefix_sms=prefix_sms,
         organisation_type=organisation_type,
+        postage=postage
     )
 
     dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
@@ -140,6 +142,7 @@ def create_template(
         hidden=False,
         archived=False,
         folder=None,
+        postage=None,
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -150,6 +153,7 @@ def create_template(
         'reply_to': reply_to,
         'hidden': hidden,
         'folder': folder,
+        'postage': postage,
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject
