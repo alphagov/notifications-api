@@ -153,7 +153,7 @@ def test_get_all_notifications(client, sample_notification):
 
     assert notifications['notifications'][0]['to'] == '+447700900855'
     assert notifications['notifications'][0]['service'] == str(sample_notification.service_id)
-    assert notifications['notifications'][0]['body'] == "This is a template:\nwith a newline"
+    assert notifications['notifications'][0]['body'] == 'Dear Sir/Madam, Hello. Yours Truly, The Government.'
 
 
 def test_normal_api_key_returns_notifications_created_from_jobs_and_from_api(

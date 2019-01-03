@@ -17,7 +17,7 @@ from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
-from app.dao.services_dao import dao_create_service
+from app.dao.services_dao import dao_create_service, dao_add_user_to_service
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -81,23 +81,29 @@ def create_service(
         prefix_sms=True,
         message_limit=1000,
         organisation_type='central',
-        postage='second'
+        postage='second',
+        check_if_service_exists=False
 ):
-    service = Service(
-        name=service_name,
-        message_limit=message_limit,
-        restricted=restricted,
-        email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
-        created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
-        prefix_sms=prefix_sms,
-        organisation_type=organisation_type,
-        postage=postage
-    )
+    if check_if_service_exists:
+        service = Service.query.filter_by(name=service_name).first()
+    if (not check_if_service_exists) or (check_if_service_exists and not service):
+        service = Service(
+            name=service_name,
+            message_limit=message_limit,
+            restricted=restricted,
+            email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
+            created_by=user if user else create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
+            prefix_sms=prefix_sms,
+            organisation_type=organisation_type,
+            postage=postage
+        )
+        dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
-    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
-
-    service.active = active
-    service.research_mode = research_mode
+        service.active = active
+        service.research_mode = research_mode
+    else:
+        if user and user not in service.users:
+            dao_add_user_to_service(service, user)
 
     return service
 
