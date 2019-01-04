@@ -199,7 +199,7 @@ def fetch_notification_statuses_for_job(job_id):
     ).all()
 
 
-def fetch_stats_for_all_services_by_date_range(start_date, end_date,include_from_test_key=True):
+def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_from_test_key=True):
     stats = db.session.query(
         FactNotificationStatus.service_id.label('service_id'),
         Service.name.label('name'),
@@ -230,8 +230,8 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date,include_from
     if not include_from_test_key:
         stats = stats.filter(FactNotificationStatus.key_type != KEY_TYPE_TEST)
 
-    today = get_london_midnight_in_utc(datetime.utcnow())
-    if start_date <= today.date() <= end_date:
+    if start_date <= datetime.utcnow().date() <= end_date:
+        today = get_london_midnight_in_utc(datetime.utcnow())
         subquery = db.session.query(
             Notification.notification_type.cast(db.Text).label('notification_type'),
             Notification.status.label('status'),
@@ -284,7 +284,9 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date,include_from
             all_stats_table.c.notification_type,
             all_stats_table.c.status,
         ).order_by(
-            all_stats_table.c.service_id
+            all_stats_table.c.name,
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status
         )
     else:
         query = stats
