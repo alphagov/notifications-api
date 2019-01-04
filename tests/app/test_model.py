@@ -287,7 +287,7 @@ def test_service_get_default_sms_sender(notify_db_session):
     assert service.get_default_sms_sender() == 'testing'
 
 
-def test_letter_notification_serializes_correctly(client, sample_letter_notification):
+def test_letter_notification_serialize_builds_address_block_correctly(client, sample_letter_notification):
     sample_letter_notification.personalisation = {
         'addressline1': 'test',
         'addressline2': 'London',
@@ -298,6 +298,37 @@ def test_letter_notification_serializes_correctly(client, sample_letter_notifica
     assert json['line_1'] == 'test'
     assert json['line_2'] == 'London'
     assert json['postcode'] == 'N1'
+
+
+@pytest.mark.parametrize('status,expected_status', [
+    ('created', 'accepted'),
+    ('sending', 'accepted'),
+    ('delivered', 'received'),
+    ('returned-letter', 'received'),
+    ('technical-failure', 'technical-failure')
+])
+def test_letter_notification_serialize_adjusts_status(client, sample_letter_notification, status, expected_status):
+    sample_letter_notification.status = status
+    json = sample_letter_notification.serialize()
+    assert json['status'] == expected_status
+
+
+@pytest.mark.parametrize('status', [
+    ('created',), ('sending',), ('delivered',), ('returned-letter',), ('technical-failure',)
+])
+def test_email_notification_serialize_doesnt_change_status(client, sample_email_notification, status):
+    sample_email_notification.status = status
+    json = sample_email_notification.serialize()
+    assert json['status'] == status
+
+
+@pytest.mark.parametrize('status', [
+    ('created',), ('sending',), ('delivered',), ('returned-letter',), ('technical-failure',)
+])
+def test_sms_notification_serialize_doesnt_change_status(client, sample_notification, status):
+    sample_notification.status = status
+    json = sample_notification.serialize()
+    assert json['status'] == status
 
 
 def test_letter_notification_postcode_can_be_null_for_precompiled_letters(client, sample_letter_notification):
