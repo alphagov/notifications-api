@@ -1446,7 +1446,7 @@ class Notification(db.Model):
 
         return serialized
 
-    def serialize(self):
+    def serialize(self, for_service=False):
         template_dict = {
             'version': self.template.version,
             'id': self.template.id,
@@ -1483,8 +1483,7 @@ class Notification(db.Model):
             ),
             "postage": self.postage
         }
-
-        if self.notification_type == LETTER_TYPE:
+        if for_service is False and self.notification_type == LETTER_TYPE:
             col = Columns(self.personalisation)
             serialized['line_1'] = col.get('address_line_1')
             serialized['line_2'] = col.get('address_line_2')
@@ -1497,6 +1496,15 @@ class Notification(db.Model):
                 get_letter_timings(serialized['created_at'], postage=self.postage)\
                 .earliest_delivery\
                 .strftime(DATETIME_FORMAT)
+        if for_service:
+            serialized['to'] = self.to
+            serialized['personalisation'] = self.personalisation
+            template_dict['name'] = self.template.name
+            template_dict['template_type'] = self.template.template_type
+            template_dict['content'] = self.template.content
+            template_dict['subject'] = self.template.subject
+            template_dict['redact_personalisation'] = self.template.redact_personalisation
+            template_dict['is_precompiled_letter'] = self.template.is_precompiled_letter
 
         return serialized
 

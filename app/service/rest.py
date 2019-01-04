@@ -361,7 +361,7 @@ def get_all_notifications_for_service(service_id):
     if data.get('format_for_csv'):
         notifications = [notification.serialize_for_csv() for notification in pagination.items]
     else:
-        notifications = [notification.serialize() for notification in pagination.items]
+        notifications = [notification.serialize(for_service=True) for notification in pagination.items]
     return jsonify(
         notifications=notifications,
         page_size=page_size,
