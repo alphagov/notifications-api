@@ -1407,6 +1407,28 @@ def test_get_only_api_created_notifications_for_service(
     assert resp['notifications'][0]['id'] == str(without_job.id)
 
 
+def test_get_notifications_for_service_without_page_count(
+    admin_request,
+    sample_job,
+    sample_template,
+    sample_user,
+):
+    create_notification(sample_template)
+    without_job = create_notification(sample_template)
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_template.service_id,
+        page_size=1,
+        include_jobs=False,
+        include_one_off=False,
+        count_pages=False
+    )
+    assert len(resp['notifications']) == 1
+    assert resp['total'] is None
+    assert resp['notifications'][0]['id'] == str(without_job.id)
+
+
 @pytest.mark.parametrize('should_prefix', [
     True,
     False,
