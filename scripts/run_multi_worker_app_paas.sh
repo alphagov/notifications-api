@@ -39,13 +39,15 @@ log_stream_name = {hostname}
 EOF
 }
 
-# For every PID, check if it's still running
-# if it is, send the sigterm
+# For every PID, check if it's still running. if it is, send the sigterm. then wait 9 seconds before sending sigkill
 function on_exit {
+  echo "multi worker app exiting"
   wait_time=0
-  while true; do
-    # refresh pids to account for the case that
-    # some workers may have terminated but others not
+
+  send_signal_to_celery_processes TERM
+
+  # check if the apps are still running every second
+  while [[ "$wait_time" -le "$TERMINATE_TIMEOUT" ]]; do
     get_celery_pids
 
     # look here for explanation regarding this syntax:
@@ -53,28 +55,14 @@ function on_exit {
     PROCESS_COUNT="${#APP_PIDS[@]}"
     if [[ "${PROCESS_COUNT}" -eq "0" ]]; then
         echo "No more .pid files found, exiting"
-        break
+        return 0
     fi
 
-    echo "Terminating celery processes with pids "${APP_PIDS}
-    for APP_PID in ${APP_PIDS}; do
-      # if TERMINATE_TIMEOUT is reached, send SIGKILL
-      if [[ "$wait_time" -ge "$TERMINATE_TIMEOUT" ]]; then
-        echo "Timeout reached, killing process with pid ${APP_PID}"
-        kill -9 ${APP_PID} || true
-        continue
-      else
-        echo "Timeout not reached yet, checking " ${APP_PID}
-        # else, if process is still running send SIGTERM
-        if [[ $(kill -0 ${APP_PID} 2&>/dev/null) ]]; then
-          echo "Terminating celery process with pid ${APP_PID}"
-          kill ${APP_PID} || true
-        fi
-      fi
-    done
     let wait_time=wait_time+1
     sleep 1
   done
+
+  send_signal_to_celery_processes KILL
 }
 
 function get_celery_pids {
@@ -83,6 +71,16 @@ function get_celery_pids {
   else
     APP_PIDS=()
   fi
+}
+
+function send_signal_to_celery_processes {
+  # refresh pids to account for the case that some workers may have terminated but others not
+  get_celery_pids
+  # send signal to all remaining apps
+  for APP_PID in ${APP_PIDS}; do
+    echo "Sending signal ${1} to process with pid ${APP_PID}"
+    kill -s ${1} ${APP_PID} || true
+  done
 }
 
 function start_application {

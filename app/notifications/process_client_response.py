@@ -81,10 +81,6 @@ def _process_for_status(notification_status, client_name, provider_reference):
         sent_by=client_name.lower()
     )
     if not notification:
-        current_app.logger.warning("{} callback failed: notification {} either not found or already updated "
-                                   "from sending. Status {}".format(client_name,
-                                                                    provider_reference,
-                                                                    notification_status))
         return
 
     statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))

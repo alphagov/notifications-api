@@ -23,13 +23,16 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     Notification,
-    ScheduledNotification
+    ScheduledNotification,
+    CHOOSE_POSTAGE
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_delete_notifications_and_history_by_id,
     dao_created_scheduled_notification
 )
+
+from app.dao.templates_dao import dao_get_template_by_id
 
 from app.v2.errors import BadRequestError
 from app.utils import (
@@ -109,7 +112,11 @@ def persist_notification(
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
-        notification.postage = service.postage
+        template = dao_get_template_by_id(template_id, template_version)
+        if service.has_permission(CHOOSE_POSTAGE) and template.postage:
+            notification.postage = template.postage
+        else:
+            notification.postage = service.postage
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:

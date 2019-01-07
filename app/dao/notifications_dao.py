@@ -15,7 +15,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import (desc, func, or_, asc)
+from sqlalchemy import (desc, func, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
@@ -144,17 +144,23 @@ def _update_notification_status(notification, status):
 @statsd(namespace="dao")
 @transactional
 def update_notification_status_by_id(notification_id, status, sent_by=None):
-    notification = Notification.query.with_for_update().filter(
-        Notification.id == notification_id,
-        or_(
-            Notification.status == NOTIFICATION_CREATED,
-            Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING,
-            Notification.status == NOTIFICATION_SENT,
-            Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
-        )).first()
+    notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
     if not notification:
+        current_app.logger.error('notification not found for id {} (update to status {})'.format(
+            notification_id,
+            status
+        ))
+        return None
+
+    if notification.status not in {
+        NOTIFICATION_CREATED,
+        NOTIFICATION_SENDING,
+        NOTIFICATION_PENDING,
+        NOTIFICATION_SENT,
+        NOTIFICATION_PENDING_VIRUS_CHECK
+    }:
+        _duplicate_update_warning(notification, status)
         return None
 
     if notification.international and not country_records_delivery(notification.phone_prefix):
@@ -170,15 +176,18 @@ def update_notification_status_by_id(notification_id, status, sent_by=None):
 @statsd(namespace="dao")
 @transactional
 def update_notification_status_by_reference(reference, status):
-    notification = Notification.query.filter(
-        Notification.reference == reference,
-        or_(
-            Notification.status == NOTIFICATION_SENDING,
-            Notification.status == NOTIFICATION_PENDING,
-            Notification.status == NOTIFICATION_SENT
-        )).first()
+    # this is used to update letters and emails
+    notification = Notification.query.filter(Notification.reference == reference).first()
 
-    if not notification or notification.status == NOTIFICATION_SENT:
+    if not notification:
+        current_app.logger.error('notification not found for reference {} (update to {})'.format(reference, status))
+        return None
+
+    if notification.status not in {
+        NOTIFICATION_SENDING,
+        NOTIFICATION_PENDING
+    }:
+        _duplicate_update_warning(notification, status)
         return None
 
     return _update_notification_status(
@@ -693,3 +702,19 @@ def guess_notification_type(search_term):
         return EMAIL_TYPE
     else:
         return SMS_TYPE
+
+
+def _duplicate_update_warning(notification, status):
+    current_app.logger.info(
+        (
+            'Duplicate callback received. Notification id {id} received a status update to {new_status}'
+            '{time_diff} after being set to {old_status}. {type} sent by {sent_by}'
+        ).format(
+            id=notification.id,
+            old_status=notification.status,
+            new_status=status,
+            time_diff=datetime.utcnow() - (notification.updated_at or notification.created_at),
+            type=notification.notification_type,
+            sent_by=notification.sent_by
+        )
+    )
