@@ -11,7 +11,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
-from app.dao.date_util import get_financial_year
+from app.dao.date_util import get_financial_year, get_month_start_and_end_date_in_utc
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
@@ -417,7 +417,12 @@ def dao_fetch_active_users_for_service(service_id):
 def dao_fetch_monthly_historical_stats_by_template():
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
     year = func.date_trunc("year", NotificationHistory.created_at)
-    end_date = datetime.combine(date.today(), time.min)
+
+    # We want to record this months and last months if we are in the beginning of the month.
+    today = datetime.combine(date.today(), time.min)
+    delta = today - timedelta(days=10)
+    _, end_date = get_month_start_and_end_date_in_utc(today)
+    start_date, _ = get_month_start_and_end_date_in_utc(delta)
 
     return db.session.query(
         NotificationHistory.template_id,
@@ -425,6 +430,7 @@ def dao_fetch_monthly_historical_stats_by_template():
         extract('year', year).label('year'),
         func.count().label('count')
     ).filter(
+        NotificationHistory.created_at >= start_date,
         NotificationHistory.created_at < end_date
     ).group_by(
         NotificationHistory.template_id,

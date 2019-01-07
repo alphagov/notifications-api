@@ -954,29 +954,39 @@ def _assert_service_permissions(service_permissions, expected):
     assert set(expected) == set(p.permission for p in service_permissions)
 
 
+@freeze_time('2017-10-04 02:00:00')
 def test_dao_fetch_monthly_historical_stats_by_template(notify_db_session):
     service = create_service()
     template_one = create_template(service=service, template_name='1')
     template_two = create_template(service=service, template_name='2')
 
+    create_notification(created_at=datetime(2017, 9, 1), template=template_one, status='delivered')
+    create_notification(created_at=datetime(2017, 9, 2), template=template_one, status='delivered')
+    create_notification(created_at=datetime(2017, 9, 3), template=template_one, status='delivered')
     create_notification(created_at=datetime(2017, 10, 1), template=template_one, status='delivered')
-    create_notification(created_at=datetime(2016, 4, 1), template=template_two, status='delivered')
-    create_notification(created_at=datetime(2016, 4, 1), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 10, 2), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 10, 3), template=template_two, status='delivered')
     create_notification(created_at=datetime.now(), template=template_two, status='delivered')
 
-    result = sorted(dao_fetch_monthly_historical_stats_by_template(), key=lambda x: (x.month, x.year))
+    result = sorted(dao_fetch_monthly_historical_stats_by_template(),
+                    key=lambda x: (x.month, x.template_id == template_one.id))
+    print(result)
+    assert len(result) == 3
 
-    assert len(result) == 2
+    assert result[0].template_id == template_one.id
+    assert result[0].month == 9
+    assert result[0].year == 2017
+    assert result[0].count == 3
 
-    assert result[0].template_id == template_two.id
-    assert result[0].month == 4
-    assert result[0].year == 2016
-    assert result[0].count == 2
-
-    assert result[1].template_id == template_one.id
+    assert result[1].template_id == template_two.id
     assert result[1].month == 10
     assert result[1].year == 2017
-    assert result[1].count == 1
+    assert result[1].count == 3
+
+    assert result[2].template_id == template_one.id
+    assert result[2].month == 10
+    assert result[2].year == 2017
+    assert result[2].count == 1
 
 
 def test_dao_fetch_monthly_historical_usage_by_template_for_service_no_stats_today(
