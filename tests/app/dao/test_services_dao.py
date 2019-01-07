@@ -27,7 +27,6 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_service,
     fetch_todays_total_message_count,
     dao_fetch_todays_stats_for_all_services,
-    fetch_stats_by_date_range_for_all_services,
     dao_suspend_service,
     dao_resume_service,
     dao_fetch_active_users_for_service,
@@ -775,25 +774,6 @@ def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notif
     assert stats[0].count == 2
 
 
-def test_fetch_stats_by_date_range_for_all_services(notify_db_session):
-    template = create_template(service=create_service())
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=4))
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=3))
-    result_one = create_notification(template=template, created_at=datetime.now() - timedelta(days=2))
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=1))
-    create_notification(template=template, created_at=datetime.now())
-
-    start_date = (datetime.utcnow() - timedelta(days=2)).date()
-    end_date = (datetime.utcnow() - timedelta(days=1)).date()
-
-    results = fetch_stats_by_date_range_for_all_services(start_date, end_date)
-
-    assert len(results) == 1
-    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
-                          result_one.service.research_mode, result_one.service.active,
-                          result_one.service.created_at, 'sms', 'created', 2)
-
-
 @freeze_time('2001-01-01T23:59:00')
 def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(notify_db_session):
     service = create_service()
@@ -805,64 +785,6 @@ def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(noti
 
     api_key = ApiKey.query.get(api_key.id)
     assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
-
-
-@pytest.mark.parametrize("start_delta, end_delta, expected",
-                         [("5", "1", "4"),  # a date range less than 7 days ago returns test and normal notifications
-                          ("9", "8", "1"),  # a date range older than 9 days does not return test notifications.
-                          ("8", "4", "2")])  # a date range that starts more than 7 days ago
-@freeze_time('2017-10-23T00:00:00')
-def test_fetch_stats_by_date_range_for_all_services_returns_test_notifications(notify_db_session,
-                                                                               start_delta,
-                                                                               end_delta,
-                                                                               expected):
-    template = create_template(service=create_service())
-    result_one = create_notification(template=template, created_at=datetime.now(), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=2), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=3), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=4), key_type='normal')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=4), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=8), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=8), key_type='normal')
-
-    start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
-    end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
-
-    results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
-
-    assert len(results) == 1
-    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
-                          result_one.service.research_mode, result_one.service.active, result_one.service.created_at,
-                          'sms', 'created', int(expected))
-
-
-@pytest.mark.parametrize("start_delta, end_delta, expected",
-                         [("5", "1", "4"),  # a date range less than 7 days ago returns test and normal notifications
-                          ("9", "8", "1"),  # a date range older than 9 days does not return test notifications.
-                          ("8", "4", "2")])  # a date range that starts more than 7 days ago
-@freeze_time('2017-10-23T23:00:00')
-def test_fetch_stats_by_date_range_during_bst_hour_for_all_services_returns_test_notifications(
-        notify_db_session, start_delta, end_delta, expected
-):
-    template = create_template(service=create_service())
-    result_one = create_notification(template=template, created_at=datetime.now(), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=2), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=3), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=4), key_type='normal')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=4), key_type='test')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=8), key_type='normal')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=9), key_type='normal')
-    create_notification(template=template, created_at=datetime.now() - timedelta(days=9), key_type='test')
-
-    start_date = (datetime.utcnow() - timedelta(days=int(start_delta))).date()
-    end_date = (datetime.utcnow() - timedelta(days=int(end_delta))).date()
-
-    results = fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True)
-
-    assert len(results) == 1
-    assert results[0] == (result_one.service.id, result_one.service.name, result_one.service.restricted,
-                          result_one.service.research_mode, result_one.service.active, result_one.service.created_at,
-                          'sms', 'created', int(expected))
 
 
 @freeze_time('2001-01-01T23:59:00')
