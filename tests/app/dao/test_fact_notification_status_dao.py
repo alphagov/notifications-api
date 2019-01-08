@@ -11,7 +11,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
-)
+    fetch_stats_for_all_services_by_date_range)
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
@@ -289,6 +289,7 @@ def set_up_data():
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
     create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
+    return service_1, service_2
 
 
 def test_fetch_notification_statuses_for_job(sample_template):
@@ -304,3 +305,36 @@ def test_fetch_notification_statuses_for_job(sample_template):
         'created': 5,
         'delivered': 2
     }
+
+
+@freeze_time('2018-10-31 14:00')
+def test_fetch_stats_for_all_services_by_date_range(notify_db_session):
+    service_1, service_2 = set_up_data()
+    results = fetch_stats_for_all_services_by_date_range(start_date=date(2018, 10, 29),
+                                                         end_date=date(2018, 10, 31))
+    assert len(results) == 5
+
+    assert results[0].service_id == service_1.id
+    assert results[0].notification_type == 'email'
+    assert results[0].status == 'delivered'
+    assert results[0].count == 4
+
+    assert results[1].service_id == service_1.id
+    assert results[1].notification_type == 'sms'
+    assert results[1].status == 'created'
+    assert results[1].count == 2
+
+    assert results[2].service_id == service_1.id
+    assert results[2].notification_type == 'sms'
+    assert results[2].status == 'delivered'
+    assert results[2].count == 11
+
+    assert results[3].service_id == service_2.id
+    assert results[3].notification_type == 'letter'
+    assert results[3].status == 'delivered'
+    assert results[3].count == 10
+
+    assert results[4].service_id == service_2.id
+    assert not results[4].notification_type
+    assert not results[4].status
+    assert not results[4].count

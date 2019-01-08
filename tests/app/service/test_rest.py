@@ -1642,31 +1642,37 @@ def test_get_detailed_services_only_includes_todays_notifications(notify_db, not
     }
 
 
-@pytest.mark.parametrize(
-    'set_time',
-    ['2017-03-28T12:00:00', '2017-01-28T12:00:00', '2017-01-02T12:00:00', '2017-10-31T12:00:00']
-)
-def test_get_detailed_services_for_date_range(notify_db, notify_db_session, set_time):
+@pytest.mark.parametrize("start_date_delta, end_date_delta",
+                         [(2, 1),
+                          (3, 2),
+                          (1, 0)
+                          ])
+@freeze_time('2017-03-28T12:00:00')
+def test_get_detailed_services_for_date_range(sample_template, start_date_delta, end_date_delta):
     from app.service.rest import get_detailed_services
 
-    with freeze_time(set_time):
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=3))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=2))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow() - timedelta(days=1))
-        create_sample_notification(notify_db, notify_db_session, created_at=datetime.utcnow())
+    create_ft_notification_status(bst_date=(datetime.utcnow() - timedelta(days=3)).date(),
+                                  service=sample_template.service,
+                                  notification_type='sms')
+    create_ft_notification_status(bst_date=(datetime.utcnow() - timedelta(days=2)).date(),
+                                  service=sample_template.service,
+                                  notification_type='sms')
+    create_ft_notification_status(bst_date=(datetime.utcnow() - timedelta(days=1)).date(),
+                                  service=sample_template.service,
+                                  notification_type='sms')
 
-        start_date = (datetime.utcnow() - timedelta(days=2)).date()
-        end_date = (datetime.utcnow() - timedelta(days=1)).date()
+    create_notification(template=sample_template, created_at=datetime.utcnow(), status='delivered')
+
+    start_date = (datetime.utcnow() - timedelta(days=start_date_delta)).date()
+    end_date = (datetime.utcnow() - timedelta(days=end_date_delta)).date()
 
     data = get_detailed_services(only_active=False, include_from_test_key=True,
                                  start_date=start_date, end_date=end_date)
 
     assert len(data) == 1
-    assert data[0]['statistics'] == {
-        EMAIL_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0},
-        SMS_TYPE: {'delivered': 0, 'failed': 0, 'requested': 2},
-        LETTER_TYPE: {'delivered': 0, 'failed': 0, 'requested': 0}
-    }
+    assert data[0]['statistics'][EMAIL_TYPE] == {'delivered': 0, 'failed': 0, 'requested': 0}
+    assert data[0]['statistics'][SMS_TYPE] == {'delivered': 2, 'failed': 0, 'requested': 2}
+    assert data[0]['statistics'][LETTER_TYPE] == {'delivered': 0, 'failed': 0, 'requested': 0}
 
 
 def test_search_for_notification_by_to_field(client, sample_template, sample_email_template):

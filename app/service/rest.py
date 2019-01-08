@@ -23,8 +23,8 @@ from app.dao.api_key_dao import (
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
-    fetch_notification_status_for_service_for_today_and_7_previous_days
-)
+    fetch_notification_status_for_service_for_today_and_7_previous_days,
+    fetch_stats_for_all_services_by_date_range)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
@@ -56,7 +56,6 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_suspend_service,
     dao_update_service,
-    fetch_stats_by_date_range_for_all_services
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -472,10 +471,10 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
                                                         only_active=only_active)
     else:
 
-        stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
+        stats = fetch_stats_for_all_services_by_date_range(start_date=start_date,
                                                            end_date=end_date,
                                                            include_from_test_key=include_from_test_key,
-                                                           only_active=only_active)
+                                                           )
     results = []
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         rows = list(rows)

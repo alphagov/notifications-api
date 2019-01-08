@@ -8,7 +8,7 @@ from sqlalchemy.sql.expression import literal
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
-from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST
+from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service
 from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
 
 
@@ -197,3 +197,97 @@ def fetch_notification_statuses_for_job(job_id):
     ).group_by(
         FactNotificationStatus.notification_status
     ).all()
+
+
+def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_from_test_key=True):
+    stats = db.session.query(
+        FactNotificationStatus.service_id.label('service_id'),
+        Service.name.label('name'),
+        Service.restricted.label('restricted'),
+        Service.research_mode.label('research_mode'),
+        Service.active.label('active'),
+        Service.created_at.label('created_at'),
+        FactNotificationStatus.notification_type.label('notification_type'),
+        FactNotificationStatus.notification_status.label('status'),
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date <= end_date,
+        FactNotificationStatus.service_id == Service.id,
+    ).group_by(
+        FactNotificationStatus.service_id.label('service_id'),
+        Service.name,
+        Service.restricted,
+        Service.research_mode,
+        Service.active,
+        Service.created_at,
+        FactNotificationStatus.notification_type,
+        FactNotificationStatus.notification_status,
+    ).order_by(
+        FactNotificationStatus.service_id,
+        FactNotificationStatus.notification_type
+    )
+    if not include_from_test_key:
+        stats = stats.filter(FactNotificationStatus.key_type != KEY_TYPE_TEST)
+
+    if start_date <= datetime.utcnow().date() <= end_date:
+        today = get_london_midnight_in_utc(datetime.utcnow())
+        subquery = db.session.query(
+            Notification.notification_type.cast(db.Text).label('notification_type'),
+            Notification.status.label('status'),
+            Notification.service_id.label('service_id'),
+            func.count(Notification.id).label('count')
+        ).filter(
+            Notification.created_at >= today
+        ).group_by(
+            Notification.notification_type,
+            Notification.status,
+            Notification.service_id
+        )
+        if not include_from_test_key:
+            subquery = subquery.filter(FactNotificationStatus.key_type != KEY_TYPE_TEST)
+        subquery = subquery.subquery()
+
+        stats_for_today = db.session.query(
+            Service.id.label('service_id'),
+            Service.name.label('name'),
+            Service.restricted.label('restricted'),
+            Service.research_mode.label('research_mode'),
+            Service.active.label('active'),
+            Service.created_at.label('created_at'),
+            subquery.c.notification_type.label('notification_type'),
+            subquery.c.status.label('status'),
+            subquery.c.count.label('count')
+        ).outerjoin(
+            subquery,
+            subquery.c.service_id == Service.id
+        ).order_by(Service.id)
+
+        all_stats_table = stats.union_all(stats_for_today).subquery()
+        query = db.session.query(
+            all_stats_table.c.service_id,
+            all_stats_table.c.name,
+            all_stats_table.c.restricted,
+            all_stats_table.c.research_mode,
+            all_stats_table.c.active,
+            all_stats_table.c.created_at,
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+            func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
+        ).group_by(
+            all_stats_table.c.service_id,
+            all_stats_table.c.name,
+            all_stats_table.c.restricted,
+            all_stats_table.c.research_mode,
+            all_stats_table.c.active,
+            all_stats_table.c.created_at,
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status,
+        ).order_by(
+            all_stats_table.c.name,
+            all_stats_table.c.notification_type,
+            all_stats_table.c.status
+        )
+    else:
+        query = stats
+    return query.all()
