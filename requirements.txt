@@ -31,9 +31,7 @@ awscli-cwlogs>=1.4,<1.5
 # Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
 itsdangerous==0.24  # pyup: <1.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@30.7.2#egg=notifications-utils==30.7.2
-# pinned until upgrade to redis-py 3 works
-redis==2.10.6
+git+https://github.com/alphagov/notifications-utils.git@30.7.4#egg=notifications-utils==30.7.4
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 
@@ -42,12 +40,12 @@ alembic==1.0.5
 amqp==1.4.9
 anyjson==0.3.3
 attrs==18.2.0
-awscli==1.16.84
+awscli==1.16.85
 bcrypt==3.1.5
 billiard==3.3.0.23
-bleach==2.1.3
+bleach==3.0.2
 boto3==1.6.16
-botocore==1.12.74
+botocore==1.12.75
 certifi==2018.11.29
 chardet==3.0.4
 Click==7.0
@@ -56,32 +54,32 @@ docutils==0.14
 Flask-Redis==0.3.0
 future==0.17.1
 greenlet==0.4.15
-html5lib==1.0.1
 idna==2.8
 Jinja2==2.10
 jmespath==0.9.3
 kombu==3.0.37
 Mako==1.0.7
 MarkupSafe==1.1.0
-mistune==0.8.3
+mistune==0.8.4
 monotonic==1.5
 orderedset==2.0.1
-phonenumbers==8.9.4
+phonenumbers==8.10.2
 pyasn1==0.4.5
 pycparser==2.19
 PyPDF2==1.26.0
 pyrsistent==0.14.9
 python-dateutil==2.7.5
 python-editor==1.0.3
-python-json-logger==0.1.8
+python-json-logger==0.1.10
 pytz==2018.9
 PyYAML==3.12
+redis==3.0.1
 requests==2.21.0
 rsa==3.4.2
 s3transfer==0.1.13
 six==1.12.0
 smartypants==2.0.1
-statsd==3.2.2
+statsd==3.3.0
 urllib3==1.24.1
 webencodings==0.5.1
 Werkzeug==0.14.1
