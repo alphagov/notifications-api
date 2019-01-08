@@ -1,6 +1,8 @@
 from datetime import (
     datetime,
-    timedelta
+    timedelta,
+    date,
+    time
 )
 
 import pytz
@@ -18,6 +20,7 @@ from app.celery.service_callback_tasks import (
 )
 from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
+from app.dao.date_util import get_month_start_and_end_date_in_utc
 from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -408,7 +411,14 @@ def check_job_status():
 @notify_celery.task(name='daily-stats-template-usage-by-month')
 @statsd(namespace="tasks")
 def daily_stats_template_usage_by_month():
-    results = dao_fetch_monthly_historical_stats_by_template()
+    # We want to record this months and last months if we are in the beginning of the month.
+    today = datetime.combine(date.today(), time.min)
+    delta = today - timedelta(days=10)
+    _, end_date = get_month_start_and_end_date_in_utc(today)
+    start_date, _ = get_month_start_and_end_date_in_utc(delta)
+    results = dao_fetch_monthly_historical_stats_by_template(
+        start_date=start_date, end_date=end_date
+    )
 
     for result in results:
         if result.template_id:

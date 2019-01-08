@@ -969,7 +969,7 @@ def test_dao_fetch_monthly_historical_stats_by_template(notify_db_session):
     create_notification(created_at=datetime(2017, 10, 3), template=template_two, status='delivered')
     create_notification(created_at=datetime.now(), template=template_two, status='delivered')
 
-    result = sorted(dao_fetch_monthly_historical_stats_by_template(),
+    result = sorted(dao_fetch_monthly_historical_stats_by_template(start_date='2017-09-01', end_date='2017-10-31'),
                     key=lambda x: (x.month, x.template_id == template_one.id))
 
     assert len(result) == 3
