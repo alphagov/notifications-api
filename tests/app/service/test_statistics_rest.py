@@ -28,14 +28,12 @@ def test_get_template_usage_by_month_returns_correct_data(
         admin_request,
         sample_template
 ):
-    create_notification(sample_template, created_at=datetime(2016, 4, 1), status='created')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='sending')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='permanent-failure')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='temporary-failure')
+    create_notification(sample_template, created_at=datetime(2017, 11, 1), status='created')
+    create_notification(sample_template, created_at=datetime(2017, 11, 2), status='sending')
+    create_notification(sample_template, created_at=datetime(2017, 11, 3), status='permanent-failure')
+    create_notification(sample_template, created_at=datetime(2017, 11, 4), status='temporary-failure')
 
     daily_stats_template_usage_by_month()
-
-    create_notification(sample_template, created_at=datetime.utcnow())
 
     resp_json = admin_request.get(
         'service.get_monthly_template_usage',
@@ -44,21 +42,14 @@ def test_get_template_usage_by_month_returns_correct_data(
     )
     resp_json = resp_json['stats']
 
-    assert len(resp_json) == 2
+    assert len(resp_json) == 1
 
     assert resp_json[0]["template_id"] == str(sample_template.id)
     assert resp_json[0]["name"] == sample_template.name
     assert resp_json[0]["type"] == sample_template.template_type
-    assert resp_json[0]["month"] == 4
+    assert resp_json[0]["month"] == 11
     assert resp_json[0]["year"] == 2017
-    assert resp_json[0]["count"] == 3
-
-    assert resp_json[1]["template_id"] == str(sample_template.id)
-    assert resp_json[1]["name"] == sample_template.name
-    assert resp_json[1]["type"] == sample_template.template_type
-    assert resp_json[1]["month"] == 11
-    assert resp_json[1]["year"] == 2017
-    assert resp_json[1]["count"] == 1
+    assert resp_json[0]["count"] == 4
 
 
 @freeze_time('2017-11-11 02:00')
@@ -77,7 +68,7 @@ def test_get_template_usage_by_month_returns_no_data(admin_request, sample_templ
     assert resp_json['stats'] == []
 
 
-@freeze_time('2017-11-11 02:00')
+@freeze_time('2017-05-09 02:00')
 def test_get_template_usage_by_month_returns_two_templates(admin_request, sample_template, sample_service):
     template_one = create_template(
         sample_service,
@@ -86,14 +77,17 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
         hidden=True
     )
 
-    create_notification(template_one, created_at=datetime(2017, 4, 1), status='created')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='sending')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='permanent-failure')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='temporary-failure')
+    create_notification(template_one, created_at=datetime(2017, 4, 1, 12), status='created')
+    create_notification(sample_template, created_at=datetime(2017, 4, 3), status='sending')
+    create_notification(sample_template, created_at=datetime(2017, 4, 6), status='permanent-failure')
+    create_notification(sample_template, created_at=datetime(2017, 4, 7), status='temporary-failure')
+
+    create_notification(template_one, created_at=datetime(2017, 5, 4), status='delivered')
+    create_notification(template_one, created_at=datetime(2017, 5, 5), status='temporary-failure')
 
     daily_stats_template_usage_by_month()
 
-    create_notification(sample_template, created_at=datetime.utcnow())
+    create_notification(template_one, created_at=datetime.utcnow())
 
     resp_json = admin_request.get(
         'service.get_monthly_template_usage',
@@ -120,13 +114,13 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
     assert resp_json[1]["count"] == 3
     assert resp_json[1]["is_precompiled_letter"] is False
 
-    assert resp_json[2]["template_id"] == str(sample_template.id)
-    assert resp_json[2]["name"] == sample_template.name
-    assert resp_json[2]["type"] == sample_template.template_type
-    assert resp_json[2]["month"] == 11
+    assert resp_json[2]["template_id"] == str(template_one.id)
+    assert resp_json[2]["name"] == template_one.name
+    assert resp_json[2]["type"] == template_one.template_type
+    assert resp_json[2]["month"] == 5
     assert resp_json[2]["year"] == 2017
-    assert resp_json[2]["count"] == 1
-    assert resp_json[2]["is_precompiled_letter"] is False
+    assert resp_json[2]["count"] == 3
+    assert resp_json[2]["is_precompiled_letter"] is True
 
 
 @pytest.mark.parametrize('today_only, stats', [

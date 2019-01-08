@@ -1,4 +1,3 @@
-import functools
 from datetime import datetime, timedelta
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
@@ -806,21 +805,14 @@ def test_check_job_status_task_sets_jobs_to_error(mocker, sample_template):
     assert job_2.job_status == JOB_STATUS_IN_PROGRESS
 
 
-def test_daily_stats_template_usage_by_month(notify_db, notify_db_session):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        status='delivered'
-    )
+@freeze_time('2016-11-02 02:00')
+def test_daily_stats_template_usage_by_month(sample_service):
+    template_one = create_template(service=sample_service, template_name='template_one')
+    template_two = create_template(service=sample_service, template_name='template_two')
 
-    template_one = create_sample_template(notify_db, notify_db_session)
-    template_two = create_sample_template(notify_db, notify_db_session)
-
-    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_one)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime.now(), sample_template=template_two)
+    create_notification(created_at=datetime(2016, 10, 1), template=template_one, status='delivered')
+    create_notification(created_at=datetime(2016, 11, 1), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2016, 11, 1), template=template_two, status='delivered')
 
     daily_stats_template_usage_by_month()
 
@@ -833,15 +825,15 @@ def test_daily_stats_template_usage_by_month(notify_db, notify_db_session):
 
     assert len(result) == 2
 
-    assert result[0].template_id == template_two.id
-    assert result[0].month == 4
+    assert result[0].template_id == template_one.id
+    assert result[0].month == 10
     assert result[0].year == 2016
-    assert result[0].count == 2
+    assert result[0].count == 1
 
-    assert result[1].template_id == template_one.id
-    assert result[1].month == 10
-    assert result[1].year == 2017
-    assert result[1].count == 1
+    assert result[1].template_id == template_two.id
+    assert result[1].month == 11
+    assert result[1].year == 2016
+    assert result[1].count == 2
 
 
 def test_daily_stats_template_usage_by_month_no_data():
@@ -852,31 +844,22 @@ def test_daily_stats_template_usage_by_month_no_data():
     assert len(results) == 0
 
 
-def test_daily_stats_template_usage_by_month_multiple_runs(notify_db, notify_db_session):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        status='delivered'
-    )
+@freeze_time('2017-11-09 02:00:00')
+def test_daily_stats_template_usage_by_month_multiple_runs(sample_service):
+    template_one = create_template(service=sample_service, template_name='first')
+    template_two = create_template(service=sample_service, template_name='second')
+    template_three = create_template(service=sample_service, template_name='third')
 
-    template_one = create_sample_template(notify_db, notify_db_session)
-    template_two = create_sample_template(notify_db, notify_db_session)
-
-    notification_history(created_at=datetime(2017, 11, 1), sample_template=template_one)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime.now(), sample_template=template_two)
+    create_notification(created_at=datetime(2017, 10, 1), template=template_three, status='delivered')
+    create_notification(created_at=datetime(2017, 10, 6), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 10, 29), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 10, 30), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 11, 1), template=template_one, status='delivered')
 
     daily_stats_template_usage_by_month()
 
-    template_three = create_sample_template(notify_db, notify_db_session)
-
-    notification_history(created_at=datetime(2017, 10, 1), sample_template=template_three)
-    notification_history(created_at=datetime(2017, 9, 1), sample_template=template_three)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime(2016, 4, 1), sample_template=template_two)
-    notification_history(created_at=datetime.now(), sample_template=template_two)
+    create_notification(created_at=datetime(2017, 11, 8), template=template_two, status='delivered')
+    create_notification(created_at=datetime(2017, 11, 9), template=template_two, status='delivered')
 
     daily_stats_template_usage_by_month()
 
@@ -889,45 +872,32 @@ def test_daily_stats_template_usage_by_month_multiple_runs(notify_db, notify_db_
 
     assert len(result) == 4
 
-    assert result[0].template_id == template_two.id
-    assert result[0].month == 4
-    assert result[0].year == 2016
-    assert result[0].count == 4
+    result_one = [x for x in result if x.template_id == template_one.id]
+    assert result_one[0].month == 11
+    assert result_one[0].year == 2017
+    assert result_one[0].count == 1
 
-    assert result[1].template_id == template_three.id
-    assert result[1].month == 9
-    assert result[1].year == 2017
-    assert result[1].count == 1
+    result_two = sorted([x for x in result if x.template_id == template_two.id], key=lambda x: x.month)
+    assert result_two[0].month == 10
+    assert result_two[0].year == 2017
+    assert result_two[0].count == 3
+    assert result_two[1].month == 11
+    assert result_two[1].year == 2017
+    assert result_two[1].count == 2
 
-    assert result[2].template_id == template_three.id
-    assert result[2].month == 10
-    assert result[2].year == 2017
-    assert result[2].count == 1
-
-    assert result[3].template_id == template_one.id
-    assert result[3].month == 11
-    assert result[3].year == 2017
-    assert result[3].count == 1
+    result_three = [x for x in result if x.template_id == template_three.id]
+    assert result_three[0].month == 10
+    assert result_three[0].year == 2017
+    assert result_three[0].count == 1
 
 
 def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_counted(notify_db, notify_db_session):
-    notification_history = functools.partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        status='delivered'
-    )
-
     template_one = create_sample_template(notify_db, notify_db_session, template_name='1')
-    history = notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
+    history = create_notification(created_at=datetime.utcnow(), template=template_one, status='delivered')
 
     NotificationHistory.query.filter(
         NotificationHistory.id == history.id
-    ).update(
-        {
-            'template_id': None
-        }
-    )
+    ).update({'template_id': None})
 
     daily_stats_template_usage_by_month()
 
@@ -936,19 +906,6 @@ def test_dao_fetch_monthly_historical_stats_by_template_null_template_id_not_cou
     ).all()
 
     assert len(result) == 0
-
-    notification_history(created_at=datetime(2017, 2, 1), sample_template=template_one)
-
-    daily_stats_template_usage_by_month()
-
-    result = db.session.query(
-        StatsTemplateUsageByMonth
-    ).order_by(
-        StatsTemplateUsageByMonth.year,
-        StatsTemplateUsageByMonth.month
-    ).all()
-
-    assert len(result) == 1
 
 
 def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):

@@ -415,6 +415,8 @@ def dao_fetch_active_users_for_service(service_id):
 
 @statsd(namespace="dao")
 def dao_fetch_monthly_historical_stats_by_template():
+    # Test notifications are not saved to the NotificationHistory
+    # table so we don't need to filter out test key notifications.
     month = get_london_month_from_utc_column(NotificationHistory.created_at)
     year = func.date_trunc("year", NotificationHistory.created_at)
 

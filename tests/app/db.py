@@ -50,6 +50,7 @@ from app.models import (
     Complaint,
     InvitedUser,
     TemplateFolder,
+    StatsTemplateUsageByMonth
 )
 
 
@@ -724,3 +725,18 @@ def create_template_folder(service, name='foo', parent=None):
     db.session.add(tf)
     db.session.commit()
     return tf
+
+
+def create_stats_template_usage_by_month(
+        template_id,
+        month,
+        year,
+        count
+):
+    stat = StatsTemplateUsageByMonth(
+        template_id=template_id,
+        month=month,
+        year=year,
+        count=count
+    )
+    db.session.add(stat)

@@ -149,6 +149,8 @@ def fetch_billing_data_for_day(process_day, service_id=None):
     # this is useful if we need to rebuild the ft_billing table for a date older than 7 days ago.
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
     table = Notification
+    # If we decide to delete the data before inserting then we need to go to the NotificationHistory
+    # table we need to consider when a service has data retention that is less than 7 days.
     if start_date < datetime.utcnow() - timedelta(days=7):
         table = NotificationHistory
     transit_data = []
