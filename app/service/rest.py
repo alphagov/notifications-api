@@ -344,16 +344,20 @@ def get_all_notifications_for_service(service_id):
     include_from_test_key = data.get('include_from_test_key', False)
     include_one_off = data.get('include_one_off', True)
 
+    count_pages = data.get('count_pages', True)
+
     pagination = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
         page=page,
         page_size=page_size,
+        count_pages=count_pages,
         limit_days=limit_days,
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
         include_one_off=include_one_off
     )
+
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
 

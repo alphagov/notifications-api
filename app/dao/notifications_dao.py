@@ -255,6 +255,7 @@ def get_notifications_for_service(
         filter_dict=None,
         page=1,
         page_size=None,
+        count_pages=True,
         limit_days=None,
         key_type=None,
         personalisation=False,
@@ -300,7 +301,8 @@ def get_notifications_for_service(
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
-        per_page=page_size
+        per_page=page_size,
+        count=count_pages
     )
 
 

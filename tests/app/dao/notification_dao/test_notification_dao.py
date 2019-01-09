@@ -909,6 +909,16 @@ def test_should_return_notifications_including_one_offs_by_default(sample_user, 
     assert len(include_one_offs_by_default) == 2
 
 
+def test_should_not_count_pages_when_given_a_flag(sample_user, sample_template):
+    create_notification(sample_template)
+    notification = create_notification(sample_template)
+
+    pagination = get_notifications_for_service(sample_template.service_id, count_pages=False, page_size=1)
+    assert len(pagination.items) == 1
+    assert pagination.total is None
+    assert pagination.items[0].id == notification.id
+
+
 def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excluding_test_key_notifications(
         notify_db,
         notify_db_session,
