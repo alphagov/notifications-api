@@ -239,7 +239,8 @@ post_precompiled_letter_request = {
     "title": "POST v2/notifications/letter",
     "properties": {
         "reference": {"type": "string"},
-        "content": {"type": "string"}
+        "content": {"type": "string"},
+        "postage": {"type": "string"}
     },
     "required": ["reference", "content"],
     "additionalProperties": False

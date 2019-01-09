@@ -75,7 +75,8 @@ def persist_notification(
     created_by_id=None,
     status=NOTIFICATION_CREATED,
     reply_to_text=None,
-    billable_units=None
+    billable_units=None,
+    postage=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -112,11 +113,14 @@ def persist_notification(
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
-        template = dao_get_template_by_id(template_id, template_version)
-        if service.has_permission(CHOOSE_POSTAGE) and template.postage:
-            notification.postage = template.postage
+        if postage:
+            notification.postage = postage
         else:
-            notification.postage = service.postage
+            template = dao_get_template_by_id(template_id, template_version)
+            if service.has_permission(CHOOSE_POSTAGE) and template.postage:
+                notification.postage = template.postage
+            else:
+                notification.postage = service.postage
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
