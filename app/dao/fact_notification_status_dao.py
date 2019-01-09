@@ -153,8 +153,6 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
         FactNotificationStatus.notification_type,
         FactNotificationStatus.notification_status,
         FactNotificationStatus.key_type,
-    ).order_by(
-        FactNotificationStatus.notification_type
     )
     today = get_london_midnight_in_utc(datetime.utcnow())
     if start_date <= today.date() <= end_date:
@@ -184,7 +182,9 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
             all_stats_table.c.notification_type
         )
     else:
-        query = stats
+        query = stats.order_by(
+            FactNotificationStatus.notification_type
+        )
     return query.all()
 
 
@@ -245,7 +245,7 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_fro
             Notification.service_id
         )
         if not include_from_test_key:
-            subquery = subquery.filter(FactNotificationStatus.key_type != KEY_TYPE_TEST)
+            subquery = subquery.filter(Notification.key_type != KEY_TYPE_TEST)
         subquery = subquery.subquery()
 
         stats_for_today = db.session.query(
@@ -261,7 +261,7 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_fro
         ).outerjoin(
             subquery,
             subquery.c.service_id == Service.id
-        ).order_by(Service.id)
+        )
 
         all_stats_table = stats.union_all(stats_for_today).subquery()
         query = db.session.query(

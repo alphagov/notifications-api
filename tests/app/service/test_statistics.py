@@ -45,6 +45,10 @@ NewStatsRow = collections.namedtuple('row', ('notification_type', 'status', 'key
         StatsRow('sms', 'delivered', 1),
         StatsRow('sms', 'sent', 1),
     ], [0, 0, 0], [3, 2, 0], [0, 0, 0]),
+    'handles_none_rows': ([
+        StatsRow('sms', 'sending', 1),
+        StatsRow(None, None, None)
+    ], [0, 0, 0], [1, 0, 0], [0, 0, 0])
 })
 def test_format_statistics(stats, email_counts, sms_counts, letter_counts):
 

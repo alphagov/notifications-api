@@ -478,10 +478,7 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
     results = []
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         rows = list(rows)
-        if rows[0].count is None:
-            s = statistics.create_zeroed_stats_dicts()
-        else:
-            s = statistics.format_statistics(rows)
+        s = statistics.format_statistics(rows)
         results.append({
             'id': str(rows[0].service_id),
             'name': rows[0].name,
