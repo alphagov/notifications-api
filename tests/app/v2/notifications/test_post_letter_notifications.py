@@ -511,3 +511,23 @@ def test_post_precompiled_letter_notification_returns_201(
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}
+
+
+def test_post_letter_notification_throws_error_for_invalid_postage(client, notify_user, mocker):
+    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    data = {
+        "reference": "letter-reference",
+        "content": "bGV0dGVyLWNvbnRlbnQ=",
+        "postage": "space unicorn"
+    }
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.post(
+        path="v2/notifications/letter",
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400, response.get_data(as_text=True)
+    resp_json = json.loads(response.get_data(as_text=True))
+    assert resp_json['errors'][0]['message'] == "postage invalid. It must be either first or second."
+
+    assert not Notification.query.first()
