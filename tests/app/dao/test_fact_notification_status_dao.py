@@ -11,7 +11,8 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
-    fetch_stats_for_all_services_by_date_range)
+    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
+)
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
@@ -338,3 +339,29 @@ def test_fetch_stats_for_all_services_by_date_range(notify_db_session):
     assert not results[4].notification_type
     assert not results[4].status
     assert not results[4].count
+
+
+def test_fetch_monthly_template_usage_for_service(sample_service):
+    template_one = create_template(service=sample_service, template_type='sms', template_name='one')
+    template_two = create_template(service=sample_service, template_type='email', template_name='one')
+    template_three = create_template(service=sample_service, template_type='letter', template_name='one')
+
+    create_ft_notification_status(bst_date=date(2018, 1, 1),
+                                  service=sample_service,
+                                  template=template_one,
+                                  count=2)
+    create_ft_notification_status(bst_date=date(2018, 2, 1),
+                                  service=sample_service,
+                                  template=template_two,
+                                  count=3)
+    create_ft_notification_status(bst_date=date(2018, 3, 1),
+                                  service=sample_service,
+                                  template=template_three,
+                                  count=5)
+
+    results = fetch_monthly_template_usage_for_service(
+        datetime(2017, 4, 1), datetime(2018, 3, 31), sample_service.id
+    )
+
+    print(results)
+    assert len(results) == 3
