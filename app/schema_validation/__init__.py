@@ -8,48 +8,54 @@ from notifications_utils.recipients import (validate_phone_number, validate_emai
                                             InvalidEmailError)
 
 
+format_checker = FormatChecker()
+
+
+@format_checker.checks("validate_uuid", raises=Exception)
+def validate_uuid(instance):
+    if isinstance(instance, str):
+        UUID(instance)
+    return True
+
+
+@format_checker.checks('phone_number', raises=InvalidPhoneError)
+def validate_schema_phone_number(instance):
+    if isinstance(instance, str):
+        validate_phone_number(instance, international=True)
+    return True
+
+
+@format_checker.checks('email_address', raises=InvalidEmailError)
+def validate_schema_email_address(instance):
+    if isinstance(instance, str):
+        validate_email_address(instance)
+    return True
+
+
+@format_checker.checks('postage', raises=ValidationError)
+def validate_schema_postage(instance):
+    if isinstance(instance, str):
+        if instance not in ["first", "second"]:
+            raise ValidationError("invalid. It must be either first or second.")
+    return True
+
+
+@format_checker.checks('datetime_within_next_day', raises=ValidationError)
+def validate_schema_date_with_hour(instance):
+    if isinstance(instance, str):
+        try:
+            dt = iso8601.parse_date(instance).replace(tzinfo=None)
+            if dt < datetime.utcnow():
+                raise ValidationError("datetime can not be in the past")
+            if dt > datetime.utcnow() + timedelta(hours=24):
+                raise ValidationError("datetime can only be 24 hours in the future")
+        except ParseError:
+            raise ValidationError("datetime format is invalid. It must be a valid ISO8601 date time format, "
+                                  "https://en.wikipedia.org/wiki/ISO_8601")
+    return True
+
+
 def validate(json_to_validate, schema):
-    format_checker = FormatChecker()
-
-    @format_checker.checks("validate_uuid", raises=Exception)
-    def validate_uuid(instance):
-        if isinstance(instance, str):
-            UUID(instance)
-        return True
-
-    @format_checker.checks('phone_number', raises=InvalidPhoneError)
-    def validate_schema_phone_number(instance):
-        if isinstance(instance, str):
-            validate_phone_number(instance, international=True)
-        return True
-
-    @format_checker.checks('email_address', raises=InvalidEmailError)
-    def validate_schema_email_address(instance):
-        if isinstance(instance, str):
-            validate_email_address(instance)
-        return True
-
-    @format_checker.checks('postage', raises=ValidationError)
-    def validate_schema_postage(instance):
-        if isinstance(instance, str):
-            if instance not in ["first", "second"]:
-                raise ValidationError("invalid. It must be either first or second.")
-        return True
-
-    @format_checker.checks('datetime_within_next_day', raises=ValidationError)
-    def validate_schema_date_with_hour(instance):
-        if isinstance(instance, str):
-            try:
-                dt = iso8601.parse_date(instance).replace(tzinfo=None)
-                if dt < datetime.utcnow():
-                    raise ValidationError("datetime can not be in the past")
-                if dt > datetime.utcnow() + timedelta(hours=24):
-                    raise ValidationError("datetime can only be 24 hours in the future")
-            except ParseError:
-                raise ValidationError("datetime format is invalid. It must be a valid ISO8601 date time format, "
-                                      "https://en.wikipedia.org/wiki/ISO_8601")
-        return True
-
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:
