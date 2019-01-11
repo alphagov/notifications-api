@@ -84,12 +84,13 @@ def create_zeroed_stats_dicts():
 
 
 def _update_statuses_from_row(update_dict, row):
-    update_dict['requested'] += row.count
+    if row.status != 'cancelled':
+        update_dict['requested'] += row.count
     if row.status in ('delivered', 'sent'):
         update_dict['delivered'] += row.count
     elif row.status in (
             'failed', 'technical-failure', 'temporary-failure',
-            'permanent-failure', 'validation-failed', 'virus-scan-failed', 'cancelled'):
+            'permanent-failure', 'validation-failed', 'virus-scan-failed'):
         update_dict['failed'] += row.count
 
 
