@@ -351,8 +351,8 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
             all_stats_table.c.name,
             all_stats_table.c.is_precompiled_letter,
             all_stats_table.c.template_type,
-            all_stats_table.c.month,
-            all_stats_table.c.year,
+            func.cast(all_stats_table.c.month, Integer).label('month'),
+            func.cast(all_stats_table.c.year, Integer).label('year'),
             func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
         ).group_by(
             all_stats_table.c.template_id,

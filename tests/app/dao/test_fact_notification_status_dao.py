@@ -341,10 +341,11 @@ def test_fetch_stats_for_all_services_by_date_range(notify_db_session):
     assert not results[4].count
 
 
+@freeze_time('2018-01-04 14:00')
 def test_fetch_monthly_template_usage_for_service(sample_service):
-    template_one = create_template(service=sample_service, template_type='sms', template_name='one')
-    template_two = create_template(service=sample_service, template_type='email', template_name='one')
-    template_three = create_template(service=sample_service, template_type='letter', template_name='one')
+    template_one = create_template(service=sample_service, template_type='sms', template_name='1_one')
+    template_two = create_template(service=sample_service, template_type='email', template_name='2_two')
+    template_three = create_template(service=sample_service, template_type='letter', template_name='3_three')
 
     create_ft_notification_status(bst_date=date(2018, 1, 1),
                                   service=sample_service,
@@ -353,15 +354,38 @@ def test_fetch_monthly_template_usage_for_service(sample_service):
     create_ft_notification_status(bst_date=date(2018, 2, 1),
                                   service=sample_service,
                                   template=template_two,
-                                  count=3)
+                                  count=4)
     create_ft_notification_status(bst_date=date(2018, 3, 1),
                                   service=sample_service,
                                   template=template_three,
                                   count=5)
-
+    create_notification(template=template_one)
     results = fetch_monthly_template_usage_for_service(
         datetime(2017, 4, 1), datetime(2018, 3, 31), sample_service.id
     )
 
-    print(results)
     assert len(results) == 3
+
+    assert results[0].template_id == template_one.id
+    assert results[0].name == template_one.name
+    assert results[0].is_precompiled_letter is False
+    assert results[0].template_type == template_one.template_type
+    assert results[0].month == 1
+    assert results[0].year == 2018
+    assert results[0].count == 3
+
+    assert results[1].template_id == template_two.id
+    assert results[1].name == template_two.name
+    assert results[1].is_precompiled_letter is False
+    assert results[1].template_type == template_two.template_type
+    assert results[1].month == 2
+    assert results[1].year == 2018
+    assert results[1].count == 4
+
+    assert results[2].template_id == template_three.id
+    assert results[2].name == template_three.name
+    assert results[2].is_precompiled_letter is False
+    assert results[2].template_type == template_three.template_type
+    assert results[2].month == 3
+    assert results[2].year == 2018
+    assert results[2].count == 5
