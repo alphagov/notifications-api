@@ -905,3 +905,21 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
                                                  queue='send-email-tasks')
     sms_delivery_queue.assert_called_once_with([str(old_sms.id)],
                                                queue="send-sms-tasks")
+
+
+def test_check_job_status_task_does_not_raise_error(sample_template):
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_FINISHED)
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(minutes=31),
+        processing_started=datetime.utcnow() - timedelta(minutes=31),
+        job_status=JOB_STATUS_FINISHED)
+
+    check_job_status()

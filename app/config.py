@@ -159,6 +159,7 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks', 'app.celery.reporting_tasks')
     CELERYBEAT_SCHEDULE = {
+        # app/celery/scheduled_tasks.py
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',
             'schedule': crontab(minute=1),
@@ -189,7 +190,7 @@ class Config(object):
             'schedule': crontab(minute='0, 15, 30, 45'),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        # nightly tasks:
+        # app/celery/nightly_tasks.py
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
             'schedule': crontab(hour=0, minute=5),

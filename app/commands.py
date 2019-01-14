@@ -11,7 +11,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption
-from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
+from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
