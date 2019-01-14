@@ -32,8 +32,6 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification
 )
 
-from app.dao.templates_dao import dao_get_template_by_id
-
 from app.v2.errors import BadRequestError
 from app.utils import (
     cache_key_for_service_template_counter,
@@ -76,7 +74,8 @@ def persist_notification(
     status=NOTIFICATION_CREATED,
     reply_to_text=None,
     billable_units=None,
-    postage=None
+    postage=None,
+    template_postage=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -116,9 +115,8 @@ def persist_notification(
         if postage:
             notification.postage = postage
         else:
-            template = dao_get_template_by_id(template_id, template_version)
-            if service.has_permission(CHOOSE_POSTAGE) and template.postage:
-                notification.postage = template.postage
+            if service.has_permission(CHOOSE_POSTAGE) and template_postage:
+                notification.postage = template_postage
             else:
                 notification.postage = service.postage
 

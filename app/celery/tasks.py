@@ -307,6 +307,7 @@ def save_letter(
         saved_notification = persist_notification(
             template_id=notification['template'],
             template_version=notification['template_version'],
+            template_postage=template.postage,
             recipient=recipient,
             service=service,
             personalisation=notification['personalisation'],
