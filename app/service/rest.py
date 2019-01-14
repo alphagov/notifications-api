@@ -24,7 +24,8 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
     fetch_notification_status_for_service_for_today_and_7_previous_days,
-    fetch_stats_for_all_services_by_date_range)
+    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
+)
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
@@ -48,7 +49,6 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
-    dao_fetch_monthly_historical_usage_by_template_for_service,
     dao_fetch_service_by_id,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
@@ -579,11 +579,12 @@ def resume_service(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
 def get_monthly_template_usage(service_id):
     try:
-        data = dao_fetch_monthly_historical_usage_by_template_for_service(
-            service_id,
-            int(request.args.get('year', 'NaN'))
+        start_date, end_date = get_financial_year(int(request.args.get('year', 'NaN')))
+        data = fetch_monthly_template_usage_for_service(
+            start_date=start_date,
+            end_date=end_date,
+            service_id=service_id
         )
-
         stats = list()
         for i in data:
             stats.append(
