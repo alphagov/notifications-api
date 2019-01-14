@@ -188,7 +188,12 @@ def process_virus_scan_passed(self, filename):
     scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
     old_pdf = scan_pdf_object.get()['Body'].read()
 
-    billable_units = _get_page_count(notification, old_pdf)
+    try:
+        billable_units = _get_page_count(notification, old_pdf)
+    except PdfReadError:
+        _move_invalid_letter_and_update_status(notification.reference, filename, scan_pdf_object)
+        return
+
     new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
 
     # TODO: Remove this once CYSP update their template to not cross over the margins
@@ -198,12 +203,7 @@ def process_virus_scan_passed(self, filename):
 
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-
-        notification.status = NOTIFICATION_VALIDATION_FAILED
-        dao_update_notification(notification)
-
-        move_scan_to_invalid_pdf_bucket(filename)
-        scan_pdf_object.delete()
+        _move_invalid_letter_and_update_status(notification.reference, filename, scan_pdf_object)
         return
     else:
         current_app.logger.info(
@@ -233,12 +233,17 @@ def _get_page_count(notification, old_pdf):
         return billable_units
     except PdfReadError as e:
         current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
-        update_letter_pdf_status(
-            reference=notification.reference,
-            status=NOTIFICATION_VALIDATION_FAILED,
-            billable_units=0
-        )
         raise e
+
+
+def _move_invalid_letter_and_update_status(notification_reference, filename, scan_pdf_object):
+    move_scan_to_invalid_pdf_bucket(filename)
+    scan_pdf_object.delete()
+
+    update_letter_pdf_status(
+        reference=notification_reference,
+        status=NOTIFICATION_VALIDATION_FAILED,
+        billable_units=0)
 
 
 def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):

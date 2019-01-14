@@ -23,7 +23,6 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_failed,
     process_virus_scan_error,
     replay_letters_in_error,
-    _get_page_count,
     _sanitise_precompiled_pdf
 )
 from app.letters.utils import get_letter_pdf_filename, ScanErrorType
@@ -417,6 +416,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
     process_virus_scan_passed(filename)
 
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
+    assert sample_letter_notification.billable_units == 0
     mock_sanitise.assert_called_once_with(
         ANY,
         sample_letter_notification,
@@ -432,13 +432,44 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
     )
 
 
-def test_get_page_count_set_notification_to_permanent_failure_when_not_pdf(
-        sample_letter_notification
+@freeze_time('2018-01-01 18:00')
+@mock_s3
+@pytest.mark.parametrize('key_type,is_test_letter', [
+    (KEY_TYPE_NORMAL, False), (KEY_TYPE_TEST, True)
+])
+def test_process_letter_task_check_virus_scan_passed_when_file_cannot_be_opened(
+    sample_letter_notification, mocker, key_type, is_test_letter
 ):
-    with pytest.raises(expected_exception=PdfReadError):
-        _get_page_count(sample_letter_notification, b'pdf_content')
-    updated_notification = Notification.query.filter_by(id=sample_letter_notification.id).first()
-    assert updated_notification.status == NOTIFICATION_VALIDATION_FAILED
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=source_bucket_name)
+    conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.key_type = key_type
+    mock_move_s3 = mocker.patch('app.letters.utils._move_s3_object')
+
+    mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', side_effect=PdfReadError)
+    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf')
+
+    process_virus_scan_passed(filename)
+
+    mock_sanitise.assert_not_called()
+    mock_get_page_count.assert_called_once_with(
+        sample_letter_notification, b'pdf_content'
+    )
+    mock_move_s3.assert_called_once_with(
+        source_bucket_name, filename,
+        target_bucket_name, filename
+    )
+    assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
+    assert sample_letter_notification.billable_units == 0
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
