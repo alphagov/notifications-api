@@ -8,7 +8,10 @@ from sqlalchemy.sql.expression import literal, extract
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
-from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service, Template
+from app.models import (
+    Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service, Template,
+    NOTIFICATION_CANCELLED
+)
 from app.utils import get_london_midnight_in_utc, midnight_n_days_ago, get_london_month_from_utc_column
 
 
@@ -309,6 +312,7 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
         FactNotificationStatus.service_id == service_id,
         FactNotificationStatus.bst_date >= start_date,
         FactNotificationStatus.bst_date <= end_date,
+        FactNotificationStatus.notification_status != NOTIFICATION_CANCELLED
     ).group_by(
         FactNotificationStatus.template_id,
         Template.name,
@@ -316,6 +320,10 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
         Template.is_precompiled_letter,
         extract('month', FactNotificationStatus.bst_date).label('month'),
         extract('year', FactNotificationStatus.bst_date).label('year'),
+    ).order_by(
+        extract('year', FactNotificationStatus.bst_date),
+        extract('month', FactNotificationStatus.bst_date),
+        Template.name
     )
 
     if start_date <= datetime.utcnow() <= end_date:
@@ -335,8 +343,8 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
         ).filter(
             Notification.created_at >= today,
             Notification.service_id == service_id,
-            # we don't want to include test keys
-            Notification.key_type != KEY_TYPE_TEST
+            Notification.key_type != KEY_TYPE_TEST,
+            Notification.status != NOTIFICATION_CANCELLED
         ).group_by(
             Notification.template_id,
             Template.hidden,

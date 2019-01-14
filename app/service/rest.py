@@ -585,11 +585,6 @@ def get_monthly_template_usage(service_id):
             end_date=end_date,
             service_id=service_id
         )
-        # data = dao_fetch_monthly_historical_usage_by_template_for_service(
-        #     service_id,
-        #     int(request.args.get('year', 'NaN'))
-        # )
-
         stats = list()
         for i in data:
             stats.append(
