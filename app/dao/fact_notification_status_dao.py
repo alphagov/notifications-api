@@ -107,12 +107,13 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     ).all()
 
 
-def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, limit_days=7):
+def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
     start_date = midnight_n_days_ago(limit_days)
     now = datetime.utcnow()
     stats_for_7_days = db.session.query(
         FactNotificationStatus.notification_type.label('notification_type'),
         FactNotificationStatus.notification_status.label('status'),
+        *([FactNotificationStatus.template_id.label('template_id')] if by_template else []),
         FactNotificationStatus.notification_count.label('count')
     ).filter(
         FactNotificationStatus.service_id == service_id,
@@ -123,6 +124,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     stats_for_today = db.session.query(
         Notification.notification_type.cast(db.Text),
         Notification.status,
+        *([Notification.template_id] if by_template else []),
         func.count().label('count')
     ).filter(
         Notification.created_at >= get_london_midnight_in_utc(now),
@@ -130,14 +132,24 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         Notification.key_type != KEY_TYPE_TEST
     ).group_by(
         Notification.notification_type,
+        *([Notification.template_id] if by_template else []),
         Notification.status
     )
+
     all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
-    return db.session.query(
+
+    query = db.session.query(
+        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
         func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
-    ).group_by(
+    )
+
+    if by_template:
+        query = query.filter(all_stats_table.c.template_id == Template.id)
+
+    return query.group_by(
+        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
     ).all()

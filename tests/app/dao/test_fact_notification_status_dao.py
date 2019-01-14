@@ -2,6 +2,7 @@ from datetime import timedelta, datetime, date
 from uuid import UUID
 
 import pytest
+import mock
 
 from app.dao.fact_notification_status_dao import (
     update_fact_notification_status,
@@ -188,6 +189,7 @@ def test_fetch_notification_status_for_service_for_day(notify_db_session):
 def test_fetch_notification_status_for_service_for_today_and_7_previous_days(notify_db_session):
     service_1 = create_service(service_name='service_1')
     sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    sms_template_2 = create_template(service=service_1, template_type=SMS_TYPE)
     email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
 
     create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
@@ -197,6 +199,7 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
 
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template_2, created_at=datetime(2018, 10, 31, 11, 0, 0))
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
     create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
 
@@ -220,11 +223,52 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
 
     assert results[2].notification_type == 'sms'
     assert results[2].status == 'created'
-    assert results[2].count == 2
+    assert results[2].count == 3
 
     assert results[3].notification_type == 'sms'
     assert results[3].status == 'delivered'
     assert results[3].count == 19
+
+
+@freeze_time('2018-10-31T18:00:00')
+def test_fetch_notification_status_by_template_for_service_for_today_and_7_previous_days(notify_db_session):
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(template_name='sms Template 1', service=service_1, template_type=SMS_TYPE)
+    sms_template_2 = create_template(template_name='sms Template 2', service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
+
+    # create unused email template
+    create_template(service=service_1, template_type=EMAIL_TYPE)
+
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=11)
+    create_ft_notification_status(date(2018, 10, 24), 'sms', service_1, count=8)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
+    create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
+
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
+    create_notification(sms_template_2, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
+
+    # too early, shouldn't be included
+    create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status='delivered')
+
+    results = fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id, by_template=True)
+
+    assert [
+        ('email Template Name', False, mock.ANY, 'email', 'delivered', 1),
+        ('email Template Name', False, mock.ANY, 'email', 'delivered', 3),
+        ('letter Template Name', False, mock.ANY, 'letter', 'delivered', 5),
+        ('sms Template 1', False, mock.ANY, 'sms', 'created', 1),
+        ('sms Template Name', False, mock.ANY, 'sms', 'created', 1),
+        ('sms Template 1', False, mock.ANY, 'sms', 'delivered', 1),
+        ('sms Template 2', False, mock.ANY, 'sms', 'delivered', 1),
+        ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 8),
+        ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 10),
+        ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 11),
+    ] == sorted(results, key=lambda x: (x.notification_type, x.status, x.name, x.count))
 
 
 @pytest.mark.parametrize(
