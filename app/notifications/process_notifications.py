@@ -9,7 +9,7 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number,
     format_email_address
 )
-from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -35,11 +35,7 @@ from app.dao.notifications_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 
 from app.v2.errors import BadRequestError
-from app.utils import (
-    cache_key_for_service_template_counter,
-    cache_key_for_service_template_usage_per_day,
-    get_template_instance,
-)
+from app.utils import cache_key_for_service_template_counter, get_template_instance
 
 
 def create_content_for_notification(template, personalisation):
@@ -127,21 +123,10 @@ def persist_notification(
             if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
                 redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
 
-            increment_template_usage_cache(service.id, template_id, notification_created_at)
-
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
         )
     return notification
-
-
-def increment_template_usage_cache(service_id, template_id, created_at):
-    key = cache_key_for_service_template_usage_per_day(service_id, convert_utc_to_bst(created_at))
-    redis_store.increment_hash_value(key, template_id)
-    # set key to expire in eight days - we don't know if we've just created the key or not, so must assume that we
-    # have and reset the expiry. Eight days is longer than any notification is in the notifications table, so we'll
-    # always capture the full week's numbers
-    redis_store.expire(key, current_app.config['EXPIRE_CACHE_EIGHT_DAYS'])
 
 
 def send_notification_to_queue(notification, research_mode, queue=None):

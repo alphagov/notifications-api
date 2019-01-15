@@ -213,7 +213,6 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_doesnt_touch_cache_for_old_keys_that_dont_exist(sample_template, sample_api_key, mocker):
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
-    mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=None)
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash', return_value=None)
 
@@ -229,16 +228,11 @@ def test_persist_notification_doesnt_touch_cache_for_old_keys_that_dont_exist(sa
         reference="ref"
     )
     mock_incr.assert_not_called()
-    mock_incr_hash_value.assert_called_once_with(
-        "service-{}-template-usage-2016-01-01".format(sample_template.service_id),
-        sample_template.id
-    )
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_increments_cache_if_key_exists(sample_template, sample_api_key, mocker):
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
-    mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
                  return_value={sample_template.id, 1})
@@ -255,10 +249,6 @@ def test_persist_notification_increments_cache_if_key_exists(sample_template, sa
         reference="ref2")
 
     mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
-    assert mock_incr_hash_value.mock_calls == [
-        call("{}-template-counter-limit-7-days".format(sample_template.service_id), sample_template.id),
-        call("service-{}-template-usage-2016-01-01".format(sample_template.service_id), sample_template.id),
-    ]
 
 
 @pytest.mark.parametrize((
@@ -514,44 +504,6 @@ def test_persist_letter_notification_finds_correct_postage(
     persisted_notification = Notification.query.all()[0]
 
     assert persisted_notification.postage == expected_postage
-
-
-@pytest.mark.parametrize('utc_time, day_in_key', [
-    ('2016-01-01 23:00:00', '2016-01-01'),
-    ('2016-06-01 22:59:00', '2016-06-01'),
-    ('2016-06-01 23:00:00', '2016-06-02'),
-])
-def test_persist_notification_increments_and_expires_redis_template_usage(
-    utc_time,
-    day_in_key,
-    sample_template,
-    sample_api_key,
-    mocker
-):
-    mock_incr_hash_value = mocker.patch('app.notifications.process_notifications.redis_store.increment_hash_value')
-    mock_expire = mocker.patch('app.notifications.process_notifications.redis_store.expire')
-    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=None)
-    mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash', return_value=None)
-
-    with freeze_time(utc_time):
-        persist_notification(
-            template_id=sample_template.id,
-            template_version=sample_template.version,
-            recipient='+447111111122',
-            service=sample_template.service,
-            personalisation={},
-            notification_type='sms',
-            api_key_id=sample_api_key.id,
-            key_type=sample_api_key.key_type,
-        )
-    mock_incr_hash_value.assert_called_once_with(
-        'service-{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
-        sample_template.id
-    )
-    mock_expire.assert_called_once_with(
-        'service-{}-template-usage-{}'.format(str(sample_template.service_id), day_in_key),
-        current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
-    )
 
 
 def test_persist_notification_with_billable_units_stores_correct_info(

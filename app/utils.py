@@ -72,13 +72,6 @@ def cache_key_for_service_template_counter(service_id, limit_days=7):
     return "{}-template-counter-limit-{}-days".format(service_id, limit_days)
 
 
-def cache_key_for_service_template_usage_per_day(service_id, datetime):
-    """
-    You should pass a BST datetime into this function
-    """
-    return "service-{}-template-usage-{}".format(service_id, datetime.date().isoformat())
-
-
 def get_public_notify_type_text(notify_type, plural=False):
     from app.models import (SMS_TYPE, UPLOAD_DOCUMENT, PRECOMPILED_LETTER)
     notify_type_text = notify_type
