@@ -312,7 +312,8 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
         FactNotificationStatus.service_id == service_id,
         FactNotificationStatus.bst_date >= start_date,
         FactNotificationStatus.bst_date <= end_date,
-        FactNotificationStatus.notification_status != NOTIFICATION_CANCELLED
+        FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        FactNotificationStatus.notification_status != NOTIFICATION_CANCELLED,
     ).group_by(
         FactNotificationStatus.template_id,
         Template.name,
