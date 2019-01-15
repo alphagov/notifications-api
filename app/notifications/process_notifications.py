@@ -35,7 +35,7 @@ from app.dao.notifications_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 
 from app.v2.errors import BadRequestError
-from app.utils import cache_key_for_service_template_counter, get_template_instance
+from app.utils import get_template_instance
 
 
 def create_content_for_notification(template, personalisation):
@@ -120,8 +120,6 @@ def persist_notification(
         if key_type != KEY_TYPE_TEST:
             if redis_store.get(redis.daily_limit_cache_key(service.id)):
                 redis_store.incr(redis.daily_limit_cache_key(service.id))
-            if redis_store.get_all_from_hash(cache_key_for_service_template_counter(service.id)):
-                redis_store.increment_hash_value(cache_key_for_service_template_counter(service.id), template_id)
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
