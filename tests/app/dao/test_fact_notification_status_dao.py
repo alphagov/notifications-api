@@ -268,7 +268,7 @@ def test_fetch_notification_status_by_template_for_service_for_today_and_7_previ
         ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 8),
         ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 10),
         ('sms Template Name', False, mock.ANY, 'sms', 'delivered', 11),
-    ] == sorted(results, key=lambda x: (x.notification_type, x.status, x.name, x.count))
+    ] == sorted(results, key=lambda x: (x.notification_type, x.status, x.template_name, x.count))
 
 
 @pytest.mark.parametrize(

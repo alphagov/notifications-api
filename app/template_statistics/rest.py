@@ -14,6 +14,7 @@ from app.dao.templates_dao import (
     dao_get_multiple_template_details,
     dao_get_template_by_id_and_service_id
 )
+from app.dao.fact_notification_status_dao import fetch_notification_status_for_service_for_today_and_7_previous_days
 
 from app.schemas import notification_with_template_schema
 from app.utils import cache_key_for_service_template_usage_per_day, last_n_days
@@ -39,8 +40,21 @@ def get_template_statistics_for_service_by_day(service_id):
 
     if whole_days < 0 or whole_days > 7:
         raise InvalidRequest({'whole_days': ['whole_days must be between 0 and 7']}, status_code=400)
+    data = fetch_notification_status_for_service_for_today_and_7_previous_days(
+        service_id, by_template=True, limit_days=whole_days
+    )
 
-    return jsonify(data=_get_template_statistics_for_last_n_days(service_id, whole_days))
+    return jsonify(data=[
+        {
+            'count': row.count,
+            'template_id': str(row.template_id),
+            'template_name': row.template_name,
+            'template_type': row.notification_type,
+            'is_precompiled_letter': row.is_precompiled_letter,
+            'status': row.status
+        }
+        for row in data
+    ])
 
 
 @template_statistics.route('/<template_id>')

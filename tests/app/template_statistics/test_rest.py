@@ -1,15 +1,10 @@
 import uuid
-from datetime import datetime
-from unittest.mock import Mock, call, ANY
+from unittest.mock import Mock
 
 import pytest
-from flask import current_app
 from freezegun import freeze_time
 
-from tests.app.db import (
-    create_notification,
-    create_template,
-)
+from tests.app.db import create_notification
 
 
 def set_up_get_all_from_hash(mock_redis, side_effect):
@@ -80,169 +75,46 @@ def test_get_template_statistics_for_service_by_day_accepts_old_query_string(
     assert len(json_resp['data']) == 1
 
 
-@freeze_time('2018-01-01 12:00:00')
-def test_get_template_statistics_for_service_by_day_gets_out_of_redis_if_available(
-    admin_request,
-    mocker,
-    sample_template
-):
-    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
-    set_up_get_all_from_hash(mock_redis, [
-        {sample_template.id: 3}
-    ])
-
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_service_by_day',
-        service_id=sample_template.service_id,
-        whole_days=0
-    )
-
-    assert len(json_resp['data']) == 1
-    assert json_resp['data'][0]['count'] == 3
-    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
-    mock_redis.get_all_from_hash.assert_called_once_with(
-        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')
-    )
-
-
 @freeze_time('2018-01-02 12:00:00')
-def test_get_template_statistics_for_service_by_day_goes_to_db_if_not_in_redis(
+def test_get_template_statistics_for_service_by_day_goes_to_db(
     admin_request,
     mocker,
     sample_template
 ):
-    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
     # first time it is called redis returns data, second time returns none
-    set_up_get_all_from_hash(mock_redis, [
-        {sample_template.id: 2},
-        None
-    ])
     mock_dao = mocker.patch(
-        'app.template_statistics.rest.dao_get_template_usage',
+        'app.template_statistics.rest.fetch_notification_status_for_service_for_today_and_7_previous_days',
         return_value=[
-            Mock(id=sample_template.id, count=3)
+            Mock(
+                template_id=sample_template.id,
+                count=3,
+                template_name=sample_template.name,
+                notification_type=sample_template.template_type,
+                status='created',
+                is_precompiled_letter=False
+            )
         ]
     )
-
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
         service_id=sample_template.service_id,
         whole_days=1
     )
 
-    assert len(json_resp['data']) == 1
-    assert json_resp['data'][0]['count'] == 5
-    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
-    # first redis call
-    assert mock_redis.get_all_from_hash.mock_calls == [
-        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-01')),
-        call('service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'))
-    ]
+    assert json_resp['data'] == [{
+        "template_id": str(sample_template.id),
+        "count": 3,
+        "template_name": sample_template.name,
+        "template_type": sample_template.template_type,
+        "status": "created",
+        "is_precompiled_letter": False
+
+    }]
     # dao only called for 2nd, since redis returned values for first call
     mock_dao.assert_called_once_with(
-        str(sample_template.service_id), day=datetime(2018, 1, 2)
+        str(sample_template.service_id), limit_days=1, by_template=True
     )
-    mock_redis.set_hash_and_expire.assert_called_once_with(
-        'service-{}-template-usage-{}'.format(sample_template.service_id, '2018-01-02'),
-        # sets the data that the dao returned
-        {str(sample_template.id): 3},
-        current_app.config['EXPIRE_CACHE_EIGHT_DAYS']
-    )
-
-
-def test_get_template_statistics_for_service_by_day_combines_templates_correctly(
-    admin_request,
-    mocker,
-    sample_service
-):
-    t1 = create_template(sample_service, template_name='1')
-    t2 = create_template(sample_service, template_name='2')
-    t3 = create_template(sample_service, template_name='3')  # noqa
-    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
-
-    # first time it is called redis returns data, second time returns none
-    set_up_get_all_from_hash(mock_redis, [
-        {t1.id: 2},
-        None,
-        {t1.id: 1, t2.id: 4},
-    ])
-    mock_dao = mocker.patch(
-        'app.template_statistics.rest.dao_get_template_usage',
-        return_value=[
-            Mock(id=t1.id, count=8)
-        ]
-    )
-
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_service_by_day',
-        service_id=sample_service.id,
-        whole_days=2
-    )
-
-    assert len(json_resp['data']) == 2
-    assert json_resp['data'][0]['template_id'] == str(t1.id)
-    assert json_resp['data'][0]['count'] == 11
-    assert json_resp['data'][1]['template_id'] == str(t2.id)
-    assert json_resp['data'][1]['count'] == 4
-
-    assert mock_redis.get_all_from_hash.call_count == 3
-    # dao only called for 2nd day
-    assert mock_dao.call_count == 1
-
-
-@freeze_time('2018-03-28 00:00:00')
-def test_get_template_statistics_for_service_by_day_gets_stats_for_correct_days(
-    admin_request,
-    mocker,
-    sample_template
-):
-    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
-
-    # first time it is called redis returns data, second time returns none
-    set_up_get_all_from_hash(mock_redis, [
-        {sample_template.id: 1},  # last weds
-        None,
-        {sample_template.id: 1},
-        {sample_template.id: 1},
-        {sample_template.id: 1},
-        {sample_template.id: 1},
-        None,
-        None,  # current day
-    ])
-    mock_dao = mocker.patch(
-        'app.template_statistics.rest.dao_get_template_usage',
-        return_value=[
-            Mock(id=sample_template.id, count=2)
-        ]
-    )
-
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_service_by_day',
-        service_id=sample_template.service_id,
-        whole_days=7
-    )
-
-    assert len(json_resp['data']) == 1
-    assert json_resp['data'][0]['count'] == 11
-    assert json_resp['data'][0]['template_id'] == str(sample_template.id)
-
-    assert mock_redis.get_all_from_hash.call_count == 8
-
-    assert '2018-03-21' in mock_redis.get_all_from_hash.mock_calls[0][1][0]  # last wednesday
-    assert '2018-03-22' in mock_redis.get_all_from_hash.mock_calls[1][1][0]
-    assert '2018-03-23' in mock_redis.get_all_from_hash.mock_calls[2][1][0]
-    assert '2018-03-24' in mock_redis.get_all_from_hash.mock_calls[3][1][0]
-    assert '2018-03-25' in mock_redis.get_all_from_hash.mock_calls[4][1][0]
-    assert '2018-03-26' in mock_redis.get_all_from_hash.mock_calls[5][1][0]
-    assert '2018-03-27' in mock_redis.get_all_from_hash.mock_calls[6][1][0]
-    assert '2018-03-28' in mock_redis.get_all_from_hash.mock_calls[7][1][0]  # current day (wednesday)
-
-    mock_dao.mock_calls == [
-        call(ANY, day=datetime(2018, 3, 22)),
-        call(ANY, day=datetime(2018, 3, 27)),
-        call(ANY, day=datetime(2018, 3, 28))
-    ]
 
 
 def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_templates(
@@ -250,7 +122,6 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     mocker,
     sample_service
 ):
-    mock_redis = mocker.patch('app.template_statistics.rest.redis_store')
 
     json_resp = admin_request.get(
         'template_statistics.get_template_statistics_for_service_by_day',
@@ -259,9 +130,7 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     )
 
     assert len(json_resp['data']) == 0
-    assert mock_redis.get_all_from_hash.call_count == 8
-    # make sure we don't try and set any empty hashes in redis
-    assert mock_redis.set_hash_and_expire.call_count == 0
+
 
 # get_template_statistics_for_template
 

@@ -139,7 +139,11 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
 
     query = db.session.query(
-        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
+        *([
+            Template.name.label("template_name"),
+            Template.is_precompiled_letter,
+            all_stats_table.c.template_id
+        ] if by_template else []),
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
         func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
