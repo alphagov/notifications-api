@@ -30,7 +30,6 @@ from app.models import (
     Notification,
     NotificationHistory,
     ScheduledNotification,
-    Template,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -49,39 +48,6 @@ from app.models import (
 )
 from app.utils import get_london_midnight_in_utc
 from app.utils import midnight_n_days_ago, escape_special_characters
-
-
-@statsd(namespace="dao")
-def dao_get_template_usage(service_id, day):
-    start = get_london_midnight_in_utc(day)
-    end = get_london_midnight_in_utc(day + timedelta(days=1))
-
-    notifications_aggregate_query = db.session.query(
-        func.count().label('count'),
-        Notification.template_id
-    ).filter(
-        Notification.created_at >= start,
-        Notification.created_at < end,
-        Notification.service_id == service_id,
-        Notification.key_type != KEY_TYPE_TEST,
-    ).group_by(
-        Notification.template_id
-    ).subquery()
-
-    query = db.session.query(
-        Template.id,
-        Template.name,
-        Template.template_type,
-        Template.is_precompiled_letter,
-        func.coalesce(notifications_aggregate_query.c.count, 0).label('count')
-    ).outerjoin(
-        notifications_aggregate_query,
-        notifications_aggregate_query.c.template_id == Template.id
-    ).filter(
-        Template.service_id == service_id
-    ).order_by(Template.name)
-
-    return query.all()
 
 
 @statsd(namespace="dao")
