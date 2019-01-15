@@ -461,3 +461,21 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_cancelled_sta
     )
 
     assert len(results) == 0
+
+
+@freeze_time('2018-03-30 14:00')
+def test_fetch_monthly_template_usage_for_service_does_not_include_test_notifications(
+        sample_template
+):
+    create_ft_notification_status(bst_date=date(2018, 3, 1),
+                                  service=sample_template.service,
+                                  template=sample_template,
+                                  notification_status='delivered',
+                                  key_type='test',
+                                  count=15)
+    create_notification(template=sample_template, created_at=datetime.utcnow(), status='cancelled')
+    results = fetch_monthly_template_usage_for_service(
+        datetime(2018, 1, 1), datetime(2018, 3, 31), sample_template.service_id
+    )
+
+    assert len(results) == 0
