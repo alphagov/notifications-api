@@ -473,7 +473,10 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_test_notifica
                                   notification_status='delivered',
                                   key_type='test',
                                   count=15)
-    create_notification(template=sample_template, created_at=datetime.utcnow(), status='cancelled')
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow(),
+                        status='delivered',
+                        key_type='test',)
     results = fetch_monthly_template_usage_for_service(
         datetime(2018, 1, 1), datetime(2018, 3, 31), sample_template.service_id
     )
