@@ -11,9 +11,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
-from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
-from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
     AnnualBilling,
     ApiKey,
@@ -389,75 +387,3 @@ def dao_fetch_monthly_historical_stats_by_template():
         year,
         month
     ).all()
-
-
-@statsd(namespace="dao")
-def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year):
-
-    results = dao_get_template_usage_stats_by_service(service_id, year)
-
-    stats = []
-    for result in results:
-        stat = type("", (), {})()
-        stat.template_id = result.template_id
-        stat.template_type = result.template_type
-        stat.name = str(result.name)
-        stat.month = result.month
-        stat.year = result.year
-        stat.count = result.count
-        stat.is_precompiled_letter = result.is_precompiled_letter
-        stats.append(stat)
-
-    month = get_london_month_from_utc_column(Notification.created_at)
-    year_func = func.date_trunc("year", Notification.created_at)
-    start_date = datetime.combine(date.today(), time.min)
-
-    fy_start, fy_end = get_financial_year(year)
-
-    if fy_start < datetime.now() < fy_end:
-        today_results = db.session.query(
-            Notification.template_id,
-            Template.is_precompiled_letter,
-            Template.name,
-            Template.template_type,
-            extract('month', month).label('month'),
-            extract('year', year_func).label('year'),
-            func.count().label('count')
-        ).join(
-            Template, Notification.template_id == Template.id,
-        ).filter(
-            Notification.created_at >= start_date,
-            Notification.service_id == service_id,
-            # we don't want to include test keys
-            Notification.key_type != KEY_TYPE_TEST
-        ).group_by(
-            Notification.template_id,
-            Template.hidden,
-            Template.name,
-            Template.template_type,
-            month,
-            year_func
-        ).order_by(
-            Notification.template_id
-        ).all()
-
-        for today_result in today_results:
-            add_to_stats = True
-            for stat in stats:
-                if today_result.template_id == stat.template_id and today_result.month == stat.month \
-                        and today_result.year == stat.year:
-                    stat.count = stat.count + today_result.count
-                    add_to_stats = False
-
-            if add_to_stats:
-                new_stat = type("StatsTemplateUsageByMonth", (), {})()
-                new_stat.template_id = today_result.template_id
-                new_stat.template_type = today_result.template_type
-                new_stat.name = today_result.name
-                new_stat.month = int(today_result.month)
-                new_stat.year = int(today_result.year)
-                new_stat.count = today_result.count
-                new_stat.is_precompiled_letter = today_result.is_precompiled_letter
-                stats.append(new_stat)
-
-    return stats

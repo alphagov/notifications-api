@@ -40,10 +40,6 @@ from app.dao.provider_details_dao import (
     dao_toggle_sms_provider
 )
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
-from app.dao.services_dao import (
-    dao_fetch_monthly_historical_stats_by_template
-)
-from app.dao.stats_template_usage_by_month_dao import insert_or_update_stats_for_template
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
@@ -403,21 +399,6 @@ def check_job_status():
             queue=QueueNames.JOBS
         )
         raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))
-
-
-@notify_celery.task(name='daily-stats-template-usage-by-month')
-@statsd(namespace="tasks")
-def daily_stats_template_usage_by_month():
-    results = dao_fetch_monthly_historical_stats_by_template()
-
-    for result in results:
-        if result.template_id:
-            insert_or_update_stats_for_template(
-                result.template_id,
-                result.month,
-                result.year,
-                result.count
-            )
 
 
 @notify_celery.task(name='raise-alert-if-no-letter-ack-file')

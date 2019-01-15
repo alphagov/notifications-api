@@ -4,7 +4,6 @@ from datetime import datetime, date
 import pytest
 from freezegun import freeze_time
 
-from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
@@ -53,22 +52,6 @@ def test_get_template_usage_by_month_returns_correct_data(
     assert resp_json[1]["month"] == 11
     assert resp_json[1]["year"] == 2017
     assert resp_json[1]["count"] == 1
-
-
-@freeze_time('2017-11-11 02:00')
-def test_get_template_usage_by_month_returns_no_data(admin_request, sample_template):
-    create_notification(sample_template, created_at=datetime(2016, 4, 1), status='created')
-
-    daily_stats_template_usage_by_month()
-
-    create_notification(sample_template, created_at=datetime.utcnow())
-
-    resp_json = admin_request.get(
-        'service.get_monthly_template_usage',
-        service_id=sample_template.service_id,
-        year=2015
-    )
-    assert resp_json['stats'] == []
 
 
 @freeze_time('2017-11-11 02:00')

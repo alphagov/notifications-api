@@ -195,11 +195,6 @@ class Config(object):
             'schedule': crontab(hour=0, minute=5),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'daily-stats-template-usage-by-month': {
-            'task': 'daily-stats-template-usage-by-month',
-            'schedule': crontab(hour=0, minute=10),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'create-nightly-billing': {
             'task': 'create-nightly-billing',
             'schedule': crontab(hour=0, minute=15),
