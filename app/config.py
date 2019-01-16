@@ -5,10 +5,6 @@ import json
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 
-from app.models import (
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-)
-
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
     # standard environment variables from it
@@ -108,6 +104,10 @@ class Config(object):
     DEBUG = False
     NOTIFY_LOG_PATH = os.getenv('NOTIFY_LOG_PATH')
 
+    # Cronitor
+    CRONITOR_ENABLED = False
+    CRONITOR_KEYS = json.loads(os.environ.get('CRONITOR_KEYS', '{}'))
+
     ###########################
     # Default config values ###
     ###########################
@@ -157,7 +157,12 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks', 'app.celery.reporting_tasks')
+    CELERY_IMPORTS = (
+        'app.celery.tasks',
+        'app.celery.scheduled_tasks',
+        'app.celery.reporting_tasks',
+        'app.celery.nightly_tasks',
+    )
     CELERYBEAT_SCHEDULE = {
         # app/celery/scheduled_tasks.py
         'run-scheduled-jobs': {
@@ -238,17 +243,15 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         },
         'remove_sms_email_jobs': {
-            'task': 'remove_csv_files',
+            'task': 'remove_sms_email_jobs',
             'schedule': crontab(hour=4, minute=0),
             'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
         },
         'remove_letter_jobs': {
-            'task': 'remove_csv_files',
+            'task': 'remove_letter_jobs',
             'schedule': crontab(hour=4, minute=20),  # this has to run AFTER remove_transformed_dvla_files
             # since we mark jobs as archived
             'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [LETTER_TYPE]}
         },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
@@ -435,6 +438,8 @@ class Live(Config):
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+
+    CRONITOR_ENABLED = True
 
 
 class CloudFoundryConfig(Config):

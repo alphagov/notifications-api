@@ -30,15 +30,30 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     Notification,
     NOTIFICATION_SENDING,
+    EMAIL_TYPE,
+    SMS_TYPE,
     LETTER_TYPE,
     KEY_TYPE_NORMAL
 )
 from app.performance_platform import total_sent_notifications, processing_time
+from app.cronitor import cronitor
 
 
-@notify_celery.task(name="remove_csv_files")
+@notify_celery.task(name="remove_sms_email_jobs")
+@cronitor("remove_sms_email_jobs")
 @statsd(namespace="tasks")
-def remove_csv_files(job_types):
+def remove_sms_email_csv_files(job_types):
+    _remove_csv_files([EMAIL_TYPE, SMS_TYPE])
+
+
+@notify_celery.task(name="remove_letter_jobs")
+@cronitor("remove_letter_jobs")
+@statsd(namespace="tasks")
+def remove_letter_csv_files(job_types):
+    _remove_csv_files([LETTER_TYPE])
+
+
+def _remove_csv_files(job_types):
     jobs = dao_get_jobs_older_than_data_retention(notification_types=job_types)
     for job in jobs:
         s3.remove_job_from_s3(job.service_id, job.id)
@@ -47,6 +62,7 @@ def remove_csv_files(job_types):
 
 
 @notify_celery.task(name="delete-sms-notifications")
+@cronitor("delete-sms-notifications")
 @statsd(namespace="tasks")
 def delete_sms_notifications_older_than_seven_days():
     try:
@@ -66,6 +82,7 @@ def delete_sms_notifications_older_than_seven_days():
 
 
 @notify_celery.task(name="delete-email-notifications")
+@cronitor("delete-email-notifications")
 @statsd(namespace="tasks")
 def delete_email_notifications_older_than_seven_days():
     try:
@@ -85,6 +102,7 @@ def delete_email_notifications_older_than_seven_days():
 
 
 @notify_celery.task(name="delete-letter-notifications")
+@cronitor("delete-letter-notifications")
 @statsd(namespace="tasks")
 def delete_letter_notifications_older_than_seven_days():
     try:
@@ -104,6 +122,7 @@ def delete_letter_notifications_older_than_seven_days():
 
 
 @notify_celery.task(name='timeout-sending-notifications')
+@cronitor('timeout-sending-notifications')
 @statsd(namespace="tasks")
 def timeout_notifications():
     technical_failure_notifications, temporary_failure_notifications = \
@@ -128,6 +147,7 @@ def timeout_notifications():
 
 
 @notify_celery.task(name='send-daily-performance-platform-stats')
+@cronitor('send-daily-performance-platform-stats')
 @statsd(namespace="tasks")
 def send_daily_performance_platform_stats():
     if performance_platform_client.active:
@@ -168,6 +188,7 @@ def send_total_sent_notifications_to_performance_platform(day):
 
 
 @notify_celery.task(name="delete-inbound-sms")
+@cronitor("delete-inbound-sms")
 @statsd(namespace="tasks")
 def delete_inbound_sms_older_than_seven_days():
     try:
@@ -186,6 +207,7 @@ def delete_inbound_sms_older_than_seven_days():
 
 
 @notify_celery.task(name="remove_transformed_dvla_files")
+@cronitor("remove_transformed_dvla_files")
 @statsd(namespace="tasks")
 def remove_transformed_dvla_files():
     jobs = dao_get_jobs_older_than_data_retention(notification_types=[LETTER_TYPE])
@@ -194,6 +216,7 @@ def remove_transformed_dvla_files():
         current_app.logger.info("Transformed dvla file for job {} has been removed from s3.".format(job.id))
 
 
+# TODO: remove me, i'm not being run by anything
 @notify_celery.task(name="delete_dvla_response_files")
 @statsd(namespace="tasks")
 def delete_dvla_response_files_older_than_seven_days():
@@ -221,6 +244,7 @@ def delete_dvla_response_files_older_than_seven_days():
 
 
 @notify_celery.task(name="raise-alert-if-letter-notifications-still-sending")
+@cronitor("raise-alert-if-letter-notifications-still-sending")
 @statsd(namespace="tasks")
 def raise_alert_if_letter_notifications_still_sending():
     today = datetime.utcnow().date()
@@ -257,6 +281,7 @@ def raise_alert_if_letter_notifications_still_sending():
 
 
 @notify_celery.task(name='raise-alert-if-no-letter-ack-file')
+@cronitor('raise-alert-if-no-letter-ack-file')
 @statsd(namespace="tasks")
 def letter_raise_alert_if_no_ack_file_for_zip():
     # get a list of zip files since yesterday
