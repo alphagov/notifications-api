@@ -510,7 +510,7 @@ def test_post_precompiled_letter_notification_returns_201(
     assert notification_history.postage == expected_postage
 
     resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference'}
+    assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference', 'postage': expected_postage}
 
 
 def test_post_letter_notification_throws_error_for_invalid_postage(client, notify_user, mocker):
