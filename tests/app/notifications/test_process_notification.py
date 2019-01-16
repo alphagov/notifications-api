@@ -504,6 +504,7 @@ def test_persist_letter_notification_finds_correct_postage(
     persist_notification(
         template_id=template.id,
         template_version=template.version,
+        template_postage=template.postage,
         recipient="Jane Doe, 10 Downing Street, London",
         service=service,
         personalisation=None,

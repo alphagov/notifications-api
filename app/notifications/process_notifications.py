@@ -32,8 +32,6 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification
 )
 
-from app.dao.templates_dao import dao_get_template_by_id
-
 from app.v2.errors import BadRequestError
 from app.utils import (
     cache_key_for_service_template_counter,
@@ -75,7 +73,9 @@ def persist_notification(
     created_by_id=None,
     status=NOTIFICATION_CREATED,
     reply_to_text=None,
-    billable_units=None
+    billable_units=None,
+    postage=None,
+    template_postage=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -112,11 +112,13 @@ def persist_notification(
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
-        template = dao_get_template_by_id(template_id, template_version)
-        if service.has_permission(CHOOSE_POSTAGE) and template.postage:
-            notification.postage = template.postage
+        if postage:
+            notification.postage = postage
         else:
-            notification.postage = service.postage
+            if service.has_permission(CHOOSE_POSTAGE) and template_postage:
+                notification.postage = template_postage
+            else:
+                notification.postage = service.postage
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
