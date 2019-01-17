@@ -1,8 +1,8 @@
 import uuid
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, timedelta
 
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import asc, func, extract
+from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -35,7 +35,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -364,26 +364,3 @@ def dao_fetch_active_users_for_service(service_id):
     )
 
     return query.all()
-
-
-@statsd(namespace="dao")
-def dao_fetch_monthly_historical_stats_by_template():
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-    year = func.date_trunc("year", NotificationHistory.created_at)
-    end_date = datetime.combine(date.today(), time.min)
-
-    return db.session.query(
-        NotificationHistory.template_id,
-        extract('month', month).label('month'),
-        extract('year', year).label('year'),
-        func.count().label('count')
-    ).filter(
-        NotificationHistory.created_at < end_date
-    ).group_by(
-        NotificationHistory.template_id,
-        month,
-        year
-    ).order_by(
-        year,
-        month
-    ).all()
