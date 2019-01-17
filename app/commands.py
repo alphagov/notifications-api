@@ -1,4 +1,3 @@
-import sys
 import functools
 import uuid
 from datetime import datetime, timedelta
@@ -9,10 +8,9 @@ import flask
 from click_datetime import Datetime as click_dt
 from flask import current_app, json
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import func
 from notifications_utils.statsd_decorators import statsd
 
-from app import db, DATETIME_FORMAT, encryption, redis_store
+from app import db, DATETIME_FORMAT, encryption
 from app.celery.scheduled_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
@@ -34,11 +32,7 @@ from app.dao.services_dao import (
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes
 from app.models import PROVIDERS, User, Notification
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
-from app.utils import (
-    cache_key_for_service_template_usage_per_day,
-    get_london_midnight_in_utc,
-    get_midnight_for_day_before,
-)
+from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
 
 
 @click.group(name='command', help='Additional commands')
@@ -428,50 +422,6 @@ def migrate_data_to_ft_billing(start_date, end_date):
 
         total_updated += result.rowcount
     current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
-
-
-@notify_command()
-@click.option('-s', '--service_id', required=True, type=click.UUID)
-@click.option('-d', '--day', required=True, type=click_dt(format='%Y-%m-%d'))
-def populate_redis_template_usage(service_id, day):
-    """
-    Recalculate and replace the stats in redis for a day.
-    To be used if redis data is lost for some reason.
-    """
-    if not current_app.config['REDIS_ENABLED']:
-        current_app.logger.error('Cannot populate redis template usage - redis not enabled')
-        sys.exit(1)
-
-    # the day variable is set by click to be midnight of that day
-    start_time = get_london_midnight_in_utc(day)
-    end_time = get_london_midnight_in_utc(day + timedelta(days=1))
-
-    usage = {
-        str(row.template_id): row.count
-        for row in db.session.query(
-            Notification.template_id,
-            func.count().label('count')
-        ).filter(
-            Notification.service_id == service_id,
-            Notification.created_at >= start_time,
-            Notification.created_at < end_time
-        ).group_by(
-            Notification.template_id
-        )
-    }
-    current_app.logger.info('Populating usage dict for service {} day {}: {}'.format(
-        service_id,
-        day,
-        usage.items())
-    )
-    if usage:
-        key = cache_key_for_service_template_usage_per_day(service_id, day)
-        redis_store.set_hash_and_expire(
-            key,
-            usage,
-            current_app.config['EXPIRE_CACHE_EIGHT_DAYS'],
-            raise_exception=True
-        )
 
 
 @notify_command(name='rebuild-ft-billing-for-day')

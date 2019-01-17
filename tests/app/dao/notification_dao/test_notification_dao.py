@@ -16,7 +16,6 @@ from app.dao.notifications_dao import (
     dao_get_last_template_usage,
     dao_get_notifications_by_to_field,
     dao_get_scheduled_notifications,
-    dao_get_template_usage,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
@@ -70,7 +69,6 @@ from tests.app.db import (
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
-    assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
