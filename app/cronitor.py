@@ -15,22 +15,24 @@ def cronitor(task_name):
                 current_app.logger.error(
                     'Cronitor enabled but task_name {} not found in environment'.format(task_name)
                 )
+                return
 
             if command not in {'run', 'complete', 'fail'}:
                 raise ValueError('command {} not a valid cronitor command'.format(command))
 
-            resp = requests.get(
-                'https://cronitor.link/{}/{}'.format(task_slug, command),
-                # cronitor limits msg to 1000 characters
-                params={
-                    'host': current_app.config['API_HOST_NAME'],
-                }
-            )
-            if resp.status_code != 200:
-                current_app.logger.warning('Cronitor API returned {} for task {}, body {}'.format(
-                    resp.status_code,
+            try:
+                resp = requests.get(
+                    'https://cronitor.link/{}/{}'.format(task_slug, command),
+                    # cronitor limits msg to 1000 characters
+                    params={
+                        'host': current_app.config['API_HOST_NAME'],
+                    }
+                )
+                resp.raise_for_status()
+            except requests.RequestException as e:
+                current_app.logger.warning('Cronitor API failed for task {} due to {}'.format(
                     task_name,
-                    resp.text
+                    repr(e)
                 ))
 
         @wraps(func)
