@@ -30,7 +30,6 @@ from app.dao.services_dao import (
     dao_resume_service,
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_inbound_number,
-    dao_fetch_monthly_historical_stats_by_template,
 )
 from app.dao.users_dao import save_model_user, create_user_code
 from app.models import (
@@ -872,31 +871,6 @@ def test_dao_allocating_inbound_number_shows_on_service(notify_db_session):
 def _assert_service_permissions(service_permissions, expected):
     assert len(service_permissions) == len(expected)
     assert set(expected) == set(p.permission for p in service_permissions)
-
-
-def test_dao_fetch_monthly_historical_stats_by_template(notify_db_session):
-    service = create_service()
-    template_one = create_template(service=service, template_name='1')
-    template_two = create_template(service=service, template_name='2')
-
-    create_notification(created_at=datetime(2017, 10, 1), template=template_one, status='delivered')
-    create_notification(created_at=datetime(2016, 4, 1), template=template_two, status='delivered')
-    create_notification(created_at=datetime(2016, 4, 1), template=template_two, status='delivered')
-    create_notification(created_at=datetime.now(), template=template_two, status='delivered')
-
-    result = sorted(dao_fetch_monthly_historical_stats_by_template(), key=lambda x: (x.month, x.year))
-
-    assert len(result) == 2
-
-    assert result[0].template_id == template_two.id
-    assert result[0].month == 4
-    assert result[0].year == 2016
-    assert result[0].count == 2
-
-    assert result[1].template_id == template_one.id
-    assert result[1].month == 10
-    assert result[1].year == 2017
-    assert result[1].count == 1
 
 
 def create_email_sms_letter_template():
