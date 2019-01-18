@@ -634,3 +634,29 @@ def update_jobs_archived_flag(start_date, end_date):
 
         total_updated += result.rowcount
     current_app.logger.info('Total archived jobs = {}'.format(total_updated))
+
+
+@notify_command(name='update-emails-to-remove-gsi')
+@click.option('-s', '--service_id', required=True, help="service id. Update all user.email_address to remove .gsi")
+@statsd(namespace="tasks")
+def update_emails_to_remove_gsi(service_id):
+    users_to_update = """SELECT u.id user_id, u.name, email_address, s.id, s.name
+                           FROM users u 
+                           JOIN user_to_service us on (u.id = us.user_id)
+                           JOIN services s on (s.id = us.service_id)
+                          WHERE s.id = :service_id
+                            AND u.email_address ilike ('%.gsi%')
+    """
+    results = db.session.execute(users_to_update, {'service_id': service_id})
+    print("Updating {} users.".format(results.rowcount))
+
+    for user in results:
+        print(user)
+
+        update_stmt = """UPDATE users set email_address = replace(email_address, '.gsi', ''), updated_at = now()
+                WHERE id = :user_id
+        """
+        r = db.session.execute(update_stmt, {'user_id': str(user.user_id)})
+        db.session.commit()
+
+
