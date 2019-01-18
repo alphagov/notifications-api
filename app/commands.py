@@ -653,8 +653,10 @@ def update_emails_to_remove_gsi(service_id):
     for user in results:
         print(user)
 
-        update_stmt = """UPDATE users set email_address = replace(email_address, '.gsi', ''), updated_at = now()
-                WHERE id = :user_id
+        update_stmt = """UPDATE users 
+                            SET email_address = replace(replace(email_address, '.gsi', ''), '.GSI', ''), 
+                                updated_at = now()
+                          WHERE id = :user_id
         """
         r = db.session.execute(update_stmt, {'user_id': str(user.user_id)})
         db.session.commit()
