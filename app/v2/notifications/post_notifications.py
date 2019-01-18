@@ -94,7 +94,8 @@ def post_precompiled_letter_notification():
 
     resp = {
         'id': notification.id,
-        'reference': notification.client_reference
+        'reference': notification.client_reference,
+        'postage': notification.postage
     }
 
     return jsonify(resp), 201
