@@ -54,7 +54,7 @@ function on_exit {
     # https://unix.stackexchange.com/a/298942/230401
     PROCESS_COUNT="${#APP_PIDS[@]}"
     if [[ "${PROCESS_COUNT}" -eq "0" ]]; then
-        echo "No more .pid files found, exiting"
+        echo "No celery process is running any more, exiting"
         return 0
     fi
 
@@ -66,21 +66,18 @@ function on_exit {
 }
 
 function get_celery_pids {
-  if [[ $(ls /home/vcap/app/celery*.pid) ]]; then
-    APP_PIDS=`cat /home/vcap/app/celery*.pid`
-  else
-    APP_PIDS=()
-  fi
+  # get the PIDs of the process whose parent is the root process
+  # print only pid and their command, get the ones with "celery" in their name
+  # and keep only these PIDs
+  APP_PIDS=$(pgrep -P 1 | xargs ps -o pid=,command= -p | grep celery | cut -f1 -d/)
 }
 
 function send_signal_to_celery_processes {
   # refresh pids to account for the case that some workers may have terminated but others not
   get_celery_pids
   # send signal to all remaining apps
-  for APP_PID in ${APP_PIDS}; do
-    echo "Sending signal ${1} to process with pid ${APP_PID}"
-    kill -s ${1} ${APP_PID} || true
-  done
+  echo ${APP_PIDS} | tr -d '\n' | tr -s ' ' | xargs echo "Sending signal ${1} to processes with pids: "
+  echo ${APP_PIDS} | xargs kill -s ${1}
 }
 
 function start_application {
