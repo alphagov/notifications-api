@@ -4,6 +4,7 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 
 from app import notify_celery
+from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     update_fact_billing
@@ -12,6 +13,7 @@ from app.dao.fact_notification_status_dao import fetch_notification_status_for_d
 
 
 @notify_celery.task(name="create-nightly-billing")
+@cronitor("create-nightly-billing")
 @statsd(namespace="tasks")
 def create_nightly_billing(day_start=None):
     # day_start is a datetime.date() object. e.g.
@@ -34,6 +36,7 @@ def create_nightly_billing(day_start=None):
 
 
 @notify_celery.task(name="create-nightly-notification-status")
+@cronitor("create-nightly-notification-status")
 @statsd(namespace="tasks")
 def create_nightly_notification_status(day_start=None):
     # day_start is a datetime.date() object. e.g.
