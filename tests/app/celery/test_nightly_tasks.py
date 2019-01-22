@@ -16,7 +16,8 @@ from app.celery.nightly_tasks import (
     delete_letter_notifications_older_than_seven_days,
     delete_sms_notifications_older_than_seven_days,
     raise_alert_if_letter_notifications_still_sending,
-    _remove_csv_files,
+    remove_letter_csv_files,
+    remove_sms_email_csv_files,
     remove_transformed_dvla_files,
     s3,
     send_daily_performance_platform_stats,
@@ -44,11 +45,7 @@ from tests.app.db import (
     create_service_data_retention
 )
 
-from tests.app.conftest import (
-    sample_job as create_sample_job,
-    sample_notification_history as create_notification_history,
-    datetime_in_past
-)
+from tests.app.conftest import datetime_in_past
 
 
 def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):
@@ -82,13 +79,13 @@ def test_will_remove_csv_files_for_jobs_older_than_seven_days(
     just_under_nine_days = nine_days_ago + timedelta(seconds=1)
     nine_days_one_second_ago = nine_days_ago - timedelta(seconds=1)
 
-    create_sample_job(notify_db, notify_db_session, created_at=nine_days_one_second_ago, archived=True)
-    job1_to_delete = create_sample_job(notify_db, notify_db_session, created_at=eight_days_ago)
-    job2_to_delete = create_sample_job(notify_db, notify_db_session, created_at=just_under_nine_days)
-    dont_delete_me_1 = create_sample_job(notify_db, notify_db_session, created_at=seven_days_ago)
-    create_sample_job(notify_db, notify_db_session, created_at=just_under_seven_days)
+    create_job(sample_template, created_at=nine_days_one_second_ago, archived=True)
+    job1_to_delete = create_job(sample_template, created_at=eight_days_ago)
+    job2_to_delete = create_job(sample_template, created_at=just_under_nine_days)
+    dont_delete_me_1 = create_job(sample_template, created_at=seven_days_ago)
+    create_job(sample_template, created_at=just_under_seven_days)
 
-    _remove_csv_files(job_types=[sample_template.template_type])
+    remove_sms_email_csv_files()
 
     assert s3.remove_job_from_s3.call_args_list == [
         call(job1_to_delete.service_id, job1_to_delete.id),
@@ -120,21 +117,15 @@ def test_will_remove_csv_files_for_jobs_older_than_retention_period(
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     thirty_one_days_ago = datetime.utcnow() - timedelta(days=31)
 
-    _create_job = partial(
-        create_sample_job,
-        notify_db,
-        notify_db_session,
-    )
+    job1_to_delete = create_job(sms_template_service_1, created_at=four_days_ago)
+    job2_to_delete = create_job(email_template_service_1, created_at=eight_days_ago)
+    create_job(email_template_service_1, created_at=four_days_ago)
 
-    job1_to_delete = _create_job(service=service_1, template=sms_template_service_1, created_at=four_days_ago)
-    job2_to_delete = _create_job(service=service_1, template=email_template_service_1, created_at=eight_days_ago)
-    _create_job(service=service_1, template=email_template_service_1, created_at=four_days_ago)
+    create_job(email_template_service_2, created_at=eight_days_ago)
+    job3_to_delete = create_job(email_template_service_2, created_at=thirty_one_days_ago)
+    job4_to_delete = create_job(sms_template_service_2, created_at=eight_days_ago)
 
-    _create_job(service=service_2, template=email_template_service_2, created_at=eight_days_ago)
-    job3_to_delete = _create_job(service=service_2, template=email_template_service_2, created_at=thirty_one_days_ago)
-    job4_to_delete = _create_job(service=service_2, template=sms_template_service_2, created_at=eight_days_ago)
-
-    _remove_csv_files(job_types=[SMS_TYPE, EMAIL_TYPE])
+    remove_sms_email_csv_files()
 
     s3.remove_job_from_s3.assert_has_calls([
         call(job1_to_delete.service_id, job1_to_delete.id),
@@ -158,7 +149,7 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
     job_to_delete = create_job(template=letter_template, created_at=eight_days_ago)
     create_job(template=sms_template, created_at=eight_days_ago)
 
-    _remove_csv_files(job_types=[LETTER_TYPE])
+    remove_letter_csv_files()
 
     assert s3.remove_job_from_s3.call_args_list == [
         call(job_to_delete.service_id, job_to_delete.id),
@@ -265,30 +256,26 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         notify_db,
         notify_db_session,
         sample_template,
+        sample_email_template,
         mocker
 ):
+    sms = sample_template
+    email = sample_email_template
+
     perf_mock = mocker.patch(
         'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        status='delivered'
-    )
-
-    notification_history(notification_type='email')
-    notification_history(notification_type='sms')
+    create_notification(email, status='delivered')
+    create_notification(sms, status='delivered')
 
     # Create some notifications for the day before
     yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
     with freeze_time(yesterday):
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
+        create_notification(sms, status='delivered')
+        create_notification(sms, status='delivered')
+        create_notification(email, status='delivered')
+        create_notification(email, status='delivered')
+        create_notification(email, status='delivered')
 
     with patch.object(
             PerformancePlatformClient,
