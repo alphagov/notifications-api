@@ -42,14 +42,14 @@ from app.cronitor import cronitor
 @notify_celery.task(name="remove_sms_email_jobs")
 @cronitor("remove_sms_email_jobs")
 @statsd(namespace="tasks")
-def remove_sms_email_csv_files(job_types):
+def remove_sms_email_csv_files():
     _remove_csv_files([EMAIL_TYPE, SMS_TYPE])
 
 
 @notify_celery.task(name="remove_letter_jobs")
 @cronitor("remove_letter_jobs")
 @statsd(namespace="tasks")
-def remove_letter_csv_files(job_types):
+def remove_letter_csv_files():
     _remove_csv_files([LETTER_TYPE])
 
 
