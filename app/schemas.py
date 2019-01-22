@@ -213,7 +213,8 @@ class ServiceSchema(BaseSchema):
     letter_contact_block = fields.Method(serialize="get_letter_contact")
 
     def get_letter_logo_filename(self, service):
-        return service.dvla_organisation.filename
+        return service.letter_branding.filename if service.letter_branding\
+            else service.dvla_organisation.filename
 
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]

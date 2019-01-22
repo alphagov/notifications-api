@@ -65,7 +65,8 @@ from tests.app.db import (
     create_template,
     create_notification,
     create_api_key,
-    create_invited_user
+    create_invited_user,
+    create_letter_branding,
 )
 
 
@@ -76,6 +77,7 @@ def test_should_have_decorated_services_dao_functions():
 
 def test_create_service(notify_db_session):
     user = create_user()
+    create_letter_branding()
     assert Service.query.count() == 0
     service = Service(name="service_name",
                       email_from="email_from",
@@ -97,6 +99,27 @@ def test_create_service(notify_db_session):
     assert user in service_db.users
     assert service_db.organisation_type == 'central'
     assert service_db.crown is True
+    assert not service.letter_branding
+
+
+def test_create_service_with_letter_branding(notify_db_session):
+    user = create_user()
+    create_letter_branding()
+    letter_branding = create_letter_branding(
+        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+    )
+    assert Service.query.count() == 0
+    service = Service(name="service_name",
+                      email_from="email_from",
+                      message_limit=1000,
+                      restricted=False,
+                      organisation_type='central',
+                      created_by=user)
+    dao_create_service(service, user, letter_branding=letter_branding)
+    assert Service.query.count() == 1
+    service_db = Service.query.one()
+    assert service_db.id == service.id
+    assert service.letter_branding == letter_branding
 
 
 def test_cannot_create_two_services_with_same_name(notify_db_session):
@@ -332,6 +355,7 @@ def test_create_service_by_id_adding_and_removing_letter_returns_service_without
 
 def test_create_service_creates_a_history_record_with_current_data(notify_db_session):
     user = create_user()
+    create_letter_branding()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     service = Service(name="service_name",

@@ -251,10 +251,11 @@ class DVLAOrganisation(db.Model):
 
 class LetterBranding(db.Model):
     __tablename__ = 'letter_branding'
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), unique=True, nullable=False)
     filename = db.Column(db.String(255), unique=True, nullable=False)
     domain = db.Column(db.Text, unique=True, nullable=True)
+    platform_default = db.Column(db.Boolean, nullable=False, default=False)
 
 
 service_letter_branding = db.Table(
@@ -387,6 +388,11 @@ class Service(db.Model, Versioned):
     email_branding = db.relationship(
         'EmailBranding',
         secondary=service_email_branding,
+        uselist=False,
+        backref=db.backref('services', lazy='dynamic'))
+    letter_branding = db.relationship(
+        'LetterBranding',
+        secondary=service_letter_branding,
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
 

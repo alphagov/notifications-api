@@ -43,7 +43,8 @@ from tests.app.db import (
     create_letter_contact,
     create_inbound_number,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender
+    create_service_with_defined_sms_sender,
+    create_letter_branding
 )
 from tests.app.db import create_user
 
@@ -218,6 +219,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
 
 
 def test_create_service(client, sample_user):
+    platform_default = create_letter_branding()
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -259,6 +261,80 @@ def test_create_service(client, sample_user):
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
+    assert json_resp['data']['letter_branding'] == str(platform_default.id)
+
+
+def test_create_service_with_domain_sets_letter_branding(client, sample_user):
+    letter_branding = create_letter_branding(
+        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+    )
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id),
+        'service_domain': letter_branding.domain
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        '/service',
+        data=json.dumps(data),
+        headers=headers)
+    json_resp = resp.json
+    assert resp.status_code == 201
+    assert json_resp['data']['letter_branding'] == str(letter_branding.id)
+    assert json_resp['data']['letter_logo_filename'] == str(letter_branding.filename)
+
+
+def test_create_service_when_letter_branding_is_empty(client, sample_user):
+    # test create service before the data migration
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id),
+        'service_domain': 'test.domain'
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    resp = client.post(
+        '/service',
+        data=json.dumps(data),
+        headers=headers)
+    json_resp = resp.json
+    assert resp.status_code == 201
+    assert not json_resp['data']['letter_branding']
+    assert json_resp['data']['letter_logo_filename'] == 'hm-government'
+
+
+def test_get_service_by_id_returns_letter_branding_not_dvla_organisation(
+        client, sample_service
+):
+    letter_branding = create_letter_branding(
+        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+    )
+    data = {
+        'letter_branding': str(letter_branding.id)
+    }
+    client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    resp = client.get('/service/{}'.format(sample_service.id),
+                      headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    json_resp = resp.json
+    assert json_resp['data']['name'] == sample_service.name
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert json_resp['data']['dvla_organisation'] == '001'
+    assert json_resp['data']['letter_logo_filename'] == 'test-domain'
 
 
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
@@ -436,6 +512,24 @@ def test_update_service(client, notify_db, sample_service):
     assert result['data']['email_branding'] == str(brand.id)
     assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
     assert result['data']['organisation_type'] == 'foo'
+
+
+def test_update_service_letter_branding(client, notify_db, sample_service):
+    letter_branding = create_letter_branding(name='test brand', filename='test-brand', platform_default=False)
+    data = {
+        'letter_branding': str(letter_branding.id)
+    }
+
+    auth_header = create_authorization_header()
+
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['letter_branding'] == str(letter_branding.id)
 
 
 def test_update_service_remove_email_branding(admin_request, notify_db, sample_service):
