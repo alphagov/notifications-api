@@ -2,28 +2,27 @@
 
 set -e -o pipefail
 
-TERMINATE_TIMEOUT=9
 readonly LOGS_DIR="/home/vcap/logs"
 
-function check_params {
-  if [ -z "${NOTIFY_APP_NAME}" ]; then
-    echo "You must set NOTIFY_APP_NAME"
-    exit 1
-  fi
+echo "Run script pid: $$"
 
-  if [ -z "${CW_APP_NAME}" ]; then
-    CW_APP_NAME=${NOTIFY_APP_NAME}
-  fi
-}
+if [ -z "${NOTIFY_APP_NAME}" ]; then
+  echo "You must set NOTIFY_APP_NAME"
+  exit 1
+fi
 
-function configure_aws_logs {
-  # create files so that aws logs agent doesn't complain
-  touch ${LOGS_DIR}/gunicorn_error.log
-  touch ${LOGS_DIR}/app.log.json
+if [ -z "${CW_APP_NAME}" ]; then
+  CW_APP_NAME=${NOTIFY_APP_NAME}
+fi
 
-  aws configure set plugins.cwlogs cwlogs
+echo "Configuring logs"
+# create files so that aws logs agent doesn't complain
+touch ${LOGS_DIR}/gunicorn_error.log
+touch ${LOGS_DIR}/app.log.json
 
-  cat > /home/vcap/app/awslogs.conf << EOF
+aws configure set plugins.cwlogs cwlogs
+
+cat > /home/vcap/app/awslogs.conf << EOF
 [general]
 state_file = ${LOGS_DIR}/awslogs-state
 
@@ -37,91 +36,52 @@ file = ${LOGS_DIR}/gunicorn_error.log
 log_group_name = paas-${CW_APP_NAME}-gunicorn
 log_stream_name = {hostname}
 EOF
-}
 
-# For every PID, check if it's still running. if it is, send the sigterm. then wait 9 seconds before sending sigkill
-function on_exit {
-  echo "multi worker app exiting"
-  wait_time=0
+cat <<EOF > /home/vcap/app/supervisor.conf
+[supervisord]
+nodaemon=true
 
-  send_signal_to_celery_processes TERM
+[program:supervised]
+process_name=supervised_%(process_num)02d
+command=$@
+numprocs=${NUM_PROCESSES:-3}
+numprocs_start=1
+autorestart=true
+startsecs=15
+stdout_logfile=${LOGS_DIR}/app.log.json
+stderr_logfile=${LOGS_DIR}/logs/app.log.json
+stdout_logfile_maxbytes=0
+stdout_logfile_backups=0
+stderr_logfile_maxbytes=0
+stderr_logfile_backups=0
+stdout_events_enabled=true
+stderr_events_enabled=true
 
-  # check if the apps are still running every second
-  while [[ "$wait_time" -le "$TERMINATE_TIMEOUT" ]]; do
-    get_celery_pids
+[program:awslogs]
+process_name=supervised_%(process_num)02d
+command=aws logs push --region eu-west-1 --config-file /home/vcap/app/awslogs.conf
+autorestart=true
+startsecs=15
+stdout_logfile=${LOGS_DIR}/app.log.json
+stderr_logfile=${LOGS_DIR}/logs/app.log.json
+stdout_logfile_maxbytes=0
+stdout_logfile_backups=0
+stderr_logfile_maxbytes=0
+stderr_logfile_backups=0
+stdout_events_enabled=true
+stderr_events_enabled=true
 
-    # look here for explanation regarding this syntax:
-    # https://unix.stackexchange.com/a/298942/230401
-    PROCESS_COUNT="${#APP_PIDS[@]}"
-    if [[ "${PROCESS_COUNT}" -eq "0" ]]; then
-        echo "No celery process is running any more, exiting"
-        return 0
-    fi
+[eventlistener:shootself]
+command=python kill_supervisor.py
+events=PROCESS_STATE_FATAL,PROCESS_STATE_UNKNOWN
+stdout_events_enabled=true
+stderr_events_enabled=true
 
-    let wait_time=wait_time+1
-    sleep 1
-  done
+[eventlistener:stdout]
+command=supervisor_stdout
+buffer_size=100
+events=PROCESS_LOG
+result_handler=supervisor_stdout:event_handler
+EOF
 
-  send_signal_to_celery_processes KILL
-}
-
-function get_celery_pids {
-  # get the PIDs of the process whose parent is the root process
-  # print only pid and their command, get the ones with "celery" in their name
-  # and keep only these PIDs
-  APP_PIDS=$(pgrep -P 1 | xargs ps -o pid=,command= -p | grep celery | cut -f1 -d/)
-}
-
-function send_signal_to_celery_processes {
-  # refresh pids to account for the case that some workers may have terminated but others not
-  get_celery_pids
-  # send signal to all remaining apps
-  echo ${APP_PIDS} | tr -d '\n' | tr -s ' ' | xargs echo "Sending signal ${1} to processes with pids: "
-  echo ${APP_PIDS} | xargs kill -s ${1}
-}
-
-function start_application {
-  eval "$@"
-  get_celery_pids
-  echo "Application process pids: "${APP_PIDS}
-}
-
-function start_aws_logs_agent {
-  exec aws logs push --region eu-west-1 --config-file /home/vcap/app/awslogs.conf &
-  AWSLOGS_AGENT_PID=$!
-  echo "AWS logs agent pid: ${AWSLOGS_AGENT_PID}"
-}
-
-function start_logs_tail {
-  exec tail -n0 -f ${LOGS_DIR}/app.log.json &
-  LOGS_TAIL_PID=$!
-  echo "tail pid: ${LOGS_TAIL_PID}"
-}
-
-function run {
-  while true; do
-    get_celery_pids
-    for APP_PID in ${APP_PIDS}; do
-        kill -0 ${APP_PID} 2&>/dev/null || return 1
-    done
-    kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
-    kill -0 ${LOGS_TAIL_PID} 2&>/dev/null || start_logs_tail
-    sleep 1
-  done
-}
-
-echo "Run script pid: $$"
-
-check_params
-
-trap "on_exit" EXIT
-
-configure_aws_logs
-
-# The application has to start first!
-start_application "$@"
-
-start_aws_logs_agent
-start_logs_tail
-
-run
+supervisord -n -c /home/vcap/app/supervisor.conf

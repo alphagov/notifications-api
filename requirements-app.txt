@@ -32,3 +32,7 @@ itsdangerous==0.24  # pyup: <1.0.0
 git+https://github.com/alphagov/notifications-utils.git@30.7.4#egg=notifications-utils==30.7.4
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
+
+# multiprocess celery workers
+supervisor==3.3.5
+supervisor-stdout==0.1.1
