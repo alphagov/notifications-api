@@ -113,6 +113,10 @@ function ensure_celery_is_running {
 
     sleep 15
 
+    echo "Killing awslogs_agent and tail"
+    kill -9 ${AWSLOGS_AGENT_PID}
+    kill -9 ${LOGS_TAIL_PID}
+
     exit 1
   fi
 }
