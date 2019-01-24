@@ -69,7 +69,10 @@ function get_celery_pids {
   # get the PIDs of the process whose parent is the root process
   # print only pid and their command, get the ones with "celery" in their name
   # and keep only these PIDs
+
+  set +o pipefail # so grep returning no matches does not premature fail pipe
   APP_PIDS=$(pgrep -P 1 | xargs ps -o pid=,command= -p | grep celery | cut -f1 -d/)
+  set -o pipefail # pipefail should be set everywhere else
 }
 
 function send_signal_to_celery_processes {
@@ -98,9 +101,32 @@ function start_logs_tail {
   echo "tail pid: ${LOGS_TAIL_PID}"
 }
 
+function ensure_celery_is_running {
+  if [ "${APP_PIDS}" = "" ]; then
+    echo "There are no celery processes running, this container is bad"
+
+    echo "Exporting CF information for diagnosis"
+
+    env | grep CF
+
+    echo "Sleeping 15 seconds for logs to get shipped"
+
+    sleep 15
+
+    echo "Killing awslogs_agent and tail"
+    kill -9 ${AWSLOGS_AGENT_PID}
+    kill -9 ${LOGS_TAIL_PID}
+
+    exit 1
+  fi
+}
+
 function run {
   while true; do
     get_celery_pids
+
+    ensure_celery_is_running
+
     for APP_PID in ${APP_PIDS}; do
         kill -0 ${APP_PID} 2&>/dev/null || return 1
     done
