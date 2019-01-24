@@ -12,7 +12,7 @@ from app.letter_branding.letter_branding_schema import post_letter_branding_sche
 from app.models import LetterBranding
 from app.schema_validation import validate
 
-letter_branding_blueprint = Blueprint('letter_branding', __name__, url_prefix='letter-branding')
+letter_branding_blueprint = Blueprint('letter_branding', __name__, url_prefix='/letter-branding')
 register_errors(letter_branding_blueprint)
 
 
@@ -65,12 +65,12 @@ def create_letter_brand():
     return jsonify(letter_branding.serialize()), 201
 
 
-@letter_branding_blueprint.route('/<uuid: letter_branding_id>', methods=['POST'])
-def create_letter_branding(letter_branding_id):
+@letter_branding_blueprint.route('/<uuid:letter_branding_id>', methods=['POST'])
+def update_letter_branding(letter_branding_id):
     data = request.get_json()
 
     validate(data, post_letter_branding_schema)
 
-    letter_branding = dao_update_letter_branding(letter_branding_id, )
+    letter_branding = dao_update_letter_branding(letter_branding_id, **data)
 
     return jsonify(letter_branding.serialize()), 201

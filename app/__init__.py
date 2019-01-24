@@ -214,7 +214,7 @@ def register_blueprint(application):
     template_folder_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_folder_blueprint)
 
-    letter_branding_blueprint.before_request(requires_admin_auth())
+    letter_branding_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(letter_branding_blueprint)
 
 

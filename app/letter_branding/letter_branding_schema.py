@@ -7,5 +7,8 @@ post_letter_branding_schema = {
         "filename": {"type": ["string", "null"]},
         "domain": {"type": ["string", "null"]},
     },
-    "required": ("name", "filename", "domain")
+    "required": ("name", "filename", "domain"),
+    # Typically we allow additional properties but we don't want to update letter_branding platform_admin,
+    # this can handle this without adding extra code in the rest endpoint.
+    "additionalProperties": False
 }
