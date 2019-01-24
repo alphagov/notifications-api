@@ -257,6 +257,15 @@ class LetterBranding(db.Model):
     domain = db.Column(db.Text, unique=True, nullable=True)
     platform_default = db.Column(db.Boolean, nullable=False, default=False)
 
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "filename": self.filename,
+            "domain": self.domain,
+            "platform_default": self.platform_default
+        }
+
 
 service_letter_branding = db.Table(
     'service_letter_branding',
