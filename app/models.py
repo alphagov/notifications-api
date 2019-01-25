@@ -255,15 +255,13 @@ class LetterBranding(db.Model):
     name = db.Column(db.String(255), unique=True, nullable=False)
     filename = db.Column(db.String(255), unique=True, nullable=False)
     domain = db.Column(db.Text, unique=True, nullable=True)
-    platform_default = db.Column(db.Boolean, nullable=False, default=False)
 
     def serialize(self):
         return {
-            "id": self.id,
+            "id": str(self.id),
             "name": self.name,
             "filename": self.filename,
             "domain": self.domain,
-            "platform_default": self.platform_default
         }
 
 

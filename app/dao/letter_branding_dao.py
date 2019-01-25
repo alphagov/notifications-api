@@ -3,17 +3,10 @@ from app.dao.dao_utils import transactional
 from app.models import LetterBranding
 
 
-def dao_get_letter_branding_or_platform_default(domain=None):
-    letter_branding = None
-    if domain:
-        letter_branding = LetterBranding.query.filter(
-            LetterBranding.domain == domain
-        ).first()
-    if not letter_branding:
-        letter_branding = LetterBranding.query.filter(
-            LetterBranding.platform_default == True  # noqa
-        ).first()
-    return letter_branding
+def dao_get_letter_branding_by_domain(domain):
+    return LetterBranding.query.filter(
+        LetterBranding.domain == domain
+    ).first()
 
 
 def dao_get_all_letter_branding():

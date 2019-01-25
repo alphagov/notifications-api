@@ -219,7 +219,6 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
 
 
 def test_create_service(client, sample_user):
-    platform_default = create_letter_branding()
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -243,6 +242,7 @@ def test_create_service(client, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['rate_limit'] == 3000
+    assert json_resp['data']['letter_branding'] is None
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
@@ -261,12 +261,11 @@ def test_create_service(client, sample_user):
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
-    assert json_resp['data']['letter_branding'] == str(platform_default.id)
 
 
 def test_create_service_with_domain_sets_letter_branding(client, sample_user):
     letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+        name='test domain', filename='test-domain', domain='test.domain'
     )
     data = {
         'name': 'created service',
@@ -286,6 +285,7 @@ def test_create_service_with_domain_sets_letter_branding(client, sample_user):
         headers=headers)
     json_resp = resp.json
     assert resp.status_code == 201
+    assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['letter_branding'] == str(letter_branding.id)
     assert json_resp['data']['letter_logo_filename'] == str(letter_branding.filename)
 
@@ -310,7 +310,7 @@ def test_create_service_when_letter_branding_is_empty(client, sample_user):
         headers=headers)
     json_resp = resp.json
     assert resp.status_code == 201
-    assert not json_resp['data']['letter_branding']
+    assert json_resp['data']['letter_branding'] is None
     assert json_resp['data']['letter_logo_filename'] == 'hm-government'
 
 
@@ -318,7 +318,7 @@ def test_get_service_by_id_returns_letter_branding_not_dvla_organisation(
         client, sample_service
 ):
     letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+        name='test domain', filename='test-domain', domain='test.domain'
     )
     data = {
         'letter_branding': str(letter_branding.id)
@@ -334,6 +334,7 @@ def test_get_service_by_id_returns_letter_branding_not_dvla_organisation(
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
     assert json_resp['data']['dvla_organisation'] == '001'
+    assert json_resp['data']['letter_branding'] == str(letter_branding.id)
     assert json_resp['data']['letter_logo_filename'] == 'test-domain'
 
 
@@ -515,7 +516,7 @@ def test_update_service(client, notify_db, sample_service):
 
 
 def test_update_service_letter_branding(client, notify_db, sample_service):
-    letter_branding = create_letter_branding(name='test brand', filename='test-brand', platform_default=False)
+    letter_branding = create_letter_branding(name='test brand', filename='test-brand')
     data = {
         'letter_branding': str(letter_branding.id)
     }
@@ -530,6 +531,35 @@ def test_update_service_letter_branding(client, notify_db, sample_service):
     result = resp.json
     assert resp.status_code == 200
     assert result['data']['letter_branding'] == str(letter_branding.id)
+
+
+def test_update_service_remove_letter_branding(client, notify_db, sample_service):
+    letter_branding = create_letter_branding(name='test brand', filename='test-brand')
+    sample_service
+    data = {
+        'letter_branding': str(letter_branding.id)
+    }
+
+    auth_header = create_authorization_header()
+
+    client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    data = {
+        'letter_branding': None
+    }
+    resp = client.post(
+        '/service/{}'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['letter_branding'] is None
 
 
 def test_update_service_remove_email_branding(admin_request, notify_db, sample_service):

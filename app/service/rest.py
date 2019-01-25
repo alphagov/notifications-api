@@ -27,7 +27,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.letter_branding_dao import dao_get_letter_branding_or_platform_default
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_domain
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
@@ -192,7 +192,7 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    letter_branding = dao_get_letter_branding_or_platform_default(domain)
+    letter_branding = dao_get_letter_branding_by_domain(domain)
     dao_create_service(valid_service, user, letter_branding=letter_branding)
 
     return jsonify(data=service_schema.dump(valid_service).data), 201

@@ -20,7 +20,6 @@ def upgrade():
                     sa.Column('name', sa.String(length=255), nullable=False),
                     sa.Column('filename', sa.String(length=255), nullable=False),
                     sa.Column('domain', sa.Text(), nullable=True),
-                    sa.Column('platform_default', sa.Boolean(), nullable=False),
                     sa.PrimaryKeyConstraint('id'),
                     sa.UniqueConstraint('domain'),
                     sa.UniqueConstraint('filename'),
@@ -35,14 +34,6 @@ def upgrade():
                     )
 
     op.get_bind()
-
-    op.execute("""INSERT INTO letter_branding (id, name, filename, domain, platform_default)
-                SELECT uuid_in(md5(random()::text)::cstring), name, filename, null, false 
-                from dvla_organisation""")
-
-    op.execute("""UPDATE letter_branding set platform_default = True 
-                   WHERE filename='hm-government'
-               """)
 
 
 def downgrade():

@@ -727,11 +727,10 @@ def create_template_folder(service, name='foo', parent=None):
     return tf
 
 
-def create_letter_branding(name='HM Government', filename='hm-government', domain=None, platform_default=True):
+def create_letter_branding(name='HM Government', filename='hm-government', domain=None):
     test_domain_branding = LetterBranding(name=name,
                                           filename=filename,
                                           domain=domain,
-                                          platform_default=platform_default
                                           )
     db.session.add(test_domain_branding)
     db.session.commit()

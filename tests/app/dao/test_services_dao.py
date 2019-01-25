@@ -106,7 +106,7 @@ def test_create_service_with_letter_branding(notify_db_session):
     user = create_user()
     create_letter_branding()
     letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain', platform_default=False
+        name='test domain', filename='test-domain', domain='test.domain'
     )
     assert Service.query.count() == 0
     service = Service(name="service_name",

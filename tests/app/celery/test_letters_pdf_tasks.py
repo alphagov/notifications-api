@@ -203,7 +203,7 @@ def test_create_letters_gets_the_right_logo_when_service_has_dvla_logo(
 def test_create_letters_gets_the_right_logo_when_service_has_letter_branding_logo(
         notify_api, mocker, sample_letter_notification
 ):
-    letter_branding = create_letter_branding(name='test brand', filename='test-brand', platform_default=False)
+    letter_branding = create_letter_branding(name='test brand', filename='test-brand')
     sample_letter_notification.service.letter_branding = letter_branding
     mock_get_letters_pdf = mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
     mocker.patch('app.letters.utils.s3upload')
