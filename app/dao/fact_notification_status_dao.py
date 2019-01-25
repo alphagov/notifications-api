@@ -4,12 +4,15 @@ from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.sql.expression import literal
+from sqlalchemy.sql.expression import literal, extract
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
-from app.models import Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service
-from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
+from app.models import (
+    Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service, Template,
+    NOTIFICATION_CANCELLED
+)
+from app.utils import get_london_midnight_in_utc, midnight_n_days_ago, get_london_month_from_utc_column
 
 
 def fetch_notification_status_for_day(process_day, service_id=None):
@@ -104,12 +107,13 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     ).all()
 
 
-def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, limit_days=7):
+def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
     start_date = midnight_n_days_ago(limit_days)
     now = datetime.utcnow()
     stats_for_7_days = db.session.query(
         FactNotificationStatus.notification_type.label('notification_type'),
         FactNotificationStatus.notification_status.label('status'),
+        *([FactNotificationStatus.template_id.label('template_id')] if by_template else []),
         FactNotificationStatus.notification_count.label('count')
     ).filter(
         FactNotificationStatus.service_id == service_id,
@@ -120,6 +124,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     stats_for_today = db.session.query(
         Notification.notification_type.cast(db.Text),
         Notification.status,
+        *([Notification.template_id] if by_template else []),
         func.count().label('count')
     ).filter(
         Notification.created_at >= get_london_midnight_in_utc(now),
@@ -127,14 +132,28 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         Notification.key_type != KEY_TYPE_TEST
     ).group_by(
         Notification.notification_type,
+        *([Notification.template_id] if by_template else []),
         Notification.status
     )
+
     all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
-    return db.session.query(
+
+    query = db.session.query(
+        *([
+            Template.name.label("template_name"),
+            Template.is_precompiled_letter,
+            all_stats_table.c.template_id
+        ] if by_template else []),
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
         func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
-    ).group_by(
+    )
+
+    if by_template:
+        query = query.filter(all_stats_table.c.template_id == Template.id)
+
+    return query.group_by(
+        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
         all_stats_table.c.notification_type,
         all_stats_table.c.status,
     ).all()
@@ -287,6 +306,90 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_fro
             all_stats_table.c.name,
             all_stats_table.c.notification_type,
             all_stats_table.c.status
+        )
+    else:
+        query = stats
+    return query.all()
+
+
+def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
+    # services_dao.replaces dao_fetch_monthly_historical_usage_by_template_for_service
+    stats = db.session.query(
+        FactNotificationStatus.template_id.label('template_id'),
+        Template.name.label('name'),
+        Template.template_type.label('template_type'),
+        Template.is_precompiled_letter.label('is_precompiled_letter'),
+        extract('month', FactNotificationStatus.bst_date).label('month'),
+        extract('year', FactNotificationStatus.bst_date).label('year'),
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).join(
+        Template, FactNotificationStatus.template_id == Template.id
+    ).filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date <= end_date,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        FactNotificationStatus.notification_status != NOTIFICATION_CANCELLED,
+    ).group_by(
+        FactNotificationStatus.template_id,
+        Template.name,
+        Template.template_type,
+        Template.is_precompiled_letter,
+        extract('month', FactNotificationStatus.bst_date).label('month'),
+        extract('year', FactNotificationStatus.bst_date).label('year'),
+    ).order_by(
+        extract('year', FactNotificationStatus.bst_date),
+        extract('month', FactNotificationStatus.bst_date),
+        Template.name
+    )
+
+    if start_date <= datetime.utcnow() <= end_date:
+        today = get_london_midnight_in_utc(datetime.utcnow())
+        month = get_london_month_from_utc_column(Notification.created_at)
+
+        stats_for_today = db.session.query(
+            Notification.template_id.label('template_id'),
+            Template.name.label('name'),
+            Template.template_type.label('template_type'),
+            Template.is_precompiled_letter.label('is_precompiled_letter'),
+            extract('month', month).label('month'),
+            extract('year', month).label('year'),
+            func.count().label('count')
+        ).join(
+            Template, Notification.template_id == Template.id,
+        ).filter(
+            Notification.created_at >= today,
+            Notification.service_id == service_id,
+            Notification.key_type != KEY_TYPE_TEST,
+            Notification.status != NOTIFICATION_CANCELLED
+        ).group_by(
+            Notification.template_id,
+            Template.hidden,
+            Template.name,
+            Template.template_type,
+            month
+        )
+
+        all_stats_table = stats.union_all(stats_for_today).subquery()
+        query = db.session.query(
+            all_stats_table.c.template_id,
+            all_stats_table.c.name,
+            all_stats_table.c.is_precompiled_letter,
+            all_stats_table.c.template_type,
+            func.cast(all_stats_table.c.month, Integer).label('month'),
+            func.cast(all_stats_table.c.year, Integer).label('year'),
+            func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
+        ).group_by(
+            all_stats_table.c.template_id,
+            all_stats_table.c.name,
+            all_stats_table.c.is_precompiled_letter,
+            all_stats_table.c.template_type,
+            all_stats_table.c.month,
+            all_stats_table.c.year,
+        ).order_by(
+            all_stats_table.c.year,
+            all_stats_table.c.month,
+            all_stats_table.c.name
         )
     else:
         query = stats

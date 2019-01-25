@@ -11,7 +11,6 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_update_template,
     dao_get_template_versions,
-    dao_get_multiple_template_details,
     dao_redact_template, dao_update_template_reply_to
 )
 from app.models import (
@@ -509,21 +508,6 @@ def test_get_template_versions_is_empty_for_hidden_templates(notify_db, notify_d
     )
     versions = dao_get_template_versions(service_id=sample_template.service_id, template_id=sample_template.id)
     assert len(versions) == 0
-
-
-def test_get_multiple_template_details_returns_templates_for_list_of_ids(sample_service):
-    t1 = create_template(sample_service)
-    t2 = create_template(sample_service)
-    create_template(sample_service)  # t3
-
-    res = dao_get_multiple_template_details([t1.id, t2.id])
-
-    assert {x.id for x in res} == {t1.id, t2.id}
-    # make sure correct properties are on each row
-    assert res[0].id
-    assert res[0].template_type
-    assert res[0].name
-    assert not res[0].is_precompiled_letter
 
 
 @pytest.mark.parametrize("template_type,postage", [('letter', 'third'), ('sms', 'second')])

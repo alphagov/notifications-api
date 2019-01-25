@@ -129,18 +129,3 @@ def dao_get_template_versions(service_id, template_id):
     ).order_by(
         desc(TemplateHistory.version)
     ).all()
-
-
-def dao_get_multiple_template_details(template_ids):
-    query = db.session.query(
-        Template.id,
-        Template.template_type,
-        Template.name,
-        Template.is_precompiled_letter
-    ).filter(
-        Template.id.in_(template_ids)
-    ).order_by(
-        Template.name
-    )
-
-    return query.all()

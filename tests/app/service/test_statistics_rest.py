@@ -4,7 +4,6 @@ from datetime import datetime, date
 import pytest
 from freezegun import freeze_time
 
-from app.celery.scheduled_tasks import daily_stats_template_usage_by_month
 from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
@@ -28,13 +27,7 @@ def test_get_template_usage_by_month_returns_correct_data(
         admin_request,
         sample_template
 ):
-    create_notification(sample_template, created_at=datetime(2016, 4, 1), status='created')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='sending')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='permanent-failure')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='temporary-failure')
-
-    daily_stats_template_usage_by_month()
-
+    create_ft_notification_status(bst_date=date(2017, 4, 2), template=sample_template, count=3)
     create_notification(sample_template, created_at=datetime.utcnow())
 
     resp_json = admin_request.get(
@@ -62,22 +55,6 @@ def test_get_template_usage_by_month_returns_correct_data(
 
 
 @freeze_time('2017-11-11 02:00')
-def test_get_template_usage_by_month_returns_no_data(admin_request, sample_template):
-    create_notification(sample_template, created_at=datetime(2016, 4, 1), status='created')
-
-    daily_stats_template_usage_by_month()
-
-    create_notification(sample_template, created_at=datetime.utcnow())
-
-    resp_json = admin_request.get(
-        'service.get_monthly_template_usage',
-        service_id=sample_template.service_id,
-        year=2015
-    )
-    assert resp_json['stats'] == []
-
-
-@freeze_time('2017-11-11 02:00')
 def test_get_template_usage_by_month_returns_two_templates(admin_request, sample_template, sample_service):
     template_one = create_template(
         sample_service,
@@ -85,14 +62,8 @@ def test_get_template_usage_by_month_returns_two_templates(admin_request, sample
         template_name=PRECOMPILED_TEMPLATE_NAME,
         hidden=True
     )
-
-    create_notification(template_one, created_at=datetime(2017, 4, 1), status='created')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='sending')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='permanent-failure')
-    create_notification(sample_template, created_at=datetime(2017, 4, 1), status='temporary-failure')
-
-    daily_stats_template_usage_by_month()
-
+    create_ft_notification_status(bst_date=datetime(2017, 4, 1), template=template_one, count=1)
+    create_ft_notification_status(bst_date=datetime(2017, 4, 1), template=sample_template, count=3)
     create_notification(sample_template, created_at=datetime.utcnow())
 
     resp_json = admin_request.get(
