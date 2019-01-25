@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from freezegun import freeze_time
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
@@ -10,7 +11,6 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_update_template,
     dao_get_template_versions,
-    dao_get_multiple_template_details,
     dao_redact_template, dao_update_template_reply_to
 )
 from app.models import (
@@ -152,7 +152,7 @@ def test_dao_update_template_reply_to_none_to_some(sample_service, sample_user):
     assert template_history.updated_at == updated.updated_at
 
 
-def test_dao_update_tempalte_reply_to_some_to_some(sample_service, sample_user):
+def test_dao_update_template_reply_to_some_to_some(sample_service, sample_user):
     letter_contact = create_letter_contact(sample_service, 'Edinburgh, ED1 1AA')
     letter_contact_2 = create_letter_contact(sample_service, 'London, N1 1DE')
 
@@ -510,16 +510,35 @@ def test_get_template_versions_is_empty_for_hidden_templates(notify_db, notify_d
     assert len(versions) == 0
 
 
-def test_get_multiple_template_details_returns_templates_for_list_of_ids(sample_service):
-    t1 = create_template(sample_service)
-    t2 = create_template(sample_service)
-    create_template(sample_service)  # t3
+@pytest.mark.parametrize("template_type,postage", [('letter', 'third'), ('sms', 'second')])
+def test_template_postage_constraint_on_create(sample_service, sample_user, template_type, postage):
+    data = {
+        'name': 'Sample Template',
+        'template_type': template_type,
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+        'postage': postage
+    }
+    template = Template(**data)
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_create_template(template)
 
-    res = dao_get_multiple_template_details([t1.id, t2.id])
 
-    assert {x.id for x in res} == {t1.id, t2.id}
-    # make sure correct properties are on each row
-    assert res[0].id
-    assert res[0].template_type
-    assert res[0].name
-    assert not res[0].is_precompiled_letter
+def test_template_postage_constraint_on_update(sample_service, sample_user):
+    data = {
+        'name': 'Sample Template',
+        'template_type': "letter",
+        'content': "Template content",
+        'service': sample_service,
+        'created_by': sample_user,
+        'postage': 'second'
+    }
+    template = Template(**data)
+    dao_create_template(template)
+    created = dao_get_all_templates_for_service(sample_service.id)[0]
+    assert created.name == 'Sample Template'
+
+    created.postage = 'third'
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_update_template(created)

@@ -1,5 +1,6 @@
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import create_random_identifier
 from app.config import QueueNames
 from app.dao.notifications_dao import _update_notification_status
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
@@ -37,6 +38,12 @@ def validate_created_by(service, created_by_id):
         raise BadRequestError(message=message)
 
 
+def create_one_off_reference(template_type):
+    if template_type == LETTER_TYPE:
+        return create_random_identifier()
+    return None
+
+
 def send_one_off_notification(service_id, post_data):
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id_and_service_id(
@@ -70,6 +77,7 @@ def send_one_off_notification(service_id, post_data):
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
+        template_postage=template.postage,
         recipient=post_data['to'],
         service=service,
         personalisation=personalisation,
@@ -77,7 +85,8 @@ def send_one_off_notification(service_id, post_data):
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
         created_by_id=post_data['created_by'],
-        reply_to_text=reply_to
+        reply_to_text=reply_to,
+        reference=create_one_off_reference(template.template_type),
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None

@@ -596,6 +596,7 @@ class NotificationsFilterSchema(ma.Schema):
     format_for_csv = fields.String()
     to = fields.String()
     include_one_off = fields.Boolean(required=False)
+    count_pages = fields.Boolean(required=False)
 
     @pre_load
     def handle_multidict(self, in_data):

@@ -41,6 +41,7 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
         "subject": expected_subject,
         'name': expected_name,
         'personalisation': {},
+        'postage': None,
     }
 
     assert json_response == expected_response

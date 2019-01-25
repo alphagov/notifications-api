@@ -20,6 +20,7 @@ env:
   SECRET_KEY: null
   ROUTE_SECRET_KEY_1: null
   ROUTE_SECRET_KEY_2: null
+  CRONITOR_KEYS: null
 
   PERFORMANCE_PLATFORM_ENDPOINTS: null
 
@@ -67,7 +68,7 @@ applications:
 
   - name: notify-delivery-worker-sender
     command: scripts/run_multi_worker_app_paas.sh celery multi start 3 -c 10 -A run_celery.notify_celery --loglevel=INFO -Q send-sms-tasks,send-email-tasks
-    memory: 2G
+    memory: 3G
     env:
       NOTIFY_APP_NAME: delivery-worker-sender
 

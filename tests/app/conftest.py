@@ -76,20 +76,26 @@ def service_factory(notify_db, notify_db_session):
                 user = create_user()
             if not email_from:
                 email_from = service_name
-            service = sample_service(notify_db, notify_db_session, service_name, user, email_from=email_from)
+
+            service = create_service(
+                email_from=email_from,
+                service_name=service_name,
+                service_permissions=None,
+                user=user,
+                check_if_service_exists=True,
+            )
             if template_type == 'email':
-                sample_template(
-                    notify_db,
-                    notify_db_session,
+                create_template(
+                    service,
+                    template_name="Template Name",
                     template_type=template_type,
-                    subject_line=service.email_from,
-                    service=service
+                    subject=service.email_from,
                 )
             else:
-                sample_template(
-                    notify_db,
-                    notify_db_session,
-                    service=service
+                create_template(
+                    service,
+                    template_name="Template Name",
+                    template_type='sms',
                 )
             return service
 
@@ -158,6 +164,7 @@ def sample_service(
     email_from=None,
     permissions=None,
     research_mode=None,
+    postage="second",
 ):
     if user is None:
         user = create_user()
@@ -170,6 +177,7 @@ def sample_service(
         'restricted': restricted,
         'email_from': email_from,
         'created_by': user,
+        "postage": postage,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
@@ -193,7 +201,8 @@ def sample_service(
 def _sample_service_full_permissions(notify_db_session):
     service = create_service(
         service_name="sample service full permissions",
-        service_permissions=set(SERVICE_PERMISSION_TYPES)
+        service_permissions=set(SERVICE_PERMISSION_TYPES),
+        check_if_service_exists=True
     )
     create_inbound_number('12345', service_id=service.id)
     return service
@@ -226,7 +235,7 @@ def sample_template(
     if service is None:
         service = Service.query.filter_by(name='Sample service').first()
         if not service:
-            service = create_service(service_permissions=permissions)
+            service = create_service(service_permissions=permissions, check_if_service_exists=True)
     if created_by is None:
         created_by = create_user()
 
@@ -288,7 +297,7 @@ def sample_email_template(
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session, permissions=permissions)
+        service = create_service(user=user, service_permissions=permissions, check_if_service_exists=True)
     data = {
         'name': template_name,
         'template_type': template_type,
@@ -343,7 +352,7 @@ def sample_api_key(notify_db,
                    key_type=KEY_TYPE_NORMAL,
                    name=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     data = {'service': service, 'name': name or uuid.uuid4(), 'created_by': service.created_by, 'key_type': key_type}
     api_key = ApiKey(**data)
     save_model_api_key(api_key)
@@ -371,13 +380,13 @@ def sample_job(
     job_status='pending',
     scheduled_for=None,
     processing_started=None,
-    original_file_name='some.csv'
+    original_file_name='some.csv',
+    archived=False
 ):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     if template is None:
-        template = sample_template(notify_db, notify_db_session,
-                                   service=service)
+        template = create_template(service=service)
     data = {
         'id': uuid.uuid4(),
         'service_id': service.id,
@@ -390,7 +399,8 @@ def sample_job(
         'created_by': service.created_by,
         'job_status': job_status,
         'scheduled_for': scheduled_for,
-        'processing_started': processing_started
+        'processing_started': processing_started,
+        'archived': archived
     }
     job = Job(**data)
     dao_create_job(job)
@@ -433,7 +443,7 @@ def sample_email_job(notify_db,
                      service=None,
                      template=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     if template is None:
         template = sample_email_template(
             notify_db,
@@ -541,9 +551,9 @@ def sample_notification(
     if created_at is None:
         created_at = datetime.utcnow()
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     if template is None:
-        template = sample_template(notify_db, notify_db_session, service=service)
+        template = create_template(service=service)
 
     if job is None and api_key is None:
         # we didn't specify in test - lets create it
@@ -630,7 +640,7 @@ def sample_notification_with_api_key(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_email_notification(notify_db, notify_db_session):
     created_at = datetime.utcnow()
-    service = sample_service(notify_db, notify_db_session)
+    service = create_service(check_if_service_exists=True)
     template = sample_email_template(notify_db, notify_db_session, service=service)
     job = sample_job(notify_db, notify_db_session, service=service, template=template)
 
@@ -732,7 +742,7 @@ def sample_invited_user(notify_db,
                         to_email_address=None):
 
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     if to_email_address is None:
         to_email_address = 'invited_user@digital.gov.uk'
 
@@ -772,7 +782,7 @@ def sample_permission(notify_db,
         'permission': permission
     }
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
     if service:
         data['service'] = service
     p_model = Permission.query.filter_by(
@@ -793,7 +803,7 @@ def sample_user_service_permission(
     if user is None:
         user = create_user()
     if service is None:
-        service = sample_service(notify_db, notify_db_session, user=user)
+        service = create_service(user=user, check_if_service_exists=True)
     data = {
         'user': user,
         'service': service,
@@ -1027,7 +1037,7 @@ def notify_service(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_service_whitelist(notify_db, notify_db_session, service=None, email_address=None, mobile_number=None):
     if service is None:
-        service = sample_service(notify_db, notify_db_session)
+        service = create_service(check_if_service_exists=True)
 
     if email_address:
         whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, email_address)
@@ -1052,7 +1062,7 @@ def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=Non
 
 @pytest.fixture
 def sample_inbound_numbers(notify_db, notify_db_session, sample_service):
-    service = create_service(service_name='sample service 2')
+    service = create_service(service_name='sample service 2', check_if_service_exists=True)
     inbound_numbers = list()
     inbound_numbers.append(create_inbound_number(number='1', provider='mmg'))
     inbound_numbers.append(create_inbound_number(number='2', provider='mmg', active=False, service_id=service.id))
@@ -1099,7 +1109,9 @@ def restore_provider_details(notify_db, notify_db_session):
 
 @pytest.fixture
 def admin_request(client):
+
     class AdminRequest:
+        app = client.application
 
         @staticmethod
         def get(endpoint, _expected_status=200, **endpoint_kwargs):

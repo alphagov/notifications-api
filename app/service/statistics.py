@@ -13,7 +13,10 @@ def format_statistics(statistics):
     # so we can return emails/sms * created, sent, and failed
     counts = create_zeroed_stats_dicts()
     for row in statistics:
-        _update_statuses_from_row(counts[row.notification_type], row)
+        # any row could be null, if the service either has no notifications in the notifications table,
+        # or no historical data in the ft_notification_status table.
+        if row.notification_type:
+            _update_statuses_from_row(counts[row.notification_type], row)
 
     return counts
 
@@ -81,7 +84,8 @@ def create_zeroed_stats_dicts():
 
 
 def _update_statuses_from_row(update_dict, row):
-    update_dict['requested'] += row.count
+    if row.status != 'cancelled':
+        update_dict['requested'] += row.count
     if row.status in ('delivered', 'sent'):
         update_dict['delivered'] += row.count
     elif row.status in (

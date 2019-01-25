@@ -20,10 +20,6 @@ from app import db
 from tests.app.db import create_service, create_template, create_notification
 
 
-def test_reporting_should_have_decorated_tasks_functions():
-    assert create_nightly_billing.__wrapped__.__name__ == 'create_nightly_billing'
-
-
 def mocker_get_rate(
     non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None, post_class="second"
 ):

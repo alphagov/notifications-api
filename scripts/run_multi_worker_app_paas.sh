@@ -39,50 +39,48 @@ log_stream_name = {hostname}
 EOF
 }
 
-# For every PID, check if it's still running
-# if it is, send the sigterm
+# For every PID, check if it's still running. if it is, send the sigterm. then wait 9 seconds before sending sigkill
 function on_exit {
+  echo "multi worker app exiting"
   wait_time=0
-  while true; do
-    # refresh pids to account for the case that
-    # some workers may have terminated but others not
+
+  send_signal_to_celery_processes TERM
+
+  # check if the apps are still running every second
+  while [[ "$wait_time" -le "$TERMINATE_TIMEOUT" ]]; do
     get_celery_pids
 
     # look here for explanation regarding this syntax:
     # https://unix.stackexchange.com/a/298942/230401
     PROCESS_COUNT="${#APP_PIDS[@]}"
     if [[ "${PROCESS_COUNT}" -eq "0" ]]; then
-        echo "No more .pid files found, exiting"
-        break
+        echo "No celery process is running any more, exiting"
+        return 0
     fi
 
-    echo "Terminating celery processes with pids "${APP_PIDS}
-    for APP_PID in ${APP_PIDS}; do
-      # if TERMINATE_TIMEOUT is reached, send SIGKILL
-      if [[ "$wait_time" -ge "$TERMINATE_TIMEOUT" ]]; then
-        echo "Timeout reached, killing process with pid ${APP_PID}"
-        kill -9 ${APP_PID} || true
-        continue
-      else
-        echo "Timeout not reached yet, checking " ${APP_PID}
-        # else, if process is still running send SIGTERM
-        if [[ $(kill -0 ${APP_PID} 2&>/dev/null) ]]; then
-          echo "Terminating celery process with pid ${APP_PID}"
-          kill ${APP_PID} || true
-        fi
-      fi
-    done
     let wait_time=wait_time+1
     sleep 1
   done
+
+  send_signal_to_celery_processes KILL
 }
 
 function get_celery_pids {
-  if [[ $(ls /home/vcap/app/celery*.pid) ]]; then
-    APP_PIDS=`cat /home/vcap/app/celery*.pid`
-  else
-    APP_PIDS=()
-  fi
+  # get the PIDs of the process whose parent is the root process
+  # print only pid and their command, get the ones with "celery" in their name
+  # and keep only these PIDs
+
+  set +o pipefail # so grep returning no matches does not premature fail pipe
+  APP_PIDS=$(pgrep -P 1 | xargs ps -o pid=,command= -p | grep celery | cut -f1 -d/)
+  set -o pipefail # pipefail should be set everywhere else
+}
+
+function send_signal_to_celery_processes {
+  # refresh pids to account for the case that some workers may have terminated but others not
+  get_celery_pids
+  # send signal to all remaining apps
+  echo ${APP_PIDS} | tr -d '\n' | tr -s ' ' | xargs echo "Sending signal ${1} to processes with pids: "
+  echo ${APP_PIDS} | xargs kill -s ${1}
 }
 
 function start_application {
@@ -103,9 +101,32 @@ function start_logs_tail {
   echo "tail pid: ${LOGS_TAIL_PID}"
 }
 
+function ensure_celery_is_running {
+  if [ "${APP_PIDS}" = "" ]; then
+    echo "There are no celery processes running, this container is bad"
+
+    echo "Exporting CF information for diagnosis"
+
+    env | grep CF
+
+    echo "Sleeping 15 seconds for logs to get shipped"
+
+    sleep 15
+
+    echo "Killing awslogs_agent and tail"
+    kill -9 ${AWSLOGS_AGENT_PID}
+    kill -9 ${LOGS_TAIL_PID}
+
+    exit 1
+  fi
+}
+
 function run {
   while true; do
     get_celery_pids
+
+    ensure_celery_is_running
+
     for APP_PID in ${APP_PIDS}; do
         kill -0 ${APP_PID} 2&>/dev/null || return 1
     done

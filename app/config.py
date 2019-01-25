@@ -5,10 +5,6 @@ import json
 from celery.schedules import crontab
 from kombu import Exchange, Queue
 
-from app.models import (
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-)
-
 if os.environ.get('VCAP_SERVICES'):
     # on cloudfoundry, config is a json blob in VCAP_SERVICES - unpack it, and populate
     # standard environment variables from it
@@ -108,6 +104,10 @@ class Config(object):
     DEBUG = False
     NOTIFY_LOG_PATH = os.getenv('NOTIFY_LOG_PATH')
 
+    # Cronitor
+    CRONITOR_ENABLED = False
+    CRONITOR_KEYS = json.loads(os.environ.get('CRONITOR_KEYS', '{}'))
+
     ###########################
     # Default config values ###
     ###########################
@@ -117,12 +117,12 @@ class Config(object):
     AWS_REGION = 'eu-west-1'
     INVITATION_EXPIRATION_DAYS = 2
     NOTIFY_APP_NAME = 'api'
-    SQLALCHEMY_COMMIT_ON_TEARDOWN = False
-    SQLALCHEMY_RECORD_QUERIES = True
-    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_RECORD_QUERIES = False
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 5))
     SQLALCHEMY_POOL_TIMEOUT = 30
     SQLALCHEMY_POOL_RECYCLE = 300
+    SQLALCHEMY_STATEMENT_TIMEOUT = 1200
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     TEST_MESSAGE_FILENAME = 'Test message'
@@ -157,8 +157,14 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
-    CELERY_IMPORTS = ('app.celery.tasks', 'app.celery.scheduled_tasks', 'app.celery.reporting_tasks')
+    CELERY_IMPORTS = (
+        'app.celery.tasks',
+        'app.celery.scheduled_tasks',
+        'app.celery.reporting_tasks',
+        'app.celery.nightly_tasks',
+    )
     CELERYBEAT_SCHEDULE = {
+        # app/celery/scheduled_tasks.py
         'run-scheduled-jobs': {
             'task': 'run-scheduled-jobs',
             'schedule': crontab(minute=1),
@@ -189,15 +195,10 @@ class Config(object):
             'schedule': crontab(minute='0, 15, 30, 45'),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        # nightly tasks:
+        # app/celery/nightly_tasks.py
         'timeout-sending-notifications': {
             'task': 'timeout-sending-notifications',
             'schedule': crontab(hour=0, minute=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'daily-stats-template-usage-by-month': {
-            'task': 'daily-stats-template-usage-by-month',
-            'schedule': crontab(hour=0, minute=10),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'create-nightly-billing': {
@@ -236,22 +237,21 @@ class Config(object):
             'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'remove_sms_email_jobs': {
-            'task': 'remove_csv_files',
-            'schedule': crontab(hour=4, minute=0),
-            'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [EMAIL_TYPE, SMS_TYPE]}
-        },
-        'remove_letter_jobs': {
-            'task': 'remove_csv_files',
-            'schedule': crontab(hour=4, minute=20),
-            'options': {'queue': QueueNames.PERIODIC},
-            'kwargs': {'job_types': [LETTER_TYPE]}
-        },
         'remove_transformed_dvla_files': {
             'task': 'remove_transformed_dvla_files',
-            'schedule': crontab(hour=4, minute=40),
+            'schedule': crontab(hour=3, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'remove_sms_email_jobs': {
+            'task': 'remove_sms_email_jobs',
+            'schedule': crontab(hour=4, minute=0),
+            'options': {'queue': QueueNames.PERIODIC},
+        },
+        'remove_letter_jobs': {
+            'task': 'remove_letter_jobs',
+            'schedule': crontab(hour=4, minute=20),  # this has to run AFTER remove_transformed_dvla_files
+            # since we mark jobs as archived
+            'options': {'queue': QueueNames.PERIODIC},
         },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
@@ -289,9 +289,6 @@ class Config(object):
     )
 
     SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
-
-    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = None
-    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = None
 
     DVLA_BUCKETS = {
         'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
@@ -438,11 +435,11 @@ class Live(Config):
     INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
-    FUNCTIONAL_TEST_PROVIDER_SERVICE_ID = '6c1d81bb-dae2-4ee9-80b0-89a4aae9f649'
-    FUNCTIONAL_TEST_PROVIDER_SMS_TEMPLATE_ID = 'ba9e1789-a804-40b8-871f-cc60d4c1286f'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+
+    CRONITOR_ENABLED = True
 
 
 class CloudFoundryConfig(Config):

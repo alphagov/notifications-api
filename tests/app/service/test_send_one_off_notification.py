@@ -10,7 +10,9 @@ from app.config import QueueNames
 from app.dao.service_whitelist_dao import dao_add_and_commit_whitelisted_contacts
 from app.service.send_notification import send_one_off_notification
 from app.models import (
+    EMAIL_TYPE,
     KEY_TYPE_NORMAL,
+    LETTER_TYPE,
     MOBILE_TYPE,
     PRIORITY,
     SMS_TYPE,
@@ -64,13 +66,17 @@ def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_m
     )
 
 
-def test_send_one_off_notification_calls_persist_correctly(
+def test_send_one_off_notification_calls_persist_correctly_for_sms(
     persist_mock,
     celery_mock,
     notify_db_session
 ):
     service = create_service()
-    template = create_template(service=service, content="Hello (( Name))\nYour thing is due soon")
+    template = create_template(
+        service=service,
+        template_type=SMS_TYPE,
+        content="Hello (( Name))\nYour thing is due soon",
+    )
 
     post_data = {
         'template_id': str(template.id),
@@ -84,6 +90,7 @@ def test_send_one_off_notification_calls_persist_correctly(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
+        template_postage=None,
         recipient=post_data['to'],
         service=template.service,
         personalisation={'name': 'foo'},
@@ -91,7 +98,95 @@ def test_send_one_off_notification_calls_persist_correctly(
         api_key_id=None,
         key_type=KEY_TYPE_NORMAL,
         created_by_id=str(service.created_by_id),
-        reply_to_text='testing'
+        reply_to_text='testing',
+        reference=None,
+    )
+
+
+def test_send_one_off_notification_calls_persist_correctly_for_email(
+    persist_mock,
+    celery_mock,
+    notify_db_session
+):
+    service = create_service()
+    template = create_template(
+        service=service,
+        template_type=EMAIL_TYPE,
+        subject="Test subject",
+        content="Hello (( Name))\nYour thing is due soon",
+    )
+
+    post_data = {
+        'template_id': str(template.id),
+        'to': 'test@example.com',
+        'personalisation': {'name': 'foo'},
+        'created_by': str(service.created_by_id)
+    }
+
+    send_one_off_notification(service.id, post_data)
+
+    persist_mock.assert_called_once_with(
+        template_id=template.id,
+        template_version=template.version,
+        template_postage=None,
+        recipient=post_data['to'],
+        service=template.service,
+        personalisation={'name': 'foo'},
+        notification_type=EMAIL_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        created_by_id=str(service.created_by_id),
+        reply_to_text=None,
+        reference=None,
+    )
+
+
+def test_send_one_off_notification_calls_persist_correctly_for_letter(
+    mocker,
+    persist_mock,
+    celery_mock,
+    notify_db_session
+):
+    mocker.patch(
+        'app.service.send_notification.create_random_identifier',
+        return_value='this-is-random-in-real-life',
+    )
+    service = create_service()
+    template = create_template(
+        service=service,
+        template_type=LETTER_TYPE,
+        postage='first',
+        subject="Test subject",
+        content="Hello (( Name))\nYour thing is due soon",
+    )
+
+    post_data = {
+        'template_id': str(template.id),
+        'to': 'First Last',
+        'personalisation': {
+            'name': 'foo',
+            'address line 1': 'First Last',
+            'address line 2': '1 Example Street',
+            'postcode': 'SW1A 1AA',
+        },
+        'created_by': str(service.created_by_id)
+    }
+
+    send_one_off_notification(service.id, post_data)
+
+    persist_mock.assert_called_once_with(
+        template_id=template.id,
+        template_version=template.version,
+        template_postage='first',
+        recipient=post_data['to'],
+        service=template.service,
+        personalisation=post_data['personalisation'],
+        notification_type=LETTER_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        created_by_id=str(service.created_by_id),
+        reply_to_text=None,
+        reference='this-is-random-in-real-life',
     )
 
 

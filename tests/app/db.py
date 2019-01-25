@@ -17,7 +17,7 @@ from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
 from app.dao.service_permissions_dao import dao_add_service_permission
 from app.dao.service_sms_sender_dao import update_existing_sms_sender_with_inbound_number, dao_update_service_sms_sender
-from app.dao.services_dao import dao_create_service
+from app.dao.services_dao import dao_create_service, dao_add_user_to_service
 from app.dao.templates_dao import dao_create_template, dao_update_template
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -81,21 +81,29 @@ def create_service(
         prefix_sms=True,
         message_limit=1000,
         organisation_type='central',
+        postage='second',
+        check_if_service_exists=False
 ):
-    service = Service(
-        name=service_name,
-        message_limit=message_limit,
-        restricted=restricted,
-        email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
-        created_by=user or create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
-        prefix_sms=prefix_sms,
-        organisation_type=organisation_type,
-    )
+    if check_if_service_exists:
+        service = Service.query.filter_by(name=service_name).first()
+    if (not check_if_service_exists) or (check_if_service_exists and not service):
+        service = Service(
+            name=service_name,
+            message_limit=message_limit,
+            restricted=restricted,
+            email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
+            created_by=user if user else create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
+            prefix_sms=prefix_sms,
+            organisation_type=organisation_type,
+            postage=postage
+        )
+        dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 
-    dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
-
-    service.active = active
-    service.research_mode = research_mode
+        service.active = active
+        service.research_mode = research_mode
+    else:
+        if user and user not in service.users:
+            dao_add_user_to_service(service, user)
 
     return service
 
@@ -140,6 +148,7 @@ def create_template(
         hidden=False,
         archived=False,
         folder=None,
+        postage=None,
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -150,6 +159,7 @@ def create_template(
         'reply_to': reply_to,
         'hidden': hidden,
         'folder': folder,
+        'postage': postage,
     }
     if template_type != SMS_TYPE:
         data['subject'] = subject
@@ -164,7 +174,7 @@ def create_template(
 
 
 def create_notification(
-        template,
+        template=None,
         job=None,
         job_row_number=None,
         to_field=None,
@@ -190,6 +200,10 @@ def create_notification(
         created_by_id=None,
         postage=None
 ):
+    assert job or template
+    if job:
+        template = job.template
+
     if created_at is None:
         created_at = datetime.utcnow()
 
@@ -261,7 +275,8 @@ def create_job(
         job_status='pending',
         scheduled_for=None,
         processing_started=None,
-        original_file_name='some.csv'
+        original_file_name='some.csv',
+        archived=False
 ):
     data = {
         'id': uuid.uuid4(),
@@ -275,7 +290,8 @@ def create_job(
         'created_by': template.created_by,
         'job_status': job_status,
         'scheduled_for': scheduled_for,
-        'processing_started': processing_started
+        'processing_started': processing_started,
+        'archived': archived
     }
     job = Job(**data)
     dao_create_job(job)
@@ -555,6 +571,8 @@ def create_ft_notification_status(
     notification_status='delivered',
     count=1
 ):
+    if job:
+        template = job.template
     if template:
         service = template.service
         notification_type = template.template_type

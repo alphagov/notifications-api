@@ -1,5 +1,4 @@
 import itertools
-import time
 import uuid
 import datetime
 from flask import url_for, current_app
@@ -258,6 +257,7 @@ LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
 UPLOAD_DOCUMENT = 'upload_document'
 EDIT_FOLDERS = 'edit_folders'
+CHOOSE_POSTAGE = 'choose_postage'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -271,6 +271,7 @@ SERVICE_PERMISSION_TYPES = [
     PRECOMPILED_LETTER,
     UPLOAD_DOCUMENT,
     EDIT_FOLDERS,
+    CHOOSE_POSTAGE
 ]
 
 
@@ -763,6 +764,15 @@ class TemplateBase(db.Model):
     archived = db.Column(db.Boolean, nullable=False, default=False)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
+    postage = db.Column(db.String, nullable=True)
+    CheckConstraint("""
+        CASE WHEN template_type = 'letter' THEN
+            postage in ('first', 'second') OR
+            postage is null
+        ELSE
+            postage is null
+        END
+    """)
 
     @declared_attr
     def service_id(cls):
@@ -862,6 +872,7 @@ class TemplateBase(db.Model):
                 }
                 for key in self._as_utils_template().placeholders
             },
+            "postage": self.postage,
         }
 
         return serialized
@@ -1067,6 +1078,7 @@ class Job(db.Model):
     job_status = db.Column(
         db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=False, default='pending'
     )
+    archived = db.Column(db.Boolean, nullable=False, default=False)
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
@@ -1134,6 +1146,7 @@ NOTIFICATION_STATUS_TYPES_COMPLETED = [
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_CANCELLED,
 ]
 
 NOTIFICATION_STATUS_SUCCESS = [
@@ -1411,6 +1424,12 @@ class Notification(db.Model):
         else:
             return None
 
+    def get_created_by_email_address(self):
+        if self.created_by:
+            return self.created_by.email_address
+        else:
+            return None
+
     def serialize_for_csv(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         serialized = {
@@ -1420,8 +1439,9 @@ class Notification(db.Model):
             "template_type": self.template.template_type,
             "job_name": self.job.original_file_name if self.job else '',
             "status": self.formatted_status,
-            "created_at": time.strftime('%A %d %B %Y at %H:%M', created_at_in_bst.timetuple()),
+            "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
             "created_by_name": self.get_created_by_name(),
+            "created_by_email_address": self.get_created_by_email_address(),
         }
 
         return serialized
@@ -1812,48 +1832,6 @@ class AuthType(db.Model):
     __tablename__ = 'auth_type'
 
     name = db.Column(db.String, primary_key=True)
-
-
-class StatsTemplateUsageByMonth(db.Model):
-    __tablename__ = "stats_template_usage_by_month"
-
-    template_id = db.Column(
-        UUID(as_uuid=True),
-        db.ForeignKey('templates.id'),
-        unique=False,
-        index=True,
-        nullable=False,
-        primary_key=True
-    )
-    month = db.Column(
-        db.Integer,
-        nullable=False,
-        index=True,
-        unique=False,
-        primary_key=True,
-        default=datetime.datetime.month
-    )
-    year = db.Column(
-        db.Integer,
-        nullable=False,
-        index=True,
-        unique=False,
-        primary_key=True,
-        default=datetime.datetime.year
-    )
-    count = db.Column(
-        db.Integer,
-        nullable=False,
-        default=0
-    )
-
-    def serialize(self):
-        return {
-            'template_id': str(self.template_id),
-            'month': self.month,
-            'year': self.year,
-            'count': self.count
-        }
 
 
 class DailySortedLetter(db.Model):

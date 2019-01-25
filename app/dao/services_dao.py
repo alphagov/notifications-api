@@ -1,8 +1,8 @@
 import uuid
-from datetime import date, datetime, timedelta, time
+from datetime import date, datetime, timedelta
 
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import asc, func, extract
+from sqlalchemy import asc, func
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -11,9 +11,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
-from app.dao.date_util import get_financial_year
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
-from app.dao.stats_template_usage_by_month_dao import dao_get_template_usage_stats_by_service
 from app.models import (
     AnnualBilling,
     ApiKey,
@@ -37,7 +35,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import get_london_month_from_utc_column, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -335,51 +333,6 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
     return query.all()
 
 
-@statsd(namespace='dao')
-def fetch_stats_by_date_range_for_all_services(start_date, end_date, include_from_test_key=True, only_active=True):
-    start_date = get_london_midnight_in_utc(start_date)
-    end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
-    table = NotificationHistory
-
-    if start_date >= datetime.utcnow() - timedelta(days=7):
-        table = Notification
-    subquery = db.session.query(
-        table.notification_type,
-        table.status,
-        table.service_id,
-        func.count(table.id).label('count')
-    ).filter(
-        table.created_at >= start_date,
-        table.created_at < end_date
-    ).group_by(
-        table.notification_type,
-        table.status,
-        table.service_id
-    )
-    if not include_from_test_key:
-        subquery = subquery.filter(table.key_type != KEY_TYPE_TEST)
-    subquery = subquery.subquery()
-
-    query = db.session.query(
-        Service.id.label('service_id'),
-        Service.name,
-        Service.restricted,
-        Service.research_mode,
-        Service.active,
-        Service.created_at,
-        subquery.c.notification_type,
-        subquery.c.status,
-        subquery.c.count
-    ).outerjoin(
-        subquery,
-        subquery.c.service_id == Service.id
-    ).order_by(Service.id)
-    if only_active:
-        query = query.filter(Service.active)
-
-    return query.all()
-
-
 @transactional
 @version_class(Service)
 @version_class(ApiKey)
@@ -411,98 +364,3 @@ def dao_fetch_active_users_for_service(service_id):
     )
 
     return query.all()
-
-
-@statsd(namespace="dao")
-def dao_fetch_monthly_historical_stats_by_template():
-    month = get_london_month_from_utc_column(NotificationHistory.created_at)
-    year = func.date_trunc("year", NotificationHistory.created_at)
-    end_date = datetime.combine(date.today(), time.min)
-
-    return db.session.query(
-        NotificationHistory.template_id,
-        extract('month', month).label('month'),
-        extract('year', year).label('year'),
-        func.count().label('count')
-    ).filter(
-        NotificationHistory.created_at < end_date
-    ).group_by(
-        NotificationHistory.template_id,
-        month,
-        year
-    ).order_by(
-        year,
-        month
-    ).all()
-
-
-@statsd(namespace="dao")
-def dao_fetch_monthly_historical_usage_by_template_for_service(service_id, year):
-
-    results = dao_get_template_usage_stats_by_service(service_id, year)
-
-    stats = []
-    for result in results:
-        stat = type("", (), {})()
-        stat.template_id = result.template_id
-        stat.template_type = result.template_type
-        stat.name = str(result.name)
-        stat.month = result.month
-        stat.year = result.year
-        stat.count = result.count
-        stat.is_precompiled_letter = result.is_precompiled_letter
-        stats.append(stat)
-
-    month = get_london_month_from_utc_column(Notification.created_at)
-    year_func = func.date_trunc("year", Notification.created_at)
-    start_date = datetime.combine(date.today(), time.min)
-
-    fy_start, fy_end = get_financial_year(year)
-
-    if fy_start < datetime.now() < fy_end:
-        today_results = db.session.query(
-            Notification.template_id,
-            Template.is_precompiled_letter,
-            Template.name,
-            Template.template_type,
-            extract('month', month).label('month'),
-            extract('year', year_func).label('year'),
-            func.count().label('count')
-        ).join(
-            Template, Notification.template_id == Template.id,
-        ).filter(
-            Notification.created_at >= start_date,
-            Notification.service_id == service_id,
-            # we don't want to include test keys
-            Notification.key_type != KEY_TYPE_TEST
-        ).group_by(
-            Notification.template_id,
-            Template.hidden,
-            Template.name,
-            Template.template_type,
-            month,
-            year_func
-        ).order_by(
-            Notification.template_id
-        ).all()
-
-        for today_result in today_results:
-            add_to_stats = True
-            for stat in stats:
-                if today_result.template_id == stat.template_id and today_result.month == stat.month \
-                        and today_result.year == stat.year:
-                    stat.count = stat.count + today_result.count
-                    add_to_stats = False
-
-            if add_to_stats:
-                new_stat = type("StatsTemplateUsageByMonth", (), {})()
-                new_stat.template_id = today_result.template_id
-                new_stat.template_type = today_result.template_type
-                new_stat.name = today_result.name
-                new_stat.month = int(today_result.month)
-                new_stat.year = int(today_result.year)
-                new_stat.count = today_result.count
-                new_stat.is_precompiled_letter = today_result.is_precompiled_letter
-                stats.append(new_stat)
-
-    return stats

@@ -7,6 +7,8 @@ from flask import (
     current_app,
     Blueprint
 )
+from notifications_utils.letter_timings import letter_can_be_cancelled
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -21,7 +23,8 @@ from app.dao.api_key_dao import (
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
-    fetch_notification_status_for_service_for_today_and_7_previous_days
+    fetch_notification_status_for_service_for_today_and_7_previous_days,
+    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
@@ -46,7 +49,6 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
-    dao_fetch_monthly_historical_usage_by_template_for_service,
     dao_fetch_service_by_id,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
@@ -54,7 +56,6 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_suspend_service,
     dao_update_service,
-    fetch_stats_by_date_range_for_all_services
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -80,7 +81,8 @@ from app.errors import (
     InvalidRequest,
     register_errors
 )
-from app.models import Service, EmailBranding
+from app.letters.utils import letter_print_day
+from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Service, EmailBranding
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_data_retention_schema import (
@@ -103,7 +105,7 @@ from app.schemas import (
     notifications_filter_schema,
     detailed_service_schema
 )
-from app.utils import pagination_links, convert_utc_to_bst
+from app.utils import pagination_links
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -342,16 +344,20 @@ def get_all_notifications_for_service(service_id):
     include_from_test_key = data.get('include_from_test_key', False)
     include_one_off = data.get('include_one_off', True)
 
+    count_pages = data.get('count_pages', True)
+
     pagination = notifications_dao.get_notifications_for_service(
         service_id,
         filter_dict=data,
         page=page,
         page_size=page_size,
+        count_pages=count_pages,
         limit_days=limit_days,
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
         include_one_off=include_one_off
     )
+
     kwargs = request.args.to_dict()
     kwargs['service_id'] = service_id
 
@@ -381,6 +387,31 @@ def get_notification_for_service(service_id, notification_id):
     )
     return jsonify(
         notification_with_template_schema.dump(notification).data,
+    ), 200
+
+
+@service_blueprint.route('/<uuid:service_id>/notifications/<uuid:notification_id>/cancel', methods=['POST'])
+def cancel_notification_for_service(service_id, notification_id):
+    notification = notifications_dao.get_notification_by_id(notification_id, service_id)
+
+    if not notification:
+        raise InvalidRequest('Notification not found', status_code=404)
+    elif notification.notification_type != LETTER_TYPE:
+        raise InvalidRequest('Notification cannot be cancelled - only letters can be cancelled', status_code=400)
+    elif not letter_can_be_cancelled(notification.status, notification.created_at):
+        print_day = letter_print_day(notification.created_at)
+
+        raise InvalidRequest(
+            "It’s too late to cancel this letter. Printing started {} at 5.30pm".format(print_day),
+            status_code=400)
+
+    updated_notification = notifications_dao.update_notification_status_by_id(
+        notification_id,
+        NOTIFICATION_CANCELLED,
+    )
+
+    return jsonify(
+        notification_with_template_schema.dump(updated_notification).data
     ), 200
 
 
@@ -444,17 +475,14 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
                                                         only_active=only_active)
     else:
 
-        stats = fetch_stats_by_date_range_for_all_services(start_date=start_date,
+        stats = fetch_stats_for_all_services_by_date_range(start_date=start_date,
                                                            end_date=end_date,
                                                            include_from_test_key=include_from_test_key,
-                                                           only_active=only_active)
+                                                           )
     results = []
     for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         rows = list(rows)
-        if rows[0].count is None:
-            s = statistics.create_zeroed_stats_dicts()
-        else:
-            s = statistics.format_statistics(rows)
+        s = statistics.format_statistics(rows)
         results.append({
             'id': str(rows[0].service_id),
             'name': rows[0].name,
@@ -551,11 +579,12 @@ def resume_service(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications/templates_usage/monthly', methods=['GET'])
 def get_monthly_template_usage(service_id):
     try:
-        data = dao_fetch_monthly_historical_usage_by_template_for_service(
-            service_id,
-            int(request.args.get('year', 'NaN'))
+        start_date, end_date = get_financial_year(int(request.args.get('year', 'NaN')))
+        data = fetch_monthly_template_usage_for_service(
+            start_date=start_date,
+            end_date=end_date,
+            service_id=service_id
         )
-
         stats = list()
         for i in data:
             stats.append(

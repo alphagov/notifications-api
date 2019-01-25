@@ -1,10 +1,12 @@
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 from functools import partial
 
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.orm.exc import NoResultFound
+
 
 from app.dao.notifications_dao import (
     dao_create_notification,
@@ -14,7 +16,6 @@ from app.dao.notifications_dao import (
     dao_get_last_template_usage,
     dao_get_notifications_by_to_field,
     dao_get_scheduled_notifications,
-    dao_get_template_usage,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
@@ -33,7 +34,6 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references,
     dao_get_notification_history_by_reference,
     notifications_not_yet_sent,
-    fetch_aggregate_stats_by_date_range_for_all_services,
 )
 from app.dao.services_dao import dao_update_service
 from app.models import (
@@ -43,6 +43,8 @@ from app.models import (
     ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
@@ -67,7 +69,6 @@ from tests.app.db import (
 
 def test_should_have_decorated_notifications_dao_functions():
     assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
-    assert dao_get_template_usage.__wrapped__.__name__ == 'dao_get_template_usage'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
@@ -139,6 +140,14 @@ def test_should_update_status_by_id_if_created(notify_db, notify_db_session):
     updated = update_notification_status_by_id(notification.id, 'failed')
     assert Notification.query.get(notification.id).status == 'failed'
     assert updated.status == 'failed'
+
+
+def test_should_update_status_by_id_if_pending_virus_check(notify_db, notify_db_session):
+    notification = sample_notification(notify_db, notify_db_session, status='pending-virus-check')
+    assert Notification.query.get(notification.id).status == 'pending-virus-check'
+    updated = update_notification_status_by_id(notification.id, 'cancelled')
+    assert Notification.query.get(notification.id).status == 'cancelled'
+    assert updated.status == 'cancelled'
 
 
 def test_should_update_status_by_id_and_set_sent_by(notify_db, notify_db_session):
@@ -512,7 +521,7 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
     assert notification_from_db.status == 'created'
 
 
-def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
+def test_get_notification_with_personalisation_by_id(notify_db, notify_db_session, sample_template):
     notification = sample_notification(notify_db=notify_db, notify_db_session=notify_db_session,
                                        template=sample_template,
                                        scheduled_for='2017-05-05 14:15',
@@ -524,6 +533,25 @@ def test_get_notification_by_id(notify_db, notify_db_session, sample_template):
     )
     assert notification == notification_from_db
     assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
+
+
+def test_get_notification_by_id_when_notification_exists(sample_notification):
+    notification_from_db = get_notification_by_id(sample_notification.id)
+
+    assert sample_notification == notification_from_db
+
+
+def test_get_notification_by_id_when_notification_does_not_exist(notify_db_session, fake_uuid):
+    notification_from_db = get_notification_by_id(fake_uuid)
+
+    assert notification_from_db is None
+
+
+def test_get_notification_by_id_when_notification_exists_for_different_service(sample_notification):
+    another_service = create_service(service_name='Another service')
+
+    with pytest.raises(NoResultFound):
+        get_notification_by_id(sample_notification.id, another_service.id, _raise=True)
 
 
 def test_get_notifications_by_reference(sample_template):
@@ -879,6 +907,16 @@ def test_should_return_notifications_including_one_offs_by_default(sample_user, 
     assert len(include_one_offs_by_default) == 2
 
 
+def test_should_not_count_pages_when_given_a_flag(sample_user, sample_template):
+    create_notification(sample_template)
+    notification = create_notification(sample_template)
+
+    pagination = get_notifications_for_service(sample_template.service_id, count_pages=False, page_size=1)
+    assert len(pagination.items) == 1
+    assert pagination.total is None
+    assert pagination.items[0].id == notification.id
+
+
 def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excluding_test_key_notifications(
         notify_db,
         notify_db_session,
@@ -1177,131 +1215,85 @@ def test_get_total_sent_notifications_for_email_excludes_sms_counts(
     assert total_count == 2
 
 
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_returns_for_sent_notifications(
-    sample_template
+@pytest.mark.parametrize(
+    "normal_sending,slow_sending,normal_delivered,slow_delivered,threshold,expected_result",
+    [
+        (0, 0, 0, 0, 0.1, False),
+        (1, 0, 0, 0, 0.1, False),
+        (1, 1, 0, 0, 0.1, True),
+        (0, 0, 1, 1, 0.1, True),
+        (1, 1, 1, 1, 0.5, True),
+        (1, 1, 1, 1, 0.6, False),
+        (45, 5, 45, 5, 0.1, True),
+    ]
+)
+@freeze_time("2018-12-04 12:00:00.000000")
+def test_is_delivery_slow_for_provider(
+    notify_db_session,
+    sample_template,
+    normal_sending,
+    slow_sending,
+    normal_delivered,
+    slow_delivered,
+    threshold,
+    expected_result
 ):
-    now = datetime.utcnow()
-    one_minute_from_now = now + timedelta(minutes=1)
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
+    normal_notification = partial(
         create_notification,
         template=sample_template,
-        status='delivered',
         sent_by='mmg',
-        updated_at=five_minutes_from_now
+        sent_at=datetime.now(),
+        updated_at=datetime.now()
     )
 
-    notification_five_minutes_to_deliver(sent_at=now)
-    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
-    notification_five_minutes_to_deliver(sent_at=one_minute_from_now)
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=one_minute_from_now,
-        provider='mmg',
-        threshold=2,
-        delivery_time=timedelta(minutes=3),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert slow_delivery
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_observes_threshold(
-    sample_template
-):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
+    slow_notification = partial(
         create_notification,
         template=sample_template,
-        status='delivered',
-        sent_at=now,
         sent_by='mmg',
-        updated_at=five_minutes_from_now
+        sent_at=datetime.now() - timedelta(minutes=5),
+        updated_at=datetime.now()
     )
 
-    notification_five_minutes_to_deliver()
-    notification_five_minutes_to_deliver()
+    for _ in range(normal_sending):
+        normal_notification(status='sending')
+    for _ in range(slow_sending):
+        slow_notification(status='sending')
+    for _ in range(normal_delivered):
+        normal_notification(status='delivered')
+    for _ in range(slow_delivered):
+        slow_notification(status='delivered')
 
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='mmg',
-        threshold=3,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert not slow_delivery
+    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", threshold, timedelta(minutes=4)) is expected_result
 
 
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_returns_for_delivered_notifications_only(
-    sample_template
+@pytest.mark.parametrize("options,expected_result", [
+    ({"status": NOTIFICATION_TEMPORARY_FAILURE, "sent_by": "mmg"}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "firetext"}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "sent_at": None}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "firetext"}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "sent_at": None}, False),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
+])
+@freeze_time("2018-12-04 12:00:00.000000")
+def test_delivery_is_delivery_slow_for_provider_filters_out_notifications_it_should_not_count(
+    notify_db_session,
+    sample_template,
+    options,
+    expected_result
 ):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification_five_minutes_to_deliver = partial(
-        create_notification,
-        template=sample_template,
-        sent_at=now,
-        sent_by='firetext',
-        created_at=now,
-        updated_at=five_minutes_from_now
+    create_notification_with = {
+        "template": sample_template,
+        "sent_at": datetime.now() - timedelta(minutes=5),
+        "updated_at": datetime.now(),
+    }
+    create_notification_with.update(options)
+    create_notification(
+        **create_notification_with
     )
-
-    notification_five_minutes_to_deliver(status='sending')
-    notification_five_minutes_to_deliver(status='delivered')
-    notification_five_minutes_to_deliver(status='delivered')
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='firetext',
-        threshold=2,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert slow_delivery
-
-
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_slow_provider_delivery_does_not_return_for_standard_delivery_time(
-    sample_template
-):
-    now = datetime.utcnow()
-    five_minutes_from_now = now + timedelta(minutes=5)
-
-    notification = partial(
-        create_notification,
-        template=sample_template,
-        created_at=now,
-        sent_at=now,
-        sent_by='mmg',
-        status='delivered'
-    )
-
-    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    notification(updated_at=five_minutes_from_now - timedelta(seconds=1))
-    notification(updated_at=five_minutes_from_now)
-
-    slow_delivery = is_delivery_slow_for_provider(
-        sent_at=now,
-        provider='mmg',
-        threshold=2,
-        delivery_time=timedelta(minutes=5),
-        service_id=sample_template.service.id,
-        template_id=sample_template.id
-    )
-
-    assert not slow_delivery
+    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", 0.1, timedelta(minutes=4)) is expected_result
 
 
 def test_dao_get_notifications_by_to_field(sample_template):
@@ -1802,51 +1794,3 @@ def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_
 
     results = notifications_not_yet_sent(older_than, notification_type)
     assert len(results) == 0
-
-
-def test_fetch_aggregate_stats_by_date_range_for_all_services_returns_empty_list_when_no_stats(notify_db_session):
-    start_date = date(2018, 1, 1)
-    end_date = date(2018, 1, 5)
-
-    result = fetch_aggregate_stats_by_date_range_for_all_services(start_date, end_date)
-    assert result == []
-
-
-@freeze_time('2018-01-08')
-def test_fetch_aggregate_stats_by_date_range_for_all_services_groups_stats(
-    sample_template,
-    sample_email_template,
-    sample_letter_template,
-):
-    today = datetime.now().date()
-
-    for i in range(3):
-        create_notification(template=sample_email_template, status='permanent-failure',
-                            created_at=today)
-
-    create_notification(template=sample_email_template, status='sent', created_at=today)
-    create_notification(template=sample_template, status='sent', created_at=today)
-    create_notification(template=sample_template, status='sent', created_at=today,
-                        key_type=KEY_TYPE_TEAM)
-    create_notification(template=sample_letter_template, status='virus-scan-failed',
-                        created_at=today)
-
-    result = fetch_aggregate_stats_by_date_range_for_all_services(today, today)
-
-    assert len(result) == 5
-    assert ('email', 'permanent-failure', 'normal', 3) in result
-    assert ('email', 'sent', 'normal', 1) in result
-    assert ('sms', 'sent', 'normal', 1) in result
-    assert ('sms', 'sent', 'team', 1) in result
-    assert ('letter', 'virus-scan-failed', 'normal', 1) in result
-
-
-def test_fetch_aggregate_stats_by_date_range_for_all_services_uses_bst_date(sample_template):
-    query_day = datetime(2018, 6, 5).date()
-    create_notification(sample_template, status='sent', created_at=datetime(2018, 6, 4, 23, 59))
-    create_notification(sample_template, status='created', created_at=datetime(2018, 6, 5, 23, 00))
-
-    result = fetch_aggregate_stats_by_date_range_for_all_services(query_day, query_day)
-
-    assert len(result) == 1
-    assert result[0].status == 'sent'
