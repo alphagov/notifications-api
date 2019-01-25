@@ -1,5 +1,5 @@
 import json
-
+import uuid
 
 from app.models import LetterBranding
 from tests import create_authorization_header
@@ -22,6 +22,22 @@ def test_get_all_letter_brands(client, notify_db_session):
             assert test_domain_branding.serialize() == brand
         else:
             assert False
+
+
+def test_get_letter_branding_by_id(client, notify_db_session):
+    hm_gov = create_letter_branding()
+    create_letter_branding(
+        name='test domain', filename='test-domain', domain='test.domain'
+    )
+    response = client.get('/letter-branding/{}'.format(hm_gov.id), headers=[create_authorization_header()])
+
+    assert response.status_code == 200
+    assert json.loads(response.get_data(as_text=True)) == hm_gov.serialize()
+
+
+def test_get_letter_branding_by_id_returns_404_if_does_not_exist(client, notify_db_session):
+    response = client.get('/letter-branding/{}'.format(uuid.uuid4()), headers=[create_authorization_header()])
+    assert response.status_code == 404
 
 
 def test_create_letter_branding(client, notify_db_session):

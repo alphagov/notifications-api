@@ -1,11 +1,29 @@
+import uuid
+
+import pytest
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.dao.letter_branding_dao import (
     dao_get_letter_branding_by_domain,
     dao_get_all_letter_branding,
     dao_create_letter_branding,
-    dao_update_letter_branding
+    dao_update_letter_branding,
+    dao_get_letter_branding_by_id
 )
 from app.models import LetterBranding
 from tests.app.db import create_letter_branding
+
+
+def test_dao_get_letter_branding_by_id(notify_db_session):
+    letter_branding = create_letter_branding()
+    result = dao_get_letter_branding_by_id(letter_branding.id)
+
+    assert result == letter_branding
+
+
+def test_dao_get_letter_brand_by_id_raises_exception_if_does_not_exist(notify_db_session):
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        dao_get_letter_branding_by_id(uuid.uuid4())
 
 
 def test_dao_get_letter_branding_by_domain_returns_none_if_no_matching_domains(notify_db_session):

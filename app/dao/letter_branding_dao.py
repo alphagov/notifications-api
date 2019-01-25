@@ -3,6 +3,10 @@ from app.dao.dao_utils import transactional
 from app.models import LetterBranding
 
 
+def dao_get_letter_branding_by_id(letter_branding_id):
+    return LetterBranding.query.filter(LetterBranding.id == letter_branding_id).one()
+
+
 def dao_get_letter_branding_by_domain(domain):
     return LetterBranding.query.filter(
         LetterBranding.domain == domain

@@ -5,7 +5,8 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.letter_branding_dao import (
     dao_get_all_letter_branding, dao_create_letter_branding,
-    dao_update_letter_branding
+    dao_update_letter_branding,
+    dao_get_letter_branding_by_id
 )
 from app.errors import register_errors
 from app.letter_branding.letter_branding_schema import post_letter_branding_schema
@@ -51,6 +52,13 @@ def get_all_letter_brands():
     letter_brands = dao_get_all_letter_branding()
 
     return jsonify([lb.serialize() for lb in letter_brands])
+
+
+@letter_branding_blueprint.route('/<uuid:letter_branding_id>', methods=['GET'])
+def get_letter_brand_by_id(letter_branding_id):
+    letter_branding = dao_get_letter_branding_by_id(letter_branding_id)
+
+    return jsonify(letter_branding.serialize()), 200
 
 
 @letter_branding_blueprint.route('', methods=['POST'])
