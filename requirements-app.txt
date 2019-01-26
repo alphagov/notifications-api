@@ -13,7 +13,7 @@ click-datetime==0.2
 eventlet==0.23.0
 gunicorn==19.7.1
 iso8601==0.1.12
-jsonschema==3.0.0a3
+jsonschema==3.0.0b2
 marshmallow-sqlalchemy==0.15.0
 marshmallow==2.16.3
 psycopg2-binary==2.7.7
