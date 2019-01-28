@@ -22,27 +22,12 @@ def handle_integrity_error(exc):
     """
     Handle integrity errors caused by the unique constraint
     """
-    if 'domain' in str(exc):
-        return jsonify(
-            result='error',
-            message={'name': ["Duplicate domain '{}'".format(
-                exc.params.get('domain')
-            )]}
-        ), 400
-    if 'name' in str(exc):
-        return jsonify(
-            result='error',
-            message={'name': ["Duplicate name '{}'".format(
-                exc.params.get('name')
-            )]}
-        ), 400
-    if 'filename' in str(exc):
-        return jsonify(
-            result='error',
-            message={'name': ["Duplicate filename '{}'".format(
-                exc.params.get('fileaname')
-            )]}
-        ), 400
+    for col in {'domain', 'name', 'filename'}:
+        if 'letter_branding_{}_key'.format(col) in str(exc):
+            return jsonify(
+                result='error',
+                message={col: ["{} already in use".format(col.title())]}
+            ), 400
     current_app.logger.exception(exc)
     return jsonify(result='error', message="Internal server error"), 500
 

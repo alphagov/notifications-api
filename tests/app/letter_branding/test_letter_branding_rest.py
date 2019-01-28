@@ -61,11 +61,11 @@ def test_create_letter_branding(client, notify_db_session):
     assert letter_brand.filename == form['filename']
 
 
-def test_create_letter_branding_returns_400_if_name_already_exists(client, notify_db_session):
+def test_create_letter_branding_returns_400_if_domain_already_exists(client, notify_db_session):
     create_letter_branding(name='duplicate', domain='duplicate', filename='duplicate')
     form = {
-        'name': 'duplicate',
-        'domain': 'super.brand',
+        'name': 'super brand',
+        'domain': 'duplicate',
         'filename': 'super-brand',
     }
 
@@ -77,7 +77,7 @@ def test_create_letter_branding_returns_400_if_name_already_exists(client, notif
 
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp['message'] == {'name': ["Duplicate domain 'super.brand'"]}
+    assert json_resp['message'] == {'domain': ["Domain already in use"]}
 
 
 def test_update_letter_branding_returns_400_when_integrity_error_is_thrown(
@@ -86,8 +86,8 @@ def test_update_letter_branding_returns_400_when_integrity_error_is_thrown(
     create_letter_branding(name='duplicate', domain='duplicate', filename='duplicate')
     brand_to_update = create_letter_branding(name='super brand', domain='super brand', filename='super brand')
     form = {
-        'name': 'super brand',
-        'domain': 'duplicate',
+        'name': 'duplicate',
+        'domain': 'super brand',
         'filename': 'super-brand',
     }
 
@@ -99,4 +99,4 @@ def test_update_letter_branding_returns_400_when_integrity_error_is_thrown(
 
     assert response.status_code == 400
     json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp['message'] == {"name": ["Duplicate domain 'duplicate'"]}
+    assert json_resp['message'] == {"name": ["Name already in use"]}
