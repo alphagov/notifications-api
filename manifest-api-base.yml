@@ -54,6 +54,7 @@ env:
 
 instances: 1
 memory: 1G
+disk_quota: 2G
 
 applications:
   - name: notify-api
