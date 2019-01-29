@@ -274,13 +274,15 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         }
 
         service = dao_fetch_service_by_id(service_id)
-
+        # We only need this while we are migrating to the new letter_branding model
+        letter_logo_filename = service.letter_branding.filename if service.letter_branding \
+            else service.dvla_organisation.filename
         data = {
             'letter_contact_block': notification.reply_to_text,
             'template': template_for_letter_print,
             'values': notification.personalisation,
             'date': notification.created_at.isoformat(),
-            'filename': service.dvla_organisation.filename,
+            'filename': letter_logo_filename,
         }
 
         url = '{}/preview.{}{}'.format(

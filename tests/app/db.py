@@ -50,6 +50,7 @@ from app.models import (
     Complaint,
     InvitedUser,
     TemplateFolder,
+    LetterBranding
 )
 
 
@@ -724,3 +725,13 @@ def create_template_folder(service, name='foo', parent=None):
     db.session.add(tf)
     db.session.commit()
     return tf
+
+
+def create_letter_branding(name='HM Government', filename='hm-government', domain=None):
+    test_domain_branding = LetterBranding(name=name,
+                                          filename=filename,
+                                          domain=domain,
+                                          )
+    db.session.add(test_domain_branding)
+    db.session.commit()
+    return test_domain_branding

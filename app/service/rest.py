@@ -27,6 +27,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_domain
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
@@ -82,7 +83,7 @@ from app.errors import (
     register_errors
 )
 from app.letters.utils import letter_print_day
-from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Service, EmailBranding
+from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Service, EmailBranding, LetterBranding
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_data_retention_schema import (
@@ -182,7 +183,7 @@ def create_service():
     if not data.get('user_id'):
         errors = {'user_id': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
-
+    domain = data.pop('service_domain', None)
     # validate json with marshmallow
     service_schema.load(data)
 
@@ -191,7 +192,9 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    dao_create_service(valid_service, user)
+    letter_branding = dao_get_letter_branding_by_domain(domain)
+    dao_create_service(valid_service, user, letter_branding=letter_branding)
+
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
 
@@ -212,7 +215,9 @@ def update_service(service_id):
     if 'email_branding' in req_json:
         email_branding_id = req_json['email_branding']
         service.email_branding = None if not email_branding_id else EmailBranding.query.get(email_branding_id)
-
+    if 'letter_branding' in req_json:
+        letter_branding_id = req_json['letter_branding']
+        service.letter_branding = None if not letter_branding_id else LetterBranding.query.get(letter_branding_id)
     dao_update_service(service)
 
     if service_going_live:

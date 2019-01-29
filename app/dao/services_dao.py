@@ -150,7 +150,7 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user, service_id=None, service_permissions=None):
+def dao_create_service(service, user, service_id=None, service_permissions=None, letter_branding=None):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
@@ -172,6 +172,8 @@ def dao_create_service(service, user, service_id=None, service_permissions=None)
 
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
+    if letter_branding:
+        service.letter_branding = letter_branding
     db.session.add(service)
 
 
