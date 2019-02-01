@@ -31,7 +31,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.letters.utils import get_letter_pdf
-from app.models import SMS_TYPE, Template, CHOOSE_POSTAGE
+from app.models import SMS_TYPE, Template, SECOND_CLASS, LETTER_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
@@ -78,11 +78,8 @@ def create_template(service_id):
         errors = {'template_type': [message]}
         raise InvalidRequest(errors, 403)
 
-    if new_template.postage:
-        if not service_has_permission(CHOOSE_POSTAGE, fetched_service.permissions):
-            message = "Setting postage on templates is not enabled for this service."
-            errors = {'template_postage': [message]}
-            raise InvalidRequest(errors, 403)
+    if not new_template.postage and new_template.template_type == LETTER_TYPE:
+        new_template.postage = SECOND_CLASS
 
     new_template.service = fetched_service
 
@@ -115,12 +112,6 @@ def update_template(service_id, template_id):
     # if redacting, don't update anything else
     if data.get('redact_personalisation') is True:
         return redact_template(fetched_template, data)
-
-    if data.get('postage'):
-        if not service_has_permission(CHOOSE_POSTAGE, fetched_template.service.permissions):
-            message = "Setting postage on templates is not enabled for this service."
-            errors = {'template_postage': [message]}
-            raise InvalidRequest(errors, 403)
 
     if "reply_to" in data:
         check_reply_to(service_id, data.get("reply_to"), fetched_template.template_type)
