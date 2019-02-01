@@ -29,6 +29,7 @@ from app.models import (
     TemplateRedacted,
     User,
     VerifyCode,
+    EDIT_FOLDERS,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
@@ -42,6 +43,7 @@ DEFAULT_SERVICE_PERMISSIONS = [
     EMAIL_TYPE,
     LETTER_TYPE,
     INTERNATIONAL_SMS_TYPE,
+    EDIT_FOLDERS,
 ]
 
 
