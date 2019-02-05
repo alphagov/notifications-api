@@ -19,8 +19,7 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    SMS_TYPE,
-    CHOOSE_POSTAGE
+    SMS_TYPE
 )
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
@@ -96,20 +95,11 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     mock.assert_called_once_with([str(notification.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
-@pytest.mark.parametrize('service_permissions, service_postage, template_postage, expected_postage', [
-    ([LETTER_TYPE], "second", "first", "second"),
-    ([LETTER_TYPE], "first", "second", "first"),
-    ([LETTER_TYPE], "first", None, "first"),
-    ([LETTER_TYPE, CHOOSE_POSTAGE], "second", "first", "first"),
-    ([LETTER_TYPE, CHOOSE_POSTAGE], "second", None, "second"),
-    ([LETTER_TYPE, CHOOSE_POSTAGE], "second", "second", "second"),
-    ([LETTER_TYPE, CHOOSE_POSTAGE], "first", "second", "second"),
-])
 def test_post_letter_notification_sets_postage(
-    client, notify_db_session, mocker, service_permissions, service_postage, template_postage, expected_postage
+    client, notify_db_session, mocker
 ):
-    service = create_service(service_permissions=service_permissions, postage=service_postage)
-    template = create_template(service, template_type="letter", postage=template_postage)
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type="letter", postage="first")
     mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
     data = {
         'template_id': str(template.id),
@@ -126,7 +116,7 @@ def test_post_letter_notification_sets_postage(
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
-    assert notification.postage == expected_postage
+    assert notification.postage == "first"
 
 
 @pytest.mark.parametrize('env', [
@@ -469,19 +459,15 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
     assert not Notification.query.first()
 
 
-@pytest.mark.parametrize('service_postage, notification_postage, expected_postage', [
-    ('second', 'second', 'second'),
-    ('second', 'first', 'first'),
-    ('second', None, 'second'),
-    ('first', 'first', 'first'),
-    ('first', 'second', 'second'),
-    ('first', None, 'first'),
+@pytest.mark.parametrize('notification_postage, expected_postage', [
+    ('second', 'second'),
+    ('first', 'first'),
+    (None, 'second')
 ])
 def test_post_precompiled_letter_notification_returns_201(
-    client, notify_user, mocker, service_postage, notification_postage, expected_postage
+    client, notify_user, mocker, notification_postage, expected_postage
 ):
     sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
-    sample_service.postage = service_postage
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     data = {

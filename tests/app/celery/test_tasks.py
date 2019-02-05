@@ -40,7 +40,8 @@ from app.models import (
     JOB_STATUS_ERROR,
     JOB_STATUS_IN_PROGRESS,
     LETTER_TYPE,
-    SMS_TYPE
+    SMS_TYPE,
+    PRECOMPILED_LETTER
 )
 
 from tests.app import load_example_csv
@@ -50,6 +51,8 @@ from tests.app.conftest import (
     sample_job as create_sample_job,
     sample_email_template as create_sample_email_template,
     sample_notification as create_sample_notification,
+    sample_letter_template,
+    sample_letter_job
 )
 from tests.app.db import (
     create_inbound_sms,
@@ -1011,22 +1014,22 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
 
 
 @pytest.mark.parametrize('postage', ['first', 'second'])
-def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, sample_letter_job, postage):
-    sample_letter_job.service.postage = postage
+def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, notify_db_session, postage):
+    service = create_service(service_permissions=[LETTER_TYPE, PRECOMPILED_LETTER])
+    template = sample_letter_template(service, postage=postage)
+    letter_job = sample_letter_job(template)
 
     mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
-
     notification_json = _notification_json(
-        template=sample_letter_job.template,
+        template=letter_job.template,
         to='Foo',
         personalisation={'addressline1': 'Foo', 'addressline2': 'Bar', 'postcode': 'Flob'},
-        job_id=sample_letter_job.id,
+        job_id=letter_job.id,
         row_number=1
     )
     notification_id = uuid.uuid4()
-
     save_letter(
-        sample_letter_job.service_id,
+        letter_job.service_id,
         notification_id,
         encryption.encrypt(notification_json),
     )

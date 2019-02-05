@@ -18,8 +18,7 @@ from app.models import (
     LETTER_TYPE,
     SMS_TYPE,
     Template,
-    TemplateHistory,
-    CHOOSE_POSTAGE
+    TemplateHistory
 )
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
@@ -44,7 +43,7 @@ from tests.conftest import set_config_values
 def test_should_create_a_new_template_for_a_service(
     client, sample_user, template_type, subject
 ):
-    service = create_service(service_permissions=[template_type, CHOOSE_POSTAGE])
+    service = create_service(service_permissions=[template_type])
     data = {
         'name': 'my template',
         'template_type': template_type,
@@ -339,7 +338,7 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
 
 
 def test_update_should_update_a_template(client, sample_user):
-    service = create_service(service_permissions=[LETTER_TYPE, CHOOSE_POSTAGE])
+    service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="second")
     data = {
         'content': 'my template has new content, swell!',

@@ -253,6 +253,8 @@ def sample_template(
         data.update({
             'subject': subject_line
         })
+    if template_type == 'letter':
+        data['postage'] = 'second'
     template = Template(**data)
     dao_create_template(template)
 
@@ -317,8 +319,8 @@ def sample_template_without_email_permission(notify_db, notify_db_session):
 
 
 @pytest.fixture
-def sample_letter_template(sample_service_full_permissions):
-    return create_template(sample_service_full_permissions, template_type=LETTER_TYPE)
+def sample_letter_template(sample_service_full_permissions, postage="second"):
+    return create_template(sample_service_full_permissions, template_type=LETTER_TYPE, postage=postage)
 
 
 @pytest.fixture

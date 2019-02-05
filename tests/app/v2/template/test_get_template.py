@@ -10,13 +10,15 @@ from tests.app.db import create_template
 valid_version_params = [None, 1]
 
 
-@pytest.mark.parametrize("tmp_type, expected_name, expected_subject", [
-    (SMS_TYPE, 'sms Template Name', None),
-    (EMAIL_TYPE, 'email Template Name', 'Template subject'),
-    (LETTER_TYPE, 'letter Template Name', 'Template subject')
+@pytest.mark.parametrize("tmp_type, expected_name, expected_subject,postage", [
+    (SMS_TYPE, 'sms Template Name', None, None),
+    (EMAIL_TYPE, 'email Template Name', 'Template subject', None),
+    (LETTER_TYPE, 'letter Template Name', 'Template subject', "second")
 ])
 @pytest.mark.parametrize("version", valid_version_params)
-def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expected_name, expected_subject, version):
+def test_get_template_by_id_returns_200(
+    client, sample_service, tmp_type, expected_name, expected_subject, version, postage
+):
     template = create_template(sample_service, template_type=tmp_type)
     auth_header = create_authorization_header(service_id=sample_service.id)
 
@@ -41,7 +43,7 @@ def test_get_template_by_id_returns_200(client, sample_service, tmp_type, expect
         "subject": expected_subject,
         'name': expected_name,
         'personalisation': {},
-        'postage': None,
+        'postage': postage,
     }
 
     assert json_response == expected_response

@@ -42,6 +42,7 @@ from app.models import (
     User,
     EMAIL_TYPE,
     SMS_TYPE,
+    LETTER_TYPE,
     KEY_TYPE_NORMAL,
     AnnualBilling,
     InvitedOrganisationUser,
@@ -159,9 +160,10 @@ def create_template(
         'created_by': service.created_by,
         'reply_to': reply_to,
         'hidden': hidden,
-        'folder': folder,
-        'postage': postage,
+        'folder': folder
     }
+    if template_type == LETTER_TYPE:
+        data["postage"] = postage or "second"
     if template_type != SMS_TYPE:
         data['subject'] = subject
     template = Template(**data)

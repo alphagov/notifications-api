@@ -12,8 +12,7 @@ from app.models import (
     NotificationHistory,
     ScheduledNotification,
     Template,
-    LETTER_TYPE,
-    CHOOSE_POSTAGE
+    LETTER_TYPE
 )
 from app.notifications.process_notifications import (
     create_content_for_notification,
@@ -466,22 +465,23 @@ def test_persist_email_notification_stores_normalised_email(
 
 
 @pytest.mark.parametrize(
-    "service_permissions, template_postage, expected_postage",
+    "postage_argument, template_postage, expected_postage",
     [
-        ([LETTER_TYPE], "first", "second"),
-        ([LETTER_TYPE, CHOOSE_POSTAGE], "first", "first"),
-        ([LETTER_TYPE, CHOOSE_POSTAGE], None, "second"),
+        ("second", "first", "second"),
+        ("first", "first", "first"),
+        ("first", "second", "first"),
+        (None, "second", "second")
     ]
 )
 def test_persist_letter_notification_finds_correct_postage(
     mocker,
     notify_db,
     notify_db_session,
-    service_permissions,
+    postage_argument,
     template_postage,
     expected_postage
 ):
-    service = create_service(service_permissions=service_permissions, postage="second")
+    service = create_service(service_permissions=[LETTER_TYPE])
     api_key = create_api_key(notify_db, notify_db_session, service=service)
     template = create_template(service, template_type=LETTER_TYPE, postage=template_postage)
     mocker.patch('app.dao.templates_dao.dao_get_template_by_id', return_value=template)
@@ -495,6 +495,7 @@ def test_persist_letter_notification_finds_correct_postage(
         notification_type=LETTER_TYPE,
         api_key_id=api_key.id,
         key_type=api_key.key_type,
+        postage=postage_argument
     )
     persisted_notification = Notification.query.all()[0]
 
@@ -502,18 +503,22 @@ def test_persist_letter_notification_finds_correct_postage(
 
 
 def test_persist_notification_with_billable_units_stores_correct_info(
-    sample_template,
+    mocker
 ):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type=LETTER_TYPE)
+    mocker.patch('app.dao.templates_dao.dao_get_template_by_id', return_value=template)
     persist_notification(
-        template_id=sample_template.id,
-        template_version=sample_template.version,
+        template_id=template.id,
+        template_version=template.version,
         recipient="123 Main Street",
-        service=sample_template.service,
+        service=template.service,
         personalisation=None,
-        notification_type='letter',
+        notification_type=template.template_type,
         api_key_id=None,
         key_type="normal",
-        billable_units=3
+        billable_units=3,
+        template_postage=template.postage
     )
     persisted_notification = Notification.query.all()[0]
 
