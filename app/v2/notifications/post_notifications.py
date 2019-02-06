@@ -28,6 +28,7 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
+    SECOND_CLASS
 )
 from app.notifications.process_letter_notifications import (
     create_letter_notification
@@ -355,6 +356,7 @@ def get_precompiled_letter_template(service_id):
         hidden=True,
         subject='Pre-compiled PDF',
         content='',
+        postage=SECOND_CLASS
     )
 
     dao_create_template(template)
