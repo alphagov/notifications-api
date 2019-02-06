@@ -651,7 +651,7 @@ def update_emails_to_remove_gsi(service_id):
     print("Updating {} users.".format(results.rowcount))
 
     for user in results:
-        print(user)
+        print('User with id {} updated'.format(user.user_id))
 
         update_stmt = """
         UPDATE users
