@@ -641,7 +641,7 @@ def update_jobs_archived_flag(start_date, end_date):
 @statsd(namespace="tasks")
 def update_emails_to_remove_gsi(service_id):
     users_to_update = """SELECT u.id user_id, u.name, email_address, s.id, s.name
-                           FROM users u 
+                           FROM users u
                            JOIN user_to_service us on (u.id = us.user_id)
                            JOIN services s on (s.id = us.service_id)
                           WHERE s.id = :service_id
@@ -654,12 +654,10 @@ def update_emails_to_remove_gsi(service_id):
         print(user)
 
         update_stmt = """
-        UPDATE users 
-           SET email_address = replace(replace(email_address, '.gsi.gov.uk', '.gov.uk'), '.GSI.GOV.UK', '.GOV.UK'), 
+        UPDATE users
+           SET email_address = replace(replace(email_address, '.gsi.gov.uk', '.gov.uk'), '.GSI.GOV.UK', '.GOV.UK'),
                updated_at = now()
          WHERE id = :user_id
         """
-        r = db.session.execute(update_stmt, {'user_id': str(user.user_id)})
+        db.session.execute(update_stmt, {'user_id': str(user.user_id)})
         db.session.commit()
-
-
