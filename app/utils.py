@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from flask import url_for
 from sqlalchemy import func
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, get_html_email_body
 from notifications_utils.timezones import convert_utc_to_bst
 
 local_timezone = pytz.timezone("Europe/London")
@@ -33,6 +33,18 @@ def get_template_instance(template, values):
     return {
         SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: WithSubjectTemplate, LETTER_TYPE: WithSubjectTemplate
     }[template['template_type']](template, values)
+
+
+def get_html_email_body_from_template(template_instance):
+    from app.models import EMAIL_TYPE
+
+    if template_instance.template_type != EMAIL_TYPE:
+        return None
+
+    return get_html_email_body(
+        template_instance.content,
+        template_instance.values,
+    )
 
 
 def get_london_midnight_in_utc(date):

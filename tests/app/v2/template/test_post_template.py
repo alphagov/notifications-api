@@ -2,7 +2,7 @@ import pytest
 
 from flask import json
 
-from app.models import SMS_TYPE, TEMPLATE_TYPES
+from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 
@@ -16,36 +16,68 @@ valid_post = [
         "Some content",
         None,
         "Some subject",
-        "Some content"
+        "Some content",
+        (
+            '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            'Some content'
+            '</p>'
+        ),
     ),
     (
         "Some subject",
         "Dear ((Name)), Hello. Yours Truly, The Government.",
         valid_personalisation,
         "Some subject",
-        "Dear Jo, Hello. Yours Truly, The Government."
+        "Dear Jo, Hello. Yours Truly, The Government.",
+        (
+            '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            'Dear Jo, Hello. Yours Truly, The Government.'
+            '</p>'
+        ),
     ),
     (
         "Message for ((Name))",
         "Dear ((Name)), Hello. Yours Truly, The Government.",
         valid_personalisation,
         "Message for Jo",
-        "Dear Jo, Hello. Yours Truly, The Government."
+        "Dear Jo, Hello. Yours Truly, The Government.",
+        (
+            '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            'Dear Jo, Hello. Yours Truly, The Government.'
+            '</p>'
+        ),
     ),
     (
         "Message for ((Name))",
         "Some content",
         valid_personalisation,
         "Message for Jo",
-        "Some content"
+        "Some content",
+        (
+            '<p style="Margin: 0 0 20px 0; font-size: 19px; line-height: 25px; color: #0B0C0C;">'
+            'Some content'
+            '</p>'
+        ),
     ),
 ]
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
-@pytest.mark.parametrize("subject,content,post_data,expected_subject,expected_content", valid_post)
+@pytest.mark.parametrize(
+    "subject,content,post_data,expected_subject,expected_content,expected_html",
+    valid_post
+)
 def test_valid_post_template_returns_200(
-        client, sample_service, tmp_type, subject, content, post_data, expected_subject, expected_content):
+    client,
+    sample_service,
+    tmp_type,
+    subject,
+    content,
+    post_data,
+    expected_subject,
+    expected_content,
+    expected_html,
+):
     template = create_template(
         sample_service,
         template_type=tmp_type,
@@ -64,8 +96,15 @@ def test_valid_post_template_returns_200(
     resp_json = json.loads(response.get_data(as_text=True))
 
     assert resp_json['id'] == str(template.id)
+
     if tmp_type != SMS_TYPE:
         assert expected_subject in resp_json['subject']
+
+    if tmp_type == EMAIL_TYPE:
+        assert resp_json['html'] == expected_html
+    else:
+        assert resp_json['html'] is None
+
     assert expected_content in resp_json['body']
 
 

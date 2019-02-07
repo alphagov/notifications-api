@@ -1,5 +1,6 @@
 from app.models import SMS_TYPE, TEMPLATE_TYPES
 from app.schema_validation.definitions import uuid, personalisation
+from app.utils import get_html_email_body_from_template
 
 
 get_template_by_id_request = {
@@ -79,6 +80,7 @@ def create_post_template_preview_response(template, template_object):
         "type": template.template_type,
         "version": template.version,
         "body": str(template_object),
+        "html": get_html_email_body_from_template(template_object),
         "subject": subject,
         "postage": template.postage
     }
