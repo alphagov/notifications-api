@@ -66,9 +66,11 @@ post_template_preview_response = {
         "version": {"type": "integer"},
         "body": {"type": "string"},
         "subject": {"type": ["string", "null"]},
-        "postage": {"type": "string"}
+        "postage": {"type": "string"},
+        "html": {"type": ["string", "null"]},
     },
-    "required": ["id", "type", "version", "body"]
+    "required": ["id", "type", "version", "body"],
+    "additionalProperties": False,
 }
 
 
