@@ -71,17 +71,16 @@ valid_json_post_response = {
     'id': str(uuid.uuid4()),
     'type': 'email',
     'version': 1,
-    'created_by': 'someone@test.com',
-    'body': 'some body'
+    'body': 'some body',
 }
 
 valid_json_post_response_with_optionals = {
     'id': str(uuid.uuid4()),
     'type': 'email',
     'version': 1,
-    'created_by': 'someone@test.com',
     'body': "some body",
-    'subject': 'some subject'
+    'subject': 'some subject',
+    'html': '<p>some body</p>',
 }
 
 
