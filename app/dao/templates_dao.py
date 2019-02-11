@@ -64,6 +64,7 @@ def dao_update_template_reply_to(template_id, reply_to):
                                   "content": template.content,
                                   "service_id": template.service_id,
                                   "subject": template.subject,
+                                  "postage": template.postage,
                                   "created_by_id": template.created_by_id,
                                   "version": template.version,
                                   "archived": template.archived,

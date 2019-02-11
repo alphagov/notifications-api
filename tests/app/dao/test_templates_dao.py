@@ -37,6 +37,8 @@ def test_create_template(sample_service, sample_user, template_type, subject):
         'service': sample_service,
         'created_by': sample_user
     }
+    if template_type == 'letter':
+        data['postage'] = 'second'
     if subject:
         data.update({'subject': subject})
     template = Template(**data)
@@ -69,6 +71,7 @@ def test_create_template_with_reply_to(sample_service, sample_user):
         'service': sample_service,
         'created_by': sample_user,
         'reply_to': letter_contact.id,
+        'postage': 'second'
     }
     template = Template(**data)
     dao_create_template(template)
@@ -132,6 +135,7 @@ def test_dao_update_template_reply_to_none_to_some(sample_service, sample_user):
         'content': "Template content",
         'service': sample_service,
         'created_by': sample_user,
+        'postage': 'second'
     }
     template = Template(**data)
     dao_create_template(template)
@@ -162,7 +166,8 @@ def test_dao_update_template_reply_to_some_to_some(sample_service, sample_user):
         'content': "Template content",
         'service': sample_service,
         'created_by': sample_user,
-        'service_letter_contact_id': letter_contact.id
+        'service_letter_contact_id': letter_contact.id,
+        'postage': 'second',
     }
     template = Template(**data)
     dao_create_template(template)
@@ -186,7 +191,8 @@ def test_dao_update_template_reply_to_some_to_none(sample_service, sample_user):
         'content': "Template content",
         'service': sample_service,
         'created_by': sample_user,
-        'service_letter_contact_id': letter_contact.id
+        'service_letter_contact_id': letter_contact.id,
+        'postage': 'second'
     }
     template = Template(**data)
     dao_create_template(template)
