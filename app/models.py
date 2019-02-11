@@ -282,7 +282,6 @@ LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
 UPLOAD_DOCUMENT = 'upload_document'
 EDIT_FOLDERS = 'edit_folders'
-CHOOSE_POSTAGE = 'choose_postage'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
@@ -296,7 +295,6 @@ SERVICE_PERMISSION_TYPES = [
     PRECOMPILED_LETTER,
     UPLOAD_DOCUMENT,
     EDIT_FOLDERS,
-    CHOOSE_POSTAGE
 ]
 
 
@@ -382,9 +380,6 @@ class Service(db.Model, Versioned):
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
     contact_link = db.Column(db.String(255), nullable=True, unique=False)
-    postage = db.Column(db.String(255), index=False, nullable=False, default='second')
-
-    CheckConstraint("'postage' in ('first', 'second')")
 
     organisation = db.relationship(
         'Organisation',
@@ -797,8 +792,7 @@ class TemplateBase(db.Model):
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN template_type = 'letter' THEN
-            postage in ('first', 'second') OR
-            postage is null
+            postage is not null and postage in ('first', 'second')
         ELSE
             postage is null
         END
