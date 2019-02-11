@@ -8,6 +8,8 @@ def dao_get_letter_branding_by_id(letter_branding_id):
 
 
 def dao_get_letter_branding_by_domain(domain):
+    if not domain:
+        return None
     return LetterBranding.query.filter(
         LetterBranding.domain == domain
     ).first()
