@@ -219,7 +219,7 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert json_resp['message'] == 'No result found'
 
 
-def test_create_service(client, sample_user):
+def test_create_service(admin_request, sample_user):
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -229,14 +229,9 @@ def test_create_service(client, sample_user):
         'email_from': 'created.service',
         'created_by': str(sample_user.id)
     }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data),
-        headers=headers)
-    json_resp = resp.json
-    assert resp.status_code == 201
+
+    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
+
     assert json_resp['data']['id']
     assert json_resp['data']['name'] == 'created service'
     assert json_resp['data']['email_from'] == 'created.service'
@@ -248,14 +243,12 @@ def test_create_service(client, sample_user):
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
 
-    auth_header_fetch = create_authorization_header()
-
-    resp = client.get(
-        '/service/{}?user_id={}'.format(json_resp['data']['id'], sample_user.id),
-        headers=[auth_header_fetch]
+    json_resp = admin_request.get(
+        'service.get_service_by_id',
+        service_id=json_resp['data']['id'],
+        user_id=sample_user.id
     )
-    assert resp.status_code == 200
-    json_resp = resp.json
+
     assert json_resp['data']['name'] == 'created service'
     assert not json_resp['data']['research_mode']
 
@@ -264,7 +257,7 @@ def test_create_service(client, sample_user):
     assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
 
 
-def test_create_service_with_domain_sets_letter_branding(client, sample_user):
+def test_create_service_with_domain_sets_letter_branding(admin_request, sample_user):
     letter_branding = create_letter_branding(
         name='test domain', filename='test-domain', domain='test.domain'
     )
@@ -278,21 +271,16 @@ def test_create_service_with_domain_sets_letter_branding(client, sample_user):
         'created_by': str(sample_user.id),
         'service_domain': letter_branding.domain
     }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data),
-        headers=headers)
-    json_resp = resp.json
-    assert resp.status_code == 201
+    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['letter_branding'] == str(letter_branding.id)
     assert json_resp['data']['letter_logo_filename'] == str(letter_branding.filename)
 
 
-def test_create_service_when_letter_branding_is_empty(client, sample_user):
-    # test create service before the data migration
+def test_create_service_with_no_domain_doesnt_set_letter_branding(admin_request, sample_user):
+    create_letter_branding(name='no domain', filename='no-domain', domain=None)
+    create_letter_branding(name='test domain', filename='test-domain', domain='test.domain')
+
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -301,16 +289,11 @@ def test_create_service_when_letter_branding_is_empty(client, sample_user):
         'active': False,
         'email_from': 'created.service',
         'created_by': str(sample_user.id),
-        'service_domain': 'test.domain'
+        'service_domain': None
     }
-    auth_header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), auth_header]
-    resp = client.post(
-        '/service',
-        data=json.dumps(data),
-        headers=headers)
-    json_resp = resp.json
-    assert resp.status_code == 201
+
+    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
+
     assert json_resp['data']['letter_branding'] is None
     assert json_resp['data']['letter_logo_filename'] == 'hm-government'
 
