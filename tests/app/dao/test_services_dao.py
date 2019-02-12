@@ -45,7 +45,6 @@ from app.models import (
     InvitedUser,
     Service,
     ServicePermission,
-    ServicePermissionTypes,
     DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -54,8 +53,7 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE,
-    SERVICE_PERMISSION_TYPES
+    LETTER_TYPE
 )
 from tests.app.db import (
     create_inbound_number,
@@ -328,15 +326,6 @@ def test_removing_all_permission_returns_service_with_no_permissions(notify_db_s
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 0
-
-
-def test_remove_service_does_not_remove_service_permission_types(notify_db_session):
-    service = create_service()
-    delete_service_and_all_associated_db_objects(service)
-
-    services = dao_fetch_all_services()
-    assert len(services) == 0
-    assert set(p.name for p in ServicePermissionTypes.query.all()) == set(SERVICE_PERMISSION_TYPES)
 
 
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
