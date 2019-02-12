@@ -113,7 +113,6 @@ def register_blueprint(application):
     from app.events.rest import events as events_blueprint
     from app.provider_details.rest import provider_details as provider_details_blueprint
     from app.email_branding.rest import email_branding_blueprint
-    from app.dvla_organisation.rest import dvla_organisation_blueprint
     from app.delivery.rest import delivery_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
@@ -183,9 +182,6 @@ def register_blueprint(application):
 
     email_branding_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(email_branding_blueprint, url_prefix='/email-branding')
-
-    dvla_organisation_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(dvla_organisation_blueprint, url_prefix='/dvla_organisations')
 
     letter_job.before_request(requires_admin_auth)
     application.register_blueprint(letter_job)
