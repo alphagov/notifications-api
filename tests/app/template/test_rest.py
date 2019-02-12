@@ -982,6 +982,7 @@ def test_preview_letter_template_by_id_valid_file_type(
                 'postcode': 'A_POST',
             }
             assert post_json['date'] == '2012-12-12T00:00:00'
+            assert post_json['filename'] is None
             assert base64.b64decode(resp['content']) == content
 
 
