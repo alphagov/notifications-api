@@ -182,8 +182,7 @@ def test_create_letters_pdf_sets_technical_failure_max_retries(mocker, sample_le
     mock_update_noti.assert_called_once_with(sample_letter_notification.id, 'technical-failure')
 
 
-# We only need this while we are migrating to the new letter_branding model
-def test_create_letters_gets_the_right_logo_when_service_has_dvla_logo(
+def test_create_letters_gets_the_right_logo_when_service_has_no_logo(
         notify_api, mocker, sample_letter_notification
 ):
     mock_get_letters_pdf = mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', 1))
@@ -194,7 +193,7 @@ def test_create_letters_gets_the_right_logo_when_service_has_dvla_logo(
     mock_get_letters_pdf.assert_called_once_with(
         sample_letter_notification.template,
         contact_block=sample_letter_notification.reply_to_text,
-        filename=sample_letter_notification.service.dvla_organisation.filename,
+        filename=None,
         values=sample_letter_notification.personalisation
     )
 

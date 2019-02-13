@@ -52,13 +52,10 @@ from app.models import (
 def create_letters_pdf(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
-        # We only need this while we are migrating to the new letter_branding model
-        letter_logo_file_name = notification.service.letter_branding.filename if notification.service.letter_branding\
-            else notification.service.dvla_organisation.filename
         pdf_data, billable_units = get_letters_pdf(
             notification.template,
             contact_block=notification.reply_to_text,
-            filename=letter_logo_file_name,
+            filename=notification.service.letter_branding and notification.service.letter_branding.filename,
             values=notification.personalisation
         )
 

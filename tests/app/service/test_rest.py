@@ -141,7 +141,7 @@ def test_get_service_by_id(admin_request, sample_service):
     assert 'branding' not in json_resp['data']
     assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['prefix_sms'] is True
-    assert json_resp['data']['letter_logo_filename'] == 'hm-government'
+    assert json_resp['data']['letter_logo_filename'] is None
 
 
 @pytest.mark.parametrize('detailed', [True, False])
@@ -294,10 +294,10 @@ def test_create_service_with_no_domain_doesnt_set_letter_branding(admin_request,
     json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
 
     assert json_resp['data']['letter_branding'] is None
-    assert json_resp['data']['letter_logo_filename'] == 'hm-government'
+    assert json_resp['data']['letter_logo_filename'] is None
 
 
-def test_get_service_by_id_returns_letter_branding_not_dvla_organisation(
+def test_get_service_by_id_returns_letter_branding(
         client, sample_service
 ):
     letter_branding = create_letter_branding(
