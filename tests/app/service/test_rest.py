@@ -615,6 +615,32 @@ def test_update_service_sets_crown(client, sample_service, org_type, expected):
     assert result['data']['crown'] is expected
 
 
+@pytest.mark.parametrize('field', (
+    'volume_email',
+    'volume_sms',
+    'volume_letter',
+))
+@pytest.mark.parametrize('value', (
+    'ABC123',
+    None,
+))
+def test_update_service_sets_volumes(
+    admin_request,
+    sample_service,
+    field,
+    value,
+):
+    admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={
+            field: value,
+        },
+        _expected_status=200,
+    )
+    assert getattr(sample_service, field) == value
+
+
 @pytest.fixture(scope='function')
 def service_with_no_permissions(notify_db, notify_db_session):
     return create_service(service_permissions=[])
