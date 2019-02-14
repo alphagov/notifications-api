@@ -23,7 +23,6 @@ from app.models import (
     ServicePermission,
     ServiceSmsSender,
     User,
-    DVLA_ORG_LAND_REGISTRY,
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
     EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
     EDIT_FOLDERS, INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
@@ -139,7 +138,6 @@ def test_get_service_by_id(admin_request, sample_service):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['email_branding'] is None
     assert 'branding' not in json_resp['data']
-    assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['prefix_sms'] is True
     assert json_resp['data']['letter_logo_filename'] is None
 
@@ -235,7 +233,6 @@ def test_create_service(admin_request, sample_user):
     assert json_resp['data']['name'] == 'created service'
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
-    assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['rate_limit'] == 3000
     assert json_resp['data']['letter_branding'] is None
 
@@ -271,7 +268,6 @@ def test_create_service_with_domain_sets_letter_branding(admin_request, sample_u
         'service_domain': letter_branding.domain
     }
     json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
-    assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['letter_branding'] == str(letter_branding.id)
     assert json_resp['data']['letter_logo_filename'] == str(letter_branding.filename)
 
@@ -316,7 +312,6 @@ def test_get_service_by_id_returns_letter_branding(
     json_resp = resp.json
     assert json_resp['data']['name'] == sample_service.name
     assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['dvla_organisation'] == '001'
     assert json_resp['data']['letter_branding'] == str(letter_branding.id)
     assert json_resp['data']['letter_logo_filename'] == 'test-domain'
 
@@ -478,7 +473,6 @@ def test_update_service(client, notify_db, sample_service):
         'email_from': 'updated.service.name',
         'created_by': str(sample_service.created_by.id),
         'email_branding': str(brand.id),
-        'dvla_organisation': DVLA_ORG_LAND_REGISTRY,
         'organisation_type': 'foo',
     }
 
@@ -494,7 +488,6 @@ def test_update_service(client, notify_db, sample_service):
     assert result['data']['name'] == 'updated service name'
     assert result['data']['email_from'] == 'updated.service.name'
     assert result['data']['email_branding'] == str(brand.id)
-    assert result['data']['dvla_organisation'] == DVLA_ORG_LAND_REGISTRY
     assert result['data']['organisation_type'] == 'foo'
 
 

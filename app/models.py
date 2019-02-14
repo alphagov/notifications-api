@@ -238,17 +238,6 @@ service_email_branding = db.Table(
 )
 
 
-DVLA_ORG_HM_GOVERNMENT = '001'
-DVLA_ORG_LAND_REGISTRY = '500'
-
-
-class DVLAOrganisation(db.Model):
-    __tablename__ = 'dvla_organisation'
-    id = db.Column(db.String, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    filename = db.Column(db.String(255), nullable=False)
-
-
 class LetterBranding(db.Model):
     __tablename__ = 'letter_branding'
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -365,14 +354,6 @@ class Service(db.Model, Versioned):
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
-    dvla_organisation_id = db.Column(
-        db.String,
-        db.ForeignKey('dvla_organisation.id'),
-        index=True,
-        nullable=False,
-        default=DVLA_ORG_HM_GOVERNMENT
-    )
-    dvla_organisation = db.relationship('DVLAOrganisation')
     organisation_type = db.Column(
         db.String(255),
         nullable=True,

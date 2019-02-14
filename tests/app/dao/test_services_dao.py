@@ -45,7 +45,6 @@ from app.models import (
     InvitedUser,
     Service,
     ServicePermission,
-    DVLA_ORG_HM_GOVERNMENT,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -89,7 +88,6 @@ def test_create_service(notify_db_session):
     service_db = Service.query.one()
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
     assert service_db.email_from == 'email_from'
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
@@ -370,8 +368,6 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     assert service_from_db.version == service_history.version
     assert user.id == service_history.created_by_id
     assert service_from_db.created_by.id == service_history.created_by_id
-    assert service_from_db.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
-    assert service_history.dvla_organisation_id == DVLA_ORG_HM_GOVERNMENT
 
 
 def test_update_service_creates_a_history_record_with_current_data(notify_db_session):

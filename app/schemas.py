@@ -204,7 +204,6 @@ class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
-    dvla_organisation = field_for(models.Service, 'dvla_organisation')
     letter_logo_filename = fields.Method(dump_only=True, serialize='get_letter_logo_filename')
     permissions = fields.Method("service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
@@ -286,7 +285,6 @@ class DetailedServiceSchema(BaseSchema):
             'message_limit',
             'email_from',
             'inbound_api',
-            'dvla_organisation',
             'whitelist',
             'reply_to_email_address',
             'sms_sender',
