@@ -14,17 +14,19 @@ revision = '0260_service_volumes'
 down_revision = '0259_remove_service_postage'
 
 
-TABLES_AND_CHANNELS = product(
-    ('services', 'services_history'),
-    ('volume_{}'.format(channel) for channel in ('email', 'letter', 'sms')),
-)
+TABLES = ['services', 'services_history']
+CHANNELS = ['volume_{}'.format(channel) for channel in ('email', 'letter', 'sms')]
 
 
 def upgrade():
-    for table, channel in TABLES_AND_CHANNELS:
-        op.add_column(table, sa.Column(channel, sa.Integer(), nullable=True))
+    for table in TABLES:
+        op.add_column(table, sa.Column('consent_to_research', sa.Boolean(), nullable=False, server_default=sa.false()))
+        for channel in CHANNELS:
+            op.add_column(table, sa.Column(channel, sa.Integer(), nullable=True))
 
 
 def downgrade():
-    for table, channel in TABLES_AND_CHANNELS:
-        op.drop_column(table, channel)
+    for table in TABLES:
+        op.drop_column(table, 'consent_to_research')
+        for channel in CHANNELS:
+            op.drop_column(table, channel)

@@ -644,6 +644,30 @@ def test_update_service_sets_volumes(
     assert getattr(sample_service, field) == expected_persisted
 
 
+@pytest.mark.parametrize('value, expected_status, expected_persisted', (
+    (True, 200, True),
+    (False, 200, False),
+    ('Yes', 400, False),
+))
+def test_update_service_sets_research_consent(
+    admin_request,
+    sample_service,
+    value,
+    expected_status,
+    expected_persisted,
+):
+    assert sample_service.consent_to_research is False
+    admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data={
+            'consent_to_research': value,
+        },
+        _expected_status=expected_status,
+    )
+    assert sample_service.consent_to_research is expected_persisted
+
+
 @pytest.fixture(scope='function')
 def service_with_no_permissions(notify_db, notify_db_session):
     return create_service(service_permissions=[])
