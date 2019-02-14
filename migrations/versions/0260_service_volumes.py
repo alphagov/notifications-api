@@ -22,7 +22,7 @@ TABLES_AND_CHANNELS = product(
 
 def upgrade():
     for table, channel in TABLES_AND_CHANNELS:
-        op.add_column(table, sa.Column(channel, sa.String(length=255), nullable=True))
+        op.add_column(table, sa.Column(channel, sa.Integer(), nullable=True))
 
 
 def downgrade():

@@ -620,15 +620,18 @@ def test_update_service_sets_crown(client, sample_service, org_type, expected):
     'volume_sms',
     'volume_letter',
 ))
-@pytest.mark.parametrize('value', (
-    'ABC123',
-    None,
+@pytest.mark.parametrize('value, expected_status, expected_persisted', (
+    (1234, 200, 1234),
+    (None, 200, None),
+    ('Aa', 400, None),
 ))
 def test_update_service_sets_volumes(
     admin_request,
     sample_service,
     field,
     value,
+    expected_status,
+    expected_persisted,
 ):
     admin_request.post(
         'service.update_service',
@@ -636,9 +639,9 @@ def test_update_service_sets_volumes(
         _data={
             field: value,
         },
-        _expected_status=200,
+        _expected_status=expected_status,
     )
-    assert getattr(sample_service, field) == value
+    assert getattr(sample_service, field) == expected_persisted
 
 
 @pytest.fixture(scope='function')
