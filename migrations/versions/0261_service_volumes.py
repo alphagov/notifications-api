@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0260_service_volumes
-Revises: 0259_remove_service_postage
+Revision ID: 0261_service_volumes
+Revises: 0260_remove_dvla_organisation
 Create Date: 2019-02-13 13:45:00.782500
 
 """
@@ -10,8 +10,8 @@ from itertools import product
 import sqlalchemy as sa
 
 
-revision = '0260_service_volumes'
-down_revision = '0259_remove_service_postage'
+revision = '0261_service_volumes'
+down_revision = '0260_remove_dvla_organisation'
 
 
 TABLES = ['services', 'services_history']
