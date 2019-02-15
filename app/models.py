@@ -361,6 +361,10 @@ class Service(db.Model, Versioned):
     crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
     contact_link = db.Column(db.String(255), nullable=True, unique=False)
+    volume_sms = db.Column(db.Integer(), nullable=True, unique=False)
+    volume_email = db.Column(db.Integer(), nullable=True, unique=False)
+    volume_letter = db.Column(db.Integer(), nullable=True, unique=False)
+    consent_to_research = db.Column(db.Boolean, nullable=False, default=False)
 
     organisation = db.relationship(
         'Organisation',
