@@ -2,6 +2,7 @@ from app import db
 from app.dao.dao_utils import transactional
 from app.models import (
     Organisation,
+    Domain,
     InvitedOrganisationUser,
     User
 )
@@ -34,9 +35,25 @@ def dao_create_organisation(organisation):
 
 @transactional
 def dao_update_organisation(organisation_id, **kwargs):
-    return Organisation.query.filter_by(id=organisation_id).update(
+
+    domains = kwargs.pop('domains', [])
+
+    organisation = Organisation.query.filter_by(id=organisation_id).update(
         kwargs
     )
+
+    if domains:
+
+        Domain.query.filter_by(organisation_id=organisation_id).delete()
+
+        db.session.bulk_save_objects([
+            Domain(domain=domain, organisation_id=organisation_id)
+            for domain in domains
+        ])
+
+        db.session.commit()
+
+    return organisation
 
 
 @transactional

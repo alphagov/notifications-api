@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 import pytest
@@ -16,7 +17,13 @@ from app.dao.organisation_dao import (
 )
 from app.models import Organisation
 
-from tests.app.db import create_organisation, create_service, create_user
+from tests.app.db import (
+    create_email_branding,
+    create_letter_branding,
+    create_organisation,
+    create_service,
+    create_user,
+)
 
 
 def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
@@ -47,19 +54,38 @@ def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_s
     assert organisation_from_db == organisation
 
 
-def test_update_organisation(notify_db, notify_db_session):
-    updated_name = 'new name'
+def test_update_organisation(
+    notify_db,
+    notify_db_session,
+):
     create_organisation()
 
     organisation = Organisation.query.one()
+    user = create_user()
+    email_branding = create_email_branding()
+    letter_branding = create_letter_branding()
 
-    assert organisation.name != updated_name
+    data = {
+        'name': 'new name',
+        "crown": True,
+        "organisation_type": 'local',
+        "agreement_signed": True,
+        "agreement_signed_at": datetime.datetime.utcnow(),
+        "agreement_signed_by_id": user.id,
+        "agreement_signed_version": 999.99,
+        "letter_branding_id": letter_branding.id,
+        "email_branding_id": email_branding.id,
+    }
 
-    dao_update_organisation(organisation.id, **{'name': updated_name})
+    for attribute, value in data.items():
+        assert getattr(organisation, attribute) != value
+
+    dao_update_organisation(organisation.id, **data)
 
     organisation = Organisation.query.one()
 
-    assert organisation.name == updated_name
+    for attribute, value in data.items():
+        assert getattr(organisation, attribute) == value
 
 
 def test_add_service_to_organisation(notify_db, notify_db_session, sample_service, sample_organisation):

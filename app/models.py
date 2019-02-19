@@ -316,6 +316,12 @@ organisation_to_service = db.Table(
 )
 
 
+class Domain(db.Model):
+    __tablename__ = "domain"
+    domain = db.Column(db.String(255), primary_key=True)
+    organisation_id = db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False)
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -329,14 +335,49 @@ class Organisation(db.Model):
         secondary='organisation_to_service',
         uselist=True)
 
+    agreement_signed = db.Column(db.Boolean, nullable=True)
+    agreement_signed_at = db.Column(db.DateTime, nullable=True)
+    agreement_signed_by_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('users.id'),
+        nullable=True,
+    )
+    agreement_signed_version = db.Column(db.Float, nullable=True)
+    crown = db.Column(db.Boolean, nullable=True)
+    organisation_type = db.Column(db.String(255), nullable=True)
+
+    domains = db.relationship(
+        'Domain',
+    )
+
+    email_branding = db.relationship('EmailBranding')
+    email_branding_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('email_branding.id'),
+        nullable=True,
+    )
+
+    letter_branding = db.relationship('LetterBranding')
+    letter_branding_id = db.Column(
+        UUID(as_uuid=True),
+        db.ForeignKey('letter_branding.id'),
+        nullable=True,
+    )
+
     def serialize(self):
-        serialized = {
+        return {
             "id": str(self.id),
             "name": self.name,
             "active": self.active,
+            "crown": self.crown,
+            "organisation_type": self.organisation_type,
+            "letter_branding_id": self.letter_branding_id,
+            "email_branding_id": self.email_branding_id,
+            "agreement_signed": self.agreement_signed,
+            "agreement_signed_at": self.agreement_signed_at,
+            "agreement_signed_by_id": self.agreement_signed_by_id,
+            "agreement_signed_version": self.agreement_signed_version,
         }
-
-        return serialized
 
 
 class Service(db.Model, Versioned):
