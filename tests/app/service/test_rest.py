@@ -44,7 +44,9 @@ from tests.app.db import (
     create_inbound_number,
     create_service_sms_sender,
     create_service_with_defined_sms_sender,
-    create_letter_branding
+    create_letter_branding,
+    create_organisation,
+    create_domain,
 )
 from tests.app.db import create_user
 
@@ -251,6 +253,51 @@ def test_create_service(admin_request, sample_user):
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
     assert service_sms_senders[0].sms_sender == current_app.config['FROM_NUMBER']
+
+
+@pytest.mark.parametrize('domain, expected_org', (
+    (None, False),
+    ('', False),
+    ('unknown.gov.uk', False),
+    ('unknown-example.gov.uk', False),
+    ('example.gov.uk', True),
+    ('test.gov.uk', True),
+    ('test.example.gov.uk', True),
+))
+def test_create_service_with_domain_sets_organisation(
+    admin_request,
+    sample_user,
+    domain,
+    expected_org,
+):
+
+    org = create_organisation()
+    create_domain('example.gov.uk', org.id)
+    create_domain('test.gov.uk', org.id)
+
+    another_org = create_organisation(name='Another')
+    create_domain('cabinet-office.gov.uk', another_org.id)
+    create_domain('cabinetoffice.gov.uk', another_org.id)
+
+    sample_user.email_address = 'test@{}'.format(domain)
+
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id),
+        'service_domain': domain,
+    }
+
+    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
+
+    if expected_org:
+        assert json_resp['data']['organisation'] == str(org.id)
+    else:
+        assert json_resp['data']['organisation'] is None
 
 
 def test_create_service_with_domain_sets_letter_branding(admin_request, sample_user):

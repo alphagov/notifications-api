@@ -24,6 +24,20 @@ def dao_get_organisation_by_id(organisation_id):
     return Organisation.query.filter_by(id=organisation_id).one()
 
 
+def dao_get_organisation_by_email_address(email_address):
+
+    email_address = email_address.lower()
+
+    for domain in Domain().query.all():
+        if (
+            email_address.endswith("@{}".format(domain.domain)) or
+            email_address.endswith(".{}".format(domain.domain))
+        ):
+            return Organisation.query.filter_by(id=domain.organisation_id).one()
+
+    return None
+
+
 def dao_get_organisation_by_service_id(service_id):
     return Organisation.query.join(Organisation.services).filter_by(id=service_id).first()
 

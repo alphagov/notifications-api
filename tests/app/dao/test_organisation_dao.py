@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.dao.organisation_dao import (
     dao_get_organisations,
+    dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
     dao_get_organisation_services,
@@ -18,6 +19,7 @@ from app.dao.organisation_dao import (
 from app.models import Organisation
 
 from tests.app.db import (
+    create_domain,
     create_email_branding,
     create_letter_branding,
     create_organisation,
@@ -197,3 +199,30 @@ def test_add_user_to_organisation_when_user_does_not_exist(sample_organisation):
 def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     with pytest.raises(expected_exception=SQLAlchemyError):
         dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
+
+
+@pytest.mark.parametrize('domain, expected_org', (
+    ('unknown.gov.uk', False),
+    ('example.gov.uk', True),
+))
+def test_get_organisation_by_email_address(
+    admin_request,
+    sample_user,
+    domain,
+    expected_org,
+):
+
+    org = create_organisation()
+    create_domain('example.gov.uk', org.id)
+    create_domain('test.gov.uk', org.id)
+
+    another_org = create_organisation(name='Another')
+    create_domain('cabinet-office.gov.uk', another_org.id)
+    create_domain('cabinetoffice.gov.uk', another_org.id)
+
+    found_org = dao_get_organisation_by_email_address('test@{}'.format(domain))
+
+    if expected_org:
+        assert found_org is org
+    else:
+        assert found_org is None

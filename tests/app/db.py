@@ -51,7 +51,8 @@ from app.models import (
     Complaint,
     InvitedUser,
     TemplateFolder,
-    LetterBranding
+    LetterBranding,
+    Domain,
 )
 
 
@@ -495,6 +496,16 @@ def create_annual_billing(
     db.session.commit()
 
     return annual_billing
+
+
+def create_domain(domain, organisation_id):
+
+    domain = Domain(domain=domain, organisation_id=organisation_id)
+
+    db.session.add(domain)
+    db.session.commit()
+
+    return domain
 
 
 def create_organisation(name='test_org_1', active=True):
