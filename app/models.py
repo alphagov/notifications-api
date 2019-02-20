@@ -119,7 +119,7 @@ class User(db.Model):
     services = db.relationship(
         'Service',
         secondary='user_to_service',
-        backref='user_to_service')
+        backref='users')
     organisations = db.relationship(
         'Organisation',
         secondary='user_to_organisation',
@@ -169,13 +169,16 @@ class User(db.Model):
         }
 
 
-user_to_service = db.Table(
-    'user_to_service',
-    db.Model.metadata,
-    db.Column('user_id', UUID(as_uuid=True), db.ForeignKey('users.id')),
-    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id')),
-    UniqueConstraint('user_id', 'service_id', name='uix_user_to_service')
-)
+class ServiceUser(db.Model):
+    __tablename__ = 'user_to_service'
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), primary_key=True)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'service_id', name='uix_user_to_service'),
+    )
+
+    user = db.relationship('User')
 
 
 user_to_organisation = db.Table(
@@ -184,6 +187,17 @@ user_to_organisation = db.Table(
     db.Column('user_id', UUID(as_uuid=True), db.ForeignKey('users.id')),
     db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id')),
     UniqueConstraint('user_id', 'organisation_id', name='uix_user_to_organisation')
+)
+
+
+user_folder_permissions = db.Table(
+    'user_folder_permissions',
+    db.Model.metadata,
+    db.Column('user_id', UUID(as_uuid=True), primary_key=True),
+    db.Column('template_folder_id', UUID(as_uuid=True), db.ForeignKey('template_folder.id'), primary_key=True),
+    db.Column('service_id', UUID(as_uuid=True), primary_key=True),
+    db.ForeignKeyConstraint(['user_id', 'service_id'], ['user_to_service.user_id', 'user_to_service.service_id']),
+    db.ForeignKeyConstraint(['template_folder_id', 'service_id'], ['template_folder.id', 'template_folder.service_id'])
 )
 
 
@@ -344,10 +358,6 @@ class Service(db.Model, Versioned):
         onupdate=datetime.datetime.utcnow)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
     message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False)
-    users = db.relationship(
-        'User',
-        secondary=user_to_service,
-        backref=db.backref('user_to_service', lazy='dynamic'))
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
@@ -727,6 +737,17 @@ class TemplateFolder(db.Model):
 
     service = db.relationship('Service', backref='all_template_folders')
     parent = db.relationship('TemplateFolder', remote_side=[id], backref='subfolders')
+    users = db.relationship(
+        'ServiceUser',
+        uselist=True,
+        backref=db.backref('folders', foreign_keys='user_folder_permissions.c.template_folder_id'),
+        secondary='user_folder_permissions',
+        primaryjoin='TemplateFolder.id == user_folder_permissions.c.template_folder_id'
+    )
+
+    __table_args__ = (
+        UniqueConstraint('id', 'service_id', name='ix_id_service_id'), {}
+    )
 
     def serialize(self):
         return {

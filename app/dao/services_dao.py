@@ -361,7 +361,7 @@ def dao_resume_service(service_id):
 
 def dao_fetch_active_users_for_service(service_id):
     query = User.query.filter(
-        User.user_to_service.any(id=service_id),
+        User.services.any(id=service_id),
         User.state == 'active'
     )
 
