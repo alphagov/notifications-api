@@ -347,6 +347,33 @@ def test_set_user_permissions_multiple(client, sample_user, sample_service):
     assert permission.permission == MANAGE_TEMPLATES
 
 
+def test_set_user_permissions_multiple_with_new_data_format(client, sample_user, sample_service):
+    permissions_data = {
+        'permissions': [{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}]
+    }
+
+    data = json.dumps(permissions_data)
+    header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), header]
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(sample_service.id)),
+        headers=headers,
+        data=data)
+
+    assert response.status_code == 204
+    permission = Permission.query.filter_by(permission=MANAGE_SETTINGS).first()
+    assert permission.user == sample_user
+    assert permission.service == sample_service
+    assert permission.permission == MANAGE_SETTINGS
+    permission = Permission.query.filter_by(permission=MANAGE_TEMPLATES).first()
+    assert permission.user == sample_user
+    assert permission.service == sample_service
+    assert permission.permission == MANAGE_TEMPLATES
+
+
 def test_set_user_permissions_remove_old(client, sample_user, sample_service):
     data = json.dumps([{'permission': MANAGE_SETTINGS}])
     header = create_authorization_header()
