@@ -45,6 +45,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_SENDING,
+    NOTIFICATION_PENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_DELIVERED,
     KEY_TYPE_NORMAL,
@@ -1267,15 +1268,16 @@ def test_is_delivery_slow_for_provider(
 
 
 @pytest.mark.parametrize("options,expected_result", [
-    ({"status": NOTIFICATION_TEMPORARY_FAILURE, "sent_by": "mmg"}, False),
-    ({"status": NOTIFICATION_DELIVERED, "sent_by": "firetext"}, False),
     ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_PENDING, "sent_by": "mmg"}, True),
+    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg"}, True),
+
+    ({"status": NOTIFICATION_TEMPORARY_FAILURE, "sent_by": "mmg"}, False),
     ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "sent_at": None}, False),
     ({"status": NOTIFICATION_DELIVERED, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
     ({"status": NOTIFICATION_SENDING, "sent_by": "firetext"}, False),
-    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg"}, True),
-    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "sent_at": None}, False),
-    ({"status": NOTIFICATION_SENDING, "sent_by": "mmg", "key_type": KEY_TYPE_TEST}, False),
+    ({"status": NOTIFICATION_DELIVERED, "sent_by": "firetext"}, False),
+
 ])
 @freeze_time("2018-12-04 12:00:00.000000")
 def test_delivery_is_delivery_slow_for_provider_filters_out_notifications_it_should_not_count(

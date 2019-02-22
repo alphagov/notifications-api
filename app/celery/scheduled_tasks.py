@@ -97,7 +97,7 @@ def delete_invitations():
 @statsd(namespace="tasks")
 def switch_current_sms_provider_on_slow_delivery():
     """
-    Switch providers if there are at least two slow delivery notifications (more than four minutes)
+    Switch providers if at least 10% of notifications took more than four minutes to be delivered
     in the last ten minutes. Search from the time we last switched to the current provider.
     """
     current_provider = get_current_provider('sms')

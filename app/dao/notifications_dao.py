@@ -484,7 +484,7 @@ def is_delivery_slow_for_provider(
     ).filter(
         Notification.created_at >= created_at,
         Notification.sent_at.isnot(None),
-        Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_SENDING]),
+        Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
         Notification.sent_by == provider,
         Notification.key_type != KEY_TYPE_TEST
     ).group_by("slow").all()
