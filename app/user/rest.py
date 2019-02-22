@@ -24,9 +24,11 @@ from app.dao.users_dao import (
     get_user_and_accounts
 )
 from app.dao.permissions_dao import permission_dao
+from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import KEY_TYPE_NORMAL, Service, SMS_TYPE, EMAIL_TYPE
+from app.dao.template_folder_dao import dao_get_template_folder_by_id_and_service_id
+from app.models import KEY_TYPE_NORMAL, Permission, Service, SMS_TYPE, EMAIL_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -35,7 +37,6 @@ from app.schemas import (
     email_data_request_schema,
     partial_email_data_request_schema,
     create_user_schema,
-    permission_schema,
     user_update_schema_load_json,
     user_update_password_schema_load_json
 )
@@ -48,6 +49,7 @@ from app.user.users_schema import (
     post_verify_code_schema,
     post_send_user_sms_code_schema,
     post_send_user_email_code_schema,
+    post_set_permissions_schema,
 )
 from app.schema_validation import validate
 
@@ -371,21 +373,29 @@ def get_user(user_id=None):
 def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
-    user = get_user_by_id(user_id=user_id)
+    service_user = dao_get_service_user(user_id, service_id)
+    user = service_user.user
     service = dao_fetch_service_by_id(service_id=service_id)
 
     data = request.get_json()
-    if 'permissions' in data:
-        user_permissions = data['permissions']
-    else:
-        user_permissions = data
+    validate(data, post_set_permissions_schema)
 
-    permissions, errors = permission_schema.load(user_permissions, many=True)
+    permission_list = [
+        Permission(service_id=service_id, user_id=user_id, permission=p['permission'])
+        for p in data['permissions']
+    ]
 
-    for p in permissions:
-        p.user = user
-        p.service = service
-    permission_dao.set_user_service_permission(user, service, permissions, _commit=True, replace=True)
+    permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
+
+    if 'folder_permissions' in data:
+        folders = [
+            dao_get_template_folder_by_id_and_service_id(folder_id, service_id)
+            for folder_id in data['folder_permissions']
+        ]
+
+        service_user.folders = folders
+        dao_update_service_user(service_user)
+
     return jsonify({}), 204
 
 

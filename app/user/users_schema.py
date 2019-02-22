@@ -40,3 +40,16 @@ post_send_user_sms_code_schema = {
     'required': [],
     'additionalProperties': False
 }
+
+
+post_set_permissions_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST schema for setting user permissions",
+    "type": "object",
+    "properties": {
+        "permissions": {"type": "array", "items": {"type": "object"}},
+        "folder_permissions": {"type": "array", "items": {"type": "string"}}
+    },
+    "required": ["permissions"],
+    "additionalProperties": False
+}
