@@ -754,7 +754,8 @@ class TemplateFolder(db.Model):
             'id': self.id,
             'name': self.name,
             'parent_id': self.parent_id,
-            'service_id': self.service_id
+            'service_id': self.service_id,
+            'users_with_permission': self.get_users_with_permission()
         }
 
     def is_parent_of(self, other):
@@ -763,6 +764,12 @@ class TemplateFolder(db.Model):
                 return True
             other = other.parent
         return False
+
+    def get_users_with_permission(self):
+        service_users = self.users
+        users_with_permission = [str(service_user.user_id) for service_user in service_users]
+
+        return users_with_permission
 
 
 template_folder_map = db.Table(
