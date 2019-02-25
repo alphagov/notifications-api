@@ -338,7 +338,14 @@ def set_permissions(user_id, service_id):
     # who is making this request has permission to make the request.
     user = get_user_by_id(user_id=user_id)
     service = dao_fetch_service_by_id(service_id=service_id)
-    permissions, errors = permission_schema.load(request.get_json(), many=True)
+
+    data = request.get_json()
+    if 'permissions' in data:
+        user_permissions = data['permissions']
+    else:
+        user_permissions = data
+
+    permissions, errors = permission_schema.load(user_permissions, many=True)
 
     for p in permissions:
         p.user = user
