@@ -106,7 +106,7 @@ def switch_current_sms_provider_on_slow_delivery():
         return
     slow_delivery_notifications = is_delivery_slow_for_provider(
         provider=current_provider.identifier,
-        threshold=0.1,
+        threshold=0.2,
         created_at=datetime.utcnow() - timedelta(minutes=10),
         delivery_time=timedelta(minutes=4),
     )
