@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 import iso8601
+from celery.exceptions import Retry
 from flask import current_app, json
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.orm.exc import NoResultFound
@@ -74,6 +75,9 @@ def process_ses_results(self, response):
         _check_and_queue_callback_task(notification)
 
         return True
+
+    except Retry:
+        raise
 
     except Exception as e:
         current_app.logger.exception('Error processing SES results: {}'.format(type(e)))
