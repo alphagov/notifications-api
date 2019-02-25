@@ -108,6 +108,9 @@ class Config(object):
     CRONITOR_ENABLED = False
     CRONITOR_KEYS = json.loads(os.environ.get('CRONITOR_KEYS', '{}'))
 
+    # Antivirus
+    ANTIVIRUS_ENABLED = True
+
     ###########################
     # Default config values ###
     ###########################
@@ -354,6 +357,8 @@ class Development(Config):
     STATSD_PORT = 1000
     STATSD_PREFIX = "stats-prefix"
 
+    ANTIVIRUS_ENABLED = os.getenv('ANTIVIRUS_ENABLED') == '1'
+
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(
             Queue(queue, Exchange('default'), routing_key=queue)
@@ -380,6 +385,8 @@ class Test(Development):
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
     BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
+
+    ANTIVIRUS_ENABLED = True
 
     for queue in QueueNames.all_queues():
         Config.CELERY_QUEUES.append(

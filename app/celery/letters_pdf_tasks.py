@@ -347,11 +347,19 @@ def replay_letters_in_error(filename=None):
         move_error_pdf_to_scan_bucket(filename)
         # call task to add the filename to anti virus queue
         current_app.logger.info("Calling scan_file for: {}".format(filename))
-        notify_celery.send_task(
-            name=TaskNames.SCAN_FILE,
-            kwargs={'filename': filename},
-            queue=QueueNames.ANTIVIRUS,
-        )
+
+        if current_app.config['ANTIVIRUS_ENABLED']:
+            notify_celery.send_task(
+                name=TaskNames.SCAN_FILE,
+                kwargs={'filename': filename},
+                queue=QueueNames.ANTIVIRUS,
+            )
+        else:
+            # stub out antivirus in dev
+            process_virus_scan_passed.apply_async(
+                kwargs={'filename': filename},
+                queue=QueueNames.LETTERS,
+            )
     else:
         error_files = get_file_names_from_error_bucket()
         for item in error_files:
@@ -359,8 +367,15 @@ def replay_letters_in_error(filename=None):
             current_app.logger.info("Calling scan_file for: {}".format(moved_file_name))
             move_error_pdf_to_scan_bucket(moved_file_name)
             # call task to add the filename to anti virus queue
-            notify_celery.send_task(
-                name=TaskNames.SCAN_FILE,
-                kwargs={'filename': moved_file_name},
-                queue=QueueNames.ANTIVIRUS,
-            )
+            if current_app.config['ANTIVIRUS_ENABLED']:
+                notify_celery.send_task(
+                    name=TaskNames.SCAN_FILE,
+                    kwargs={'filename': moved_file_name},
+                    queue=QueueNames.ANTIVIRUS,
+                )
+            else:
+                # stub out antivirus in dev
+                process_virus_scan_passed.apply_async(
+                    kwargs={'filename': moved_file_name},
+                    queue=QueueNames.LETTERS,
+                )
