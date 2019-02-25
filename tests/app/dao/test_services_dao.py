@@ -31,6 +31,7 @@ from app.dao.services_dao import (
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_inbound_number,
 )
+from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from app.dao.users_dao import save_model_user, create_user_code
 from app.models import (
     VerifyCode,
@@ -51,7 +52,8 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE
+    LETTER_TYPE,
+    user_folder_permissions,
 )
 from tests.app.db import (
     create_inbound_number,
@@ -60,6 +62,7 @@ from tests.app.db import (
     create_service_with_inbound_number,
     create_service_with_defined_sms_sender,
     create_template,
+    create_template_folder,
     create_notification,
     create_api_key,
     create_invited_user,
@@ -208,6 +211,37 @@ def test_should_remove_user_from_service(notify_db_session):
     assert new_user in Service.query.first().users
     dao_remove_user_from_service(service, new_user)
     assert new_user not in Service.query.first().users
+
+
+def test_removing_a_user_from_a_service_deletes_their_permissions(sample_user, sample_service):
+    assert len(Permission.query.all()) == 8
+
+    dao_remove_user_from_service(sample_service, sample_user)
+
+    assert Permission.query.all() == []
+
+
+def test_removing_a_user_from_a_service_deletes_their_folder_permissions_for_that_service(sample_user, sample_service):
+    tf1 = create_template_folder(sample_service)
+    tf2 = create_template_folder(sample_service)
+
+    service_2 = create_service(sample_user, service_name='other service')
+    tf3 = create_template_folder(service_2)
+
+    service_user = dao_get_service_user(sample_user.id, sample_service.id)
+    service_user.folders = [tf1, tf2]
+    dao_update_service_user(service_user)
+
+    service_2_user = dao_get_service_user(sample_user.id, service_2.id)
+    service_2_user.folders = [tf3]
+    dao_update_service_user(service_2_user)
+
+    dao_remove_user_from_service(sample_service, sample_user)
+
+    user_folder_permission = db.session.query(user_folder_permissions).one()
+    assert user_folder_permission.user_id == service_2_user.user_id
+    assert user_folder_permission.service_id == service_2_user.service_id
+    assert user_folder_permission.template_folder_id == tf3.id
 
 
 def test_get_all_services(notify_db_session):
