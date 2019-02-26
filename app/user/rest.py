@@ -84,10 +84,45 @@ def create_user():
 def update_user_attribute(user_id):
     user_to_update = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
+    if 'updated_by' in req_json:
+        updated_by = get_user_by_id(user_id=req_json.pop('updated_by'))
+    else:
+        updated_by = None
+
     update_dct, errors = user_update_schema_load_json.load(req_json)
     if errors:
         raise InvalidRequest(errors, status_code=400)
     save_user_attribute(user_to_update, update_dict=update_dct)
+    if updated_by:
+        if 'email_address' in update_dct:
+            template = dao_get_template_by_id(current_app.config['TEAM_MEMBER_EDIT_EMAIL_TEMPLATE_ID'])
+            recipient = user_to_update.email_address
+            reply_to = template.service.get_default_reply_to_email_address()
+        elif 'mobile_number' in update_dct:
+            template = dao_get_template_by_id(current_app.config['TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID'])
+            recipient = user_to_update.mobile_number
+            reply_to = template.service.get_default_sms_sender()
+        else:
+            return jsonify(data=user_to_update.serialize()), 200
+        service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+
+        saved_notification = persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient=recipient,
+            service=service,
+            personalisation={
+                'name': user_to_update.name,
+                'servicemanagername': updated_by.name,
+                'email address': user_to_update.email_address
+            },
+            notification_type=template.template_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            reply_to_text=reply_to
+        )
+
+        send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
     return jsonify(data=user_to_update.serialize()), 200
 
 
