@@ -950,6 +950,33 @@ def password_reset_email_template(notify_db,
 
 
 @pytest.fixture(scope='function')
+def team_member_email_edit_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='TEAM_MEMBER_EDIT_EMAIL_TEMPLATE_ID',
+        content='Hi ((name)) ((servicemanagername)) changed your email to ((email address))',
+        subject='Your GOV.UK Notify email address has changed',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
+def team_member_mobile_edit_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID',
+        content='Your mobile number was changed by ((servicemanagername)).',
+        template_type='sms'
+    )
+
+
+@pytest.fixture(scope='function')
 def already_registered_template(notify_db,
                                 notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)

@@ -1,5 +1,7 @@
 import json
 import pytest
+import mock
+from uuid import UUID
 
 from flask import url_for
 from freezegun import freeze_time
@@ -255,6 +257,55 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
     assert resp.status_code == 200
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data'][user_attribute] == user_value
+
+
+@pytest.mark.parametrize('user_attribute, user_value, arguments', [
+    ('name', 'New User', None),
+    ('email_address', 'newuser@mail.com', dict(
+        api_key_id=None, key_type='normal', notification_type='email',
+        personalisation={
+            'name': 'Test User', 'servicemanagername': 'Service Manago', 'email address': 'newuser@mail.com'
+        },
+        recipient='newuser@mail.com', reply_to_text='notify@gov.uk',
+        service=mock.ANY,
+        template_id=UUID('c73f1d71-4049-46d5-a647-d013bdeca3f0'), template_version=1
+    )),
+    ('mobile_number', '+4407700900460', dict(
+        api_key_id=None, key_type='normal', notification_type='sms',
+        personalisation={
+            'name': 'Test User', 'servicemanagername': 'Service Manago',
+            'email address': 'notify@digital.cabinet-office.gov.uk'
+        },
+        recipient='+4407700900460', reply_to_text='testing', service=mock.ANY,
+        template_id=UUID('8a31520f-4751-4789-8ea1-fe54496725eb'), template_version=1
+    ))
+])
+def test_post_user_attribute_with_updated_by(
+    client, mocker, sample_user, user_attribute,
+    user_value, arguments, team_member_email_edit_template, team_member_mobile_edit_template
+):
+    updater = create_user(name="Service Manago", email="notify_manago@digital.cabinet-office.gov.uk")
+    assert getattr(sample_user, user_attribute) != user_value
+    update_dict = {
+        user_attribute: user_value,
+        'updated_by': str(updater.id)
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    mock_persist_notification = mocker.patch('app.user.rest.persist_notification')
+    mocker.patch('app.user.rest.send_notification_to_queue')
+    resp = client.post(
+        url_for('user.update_user_attribute', user_id=sample_user.id),
+        data=json.dumps(update_dict),
+        headers=headers)
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+    json_resp = json.loads(resp.get_data(as_text=True))
+    assert json_resp['data'][user_attribute] == user_value
+    if arguments:
+        mock_persist_notification.assert_called_once_with(**arguments)
+    else:
+        mock_persist_notification.assert_not_called()
 
 
 def test_get_user_by_email(client, sample_service):
