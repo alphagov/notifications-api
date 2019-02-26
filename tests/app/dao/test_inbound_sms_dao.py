@@ -1,19 +1,18 @@
-from datetime import datetime, timedelta
+from datetime import datetime
+from itertools import product
 
 from freezegun import freeze_time
 
 from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_for_service,
     dao_count_inbound_sms_for_service,
-    delete_inbound_sms_created_more_than_a_week_ago,
+    delete_inbound_sms_older_than_retention,
     dao_get_inbound_sms_by_id,
     dao_get_paginated_inbound_sms_for_service_for_public_api,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service
 )
 from tests.conftest import set_config
-from tests.app.db import create_inbound_sms, create_service
-
-from app.models import InboundSms
+from tests.app.db import create_inbound_sms, create_service, create_service_data_retention
 
 
 def test_get_all_inbound_sms(sample_service):
@@ -93,28 +92,37 @@ def test_count_inbound_sms_for_service_filters_messages_older_than_seven_days(sa
         assert dao_count_inbound_sms_for_service(sample_service.id) == 1
 
 
-@freeze_time("2017-01-01 12:00:00")
-def test_should_delete_inbound_sms_older_than_seven_days(sample_service):
-    older_than_seven_days = datetime.utcnow() - timedelta(days=7, seconds=1)
-    create_inbound_sms(sample_service, created_at=older_than_seven_days)
-    delete_inbound_sms_created_more_than_a_week_ago()
+@freeze_time("2017-06-08 12:00:00")
+def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session):
+    service_without_retention = create_service(service_name='without retention')
+    service_with_three_day_retention = create_service(service_name='three days')
+    service_with_month_retention = create_service(service_name='thirty days')
 
-    assert len(InboundSms.query.all()) == 0
+    services = [service_with_three_day_retention, service_without_retention, service_with_month_retention]
 
+    create_service_data_retention(service_with_month_retention.id, notification_type='sms', days_of_retention=30)
+    create_service_data_retention(service_with_three_day_retention.id, notification_type='sms', days_of_retention=3)
+    # email retention doesn't affect anything
+    create_service_data_retention(service_with_three_day_retention.id, notification_type='email', days_of_retention=4)
 
-@freeze_time("2017-01-01 12:00:00")
-def test_should_not_delete_inbound_sms_before_seven_days(sample_service):
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    just_before_seven_days = datetime.utcnow() - timedelta(days=6, hours=23, minutes=59, seconds=59)
-    older_than_seven_days = datetime.utcnow() - timedelta(days=7, seconds=1)
+    dates = [
+        datetime(2017, 6, 4, 23, 00),  # just before three days
+        datetime(2017, 6, 4, 22, 59),  # older than three days
+        datetime(2017, 5, 31, 23, 00),  # just before seven days
+        datetime(2017, 5, 31, 22, 59),  # older than seven days
+        datetime(2017, 5, 7, 22, 59),  # older than thirty days
+    ]
 
-    create_inbound_sms(sample_service, created_at=yesterday)
-    create_inbound_sms(sample_service, created_at=just_before_seven_days)
-    create_inbound_sms(sample_service, created_at=older_than_seven_days)
+    for date, service in product(dates, services):
+        create_inbound_sms(service, created_at=date)
 
-    delete_inbound_sms_created_more_than_a_week_ago()
+    deleted_count = delete_inbound_sms_older_than_retention()
 
-    assert len(InboundSms.query.all()) == 2
+    # four deleted for the 3-day service, two for the default seven days one, one for the 30 day
+    assert deleted_count == 7
+    assert dao_count_inbound_sms_for_service(service_without_retention.id) == 3
+    assert dao_count_inbound_sms_for_service(service_with_three_day_retention.id) == 1
+    assert dao_count_inbound_sms_for_service(service_with_month_retention.id) == 4
 
 
 def test_get_inbound_sms_by_id_returns(sample_service):
