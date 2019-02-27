@@ -2,9 +2,10 @@ import uuid
 
 import pytest
 
+from app.dao.service_user_dao import dao_get_service_user
 from app.models import TemplateFolder
 
-from tests.app.db import create_service, create_template_folder, create_template
+from tests.app.db import create_service, create_template_folder, create_template, create_user
 
 
 def test_get_folders_for_service(admin_request, notify_db_session):
@@ -19,14 +20,36 @@ def test_get_folders_for_service(admin_request, notify_db_session):
     resp = admin_request.get('template_folder.get_template_folders_for_service', service_id=s1.id)
     assert set(resp.keys()) == {'template_folders'}
     assert sorted(resp['template_folders'], key=lambda x: x['id']) == sorted([
-        {'id': str(tf1.id), 'name': 'foo', 'service_id': str(s1.id), 'parent_id': None},
-        {'id': str(tf2.id), 'name': 'foo', 'service_id': str(s1.id), 'parent_id': None},
+        {'id': str(tf1.id), 'name': 'foo', 'service_id': str(s1.id), 'parent_id': None, 'users_with_permission': []},
+        {'id': str(tf2.id), 'name': 'foo', 'service_id': str(s1.id), 'parent_id': None, 'users_with_permission': []},
     ], key=lambda x: x['id'])
 
 
 def test_get_folders_for_service_with_no_folders(sample_service, admin_request):
     resp = admin_request.get('template_folder.get_template_folders_for_service', service_id=sample_service.id)
     assert resp == {'template_folders': []}
+
+
+def test_get_folders_returns_users_with_permission(admin_request, sample_service):
+    user_1 = create_user(email='one@gov.uk')
+    user_2 = create_user(email='two@gov.uk')
+    user_3 = create_user(email='three@gov.uk')
+    template_folder = create_template_folder(sample_service)
+
+    sample_service.users = [user_1, user_2, user_3]
+
+    service_user_1 = dao_get_service_user(user_1.id, sample_service.id)
+    service_user_2 = dao_get_service_user(user_2.id, sample_service.id)
+
+    service_user_1.folders = [template_folder]
+    service_user_2.folders = [template_folder]
+
+    resp = admin_request.get('template_folder.get_template_folders_for_service', service_id=sample_service.id)
+    users_with_permission = resp['template_folders'][0]['users_with_permission']
+
+    assert len(users_with_permission) == 2
+    assert str(user_1.id) in users_with_permission
+    assert str(user_2.id) in users_with_permission
 
 
 @pytest.mark.parametrize('has_parent', [True, False])

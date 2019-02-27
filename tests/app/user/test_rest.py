@@ -16,8 +16,9 @@ from app.models import (
     EMAIL_AUTH_TYPE
 )
 from app.dao.permissions_dao import default_service_permissions
+from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from tests import create_authorization_header
-from tests.app.db import create_service, create_organisation, create_user
+from tests.app.db import create_service, create_template_folder, create_organisation, create_user
 
 
 def test_get_user_list(admin_request, sample_service):
@@ -357,7 +358,7 @@ def test_get_user_with_permissions(client, sample_user_service_permission):
 
 
 def test_set_user_permissions(client, sample_user, sample_service):
-    data = json.dumps([{'permission': MANAGE_SETTINGS}])
+    data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}]})
     header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
@@ -376,34 +377,7 @@ def test_set_user_permissions(client, sample_user, sample_service):
 
 
 def test_set_user_permissions_multiple(client, sample_user, sample_service):
-    data = json.dumps([{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}])
-    header = create_authorization_header()
-    headers = [('Content-Type', 'application/json'), header]
-    response = client.post(
-        url_for(
-            'user.set_permissions',
-            user_id=str(sample_user.id),
-            service_id=str(sample_service.id)),
-        headers=headers,
-        data=data)
-
-    assert response.status_code == 204
-    permission = Permission.query.filter_by(permission=MANAGE_SETTINGS).first()
-    assert permission.user == sample_user
-    assert permission.service == sample_service
-    assert permission.permission == MANAGE_SETTINGS
-    permission = Permission.query.filter_by(permission=MANAGE_TEMPLATES).first()
-    assert permission.user == sample_user
-    assert permission.service == sample_service
-    assert permission.permission == MANAGE_TEMPLATES
-
-
-def test_set_user_permissions_multiple_with_new_data_format(client, sample_user, sample_service):
-    permissions_data = {
-        'permissions': [{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}]
-    }
-
-    data = json.dumps(permissions_data)
+    data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}]})
     header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
@@ -426,7 +400,7 @@ def test_set_user_permissions_multiple_with_new_data_format(client, sample_user,
 
 
 def test_set_user_permissions_remove_old(client, sample_user, sample_service):
-    data = json.dumps([{'permission': MANAGE_SETTINGS}])
+    data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}]})
     header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
@@ -441,6 +415,127 @@ def test_set_user_permissions_remove_old(client, sample_user, sample_service):
     query = Permission.query.filter_by(user=sample_user)
     assert query.count() == 1
     assert query.first().permission == MANAGE_SETTINGS
+
+
+def test_set_user_folder_permissions(client, sample_user, sample_service):
+    tf1 = create_template_folder(sample_service)
+    tf2 = create_template_folder(sample_service)
+    data = json.dumps({'permissions': [], 'folder_permissions': [str(tf1.id), str(tf2.id)]})
+
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        data=data)
+
+    assert response.status_code == 204
+
+    service_user = dao_get_service_user(sample_user.id, sample_service.id)
+    assert len(service_user.folders) == 2
+    assert tf1 in service_user.folders
+    assert tf2 in service_user.folders
+
+
+def test_set_user_folder_permissions_when_user_does_not_belong_to_service(client, sample_user):
+    service = create_service()
+    tf1 = create_template_folder(service)
+    tf2 = create_template_folder(service)
+
+    data = json.dumps({'permissions': [], 'folder_permissions': [str(tf1.id), str(tf2.id)]})
+
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        data=data)
+
+    assert response.status_code == 404
+
+
+def test_set_user_folder_permissions_does_not_affect_permissions_for_other_services(
+    client,
+    sample_user,
+    sample_service,
+):
+    tf1 = create_template_folder(sample_service)
+    tf2 = create_template_folder(sample_service)
+
+    service_2 = create_service(sample_user, service_name='other service')
+    tf3 = create_template_folder(service_2)
+
+    sample_service_user = dao_get_service_user(sample_user.id, sample_service.id)
+    sample_service_user.folders = [tf1]
+    dao_update_service_user(sample_service_user)
+
+    service_2_user = dao_get_service_user(sample_user.id, service_2.id)
+    service_2_user.folders = [tf3]
+    dao_update_service_user(service_2_user)
+
+    data = json.dumps({'permissions': [], 'folder_permissions': [str(tf2.id)]})
+
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        data=data)
+
+    assert response.status_code == 204
+
+    assert sample_service_user.folders == [tf2]
+    assert service_2_user.folders == [tf3]
+
+
+def test_update_user_folder_permissions(client, sample_user, sample_service):
+    tf1 = create_template_folder(sample_service)
+    tf2 = create_template_folder(sample_service)
+    tf3 = create_template_folder(sample_service)
+
+    service_user = dao_get_service_user(sample_user.id, sample_service.id)
+    service_user.folders = [tf1, tf2]
+    dao_update_service_user(service_user)
+
+    data = json.dumps({'permissions': [], 'folder_permissions': [str(tf2.id), str(tf3.id)]})
+
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        data=data)
+
+    assert response.status_code == 204
+    assert len(service_user.folders) == 2
+    assert tf2 in service_user.folders
+    assert tf3 in service_user.folders
+
+
+def test_remove_user_folder_permissions(client, sample_user, sample_service):
+    tf1 = create_template_folder(sample_service)
+    tf2 = create_template_folder(sample_service)
+
+    service_user = dao_get_service_user(sample_user.id, sample_service.id)
+    service_user.folders = [tf1, tf2]
+    dao_update_service_user(service_user)
+
+    data = json.dumps({'permissions': [], 'folder_permissions': []})
+
+    response = client.post(
+        url_for(
+            'user.set_permissions',
+            user_id=str(sample_user.id),
+            service_id=str(sample_service.id)),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        data=data)
+
+    assert response.status_code == 204
+    assert service_user.folders == []
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

@@ -12,6 +12,7 @@ from app.dao.dao_utils import (
     version_class
 )
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
+from app.dao.service_user_dao import dao_get_service_user
 from app.models import (
     AnnualBilling,
     ApiKey,
@@ -201,8 +202,13 @@ def dao_remove_user_from_service(service, user):
     try:
         from app.dao.permissions_dao import permission_dao
         permission_dao.remove_user_service_permissions(user, service)
+
+        service_user = dao_get_service_user(user.id, service.id)
+        service_user.folders = []
+
         service.users.remove(user)
-        db.session.add(service)
+
+        db.session.add_all([service, service_user])
     except Exception as e:
         db.session.rollback()
         raise e
@@ -361,7 +367,7 @@ def dao_resume_service(service_id):
 
 def dao_fetch_active_users_for_service(service_id):
     query = User.query.filter(
-        User.user_to_service.any(id=service_id),
+        User.services.any(id=service_id),
         User.state == 'active'
     )
 
