@@ -6,7 +6,7 @@ from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
-from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.letters_pdf_tasks import create_letters_pdf, process_virus_scan_passed
 from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
@@ -306,11 +306,18 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, template, 
     current_app.logger.info('Calling task scan-file for {}'.format(filename))
 
     # call task to add the filename to anti virus queue
-    notify_celery.send_task(
-        name=TaskNames.SCAN_FILE,
-        kwargs={'filename': filename},
-        queue=QueueNames.ANTIVIRUS,
-    )
+    if current_app.config['ANTIVIRUS_ENABLED']:
+        notify_celery.send_task(
+            name=TaskNames.SCAN_FILE,
+            kwargs={'filename': filename},
+            queue=QueueNames.ANTIVIRUS,
+        )
+    else:
+        # stub out antivirus in dev
+        process_virus_scan_passed.apply_async(
+            kwargs={'filename': filename},
+            queue=QueueNames.LETTERS,
+        )
 
     return notification
 
