@@ -94,23 +94,23 @@ def test_count_inbound_sms_for_service_filters_messages_older_than_seven_days(sa
 
 @freeze_time("2017-06-08 12:00:00")
 def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session):
-    service_without_retention = create_service(service_name='without retention')
-    service_with_three_day_retention = create_service(service_name='three days')
-    service_with_month_retention = create_service(service_name='thirty days')
+    no_retention_service = create_service(service_name='no retention')
+    short_retention_service = create_service(service_name='three days')
+    long_retention_service = create_service(service_name='thirty days')
 
-    services = [service_with_three_day_retention, service_without_retention, service_with_month_retention]
+    services = [short_retention_service, no_retention_service, long_retention_service]
 
-    create_service_data_retention(service_with_month_retention.id, notification_type='sms', days_of_retention=30)
-    create_service_data_retention(service_with_three_day_retention.id, notification_type='sms', days_of_retention=3)
+    create_service_data_retention(long_retention_service.id, notification_type='sms', days_of_retention=30)
+    create_service_data_retention(short_retention_service.id, notification_type='sms', days_of_retention=3)
     # email retention doesn't affect anything
-    create_service_data_retention(service_with_three_day_retention.id, notification_type='email', days_of_retention=4)
+    create_service_data_retention(short_retention_service.id, notification_type='email', days_of_retention=4)
 
     dates = [
         datetime(2017, 6, 4, 23, 00),  # just before three days
         datetime(2017, 6, 4, 22, 59),  # older than three days
         datetime(2017, 5, 31, 23, 00),  # just before seven days
         datetime(2017, 5, 31, 22, 59),  # older than seven days
-        datetime(2017, 5, 7, 22, 59),  # older than thirty days
+        datetime(2017, 5, 1, 0, 0),  # older than thirty days
     ]
 
     for date, service in product(dates, services):
@@ -120,9 +120,15 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
 
     # four deleted for the 3-day service, two for the default seven days one, one for the 30 day
     assert deleted_count == 7
-    assert dao_count_inbound_sms_for_service(service_without_retention.id) == 3
-    assert dao_count_inbound_sms_for_service(service_with_three_day_retention.id) == 1
-    assert dao_count_inbound_sms_for_service(service_with_month_retention.id) == 4
+    assert {
+        x.created_at for x in dao_get_inbound_sms_for_service(short_retention_service.id, days_ago_to_start=None)
+    } == set(dates[:1])
+    assert {
+        x.created_at for x in dao_get_inbound_sms_for_service(no_retention_service.id, days_ago_to_start=None)
+    } == set(dates[:3])
+    assert {
+        x.created_at for x in dao_get_inbound_sms_for_service(long_retention_service.id, days_ago_to_start=None)
+    } == set(dates[:4])
 
 
 def test_get_inbound_sms_by_id_returns(sample_service):
