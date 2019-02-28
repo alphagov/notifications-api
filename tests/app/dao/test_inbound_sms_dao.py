@@ -121,13 +121,13 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
     # four deleted for the 3-day service, two for the default seven days one, one for the 30 day
     assert deleted_count == 7
     assert {
-        x.created_at for x in dao_get_inbound_sms_for_service(short_retention_service.id, days_ago_to_start=None)
+        x.created_at for x in dao_get_inbound_sms_for_service(short_retention_service.id, limit_days=None)
     } == set(dates[:1])
     assert {
-        x.created_at for x in dao_get_inbound_sms_for_service(no_retention_service.id, days_ago_to_start=None)
+        x.created_at for x in dao_get_inbound_sms_for_service(no_retention_service.id, limit_days=None)
     } == set(dates[:3])
     assert {
-        x.created_at for x in dao_get_inbound_sms_for_service(long_retention_service.id, days_ago_to_start=None)
+        x.created_at for x in dao_get_inbound_sms_for_service(long_retention_service.id, limit_days=None)
     } == set(dates[:4])
 
 

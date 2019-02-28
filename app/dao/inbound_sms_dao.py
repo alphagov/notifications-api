@@ -14,14 +14,14 @@ def dao_create_inbound_sms(inbound_sms):
     db.session.add(inbound_sms)
 
 
-def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None, days_ago_to_start=6):
+def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None, limit_days=6):
     q = InboundSms.query.filter(
         InboundSms.service_id == service_id
     ).order_by(
         InboundSms.created_at.desc()
     )
-    if days_ago_to_start is not None:
-        start_date = midnight_n_days_ago(days_ago_to_start)
+    if limit_days is not None:
+        start_date = midnight_n_days_ago(limit_days)
         q = q.filter(InboundSms.created_at >= start_date)
 
     if user_number:
