@@ -58,15 +58,10 @@ def test_get_all_inbound_sms_filters_on_service(notify_db_session):
 
 
 def test_get_all_inbound_sms_filters_on_time(sample_service, notify_db_session):
-    create_inbound_sms(sample_service, user_number='447700900111', content='111 1', created_at=datetime(2017, 1, 2))
-    sms_two = create_inbound_sms(
-        sample_service,
-        user_number='447700900111',
-        content='111 2',
-        created_at=datetime(2017, 1, 3)
-    )
+    create_inbound_sms(sample_service, created_at=datetime(2017, 8, 6, 22, 59))  # sunday evening
+    sms_two = create_inbound_sms(sample_service, created_at=datetime(2017, 8, 6, 23, 0))  # monday (7th) morning
 
-    with freeze_time('2017-01-09'):
+    with freeze_time('2017-08-14 12:00'):
         res = dao_get_inbound_sms_for_service(sample_service.id)
 
     assert len(res) == 1
