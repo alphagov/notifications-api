@@ -374,7 +374,7 @@ class Service(db.Model, Versioned):
     volume_sms = db.Column(db.Integer(), nullable=True, unique=False)
     volume_email = db.Column(db.Integer(), nullable=True, unique=False)
     volume_letter = db.Column(db.Integer(), nullable=True, unique=False)
-    consent_to_research = db.Column(db.Boolean, nullable=False, default=False)
+    consent_to_research = db.Column(db.Boolean, nullable=True)
 
     organisation = db.relationship(
         'Organisation',

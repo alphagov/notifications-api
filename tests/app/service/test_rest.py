@@ -647,7 +647,7 @@ def test_update_service_sets_volumes(
 @pytest.mark.parametrize('value, expected_status, expected_persisted', (
     (True, 200, True),
     (False, 200, False),
-    ('Yes', 400, False),
+    ('Yes', 400, None),
 ))
 def test_update_service_sets_research_consent(
     admin_request,
@@ -656,7 +656,7 @@ def test_update_service_sets_research_consent(
     expected_status,
     expected_persisted,
 ):
-    assert sample_service.consent_to_research is False
+    assert sample_service.consent_to_research is None
     admin_request.post(
         'service.update_service',
         service_id=sample_service.id,
