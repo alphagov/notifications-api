@@ -117,7 +117,7 @@ def test_ses_callback_should_retry_if_notification_is_new(client, notify_db, moc
 
 def test_ses_callback_should_log_if_notification_is_missing(client, notify_db, mocker):
     mock_retry = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
-    mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.error')
+    mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.warning')
 
     with freeze_time('2017-11-17T12:34:03.646Z'):
         assert process_ses_results(ses_notification_callback(reference='ref')) is None
