@@ -42,10 +42,10 @@ def process_ses_results(self, response):
             notification = notifications_dao.dao_get_notification_by_reference(reference)
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
-            if datetime.utcnow() - message_time < timedelta(minutes=10):
+            if datetime.utcnow() - message_time < timedelta(minutes=5):
                 self.retry(queue=QueueNames.RETRY)
-            elif datetime.utcnow() - message_time < timedelta(days=3):
-                current_app.logger.error(
+            else:
+                current_app.logger.warning(
                     "notification not found for reference: {} (update to {})".format(reference, notification_status)
                 )
             return
