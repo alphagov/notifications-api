@@ -839,6 +839,16 @@ def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notif
 
 
 @freeze_time('2001-01-01T23:59:00')
+def test_dao_suspend_service_with_no_api_keys(notify_db_session):
+    service = create_service()
+    dao_suspend_service(service.id)
+    service = Service.query.get(service.id)
+    assert not service.active
+    assert service.name == service.name
+    assert service.api_keys == []
+
+
+@freeze_time('2001-01-01T23:59:00')
 def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(notify_db_session):
     service = create_service()
     api_key = create_api_key(service=service)

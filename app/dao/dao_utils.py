@@ -20,18 +20,30 @@ def transactional(func):
     return commit_or_rollback
 
 
-def version_class(model_class, history_cls=None):
+def version_class(model_class, history_cls=None, must_write_history=True):
     create_hist = partial(create_history, history_cls=history_cls)
 
     def versioned(func):
         @wraps(func)
         def record_version(*args, **kwargs):
+
             func(*args, **kwargs)
+
             history_objects = [create_hist(obj) for obj in
                                itertools.chain(db.session.new, db.session.dirty)
                                if isinstance(obj, model_class)]
+
+            if history_objects == [] and must_write_history:
+                raise RuntimeError((
+                    'Can\'t record history for {} '
+                    '(something in your code has casued the database to '
+                    'flush the session early so there\'s nothing to '
+                    'copy into the history table)'
+                ).format(model_class.__name__))
+
             for h_obj in history_objects:
                 db.session.add(h_obj)
+
         return record_version
     return versioned
 
