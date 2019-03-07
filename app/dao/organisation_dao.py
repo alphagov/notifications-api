@@ -1,3 +1,5 @@
+from sqlalchemy.sql.expression import func
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import (
@@ -28,7 +30,8 @@ def dao_get_organisation_by_email_address(email_address):
 
     email_address = email_address.lower()
 
-    for domain in Domain().query.all():
+    for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
+
         if (
             email_address.endswith("@{}".format(domain.domain)) or
             email_address.endswith(".{}".format(domain.domain))

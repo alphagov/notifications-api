@@ -271,6 +271,10 @@ def test_create_service_with_domain_sets_organisation(
     expected_org,
 ):
 
+    red_herring_org = create_organisation(name='Sub example')
+    create_domain('specific.example.gov.uk', red_herring_org.id)
+    create_domain('aaaaaaaa.example.gov.uk', red_herring_org.id)
+
     org = create_organisation()
     create_domain('example.gov.uk', org.id)
     create_domain('test.gov.uk', org.id)
