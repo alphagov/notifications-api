@@ -1574,8 +1574,7 @@ class NotificationHistory(db.Model, HistoryModel):
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
 
-    created_by = db.relationship('User')
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+    created_by_id = db.Column(UUID(as_uuid=True), nullable=True)
 
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
