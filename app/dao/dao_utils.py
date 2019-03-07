@@ -1,5 +1,5 @@
 import itertools
-from functools import wraps, partial
+from functools import wraps
 
 from app import db
 from app.history_meta import create_history
@@ -20,8 +20,18 @@ def transactional(func):
     return commit_or_rollback
 
 
-def version_class(model_class, history_cls=None, must_write_history=True):
-    create_hist = partial(create_history, history_cls=history_cls)
+class VersionOptions():
+
+    def __init__(self, model_class, history_class=None, must_write_history=True):
+        self.model_class = model_class
+        self.history_class = history_class
+        self.must_write_history = must_write_history
+
+
+def version_class(*version_options):
+
+    if len(version_options) == 1 and not isinstance(version_options[0], VersionOptions):
+        version_options = (VersionOptions(version_options[0]),)
 
     def versioned(func):
         @wraps(func)
@@ -29,20 +39,35 @@ def version_class(model_class, history_cls=None, must_write_history=True):
 
             func(*args, **kwargs)
 
-            history_objects = [create_hist(obj) for obj in
-                               itertools.chain(db.session.new, db.session.dirty)
-                               if isinstance(obj, model_class)]
+            session_objects = []
 
-            if history_objects == [] and must_write_history:
-                raise RuntimeError((
-                    'Can\'t record history for {} '
-                    '(something in your code has casued the database to '
-                    'flush the session early so there\'s nothing to '
-                    'copy into the history table)'
-                ).format(model_class.__name__))
+            for version_option in version_options:
+                tmp_session_objects = [
+                    (
+                        session_object, version_option.history_class
+                    )
+                    for session_object in itertools.chain(
+                        db.session.new, db.session.dirty
+                    )
+                    if isinstance(
+                        session_object, version_option.model_class
+                    )
+                ]
 
-            for h_obj in history_objects:
-                db.session.add(h_obj)
+                if tmp_session_objects == [] and version_option.must_write_history:
+                    raise RuntimeError((
+                        'Can\'t record history for {} '
+                        '(something in your code has casued the database to '
+                        'flush the session early so there\'s nothing to '
+                        'copy into the history table)'
+                    ).format(version_option.model_class.__name__))
+
+                session_objects += tmp_session_objects
+
+            for session_object, history_class in session_objects:
+                db.session.add(
+                    create_history(session_object, history_cls=history_class)
+                )
 
         return record_version
     return versioned

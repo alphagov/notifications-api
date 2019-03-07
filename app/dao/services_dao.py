@@ -9,7 +9,8 @@ from flask import current_app
 from app import db
 from app.dao.dao_utils import (
     transactional,
-    version_class
+    version_class,
+    VersionOptions,
 )
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
@@ -117,9 +118,11 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
 
 
 @transactional
-@version_class(Service)
-@version_class(Template, TemplateHistory, must_write_history=False)
-@version_class(ApiKey, must_write_history=False)
+@version_class(
+    VersionOptions(ApiKey, must_write_history=False),
+    VersionOptions(Service),
+    VersionOptions(Template, history_class=TemplateHistory, must_write_history=False),
+)
 def dao_archive_service(service_id):
     # have to eager load templates and api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
@@ -372,8 +375,10 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
 
 
 @transactional
-@version_class(Service)
-@version_class(ApiKey, must_write_history=False)
+@version_class(
+    VersionOptions(ApiKey, must_write_history=False),
+    VersionOptions(Service),
+)
 def dao_suspend_service(service_id):
     # have to eager load api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
@@ -381,11 +386,11 @@ def dao_suspend_service(service_id):
         joinedload('api_keys'),
     ).filter(Service.id == service_id).one()
 
-    service.active = False
-
     for api_key in service.api_keys:
         if not api_key.expiry_date:
             api_key.expiry_date = datetime.utcnow()
+
+    service.active = False
 
 
 @transactional
