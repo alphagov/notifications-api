@@ -1,3 +1,4 @@
+import datetime
 import uuid
 
 import pytest
@@ -5,6 +6,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.dao.organisation_dao import (
     dao_get_organisations,
+    dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
     dao_get_organisation_services,
@@ -16,7 +18,14 @@ from app.dao.organisation_dao import (
 )
 from app.models import Organisation
 
-from tests.app.db import create_organisation, create_service, create_user
+from tests.app.db import (
+    create_domain,
+    create_email_branding,
+    create_letter_branding,
+    create_organisation,
+    create_service,
+    create_user,
+)
 
 
 def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
@@ -47,19 +56,67 @@ def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_s
     assert organisation_from_db == organisation
 
 
-def test_update_organisation(notify_db, notify_db_session):
-    updated_name = 'new name'
+def test_update_organisation(
+    notify_db,
+    notify_db_session,
+):
+    create_organisation()
+
+    organisation = Organisation.query.one()
+    user = create_user()
+    email_branding = create_email_branding()
+    letter_branding = create_letter_branding()
+
+    data = {
+        'name': 'new name',
+        "crown": True,
+        "organisation_type": 'local',
+        "agreement_signed": True,
+        "agreement_signed_at": datetime.datetime.utcnow(),
+        "agreement_signed_by_id": user.id,
+        "agreement_signed_version": 999.99,
+        "letter_branding_id": letter_branding.id,
+        "email_branding_id": email_branding.id,
+    }
+
+    for attribute, value in data.items():
+        assert getattr(organisation, attribute) != value
+
+    dao_update_organisation(organisation.id, **data)
+
+    organisation = Organisation.query.one()
+
+    for attribute, value in data.items():
+        assert getattr(organisation, attribute) == value
+
+
+@pytest.mark.parametrize('domain_list, expected_domains', (
+    (['abc', 'def'], {'abc', 'def'}),
+    (['ABC', 'DEF'], {'abc', 'def'}),
+    ([], set()),
+    (None, {'123', '456'}),
+    pytest.param(
+        ['abc', 'ABC'], {'abc'},
+        marks=pytest.mark.xfail(raises=IntegrityError)
+    ),
+))
+def test_update_organisation_domains_lowercases(
+    notify_db,
+    notify_db_session,
+    domain_list,
+    expected_domains,
+):
     create_organisation()
 
     organisation = Organisation.query.one()
 
-    assert organisation.name != updated_name
+    # Seed some domains
+    dao_update_organisation(organisation.id, domains=['123', '456'])
 
-    dao_update_organisation(organisation.id, **{'name': updated_name})
+    # This should overwrite the seeded domains
+    dao_update_organisation(organisation.id, domains=domain_list)
 
-    organisation = Organisation.query.one()
-
-    assert organisation.name == updated_name
+    assert {domain.domain for domain in organisation.domains} == expected_domains
 
 
 def test_add_service_to_organisation(notify_db, notify_db_session, sample_service, sample_organisation):
@@ -171,3 +228,30 @@ def test_add_user_to_organisation_when_user_does_not_exist(sample_organisation):
 def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     with pytest.raises(expected_exception=SQLAlchemyError):
         dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
+
+
+@pytest.mark.parametrize('domain, expected_org', (
+    ('unknown.gov.uk', False),
+    ('example.gov.uk', True),
+))
+def test_get_organisation_by_email_address(
+    admin_request,
+    sample_user,
+    domain,
+    expected_org,
+):
+
+    org = create_organisation()
+    create_domain('example.gov.uk', org.id)
+    create_domain('test.gov.uk', org.id)
+
+    another_org = create_organisation(name='Another')
+    create_domain('cabinet-office.gov.uk', another_org.id)
+    create_domain('cabinetoffice.gov.uk', another_org.id)
+
+    found_org = dao_get_organisation_by_email_address('test@{}'.format(domain))
+
+    if expected_org:
+        assert found_org is org
+    else:
+        assert found_org is None

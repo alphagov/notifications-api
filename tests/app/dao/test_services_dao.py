@@ -4,7 +4,7 @@ from datetime import datetime
 import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import FlushError, NoResultFound
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
 from app.dao.inbound_numbers_dao import (
@@ -167,9 +167,9 @@ def test_cannot_create_service_with_no_user(notify_db_session):
                       message_limit=1000,
                       restricted=False,
                       created_by=user)
-    with pytest.raises(FlushError) as excinfo:
+    with pytest.raises(ValueError) as excinfo:
         dao_create_service(service, None)
-    assert "Can't flush None value found in collection Service.users" in str(excinfo.value)
+    assert "Can't create a service without a user" in str(excinfo.value)
 
 
 def test_should_add_user_to_service(notify_db_session):
