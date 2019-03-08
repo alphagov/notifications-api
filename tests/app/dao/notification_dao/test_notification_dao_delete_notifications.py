@@ -6,7 +6,7 @@ from datetime import (
 import pytest
 from flask import current_app
 from freezegun import freeze_time
-from app.dao.notifications_dao import delete_notifications_created_more_than_a_week_ago_by_type
+from app.dao.notifications_dao import delete_notifications_older_than_retention_by_type
 from app.models import Notification, NotificationHistory
 from tests.app.db import (
     create_template,
@@ -48,7 +48,7 @@ def test_should_delete_notifications_by_type_after_seven_days(
     assert len(all_notifications) == 30
     # Records from before 3rd should be deleted
     with freeze_time(delete_run_time):
-        delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+        delete_notifications_older_than_retention_by_type(notification_type)
     remaining_sms_notifications = Notification.query.filter_by(notification_type='sms').all()
     remaining_letter_notifications = Notification.query.filter_by(notification_type='letter').all()
     remaining_email_notifications = Notification.query.filter_by(notification_type='email').all()
@@ -77,7 +77,7 @@ def test_should_not_delete_notification_history(sample_service, notification_typ
         create_notification(template=letter_template, status='permanent-failure')
     assert Notification.query.count() == 3
     assert NotificationHistory.query.count() == 3
-    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    delete_notifications_older_than_retention_by_type(notification_type)
     assert Notification.query.count() == 2
     assert NotificationHistory.query.count() == 3
 
@@ -109,7 +109,7 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
                         created_at=datetime.utcnow() - timedelta(days=8))
     create_service_data_retention(service_id=sample_service.id, notification_type=notification_type)
     assert len(Notification.query.all()) == 9
-    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    delete_notifications_older_than_retention_by_type(notification_type)
     assert len(Notification.query.all()) == 7
     assert len(Notification.query.filter_by(notification_type=notification_type).all()) == 1
     if notification_type == 'letter':
@@ -146,7 +146,7 @@ def test_delete_notifications_keep_data_for_days_of_retention_is_longer(sample_s
     create_notification(template=default_letter_template, status='temporary-failure',
                         created_at=datetime.utcnow() - timedelta(days=8))
     assert len(Notification.query.all()) == 9
-    delete_notifications_created_more_than_a_week_ago_by_type(notification_type)
+    delete_notifications_older_than_retention_by_type(notification_type)
     assert len(Notification.query.filter_by().all()) == 8
     assert len(Notification.query.filter_by(notification_type=notification_type).all()) == 2
     if notification_type == 'letter':
@@ -171,7 +171,7 @@ def test_delete_notifications_delete_notification_type_for_default_time_if_no_da
     create_notification(template=letter_template, status='temporary-failure',
                         created_at=datetime.utcnow() - timedelta(days=14))
     assert len(Notification.query.all()) == 6
-    delete_notifications_created_more_than_a_week_ago_by_type('email')
+    delete_notifications_older_than_retention_by_type('email')
     assert len(Notification.query.filter_by().all()) == 5
     assert len(Notification.query.filter_by(notification_type='email').all()) == 1
 
@@ -182,7 +182,7 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
 
     create_notification(template=letter_template, status='sending',
                         reference='LETTER_REF')
-    delete_notifications_created_more_than_a_week_ago_by_type('email', qry_limit=1)
+    delete_notifications_older_than_retention_by_type('email', qry_limit=1)
     mock_get_s3.assert_not_called()
 
 
@@ -196,7 +196,7 @@ def test_delete_notifications_calls_subquery(
     create_notification(template=sms_template, created_at=datetime.now() - timedelta(days=8))
 
     assert Notification.query.count() == 3
-    delete_notifications_created_more_than_a_week_ago_by_type('sms', qry_limit=1)
+    delete_notifications_older_than_retention_by_type('sms', qry_limit=1)
     assert Notification.query.count() == 0
 
 

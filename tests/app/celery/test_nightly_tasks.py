@@ -11,10 +11,10 @@ from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
     delete_dvla_response_files_older_than_seven_days,
-    delete_email_notifications_older_than_seven_days,
-    delete_inbound_sms_older_than_seven_days,
-    delete_letter_notifications_older_than_seven_days,
-    delete_sms_notifications_older_than_seven_days,
+    delete_email_notifications_older_than_retention,
+    delete_inbound_sms,
+    delete_letter_notifications_older_than_retention,
+    delete_sms_notifications_older_than_retention,
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
@@ -157,21 +157,21 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
 
 
 def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
-    delete_sms_notifications_older_than_seven_days()
+    mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
+    delete_sms_notifications_older_than_retention()
     mocked.assert_called_once_with('sms')
 
 
 def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
     mocked_notifications = mocker.patch(
-        'app.celery.nightly_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
-    delete_email_notifications_older_than_seven_days()
+        'app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
+    delete_email_notifications_older_than_retention()
     mocked_notifications.assert_called_once_with('email')
 
 
 def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
-    mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_created_more_than_a_week_ago_by_type')
-    delete_letter_notifications_older_than_seven_days()
+    mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
+    delete_letter_notifications_older_than_retention()
     mocked.assert_called_once_with('letter')
 
 
@@ -291,10 +291,10 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         ])
 
 
-def test_should_call_delete_inbound_sms_older_than_seven_days(notify_api, mocker):
-    mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_created_more_than_a_week_ago')
-    delete_inbound_sms_older_than_seven_days()
-    assert nightly_tasks.delete_inbound_sms_created_more_than_a_week_ago.call_count == 1
+def test_should_call_delete_inbound_sms(notify_api, mocker):
+    mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_older_than_retention')
+    delete_inbound_sms()
+    assert nightly_tasks.delete_inbound_sms_older_than_retention.call_count == 1
 
 
 @freeze_time('2017-01-01 10:00:00')

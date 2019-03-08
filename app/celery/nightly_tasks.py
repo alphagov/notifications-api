@@ -16,14 +16,14 @@ from app.celery.service_callback_tasks import (
     create_delivery_status_callback_data,
 )
 from app.config import QueueNames
-from app.dao.inbound_sms_dao import delete_inbound_sms_created_more_than_a_week_ago
+from app.dao.inbound_sms_dao import delete_inbound_sms_older_than_retention
 from app.dao.jobs_dao import (
     dao_get_jobs_older_than_data_retention,
     dao_archive_job
 )
 from app.dao.notifications_dao import (
     dao_timeout_notifications,
-    delete_notifications_created_more_than_a_week_ago_by_type,
+    delete_notifications_older_than_retention_by_type,
 )
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.exceptions import NotificationTechnicalFailureException
@@ -64,10 +64,10 @@ def _remove_csv_files(job_types):
 @notify_celery.task(name="delete-sms-notifications")
 @cronitor("delete-sms-notifications")
 @statsd(namespace="tasks")
-def delete_sms_notifications_older_than_seven_days():
+def delete_sms_notifications_older_than_retention():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago_by_type('sms')
+        deleted = delete_notifications_older_than_retention_by_type('sms')
         current_app.logger.info(
             "Delete {} job started {} finished {} deleted {} sms notifications".format(
                 'sms',
@@ -84,10 +84,10 @@ def delete_sms_notifications_older_than_seven_days():
 @notify_celery.task(name="delete-email-notifications")
 @cronitor("delete-email-notifications")
 @statsd(namespace="tasks")
-def delete_email_notifications_older_than_seven_days():
+def delete_email_notifications_older_than_retention():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago_by_type('email')
+        deleted = delete_notifications_older_than_retention_by_type('email')
         current_app.logger.info(
             "Delete {} job started {} finished {} deleted {} email notifications".format(
                 'email',
@@ -104,10 +104,10 @@ def delete_email_notifications_older_than_seven_days():
 @notify_celery.task(name="delete-letter-notifications")
 @cronitor("delete-letter-notifications")
 @statsd(namespace="tasks")
-def delete_letter_notifications_older_than_seven_days():
+def delete_letter_notifications_older_than_retention():
     try:
         start = datetime.utcnow()
-        deleted = delete_notifications_created_more_than_a_week_ago_by_type('letter')
+        deleted = delete_notifications_older_than_retention_by_type('letter')
         current_app.logger.info(
             "Delete {} job started {} finished {} deleted {} letter notifications".format(
                 'letter',
@@ -190,10 +190,10 @@ def send_total_sent_notifications_to_performance_platform(day):
 @notify_celery.task(name="delete-inbound-sms")
 @cronitor("delete-inbound-sms")
 @statsd(namespace="tasks")
-def delete_inbound_sms_older_than_seven_days():
+def delete_inbound_sms():
     try:
         start = datetime.utcnow()
-        deleted = delete_inbound_sms_created_more_than_a_week_ago()
+        deleted = delete_inbound_sms_older_than_retention()
         current_app.logger.info(
             "Delete inbound sms job started {} finished {} deleted {} inbound sms notifications".format(
                 start,
