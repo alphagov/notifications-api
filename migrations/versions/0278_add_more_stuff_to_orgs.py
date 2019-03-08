@@ -47,11 +47,11 @@ def downgrade():
     op.drop_column('organisation', 'agreement_signed_at')
     op.drop_column('organisation', 'agreement_signed')
 
-    op.drop_column('organisation', 'email_branding_id')
     op.drop_constraint('fk_organisation_email_branding_id', 'organisation', type_='foreignkey')
+    op.drop_column('organisation', 'email_branding_id')
 
-    op.drop_column('organisation', 'letter_branding_id')
     op.drop_constraint('fk_organisation_letter_branding_id', 'organisation', type_='foreignkey')
+    op.drop_column('organisation', 'letter_branding_id')
 
     op.drop_index(op.f('ix_domain_domain'), table_name='domain')
     op.drop_table('domain')
