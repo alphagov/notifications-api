@@ -15,7 +15,7 @@ gunicorn==19.7.1
 iso8601==0.1.12
 jsonschema==3.0.0b3
 marshmallow-sqlalchemy==0.16.0
-marshmallow==2.18.1
+marshmallow==2.19.0
 psycopg2-binary==2.7.7
 PyJWT==1.7.1
 SQLAlchemy==1.2.18
