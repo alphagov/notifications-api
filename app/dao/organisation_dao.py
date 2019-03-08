@@ -59,12 +59,12 @@ def dao_update_organisation(organisation_id, **kwargs):
         kwargs
     )
 
-    if domains:
+    if isinstance(domains, list):
 
         Domain.query.filter_by(organisation_id=organisation_id).delete()
 
         db.session.bulk_save_objects([
-            Domain(domain=domain, organisation_id=organisation_id)
+            Domain(domain=domain.lower(), organisation_id=organisation_id)
             for domain in domains
         ])
 
