@@ -32,10 +32,29 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         organisation_id=org.id
     )
 
-    assert set(response.keys()) == {'id', 'name', 'active'}
+    assert set(response.keys()) == {
+        'id',
+        'name',
+        'active',
+        'crown',
+        'organisation_type',
+        'agreement_signed',
+        'agreement_signed_at',
+        'agreement_signed_by_id',
+        'agreement_signed_version',
+        'letter_branding_id',
+        'email_branding_id',
+    }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
     assert response['active'] is True
+    assert response['crown'] is None
+    assert response['organisation_type'] is None
+    assert response['agreement_signed'] is None
+    assert response['agreement_signed_by_id'] is None
+    assert response['agreement_signed_version'] is None
+    assert response['letter_branding_id'] is None
+    assert response['email_branding_id'] is None
 
 
 def test_post_create_organisation(admin_request, notify_db_session):
@@ -91,12 +110,27 @@ def test_post_create_organisation_with_missing_name_gives_validation_error(admin
     assert response['errors'][0]['message'] == 'name is a required property'
 
 
-def test_post_update_organisation_updates_fields(admin_request, notify_db_session):
+@pytest.mark.parametrize('agreement_signed', (
+    None, True, False
+))
+@pytest.mark.parametrize('crown', (
+    None, True, False
+))
+def test_post_update_organisation_updates_fields(
+    admin_request,
+    notify_db_session,
+    agreement_signed,
+    crown,
+):
     org = create_organisation()
     data = {
         'name': 'new organisation name',
-        'active': False
+        'active': False,
+        'agreement_signed': agreement_signed,
+        'crown': crown,
     }
+    assert org.agreement_signed is None
+    assert org.crown is None
 
     admin_request.post(
         'organisation.update_organisation',
@@ -111,6 +145,39 @@ def test_post_update_organisation_updates_fields(admin_request, notify_db_sessio
     assert organisation[0].id == org.id
     assert organisation[0].name == data['name']
     assert organisation[0].active == data['active']
+    assert organisation[0].agreement_signed == agreement_signed
+    assert organisation[0].crown == crown
+    assert organisation[0].domains == []
+
+
+@pytest.mark.parametrize('domain_list', (
+    ['example.com'],
+    ['example.com', 'example.org', 'example.net'],
+    [],
+))
+def test_post_update_organisation_updates_domains(
+    admin_request,
+    notify_db_session,
+    domain_list,
+):
+    org = create_organisation(name='test_org_2')
+    data = {
+        'domains': domain_list,
+    }
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    organisation = Organisation.query.all()
+
+    assert len(organisation) == 1
+    assert [
+        domain.domain for domain in organisation[0].domains
+    ] == domain_list
 
 
 def test_post_update_organisation_raises_400_on_existing_org_name(

@@ -1,7 +1,10 @@
+from sqlalchemy.sql.expression import func
+
 from app import db
 from app.dao.dao_utils import transactional
 from app.models import (
     Organisation,
+    Domain,
     InvitedOrganisationUser,
     User
 )
@@ -23,6 +26,21 @@ def dao_get_organisation_by_id(organisation_id):
     return Organisation.query.filter_by(id=organisation_id).one()
 
 
+def dao_get_organisation_by_email_address(email_address):
+
+    email_address = email_address.lower()
+
+    for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
+
+        if (
+            email_address.endswith("@{}".format(domain.domain)) or
+            email_address.endswith(".{}".format(domain.domain))
+        ):
+            return Organisation.query.filter_by(id=domain.organisation_id).one()
+
+    return None
+
+
 def dao_get_organisation_by_service_id(service_id):
     return Organisation.query.join(Organisation.services).filter_by(id=service_id).first()
 
@@ -34,9 +52,25 @@ def dao_create_organisation(organisation):
 
 @transactional
 def dao_update_organisation(organisation_id, **kwargs):
-    return Organisation.query.filter_by(id=organisation_id).update(
+
+    domains = kwargs.pop('domains', [])
+
+    organisation = Organisation.query.filter_by(id=organisation_id).update(
         kwargs
     )
+
+    if isinstance(domains, list):
+
+        Domain.query.filter_by(organisation_id=organisation_id).delete()
+
+        db.session.bulk_save_objects([
+            Domain(domain=domain.lower(), organisation_id=organisation_id)
+            for domain in domains
+        ])
+
+        db.session.commit()
+
+    return organisation
 
 
 @transactional

@@ -11,6 +11,7 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
 from app.models import (
@@ -151,13 +152,24 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
 
 @transactional
 @version_class(Service)
-def dao_create_service(service, user, service_id=None, service_permissions=None, letter_branding=None):
+def dao_create_service(
+    service,
+    user,
+    service_id=None,
+    service_permissions=None,
+    letter_branding=None,
+):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
     # migration is completed, this code should be able to be removed.
 
+    if not user:
+        raise ValueError("Can't create a service without a user")
+
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
+
+    organisation = dao_get_organisation_by_email_address(user.email_address)
 
     from app.dao.permissions_dao import permission_dao
     service.users.append(user)
@@ -173,8 +185,20 @@ def dao_create_service(service, user, service_id=None, service_permissions=None,
 
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
+
     if letter_branding:
         service.letter_branding = letter_branding
+
+    if organisation:
+
+        service.organisation = organisation
+
+        if organisation.email_branding_id:
+            service.email_branding = organisation.email_branding_id
+
+        if organisation.letter_branding_id and not service.letter_branding:
+            service.letter_branding = organisation.letter_branding_id
+
     db.session.add(service)
 
 
