@@ -1,16 +1,14 @@
 """
 
-Revision ID: 0278_remove_fk_to_users
-Revises: 0277_consent_to_research_null
+Revision ID: 0279_remove_fk_to_users
+Revises: 0278_add_more_stuff_to_orgs
 Create Date: 2019-03-06 16:49:28.674498
 
 """
 from alembic import op
-import sqlalchemy as sa
 
-
-revision = '0278_remove_fk_to_users'
-down_revision = '0277_consent_to_research_null'
+revision = '0279_remove_fk_to_users'
+down_revision = '0278_add_more_stuff_to_orgs'
 
 
 def upgrade():
