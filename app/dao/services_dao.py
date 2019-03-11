@@ -228,11 +228,7 @@ def dao_remove_user_from_service(service, user):
         permission_dao.remove_user_service_permissions(user, service)
 
         service_user = dao_get_service_user(user.id, service.id)
-        service_user.folders = []
-
-        service.users.remove(user)
-
-        db.session.add_all([service, service_user])
+        db.session.delete(service_user)
     except Exception as e:
         db.session.rollback()
         raise e
