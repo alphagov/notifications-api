@@ -73,6 +73,38 @@ def test_create_template_folder(admin_request, sample_service, has_parent):
     assert resp['data']['parent_id'] == parent_id
 
 
+@pytest.mark.parametrize('has_parent', [True, False])
+def test_create_template_folder_sets_user_permissions(admin_request, sample_service, has_parent):
+    user_1 = create_user(email='one@gov.uk')
+    user_2 = create_user(email='two@gov.uk')
+    user_3 = create_user(email='three@gov.uk', state='pending')
+    existing_folder = create_template_folder(sample_service)
+    sample_service.users = [user_1, user_2, user_3]
+    service_user_1 = dao_get_service_user(user_1.id, sample_service.id)
+    service_user_1.folders = [existing_folder]
+
+    parent_id = str(existing_folder.id) if has_parent else None
+
+    resp = admin_request.post(
+        'template_folder.create_template_folder',
+        service_id=sample_service.id,
+        _data={
+            'name': 'foo',
+            'parent_id': parent_id
+        },
+        _expected_status=201
+    )
+
+    assert resp['data']['name'] == 'foo'
+    assert resp['data']['service_id'] == str(sample_service.id)
+    assert resp['data']['parent_id'] == parent_id
+
+    if has_parent:
+        assert resp['data']['users_with_permission'] == [str(user_1.id)]
+    else:
+        assert resp['data']['users_with_permission'] == [str(user_1.id), str(user_2.id)]
+
+
 @pytest.mark.parametrize('missing_field', ['name', 'parent_id'])
 def test_create_template_folder_fails_if_missing_fields(admin_request, sample_service, missing_field):
     data = {

@@ -11,6 +11,7 @@ from app.dao.template_folder_dao import (
     dao_delete_template_folder
 )
 from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.service_user_dao import dao_get_active_service_users
 from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
@@ -49,17 +50,19 @@ def create_template_folder(service_id):
     data = request.get_json()
 
     validate(data, post_create_template_folder_schema)
-
     if data.get('parent_id') is not None:
         try:
-            dao_get_template_folder_by_id_and_service_id(data['parent_id'], service_id)
+            parent_folder = dao_get_template_folder_by_id_and_service_id(data['parent_id'], service_id)
+            users_with_permission = parent_folder.users
         except NoResultFound:
             raise InvalidRequest("parent_id not found", status_code=400)
-
+    else:
+        users_with_permission = dao_get_active_service_users(service_id)
     template_folder = TemplateFolder(
         service_id=service_id,
         name=data['name'].strip(),
-        parent_id=data['parent_id']
+        parent_id=data['parent_id'],
+        users=users_with_permission,
     )
 
     dao_create_template_folder(template_folder)
