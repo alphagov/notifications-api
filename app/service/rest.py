@@ -285,7 +285,13 @@ def add_user_to_service(service_id, user_id):
         error = 'User id: {} already part of service id: {}'.format(user_id, service_id)
         raise InvalidRequest(error, status_code=400)
 
-    permissions = permission_schema.load(request.get_json(), many=True).data
+    data = request.get_json()
+    if 'permissions' in data:
+        user_permissions = data['permissions']
+    else:
+        user_permissions = data
+
+    permissions = permission_schema.load(user_permissions, many=True).data
     dao_add_user_to_service(service, user, permissions)
     data = service_schema.dump(service).data
     return jsonify(data=data), 201
