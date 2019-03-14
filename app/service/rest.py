@@ -292,8 +292,9 @@ def add_user_to_service(service_id, user_id):
         Permission(service_id=service_id, user_id=user_id, permission=p['permission'])
         for p in data['permissions']
     ]
+    folder_permissions = data.get('folder_permissions', [])
 
-    dao_add_user_to_service(service, user, permissions)
+    dao_add_user_to_service(service, user, permissions, folder_permissions)
     data = service_schema.dump(service).data
     return jsonify(data=data), 201
 

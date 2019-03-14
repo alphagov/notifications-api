@@ -46,6 +46,7 @@ from app.models import (
     InvitedUser,
     Service,
     ServicePermission,
+    ServiceUser,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
@@ -190,6 +191,52 @@ def test_should_add_user_to_service(notify_db_session):
     save_model_user(new_user)
     dao_add_user_to_service(service, new_user)
     assert new_user in Service.query.first().users
+
+
+def test_dao_add_user_to_service_sets_folder_permissions(sample_user, sample_service):
+    folder_1 = create_template_folder(sample_service)
+    folder_2 = create_template_folder(sample_service)
+
+    assert not folder_1.users
+    assert not folder_2.users
+
+    folder_permissions = [str(folder_1.id), str(folder_2.id)]
+
+    dao_add_user_to_service(sample_service, sample_user, folder_permissions=folder_permissions)
+
+    service_user = dao_get_service_user(user_id=sample_user.id, service_id=sample_service.id)
+    assert len(service_user.folders) == 2
+    assert folder_1 in service_user.folders
+    assert folder_2 in service_user.folders
+
+
+def test_dao_add_user_to_service_ignores_folders_which_do_not_exist_when_setting_permissions(
+    sample_user,
+    sample_service,
+    fake_uuid
+):
+    valid_folder = create_template_folder(sample_service)
+    folder_permissions = [fake_uuid, str(valid_folder.id)]
+
+    dao_add_user_to_service(sample_service, sample_user, folder_permissions=folder_permissions)
+
+    service_user = dao_get_service_user(sample_user.id, sample_service.id)
+
+    assert service_user.folders == [valid_folder]
+
+
+def test_dao_add_user_to_service_raises_error_if_adding_folder_permissions_for_a_different_service(
+    sample_user,
+    sample_service,
+):
+    other_service = create_service(service_name='other service')
+    other_service_folder = create_template_folder(other_service)
+    folder_permissions = [str(other_service_folder.id)]
+
+    with pytest.raises(IntegrityError) as e:
+        dao_add_user_to_service(sample_service, sample_user, folder_permissions=folder_permissions)
+        assert 'insert or update on table "user_folder_permissions" violates foreign key constraint' in str(e.value)
+        assert ServiceUser.query.count() == 0
 
 
 def test_should_remove_user_from_service(notify_db_session):
