@@ -118,7 +118,10 @@ def handle_integrity_error(exc):
     """
     Handle integrity errors caused by the unique constraint on ix_organisation_name
     """
-    if 'services_name_key' or 'services_email_from_key' in str(exc):
+    if any(
+        'duplicate key value violates unique constraint "{}"'.format(constraint) in str(exc)
+        for constraint in {'services_name_key', 'services_email_from_key'}
+    ):
         return jsonify(
             result='error',
             message={'name': ["Duplicate service name '{}'".format(
