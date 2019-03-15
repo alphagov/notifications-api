@@ -155,7 +155,7 @@ def test_create_template_folder_fails_if_parent_id_from_different_service(admin_
     assert resp['message'] == 'parent_id not found'
 
 
-def test_update_template_folder(admin_request, sample_service):
+def test_update_template_folder_name(admin_request, sample_service):
     existing_folder = create_template_folder(sample_service)
 
     resp = admin_request.post(
@@ -169,6 +169,24 @@ def test_update_template_folder(admin_request, sample_service):
 
     assert resp['data']['name'] == 'bar'
     assert existing_folder.name == 'bar'
+
+
+def test_update_template_folder_users(admin_request, sample_service):
+    existing_folder = create_template_folder(sample_service)
+    user = create_user()
+    assert len(existing_folder.users) == 0
+    resp = admin_request.post(
+        'template_folder.update_template_folder',
+        service_id=sample_service.id,
+        template_folder_id=existing_folder.id,
+        _data={
+            'name': 'foo',
+            'users_with_permission': [str(user.id)]
+        }
+    )
+
+    assert resp['data']['users_with_permission'] == [str(user.id)]
+    assert len(existing_folder.users) == 1
 
 
 @pytest.mark.parametrize('data, err', [
