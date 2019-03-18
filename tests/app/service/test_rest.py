@@ -1154,6 +1154,86 @@ def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
             assert sorted(expected_permissions) == sorted(permissions)
 
 
+def test_add_existing_user_to_another_service_with_all_permissions_with_new_data_format(
+    notify_api,
+    notify_db,
+    notify_db_session,
+    sample_service,
+    sample_user
+):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            # check which users part of service
+            user_already_in_service = sample_service.users[0]
+            auth_header = create_authorization_header()
+
+            resp = client.get(
+                '/service/{}/users'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header]
+            )
+
+            assert resp.status_code == 200
+            result = resp.json
+            assert len(result['data']) == 1
+            assert result['data'][0]['email_address'] == user_already_in_service.email_address
+
+            # add new user to service
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            # they must exist in db first
+            save_model_user(user_to_add)
+
+            data = {
+                "permissions": [
+                    {"permission": "send_emails"},
+                    {"permission": "send_letters"},
+                    {"permission": "send_texts"},
+                    {"permission": "manage_users"},
+                    {"permission": "manage_settings"},
+                    {"permission": "manage_api_keys"},
+                    {"permission": "manage_templates"},
+                    {"permission": "view_activity"},
+                ]
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
+            )
+
+            assert resp.status_code == 201
+
+            # check new user added to service
+            auth_header = create_authorization_header()
+
+            resp = client.get(
+                '/service/{}'.format(sample_service.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+            )
+            assert resp.status_code == 200
+            json_resp = resp.json
+            assert str(user_to_add.id) in json_resp['data']['users']
+
+            # check user has all permissions
+            auth_header = create_authorization_header()
+            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
+                              headers=[('Content-Type', 'application/json'), auth_header])
+
+            assert resp.status_code == 200
+            json_resp = resp.json
+            permissions = json_resp['data']['permissions'][str(sample_service.id)]
+            expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
+                                    'manage_settings', 'manage_templates', 'manage_api_keys', 'view_activity']
+            assert sorted(expected_permissions) == sorted(permissions)
+
+
 def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
                                                                     notify_db,
                                                                     notify_db_session,
