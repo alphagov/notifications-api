@@ -12,6 +12,7 @@ from app.dao.template_folder_dao import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.service_user_dao import dao_get_active_service_users
+from app.dao.service_user_dao import dao_get_service_user
 from app.errors import InvalidRequest, register_errors
 from app.models import TemplateFolder
 from app.template_folder.template_folder_schema import (
@@ -78,6 +79,8 @@ def update_template_folder(service_id, template_folder_id):
 
     template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
     template_folder.name = data['name']
+    if 'users_with_permission' in data:
+        template_folder.users = [dao_get_service_user(user_id, service_id) for user_id in data['users_with_permission']]
 
     dao_update_template_folder(template_folder)
 
