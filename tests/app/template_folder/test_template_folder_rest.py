@@ -173,20 +173,36 @@ def test_update_template_folder_name(admin_request, sample_service):
 
 def test_update_template_folder_users(admin_request, sample_service):
     existing_folder = create_template_folder(sample_service)
-    user = create_user()
+    user_1 = create_user(email="notify_1@digital.cabinet-office.gov.uk")
+    user_2 = create_user(email="notify_2@digital.cabinet-office.gov.uk")
+    user_3 = create_user(email="notify_3@digital.cabinet-office.gov.uk")
+    sample_service.users += [user_1, user_2, user_3]
     assert len(existing_folder.users) == 0
-    resp = admin_request.post(
+    response_1 = admin_request.post(
         'template_folder.update_template_folder',
         service_id=sample_service.id,
         template_folder_id=existing_folder.id,
         _data={
             'name': 'foo',
-            'users_with_permission': [str(user.id)]
+            'users_with_permission': [str(user_1.id)]
         }
     )
 
-    assert resp['data']['users_with_permission'] == [str(user.id)]
+    assert response_1['data']['users_with_permission'] == [str(user_1.id)]
     assert len(existing_folder.users) == 1
+
+    response_2 = admin_request.post(
+        'template_folder.update_template_folder',
+        service_id=sample_service.id,
+        template_folder_id=existing_folder.id,
+        _data={
+            'name': 'foo',
+            'users_with_permission': [str(user_2.id), str(user_3.id)]
+        }
+    )
+
+    assert response_2['data']['users_with_permission'] == [str(user_2.id), str(user_3.id)]
+    assert len(existing_folder.users) == 2
 
 
 @pytest.mark.parametrize('data, err', [
