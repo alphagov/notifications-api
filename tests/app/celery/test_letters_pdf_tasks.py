@@ -231,13 +231,13 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     mock_group_letters.assert_called_once_with(mock_s3.return_value)
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames_to_zip': ['A.PDF', 'B.pDf']},
+        kwargs={'filenames_to_zip': ['A.PDF', 'B.pDf'], 'upload_filename': 'NOTIFY.20170102000001.ZIP'},
         queue='process-ftp-tasks',
         compression='zlib'
     )
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames_to_zip': ['C.pdf']},
+        kwargs={'filenames_to_zip': ['C.pdf'], 'upload_filename': 'NOTIFY.20170102000002.ZIP'},
         queue='process-ftp-tasks',
         compression='zlib'
     )
