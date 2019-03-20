@@ -377,6 +377,9 @@ class Organisation(db.Model):
             "agreement_signed_at": self.agreement_signed_at,
             "agreement_signed_by_id": self.agreement_signed_by_id,
             "agreement_signed_version": self.agreement_signed_version,
+            "domains": [
+                domain.domain for domain in self.domains
+            ],
         }
 
 

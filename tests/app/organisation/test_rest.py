@@ -4,7 +4,7 @@ import pytest
 
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
-from tests.app.db import create_organisation, create_service, create_user
+from tests.app.db import create_domain, create_organisation, create_service, create_user
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
@@ -44,6 +44,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'agreement_signed_version',
         'letter_branding_id',
         'email_branding_id',
+        'domains',
     }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
@@ -55,6 +56,26 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['agreement_signed_version'] is None
     assert response['letter_branding_id'] is None
     assert response['email_branding_id'] is None
+    assert response['domains'] == []
+
+
+def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):
+
+    org = create_organisation()
+
+    create_domain('foo.gov.uk', org.id)
+    create_domain('bar.gov.uk', org.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_by_id',
+        _expected_status=200,
+        organisation_id=org.id
+    )
+
+    assert set(response['domains']) == {
+        'foo.gov.uk',
+        'bar.gov.uk',
+    }
 
 
 def test_post_create_organisation(admin_request, notify_db_session):
