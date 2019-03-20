@@ -1693,7 +1693,7 @@ class InvitedUser(db.Model):
         nullable=False,
         default=SMS_AUTH_TYPE
     )
-    folder_permissions = db.Column(JSONB(none_as_null=True), nullable=True, default=[])
+    folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
     # would like to have used properties for this but haven't found a way to make them
     # play nice with marshmallow yet
