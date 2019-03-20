@@ -201,6 +201,29 @@ def test_post_update_organisation_updates_domains(
     ] == domain_list
 
 
+def test_update_other_organisation_attributes_doesnt_clear_domains(
+    admin_request,
+    notify_db_session,
+):
+    org = create_organisation(name='test_org_2')
+    create_domain('example.gov.uk', org.id)
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data={
+            'agreement_signed': True,
+        },
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    assert [
+        domain.domain for domain in org.domains
+    ] == [
+        'example.gov.uk'
+    ]
+
+
 def test_post_update_organisation_raises_400_on_existing_org_name(
         admin_request, sample_organisation):
     org = create_organisation()
