@@ -120,7 +120,8 @@ def collate_letter_pdfs_for_day(date=None):
         subfolder=date
     )
     for i, letters in enumerate(group_letters(letter_pdfs)):
-        dvla_filename = 'NOTIFY.{date}{num:06}.ZIP'.format(date=date.replace('-', ''), num=i + 1)
+        # eg NOTIFY.2018-12-31.001.ZIP
+        dvla_filename = 'NOTIFY.{date}.{num:03}.ZIP'.format(date=date, num=i + 1)
         filenames = [letter['Key'] for letter in letters]
         current_app.logger.info(
             'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
