@@ -119,17 +119,23 @@ def collate_letter_pdfs_for_day(date=None):
         current_app.config['LETTERS_PDF_BUCKET_NAME'],
         subfolder=date
     )
-    for letters in group_letters(letter_pdfs):
+    for i, letters in enumerate(group_letters(letter_pdfs)):
+        # eg NOTIFY.2018-12-31.001.ZIP
+        dvla_filename = 'NOTIFY.{date}.{num:03}.ZIP'.format(date=date, num=i + 1)
         filenames = [letter['Key'] for letter in letters]
         current_app.logger.info(
-            'Calling task zip-and-send-letter-pdfs for {} pdfs of total size {:,} bytes'.format(
+            'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
                 len(filenames),
+                dvla_filename,
                 sum(letter['Size'] for letter in letters)
             )
         )
         notify_celery.send_task(
             name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-            kwargs={'filenames_to_zip': filenames},
+            kwargs={
+                'filenames_to_zip': filenames,
+                'upload_filename': dvla_filename
+            },
             queue=QueueNames.PROCESS_FTP,
             compression='zlib'
         )
