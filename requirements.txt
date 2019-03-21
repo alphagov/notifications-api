@@ -15,7 +15,7 @@ click-datetime==0.2
 eventlet==0.23.0
 gunicorn==19.7.1
 iso8601==0.1.12
-jsonschema==3.0.0b3
+jsonschema==3.0.1
 marshmallow-sqlalchemy==0.16.0
 marshmallow==2.18.1
 psycopg2-binary==2.7.7
@@ -40,12 +40,12 @@ alembic==1.0.8
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.1.0
-awscli==1.16.125
+awscli==1.16.129
 bcrypt==3.1.6
 billiard==3.3.0.23
 bleach==3.1.0
 boto3==1.6.16
-botocore==1.12.115
+botocore==1.12.119
 certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
@@ -58,7 +58,7 @@ idna==2.8
 Jinja2==2.10
 jmespath==0.9.4
 kombu==3.0.37
-Mako==1.0.7
+Mako==1.0.8
 MarkupSafe==1.1.1
 mistune==0.8.4
 monotonic==1.5
@@ -82,4 +82,4 @@ smartypants==2.0.1
 statsd==3.3.0
 urllib3==1.24.1
 webencodings==0.5.1
-Werkzeug==0.14.1
+Werkzeug==0.15.1
