@@ -94,7 +94,7 @@ def test_update_letter_notifications_statuses_raises_error_for_unknown_sorted_st
         update_letter_notifications_statuses(filename='NOTIFY-20170823160812-RSP.TXT')
 
     assert "DVLA response file: {filename} contains unknown Sorted status {unknown_status}".format(
-        filename="NOTIFY-20170823160812-RSP.TXT", unknown_status="{'Error'}"
+        filename="NOTIFY-20170823160812-RSP.TXT", unknown_status="{'error'}"
     ) in str(e)
 
 
@@ -185,7 +185,7 @@ def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count
 ):
     sent_letter_1 = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING)
     sent_letter_2 = create_notification(sample_letter_template, reference='ref-bar', status=NOTIFICATION_SENDING)
-    valid_file = '{}|Sent|1|Unsorted\n{}|Sent|2|Sorted'.format(
+    valid_file = '{}|Sent|1|uNsOrTeD\n{}|Sent|2|SORTED'.format(
         sent_letter_1.reference, sent_letter_2.reference)
 
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
@@ -195,7 +195,7 @@ def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count
 
     persist_letter_count_mock.assert_called_once_with(day=date(2017, 8, 23),
                                                       file_name='NOTIFY-20170823160812-RSP.TXT',
-                                                      sorted_letter_counts={'Unsorted': 1, 'Sorted': 1})
+                                                      sorted_letter_counts={'unsorted': 1, 'sorted': 1})
 
 
 def test_update_letter_notifications_statuses_persists_daily_sorted_letter_count_with_no_sorted_values(
@@ -317,7 +317,7 @@ def test_get_billing_date_in_bst_from_filename(filename_date, billing_date):
 
 @freeze_time("2018-01-11 09:00:00")
 def test_persist_daily_sorted_letter_counts_saves_sorted_and_unsorted_values(client, notify_db_session):
-    letter_counts = defaultdict(int, **{'Unsorted': 5, 'Sorted': 1})
+    letter_counts = defaultdict(int, **{'unsorted': 5, 'sorted': 1})
     persist_daily_sorted_letter_counts(date.today(), "test.txt", letter_counts)
     day = dao_get_daily_sorted_letter_by_billing_day(date.today())
 
