@@ -739,7 +739,8 @@ def create_invited_user(service=None,
         'service': service,
         'email_address': to_email_address,
         'from_user': from_user,
-        'permissions': 'send_messages,manage_service,manage_api_keys'
+        'permissions': 'send_messages,manage_service,manage_api_keys',
+        'folder_permissions': [str(uuid.uuid4()), str(uuid.uuid4())]
     }
     invited_user = InvitedUser(**data)
     save_invited_user(invited_user)

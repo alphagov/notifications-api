@@ -45,6 +45,7 @@ def test_validate_invitation_token_returns_200_when_token_valid(
         assert json_resp['data']['service'] == str(sample_invited_user.service_id)
         assert json_resp['data']['status'] == sample_invited_user.status
         assert json_resp['data']['permissions'] == sample_invited_user.permissions
+        assert json_resp['data']['folder_permissions'] == sample_invited_user.folder_permissions
     if invitation_type == 'organisation':
         assert json_resp['data'] == sample_invited_org_user.serialize()
 

@@ -83,7 +83,7 @@ from app.errors import (
     register_errors
 )
 from app.letters.utils import letter_print_day
-from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Service, EmailBranding, LetterBranding
+from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service, EmailBranding, LetterBranding
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_data_retention_schema import (
@@ -101,11 +101,11 @@ from app.service.send_notification import send_one_off_notification
 from app.schemas import (
     service_schema,
     api_key_schema,
-    permission_schema,
     notification_with_template_schema,
     notifications_filter_schema,
     detailed_service_schema
 )
+from app.user.users_schema import post_set_permissions_schema
 from app.utils import pagination_links
 
 service_blueprint = Blueprint('service', __name__)
@@ -286,13 +286,15 @@ def add_user_to_service(service_id, user_id):
         raise InvalidRequest(error, status_code=400)
 
     data = request.get_json()
-    if 'permissions' in data:
-        user_permissions = data['permissions']
-    else:
-        user_permissions = data
+    validate(data, post_set_permissions_schema)
 
-    permissions = permission_schema.load(user_permissions, many=True).data
-    dao_add_user_to_service(service, user, permissions)
+    permissions = [
+        Permission(service_id=service_id, user_id=user_id, permission=p['permission'])
+        for p in data['permissions']
+    ]
+    folder_permissions = data.get('folder_permissions', [])
+
+    dao_add_user_to_service(service, user, permissions, folder_permissions)
     data = service_schema.dump(service).data
     return jsonify(data=data), 201
 

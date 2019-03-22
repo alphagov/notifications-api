@@ -33,6 +33,7 @@ def test_create_invited_user(
         from_user=str(invite_from.id),
         permissions='send_messages,manage_service,manage_api_keys',
         auth_type=EMAIL_AUTH_TYPE,
+        folder_permissions=['folder_1', 'folder_2', 'folder_3'],
         **extra_args
     )
 
@@ -49,6 +50,7 @@ def test_create_invited_user(
     assert json_resp['data']['permissions'] == 'send_messages,manage_service,manage_api_keys'
     assert json_resp['data']['auth_type'] == EMAIL_AUTH_TYPE
     assert json_resp['data']['id']
+    assert json_resp['data']['folder_permissions'] == ['folder_1', 'folder_2', 'folder_3']
 
     notification = Notification.query.first()
 
@@ -73,6 +75,7 @@ def test_create_invited_user_without_auth_type(admin_request, sample_service, mo
         'email_address': email_address,
         'from_user': str(invite_from.id),
         'permissions': 'send_messages,manage_service,manage_api_keys',
+        'folder_permissions': []
     }
 
     json_resp = admin_request.post(
@@ -85,7 +88,7 @@ def test_create_invited_user_without_auth_type(admin_request, sample_service, mo
     assert json_resp['data']['auth_type'] == SMS_AUTH_TYPE
 
 
-def test_create_invited_user_invalid_email(client, sample_service, mocker):
+def test_create_invited_user_invalid_email(client, sample_service, mocker, fake_uuid):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     email_address = 'notanemail'
     invite_from = sample_service.users[0]
@@ -94,7 +97,8 @@ def test_create_invited_user_invalid_email(client, sample_service, mocker):
         'service': str(sample_service.id),
         'email_address': email_address,
         'from_user': str(invite_from.id),
-        'permissions': 'send_messages,manage_service,manage_api_keys'
+        'permissions': 'send_messages,manage_service,manage_api_keys',
+        'folder_permissions': [fake_uuid, fake_uuid]
     }
 
     data = json.dumps(data)

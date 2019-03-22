@@ -11,6 +11,7 @@ from freezegun import freeze_time
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
 from app.dao.services_dao import dao_remove_user_from_service
+from app.dao.service_user_dao import dao_get_service_user
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
@@ -38,6 +39,7 @@ from tests.app.db import (
     create_service,
     create_service_with_inbound_number,
     create_template,
+    create_template_folder,
     create_notification,
     create_reply_to_email,
     create_letter_contact,
@@ -1080,81 +1082,7 @@ def test_default_permissions_are_added_for_user_service(notify_api,
             assert sorted(default_service_permissions) == sorted(service_permissions)
 
 
-def test_add_existing_user_to_another_service_with_all_permissions(notify_api,
-                                                                   notify_db,
-                                                                   notify_db_session,
-                                                                   sample_service,
-                                                                   sample_user):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            # check which users part of service
-            user_already_in_service = sample_service.users[0]
-            auth_header = create_authorization_header()
-
-            resp = client.get(
-                '/service/{}/users'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header]
-            )
-
-            assert resp.status_code == 200
-            result = resp.json
-            assert len(result['data']) == 1
-            assert result['data'][0]['email_address'] == user_already_in_service.email_address
-
-            # add new user to service
-            user_to_add = User(
-                name='Invited User',
-                email_address='invited@digital.cabinet-office.gov.uk',
-                password='password',
-                mobile_number='+4477123456'
-            )
-            # they must exist in db first
-            save_model_user(user_to_add)
-
-            data = [{"permission": "send_emails"},
-                    {"permission": "send_letters"},
-                    {"permission": "send_texts"},
-                    {"permission": "manage_users"},
-                    {"permission": "manage_settings"},
-                    {"permission": "manage_api_keys"},
-                    {"permission": "manage_templates"},
-                    {"permission": "view_activity"}]
-
-            auth_header = create_authorization_header()
-
-            resp = client.post(
-                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
-                headers=[('Content-Type', 'application/json'), auth_header],
-                data=json.dumps(data)
-            )
-
-            assert resp.status_code == 201
-
-            # check new user added to service
-            auth_header = create_authorization_header()
-
-            resp = client.get(
-                '/service/{}'.format(sample_service.id),
-                headers=[('Content-Type', 'application/json'), auth_header],
-            )
-            assert resp.status_code == 200
-            json_resp = resp.json
-            assert str(user_to_add.id) in json_resp['data']['users']
-
-            # check user has all permissions
-            auth_header = create_authorization_header()
-            resp = client.get(url_for('user.get_user', user_id=user_to_add.id),
-                              headers=[('Content-Type', 'application/json'), auth_header])
-
-            assert resp.status_code == 200
-            json_resp = resp.json
-            permissions = json_resp['data']['permissions'][str(sample_service.id)]
-            expected_permissions = ['send_texts', 'send_emails', 'send_letters', 'manage_users',
-                                    'manage_settings', 'manage_templates', 'manage_api_keys', 'view_activity']
-            assert sorted(expected_permissions) == sorted(permissions)
-
-
-def test_add_existing_user_to_another_service_with_all_permissions_with_new_data_format(
+def test_add_existing_user_to_another_service_with_all_permissions(
     notify_api,
     notify_db,
     notify_db_session,
@@ -1197,7 +1125,8 @@ def test_add_existing_user_to_another_service_with_all_permissions_with_new_data
                     {"permission": "manage_api_keys"},
                     {"permission": "manage_templates"},
                     {"permission": "view_activity"},
-                ]
+                ],
+                "folder_permissions": []
             }
 
             auth_header = create_authorization_header()
@@ -1250,9 +1179,14 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = [{"permission": "send_emails"},
+            data = {
+                "permissions": [
+                    {"permission": "send_emails"},
                     {"permission": "send_letters"},
-                    {"permission": "send_texts"}]
+                    {"permission": "send_texts"},
+                ],
+                "folder_permissions": []
+            }
 
             auth_header = create_authorization_header()
 
@@ -1293,9 +1227,13 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             )
             save_model_user(user_to_add)
 
-            data = [{"permission": "manage_users"},
+            data = {
+                "permissions": [
+                    {"permission": "manage_users"},
                     {"permission": "manage_settings"},
-                    {"permission": "manage_templates"}]
+                    {"permission": "manage_templates"},
+                ]
+            }
 
             auth_header = create_authorization_header()
 
@@ -1320,6 +1258,47 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
             assert sorted(expected_permissions) == sorted(permissions)
 
 
+def test_add_existing_user_to_another_service_with_folder_permissions(notify_api,
+                                                                      notify_db,
+                                                                      notify_db_session,
+                                                                      sample_service,
+                                                                      sample_user):
+    with notify_api.test_request_context():
+        with notify_api.test_client() as client:
+            # they must exist in db first
+            user_to_add = User(
+                name='Invited User',
+                email_address='invited@digital.cabinet-office.gov.uk',
+                password='password',
+                mobile_number='+4477123456'
+            )
+            save_model_user(user_to_add)
+
+            folder_1 = create_template_folder(sample_service)
+            folder_2 = create_template_folder(sample_service)
+
+            data = {
+                "permissions": [{"permission": "manage_api_keys"}],
+                "folder_permissions": [str(folder_1.id), str(folder_2.id)]
+            }
+
+            auth_header = create_authorization_header()
+
+            resp = client.post(
+                '/service/{}/users/{}'.format(sample_service.id, user_to_add.id),
+                headers=[('Content-Type', 'application/json'), auth_header],
+                data=json.dumps(data)
+            )
+
+            assert resp.status_code == 201
+
+            new_user = dao_get_service_user(user_id=user_to_add.id, service_id=sample_service.id)
+
+            assert len(new_user.folders) == 2
+            assert folder_1 in new_user.folders
+            assert folder_2 in new_user.folders
+
+
 def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
                                                                    notify_db,
                                                                    notify_db_session,
@@ -1336,7 +1315,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
             )
             save_model_user(user_to_add)
 
-            data = [{"permission": "manage_api_keys"}]
+            data = {"permissions": [{"permission": "manage_api_keys"}]}
 
             auth_header = create_authorization_header()
 
