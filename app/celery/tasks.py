@@ -484,7 +484,7 @@ def update_letter_notification(filename, temporary_failures, update):
         msg = "Update letter notification file {filename} failed: notification either not found " \
               "or already updated from delivered. Status {status} for notification reference {reference}".format(
                   filename=filename, status=status, reference=update.reference)
-        current_app.logger.error(msg)
+        current_app.logger.info(msg)
 
 
 def check_billable_units(notification_update):
