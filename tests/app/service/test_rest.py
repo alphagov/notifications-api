@@ -49,6 +49,7 @@ from tests.app.db import (
     create_letter_branding,
     create_organisation,
     create_domain,
+    create_email_branding,
 )
 from tests.app.db import create_user
 
@@ -304,6 +305,37 @@ def test_create_service_with_domain_sets_organisation(
         assert json_resp['data']['organisation'] == str(org.id)
     else:
         assert json_resp['data']['organisation'] is None
+
+
+def test_create_service_inherits_branding_from_organisation(
+    admin_request,
+    sample_user,
+):
+
+    org = create_organisation()
+    email_branding = create_email_branding()
+    org.email_branding = email_branding
+    letter_branding = create_letter_branding()
+    org.letter_branding = letter_branding
+    create_domain('example.gov.uk', org.id)
+    sample_user.email_address = 'test@example.gov.uk'
+
+    json_resp = admin_request.post(
+        'service.create_service',
+        _data={
+            'name': 'created service',
+            'user_id': str(sample_user.id),
+            'message_limit': 1000,
+            'restricted': False,
+            'active': False,
+            'email_from': 'created.service',
+            'created_by': str(sample_user.id),
+        },
+        _expected_status=201
+    )
+
+    assert json_resp['data']['email_branding'] == str(email_branding.id)
+    assert json_resp['data']['letter_branding'] == str(letter_branding.id)
 
 
 def test_create_service_with_domain_sets_letter_branding(admin_request, sample_user):
