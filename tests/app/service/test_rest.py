@@ -221,7 +221,17 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert json_resp['message'] == 'No result found'
 
 
-def test_create_service(admin_request, sample_user):
+@pytest.mark.parametrize('platform_admin, expected_count_as_live', (
+    (True, False),
+    (False, True),
+))
+def test_create_service(
+    admin_request,
+    sample_user,
+    platform_admin,
+    expected_count_as_live,
+):
+    sample_user.platform_admin = platform_admin
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -240,6 +250,7 @@ def test_create_service(admin_request, sample_user):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['rate_limit'] == 3000
     assert json_resp['data']['letter_branding'] is None
+    assert json_resp['data']['count_as_live'] is expected_count_as_live
 
     service_db = Service.query.get(json_resp['data']['id'])
     assert service_db.name == 'created service'
