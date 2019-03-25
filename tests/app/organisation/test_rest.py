@@ -4,7 +4,14 @@ import pytest
 
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
-from tests.app.db import create_organisation, create_service, create_user
+from tests.app.db import (
+    create_domain,
+    create_email_branding,
+    create_letter_branding,
+    create_organisation,
+    create_service,
+    create_user,
+)
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
@@ -44,6 +51,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'agreement_signed_version',
         'letter_branding_id',
         'email_branding_id',
+        'domains',
     }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
@@ -55,6 +63,26 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['agreement_signed_version'] is None
     assert response['letter_branding_id'] is None
     assert response['email_branding_id'] is None
+    assert response['domains'] == []
+
+
+def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):
+
+    org = create_organisation()
+
+    create_domain('foo.gov.uk', org.id)
+    create_domain('bar.gov.uk', org.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_by_id',
+        _expected_status=200,
+        organisation_id=org.id
+    )
+
+    assert set(response['domains']) == {
+        'foo.gov.uk',
+        'bar.gov.uk',
+    }
 
 
 def test_post_create_organisation(admin_request, notify_db_session):
@@ -178,6 +206,56 @@ def test_post_update_organisation_updates_domains(
     assert [
         domain.domain for domain in organisation[0].domains
     ] == domain_list
+
+
+def test_update_other_organisation_attributes_doesnt_clear_domains(
+    admin_request,
+    notify_db_session,
+):
+    org = create_organisation(name='test_org_2')
+    create_domain('example.gov.uk', org.id)
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data={
+            'agreement_signed': True,
+        },
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    assert [
+        domain.domain for domain in org.domains
+    ] == [
+        'example.gov.uk'
+    ]
+
+
+def test_update_organisation_default_branding(
+    admin_request,
+    notify_db_session,
+):
+
+    org = create_organisation(name='Test Organisation')
+
+    email_branding = create_email_branding()
+    letter_branding = create_letter_branding()
+
+    assert org.email_branding is None
+    assert org.letter_branding is None
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data={
+            'email_branding_id': str(email_branding.id),
+            'letter_branding_id': str(letter_branding.id),
+        },
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    assert org.email_branding == email_branding
+    assert org.letter_branding == letter_branding
 
 
 def test_post_update_organisation_raises_400_on_existing_org_name(

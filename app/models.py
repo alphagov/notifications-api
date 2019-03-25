@@ -8,7 +8,8 @@ from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.dialects.postgresql import (
     UUID,
-    JSON
+    JSON,
+    JSONB,
 )
 from sqlalchemy import UniqueConstraint, CheckConstraint, Index
 from notifications_utils.columns import Columns
@@ -377,6 +378,9 @@ class Organisation(db.Model):
             "agreement_signed_at": self.agreement_signed_at,
             "agreement_signed_by_id": self.agreement_signed_by_id,
             "agreement_signed_version": self.agreement_signed_version,
+            "domains": [
+                domain.domain for domain in self.domains
+            ],
         }
 
 
@@ -1692,6 +1696,7 @@ class InvitedUser(db.Model):
         nullable=False,
         default=SMS_AUTH_TYPE
     )
+    folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
     # would like to have used properties for this but haven't found a way to make them
     # play nice with marshmallow yet

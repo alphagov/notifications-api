@@ -2,6 +2,8 @@ import io
 import math
 from datetime import datetime
 from uuid import UUID
+from hashlib import sha512
+from base64 import urlsafe_b64encode
 
 from PyPDF2.utils import PdfReadError
 from botocore.exceptions import ClientError as BotoClientError
@@ -115,21 +117,37 @@ def collate_letter_pdfs_for_day(date=None):
         # since it is triggered mid afternoon.
         date = datetime.utcnow().strftime("%Y-%m-%d")
 
-    letter_pdfs = s3.get_s3_bucket_objects(
-        current_app.config['LETTERS_PDF_BUCKET_NAME'],
-        subfolder=date
+    letter_pdfs = sorted(
+        s3.get_s3_bucket_objects(
+            current_app.config['LETTERS_PDF_BUCKET_NAME'],
+            subfolder=date
+        ),
+        key=lambda letter: letter['Key']
     )
-    for letters in group_letters(letter_pdfs):
+    for i, letters in enumerate(group_letters(letter_pdfs)):
         filenames = [letter['Key'] for letter in letters]
+
+        hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
+        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
+        dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
+            date=date,
+            num=i + 1,
+            hash=hash
+        )
+
         current_app.logger.info(
-            'Calling task zip-and-send-letter-pdfs for {} pdfs of total size {:,} bytes'.format(
+            'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
                 len(filenames),
+                dvla_filename,
                 sum(letter['Size'] for letter in letters)
             )
         )
         notify_celery.send_task(
             name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-            kwargs={'filenames_to_zip': filenames},
+            kwargs={
+                'filenames_to_zip': filenames,
+                'upload_filename': dvla_filename
+            },
             queue=QueueNames.PROCESS_FTP,
             compression='zlib'
         )

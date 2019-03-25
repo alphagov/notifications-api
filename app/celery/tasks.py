@@ -421,12 +421,11 @@ def update_letter_notifications_statuses(self, filename):
         for update in notification_updates:
             check_billable_units(update)
             update_letter_notification(filename, temporary_failures, update)
-            sorted_letter_counts[update.cost_threshold] += 1
+            sorted_letter_counts[update.cost_threshold.lower()] += 1
 
         try:
-            if sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}:
-                unknown_status = sorted_letter_counts.keys() - {'Unsorted', 'Sorted'}
-
+            unknown_status = sorted_letter_counts.keys() - {'unsorted', 'sorted'}
+            if unknown_status:
                 message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
                     filename, unknown_status
                 )
@@ -455,8 +454,8 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
     daily_letter_count = DailySortedLetter(
         billing_day=day,
         file_name=file_name,
-        unsorted_count=sorted_letter_counts['Unsorted'],
-        sorted_count=sorted_letter_counts['Sorted']
+        unsorted_count=sorted_letter_counts['unsorted'],
+        sorted_count=sorted_letter_counts['sorted']
     )
     dao_create_or_update_daily_sorted_letter(daily_letter_count)
 
@@ -485,7 +484,7 @@ def update_letter_notification(filename, temporary_failures, update):
         msg = "Update letter notification file {filename} failed: notification either not found " \
               "or already updated from delivered. Status {status} for notification reference {reference}".format(
                   filename=filename, status=status, reference=update.reference)
-        current_app.logger.error(msg)
+        current_app.logger.info(msg)
 
 
 def check_billable_units(notification_update):

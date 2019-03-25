@@ -539,24 +539,6 @@ class InvitedUserSchema(BaseSchema):
             raise ValidationError(str(e))
 
 
-class PermissionSchema(BaseSchema):
-
-    # Override generated fields
-    user = field_for(models.Permission, 'user', dump_only=True)
-    service = field_for(models.Permission, 'service', dump_only=True)
-    permission = field_for(models.Permission, 'permission')
-
-    __envelope__ = {
-        'single': 'permission',
-        'many': 'permissions',
-    }
-
-    class Meta:
-        model = models.Permission
-        exclude = ("created_at",)
-        strict = True
-
-
 class EmailDataSchema(ma.Schema):
 
     class Meta:
@@ -692,7 +674,6 @@ notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
 notification_with_personalisation_schema = NotificationWithPersonalisationSchema()
 invited_user_schema = InvitedUserSchema()
-permission_schema = PermissionSchema()
 email_data_request_schema = EmailDataSchema()
 partial_email_data_request_schema = EmailDataSchema(partial_email=True)
 notifications_filter_schema = NotificationsFilterSchema()

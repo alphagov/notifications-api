@@ -21,7 +21,7 @@ def test_should_reject_if_invalid_uuid(notify_api):
             )
         body = json.loads(response.get_data(as_text=True))
         assert response.status_code == 404
-        assert body['message'] == 'The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.'  # noqa
+        assert body['message'] == 'The requested URL was not found on the server. If you entered the URL manually please check your spelling and try again.'  # noqa
         assert body['result'] == 'error'
 
 

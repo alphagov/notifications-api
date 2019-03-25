@@ -14,6 +14,7 @@ from app.dao.dao_utils import (
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
+from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
     AnnualBilling,
     ApiKey,
@@ -193,11 +194,11 @@ def dao_create_service(
 
         service.organisation = organisation
 
-        if organisation.email_branding_id:
-            service.email_branding = organisation.email_branding_id
+        if organisation.email_branding:
+            service.email_branding = organisation.email_branding
 
-        if organisation.letter_branding_id and not service.letter_branding:
-            service.letter_branding = organisation.letter_branding_id
+        if organisation.letter_branding and not service.letter_branding:
+            service.letter_branding = organisation.letter_branding
 
     db.session.add(service)
 
@@ -208,13 +209,21 @@ def dao_update_service(service):
     db.session.add(service)
 
 
-def dao_add_user_to_service(service, user, permissions=None):
+def dao_add_user_to_service(service, user, permissions=None, folder_permissions=None):
     permissions = permissions or []
+    folder_permissions = folder_permissions or []
+
     try:
         from app.dao.permissions_dao import permission_dao
         service.users.append(user)
         permission_dao.set_user_service_permission(user, service, permissions, _commit=False)
         db.session.add(service)
+
+        service_user = dao_get_service_user(user.id, service.id)
+        valid_template_folders = dao_get_valid_template_folders_by_id(folder_permissions)
+        service_user.folders = valid_template_folders
+        db.session.add(service_user)
+
     except Exception as e:
         db.session.rollback()
         raise e

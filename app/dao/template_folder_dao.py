@@ -10,6 +10,10 @@ def dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
     ).one()
 
 
+def dao_get_valid_template_folders_by_id(folder_ids):
+    return TemplateFolder.query.filter(TemplateFolder.id.in_(folder_ids)).all()
+
+
 @transactional
 def dao_create_template_folder(template_folder):
     db.session.add(template_folder)

@@ -752,7 +752,8 @@ def sample_invited_user(notify_db,
         'service': service,
         'email_address': to_email_address,
         'from_user': from_user,
-        'permissions': 'send_messages,manage_service,manage_api_keys'
+        'permissions': 'send_messages,manage_service,manage_api_keys',
+        'folder_permissions': ['folder_1_id', 'folder_2_id'],
     }
     invited_user = InvitedUser(**data)
     save_invited_user(invited_user)

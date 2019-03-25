@@ -26,7 +26,8 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
         'service': sample_service,
         'email_address': email_address,
         'from_user': invite_from,
-        'permissions': 'send_messages,manage_service'
+        'permissions': 'send_messages,manage_service',
+        'folder_permissions': []
     }
 
     invited_user = InvitedUser(**data)
@@ -39,6 +40,29 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
     assert len(permissions) == 2
     assert 'send_messages' in permissions
     assert 'manage_service' in permissions
+    assert invited_user.folder_permissions == []
+
+
+def test_create_invited_user_sets_default_folder_permissions_of_empty_list(
+    notify_db,
+    notify_db_session,
+    sample_service,
+):
+    assert InvitedUser.query.count() == 0
+    invite_from = sample_service.users[0]
+
+    data = {
+        'service': sample_service,
+        'email_address': 'invited_user@service.gov.uk',
+        'from_user': invite_from,
+        'permissions': 'send_messages,manage_service',
+    }
+
+    invited_user = InvitedUser(**data)
+    save_invited_user(invited_user)
+
+    assert InvitedUser.query.count() == 1
+    assert invited_user.folder_permissions == []
 
 
 def test_get_invited_user_by_service_and_id(notify_db, notify_db_session, sample_invited_user):
@@ -124,7 +148,8 @@ def make_invitation(user, service, age=timedelta(hours=0), email_address="test@t
         service=service,
         status='pending',
         created_at=datetime.utcnow() - age,
-        permissions='manage_settings'
+        permissions='manage_settings',
+        folder_permissions=[str(uuid.uuid4())]
     )
     db.session.add(verify_code)
     db.session.commit()

@@ -53,7 +53,7 @@ def dao_create_organisation(organisation):
 @transactional
 def dao_update_organisation(organisation_id, **kwargs):
 
-    domains = kwargs.pop('domains', [])
+    domains = kwargs.pop('domains', None)
 
     organisation = Organisation.query.filter_by(id=organisation_id).update(
         kwargs

@@ -218,7 +218,11 @@ def test_create_letters_gets_the_right_logo_when_service_has_letter_branding_log
 
 
 def test_collate_letter_pdfs_for_day(notify_api, mocker):
-    mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects')
+    mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects', return_value=[
+        {'Key': 'B.pDf', 'Size': 2},
+        {'Key': 'A.PDF', 'Size': 1},
+        {'Key': 'C.pdf', 'Size': 3}
+    ])
     mock_group_letters = mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
         [{'Key': 'A.PDF', 'Size': 1}, {'Key': 'B.pDf', 'Size': 2}],
         [{'Key': 'C.pdf', 'Size': 3}]
@@ -228,16 +232,22 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     collate_letter_pdfs_for_day('2017-01-02')
 
     mock_s3.assert_called_once_with('test-letters-pdf', subfolder='2017-01-02')
-    mock_group_letters.assert_called_once_with(mock_s3.return_value)
+    mock_group_letters.assert_called_once_with(sorted(mock_s3.return_value, key=lambda x: x['Key']))
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames_to_zip': ['A.PDF', 'B.pDf']},
+        kwargs={
+            'filenames_to_zip': ['A.PDF', 'B.pDf'],
+            'upload_filename': 'NOTIFY.2017-01-02.001.oqdjIM2-NAUU9Sm5Slmi.ZIP'
+        },
         queue='process-ftp-tasks',
         compression='zlib'
     )
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
-        kwargs={'filenames_to_zip': ['C.pdf']},
+        kwargs={
+            'filenames_to_zip': ['C.pdf'],
+            'upload_filename': 'NOTIFY.2017-01-02.002.tdr7hcdPieiqjkVoS4kU.ZIP'
+        },
         queue='process-ftp-tasks',
         compression='zlib'
     )
