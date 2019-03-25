@@ -82,36 +82,33 @@ def test_dvla_callback_calls_does_not_update_letter_notifications_task_with_inva
     assert not update_task.called
 
 
-def test_dvla_rs_txt_file_callback_calls_update_letter_notifications_task(client, mocker):
-    update_task = \
-        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_callback('Notify-20170411153023-rs.txt')
+@pytest.mark.parametrize("filename",
+                         ['Notify-20170411153023-rs.txt', 'Notify-20170411153023-rsp.txt'])
+def test_dvla_rs_and_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mocker, filename):
+    update_task = mocker.patch(
+        'app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    daily_sorted_counts_task = mocker.patch(
+        'app.notifications.notifications_letter_callback.record_daily_sorted_counts.apply_async')
+    data = _sample_sns_s3_callback(filename)
     response = dvla_post(client, data)
 
     assert response.status_code == 200
     assert update_task.called
-    update_task.assert_called_with(['Notify-20170411153023-rs.txt'], queue='notify-internal-tasks')
-
-
-def test_dvla_rsp_txt_file_callback_calls_update_letter_notifications_task(client, mocker):
-    update_task = \
-        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
-    data = _sample_sns_s3_callback('NOTIFY-20170823160812-RSP.TXT')
-    response = dvla_post(client, data)
-
-    assert response.status_code == 200
-    assert update_task.called
-    update_task.assert_called_with(['NOTIFY-20170823160812-RSP.TXT'], queue='notify-internal-tasks')
+    update_task.assert_called_with([filename], queue='notify-internal-tasks')
+    daily_sorted_counts_task.assert_called_with([filename], queue='notify-internal-tasks')
 
 
 def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mocker):
-    update_task = \
-        mocker.patch('app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    update_task = mocker.patch(
+        'app.notifications.notifications_letter_callback.update_letter_notifications_statuses.apply_async')
+    daily_sorted_counts_task = mocker.patch(
+        'app.notifications.notifications_letter_callback.record_daily_sorted_counts.apply_async')
     data = _sample_sns_s3_callback('bar.ack.txt')
     response = dvla_post(client, data)
 
     assert response.status_code == 200
     update_task.assert_not_called()
+    daily_sorted_counts_task.assert_not_called()
 
 
 def test_firetext_callback_should_not_need_auth(client, mocker):

@@ -408,39 +408,49 @@ def get_template_class(template_type):
 @notify_celery.task(bind=True, name='update-letter-notifications-statuses')
 @statsd(namespace="tasks")
 def update_letter_notifications_statuses(self, filename):
+    notification_updates = parse_dvla_file(filename)
+
+    temporary_failures = []
+
+    for update in notification_updates:
+        check_billable_units(update)
+        update_letter_notification(filename, temporary_failures, update)
+    if temporary_failures:
+        # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
+        message = "DVLA response file: {filename} has failed letters with notification.reference {failures}" \
+            .format(filename=filename, failures=temporary_failures)
+        raise DVLAException(message)
+
+
+@notify_celery.task(bind=True, name="record-daily-sorted-counts")
+@statsd(namespace="tasks")
+def record_daily_sorted_counts(self, filename):
+    sorted_letter_counts = defaultdict(int)
+    notification_updates = parse_dvla_file(filename)
+    for update in notification_updates:
+        sorted_letter_counts[update.cost_threshold.lower()] += 1
+
+    unknown_status = sorted_letter_counts.keys() - {'unsorted', 'sorted'}
+    if unknown_status:
+        message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
+            filename, unknown_status.__repr__()
+        )
+        raise DVLAException(message)
+
+    billing_date = get_billing_date_in_bst_from_filename(filename)
+    persist_daily_sorted_letter_counts(day=billing_date,
+                                       file_name=filename,
+                                       sorted_letter_counts=sorted_letter_counts)
+
+
+def parse_dvla_file(filename):
     bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
     response_file_content = s3.get_s3_file(bucket_location, filename)
-    sorted_letter_counts = defaultdict(int)
 
     try:
-        notification_updates = process_updates_from_file(response_file_content)
+        return process_updates_from_file(response_file_content)
     except TypeError:
         raise DVLAException('DVLA response file: {} has an invalid format'.format(filename))
-    else:
-        temporary_failures = []
-        for update in notification_updates:
-            check_billable_units(update)
-            update_letter_notification(filename, temporary_failures, update)
-            sorted_letter_counts[update.cost_threshold.lower()] += 1
-
-        try:
-            unknown_status = sorted_letter_counts.keys() - {'unsorted', 'sorted'}
-            if unknown_status:
-                message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
-                    filename, unknown_status
-                )
-                raise DVLAException(message)
-
-            billing_date = get_billing_date_in_bst_from_filename(filename)
-            persist_daily_sorted_letter_counts(day=billing_date,
-                                               file_name=filename,
-                                               sorted_letter_counts=sorted_letter_counts)
-        finally:
-            if temporary_failures:
-                # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-                message = "DVLA response file: {filename} has failed letters with notification.reference {failures}" \
-                    .format(filename=filename, failures=temporary_failures)
-                raise DVLAException(message)
 
 
 def get_billing_date_in_bst_from_filename(filename):
