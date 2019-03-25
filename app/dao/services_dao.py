@@ -179,6 +179,7 @@ def dao_create_service(
     service.active = True
     service.research_mode = False
     service.crown = service.organisation_type == 'central'
+    service.count_as_live = not user.platform_admin
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)

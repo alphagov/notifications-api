@@ -420,6 +420,7 @@ class Service(db.Model, Versioned):
     volume_email = db.Column(db.Integer(), nullable=True, unique=False)
     volume_letter = db.Column(db.Integer(), nullable=True, unique=False)
     consent_to_research = db.Column(db.Boolean, nullable=True)
+    count_as_live = db.Column(db.Boolean, nullable=False, default=True)
 
     organisation = db.relationship(
         'Organisation',
