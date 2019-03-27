@@ -11,6 +11,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption
+from app.aws import s3
+from app.celery.tasks import record_daily_sorted_counts
 from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
@@ -661,3 +663,15 @@ def update_emails_to_remove_gsi(service_id):
         """
         db.session.execute(update_stmt, {'user_id': str(user.user_id)})
         db.session.commit()
+
+
+@notify_command(name='replay-daily-sorted-count-files')
+@click.option('-f', '--file_extension', required=False, help="File extension to search for, defaults to rs.txt")
+@statsd(namespace="tasks")
+def replay_daily_sorted_count_files(file_extension):
+    bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
+    for filename in s3.get_list_of_files_by_suffix(bucket_name=bucket_location,
+                                                   subfolder='root/dispatch',
+                                                   suffix=file_extension or '.rs.txt'):
+        print("Create task to record daily sorted counts for file: ", filename)
+        record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
