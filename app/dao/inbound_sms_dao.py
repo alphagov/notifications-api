@@ -55,11 +55,10 @@ def dao_get_paginated_inbound_sms_for_service_for_public_api(
     ).items
 
 
-def dao_count_inbound_sms_for_service(service_id):
-    start_date = midnight_n_days_ago(6)
+def dao_count_inbound_sms_for_service(service_id, limit_days):
     return InboundSms.query.filter(
         InboundSms.service_id == service_id,
-        InboundSms.created_at >= start_date
+        InboundSms.created_at >= midnight_n_days_ago(limit_days)
     ).count()
 
 
@@ -126,10 +125,11 @@ def dao_get_inbound_sms_by_id(service_id, inbound_id):
 
 def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
     service_id,
-    page
+    page,
+    limit_days
 ):
     """
-    This query starts from inbound_sms and joins on to itself to find the most recent row for each user_number
+    This query starts from inbound_sms and joins on to itself to find the most recent row for each user_number.
 
     Equivalent sql:
 
@@ -146,7 +146,6 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
     ORDER BY t1.created_at DESC;
     LIMIT 50 OFFSET :page
     """
-    start_date = midnight_n_days_ago(6)
     t2 = aliased(InboundSms)
     q = db.session.query(
         InboundSms
@@ -160,7 +159,7 @@ def dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(
     ).filter(
         t2.id == None,  # noqa
         InboundSms.service_id == service_id,
-        InboundSms.created_at >= start_date
+        InboundSms.created_at >= midnight_n_days_ago(limit_days)
     ).order_by(
         InboundSms.created_at.desc()
     )

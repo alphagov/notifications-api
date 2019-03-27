@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from freezegun import freeze_time
 
 from tests.app.db import (
-    create_inbound_sms, create_service, create_service_with_inbound_number,
+    create_inbound_sms, create_service, create_service_with_inbound_number, create_service_data_retention
 )
 
 
@@ -297,3 +297,26 @@ def test_get_most_recent_inbound_sms_for_service(
 
     assert len(response['data']) == expected_rows
     assert response['has_next'] == has_next_link
+
+
+@freeze_time('Monday 10th April 2017 12:00')
+def test_get_most_recent_inbound_sms_for_service_respects_data_retention(
+    admin_request,
+    sample_service
+):
+    create_service_data_retention(sample_service.id, 'sms', 5)
+    for i in range(10):
+        created = datetime.utcnow() - timedelta(days=i)
+        create_inbound_sms(sample_service, user_number='44770090000{}'.format(i), created_at=created)
+
+    response = admin_request.get('inbound_sms.get_most_recent_inbound_sms_for_service', service_id=sample_service.id)
+
+    assert len(response['data']) == 6
+    assert [x['created_at'] for x in response['data']] == [
+        '2017-04-10T12:00:00.000000Z',
+        '2017-04-09T12:00:00.000000Z',
+        '2017-04-08T12:00:00.000000Z',
+        '2017-04-07T12:00:00.000000Z',
+        '2017-04-06T12:00:00.000000Z',
+        '2017-04-05T12:00:00.000000Z',
+    ]
