@@ -14,7 +14,7 @@ def dao_create_inbound_sms(inbound_sms):
     db.session.add(inbound_sms)
 
 
-def dao_get_inbound_sms_for_service(service_id, limit=None, user_number=None, limit_days=7):
+def dao_get_inbound_sms_for_service(service_id, user_number=None, *, limit_days=None, limit=None):
     q = InboundSms.query.filter(
         InboundSms.service_id == service_id
     ).order_by(
