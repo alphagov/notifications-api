@@ -320,3 +320,17 @@ def test_get_most_recent_inbound_sms_for_service_respects_data_retention(
         '2017-04-06T12:00:00.000000Z',
         '2017-04-05T12:00:00.000000Z',
     ]
+
+
+@freeze_time('Monday 10th April 2017 12:00')
+def test_get_most_recent_inbound_sms_for_service_respects_data_retention_if_older_than_a_week(
+    admin_request,
+    sample_service
+):
+    create_service_data_retention(sample_service.id, 'sms', 14)
+    create_inbound_sms(sample_service, created_at=datetime(2017, 4, 1, 12, 0))
+
+    response = admin_request.get('inbound_sms.get_most_recent_inbound_sms_for_service', service_id=sample_service.id)
+
+    assert len(response['data']) == 1
+    assert response['data'][0]['created_at'] == '2017-04-01T12:00:00.000000Z'
