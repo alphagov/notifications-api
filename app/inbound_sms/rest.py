@@ -12,6 +12,7 @@ from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_by_id,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service
 )
+from app.dao.service_data_retention_dao import fetch_service_data_retention_by_notification_type
 from app.errors import register_errors
 from app.schema_validation import validate
 
@@ -55,9 +56,12 @@ def get_inbound_sms_for_service(service_id):
 def get_most_recent_inbound_sms_for_service(service_id):
     # used on the service inbox page
     page = request.args.get('page', 1)
-    # get most recent message for each user for service
 
-    results = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service_id, int(page))
+    inbound_data_retention = fetch_service_data_retention_by_notification_type(service_id, 'sms')
+    limit_days = inbound_data_retention.days_of_retention if inbound_data_retention else 7
+
+    # get most recent message for each user for service
+    results = dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service(service_id, int(page), limit_days)
     return jsonify(
         data=[row.serialize() for row in results.items],
         has_next=results.has_next
@@ -66,7 +70,8 @@ def get_most_recent_inbound_sms_for_service(service_id):
 
 @inbound_sms.route('/summary')
 def get_inbound_sms_summary_for_service(service_id):
-    count = dao_count_inbound_sms_for_service(service_id)
+    # this is for the dashboard, so always limit to 7 days, even if they have a longer data retention
+    count = dao_count_inbound_sms_for_service(service_id, limit_days=7)
     most_recent = dao_get_inbound_sms_for_service(service_id, limit=1)
 
     return jsonify(
