@@ -4,6 +4,5 @@ get_inbound_sms_for_service_schema = {
     "type": "object",
     "properties": {
         "phone_number": {"type": "string"},
-        "limit": {"type": ["integer", "null"], "minimum": 1}
     }
 }
