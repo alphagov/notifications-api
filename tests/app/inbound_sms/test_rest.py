@@ -101,11 +101,21 @@ def test_post_to_get_most_recent_inbound_sms_for_service_limits_to_a_week(admin_
     assert sms['data'][0]['id'] == str(returned_inbound.id)
 
 
+@pytest.mark.parametrize('days_of_retention, too_old_date, returned_date', [
+    (5, datetime(2017, 4, 4, 22, 59), datetime(2017, 4, 5, 12, 0)),
+    (14, datetime(2017, 3, 26, 22, 59), datetime(2017, 3, 27, 12, 0)),
+])
 @freeze_time('Monday 10th April 2017 12:00')
-def test_post_to_get_inbound_sms_for_service_respects_data_retention(admin_request, sample_service):
-    create_service_data_retention(sample_service.id, 'sms', 5)
-    create_inbound_sms(sample_service, created_at=datetime(2017, 4, 4, 22, 59))
-    returned_inbound = create_inbound_sms(sample_service, created_at=datetime(2017, 4, 5, 12, 0))
+def test_post_to_get_inbound_sms_for_service_respects_data_retention(
+    admin_request,
+    sample_service,
+    days_of_retention,
+    too_old_date,
+    returned_date
+):
+    create_service_data_retention(sample_service.id, 'sms', days_of_retention)
+    create_inbound_sms(sample_service, created_at=too_old_date)
+    returned_inbound = create_inbound_sms(sample_service, created_at=returned_date)
 
     sms = admin_request.post('inbound_sms.get_inbound_sms_for_service', service_id=sample_service.id, _data={})
 
