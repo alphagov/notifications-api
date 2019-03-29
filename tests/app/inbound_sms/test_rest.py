@@ -13,7 +13,7 @@ def test_post_to_get_inbound_sms_with_no_params(admin_request, sample_service):
     two = create_inbound_sms(sample_service)
 
     sms = admin_request.post(
-        'inbound_sms.post_query_inbound_sms_for_service',
+        'inbound_sms.post_inbound_sms_for_service',
         service_id=sample_service.id,
         _data={}
     )['data']
@@ -46,7 +46,7 @@ def test_post_to_get_inbound_sms_filters_user_number(admin_request, sample_servi
     }
 
     sms = admin_request.post(
-        'inbound_sms.post_query_inbound_sms_for_service',
+        'inbound_sms.post_inbound_sms_for_service',
         service_id=sample_service.id,
         _data=data
     )['data']
@@ -66,7 +66,7 @@ def test_post_to_get_inbound_sms_filters_international_user_number(admin_request
     }
 
     sms = admin_request.post(
-        'inbound_sms.post_query_inbound_sms_for_service',
+        'inbound_sms.post_inbound_sms_for_service',
         service_id=sample_service.id,
         _data=data
     )['data']
@@ -80,7 +80,7 @@ def test_post_to_get_inbound_sms_allows_badly_formatted_number(admin_request, sa
     one = create_inbound_sms(sample_service, user_number='ALPHANUM3R1C')
 
     sms = admin_request.post(
-        'inbound_sms.get_inbound_sms_for_service',
+        'inbound_sms.post_inbound_sms_for_service',
         service_id=sample_service.id,
         _data={'phone_number': 'ALPHANUM3R1C'}
     )['data']
@@ -95,7 +95,7 @@ def test_post_to_get_most_recent_inbound_sms_for_service_limits_to_a_week(admin_
     create_inbound_sms(sample_service, created_at=datetime(2017, 4, 2, 22, 59))
     returned_inbound = create_inbound_sms(sample_service, created_at=datetime(2017, 4, 2, 23, 30))
 
-    sms = admin_request.post('inbound_sms.get_inbound_sms_for_service', service_id=sample_service.id, _data={})
+    sms = admin_request.post('inbound_sms.post_inbound_sms_for_service', service_id=sample_service.id, _data={})
 
     assert len(sms['data']) == 1
     assert sms['data'][0]['id'] == str(returned_inbound.id)
@@ -117,118 +117,11 @@ def test_post_to_get_inbound_sms_for_service_respects_data_retention(
     create_inbound_sms(sample_service, created_at=too_old_date)
     returned_inbound = create_inbound_sms(sample_service, created_at=returned_date)
 
-    sms = admin_request.post('inbound_sms.get_inbound_sms_for_service', service_id=sample_service.id, _data={})
+    sms = admin_request.post('inbound_sms.post_inbound_sms_for_service', service_id=sample_service.id, _data={})
 
     assert len(sms['data']) == 1
     assert sms['data'][0]['id'] == str(returned_inbound.id)
 
-
-##############################################################
-# REMOVE ONCE ADMIN MIGRATED AND GET ENDPOINT REMOVED
-##############################################################
-
-
-def test_old_get_inbound_sms(admin_request, sample_service):
-    one = create_inbound_sms(sample_service)
-    two = create_inbound_sms(sample_service)
-
-    json_resp = admin_request.get(
-        'inbound_sms.get_inbound_sms_for_service',
-        service_id=sample_service.id
-    )
-
-    sms = json_resp['data']
-
-    assert len(sms) == 2
-    assert {inbound['id'] for inbound in sms} == {str(one.id), str(two.id)}
-    assert sms[0]['content'] == 'Hello'
-    assert set(sms[0].keys()) == {
-        'id',
-        'created_at',
-        'service_id',
-        'notify_number',
-        'user_number',
-        'content'
-    }
-
-
-@pytest.mark.parametrize('user_number', [
-    '(07700) 900-001',
-    '+4407700900001',
-    '447700900001',
-])
-def test_old_get_inbound_sms_filters_user_number(admin_request, sample_service, user_number):
-    # user_number in the db is international and normalised
-    one = create_inbound_sms(sample_service, user_number='447700900001')
-    create_inbound_sms(sample_service, user_number='447700900002')
-
-    sms = admin_request.get(
-        'inbound_sms.get_inbound_sms_for_service',
-        service_id=sample_service.id,
-        user_number=user_number,
-    )
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(one.id)
-    assert sms['data'][0]['user_number'] == str(one.user_number)
-
-
-def test_old_get_inbound_sms_filters_international_user_number(admin_request, sample_service):
-    # user_number in the db is international and normalised
-    one = create_inbound_sms(sample_service, user_number='12025550104')
-    create_inbound_sms(sample_service)
-
-    sms = admin_request.get(
-        'inbound_sms.get_inbound_sms_for_service',
-        service_id=sample_service.id,
-        user_number='+1 (202) 555-0104',
-    )
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(one.id)
-    assert sms['data'][0]['user_number'] == str(one.user_number)
-
-
-def test_old_get_inbound_sms_allows_badly_formatted_number(admin_request, sample_service):
-    one = create_inbound_sms(sample_service, user_number='ALPHANUM3R1C')
-
-    sms = admin_request.get(
-        'inbound_sms.get_inbound_sms_for_service',
-        service_id=sample_service.id,
-        user_number='ALPHANUM3R1C',
-    )
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(one.id)
-    assert sms['data'][0]['user_number'] == str(one.user_number)
-
-
-@freeze_time('Monday 10th April 2017 12:00')
-def test_old_get_most_recent_inbound_sms_for_service_limits_to_a_week(admin_request, sample_service):
-    create_inbound_sms(sample_service, created_at=datetime(2017, 4, 2, 22, 59))
-    returned_inbound = create_inbound_sms(sample_service, created_at=datetime(2017, 4, 2, 23, 30))
-
-    sms = admin_request.get('inbound_sms.get_inbound_sms_for_service', service_id=sample_service.id)
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(returned_inbound.id)
-
-
-@freeze_time('Monday 10th April 2017 12:00')
-def test_old_get_inbound_sms_for_service_respects_data_retention(admin_request, sample_service):
-    create_service_data_retention(sample_service.id, 'sms', 5)
-    create_inbound_sms(sample_service, created_at=datetime(2017, 4, 4, 22, 59))
-    returned_inbound = create_inbound_sms(sample_service, created_at=datetime(2017, 4, 5, 12, 0))
-
-    sms = admin_request.get('inbound_sms.get_inbound_sms_for_service', service_id=sample_service.id)
-
-    assert len(sms['data']) == 1
-    assert sms['data'][0]['id'] == str(returned_inbound.id)
-
-
-##############################
-# End delete section
-##############################
 
 def test_get_inbound_sms_summary(admin_request, sample_service):
     other_service = create_service(service_name='other_service')

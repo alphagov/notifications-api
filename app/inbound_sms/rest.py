@@ -28,17 +28,10 @@ register_errors(inbound_sms)
 
 
 @inbound_sms.route('', methods=['POST'])
-def post_query_inbound_sms_for_service(service_id):
+def post_inbound_sms_for_service(service_id):
     form = validate(request.get_json(), get_inbound_sms_for_service_schema)
-    return _get_inbound_sms(service_id, user_number=form.get('phone_number'))
+    user_number = form.get('phone_number')
 
-
-@inbound_sms.route('', methods=['GET'])
-def get_inbound_sms_for_service(service_id):
-    return _get_inbound_sms(service_id, user_number=request.args.get('user_number'))
-
-
-def _get_inbound_sms(service_id, user_number):
     if user_number:
         # we use this to normalise to an international phone number - but this may fail if it's an alphanumeric
         user_number = try_validate_and_format_phone_number(user_number, international=True)
