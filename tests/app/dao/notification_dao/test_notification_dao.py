@@ -25,7 +25,6 @@ from app.dao.notifications_dao import (
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
-    get_total_sent_notifications_in_date_range,
     is_delivery_slow_for_provider,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
@@ -58,7 +57,6 @@ from tests.app.conftest import (
     sample_template as create_sample_template,
     sample_service,
     sample_job,
-    sample_notification_history as create_notification_history,
 )
 from tests.app.db import (
     create_job,
@@ -1104,116 +1102,6 @@ def test_should_exclude_test_key_notifications_by_default(
 
     all_notifications = get_notifications_for_service(sample_service.id, limit_days=1, key_type=KEY_TYPE_TEST).items
     assert len(all_notifications) == 1
-
-
-@pytest.mark.parametrize('notification_type', ['sms', 'email'])
-def test_get_total_sent_notifications_in_date_range_returns_only_in_date_range(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    notification_type
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        notification_type=notification_type,
-        status='delivered'
-    )
-
-    start_date = datetime(2000, 3, 30, 0, 0, 0, 0)
-    with freeze_time(start_date):
-        notification_history(created_at=start_date + timedelta(hours=3))
-        notification_history(created_at=start_date + timedelta(hours=5, minutes=10))
-        notification_history(created_at=start_date + timedelta(hours=11, minutes=59))
-
-    end_date = datetime(2000, 3, 31, 0, 0, 0, 0)
-    notification_history(created_at=end_date + timedelta(seconds=1))
-    notification_history(created_at=end_date + timedelta(minutes=10))
-
-    total_count = get_total_sent_notifications_in_date_range(start_date, end_date, notification_type)
-    assert total_count == 3
-
-
-@pytest.mark.parametrize('notification_type', ['sms', 'email'])
-def test_get_total_sent_notifications_in_date_range_excludes_test_key_notifications(
-    notify_db,
-    notify_db_session,
-    sample_template,
-    notification_type
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        notification_type=notification_type,
-        status='delivered'
-    )
-
-    start_date = datetime(2000, 3, 30, 0, 0, 0, 0)
-    end_date = datetime(2000, 3, 31, 0, 0, 0, 0)
-    with freeze_time(start_date):
-        notification_history(key_type=KEY_TYPE_TEAM)
-        notification_history(key_type=KEY_TYPE_TEAM)
-        notification_history(key_type=KEY_TYPE_NORMAL)
-        notification_history(key_type=KEY_TYPE_TEST)
-
-    total_count = get_total_sent_notifications_in_date_range(start_date, end_date, notification_type)
-    assert total_count == 3
-
-
-def test_get_total_sent_notifications_for_sms_excludes_email_counts(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        status='delivered'
-    )
-
-    start_date = datetime(2000, 3, 30, 0, 0, 0, 0)
-    end_date = datetime(2000, 3, 31, 0, 0, 0, 0)
-    with freeze_time(start_date):
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-
-    total_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'sms')
-    assert total_count == 3
-
-
-def test_get_total_sent_notifications_for_email_excludes_sms_counts(
-    notify_db,
-    notify_db_session,
-    sample_template
-):
-    notification_history = partial(
-        create_notification_history,
-        notify_db,
-        notify_db_session,
-        sample_template,
-        status='delivered'
-    )
-
-    start_date = datetime(2000, 3, 30, 0, 0, 0, 0)
-    end_date = datetime(2000, 3, 31, 0, 0, 0, 0)
-    with freeze_time(start_date):
-        notification_history(notification_type='email')
-        notification_history(notification_type='email')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-        notification_history(notification_type='sms')
-
-    total_count = get_total_sent_notifications_in_date_range(start_date, end_date, 'email')
-    assert total_count == 2
 
 
 @pytest.mark.parametrize(

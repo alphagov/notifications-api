@@ -12,10 +12,12 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
-    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
+    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service,
+    get_total_sent_notifications_for_day_and_type
 )
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
+
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
 
 
@@ -526,3 +528,48 @@ def test_fetch_monthly_template_usage_for_service_does_not_include_test_notifica
     )
 
     assert len(results) == 0
+
+
+@pytest.mark.parametrize("notification_type, count",
+                         [("sms", 3),
+                          ("email", 5),
+                          ("letter", 7)])
+def test_get_total_sent_notifications_for_day_and_type_returns_right_notification_type(
+        notification_type, count, sample_template, sample_email_template, sample_letter_template
+):
+    create_ft_notification_status(bst_date="2019-03-27", service=sample_template.service, template=sample_template,
+                                  count=3)
+    create_ft_notification_status(bst_date="2019-03-27", service=sample_email_template.service,
+                                  template=sample_email_template, count=5)
+    create_ft_notification_status(bst_date="2019-03-27", service=sample_letter_template.service,
+                                  template=sample_letter_template, count=7)
+
+    result = get_total_sent_notifications_for_day_and_type(day='2019-03-27', notification_type=notification_type)
+
+    assert result == count
+
+
+@pytest.mark.parametrize("day",
+                         ["2019-01-27", "2019-04-02"])
+def test_get_total_sent_notifications_for_day_and_type_returns_total_for_right_day(
+    day, sample_template
+):
+    date = datetime.strptime(day, "%Y-%m-%d")
+    create_ft_notification_status(bst_date=date - timedelta(days=1), notification_type=sample_template.template_type,
+                                  service=sample_template.service, template=sample_template, count=1)
+    create_ft_notification_status(bst_date=date, notification_type=sample_template.template_type,
+                                  service=sample_template.service, template=sample_template, count=2)
+    create_ft_notification_status(bst_date=date + timedelta(days=1), notification_type=sample_template.template_type,
+                                  service=sample_template.service, template=sample_template, count=3)
+
+    total = get_total_sent_notifications_for_day_and_type(day, sample_template.template_type)
+
+    assert total == 2
+
+
+def test_get_total_sent_notifications_for_day_and_type_returns_zero_when_no_counts(
+    notify_db_session
+):
+    total = get_total_sent_notifications_for_day_and_type("2019-03-27", "sms")
+
+    assert total == 0
