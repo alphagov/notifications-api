@@ -538,11 +538,11 @@ def test_get_total_sent_notifications_for_day_and_type_returns_right_notificatio
         notification_type, count, sample_template, sample_email_template, sample_letter_template
 ):
     create_ft_notification_status(bst_date="2019-03-27", service=sample_template.service, template=sample_template,
-                                  count=count)
+                                  count=3)
     create_ft_notification_status(bst_date="2019-03-27", service=sample_email_template.service,
-                                  template=sample_email_template, count=count)
+                                  template=sample_email_template, count=5)
     create_ft_notification_status(bst_date="2019-03-27", service=sample_letter_template.service,
-                                  template=sample_letter_template, count=count)
+                                  template=sample_letter_template, count=7)
 
     result = get_total_sent_notifications_for_day_and_type(day='2019-03-27', notification_type=notification_type)
 
