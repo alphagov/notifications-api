@@ -453,19 +453,6 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     return technical_failure_notifications, temporary_failure_notifications
 
 
-def get_total_sent_notifications_in_date_range(start_date, end_date, notification_type):
-    result = db.session.query(
-        func.count(NotificationHistory.id).label('count')
-    ).filter(
-        NotificationHistory.key_type != KEY_TYPE_TEST,
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at <= end_date,
-        NotificationHistory.notification_type == notification_type
-    ).scalar()
-
-    return result or 0
-
-
 def is_delivery_slow_for_provider(
         created_at,
         provider,
