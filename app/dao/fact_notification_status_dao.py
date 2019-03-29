@@ -394,3 +394,15 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
     else:
         query = stats
     return query.all()
+
+
+def get_total_sent_notifications_for_day_and_type(day, notification_type):
+    result = db.session.query(
+        func.sum(FactNotificationStatus.notification_count).label('count')
+    ).filter(
+        FactNotificationStatus.notification_type == notification_type,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        FactNotificationStatus.bst_date == day,
+    ).scalar()
+
+    return result or 0

@@ -34,7 +34,6 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE
 )
-from app.utils import get_london_midnight_in_utc
 from tests.app.aws.test_s3 import single_s3_object_stub
 from tests.app.db import (
     create_notification,
@@ -42,7 +41,8 @@ from tests.app.db import (
     create_template,
     create_job,
     create_service_callback_api,
-    create_service_data_retention
+    create_service_data_retention,
+    create_ft_notification_status
 )
 
 from tests.app.conftest import datetime_in_past
@@ -253,29 +253,26 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mo
 
 @freeze_time("2016-01-11 12:30:00")
 def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
-        notify_db,
         notify_db_session,
         sample_template,
         sample_email_template,
         mocker
 ):
-    sms = sample_template
-    email = sample_email_template
-
     perf_mock = mocker.patch(
         'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
-    create_notification(email, status='delivered')
-    create_notification(sms, status='delivered')
+    today = datetime.utcnow().date()
+    create_ft_notification_status(bst_date=today, notification_type='sms', service=sample_template.service,
+                                  template=sample_template)
+    create_ft_notification_status(bst_date=today, notification_type='email', service=sample_email_template.service,
+                                  template=sample_email_template)
 
     # Create some notifications for the day before
-    yesterday = datetime(2016, 1, 10, 15, 30, 0, 0)
-    with freeze_time(yesterday):
-        create_notification(sms, status='delivered')
-        create_notification(sms, status='delivered')
-        create_notification(email, status='delivered')
-        create_notification(email, status='delivered')
-        create_notification(email, status='delivered')
+    yesterday = today - timedelta(days=1)
+    create_ft_notification_status(bst_date=yesterday, notification_type='sms', service=sample_template.service,
+                                  template=sample_template, count=2)
+    create_ft_notification_status(bst_date=yesterday, notification_type='email', service=sample_email_template.service,
+                                  template=sample_email_template, count=3)
 
     with patch.object(
             PerformancePlatformClient,
@@ -286,8 +283,8 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         send_total_sent_notifications_to_performance_platform(yesterday)
 
         perf_mock.assert_has_calls([
-            call(get_london_midnight_in_utc(yesterday), 'sms', 2),
-            call(get_london_midnight_in_utc(yesterday), 'email', 3)
+            call(yesterday, 'sms', 2),
+            call(yesterday, 'email', 3)
         ])
 
 
