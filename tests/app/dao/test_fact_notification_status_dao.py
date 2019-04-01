@@ -18,7 +18,6 @@ from app.dao.fact_notification_status_dao import (
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 
-from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
 
 
