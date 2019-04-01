@@ -261,7 +261,7 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
     perf_mock = mocker.patch(
         'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
-    today = datetime.utcnow().date()
+    today = datetime.utcnow()
     create_ft_notification_status(bst_date=today, notification_type='sms', service=sample_template.service,
                                   template=sample_template)
     create_ft_notification_status(bst_date=today, notification_type='email', service=sample_email_template.service,
@@ -283,8 +283,9 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         send_total_sent_notifications_to_performance_platform(yesterday)
 
         perf_mock.assert_has_calls([
-            call(yesterday, 'sms', 2),
-            call(yesterday, 'email', 3)
+            call(yesterday.date(), 'sms', 2),
+            call(yesterday.date(), 'email', 3),
+            call(yesterday.date(), 'letter', 0)
         ])
 
 
