@@ -174,7 +174,7 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
         FactNotificationStatus.key_type,
     )
     today = get_london_midnight_in_utc(datetime.utcnow())
-    if start_date <= today.date() <= end_date:
+    if start_date <= datetime.utcnow().date() <= end_date:
         stats_for_today = db.session.query(
             Notification.notification_type.cast(db.Text).label('notification_type'),
             Notification.status,

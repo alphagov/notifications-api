@@ -18,6 +18,7 @@ from app.dao.fact_notification_status_dao import (
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 
+from app.utils import get_london_midnight_in_utc
 from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
 
 
@@ -317,6 +318,42 @@ def test_fetch_notification_status_totals_for_all_services(
     assert results[3].notification_type == 'sms'
     assert results[3].status == 'delivered'
     assert results[3].count == expected_sms
+
+
+@freeze_time('2018-04-21 14:00')
+def test_fetch_notification_status_totals_for_all_services_works_in_bst(
+        notify_db_session
+):
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
+
+    create_notification(sms_template, created_at=datetime(2018, 4, 20, 12, 0, 0), status='delivered')
+    create_notification(sms_template, created_at=datetime(2018, 4, 21, 11, 0, 0), status='created')
+    create_notification(sms_template, created_at=datetime(2018, 4, 21, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 4, 21, 13, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 4, 21, 14, 0, 0), status='delivered')
+
+    results = sorted(
+        fetch_notification_status_totals_for_all_services(
+            start_date=date(2018, 4, 21), end_date=date(2018, 4, 21)),
+        key=lambda x: (x.notification_type, x.status)
+    )
+
+    assert len(results) == 3
+    print(results)
+
+    assert results[0].notification_type == 'email'
+    assert results[0].status == 'delivered'
+    assert results[0].count == 2
+
+    assert results[1].notification_type == 'sms'
+    assert results[1].status == 'created'
+    assert results[1].count == 1
+
+    assert results[2].notification_type == 'sms'
+    assert results[2].status == 'delivered'
+    assert results[2].count == 1
 
 
 def set_up_data():
