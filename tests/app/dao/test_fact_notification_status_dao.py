@@ -319,6 +319,41 @@ def test_fetch_notification_status_totals_for_all_services(
     assert results[3].count == expected_sms
 
 
+@freeze_time('2018-04-21 14:00')
+def test_fetch_notification_status_totals_for_all_services_works_in_bst(
+        notify_db_session
+):
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
+
+    create_notification(sms_template, created_at=datetime(2018, 4, 20, 12, 0, 0), status='delivered')
+    create_notification(sms_template, created_at=datetime(2018, 4, 21, 11, 0, 0), status='created')
+    create_notification(sms_template, created_at=datetime(2018, 4, 21, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 4, 21, 13, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 4, 21, 14, 0, 0), status='delivered')
+
+    results = sorted(
+        fetch_notification_status_totals_for_all_services(
+            start_date=date(2018, 4, 21), end_date=date(2018, 4, 21)),
+        key=lambda x: (x.notification_type, x.status)
+    )
+
+    assert len(results) == 3
+
+    assert results[0].notification_type == 'email'
+    assert results[0].status == 'delivered'
+    assert results[0].count == 2
+
+    assert results[1].notification_type == 'sms'
+    assert results[1].status == 'created'
+    assert results[1].count == 1
+
+    assert results[2].notification_type == 'sms'
+    assert results[2].status == 'delivered'
+    assert results[2].count == 1
+
+
 def set_up_data():
     service_2 = create_service(service_name='service_2')
     create_template(service=service_2, template_type=LETTER_TYPE)
