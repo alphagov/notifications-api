@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import json
 
 import pytest
+from freezegun import freeze_time
 
 from app.models import FactBilling
 from app.dao.date_util import get_current_financial_year_start_year, get_month_start_and_end_date_in_utc
@@ -156,6 +157,7 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
     assert annual_billing.free_sms_fragment_limit == 9999
 
 
+@freeze_time('2018-04-21 14:00')
 def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(client, notify_db_session):
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")

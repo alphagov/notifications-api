@@ -340,7 +340,6 @@ def test_fetch_notification_status_totals_for_all_services_works_in_bst(
     )
 
     assert len(results) == 3
-    print(results)
 
     assert results[0].notification_type == 'email'
     assert results[0].status == 'delivered'
