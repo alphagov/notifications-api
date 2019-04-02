@@ -53,15 +53,11 @@ def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(sam
 
     total_count_dict = get_total_sent_notifications_for_day(yesterday)
 
-    assert total_count_dict == {
-        "start_date": yesterday,
-        "email": {
-            "count": 3
-        },
-        "sms": {
-            "count": 2
-        },
-        "letter": {
-            "count": 1
-        }
-    }
+    assert total_count_dict["email"] == {"count": 3}
+    assert total_count_dict["sms"] == {"count": 2}
+    assert total_count_dict["letter"] == {"count": 1}
+
+    # Should return a time around midnight depending on timezones
+    expected_start = datetime.combine(yesterday, datetime.min.time())
+    time_diff = abs(expected_start - total_count_dict["start_date"])
+    assert time_diff <= timedelta(minutes=60)
