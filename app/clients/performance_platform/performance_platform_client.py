@@ -46,17 +46,17 @@ class PerformancePlatformClient:
                 resp.raise_for_status()
 
     @staticmethod
-    def format_payload(*, dataset, date, group_name, group_value, count, period='day'):
+    def format_payload(*, dataset, start_time, group_name, group_value, count, period='day'):
         """
         :param dataset - the name of the overall graph, as referred to in the endpoint.
-        :param date - the date we're sending stats for
+        :param start_time - UTC midnight of the day we're sending stats for
         :param group_name - the name of the individual groups of data, eg "channel" or "status"
         :param group_value - the value of the group, eg "sms" or "email" for group_name=channel
         :param count - the actual numeric value to send
         :param period - the period that this data covers - "day", "week", "month", "quarter".
         """
         payload = {
-            '_timestamp': convert_utc_to_bst(date).isoformat(),
+            '_timestamp': convert_utc_to_bst(start_time).isoformat(),
             'service': 'govuk-notify',
             'dataType': dataset,
             'period': period,

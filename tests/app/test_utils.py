@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import pytest
 from freezegun import freeze_time
@@ -15,6 +15,9 @@ from app.utils import (
     (datetime(2016, 1, 15, 0, 30), datetime(2016, 1, 15, 0, 0)),
     (datetime(2016, 6, 15, 0, 0), datetime(2016, 6, 14, 23, 0)),
     (datetime(2016, 9, 15, 11, 59), datetime(2016, 9, 14, 23, 0)),
+    # works for both dates and datetimes
+    (date(2016, 1, 15), datetime(2016, 1, 15, 0, 0)),
+    (date(2016, 6, 15), datetime(2016, 6, 14, 23, 0)),
 ])
 def test_get_london_midnight_in_utc_returns_expected_date(date, expected_date):
     assert get_london_midnight_in_utc(date) == expected_date

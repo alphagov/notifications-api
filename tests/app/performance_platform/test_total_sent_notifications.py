@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+from datetime import datetime, date
+
+from freezegun import freeze_time
 
 from app.performance_platform.total_sent_notifications import (
     send_total_notifications_sent_for_day_stats,
@@ -12,7 +14,7 @@ def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(
     send_stats = mocker.patch('app.performance_platform.total_sent_notifications.performance_platform_client.send_stats_to_performance_platform')  # noqa
 
     send_total_notifications_sent_for_day_stats(
-        date=datetime(2016, 10, 15, 23, 0, 0),
+        start_time=datetime(2016, 10, 15, 23, 0, 0),
         notification_type='sms',
         count=142
     )
@@ -30,38 +32,29 @@ def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(
     assert request_args['_id'] == expected_base64_id
 
 
+@freeze_time('2018-06-10 01:00')
 def test_get_total_sent_notifications_yesterday_returns_expected_totals_dict(sample_service):
     sms = create_template(sample_service, template_type='sms')
     email = create_template(sample_service, template_type='email')
     letter = create_template(sample_service, template_type='letter')
 
-    today = datetime.utcnow().date()
-    yesterday = today - timedelta(days=1)
-    create_ft_notification_status(bst_date=today, notification_type='sms',
-                                  service=sms.service, template=sms)
-    create_ft_notification_status(bst_date=today, notification_type='email',
-                                  service=email.service, template=email)
-    create_ft_notification_status(bst_date=today, notification_type='letter',
-                                  service=letter.service, template=letter)
+    today = date(2018, 6, 10)
+    yesterday = date(2018, 6, 9)
 
-    create_ft_notification_status(bst_date=yesterday, notification_type='sms',
-                                  service=sms.service, template=sms, count=2)
-    create_ft_notification_status(bst_date=yesterday, notification_type='email',
-                                  service=email.service, template=email, count=3)
-    create_ft_notification_status(bst_date=yesterday, notification_type='letter',
-                                  service=letter.service, template=letter, count=1)
+    # todays is excluded
+    create_ft_notification_status(bst_date=today, template=sms)
+    create_ft_notification_status(bst_date=today, template=email)
+    create_ft_notification_status(bst_date=today, template=letter)
+
+    # yesterdays is included
+    create_ft_notification_status(bst_date=yesterday, template=sms, count=2)
+    create_ft_notification_status(bst_date=yesterday, template=email, count=3)
+    create_ft_notification_status(bst_date=yesterday, template=letter, count=1)
 
     total_count_dict = get_total_sent_notifications_for_day(yesterday)
 
     assert total_count_dict == {
-        "start_date": yesterday,
-        "email": {
-            "count": 3
-        },
-        "sms": {
-            "count": 2
-        },
-        "letter": {
-            "count": 1
-        }
+        "email": 3,
+        "sms": 2,
+        "letter": 1
     }

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from functools import partial
 from unittest.mock import call, patch, PropertyMock
 
@@ -251,7 +251,7 @@ def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mo
     assert send_mock.call_count == 0
 
 
-@freeze_time("2016-01-11 12:30:00")
+@freeze_time("2016-06-11 02:00:00")
 def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
         notify_db_session,
         sample_template,
@@ -261,18 +261,14 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
     perf_mock = mocker.patch(
         'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
 
-    today = datetime.utcnow()
-    create_ft_notification_status(bst_date=today, notification_type='sms', service=sample_template.service,
-                                  template=sample_template)
-    create_ft_notification_status(bst_date=today, notification_type='email', service=sample_email_template.service,
-                                  template=sample_email_template)
+    today = date(2016, 6, 11)
+    create_ft_notification_status(bst_date=today, template=sample_template)
+    create_ft_notification_status(bst_date=today, template=sample_email_template)
 
     # Create some notifications for the day before
-    yesterday = today - timedelta(days=1)
-    create_ft_notification_status(bst_date=yesterday, notification_type='sms', service=sample_template.service,
-                                  template=sample_template, count=2)
-    create_ft_notification_status(bst_date=yesterday, notification_type='email', service=sample_email_template.service,
-                                  template=sample_email_template, count=3)
+    yesterday = date(2016, 6, 10)
+    create_ft_notification_status(bst_date=yesterday, template=sample_template, count=2)
+    create_ft_notification_status(bst_date=yesterday, template=sample_email_template, count=3)
 
     with patch.object(
             PerformancePlatformClient,
@@ -283,9 +279,9 @@ def test_send_total_sent_notifications_to_performance_platform_calls_with_correc
         send_total_sent_notifications_to_performance_platform(yesterday)
 
         perf_mock.assert_has_calls([
-            call(yesterday.date(), 'sms', 2),
-            call(yesterday.date(), 'email', 3),
-            call(yesterday.date(), 'letter', 0)
+            call(datetime(2016, 6, 9, 23, 0), 'sms', 2),
+            call(datetime(2016, 6, 9, 23, 0), 'email', 3),
+            call(datetime(2016, 6, 9, 23, 0), 'letter', 0)
         ])
 
 
