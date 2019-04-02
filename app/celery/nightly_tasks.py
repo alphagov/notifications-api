@@ -37,6 +37,7 @@ from app.models import (
 )
 from app.performance_platform import total_sent_notifications, processing_time
 from app.cronitor import cronitor
+from app.utils import get_london_midnight_in_utc
 
 
 @notify_celery.task(name="remove_sms_email_jobs")
@@ -152,36 +153,37 @@ def timeout_notifications():
 def send_daily_performance_platform_stats():
     if performance_platform_client.active:
         yesterday = datetime.utcnow() - timedelta(days=1)
-        send_total_sent_notifications_to_performance_platform(yesterday)
+        send_total_sent_notifications_to_performance_platform(bst_date=yesterday.date())
         processing_time.send_processing_time_to_performance_platform()
 
 
-def send_total_sent_notifications_to_performance_platform(day):
-    count_dict = total_sent_notifications.get_total_sent_notifications_for_day(day.date())
-    email_sent_count = count_dict.get('email').get('count')
-    sms_sent_count = count_dict.get('sms').get('count')
-    letter_sent_count = count_dict.get('letter').get('count')
-    start_date = count_dict.get('start_date')
+def send_total_sent_notifications_to_performance_platform(bst_date):
+    count_dict = total_sent_notifications.get_total_sent_notifications_for_day(bst_date)
+    start_time = get_london_midnight_in_utc(bst_date)
+
+    email_sent_count = count_dict['email']
+    sms_sent_count = count_dict['sms']
+    letter_sent_count = count_dict['letter']
 
     current_app.logger.info(
         "Attempting to update Performance Platform for {} with {} emails, {} text messages and {} letters"
-        .format(start_date, email_sent_count, sms_sent_count, letter_sent_count)
+        .format(bst_date, email_sent_count, sms_sent_count, letter_sent_count)
     )
 
     total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_date,
+        start_time,
         'sms',
         sms_sent_count
     )
 
     total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_date,
+        start_time,
         'email',
         email_sent_count
     )
 
     total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_date,
+        start_time,
         'letter',
         letter_sent_count
     )
