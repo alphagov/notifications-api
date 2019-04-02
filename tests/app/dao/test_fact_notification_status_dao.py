@@ -38,7 +38,7 @@ def test_update_fact_notification_status(notify_db_session):
 
     process_day = datetime.utcnow()
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    update_fact_notification_status(data=data, process_day=process_day.date())
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
@@ -77,7 +77,7 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
 
     process_day = datetime.utcnow()
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    update_fact_notification_status(data=data, process_day=process_day.date())
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
@@ -88,7 +88,7 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
     create_notification(template=first_template, status='delivered')
 
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    update_fact_notification_status(data=data, process_day=process_day.date())
 
     updated_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                               FactNotificationStatus.notification_type

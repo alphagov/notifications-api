@@ -357,7 +357,7 @@ def test_get_rate_for_sms_and_email(notify_db_session):
     assert rate == Decimal(0)
 
 
-@freeze_time('2018-03-27T03:30:00')
+@freeze_time('2018-03-26T23:30:00')
 # summer time starts on 2018-03-25
 def test_create_nightly_billing_use_BST(
         sample_service,
@@ -486,3 +486,33 @@ def test_create_nightly_notification_status(notify_db_session):
     assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=4), "%Y-%m-%d")
     assert str(new_data[3].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
     assert str(new_data[6].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
+
+
+# the job runs at 12:30am London time. 04/01 is in BST.
+@freeze_time('2019-04-01T23:30')
+def test_create_nightly_notification_status_respects_bst(sample_template):
+    create_notification(sample_template, status='delivered', created_at=datetime(2019, 4, 1, 23, 0))  # too new
+
+    create_notification(sample_template, status='created', created_at=datetime(2019, 4, 1, 22, 59))
+    create_notification(sample_template, status='created', created_at=datetime(2019, 3, 31, 23, 0))
+
+    create_notification(sample_template, status='temporary-failure', created_at=datetime(2019, 3, 31, 22, 59))
+
+    # we create records for last four days
+    create_notification(sample_template, status='sending', created_at=datetime(2019, 3, 29, 0, 0))
+
+    create_notification(sample_template, status='delivered', created_at=datetime(2019, 3, 28, 23, 59))  # too old
+
+    create_nightly_notification_status()
+
+    noti_status = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date).all()
+    assert len(noti_status) == 3
+
+    assert noti_status[0].bst_date == date(2019, 3, 29)
+    assert noti_status[0].notification_status == 'sending'
+
+    assert noti_status[1].bst_date == date(2019, 3, 31)
+    assert noti_status[1].notification_status == 'temporary-failure'
+
+    assert noti_status[2].bst_date == date(2019, 4, 1)
+    assert noti_status[2].notification_status == 'created'

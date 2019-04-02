@@ -287,7 +287,7 @@ def update_fact_billing(data, process_day):
 
 def create_billing_record(data, rate, process_day):
     billing_record = FactBilling(
-        bst_date=process_day.date(),
+        bst_date=process_day,
         template_id=data.template_id,
         service_id=data.service_id,
         notification_type=data.notification_type,

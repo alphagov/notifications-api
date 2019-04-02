@@ -54,11 +54,11 @@ def fetch_notification_status_for_day(process_day, service_id=None):
 def update_fact_notification_status(data, process_day):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
-        FactNotificationStatus.bst_date == process_day.date()
+        FactNotificationStatus.bst_date == process_day
     ).delete()
     for row in data:
         stmt = insert(table).values(
-            bst_date=process_day.date(),
+            bst_date=process_day,
             template_id=row.template_id,
             service_id=row.service_id,
             job_id=row.job_id,

@@ -10,6 +10,7 @@ from app.dao.fact_billing_dao import (
     update_fact_billing
 )
 from app.dao.fact_notification_status_dao import fetch_notification_status_for_day, update_fact_notification_status
+from app.utils import convert_utc_to_bst
 
 
 @notify_celery.task(name="create-nightly-billing")
@@ -19,10 +20,10 @@ def create_nightly_billing(day_start=None):
     # day_start is a datetime.date() object. e.g.
     # up to 10 days of data counting back from day_start is consolidated
     if day_start is None:
-        day_start = datetime.today() - timedelta(days=1)
+        day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
-        day_start = datetime.strptime(day_start, "%Y-%m-%d")
+        day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
     for i in range(0, 10):
         process_day = day_start - timedelta(days=i)
 
@@ -42,10 +43,10 @@ def create_nightly_notification_status(day_start=None):
     # day_start is a datetime.date() object. e.g.
     # 4 days of data counting back from day_start is consolidated
     if day_start is None:
-        day_start = datetime.today() - timedelta(days=1)
+        day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
-        day_start = datetime.strptime(day_start, "%Y-%m-%d")
+        day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
     for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
 
