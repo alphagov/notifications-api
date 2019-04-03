@@ -1,7 +1,7 @@
 from calendar import monthrange
 from decimal import Decimal
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from freezegun import freeze_time
 
 import pytest
@@ -288,18 +288,20 @@ def test_get_rates_for_billing(notify_db_session):
     assert len(letter_rates) == 29
 
 
+@freeze_time('2017-06-01 12:00')
 def test_get_rate(notify_db_session):
-    create_rate(start_date=datetime.utcnow(), value=1.2, notification_type='email')
-    create_rate(start_date=datetime.utcnow(), value=2.2, notification_type='sms')
-    create_rate(start_date=datetime.utcnow(), value=3.3, notification_type='email')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=1.2, notification_type='email')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=2.2, notification_type='sms')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=3.3, notification_type='email')
+
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates, notification_type='sms',
-                    date=datetime.utcnow())
+                    date=date(2017, 6, 1))
     letter_rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates,
                            notification_type='letter',
                            crown=True,
                            letter_page_count=1,
-                           date=datetime.utcnow())
+                           date=date(2017, 6, 1))
 
     assert rate == 2.2
     assert letter_rate == Decimal('0.3')

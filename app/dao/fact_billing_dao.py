@@ -21,6 +21,7 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
 )
+from app.utils import get_london_midnight_in_utc
 
 
 def fetch_billing_totals_for_year(service_id, year):
@@ -228,13 +229,15 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
 def get_rate(
     non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None, post_class='second'
 ):
+    start_of_day = get_london_midnight_in_utc(date)
+
     if notification_type == LETTER_TYPE:
         if letter_page_count == 0:
             return 0
         return next(
             r.rate
             for r in letter_rates if (
-                date >= r.start_date and
+                start_of_day >= r.start_date and
                 crown == r.crown and
                 letter_page_count == r.sheet_count and
                 post_class == r.post_class
@@ -245,7 +248,7 @@ def get_rate(
             r.rate
             for r in non_letter_rates if (
                 notification_type == r.notification_type and
-                date >= r.valid_from
+                start_of_day >= r.valid_from
             )
         )
     else:
