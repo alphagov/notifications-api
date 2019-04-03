@@ -209,10 +209,8 @@ def fetch_billing_data_for_day(process_day, service_id=None):
 
 
 def get_rates_for_billing():
-    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
-                        Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate, r.post_class) for r in
-                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
+    non_letter_rates = Rate.query.order_by(desc(Rate.valid_from)).all()
+    letter_rates = LetterRate.query.order_by(desc(LetterRate.start_date)).all()
     return non_letter_rates, letter_rates
 
 
@@ -234,11 +232,22 @@ def get_rate(
         if letter_page_count == 0:
             return 0
         return next(
-            r[3] for r in letter_rates if date >= r[0] and crown == r[1]
-            and letter_page_count == r[2] and post_class == r[4]
+            r.rate
+            for r in letter_rates if (
+                date >= r.start_date and
+                crown == r.crown and
+                letter_page_count == r.sheet_count and
+                post_class == r.post_class
+            )
         )
     elif notification_type == SMS_TYPE:
-        return next(r[2] for r in non_letter_rates if notification_type == r[0] and date >= r[1])
+        return next(
+            r.rate
+            for r in non_letter_rates if (
+                notification_type == r.notification_type and
+                date >= r.valid_from
+            )
+        )
     else:
         return 0
 

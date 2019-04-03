@@ -1,6 +1,7 @@
 import random
 import uuid
 from datetime import datetime, date
+from decimal import Decimal
 
 from app import db
 from app.dao.email_branding_dao import dao_create_email_branding
@@ -29,6 +30,7 @@ from app.models import (
     Job,
     Notification,
     EmailBranding,
+    LetterRate,
     Organisation,
     Rate,
     Service,
@@ -397,6 +399,23 @@ def create_rate(start_date, value, notification_type):
         valid_from=start_date,
         rate=value,
         notification_type=notification_type
+    )
+    db.session.add(rate)
+    db.session.commit()
+    return rate
+
+
+def create_letter_rate(start_date=None, end_date=None, crown=True, sheet_count=1, rate=0.33, post_class='second'):
+    if start_date is None:
+        start_date = datetime(2016, 1, 1)
+    rate = LetterRate(
+        id=uuid.uuid4(),
+        start_date=start_date,
+        end_date=end_date,
+        crown=crown,
+        sheet_count=sheet_count,
+        rate=Decimal(rate),
+        post_class=post_class
     )
     db.session.add(rate)
     db.session.commit()
