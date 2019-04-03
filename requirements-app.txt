@@ -1,7 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
-cffi==1.12.1
+cffi==1.12.2
 celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
