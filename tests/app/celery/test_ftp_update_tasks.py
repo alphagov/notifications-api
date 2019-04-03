@@ -276,9 +276,10 @@ def test_record_daily_sorted_counts_raises_dvla_exception_with_unknown_sorted_st
     filename = "failed.txt"
     with pytest.raises(DVLAException) as e:
         record_daily_sorted_counts(filename=filename)
-    unknown_values = set({'invalid', 'mm'})
-    assert "DVLA response file: {} contains unknown Sorted status {}".format(
-        filename, unknown_values.__repr__()) == e.value.message
+
+    assert "DVLA response file: {} contains unknown Sorted status".format(filename) in e.value.message
+    assert "'mm'" in e.value.message
+    assert "'invalid'" in e.value.message
 
 
 def test_record_daily_sorted_counts_persists_daily_sorted_letter_count_with_no_sorted_values(
