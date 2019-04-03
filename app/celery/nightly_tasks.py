@@ -288,31 +288,21 @@ def raise_alert_if_letter_notifications_still_sending():
 def letter_raise_alert_if_no_ack_file_for_zip():
     # get a list of zip files since yesterday
     zip_file_set = set()
+    today_str = datetime.utcnow().strftime('%Y-%m-%d')
+    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                              subfolder=datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
+                                              subfolder=today_str + '/zips_sent',
                                               suffix='.TXT'):
         subname = key.split('/')[-1]  # strip subfolder in name
-        zip_file_set.add(subname.upper().rstrip('.TXT'))
+        zip_file_set.add(subname.upper().rstrip('ZIP.TXT'))
 
     # get acknowledgement file
     ack_file_set = set()
 
-    yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # AWS datetime format
-
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
-        ack_file_set.add(key)
-
-    today_str = datetime.utcnow().strftime('%Y%m%d')
-
-    ack_content_set = set()
-    for key in ack_file_set:
-        if today_str in key:
-            content = s3.get_s3_file(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], key)
-            for zip_file in content.split('\n'):  # each line
-                s = zip_file.split('|')
-                ack_content_set.add(s[0].upper())
+        ack_file_set.add(key.lstrip('root/dispatch').upper().rstrip('ACK.TXT'))
 
     message = (
         "Letter ack file does not contain all zip files sent. "
@@ -320,16 +310,16 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         "pdf bucket: {}, subfolder: {}, "
         "ack bucket: {}"
     ).format(
-        str(sorted(zip_file_set - ack_content_set)),
+        str(sorted(zip_file_set - ack_file_set)),
         current_app.config['LETTERS_PDF_BUCKET_NAME'],
         datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
         current_app.config['DVLA_RESPONSE_BUCKET_NAME']
     )
     # strip empty element before comparison
-    ack_content_set.discard('')
+    ack_file_set.discard('')
     zip_file_set.discard('')
 
-    if len(zip_file_set - ack_content_set) > 0:
+    if len(zip_file_set - ack_file_set) > 0:
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             zendesk_client.create_ticket(
                 subject="Letter acknowledge error",
@@ -338,7 +328,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
             )
         current_app.logger.error(message)
 
-    if len(ack_content_set - zip_file_set) > 0:
+    if len(ack_file_set - zip_file_set) > 0:
         current_app.logger.info(
-            "letter ack contains zip that is not for today: {}".format(ack_content_set - zip_file_set)
+            "letter ack contains zip that is not for today: {}".format(ack_file_set - zip_file_set)
         )
