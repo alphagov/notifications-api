@@ -1,7 +1,6 @@
 import random
 import uuid
 from datetime import datetime, date
-from decimal import Decimal
 
 from app import db
 from app.dao.email_branding_dao import dao_create_email_branding
@@ -414,7 +413,7 @@ def create_letter_rate(start_date=None, end_date=None, crown=True, sheet_count=1
         end_date=end_date,
         crown=crown,
         sheet_count=sheet_count,
-        rate=Decimal(rate),
+        rate=rate,
         post_class=post_class
     )
     db.session.add(rate)

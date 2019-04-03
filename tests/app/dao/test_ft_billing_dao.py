@@ -28,6 +28,7 @@ from tests.app.db import (
     create_template,
     create_notification,
     create_rate,
+    create_letter_rate
 )
 
 
@@ -95,7 +96,7 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(noti
 
 
 def test_fetch_billing_data_for_today_includes_data_with_the_right_date(notify_db_session):
-    process_day = datetime(2018, 4, 1, 13, 30, 00)
+    process_day = datetime(2018, 4, 1, 13, 30, 0)
     service = create_service()
     template = create_template(service=service, template_type="email")
     create_notification(template=template, status='delivered', created_at=process_day)
@@ -282,17 +283,21 @@ def test_get_rates_for_billing(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=12, notification_type='email')
     create_rate(start_date=datetime.utcnow(), value=22, notification_type='sms')
     create_rate(start_date=datetime.utcnow(), value=33, notification_type='email')
+    create_letter_rate(start_date=datetime.utcnow(), rate=0.66, post_class='first')
+    create_letter_rate(start_date=datetime.utcnow(), rate=0.33, post_class='second')
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
-    assert len(letter_rates) == 29
+    assert len(letter_rates) == 2
 
 
 @freeze_time('2017-06-01 12:00')
 def test_get_rate(notify_db_session):
-    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=1.2, notification_type='email')
-    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=2.2, notification_type='sms')
-    create_rate(start_date=datetime(2017, 5, 30, 23, 00), value=3.3, notification_type='email')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=1.2, notification_type='email')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=2.2, notification_type='sms')
+    create_rate(start_date=datetime(2017, 5, 30, 23, 0), value=3.3, notification_type='email')
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), rate=0.66, post_class='first')
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), rate=0.3, post_class='second')
 
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates=non_letter_rates, letter_rates=letter_rates, notification_type='sms',
@@ -309,6 +314,9 @@ def test_get_rate(notify_db_session):
 
 @pytest.mark.parametrize("letter_post_class,expected_rate", [("first", "0.61"), ("second", "0.35")])
 def test_get_rate_filters_letters_by_post_class(notify_db_session, letter_post_class, expected_rate):
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=0.61, post_class='first')
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=0.35, post_class='second')
+
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates, letter_rates, "letter", datetime(2018, 10, 1), True, 2, letter_post_class)
     assert rate == Decimal(expected_rate)
@@ -316,6 +324,9 @@ def test_get_rate_filters_letters_by_post_class(notify_db_session, letter_post_c
 
 @pytest.mark.parametrize("date,expected_rate", [(datetime(2018, 9, 30), '0.33'), (datetime(2018, 10, 1), '0.35')])
 def test_get_rate_chooses_right_rate_depending_on_date(notify_db_session, date, expected_rate):
+    create_letter_rate(start_date=datetime(2016, 1, 1, 0, 0), sheet_count=2, rate=0.33, post_class='second')
+    create_letter_rate(start_date=datetime(2018, 9, 30, 23, 0), sheet_count=2, rate=0.35, post_class='second')
+
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates, letter_rates, "letter", date, True, 2, "second")
     assert rate == Decimal(expected_rate)

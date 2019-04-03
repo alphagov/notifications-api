@@ -326,7 +326,7 @@ def test_get_rate_for_letter_latest(notify_db_session):
     letter_rates = [new, old]
 
     rate = get_rate([], letter_rates, LETTER_TYPE, date(2018, 1, 1), True, 1)
-    assert rate == Decimal(0.33)
+    assert rate == Decimal('0.33')
 
 
 def test_get_rate_for_sms_and_email(notify_db_session):
