@@ -3,7 +3,6 @@ from decimal import Decimal
 
 import pytest
 from freezegun import freeze_time
-from sqlalchemy import desc
 
 from app.celery.reporting_tasks import create_nightly_billing, create_nightly_notification_status
 from app.dao.fact_billing_dao import get_rate
@@ -14,14 +13,12 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE, FactNotificationStatus
 )
-from app.models import LetterRate, Rate
-from app import db
 
-from tests.app.db import create_service, create_template, create_notification
+from tests.app.db import create_service, create_template, create_notification, create_rate, create_letter_rate
 
 
 def mocker_get_rate(
-    non_letter_rates, letter_rates, notification_type, date, crown=None, rate_multiplier=None, post_class="second"
+    non_letter_rates, letter_rates, notification_type, bst_date, crown=None, rate_multiplier=None, post_class="second"
 ):
     if notification_type == LETTER_TYPE:
         return Decimal(2.1)
@@ -322,38 +319,26 @@ def test_create_nightly_billing_consolidate_from_3_days_delta(
 
 
 def test_get_rate_for_letter_latest(notify_db_session):
-    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
-                        Rate.query.order_by(desc(Rate.valid_from)).all()]
-
     # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count,
     # rate and post_class
-    new_letter_rate = (datetime(2017, 12, 1), True, 1, Decimal(0.33), 'second')
-    old_letter_rate = (datetime(2016, 12, 1), True, 1, Decimal(0.30), 'second')
-    letter_rates = [new_letter_rate, old_letter_rate]
+    new = create_letter_rate(datetime(2017, 12, 1), crown=True, sheet_count=1, rate=0.33, post_class='second')
+    old = create_letter_rate(datetime(2016, 12, 1), crown=True, sheet_count=1, rate=0.30, post_class='second')
+    letter_rates = [new, old]
 
-    rate = get_rate(non_letter_rates, letter_rates, LETTER_TYPE, datetime(2018, 1, 1), True, 1)
-    assert rate == Decimal(0.33)
+    rate = get_rate([], letter_rates, LETTER_TYPE, date(2018, 1, 1), True, 1)
+    assert rate == Decimal('0.33')
 
 
 def test_get_rate_for_sms_and_email(notify_db_session):
-    sms_rate = Rate(valid_from=datetime(2017, 12, 1),
-                    rate=Decimal(0.15),
-                    notification_type=SMS_TYPE)
-    db.session.add(sms_rate)
-    email_rate = Rate(valid_from=datetime(2017, 12, 1),
-                      rate=Decimal(0),
-                      notification_type=EMAIL_TYPE)
-    db.session.add(email_rate)
+    non_letter_rates = [
+        create_rate(datetime(2017, 12, 1), 0.15, SMS_TYPE),
+        create_rate(datetime(2017, 12, 1), 0, EMAIL_TYPE)
+    ]
 
-    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
-                        Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate) for r in
-                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
-
-    rate = get_rate(non_letter_rates, letter_rates, SMS_TYPE, datetime(2018, 1, 1))
+    rate = get_rate(non_letter_rates, [], SMS_TYPE, date(2018, 1, 1))
     assert rate == Decimal(0.15)
 
-    rate = get_rate(non_letter_rates, letter_rates, EMAIL_TYPE, datetime(2018, 1, 1))
+    rate = get_rate(non_letter_rates, [], EMAIL_TYPE, date(2018, 1, 1))
     assert rate == Decimal(0)
 
 

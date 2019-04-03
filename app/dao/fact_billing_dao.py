@@ -21,6 +21,7 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
 )
+from app.utils import get_london_midnight_in_utc
 
 
 def fetch_billing_totals_for_year(service_id, year):
@@ -209,10 +210,8 @@ def fetch_billing_data_for_day(process_day, service_id=None):
 
 
 def get_rates_for_billing():
-    non_letter_rates = [(r.notification_type, r.valid_from, r.rate) for r in
-                        Rate.query.order_by(desc(Rate.valid_from)).all()]
-    letter_rates = [(r.start_date, r.crown, r.sheet_count, r.rate, r.post_class) for r in
-                    LetterRate.query.order_by(desc(LetterRate.start_date)).all()]
+    non_letter_rates = Rate.query.order_by(desc(Rate.valid_from)).all()
+    letter_rates = LetterRate.query.order_by(desc(LetterRate.start_date)).all()
     return non_letter_rates, letter_rates
 
 
@@ -230,15 +229,28 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
 def get_rate(
     non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None, post_class='second'
 ):
+    start_of_day = get_london_midnight_in_utc(date)
+
     if notification_type == LETTER_TYPE:
         if letter_page_count == 0:
             return 0
         return next(
-            r[3] for r in letter_rates if date >= r[0] and crown == r[1]
-            and letter_page_count == r[2] and post_class == r[4]
+            r.rate
+            for r in letter_rates if (
+                start_of_day >= r.start_date and
+                crown == r.crown and
+                letter_page_count == r.sheet_count and
+                post_class == r.post_class
+            )
         )
     elif notification_type == SMS_TYPE:
-        return next(r[2] for r in non_letter_rates if notification_type == r[0] and date >= r[1])
+        return next(
+            r.rate
+            for r in non_letter_rates if (
+                notification_type == r.notification_type and
+                start_of_day >= r.valid_from
+            )
+        )
     else:
         return 0
 
