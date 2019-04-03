@@ -50,17 +50,17 @@ from tests.app.conftest import datetime_in_past
 
 def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):
     if subfolder == '2018-01-11/zips_sent':
-        return ['NOTIFY.20180111175007.ZIP.TXT', 'NOTIFY.20180111175008.ZIP.TXT']
+        return ['NOTIFY.2018-01-11175007.ZIP.TXT', 'NOTIFY.2018-01-11175008.ZIP.TXT']
     if subfolder == 'root/dispatch':
-        return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
+        return ['root/dispatch/NOTIFY.2018-01-11175007.ACK.txt', 'root/dispatch/NOTIFY.2018-01-11175008.ACK.txt']
 
 
 def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', last_modified=None):
     if subfolder == '2018-01-11/zips_sent':
-        return ['NOTIFY.20180111175007.ZIP.TXT', 'NOTIFY.20180111175008.ZIP.TXT', 'NOTIFY.20180111175009.ZIP.TXT',
-                'NOTIFY.20180111175010.ZIP.TXT']
+        return ['NOTIFY.2018-01-11175007.ZIP.TXT', 'NOTIFY.2018-01-11175008.ZIP.TXT', 'NOTIFY.2018-01-11175009.ZIP.TXT',
+                'NOTIFY.2018-01-11175010.ZIP.TXT']
     if subfolder == 'root/dispatch':
-        return ['root/dispatch/NOTIFY.20180111175733.ACK.txt']
+        return ['root/disoatch/NOTIFY.2018-01-11175007.ACK.TXT', 'root/disoatch/NOTIFY.2018-01-11175008.ACK.TXT']
 
 
 @freeze_time('2016-10-18T10:00:00')
@@ -504,12 +504,8 @@ def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_lett
 
 
 @freeze_time('2018-01-11T23:00:00')
-def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
+def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_match_zip_list(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_match)
-    mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
-                                 return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
-                                              'NOTIFY.20180111175008.ZIP|20180111175734')
-
     letter_raise_alert_if_no_ack_file_for_zip()
 
     yesterday = datetime.now(tz=pytz.utc) - timedelta(days=1)  # Datatime format on AWS
@@ -520,30 +516,24 @@ def test_letter_not_raise_alert_if_ack_files_match_zip_list(mocker, notify_db):
         call(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'], subfolder='root/dispatch',
              suffix='.ACK.txt', last_modified=yesterday),
     ]
-    assert mock_get_file.call_count == 1
 
 
 @freeze_time('2018-01-11T23:00:00')
 def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_diff)
-    mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
-                                 return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
-                                              'NOTIFY.20180111175008.ZIP|20180111175734')
     mock_zendesk = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
     assert mock_file_list.call_count == 2
-    assert mock_get_file.call_count == 1
 
     message = "Letter ack file does not contain all zip files sent. " \
               "Missing ack for zip files: {}, " \
               "pdf bucket: {}, subfolder: {}, " \
-              "ack bucket: {}".format(str(['NOTIFY.20180111175009.ZIP', 'NOTIFY.20180111175010.ZIP']),
+              "ack bucket: {}".format(str(['NOTIFY.2018-01-11175009', 'NOTIFY.2018-01-11175010']),
                                       current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                       datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                       current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
-
     mock_zendesk.assert_called_once_with(
         subject="Letter acknowledge error",
         message=message,
@@ -554,11 +544,6 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
 @freeze_time('2018-01-11T23:00:00')
 def test_letter_not_raise_alert_if_no_files_do_not_cause_error(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=None)
-    mock_get_file = mocker.patch("app.aws.s3.get_s3_file",
-                                 return_value='NOTIFY.20180111175007.ZIP|20180111175733\n'
-                                              'NOTIFY.20180111175008.ZIP|20180111175734')
-
     letter_raise_alert_if_no_ack_file_for_zip()
 
     assert mock_file_list.call_count == 2
-    assert mock_get_file.call_count == 0
