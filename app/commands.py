@@ -5,8 +5,10 @@ from decimal import Decimal
 
 import click
 import flask
+import itertools
 from click_datetime import Datetime as click_dt
 from flask import current_app, json
+from psycopg2._psycopg import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from notifications_utils.statsd_decorators import statsd
 
@@ -32,7 +34,7 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id
 )
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes
-from app.models import PROVIDERS, User, Notification
+from app.models import PROVIDERS, User, Notification, Organisation, Domain
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
 
@@ -675,3 +677,46 @@ def replay_daily_sorted_count_files(file_extension):
                                                    suffix=file_extension or '.rs.txt'):
         print("Create task to record daily sorted counts for file: ", filename)
         record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
+
+
+@notify_command(name='populate-organisations-from-file')
+@click.option('-f', '--file_name', required=True,
+              help="Pipe delimited file containing organisation name, sector, crown, argeement_signed, domains")
+def populate_organisations_from_file(file_name):
+    # [0] organisation name:: name of the organisation insert if organisation is missing.
+    # [1] sector:: Central | Local | NHS only
+    # [2] crown:: TRUE | FALSE only
+    # [3] argeement_signed:: TRUE | FALSE
+    # [4] domains:: comma separated list of domains related to the organisation
+
+    # The expectation is that the organisation, organisation_to_service
+    # and user_to_organisation will be cleared before running this command.
+    # Ignoring duplicates allows us to run the command again with the same file or same file with new rows.
+    with open(file_name, 'r') as f:
+        for line in itertools.islice(f, 1, None):
+            columns = line.split('|')
+            print(columns)
+            data = {
+                'name': columns[0],
+                'active': True,
+                'agreement_signed': True if columns[3] == 'TRUE' else False,
+                'crown': True if columns[2] == 'TRUE' else False,
+                'organisation_type': columns[1].lower()
+            }
+            org = Organisation(**data)
+            try:
+                db.session.add(org)
+                db.session.commit()
+            except IntegrityError:
+                print("duplicate org", org.name)
+                db.session.rollback()
+            domains = columns[4].split(',')
+            for d in domains:
+                if d != '\n':
+                    domain = Domain(domain=d.strip(), organisation_id=org.id)
+                    try:
+                        db.session.add(domain)
+                        db.session.commit()
+                    except IntegrityError:
+                        print("duplicate domain", d.strip())
+                        db.session.rollback()
