@@ -136,7 +136,6 @@ def get_letter_pdf(notification):
 
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
-
     item = next(x for x in bucket.objects.filter(Prefix=prefix))
 
     obj = s3.Object(

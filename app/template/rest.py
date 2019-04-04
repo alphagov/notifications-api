@@ -251,10 +251,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
             if request.args.get('overlay'):
                 content = pdf_page
-                url = '{}/precompiled/overlay.png{}{}'.format(
+                url = '{}/precompiled/overlay.png{}'.format(
                     current_app.config['TEMPLATE_PREVIEW_API_HOST'],
                     '?invert=1',
-                    '&hide_notify=true' if page_number == '1' else ''
                 )
             else:
                 url = '{}/precompiled-preview.png{}'.format(
@@ -262,7 +261,14 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     '?hide_notify=true' if page_number == '1' else ''
                 )
 
-            content = _get_png_preview(url, content, notification.id, json=False)
+            content = _get_png_preview_or_overlaid_pdf(url, content, notification.id, json=False)
+        elif file_type == 'pdf' and request.args.get('overlay'):
+            content = pdf_file
+            url = '{}/precompiled/overlay.pdf{}'.format(
+                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                '?invert=1',
+            )
+            content = _get_png_preview_or_overlaid_pdf(url, content, notification.id, json=False)
     else:
 
         template_for_letter_print = {
@@ -287,12 +293,12 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             file_type,
             '?page={}'.format(page) if page else ''
         )
-        content = _get_png_preview(url, data, notification.id, json=True)
+        content = _get_png_preview_or_overlaid_pdf(url, data, notification.id, json=True)
 
     return jsonify({"content": content})
 
 
-def _get_png_preview(url, data, notification_id, json=True):
+def _get_png_preview_or_overlaid_pdf(url, data, notification_id, json=True):
     if json:
         resp = requests_post(
             url,

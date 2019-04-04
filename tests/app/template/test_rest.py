@@ -1099,15 +1099,20 @@ def test_preview_letter_template_precompiled_s3_error(
 
 
 @pytest.mark.parametrize(
-    "post_url, overlay",
-    [('precompiled-preview.png', None), ('precompiled/overlay.png?invert=1', 1)]
+    "filetype, post_url, overlay",
+    [
+        ('png', 'precompiled-preview.png', None),
+        ('png', 'precompiled/overlay.png?invert=1', 1),
+        ('pdf', 'precompiled/overlay.pdf?invert=1', 1)
+    ]
 )
-def test_preview_letter_template_precompiled_png_file_type(
+def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
         notify_api,
         client,
         admin_request,
         sample_service,
         mocker,
+        filetype,
         post_url,
         overlay
 ):
@@ -1127,7 +1132,7 @@ def test_preview_letter_template_precompiled_png_file_type(
         with requests_mock.Mocker() as request_mock:
 
             pdf_content = b'\x00\x01'
-            png_content = b'\x00\x02'
+            expected_returned_content = b'\x00\x02'
 
             mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
@@ -1135,7 +1140,7 @@ def test_preview_letter_template_precompiled_png_file_type(
 
             mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/{}'.format(post_url),
-                content=png_content,
+                content=expected_returned_content,
                 headers={'X-pdf-page-count': '1'},
                 status_code=200
             )
@@ -1144,14 +1149,14 @@ def test_preview_letter_template_precompiled_png_file_type(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
-                file_type='png',
+                file_type=filetype,
                 overlay=overlay,
             )
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
             assert mock_get_letter_pdf.called_once_with(notification)
-            assert base64.b64decode(resp['content']) == png_content
+            assert base64.b64decode(resp['content']) == expected_returned_content
 
 
 @pytest.mark.parametrize('page_number,expect_preview_url', [
