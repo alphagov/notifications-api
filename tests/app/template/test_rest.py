@@ -1098,12 +1098,18 @@ def test_preview_letter_template_precompiled_s3_error(
                                          "when calling the GetObject operation: Unauthorized".format(notification.id)
 
 
+@pytest.mark.parametrize(
+    "post_url, overlay",
+    [('precompiled-preview.png', None), ('precompiled/overlay.png?invert=1', 1)]
+)
 def test_preview_letter_template_precompiled_png_file_type(
         notify_api,
         client,
         admin_request,
         sample_service,
-        mocker
+        mocker,
+        post_url,
+        overlay
 ):
 
     template = create_template(sample_service,
@@ -1128,7 +1134,7 @@ def test_preview_letter_template_precompiled_png_file_type(
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
             mock_post = request_mock.post(
-                'http://localhost/notifications-template-preview/precompiled-preview.png',
+                'http://localhost/notifications-template-preview/{}'.format(post_url),
                 content=png_content,
                 headers={'X-pdf-page-count': '1'},
                 status_code=200
@@ -1138,7 +1144,8 @@ def test_preview_letter_template_precompiled_png_file_type(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
-                file_type='png'
+                file_type='png',
+                overlay=overlay,
             )
 
             with pytest.raises(ValueError):

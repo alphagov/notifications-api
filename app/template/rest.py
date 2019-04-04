@@ -249,10 +249,18 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     status_code=500
                 )
 
-            url = '{}/precompiled-preview.png{}'.format(
-                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
-                '?hide_notify=true' if page_number == '1' else ''
-            )
+            if request.args.get('overlay'):
+                content = pdf_page
+                url = '{}/precompiled/overlay.png{}{}'.format(
+                    current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                    '?invert=1',
+                    '&hide_notify=true' if page_number == '1' else ''
+                )
+            else:
+                url = '{}/precompiled-preview.png{}'.format(
+                    current_app.config['TEMPLATE_PREVIEW_API_HOST'],
+                    '?hide_notify=true' if page_number == '1' else ''
+                )
 
             content = _get_png_preview(url, content, notification.id, json=False)
     else:
