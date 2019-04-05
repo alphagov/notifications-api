@@ -694,14 +694,22 @@ def populate_organisations_from_file(file_name):
     # and user_to_organisation will be cleared before running this command.
     # Ignoring duplicates allows us to run the command again with the same file or same file with new rows.
     with open(file_name, 'r') as f:
+        def boolean_or_none(field):
+            if field == '1':
+                return True
+            elif field == '0':
+                return False
+            elif field == '':
+                return None
+
         for line in itertools.islice(f, 1, None):
             columns = line.split('|')
             print(columns)
             data = {
                 'name': columns[0],
                 'active': True,
-                'agreement_signed': True if columns[3] == 'TRUE' else False,
-                'crown': True if columns[2] == 'TRUE' else False,
+                'agreement_signed': boolean_or_none(columns[3]),
+                'crown': boolean_or_none(columns[2]),
                 'organisation_type': columns[1].lower()
             }
             org = Organisation(**data)
