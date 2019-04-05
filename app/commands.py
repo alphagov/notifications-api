@@ -779,6 +779,7 @@ def associate_services_to_organisations():
         created_by_user = User.query.filter_by(id=s.created_by_id).first()
         organisation = dao_get_organisation_by_email_address(created_by_user.email_address)
         service = dao_fetch_service_by_id(service_id=s.id)
-        dao_add_service_to_organisation(service=service, organisation_id=organisation.id)
+        if organisation:
+            dao_add_service_to_organisation(service=service, organisation_id=organisation.id)
 
     print("finished associating services to organisations")
