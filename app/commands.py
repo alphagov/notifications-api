@@ -26,6 +26,7 @@ from app.dao.fact_billing_dao import (
     get_service_ids_that_need_billing_populated,
     update_fact_billing,
 )
+from app.dao.organisation_dao import dao_get_organisation_by_email_address, dao_add_service_to_organisation
 
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
@@ -35,7 +36,7 @@ from app.dao.services_dao import (
     dao_fetch_service_by_id
 )
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes
-from app.models import PROVIDERS, User, Notification, Organisation, Domain
+from app.models import PROVIDERS, User, Notification, Organisation, Domain, Service
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
 
@@ -765,3 +766,19 @@ def get_letter_details_from_zips_sent_file(file_paths):
 
         for row in result:
             csv_writer.writerow(row)
+
+
+@notify_command(name='associate-services-to-organisations')
+def associate_services_to_organisations():
+    services = Service.get_history_model().query.filter_by(
+        version=1,
+        active=True
+    ).all()
+
+    for s in services:
+        created_by_user = User.query.filter_by(id=s.created_by_id).first()
+        organisation = dao_get_organisation_by_email_address(created_by_user.email_address)
+        service = dao_fetch_service_by_id(service_id=s.id)
+        dao_add_service_to_organisation(service=service, organisation_id=organisation.id)
+
+    print("finished associating services to organisations")
