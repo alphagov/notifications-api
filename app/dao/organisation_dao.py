@@ -28,7 +28,7 @@ def dao_get_organisation_by_id(organisation_id):
 
 def dao_get_organisation_by_email_address(email_address):
 
-    email_address = email_address.lower()
+    email_address = email_address.lower().replace('.gsi.gov.uk', '.gov.uk')
 
     for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
 

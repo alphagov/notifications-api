@@ -235,10 +235,9 @@ def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
     ('example.gov.uk', True),
 ))
 def test_get_organisation_by_email_address(
-    admin_request,
-    sample_user,
     domain,
     expected_org,
+    notify_db_session
 ):
 
     org = create_organisation()
@@ -255,3 +254,11 @@ def test_get_organisation_by_email_address(
         assert found_org is org
     else:
         assert found_org is None
+
+
+def test_get_organisation_by_email_address_ignores_gsi_gov_uk(notify_db_session):
+    org = create_organisation()
+    create_domain('example.gov.uk', org.id)
+
+    found_org = dao_get_organisation_by_email_address('test_gsi_address@example.gsi.gov.uk')
+    assert org == found_org
