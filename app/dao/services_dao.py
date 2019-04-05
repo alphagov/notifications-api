@@ -11,6 +11,8 @@ from app.dao.dao_utils import (
     transactional,
     version_class
 )
+from app.dao.email_branding_dao import dao_get_email_branding_by_name
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
@@ -38,7 +40,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import email_address_is_nhs, get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -200,6 +202,12 @@ def dao_create_service(
 
         if organisation.letter_branding and not service.letter_branding:
             service.letter_branding = organisation.letter_branding
+
+    if not organisation and (
+        service.organisation_type == 'nhs' or email_address_is_nhs(user.email_address)
+    ):
+        service.email_branding = dao_get_email_branding_by_name('NHS')
+        service.letter_branding = dao_get_letter_branding_by_name('NHS')
 
     db.session.add(service)
 

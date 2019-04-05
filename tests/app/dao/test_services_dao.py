@@ -67,6 +67,7 @@ from tests.app.db import (
     create_notification,
     create_api_key,
     create_invited_user,
+    create_email_branding,
     create_letter_branding,
 )
 
@@ -115,10 +116,54 @@ def test_create_service_with_letter_branding(notify_db_session):
                       organisation_type='central',
                       created_by=user)
     dao_create_service(service, user, letter_branding=letter_branding)
-    assert Service.query.count() == 1
     service_db = Service.query.one()
     assert service_db.id == service.id
     assert service.letter_branding == letter_branding
+
+
+@pytest.mark.parametrize('email_address, organisation_type', (
+    ("test@example.gov.uk", 'nhs'),
+    ("test@nhs.net", 'nhs'),
+    ("test@nhs.net", 'local'),
+    ("test@nhs.net", 'central'),
+    ("test@nhs.uk", 'central'),
+    ("test@example.nhs.uk", 'central'),
+    ("TEST@NHS.UK", 'central'),
+))
+@pytest.mark.parametrize('branding_name_to_create, expected_branding', (
+    ('NHS', True),
+    # Need to check that nothing breaks in environments that don’t have
+    # the NHS branding set up
+    ('SHN', False),
+))
+def test_create_nhs_service_get_default_branding_based_on_email_address(
+    notify_db_session,
+    branding_name_to_create,
+    expected_branding,
+    email_address,
+    organisation_type,
+):
+    user = create_user(email=email_address)
+    letter_branding = create_letter_branding(name=branding_name_to_create)
+    email_branding = create_email_branding(name=branding_name_to_create)
+
+    service = Service(
+        name="service_name",
+        email_from="email_from",
+        message_limit=1000,
+        restricted=False,
+        organisation_type=organisation_type,
+        created_by=user,
+    )
+    dao_create_service(service, user, letter_branding=letter_branding)
+    service_db = Service.query.one()
+
+    if expected_branding:
+        assert service_db.letter_branding == letter_branding
+        assert service_db.email_branding == email_branding
+    else:
+        assert service_db.letter_branding is None
+        assert service_db.email_branding is None
 
 
 def test_cannot_create_two_services_with_same_name(notify_db_session):

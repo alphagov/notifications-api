@@ -122,3 +122,9 @@ def escape_special_characters(string):
             r'\{}'.format(special_character)
         )
     return string
+
+
+def email_address_is_nhs(email_address):
+    return email_address.lower().endswith((
+        '@nhs.uk', '@nhs.net', '.nhs.uk', '.nhs.net',
+    ))

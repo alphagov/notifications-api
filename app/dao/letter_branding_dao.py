@@ -7,6 +7,10 @@ def dao_get_letter_branding_by_id(letter_branding_id):
     return LetterBranding.query.filter(LetterBranding.id == letter_branding_id).one()
 
 
+def dao_get_letter_branding_by_name(letter_branding_name):
+    return LetterBranding.query.filter_by(name=letter_branding_name).first()
+
+
 def dao_get_letter_branding_by_domain(domain):
     if not domain:
         return None
