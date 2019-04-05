@@ -34,7 +34,7 @@ def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
     )
 
     assert set(response['email_branding'].keys()) == {'colour', 'logo', 'name', 'id', 'text',
-                                                      'domain', 'brand_type'}
+                                                      'brand_type'}
     assert response['email_branding']['colour'] == '#FFFFFF'
     assert response['email_branding']['logo'] == '/path/image.png'
     assert response['email_branding']['name'] == 'Some Org'
@@ -48,7 +48,6 @@ def test_post_create_email_branding(admin_request, notify_db_session):
         'name': 'test email_branding',
         'colour': '#0000ff',
         'logo': '/images/test_x2.png',
-        'domain': 'gov.uk',
         'brand_type': BRANDING_ORG
     }
     response = admin_request.post(
@@ -60,7 +59,6 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert data['colour'] == response['data']['colour']
     assert data['logo'] == response['data']['logo']
     assert data['name'] == response['data']['text']
-    assert data['domain'] == response['data']['domain']
     assert data['brand_type'] == response['data']['brand_type']
 
 
@@ -69,7 +67,6 @@ def test_post_create_email_branding_without_brand_type_defaults(admin_request, n
         'name': 'test email_branding',
         'colour': '#0000ff',
         'logo': '/images/test_x2.png',
-        'domain': 'gov.uk',
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -181,8 +178,8 @@ def test_post_create_email_branding_returns_400_when_name_is_missing(admin_reque
     ({'name': 'test email_branding 1'}),
     ({'logo': 'images/text_x3.png', 'colour': '#ffffff'}),
     ({'logo': 'images/text_x3.png'}),
-    ({'logo': 'images/text_x3.png', 'domain': 'gov.uk'}),
-    ({'logo': 'images/text_x3.png', 'brand_type': 'org'}),
+    ({'logo': 'images/text_x3.png'}),
+    ({'logo': 'images/text_x3.png'}),
 ])
 def test_post_update_email_branding_updates_field(admin_request, notify_db_session, data_update):
     data = {
@@ -273,30 +270,3 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
     )
 
     assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [org, both, org_banner]'
-
-
-def test_400_for_duplicate_domain(admin_request, notify_db_session):
-    branding_1 = create_email_branding(name='first brand')
-    branding_2 = create_email_branding(name='second brand')
-    admin_request.post(
-        'email_branding.update_email_branding',
-        _data={'domain': 'example.com', },
-        email_branding_id=branding_1.id,
-    )
-
-    response = admin_request.post(
-        'email_branding.update_email_branding',
-        _data={'domain': 'example.com'},
-        email_branding_id=branding_2.id,
-        _expected_status=400,
-    )
-    assert response['result'] == 'error'
-    assert response['message']['name'] == ["Duplicate domain 'example.com'"]
-
-    response = admin_request.post(
-        'email_branding.create_email_branding',
-        _data={'domain': 'example.com', 'name': 'another brand'},
-        _expected_status=400,
-    )
-    assert response['result'] == 'error'
-    assert response['message']['name'] == ["Duplicate domain 'example.com'"]
