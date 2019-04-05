@@ -85,6 +85,41 @@ def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session
     }
 
 
+@pytest.mark.parametrize('domain, expected_status', (
+    ('foo.gov.uk', 200),
+    ('bar.gov.uk', 200),
+    ('oof.gov.uk', 404),
+    pytest.param(
+        'rab.gov.uk', 200,
+        marks=pytest.mark.xfail(raises=AssertionError),
+    ),
+    (None, 400),
+    ('personally.identifying.information@example.com', 400),
+))
+def test_get_organisation_by_domain(
+    admin_request,
+    notify_db_session,
+    domain,
+    expected_status
+):
+    org = create_organisation()
+    other_org = create_organisation('Other organisation')
+    create_domain('foo.gov.uk', org.id)
+    create_domain('bar.gov.uk', org.id)
+    create_domain('rab.gov.uk', other_org.id)
+
+    response = admin_request.get(
+        'organisation.get_organisation_by_domain',
+        _expected_status=expected_status,
+        domain=domain,
+    )
+
+    if expected_status == 200:
+        assert response['id'] == str(org.id)
+    else:
+        assert response['result'] == 'error'
+
+
 def test_post_create_organisation(admin_request, notify_db_session):
     data = {
         'name': 'test organisation',

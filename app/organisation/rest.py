@@ -1,10 +1,11 @@
-from flask import Blueprint, jsonify, request, current_app
+from flask import abort, Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisations,
     dao_get_organisation_by_id,
+    dao_get_organisation_by_email_address,
     dao_get_organisation_services,
     dao_update_organisation,
     dao_add_service_to_organisation,
@@ -50,6 +51,24 @@ def get_organisations():
 @organisation_blueprint.route('/<uuid:organisation_id>', methods=['GET'])
 def get_organisation_by_id(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
+    return jsonify(organisation.serialize())
+
+
+@organisation_blueprint.route('/by-domain', methods=['GET'])
+def get_organisation_by_domain():
+
+    domain = request.args.get('domain')
+
+    if not domain or '@' in domain:
+        abort(400)
+
+    organisation = dao_get_organisation_by_email_address(
+        'example@{}'.format(request.args.get('domain'))
+    )
+
+    if not organisation:
+        abort(404)
+
     return jsonify(organisation.serialize())
 
 
