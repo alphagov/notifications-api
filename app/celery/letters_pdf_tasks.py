@@ -47,6 +47,7 @@ from app.models import (
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
+from app.cronitor import cronitor
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -110,6 +111,7 @@ def get_letters_pdf(template, contact_block, filename, values):
     return resp.content, billable_units
 
 
+@cronitor("collate-letter-pdfs-for-day")
 @notify_celery.task(name='collate-letter-pdfs-for-day')
 def collate_letter_pdfs_for_day(date=None):
     if not date:
