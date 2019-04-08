@@ -771,8 +771,7 @@ def get_letter_details_from_zips_sent_file(file_paths):
 @notify_command(name='associate-services-to-organisations')
 def associate_services_to_organisations():
     services = Service.get_history_model().query.filter_by(
-        version=1,
-        active=True
+        version=1
     ).all()
 
     for s in services:
