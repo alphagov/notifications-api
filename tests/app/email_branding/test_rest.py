@@ -94,7 +94,8 @@ def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_
 
 def test_post_create_email_branding_without_name_or_colour_is_valid(admin_request, notify_db_session):
     data = {
-        'logo': 'images/text_x2.png'
+        'logo': 'images/text_x2.png',
+        'name': 'test name'
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -103,15 +104,16 @@ def test_post_create_email_branding_without_name_or_colour_is_valid(admin_reques
     )
 
     assert response['data']['logo'] == data['logo']
-    assert response['data']['name'] is None
+    assert response['data']['name'] == 'test name'
     assert response['data']['colour'] is None
-    assert response['data']['text'] is None
+    assert response['data']['text'] == 'test name'
 
 
 def test_post_create_email_branding_with_text(admin_request, notify_db_session):
     data = {
         'text': 'text for brand',
-        'logo': 'images/text_x2.png'
+        'logo': 'images/text_x2.png',
+        'name': 'test name'
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -120,7 +122,7 @@ def test_post_create_email_branding_with_text(admin_request, notify_db_session):
     )
 
     assert response['data']['logo'] == data['logo']
-    assert response['data']['name'] is None
+    assert response['data']['name'] == 'test name'
     assert response['data']['colour'] is None
     assert response['data']['text'] == 'text for brand'
 
@@ -261,7 +263,7 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
 
 def test_400_for_duplicate_domain(admin_request, notify_db_session):
     branding_1 = create_email_branding()
-    branding_2 = create_email_branding()
+    branding_2 = create_email_branding(name="second brand")
     admin_request.post(
         'email_branding.update_email_branding',
         _data={'domain': 'example.com'},
