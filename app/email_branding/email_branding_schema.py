@@ -6,13 +6,13 @@ post_create_email_branding_schema = {
     "type": "object",
     "properties": {
         "colour": {"type": ["string", "null"]},
-        "name": {"type": ["string", "null"]},
+        "name": {"type": "string"},
         "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]},
         "domain": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
     },
-    "required": []
+    "required": ["name"]
 }
 
 post_update_email_branding_schema = {

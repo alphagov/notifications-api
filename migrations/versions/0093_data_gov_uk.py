@@ -22,7 +22,7 @@ def upgrade():
         '{}',
         '',
         'data_gov_uk_x2.png',
-        ''
+        'data gov.uk'
     )""".format(DATA_GOV_UK_ID))
 
 
