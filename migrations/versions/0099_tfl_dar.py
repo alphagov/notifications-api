@@ -22,7 +22,7 @@ def upgrade():
         '{}',
         '',
         'tfl_dar_x2.png',
-        ''
+        'tfl'
     )""".format(TFL_DAR_ID))
 
 

@@ -92,9 +92,10 @@ def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_
     assert not response['data']['logo']
 
 
-def test_post_create_email_branding_without_name_or_colour_is_valid(admin_request, notify_db_session):
+def test_post_create_email_branding_colour_is_valid(admin_request, notify_db_session):
     data = {
-        'logo': 'images/text_x2.png'
+        'logo': 'images/text_x2.png',
+        'name': 'test branding'
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -103,15 +104,16 @@ def test_post_create_email_branding_without_name_or_colour_is_valid(admin_reques
     )
 
     assert response['data']['logo'] == data['logo']
-    assert response['data']['name'] is None
+    assert response['data']['name'] == 'test branding'
     assert response['data']['colour'] is None
-    assert response['data']['text'] is None
+    assert response['data']['text'] == 'test branding'
 
 
 def test_post_create_email_branding_with_text(admin_request, notify_db_session):
     data = {
         'text': 'text for brand',
-        'logo': 'images/text_x2.png'
+        'logo': 'images/text_x2.png',
+        'name': 'test branding'
     }
     response = admin_request.post(
         'email_branding.create_email_branding',
@@ -120,7 +122,7 @@ def test_post_create_email_branding_with_text(admin_request, notify_db_session):
     )
 
     assert response['data']['logo'] == data['logo']
-    assert response['data']['name'] is None
+    assert response['data']['name'] == 'test branding'
     assert response['data']['colour'] is None
     assert response['data']['text'] == 'text for brand'
 
@@ -159,6 +161,20 @@ def test_post_create_email_branding_with_text_as_none_and_name(admin_request, no
     assert response['data']['name'] == 'name for brand'
     assert response['data']['colour'] is None
     assert response['data']['text'] is None
+
+
+def test_post_create_email_branding_returns_400_when_name_is_missing(admin_request, notify_db_session):
+    data = {
+        'text': 'some text',
+        'logo': 'images/text_x2.png'
+    }
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response['errors'][0]['message'] == 'name is a required property'
 
 
 @pytest.mark.parametrize('data_update', [
@@ -260,11 +276,11 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
 
 
 def test_400_for_duplicate_domain(admin_request, notify_db_session):
-    branding_1 = create_email_branding()
-    branding_2 = create_email_branding()
+    branding_1 = create_email_branding(name='first brand')
+    branding_2 = create_email_branding(name='second brand')
     admin_request.post(
         'email_branding.update_email_branding',
-        _data={'domain': 'example.com'},
+        _data={'domain': 'example.com', },
         email_branding_id=branding_1.id,
     )
 
@@ -279,7 +295,7 @@ def test_400_for_duplicate_domain(admin_request, notify_db_session):
 
     response = admin_request.post(
         'email_branding.create_email_branding',
-        _data={'domain': 'example.com'},
+        _data={'domain': 'example.com', 'name': 'another brand'},
         _expected_status=400,
     )
     assert response['result'] == 'error'
