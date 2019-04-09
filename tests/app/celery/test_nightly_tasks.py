@@ -57,10 +57,10 @@ def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=N
 
 def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', last_modified=None):
     if subfolder == '2018-01-11/zips_sent':
-        return ['NOTIFY.2018-01-11175007.ZIP.TXT', 'NOTIFY.2018-01-11175008.ZIP.TXT', 'NOTIFY.2018-01-11175009.ZIP.TXT',
-                'NOTIFY.2018-01-11175010.ZIP.TXT']
+        return ['NOTIFY.2018-01-11175007p.ZIP.TXT', 'NOTIFY.2018-01-11175008.ZIP.TXT',
+                'NOTIFY.2018-01-11175009.ZIP.TXT', 'NOTIFY.2018-01-11175010.ZIP.TXT']
     if subfolder == 'root/dispatch':
-        return ['root/disoatch/NOTIFY.2018-01-11175007.ACK.TXT', 'root/disoatch/NOTIFY.2018-01-11175008.ACK.TXT']
+        return ['root/disoatch/NOTIFY.2018-01-11175007p.ACK.TXT', 'root/disoatch/NOTIFY.2018-01-11175008.ACK.TXT']
 
 
 @freeze_time('2016-10-18T10:00:00')

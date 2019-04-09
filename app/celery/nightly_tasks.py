@@ -295,14 +295,14 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                                               subfolder=today_str + '/zips_sent',
                                               suffix='.TXT'):
         subname = key.split('/')[-1]  # strip subfolder in name
-        zip_file_set.add(subname.upper().rstrip('ZIP.TXT'))
+        zip_file_set.add(subname.upper().replace('.ZIP.TXT', ''))
 
     # get acknowledgement file
     ack_file_set = set()
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
-        ack_file_set.add(key.lstrip('root/dispatch').upper().rstrip('ACK.TXT'))
+        ack_file_set.add(key.lstrip('root/dispatch').upper().replace('.ACK.TXT', ''))
 
     message = (
         "Letter ack file does not contain all zip files sent. "
