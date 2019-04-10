@@ -6,11 +6,6 @@ from app.dao.notifications_dao import dao_get_total_notifications_sent_per_day_f
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
 
 from tests.app.db import create_notification
-from tests.app.conftest import (
-    sample_notification_history,
-    sample_service,
-    sample_template
-)
 
 BEGINNING_OF_DAY = date(2016, 10, 18)
 END_OF_DAY = date(2016, 10, 19)
@@ -104,32 +99,3 @@ def test_get_total_notifications_returns_zero_if_no_data(notify_db_session):
 
     assert result.messages_total == 0
     assert result.messages_within_10_secs == 0
-
-
-@freeze_time('2016-10-18T10:00')
-def test_get_total_notifications_counts_ignores_research_mode(notify_db, notify_db_session):
-    created_at = datetime.utcnow()
-    service = sample_service(notify_db, notify_db_session, research_mode=True)
-    template = sample_template(notify_db, notify_db_session, service=service)
-
-    create_notification(template, status='created', sent_at=None)
-
-    sample_notification_history(
-        notify_db,
-        notify_db_session,
-        template,
-        notification_type='email',
-        sent_at=created_at + timedelta(seconds=5)
-    )
-    sample_notification_history(
-        notify_db,
-        notify_db_session,
-        template,
-        notification_type='sms',
-        sent_at=created_at + timedelta(seconds=5)
-    )
-
-    result = dao_get_total_notifications_sent_per_day_for_performance_platform(BEGINNING_OF_DAY, END_OF_DAY)
-
-    assert result.messages_total == 2
-    assert result.messages_within_10_secs == 2
