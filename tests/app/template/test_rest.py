@@ -1192,7 +1192,7 @@ def test_preview_letter_template_precompiled_png_file_type_hide_notify_tag_only_
 
         mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
         mocker.patch('app.template.rest.extract_page_from_pdf', return_value=png_content)
-        mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview', return_value=encoded)
+        mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview_or_overlaid_pdf', return_value=encoded)
 
         admin_request.get(
             'template.preview_letter_template_by_notification_id',
