@@ -209,16 +209,6 @@ cf-login: ## Log in to Cloud Foundry
 	@echo "Logging in to Cloud Foundry on ${CF_API}"
 	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
-.PHONY: generate-manifest-old
-generate-manifest-old:
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
-	$(if $(shell which gpg2), $(eval export GPG=gpg2), $(eval export GPG=gpg))
-	$(if ${GPG_PASSPHRASE_TXT}, $(eval export DECRYPT_CMD=echo -n $$$${GPG_PASSPHRASE_TXT} | ${GPG} --quiet --batch --passphrase-fd 0 --pinentry-mode loopback -d), $(eval export DECRYPT_CMD=${GPG} --quiet --batch -d))
-
-	@./scripts/generate_manifest.py ${CF_MANIFEST_FILE} \
-	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg)
-
 .PHONY: generate-manifest
 generate-manifest:
 	$(if ${CF_APP},,$(error Must specify CF_APP))

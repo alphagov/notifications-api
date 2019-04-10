@@ -1,9 +1,0 @@
----
-
-inherit: manifest-api-base.yml
-
-routes:
-  - route: notify-api-production.cloudapps.digital
-  - route: api.notifications.service.gov.uk
-instances: 2
-memory: 1G

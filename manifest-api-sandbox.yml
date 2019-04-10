@@ -1,6 +1,0 @@
----
-
-inherit: manifest-api-base.yml
-
-routes:
-  - route: notify-api-sandbox.cloudapps.digital
