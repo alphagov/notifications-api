@@ -10,7 +10,7 @@ Flask-Migrate==2.4.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.0.2
 click-datetime==0.2
-eventlet==0.23.0
+eventlet==0.24.1
 gunicorn==19.7.1  # pyup: ignore, >19.8 breaks eventlet patching
 iso8601==0.1.12
 jsonschema==3.0.1
