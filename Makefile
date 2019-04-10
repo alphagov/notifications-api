@@ -209,8 +209,8 @@ cf-login: ## Log in to Cloud Foundry
 	@echo "Logging in to Cloud Foundry on ${CF_API}"
 	@cf login -a "${CF_API}" -u ${CF_USERNAME} -p "${CF_PASSWORD}" -o "${CF_ORG}" -s "${CF_SPACE}"
 
-.PHONY: generate-manifest
-generate-manifest:
+.PHONY: generate-manifest-old
+generate-manifest-old:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	$(if $(shell which gpg2), $(eval export GPG=gpg2), $(eval export GPG=gpg))
@@ -218,6 +218,19 @@ generate-manifest:
 
 	@./scripts/generate_manifest.py ${CF_MANIFEST_FILE} \
 	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg)
+
+.PHONY: generate-manifest
+generate-manifest:
+	$(if ${CF_APP},,$(error Must specify CF_APP))
+	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	$(if $(shell which gpg2), $(eval export GPG=gpg2), $(eval export GPG=gpg))
+	$(if ${GPG_PASSPHRASE_TXT}, $(eval export DECRYPT_CMD=echo -n $$$${GPG_PASSPHRASE_TXT} | ${GPG} --quiet --batch --passphrase-fd 0 --pinentry-mode loopback -d), $(eval export DECRYPT_CMD=${GPG} --quiet --batch -d))
+
+	@jinja2 --strict manifest.yml.j2 \
+	    -D environment=${CF_SPACE} \
+	    -D CF_APP=${CF_APP} \
+	    --format=yaml \
+	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg) 2>&1
 
 .PHONY: cf-deploy
 cf-deploy: ## Deploys the app to Cloud Foundry
@@ -242,7 +255,7 @@ cf-deploy-api-db-migration:
 	cf unbind-service notify-api-db-migration notify-db
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
-	cf push notify-api-db-migration -f <(make -s CF_APP=api generate-manifest)
+	cf push notify-api-db-migration -f <(make -s CF_APP=notify-api-db-migration generate-manifest)
 	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task

@@ -1,0 +1,95 @@
+{%- set app_vars = {
+  'notify-api': {'NOTIFY_APP_NAME': 'public-api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
+      'preview': ['notify-api-preview.cloudapps.digital', 'api.notify.works'],
+      'staging': ['notify-api-staging.cloudapps.digital', 'api.staging-notify.works'],
+      'production': ['notify-api-production.cloudapps.digital', 'api.notifications.service.gov.uk'],
+    }
+  },
+  'notify-api-db-migration': {'NOTIFY_APP_NAME': 'public-api', 'instances': 0},
+
+  'notify-delivery-celery-beat': {'NOTIFY_APP_NAME': 'delivery-celery-beat', 'instances': 1, 'memory': '128M'},
+  'notify-delivery-worker-database': {'NOTIFY_APP_NAME': 'delivery-worker-database'},
+  'notify-delivery-worker-research': {'NOTIFY_APP_NAME': 'delivery-worker-research'},
+  'notify-delivery-worker-sender': {'NOTIFY_APP_NAME': 'delivery-worker-sender', 'instances': 1, 'disk_quota': '2G', 'memory': '3G'},
+  'notify-delivery-worker-periodic': {'NOTIFY_APP_NAME': 'delivery-worker-periodic', 'instances': 1},
+  'notify-delivery-worker-priority': {'NOTIFY_APP_NAME': 'delivery-worker-priority'},
+  'notify-delivery-worker': {'NOTIFY_APP_NAME': 'delivery-worker'},
+  'notify-delivery-worker-internal': {'NOTIFY_APP_NAME': 'delivery-worker-internal'},
+  'notify-delivery-worker-receipts': {'NOTIFY_APP_NAME': 'delivery-worker-receipts'},
+  'notify-delivery-worker-service-callbacks': {'NOTIFY_APP_NAME': 'delivery-worker-service-callbacks', 'disk_quota': '2G'},
+} -%}
+
+{%- set env_defaults = {
+  'preview': {'instances': 1},
+  'staging': {'instances': 2},
+  'production': {'instances': 2}
+} -%}
+
+{%- set app = app_vars[CF_APP] -%}
+
+---
+
+applications:
+  - name: {{ CF_APP }}
+    buildpack: python_buildpack
+
+    instances: {{ app.get('instances', env_defaults[environment]['instances']) }}
+    memory: {{ app.get('memory', '1G') }}
+    disk_quota: {{ app.get('disk_quota', '1G')}}
+
+    {% if 'routes' in app -%}
+    routes:
+      {%- for route in app['routes'][environment] %}
+      - route: {{ route }}
+      {%- endfor -%}
+    {%- else -%}
+    health-check-type: none
+    no-route: true
+    {% endif %}
+
+    services:
+      - notify-db
+      - logit-ssl-syslog-drain
+
+    env:
+      NOTIFY_APP_NAME: {{ app['NOTIFY_APP_NAME'] }}
+      SQLALCHEMY_POOL_SIZE: {{ app.get('sqlalchemy_pool_size', 1) }}
+      FLASK_APP: application.py
+
+      # Credentials variables
+      ADMIN_BASE_URL: '{{ ADMIN_BASE_URL }}'
+      ADMIN_CLIENT_SECRET: '{{ ADMIN_CLIENT_SECRET }}'
+      API_HOST_NAME: '{{ API_HOST_NAME }}'
+      DANGEROUS_SALT: '{{ DANGEROUS_SALT }}'
+      SECRET_KEY: '{{ SECRET_KEY }}'
+      ROUTE_SECRET_KEY_1: '{{ ROUTE_SECRET_KEY_1 }}'
+      ROUTE_SECRET_KEY_2: '{{ ROUTE_SECRET_KEY_2 }}'
+      CRONITOR_KEYS: '{{ CRONITOR_KEYS | tojson }}'
+
+      PERFORMANCE_PLATFORM_ENDPOINTS: '{{ PERFORMANCE_PLATFORM_ENDPOINTS | tojson }}'
+
+      DOCUMENT_DOWNLOAD_API_HOST: '{{ DOCUMENT_DOWNLOAD_API_HOST }}'
+      DOCUMENT_DOWNLOAD_API_KEY: '{{ DOCUMENT_DOWNLOAD_API_KEY }}'
+
+      NOTIFICATION_QUEUE_PREFIX: '{{ NOTIFICATION_QUEUE_PREFIX }}'
+      AWS_ACCESS_KEY_ID: '{{ AWS_ACCESS_KEY_ID }}'
+      AWS_SECRET_ACCESS_KEY: '{{ AWS_SECRET_ACCESS_KEY }}'
+
+      STATSD_PREFIX: '{{ STATSD_PREFIX }}'
+
+      ZENDESK_API_KEY: '{{ ZENDESK_API_KEY }}'
+
+      MMG_URL: '{{ MMG_URL }}'
+      MMG_API_KEY: '{{ MMG_API_KEY }}'
+      MMG_INBOUND_SMS_AUTH: '{{ MMG_INBOUND_SMS_AUTH | tojson }}'
+      MMG_INBOUND_SMS_USERNAME: '{{ MMG_INBOUND_SMS_USERNAME | tojson }}'
+
+      FIRETEXT_API_KEY: '{{ FIRETEXT_API_KEY }}'
+      LOADTESTING_API_KEY: '{{ LOADTESTING_API_KEY }}'
+      FIRETEXT_INBOUND_SMS_AUTH: '{{ FIRETEXT_INBOUND_SMS_AUTH | tojson }}'
+
+      REDIS_ENABLED: '{{ REDIS_ENABLED }}'
+      REDIS_URL: '{{ REDIS_URL }}'
+
+      TEMPLATE_PREVIEW_API_HOST: '{{ TEMPLATE_PREVIEW_API_HOST }}'
+      TEMPLATE_PREVIEW_API_KEY: '{{ TEMPLATE_PREVIEW_API_KEY }}'
