@@ -1,11 +1,11 @@
 {%- set app_vars = {
-  'notify-api': {'NOTIFY_APP_NAME': 'public-api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
+  'notify-api': {'NOTIFY_APP_NAME': 'api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
       'preview': ['notify-api-preview.cloudapps.digital', 'api.notify.works'],
       'staging': ['notify-api-staging.cloudapps.digital', 'api.staging-notify.works'],
       'production': ['notify-api-production.cloudapps.digital', 'api.notifications.service.gov.uk'],
     }
   },
-  'notify-api-db-migration': {'NOTIFY_APP_NAME': 'public-api', 'instances': 0},
+  'notify-api-db-migration': {'NOTIFY_APP_NAME': 'api', 'instances': 0},
 
   'notify-delivery-celery-beat': {'NOTIFY_APP_NAME': 'delivery-celery-beat', 'instances': 1, 'memory': '128M'},
   'notify-delivery-worker-database': {'NOTIFY_APP_NAME': 'delivery-worker-database'},
