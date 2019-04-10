@@ -608,7 +608,7 @@ def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date
     key_type != 'test' AND
     notification_type != 'letter';
     """
-    under_10_secs = NotificationHistory.sent_at - NotificationHistory.created_at <= timedelta(seconds=10)
+    under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
     sum_column = functions.coalesce(functions.sum(
         case(
             [
@@ -619,14 +619,14 @@ def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date
     ), 0)
 
     return db.session.query(
-        func.count(NotificationHistory.id).label('messages_total'),
+        func.count(Notification.id).label('messages_total'),
         sum_column.label('messages_within_10_secs')
     ).filter(
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at < end_date,
-        NotificationHistory.api_key_id.isnot(None),
-        NotificationHistory.key_type != KEY_TYPE_TEST,
-        NotificationHistory.notification_type != LETTER_TYPE
+        Notification.created_at >= start_date,
+        Notification.created_at < end_date,
+        Notification.api_key_id.isnot(None),
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type != LETTER_TYPE
     ).one()
 
 
