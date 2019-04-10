@@ -34,6 +34,9 @@ def handle_integrity_error(exc):
     if 'ix_organisation_name' in str(exc):
         return jsonify(result="error",
                        message="Organisation name already exists"), 400
+    if 'domain_organisation_id_fkey' in str(exc):
+        return jsonify(result='error',
+                       message='Domain already exists'), 400
 
     current_app.logger.exception(exc)
     return jsonify(result='error', message="Internal server error"), 500
