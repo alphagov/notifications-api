@@ -1102,8 +1102,8 @@ def test_preview_letter_template_precompiled_s3_error(
     "filetype, post_url, overlay",
     [
         ('png', 'precompiled-preview.png', None),
-        ('png', 'precompiled/overlay.png?invert=1', 1),
-        ('pdf', 'precompiled/overlay.pdf?invert=1', 1)
+        ('png', 'precompiled/overlay.png', 1),
+        ('pdf', 'precompiled/overlay.pdf', 1)
     ]
 )
 def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
