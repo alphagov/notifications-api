@@ -85,6 +85,7 @@ def create_service(
         service_name="Sample service",
         service_id=None,
         restricted=False,
+        count_as_live=True,
         service_permissions=[EMAIL_TYPE, SMS_TYPE],
         research_mode=False,
         active=True,
@@ -110,6 +111,7 @@ def create_service(
 
         service.active = active
         service.research_mode = research_mode
+        service.count_as_live = count_as_live
     else:
         if user and user not in service.users:
             dao_add_user_to_service(service, user)
