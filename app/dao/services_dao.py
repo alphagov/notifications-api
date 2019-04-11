@@ -61,6 +61,14 @@ def dao_fetch_all_services(only_active=False):
     return query.all()
 
 
+def dao_count_live_services():
+    return Service.query.filter_by(
+        active=True,
+        restricted=False,
+        count_as_live=True,
+    ).count()
+
+
 def dao_fetch_service_by_id(service_id, only_active=False):
     query = Service.query.filter_by(
         id=service_id
