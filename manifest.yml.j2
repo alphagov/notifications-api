@@ -7,22 +7,16 @@
   },
   'notify-api-db-migration': {'NOTIFY_APP_NAME': 'api', 'instances': 0},
 
-  'notify-delivery-celery-beat': {'NOTIFY_APP_NAME': 'delivery-celery-beat', 'instances': 1, 'memory': '128M'},
-  'notify-delivery-worker-database': {'NOTIFY_APP_NAME': 'delivery-worker-database'},
-  'notify-delivery-worker-research': {'NOTIFY_APP_NAME': 'delivery-worker-research'},
-  'notify-delivery-worker-sender': {'NOTIFY_APP_NAME': 'delivery-worker-sender', 'instances': 1, 'disk_quota': '2G', 'memory': '3G'},
-  'notify-delivery-worker-periodic': {'NOTIFY_APP_NAME': 'delivery-worker-periodic', 'instances': 1},
-  'notify-delivery-worker-priority': {'NOTIFY_APP_NAME': 'delivery-worker-priority'},
-  'notify-delivery-worker': {'NOTIFY_APP_NAME': 'delivery-worker'},
-  'notify-delivery-worker-internal': {'NOTIFY_APP_NAME': 'delivery-worker-internal'},
-  'notify-delivery-worker-receipts': {'NOTIFY_APP_NAME': 'delivery-worker-receipts'},
-  'notify-delivery-worker-service-callbacks': {'NOTIFY_APP_NAME': 'delivery-worker-service-callbacks', 'disk_quota': '2G'},
-} -%}
-
-{%- set env_defaults = {
-  'preview': {'instances': 1},
-  'staging': {'instances': 2},
-  'production': {'instances': 2}
+  'notify-delivery-celery-beat': {'memory': '128M'},
+  'notify-delivery-worker-database': {},
+  'notify-delivery-worker-research': {},
+  'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '3G'},
+  'notify-delivery-worker-periodic': {},
+  'notify-delivery-worker-priority': {},
+  'notify-delivery-worker': {},
+  'notify-delivery-worker-internal': {},
+  'notify-delivery-worker-receipts': {},
+  'notify-delivery-worker-service-callbacks': {'disk_quota': '2G'},
 } -%}
 
 {%- set app = app_vars[CF_APP] -%}
@@ -32,8 +26,9 @@
 applications:
   - name: {{ CF_APP }}
     buildpack: python_buildpack
-
-    instances: {{ app.get('instances', env_defaults[environment]['instances']) }}
+    {% if 'instances' in app %}
+    instances: {{ app['instances'] }}
+    {%- endif %}
     memory: {{ app.get('memory', '1G') }}
     disk_quota: {{ app.get('disk_quota', '1G')}}
 
@@ -52,7 +47,7 @@ applications:
       - logit-ssl-syslog-drain
 
     env:
-      NOTIFY_APP_NAME: {{ app['NOTIFY_APP_NAME'] }}
+      NOTIFY_APP_NAME: {{ app.get('NOTIFY_APP_NAME', CF_APP.replace('notify-', '')) }}
       SQLALCHEMY_POOL_SIZE: {{ app.get('sqlalchemy_pool_size', 1) }}
       FLASK_APP: application.py
 
