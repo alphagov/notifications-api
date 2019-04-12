@@ -41,6 +41,9 @@ case $NOTIFY_APP_NAME in
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
     -Q service-callbacks 2> /dev/null
     ;;
+  delivery-celery-beat)
+    scripts/run_app_paas.sh celery -A run_celery.notify_celery beat --loglevel=INFO
+    ;;
   *)
     echo "Unknown notify_app_name $NOTIFY_APP_NAME"
     exit 1
