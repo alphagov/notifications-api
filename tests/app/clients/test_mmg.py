@@ -33,7 +33,7 @@ def test_send_sms_successful_returns_mmg_response(notify_api, mocker):
     response_dict = {'Reference': 12345678}
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://example.com/mmg', json=response_dict, status_code=200)
         response = mmg_client.send_sms(to, content, reference)
 
     response_json = response.json()
@@ -48,11 +48,11 @@ def test_send_sms_calls_mmg_correctly(notify_api, mocker):
     response_dict = {'Reference': 12345678}
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://example.com/mmg', json=response_dict, status_code=200)
         mmg_client.send_sms(to, content, reference)
 
     assert request_mock.call_count == 1
-    assert request_mock.request_history[0].url == 'https://api.mmg.co.uk/json/api.php'
+    assert request_mock.request_history[0].url == 'https://example.com/mmg'
     assert request_mock.request_history[0].method == 'POST'
 
     request_args = request_mock.request_history[0].json()
@@ -72,7 +72,7 @@ def test_send_sms_raises_if_mmg_rejects(notify_api, mocker):
     }
 
     with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
-        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=400)
+        request_mock.post('https://example.com/mmg', json=response_dict, status_code=400)
         mmg_client.send_sms(to, content, reference)
 
     assert exc.value.status_code == 400
@@ -89,7 +89,7 @@ def test_send_sms_override_configured_shortcode_with_sender(notify_api, mocker):
     sender = 'fromservice'
 
     with requests_mock.Mocker() as request_mock:
-        request_mock.post('https://api.mmg.co.uk/json/api.php', json=response_dict, status_code=200)
+        request_mock.post('https://example.com/mmg', json=response_dict, status_code=200)
         mmg_client.send_sms(to, content, reference, sender=sender)
 
     request_args = request_mock.request_history[0].json()
@@ -101,7 +101,7 @@ def test_send_sms_raises_if_mmg_fails_to_return_json(notify_api, mocker):
     response_dict = 'NOT AT ALL VALID JSON {"key" : "value"}}'
 
     with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
-        request_mock.post('https://api.mmg.co.uk/json/api.php', text=response_dict, status_code=200)
+        request_mock.post('https://example.com/mmg', text=response_dict, status_code=200)
         mmg_client.send_sms(to, content, reference)
 
     assert 'app.clients.sms.mmg.MMGClientResponseException: Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc)  # noqa
@@ -113,7 +113,7 @@ def test_send_sms_raises_if_mmg_rejects_with_connect_timeout(rmock):
     to = content = reference = 'foo'
 
     with pytest.raises(MMGClientResponseException) as exc:
-        rmock.register_uri('POST', 'https://api.mmg.co.uk/json/api.php', exc=ConnectTimeout)
+        rmock.register_uri('POST', 'https://example.com/mmg', exc=ConnectTimeout)
         mmg_client.send_sms(to, content, reference)
 
     assert exc.value.status_code == 504
@@ -124,7 +124,7 @@ def test_send_sms_raises_if_mmg_rejects_with_read_timeout(rmock):
     to = content = reference = 'foo'
 
     with pytest.raises(MMGClientResponseException) as exc:
-        rmock.register_uri('POST', 'https://api.mmg.co.uk/json/api.php', exc=ReadTimeout)
+        rmock.register_uri('POST', 'https://example.com/mmg', exc=ReadTimeout)
         mmg_client.send_sms(to, content, reference)
 
     assert exc.value.status_code == 504

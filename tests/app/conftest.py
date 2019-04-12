@@ -855,6 +855,7 @@ def mock_firetext_client(mocker, statsd_client=None):
     client = FiretextClient()
     statsd_client = statsd_client or mocker.Mock()
     current_app = mocker.Mock(config={
+        'FIRETEXT_URL': 'https://example.com/firetext',
         'FIRETEXT_API_KEY': 'foo',
         'FROM_NUMBER': 'bar'
     })
