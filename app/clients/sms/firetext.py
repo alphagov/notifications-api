@@ -47,7 +47,7 @@ class FiretextClient(SmsClient):
         self.api_key = current_app.config.get('FIRETEXT_API_KEY')
         self.from_number = current_app.config.get('FROM_NUMBER')
         self.name = 'firetext'
-        self.url = "https://www.firetext.co.uk/api/sendsms/json"
+        self.url = current_app.config.get('FIRETEXT_URL')
         self.statsd_client = statsd_client
 
     def get_name(self):
