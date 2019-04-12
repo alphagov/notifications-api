@@ -33,7 +33,8 @@ from app.dao.service_callback_api_dao import get_service_delivery_status_callbac
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user,
-    dao_fetch_service_by_id
+    dao_fetch_service_by_id,
+    dao_update_service
 )
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes
 from app.models import PROVIDERS, User, Notification, Organisation, Domain, Service
@@ -782,3 +783,24 @@ def associate_services_to_organisations():
             dao_add_service_to_organisation(service=service, organisation_id=organisation.id)
 
     print("finished associating services to organisations")
+
+
+@notify_command(name='populate-service-volume-intentions')
+@click.option('-f', '--file_name', required=True,
+              help="Pipe delimited file containing service_id, SMS, email, letters")
+def populate_service_volume_intentions(file_name):
+    # [0] service_id
+    # [1] SMS:: volume intentions for service
+    # [2] Email:: volume intentions for service
+    # [3] Letters:: volume intentions for service
+
+    with open(file_name, 'r') as f:
+        for line in itertools.islice(f, 1, None):
+            columns = line.split(',')
+            print(columns)
+            service = dao_fetch_service_by_id(columns[0])
+            service.volume_sms = columns[1]
+            service.volume_email = columns[2]
+            service.volume_letter = columns[3]
+            dao_update_service(service)
+    print("populate-service-volume-intentions complete")
