@@ -102,25 +102,6 @@ def test_create_service(notify_db_session):
     assert not service.letter_branding
 
 
-def test_create_service_with_letter_branding(notify_db_session):
-    user = create_user()
-    create_letter_branding()
-    letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain'
-    )
-    assert Service.query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      organisation_type='central',
-                      created_by=user)
-    dao_create_service(service, user, letter_branding=letter_branding)
-    service_db = Service.query.one()
-    assert service_db.id == service.id
-    assert service.letter_branding == letter_branding
-
-
 @pytest.mark.parametrize('email_address, organisation_type', (
     ("test@example.gov.uk", 'nhs'),
     ("test@nhs.net", 'nhs'),
@@ -155,7 +136,7 @@ def test_create_nhs_service_get_default_branding_based_on_email_address(
         organisation_type=organisation_type,
         created_by=user,
     )
-    dao_create_service(service, user, letter_branding=letter_branding)
+    dao_create_service(service, user)
     service_db = Service.query.one()
 
     if expected_branding:

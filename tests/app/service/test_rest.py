@@ -341,6 +341,7 @@ def test_create_service_inherits_branding_from_organisation(
             'active': False,
             'email_from': 'created.service',
             'created_by': str(sample_user.id),
+            'letter_branding': 'blahblahblah',  # this should be ignored
         },
         _expected_status=201
     )

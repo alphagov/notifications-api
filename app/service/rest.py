@@ -195,8 +195,7 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    letter_branding = dao_get_letter_branding_by_domain(domain)
-    dao_create_service(valid_service, user, letter_branding=letter_branding)
+    dao_create_service(valid_service, user)
 
     return jsonify(data=service_schema.dump(valid_service).data), 201
 

@@ -168,7 +168,6 @@ def dao_create_service(
     user,
     service_id=None,
     service_permissions=None,
-    letter_branding=None,
 ):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
@@ -198,9 +197,6 @@ def dao_create_service(
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
 
-    if letter_branding:
-        service.letter_branding = letter_branding
-
     if organisation:
 
         service.organisation = organisation
@@ -211,9 +207,8 @@ def dao_create_service(
         if organisation.letter_branding and not service.letter_branding:
             service.letter_branding = organisation.letter_branding
 
-    if not organisation and (
-        service.organisation_type == 'nhs' or email_address_is_nhs(user.email_address)
-    ):
+    elif service.organisation_type == 'nhs' or email_address_is_nhs(user.email_address):
+
         service.email_branding = dao_get_email_branding_by_name('NHS')
         service.letter_branding = dao_get_letter_branding_by_name('NHS')
 
