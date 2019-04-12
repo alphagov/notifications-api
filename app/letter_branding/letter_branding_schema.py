@@ -7,5 +7,5 @@ post_letter_branding_schema = {
         "filename": {"type": ["string", "null"]},
         "domain": {"type": ["string", "null"]},
     },
-    "required": ("name", "filename", "domain")
+    "required": ("name", "filename")
 }
