@@ -7,7 +7,6 @@ from app.utils import (
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
     midnight_n_days_ago,
-    last_n_days
 )
 
 
@@ -52,21 +51,3 @@ def test_get_midnight_for_day_before_returns_expected_date(date, expected_date):
 def test_midnight_n_days_ago(current_time, arg, expected_datetime):
     with freeze_time(current_time):
         assert midnight_n_days_ago(arg) == expected_datetime
-
-
-def test_last_n_days():
-    with freeze_time('2018-03-27 12:00'):
-        res = last_n_days(5)
-
-    assert res == [
-        datetime(2018, 3, 23, 0, 0),
-        datetime(2018, 3, 24, 0, 0),
-        datetime(2018, 3, 25, 0, 0),
-        datetime(2018, 3, 26, 0, 0),
-        datetime(2018, 3, 27, 0, 0)
-    ]
-
-
-@pytest.mark.parametrize('arg', [0, -1])
-def test_last_n_days_invalid_arg(arg):
-    assert last_n_days(arg) == []

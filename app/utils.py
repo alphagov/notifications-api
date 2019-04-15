@@ -4,7 +4,6 @@ import pytz
 from flask import url_for
 from sqlalchemy import func
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, get_html_email_body
-from notifications_utils.timezones import convert_utc_to_bst
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -98,21 +97,6 @@ def midnight_n_days_ago(number_of_days):
     Returns midnight a number of days ago. Takes care of daylight savings etc.
     """
     return get_london_midnight_in_utc(datetime.utcnow() - timedelta(days=number_of_days))
-
-
-def last_n_days(limit_days):
-    """
-    Returns the last n dates, oldest first. Takes care of daylight savings (but returns a date, be careful how you
-    manipulate it later! Don't directly use the date for comparing to UTC datetimes!). Includes today.
-    """
-    return [
-        datetime.combine(
-            (convert_utc_to_bst(datetime.utcnow()) - timedelta(days=x)),
-            datetime.min.time()
-        )
-        # reverse the countdown, -1 from first two args to ensure it stays 0-indexed
-        for x in range(limit_days - 1, -1, -1)
-    ]
 
 
 def escape_special_characters(string):
