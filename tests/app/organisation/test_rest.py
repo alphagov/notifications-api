@@ -328,6 +328,7 @@ def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_r
 
 def test_post_update_organisation_returns_400_if_domain_is_duplicate(admin_request, notify_db_session):
     org = create_organisation()
+    org2 = create_organisation(name='Second org')
     create_domain('same.com', org.id)
 
     data = {'domains': ['new.com', 'same.com']}
@@ -335,7 +336,7 @@ def test_post_update_organisation_returns_400_if_domain_is_duplicate(admin_reque
     response = admin_request.post(
         'organisation.update_organisation',
         _data=data,
-        organisation_id='31d42ce6-3dac-45a7-95cb-94423d5ca03c',
+        organisation_id=org2.id,
         _expected_status=400
     )
 

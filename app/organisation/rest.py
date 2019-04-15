@@ -34,7 +34,7 @@ def handle_integrity_error(exc):
     if 'ix_organisation_name' in str(exc):
         return jsonify(result="error",
                        message="Organisation name already exists"), 400
-    if 'domain_organisation_id_fkey' in str(exc):
+    if 'duplicate key value violates unique constraint "domain_pkey"' in str(exc):
         return jsonify(result='error',
                        message='Domain already exists'), 400
 
