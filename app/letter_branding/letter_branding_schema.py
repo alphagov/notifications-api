@@ -5,7 +5,6 @@ post_letter_branding_schema = {
     "properties": {
         "name": {"type": ["string", "null"]},
         "filename": {"type": ["string", "null"]},
-        "domain": {"type": ["string", "null"]},
     },
     "required": ("name", "filename")
 }

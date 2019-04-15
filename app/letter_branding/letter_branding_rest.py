@@ -22,7 +22,7 @@ def handle_integrity_error(exc):
     """
     Handle integrity errors caused by the unique constraint
     """
-    for col in {'domain', 'name', 'filename'}:
+    for col in {'name', 'filename'}:
         if 'letter_branding_{}_key'.format(col) in str(exc):
             return jsonify(
                 result='error',

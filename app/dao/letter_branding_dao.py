@@ -11,14 +11,6 @@ def dao_get_letter_branding_by_name(letter_branding_name):
     return LetterBranding.query.filter_by(name=letter_branding_name).first()
 
 
-def dao_get_letter_branding_by_domain(domain):
-    if not domain:
-        return None
-    return LetterBranding.query.filter(
-        LetterBranding.domain == domain
-    ).first()
-
-
 def dao_get_all_letter_branding():
     return LetterBranding.query.order_by(LetterBranding.name).all()
 
