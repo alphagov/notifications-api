@@ -402,8 +402,8 @@ class Service(db.Model, Versioned):
     restricted = db.Column(db.Boolean, index=False, unique=False, nullable=False)
     research_mode = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=False)
     email_from = db.Column(db.Text, index=False, unique=True, nullable=False)
-    created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=False)
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
     organisation_type = db.Column(
         db.String(255),
@@ -417,6 +417,9 @@ class Service(db.Model, Versioned):
     volume_letter = db.Column(db.Integer(), nullable=True, unique=False)
     consent_to_research = db.Column(db.Boolean, nullable=True)
     count_as_live = db.Column(db.Boolean, nullable=False, default=True)
+    go_live_user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+    go_live_user = db.relationship('User', foreign_keys=[go_live_user_id])
+    go_live_at = db.Column(db.DateTime, nullable=True)
 
     organisation = db.relationship(
         'Organisation',
@@ -434,6 +437,8 @@ class Service(db.Model, Versioned):
         secondary=service_letter_branding,
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
+
+
 
     @classmethod
     def from_json(cls, data):
