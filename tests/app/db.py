@@ -93,7 +93,9 @@ def create_service(
         prefix_sms=True,
         message_limit=1000,
         organisation_type='central',
-        check_if_service_exists=False
+        check_if_service_exists=False,
+        go_live_user=None,
+        go_live_at=None
 ):
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
@@ -105,7 +107,9 @@ def create_service(
             email_from=email_from if email_from else service_name.lower().replace(' ', '.'),
             created_by=user if user else create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
             prefix_sms=prefix_sms,
-            organisation_type=organisation_type
+            organisation_type=organisation_type,
+            go_live_user=go_live_user,
+            go_live_at=go_live_at
         )
         dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
 

@@ -438,8 +438,6 @@ class Service(db.Model, Versioned):
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
 
-
-
     @classmethod
     def from_json(cls, data):
         """
