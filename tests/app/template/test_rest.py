@@ -1098,12 +1098,23 @@ def test_preview_letter_template_precompiled_s3_error(
                                          "when calling the GetObject operation: Unauthorized".format(notification.id)
 
 
-def test_preview_letter_template_precompiled_png_file_type(
+@pytest.mark.parametrize(
+    "filetype, post_url, overlay",
+    [
+        ('png', 'precompiled-preview.png', None),
+        ('png', 'precompiled/overlay.png', 1),
+        ('pdf', 'precompiled/overlay.pdf', 1)
+    ]
+)
+def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
         notify_api,
         client,
         admin_request,
         sample_service,
-        mocker
+        mocker,
+        filetype,
+        post_url,
+        overlay
 ):
 
     template = create_template(sample_service,
@@ -1121,15 +1132,15 @@ def test_preview_letter_template_precompiled_png_file_type(
         with requests_mock.Mocker() as request_mock:
 
             pdf_content = b'\x00\x01'
-            png_content = b'\x00\x02'
+            expected_returned_content = b'\x00\x02'
 
             mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
 
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
             mock_post = request_mock.post(
-                'http://localhost/notifications-template-preview/precompiled-preview.png',
-                content=png_content,
+                'http://localhost/notifications-template-preview/{}'.format(post_url),
+                content=expected_returned_content,
                 headers={'X-pdf-page-count': '1'},
                 status_code=200
             )
@@ -1138,13 +1149,14 @@ def test_preview_letter_template_precompiled_png_file_type(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
-                file_type='png'
+                file_type=filetype,
+                overlay=overlay,
             )
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
             assert mock_get_letter_pdf.called_once_with(notification)
-            assert base64.b64decode(resp['content']) == png_content
+            assert base64.b64decode(resp['content']) == expected_returned_content
 
 
 @pytest.mark.parametrize('page_number,expect_preview_url', [
@@ -1180,7 +1192,7 @@ def test_preview_letter_template_precompiled_png_file_type_hide_notify_tag_only_
 
         mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
         mocker.patch('app.template.rest.extract_page_from_pdf', return_value=png_content)
-        mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview', return_value=encoded)
+        mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview_or_overlaid_pdf', return_value=encoded)
 
         admin_request.get(
             'template.preview_letter_template_by_notification_id',

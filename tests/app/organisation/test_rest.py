@@ -326,6 +326,23 @@ def test_post_update_organisation_gives_404_status_if_org_does_not_exist(admin_r
     assert not organisation
 
 
+def test_post_update_organisation_returns_400_if_domain_is_duplicate(admin_request, notify_db_session):
+    org = create_organisation()
+    org2 = create_organisation(name='Second org')
+    create_domain('same.com', org.id)
+
+    data = {'domains': ['new.com', 'same.com']}
+
+    response = admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org2.id,
+        _expected_status=400
+    )
+
+    assert response['message'] == 'Domain already exists'
+
+
 def test_post_link_service_to_organisation(admin_request, sample_service, sample_organisation):
     data = {
         'service_id': str(sample_service.id)

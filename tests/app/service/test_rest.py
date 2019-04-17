@@ -349,69 +349,6 @@ def test_create_service_inherits_branding_from_organisation(
     assert json_resp['data']['letter_branding'] == str(letter_branding.id)
 
 
-def test_create_service_with_domain_sets_letter_branding(admin_request, sample_user):
-    letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain'
-    )
-    data = {
-        'name': 'created service',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'created.service',
-        'created_by': str(sample_user.id),
-        'service_domain': letter_branding.domain
-    }
-    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
-    assert json_resp['data']['letter_branding'] == str(letter_branding.id)
-    assert json_resp['data']['letter_logo_filename'] == str(letter_branding.filename)
-
-
-def test_create_service_with_no_domain_doesnt_set_letter_branding(admin_request, sample_user):
-    create_letter_branding(name='no domain', filename='no-domain', domain=None)
-    create_letter_branding(name='test domain', filename='test-domain', domain='test.domain')
-
-    data = {
-        'name': 'created service',
-        'user_id': str(sample_user.id),
-        'message_limit': 1000,
-        'restricted': False,
-        'active': False,
-        'email_from': 'created.service',
-        'created_by': str(sample_user.id),
-        'service_domain': None
-    }
-
-    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=201)
-
-    assert json_resp['data']['letter_branding'] is None
-    assert json_resp['data']['letter_logo_filename'] is None
-
-
-def test_get_service_by_id_returns_letter_branding(
-        client, sample_service
-):
-    letter_branding = create_letter_branding(
-        name='test domain', filename='test-domain', domain='test.domain'
-    )
-    data = {
-        'letter_branding': str(letter_branding.id)
-    }
-    client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
-    )
-    resp = client.get('/service/{}'.format(sample_service.id),
-                      headers=[('Content-Type', 'application/json'), create_authorization_header()])
-    json_resp = resp.json
-    assert json_resp['data']['name'] == sample_service.name
-    assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['letter_branding'] == str(letter_branding.id)
-    assert json_resp['data']['letter_logo_filename'] == 'test-domain'
-
-
 def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_uuid):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:

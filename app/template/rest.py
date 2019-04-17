@@ -235,13 +235,22 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             )
 
         content = base64.b64encode(pdf_file).decode('utf-8')
+        overlay = request.args.get('overlay')
+        page_number = page if page else "1"
+
+        if overlay:
+            path = '/precompiled/overlay.{}'.format(file_type)
+            content = pdf_file
+        elif file_type == 'png':
+            query_string = '?hide_notify=true' if page_number == '1' else ''
+            path = '/precompiled-preview.png' + query_string
+        else:
+            path = None
 
         if file_type == 'png':
             try:
-                page_number = page if page else "1"
-
                 pdf_page = extract_page_from_pdf(BytesIO(pdf_file), int(page_number) - 1)
-                content = base64.b64encode(pdf_page).decode('utf-8')
+                content = pdf_page if overlay else base64.b64encode(pdf_page).decode('utf-8')
             except PdfReadError as e:
                 raise InvalidRequest(
                     'Error extracting requested page from PDF file for notification_id {} type {} {}'.format(
@@ -249,12 +258,11 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                     status_code=500
                 )
 
-            url = '{}/precompiled-preview.png{}'.format(
-                current_app.config['TEMPLATE_PREVIEW_API_HOST'],
-                '?hide_notify=true' if page_number == '1' else ''
-            )
-
-            content = _get_png_preview(url, content, notification.id, json=False)
+        if path:
+            url = current_app.config['TEMPLATE_PREVIEW_API_HOST'] + path
+            response_content = _get_png_preview_or_overlaid_pdf(url, content, notification.id, json=False)
+        else:
+            response_content = content
     else:
 
         template_for_letter_print = {
@@ -279,12 +287,12 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             file_type,
             '?page={}'.format(page) if page else ''
         )
-        content = _get_png_preview(url, data, notification.id, json=True)
+        response_content = _get_png_preview_or_overlaid_pdf(url, data, notification.id, json=True)
 
-    return jsonify({"content": content})
+    return jsonify({"content": response_content})
 
 
-def _get_png_preview(url, data, notification_id, json=True):
+def _get_png_preview_or_overlaid_pdf(url, data, notification_id, json=True):
     if json:
         resp = requests_post(
             url,

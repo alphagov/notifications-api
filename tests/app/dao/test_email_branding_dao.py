@@ -53,13 +53,7 @@ def test_update_email_branding(notify_db, notify_db_session):
     assert email_branding[0].name == updated_name
 
 
-def test_domain_cant_be_empty_string(notify_db, notify_db_session):
+def test_email_branding_has_no_domain(notify_db, notify_db_session):
     create_email_branding()
-
     email_branding = EmailBranding.query.all()
-    assert email_branding[0].domain is None
-
-    dao_update_email_branding(email_branding[0], domain='')
-
-    email_branding = EmailBranding.query.all()
-    assert email_branding[0].domain is None
+    assert not hasattr(email_branding, 'domain')

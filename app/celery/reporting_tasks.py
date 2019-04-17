@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import notify_celery
 from app.cronitor import cronitor
@@ -10,7 +11,6 @@ from app.dao.fact_billing_dao import (
     update_fact_billing
 )
 from app.dao.fact_notification_status_dao import fetch_notification_status_for_day, update_fact_notification_status
-from app.utils import convert_utc_to_bst
 
 
 @notify_celery.task(name="create-nightly-billing")

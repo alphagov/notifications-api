@@ -6,6 +6,7 @@ from app.models import (
     Organisation,
     Domain,
     InvitedOrganisationUser,
+    Service,
     User
 )
 
@@ -14,6 +15,14 @@ def dao_get_organisations():
     return Organisation.query.order_by(
         Organisation.active.desc(), Organisation.name.asc()
     ).all()
+
+
+def dao_count_organsations_with_live_services():
+    return db.session.query(Organisation.id).join(Organisation.services).filter(
+        Service.active.is_(True),
+        Service.restricted.is_(False),
+        Service.count_as_live.is_(True),
+    ).distinct().count()
 
 
 def dao_get_organisation_services(organisation_id):

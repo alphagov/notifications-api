@@ -11,12 +11,15 @@ from app.models import (
 )
 from app.dao.dao_utils import (
     transactional,
-    version_class
+    version_class,
+    VersionOptions,
 )
 
 
 @transactional
-@version_class(Template, TemplateHistory)
+@version_class(
+    VersionOptions(Template, history_class=TemplateHistory)
+)
 def dao_create_template(template):
     template.id = uuid.uuid4()  # must be set now so version history model can use same id
     template.archived = False
@@ -36,7 +39,9 @@ def dao_create_template(template):
 
 
 @transactional
-@version_class(Template, TemplateHistory)
+@version_class(
+    VersionOptions(Template, history_class=TemplateHistory)
+)
 def dao_update_template(template):
     if template.archived:
         template.folder = None

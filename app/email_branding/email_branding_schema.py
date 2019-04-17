@@ -9,7 +9,6 @@ post_create_email_branding_schema = {
         "name": {"type": "string"},
         "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]},
-        "domain": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
     },
     "required": ["name"]
@@ -24,7 +23,6 @@ post_update_email_branding_schema = {
         "name": {"type": ["string", "null"]},
         "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]},
-        "domain": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
     },
     "required": []

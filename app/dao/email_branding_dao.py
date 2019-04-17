@@ -12,7 +12,7 @@ def dao_get_email_branding_by_id(email_branding_id):
 
 
 def dao_get_email_branding_by_name(email_branding_name):
-    return EmailBranding.query.filter_by(name=email_branding_name).one()
+    return EmailBranding.query.filter_by(name=email_branding_name).first()
 
 
 @transactional

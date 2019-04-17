@@ -9,8 +9,11 @@ from flask import current_app
 from app import db
 from app.dao.dao_utils import (
     transactional,
-    version_class
+    version_class,
+    VersionOptions,
 )
+from app.dao.email_branding_dao import dao_get_email_branding_by_name
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
@@ -38,7 +41,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import email_address_is_nhs, get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -59,6 +62,14 @@ def dao_fetch_all_services(only_active=False):
         query = query.filter(Service.active)
 
     return query.all()
+
+
+def dao_count_live_services():
+    return Service.query.filter_by(
+        active=True,
+        restricted=False,
+        count_as_live=True,
+    ).count()
 
 
 def dao_fetch_service_by_id(service_id, only_active=False):
@@ -117,9 +128,11 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
 
 
 @transactional
-@version_class(Service)
-@version_class(Template, TemplateHistory)
-@version_class(ApiKey)
+@version_class(
+    VersionOptions(ApiKey, must_write_history=False),
+    VersionOptions(Service),
+    VersionOptions(Template, history_class=TemplateHistory, must_write_history=False),
+)
 def dao_archive_service(service_id):
     # have to eager load templates and api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
@@ -158,7 +171,6 @@ def dao_create_service(
     user,
     service_id=None,
     service_permissions=None,
-    letter_branding=None,
 ):
     # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
     # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
@@ -188,9 +200,6 @@ def dao_create_service(
     # do we just add the default - or will we get a value from FE?
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
 
-    if letter_branding:
-        service.letter_branding = letter_branding
-
     if organisation:
 
         service.organisation = organisation
@@ -200,6 +209,11 @@ def dao_create_service(
 
         if organisation.letter_branding and not service.letter_branding:
             service.letter_branding = organisation.letter_branding
+
+    elif service.organisation_type == 'nhs' or email_address_is_nhs(user.email_address):
+
+        service.email_branding = dao_get_email_branding_by_name('NHS')
+        service.letter_branding = dao_get_letter_branding_by_name('NHS')
 
     db.session.add(service)
 
@@ -372,8 +386,10 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
 
 
 @transactional
-@version_class(Service)
-@version_class(ApiKey)
+@version_class(
+    VersionOptions(ApiKey, must_write_history=False),
+    VersionOptions(Service),
+)
 def dao_suspend_service(service_id):
     # have to eager load api keys so that we don't flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
@@ -381,11 +397,11 @@ def dao_suspend_service(service_id):
         joinedload('api_keys'),
     ).filter(Service.id == service_id).one()
 
-    service.active = False
-
     for api_key in service.api_keys:
         if not api_key.expiry_date:
             api_key.expiry_date = datetime.utcnow()
+
+    service.active = False
 
 
 @transactional

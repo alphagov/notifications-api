@@ -221,7 +221,6 @@ class EmailBranding(db.Model):
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), unique=True, nullable=False)
     text = db.Column(db.String(255), nullable=True)
-    domain = db.Column(db.Text, unique=True, nullable=True)
     brand_type = db.Column(
         db.String(255),
         db.ForeignKey('branding_type.name'),
@@ -237,7 +236,6 @@ class EmailBranding(db.Model):
             "logo": self.logo,
             "name": self.name,
             "text": self.text,
-            "domain": self.domain,
             "brand_type": self.brand_type
         }
 
@@ -258,14 +256,12 @@ class LetterBranding(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), unique=True, nullable=False)
     filename = db.Column(db.String(255), unique=True, nullable=False)
-    domain = db.Column(db.Text, unique=True, nullable=True)
 
     def serialize(self):
         return {
             "id": str(self.id),
             "name": self.name,
             "filename": self.filename,
-            "domain": self.domain,
         }
 
 
