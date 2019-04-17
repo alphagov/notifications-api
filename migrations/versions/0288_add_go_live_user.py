@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0287_add_go_live_user
-Revises: 0286_add_unique_email_name
+Revision ID: 0288_add_go_live_user
+Revises: 0287_drop_branding_domains
 Create Date: 2019-04-15 16:50:22.275673
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0287_add_go_live_user'
-down_revision = '0286_add_unique_email_name'
+revision = '0288_add_go_live_user'
+down_revision = '0287_drop_branding_domains'
 
 
 def upgrade():
