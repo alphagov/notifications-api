@@ -221,6 +221,14 @@ def test_get_service_by_id_should_404_if_no_service_for_user(notify_api, sample_
             assert json_resp['message'] == 'No result found'
 
 
+def test_get_service_by_id_returns_go_live_user_and_go_live_at(admin_request, sample_user):
+    now = datetime.utcnow()
+    service = create_service(user=sample_user, go_live_user=sample_user, go_live_at=now)
+    json_resp = admin_request.get('service.get_service_by_id', service_id=service.id)
+    assert json_resp['data']['go_live_user'] == str(sample_user.id)
+    assert json_resp['data']['go_live_at'] == str(now)
+
+
 @pytest.mark.parametrize('platform_admin, expected_count_as_live', (
     (True, False),
     (False, True),
