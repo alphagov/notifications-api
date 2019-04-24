@@ -827,7 +827,10 @@ def populate_go_live(file_name):
             go_live_date = datetime.strptime(row[8], '%d/%m/%Y') + timedelta(hours=12)
             print(service_id, go_live_email, go_live_date)
             try:
-                go_live_user = get_user_by_email(go_live_email)
+                if go_live_email:
+                    go_live_user = get_user_by_email(go_live_email)
+                else:
+                    go_live_user = None
             except NoResultFound:
                 print("No user found for email address: ", go_live_email)
                 continue
