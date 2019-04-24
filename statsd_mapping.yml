@@ -1,0 +1,11 @@
+defaults:
+  timer_type: histogram
+  buckets: [.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 25]
+  ttl: 0 # metrics do not expire
+
+mappings:
+- match: (\w+)\.notifications\.(.+)
+  match_type: regex
+  name: "notifications_${2}"
+  labels:
+    space: "$1"

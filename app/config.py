@@ -281,9 +281,9 @@ class Config(object):
     NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
 
-    STATSD_ENABLED = False
-    STATSD_HOST = "statsd.hostedgraphite.com"
+    STATSD_HOST = os.getenv('STATSD_HOST')
     STATSD_PORT = 8125
+    STATSD_ENABLED = bool(STATSD_HOST)
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
@@ -356,11 +356,6 @@ class Development(Config):
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
     REDIS_URL = 'redis://localhost:6379/0'
 
-    STATSD_ENABLED = False
-    STATSD_HOST = "localhost"
-    STATSD_PORT = 1000
-    STATSD_PREFIX = "stats-prefix"
-
     ANTIVIRUS_ENABLED = os.getenv('ANTIVIRUS_ENABLED') == '1'
 
     for queue in QueueNames.all_queues():
@@ -431,7 +426,6 @@ class Staging(Config):
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'staging-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'staging-letters-invalid-pdf'
-    STATSD_ENABLED = True
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -447,7 +441,6 @@ class Live(Config):
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
     LETTERS_SCAN_BUCKET_NAME = 'production-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
-    STATSD_ENABLED = True
     FROM_NUMBER = 'GOVUK'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
