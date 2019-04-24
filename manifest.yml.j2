@@ -74,7 +74,13 @@ applications:
 
       ZENDESK_API_KEY: '{{ ZENDESK_API_KEY }}'
 
+      {% if environment == 'staging' %}
+      MMG_URL: 'https://notify-sms-provider-stub-staging.cloudapps.digital/mmg'
+      FIRETEXT_URL: 'https://notify-sms-provider-stub-staging.cloudapps.digital/firetext'
+      {% else %}
       MMG_URL: '{{ MMG_URL }}'
+      {% endif %}
+
       MMG_API_KEY: '{{ MMG_API_KEY }}'
       MMG_INBOUND_SMS_AUTH: '{{ MMG_INBOUND_SMS_AUTH | tojson }}'
       MMG_INBOUND_SMS_USERNAME: '{{ MMG_INBOUND_SMS_USERNAME | tojson }}'
