@@ -240,10 +240,11 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
 
         if overlay:
             path = '/precompiled/overlay.{}'.format(file_type)
+            query_string = '?page_number={}'.format(page_number) if file_type == 'png' else ''
             content = pdf_file
         elif file_type == 'png':
             query_string = '?hide_notify=true' if page_number == '1' else ''
-            path = '/precompiled-preview.png' + query_string
+            path = '/precompiled-preview.png'
         else:
             path = None
 
@@ -259,7 +260,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
                 )
 
         if path:
-            url = current_app.config['TEMPLATE_PREVIEW_API_HOST'] + path
+            url = current_app.config['TEMPLATE_PREVIEW_API_HOST'] + path + query_string
             response_content = _get_png_preview_or_overlaid_pdf(url, content, notification.id, json=False)
         else:
             response_content = content
