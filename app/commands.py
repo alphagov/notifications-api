@@ -811,15 +811,21 @@ def populate_service_volume_intentions(file_name):
 def populate_go_live(file_name):
     # 0 - count, 1- Link, 2- Service ID, 3- DEPT, 4- Service Name, 5- Main contact,
     # 6- Contact detail, 7-MOU, 8- LIVE date, 9- SMS, 10 - Email, 11 - Letters, 12 -CRM, 13 - Blue badge
-
+    import csv
     print("Populate go live user and date")
     with open(file_name, 'r') as f:
-        for line in itertools.islice(f, 1, None):
-            columns = line.split(',')
-            print(columns)
-            service_id = columns[2]
-            go_live_email = columns[6]
-            go_live_date = datetime.strptime(columns[8], '%d/%m/%Y') + timedelta(hours=12)
+        rows = csv.reader(
+            f.read().splitlines(),
+            quoting=csv.QUOTE_MINIMAL,
+            skipinitialspace=True,
+        )
+        print(next(rows))  # ignore header row
+        for index, row in enumerate(rows):
+            print(index, row)
+            service_id = row[2]
+            go_live_email = row[6]
+            go_live_date = datetime.strptime(row[8], '%d/%m/%Y') + timedelta(hours=12)
+            print(service_id, go_live_email, go_live_date)
             try:
                 go_live_user = get_user_by_email(go_live_email)
             except NoResultFound:
