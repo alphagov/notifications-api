@@ -102,7 +102,7 @@ def test_create_template_folder_sets_user_permissions(admin_request, sample_serv
     if has_parent:
         assert resp['data']['users_with_permission'] == [str(user_1.id)]
     else:
-        assert resp['data']['users_with_permission'] == [str(user_1.id), str(user_2.id)]
+        assert sorted(resp['data']['users_with_permission']) == sorted([str(user_1.id), str(user_2.id)])
 
 
 @pytest.mark.parametrize('missing_field', ['name', 'parent_id'])
