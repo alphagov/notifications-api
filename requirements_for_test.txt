@@ -6,7 +6,7 @@ pytest-env==0.6.2
 pytest-mock==1.10.2
 pytest-cov==2.6.1
 coveralls==1.7.0
-pytest-xdist==1.27.0
+pytest-xdist==1.28.0
 freezegun==0.3.11
 requests-mock==1.5.2
 # optional requirements for jsonschema
