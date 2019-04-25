@@ -12,12 +12,14 @@ from app.dao.inbound_numbers_dao import (
     dao_get_available_inbound_numbers,
     dao_set_inbound_number_active_flag
 )
+from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
 from app.dao.services_dao import (
     dao_create_service,
     dao_add_user_to_service,
     dao_remove_user_from_service,
     dao_fetch_all_services,
+    dao_fetch_live_services_data,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
     dao_update_service,
@@ -57,7 +59,9 @@ from app.models import (
     user_folder_permissions,
 )
 from tests.app.db import (
+    create_ft_billing,
     create_inbound_number,
+    create_organisation,
     create_user,
     create_service,
     create_service_with_inbound_number,
@@ -378,6 +382,31 @@ def test_get_all_only_services_user_has_access_to(notify_db_session):
 def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(notify_db_session):
     user = create_user()
     assert len(dao_fetch_all_services_by_user(user.id)) == 0
+
+
+def test_dao_fetch_live_services_data(sample_user, mock):
+    org = create_organisation()
+    service = create_service(go_live_user=sample_user)
+    template = create_template(service=service)
+    create_service(service_name='second', go_live_user=sample_user)
+    template2 = create_template(service=service, template_type='email')
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2,
+                      service=service)
+
+    results = dao_fetch_live_services_data()
+    assert len(results) == 2
+    assert {'service_id': mock.ANY, 'service_name': 'Sample service', 'organisation_name': 'test_org_1',
+            'consent_to_research': None, 'contact_name': 'Test User',
+            'contact_email': 'notify@digital.cabinet-office.gov.uk', 'contact_mobile': '+447700900986',
+            'live_date': None, 'sms_volume_intent': None, 'email_volume_intent': None,
+            'letter_volume_intent': None, 'sms_totals': 1, 'email_totals': 1, 'letter_totals': 0} in results
+    assert {'service_id': mock.ANY, 'service_name': 'second', 'organisation_name': None, 'consent_to_research': None,
+            'contact_name': 'Test User', 'contact_email': 'notify@digital.cabinet-office.gov.uk',
+            'contact_mobile': '+447700900986', 'live_date': None, 'sms_volume_intent': None,
+            'email_volume_intent': None, 'letter_volume_intent': None,
+            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0} in results
 
 
 def test_get_service_by_id_returns_none_if_no_service(notify_db):

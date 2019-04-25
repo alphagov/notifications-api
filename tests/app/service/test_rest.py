@@ -136,6 +136,10 @@ def test_get_service_list_should_return_empty_list_if_no_services(admin_request)
     assert len(json_resp['data']) == 0
 
 
+def test_get_live_services_data():
+    pass
+
+
 def test_get_service_by_id(admin_request, sample_service):
     json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
     assert json_resp['data']['name'] == sample_service.name
