@@ -384,27 +384,39 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
     assert len(dao_fetch_all_services_by_user(user.id)) == 0
 
 
+@freeze_time('2019-04-23T10:00:00')
 def test_dao_fetch_live_services_data(sample_user, mock):
     org = create_organisation()
     service = create_service(go_live_user=sample_user)
     template = create_template(service=service)
-    create_service(service_name='second', go_live_user=sample_user)
+    service_2 = create_service(service_name='second', go_live_user=sample_user)
+    create_service(service_name='third')
     template2 = create_template(service=service, template_type='email')
+    template_letter_1 = create_template(service=service, template_type='letter')
+    template_letter_2 = create_template(service=service_2, template_type='letter')
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
-    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2,
-                      service=service)
+    create_ft_billing(bst_date='2019-04-21', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2018-04-20', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2, service=service)
+    create_ft_billing(bst_date='2019-04-15', notification_type='letter', template=template_letter_1, service=service)
+    create_ft_billing(bst_date='2019-04-16', notification_type='letter', template=template_letter_2, service=service_2)
 
     results = dao_fetch_live_services_data()
-    assert len(results) == 2
+    assert len(results) == 3
     assert {'service_id': mock.ANY, 'service_name': 'Sample service', 'organisation_name': 'test_org_1',
             'consent_to_research': None, 'contact_name': 'Test User',
             'contact_email': 'notify@digital.cabinet-office.gov.uk', 'contact_mobile': '+447700900986',
             'live_date': None, 'sms_volume_intent': None, 'email_volume_intent': None,
-            'letter_volume_intent': None, 'sms_totals': 1, 'email_totals': 1, 'letter_totals': 0} in results
+            'letter_volume_intent': None, 'sms_totals': 2, 'email_totals': 1, 'letter_totals': 1} in results
     assert {'service_id': mock.ANY, 'service_name': 'second', 'organisation_name': None, 'consent_to_research': None,
             'contact_name': 'Test User', 'contact_email': 'notify@digital.cabinet-office.gov.uk',
             'contact_mobile': '+447700900986', 'live_date': None, 'sms_volume_intent': None,
+            'email_volume_intent': None, 'letter_volume_intent': None,
+            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 1} in results
+    assert {'service_id': mock.ANY, 'service_name': 'third', 'organisation_name': None, 'consent_to_research': None,
+            'contact_name': None, 'contact_email': None,
+            'contact_mobile': None, 'live_date': None, 'sms_volume_intent': None,
             'email_volume_intent': None, 'letter_volume_intent': None,
             'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0} in results
 

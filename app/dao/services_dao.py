@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from flask import current_app
 
 from app import db
+from app.dao.date_util import get_current_financial_year
 from app.dao.dao_utils import (
     transactional,
     version_class,
@@ -75,6 +76,11 @@ def dao_count_live_services():
 
 
 def dao_fetch_live_services_data():
+    year_start_date, year_end_date = get_current_financial_year()
+    this_year_ft_billing = FactBilling.query.filter(
+        FactBilling.bst_date >= year_start_date,
+        FactBilling.bst_date <= year_end_date,
+    ).subquery()
     data = db.session.query(
         Service.id,
         Organisation.name.label("organisation_name"),
@@ -89,18 +95,18 @@ def dao_fetch_live_services_data():
         Service.volume_email,
         Service.volume_letter,
         case([
-            (FactBilling.notification_type == 'email', func.sum(FactBilling.notifications_sent))
+            (this_year_ft_billing.c.notification_type == 'email', func.sum(this_year_ft_billing.c.notifications_sent))
         ], else_=0).label("email_totals"),
         case([
-            (FactBilling.notification_type == 'sms', func.sum(FactBilling.notifications_sent))
+            (this_year_ft_billing.c.notification_type == 'sms', func.sum(this_year_ft_billing.c.notifications_sent))
         ], else_=0).label("sms_totals"),
         case([
-            (FactBilling.notification_type == 'letter', func.sum(FactBilling.notifications_sent))
+            (this_year_ft_billing.c.notification_type == 'letter', func.sum(this_year_ft_billing.c.notifications_sent))
         ], else_=0).label("letter_totals"),
     ).outerjoin(
         Service.organisation
     ).outerjoin(
-        FactBilling, Service.id == FactBilling.service_id
+        this_year_ft_billing, Service.id == this_year_ft_billing.c.service_id
     ).outerjoin(
         User, Service.go_live_user_id == User.id
     ).group_by(
@@ -116,7 +122,7 @@ def dao_fetch_live_services_data():
         Service.volume_sms,
         Service.volume_email,
         Service.volume_letter,
-        FactBilling.notification_type
+        this_year_ft_billing.c.notification_type
     ).all()
     results = []
     for row in data:
