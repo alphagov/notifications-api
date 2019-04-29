@@ -87,6 +87,7 @@ def dao_fetch_live_services_data():
         Service.name.label("service_name"),
         Service.consent_to_research,
         Service.go_live_user_id,
+        Service.count_as_live,
         User.name.label('user_name'),
         User.email_address,
         User.mobile_number,
@@ -109,11 +110,14 @@ def dao_fetch_live_services_data():
         this_year_ft_billing, Service.id == this_year_ft_billing.c.service_id
     ).outerjoin(
         User, Service.go_live_user_id == User.id
+    ).filter(
+        Service.count_as_live == True  # noqa
     ).group_by(
         Service.id,
         Organisation.name,
         Service.name,
         Service.consent_to_research,
+        Service.count_as_live,
         Service.go_live_user_id,
         User.name,
         User.email_address,
