@@ -229,6 +229,7 @@ generate-manifest:
 cf-deploy: scripts/statsd_exporter ## Deploys the app to Cloud Foundry
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	$(if ${CF_APP},,$(error Must specify CF_APP))
+	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	@cf app --guid ${CF_APP} || exit 1
 	cf rename ${CF_APP} ${CF_APP}-rollback
 	cf push ${CF_APP} -f <(make -s generate-manifest)
@@ -245,6 +246,7 @@ cf-deploy: scripts/statsd_exporter ## Deploys the app to Cloud Foundry
 .PHONY: cf-deploy-api-db-migration
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
+	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	cf unbind-service notify-api-db-migration notify-db
 	cf unbind-service notify-api-db-migration notify-config
 	cf unbind-service notify-api-db-migration notify-aws
