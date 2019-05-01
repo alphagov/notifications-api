@@ -127,6 +127,8 @@ def dao_fetch_live_services_data():
         Service.volume_email,
         Service.volume_letter,
         this_year_ft_billing.c.notification_type
+    ).order_by(
+        asc(Service.go_live_at)
     ).all()
     results = []
     for row in data:
