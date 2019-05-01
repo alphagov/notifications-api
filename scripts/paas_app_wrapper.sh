@@ -8,11 +8,11 @@ case $NOTIFY_APP_NAME in
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
     -Q retry-tasks 2> /dev/null
     ;;
-  delivery-worker-letters-tasks)
+  delivery-worker-letters)
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
     -Q create-letters-pdf-tasks,letter-tasks 2> /dev/null
     ;;
-  delivery-worker-database-and-job-tasks)
+  delivery-worker-jobs)
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
     -Q database-tasks,job-tasks 2> /dev/null
     ;;
