@@ -35,6 +35,7 @@ from tests.app.conftest import (
     sample_notification_with_job
 )
 from tests.app.db import (
+    create_ft_billing,
     create_ft_notification_status,
     create_service,
     create_service_with_inbound_number,
@@ -134,6 +135,30 @@ def test_get_service_list_by_user_should_return_empty_list_if_no_services(admin_
 def test_get_service_list_should_return_empty_list_if_no_services(admin_request):
     json_resp = admin_request.get('service.get_services')
     assert len(json_resp['data']) == 0
+
+
+def test_get_live_services_data(sample_user, admin_request, mock):
+    org = create_organisation()
+    service = create_service(go_live_user=sample_user)
+    template = create_template(service=service)
+    create_service(service_name='second', go_live_user=sample_user)
+    template2 = create_template(service=service, template_type='email')
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2,
+                      service=service)
+    response = admin_request.get('service.get_live_services_data')["data"]
+    assert len(response) == 2
+    assert {'consent_to_research': None, 'contact_email': 'notify@digital.cabinet-office.gov.uk',
+            'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 0,
+            'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
+            'organisation_name': None, 'service_id': mock.ANY, 'service_name': 'second', 'sms_totals': 0,
+            'sms_volume_intent': None} in response
+    assert {'consent_to_research': None, 'contact_email': 'notify@digital.cabinet-office.gov.uk',
+            'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 1,
+            'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
+            'organisation_name': 'test_org_1', 'service_id': mock.ANY, 'service_name': 'Sample service',
+            'sms_totals': 1, 'sms_volume_intent': None} in response
 
 
 def test_get_service_by_id(admin_request, sample_service):

@@ -2,11 +2,12 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import asc, func
+from sqlalchemy import asc, func, case
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
 from app import db
+from app.dao.date_util import get_current_financial_year
 from app.dao.dao_utils import (
     transactional,
     version_class,
@@ -21,11 +22,13 @@ from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
     AnnualBilling,
     ApiKey,
+    FactBilling,
     InboundNumber,
     InvitedUser,
     Job,
     Notification,
     NotificationHistory,
+    Organisation,
     Permission,
     Service,
     ServicePermission,
@@ -70,6 +73,95 @@ def dao_count_live_services():
         restricted=False,
         count_as_live=True,
     ).count()
+
+
+def dao_fetch_live_services_data():
+    year_start_date, year_end_date = get_current_financial_year()
+    this_year_ft_billing = FactBilling.query.filter(
+        FactBilling.bst_date >= year_start_date,
+        FactBilling.bst_date <= year_end_date,
+    ).subquery()
+    data = db.session.query(
+        Service.id,
+        Organisation.name.label("organisation_name"),
+        Service.name.label("service_name"),
+        Service.consent_to_research,
+        Service.go_live_user_id,
+        Service.count_as_live,
+        User.name.label('user_name'),
+        User.email_address,
+        User.mobile_number,
+        Service.go_live_at.label("live_date"),
+        Service.volume_sms,
+        Service.volume_email,
+        Service.volume_letter,
+        case([
+            (this_year_ft_billing.c.notification_type == 'email', func.sum(this_year_ft_billing.c.notifications_sent))
+        ], else_=0).label("email_totals"),
+        case([
+            (this_year_ft_billing.c.notification_type == 'sms', func.sum(this_year_ft_billing.c.notifications_sent))
+        ], else_=0).label("sms_totals"),
+        case([
+            (this_year_ft_billing.c.notification_type == 'letter', func.sum(this_year_ft_billing.c.notifications_sent))
+        ], else_=0).label("letter_totals"),
+    ).outerjoin(
+        Service.organisation
+    ).outerjoin(
+        this_year_ft_billing, Service.id == this_year_ft_billing.c.service_id
+    ).outerjoin(
+        User, Service.go_live_user_id == User.id
+    ).filter(
+        Service.count_as_live == True  # noqa
+    ).group_by(
+        Service.id,
+        Organisation.name,
+        Service.name,
+        Service.consent_to_research,
+        Service.count_as_live,
+        Service.go_live_user_id,
+        User.name,
+        User.email_address,
+        User.mobile_number,
+        Service.go_live_at,
+        Service.volume_sms,
+        Service.volume_email,
+        Service.volume_letter,
+        this_year_ft_billing.c.notification_type
+    ).order_by(
+        asc(Service.go_live_at)
+    ).all()
+    results = []
+    for row in data:
+        is_service_in_list = None
+        i = 0
+        while i < len(results):
+            if results[i]["service_id"] == row.id:
+                is_service_in_list = i
+                break
+            else:
+                i += 1
+        if is_service_in_list is not None:
+            results[is_service_in_list]["email_totals"] += row.email_totals
+            results[is_service_in_list]["sms_totals"] += row.sms_totals
+            results[is_service_in_list]["letter_totals"] += row.letter_totals
+        else:
+            results.append({
+                "service_id": row.id,
+                "service_name": row.service_name,
+                "organisation_name": row.organisation_name,
+                "consent_to_research": row.consent_to_research,
+                "contact_name": row.user_name,
+                "contact_email": row.email_address,
+                "contact_mobile": row.mobile_number,
+                "live_date": row.live_date,
+                "sms_volume_intent": row.volume_sms,
+                "email_volume_intent": row.volume_email,
+                "letter_volume_intent": row.volume_letter,
+                "sms_totals": row.sms_totals,
+                "email_totals": row.email_totals,
+                "letter_totals": row.letter_totals,
+            })
+    return results
 
 
 def dao_fetch_service_by_id(service_id, only_active=False):

@@ -7,8 +7,8 @@ import pytz
 def get_months_for_financial_year(year):
     return [
         convert_bst_to_utc(month) for month in (
-            get_months_for_year(4, 13, year) +
-            get_months_for_year(1, 4, year + 1)
+            get_months_for_year(4, 13, year)
+            + get_months_for_year(1, 4, year + 1)
         )
         if convert_bst_to_utc(month) < datetime.now()
     ]
@@ -20,6 +20,14 @@ def get_months_for_year(start, end, year):
 
 def get_financial_year(year):
     return get_april_fools(year), get_april_fools(year + 1) - timedelta(microseconds=1)
+
+
+def get_current_financial_year():
+    now = datetime.utcnow()
+    current_month = int(now.strftime('%-m'))
+    current_year = int(now.strftime('%Y'))
+    year = current_year if current_month > 3 else current_year - 1
+    return get_financial_year(year)
 
 
 def get_april_fools(year):

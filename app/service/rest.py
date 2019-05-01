@@ -49,6 +49,7 @@ from app.dao.services_dao import (
     dao_create_service,
     dao_fetch_all_services,
     dao_fetch_all_services_by_user,
+    dao_fetch_live_services_data,
     dao_fetch_service_by_id,
     dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
@@ -155,6 +156,12 @@ def get_services():
     else:
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
+    return jsonify(data=data)
+
+
+@service_blueprint.route('/live-services-data', methods=['GET'])
+def get_live_services_data():
+    data = dao_fetch_live_services_data()
     return jsonify(data=data)
 
 
