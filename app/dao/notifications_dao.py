@@ -395,21 +395,22 @@ def insert_update_notification_history(notification_type, date_to_delete_from, s
         Notification.key_type != KEY_TYPE_TEST
     ).all()
 
-    stmt = insert(NotificationHistory).values(
-        notifications
-    )
+    if notifications:
+        stmt = insert(NotificationHistory).values(
+            notifications
+        )
 
-    stmt = stmt.on_conflict_do_update(
-        constraint="notification_history_pkey",
-        set_={"notification_status": stmt.excluded.status,
-              "billable_units": stmt.excluded.billable_units,
-              "updated_at": stmt.excluded.updated_at,
-              "sent_at": stmt.excluded.sent_at,
-              "sent_by": stmt.excluded.sent_by
-              }
-    )
-    db.session.connection().execute(stmt)
-    db.session.commit()
+        stmt = stmt.on_conflict_do_update(
+            constraint="notification_history_pkey",
+            set_={"notification_status": stmt.excluded.status,
+                  "billable_units": stmt.excluded.billable_units,
+                  "updated_at": stmt.excluded.updated_at,
+                  "sent_at": stmt.excluded.sent_at,
+                  "sent_by": stmt.excluded.sent_by
+                  }
+        )
+        db.session.connection().execute(stmt)
+        db.session.commit()
 
 
 def _delete_letters_from_s3(
