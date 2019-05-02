@@ -366,51 +366,29 @@ def _delete_notifications(
 
 def insert_update_notification_history(notification_type, date_to_delete_from, service_id):
     notifications = db.session.query(
-        Notification.id,
-        Notification.job_id,
-        Notification.job_row_number,
-        Notification.service_id,
-        Notification.template_id,
-        Notification.template_version,
-        Notification.api_key_id,
-        Notification.key_type,
-        Notification.billable_units,
-        Notification.notification_type,
-        Notification.created_at,
-        Notification.sent_at,
-        Notification.sent_by,
-        Notification.updated_at,
-        Notification.status,
-        Notification.reference,
-        Notification.client_reference,
-        Notification.international,
-        Notification.phone_prefix,
-        Notification.rate_multiplier,
-        Notification.created_by_id,
-        Notification.postage
+        *[x.name for x in NotificationHistory.__table__.c]
     ).filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
         Notification.created_at < date_to_delete_from,
         Notification.key_type != KEY_TYPE_TEST
-    ).all()
+    )
+    stmt = insert(NotificationHistory).from_select(
+        NotificationHistory.__table__.c,
+        notifications
+    )
 
-    if notifications:
-        stmt = insert(NotificationHistory).values(
-            notifications
-        )
-
-        stmt = stmt.on_conflict_do_update(
-            constraint="notification_history_pkey",
-            set_={"notification_status": stmt.excluded.status,
-                  "billable_units": stmt.excluded.billable_units,
-                  "updated_at": stmt.excluded.updated_at,
-                  "sent_at": stmt.excluded.sent_at,
-                  "sent_by": stmt.excluded.sent_by
-                  }
-        )
-        db.session.connection().execute(stmt)
-        db.session.commit()
+    stmt = stmt.on_conflict_do_update(
+        constraint="notification_history_pkey",
+        set_={"notification_status": stmt.excluded.status,
+              "billable_units": stmt.excluded.billable_units,
+              "updated_at": stmt.excluded.updated_at,
+              "sent_at": stmt.excluded.sent_at,
+              "sent_by": stmt.excluded.sent_by
+              }
+    )
+    db.session.connection().execute(stmt)
+    db.session.commit()
 
 
 def _delete_letters_from_s3(

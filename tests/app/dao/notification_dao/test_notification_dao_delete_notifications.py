@@ -203,7 +203,7 @@ def test_delete_notifications_calls_subquery(
     assert Notification.query.count() == 0
 
 
-@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+@pytest.mark.parametrize('notification_type', ['sms'])
 def test_insert_update_notification_history(sample_service, notification_type):
     template = create_template(sample_service, template_type=notification_type)
     notification_1 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=3))
