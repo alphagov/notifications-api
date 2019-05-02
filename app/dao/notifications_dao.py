@@ -19,6 +19,7 @@ from sqlalchemy import (desc, func, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
+from sqlalchemy.dialects.postgresql import insert
 from werkzeug.datastructures import MultiDict
 
 from app import db, create_uuid
@@ -310,6 +311,8 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
                 notification_type, f.service_id, days_of_retention, qry_limit
             )
 
+        insert_update_notification_history(notification_type, days_of_retention, f.service_id)
+
         current_app.logger.info(
             "Deleting {} notifications for service id: {}".format(notification_type, f.service_id))
         deleted += _delete_notifications(
@@ -328,7 +331,7 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
             _delete_letters_from_s3(
                 notification_type, service_id, seven_days_ago, qry_limit
             )
-
+        insert_update_notification_history(notification_type, seven_days_ago, service_id)
         deleted += _delete_notifications(
             deleted, notification_type, seven_days_ago, service_id, qry_limit
         )
@@ -359,6 +362,33 @@ def _delete_notifications(
         deleted += number_deleted
         db.session.commit()
     return deleted
+
+
+def insert_update_notification_history(notification_type, date_to_delete_from, service_id):
+    notifications = db.session.query(
+        *[x.name for x in NotificationHistory.__table__.c]
+    ).filter(
+        Notification.notification_type == notification_type,
+        Notification.service_id == service_id,
+        Notification.created_at < date_to_delete_from,
+        Notification.key_type != KEY_TYPE_TEST
+    )
+    stmt = insert(NotificationHistory).from_select(
+        NotificationHistory.__table__.c,
+        notifications
+    )
+
+    stmt = stmt.on_conflict_do_update(
+        constraint="notification_history_pkey",
+        set_={"notification_status": stmt.excluded.status,
+              "billable_units": stmt.excluded.billable_units,
+              "updated_at": stmt.excluded.updated_at,
+              "sent_at": stmt.excluded.sent_at,
+              "sent_by": stmt.excluded.sent_by
+              }
+    )
+    db.session.connection().execute(stmt)
+    db.session.commit()
 
 
 def _delete_letters_from_s3(
