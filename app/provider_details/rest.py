@@ -2,9 +2,9 @@ from flask import Blueprint, jsonify, request
 
 from app.schemas import provider_details_schema, provider_details_history_schema
 from app.dao.provider_details_dao import (
-    get_provider_details,
     get_provider_details_by_id,
     dao_update_provider_details,
+    dao_get_provider_stats,
     dao_get_provider_versions
 )
 from app.dao.users_dao import get_user_by_id
@@ -19,8 +19,23 @@ register_errors(provider_details)
 
 @provider_details.route('', methods=['GET'])
 def get_providers():
-    data = provider_details_schema.dump(get_provider_details(), many=True).data
-    return jsonify(provider_details=data)
+    data = dao_get_provider_stats()
+
+    provider_details = [
+        {'id': row.id,
+         'display_name': row.display_name,
+         'identifier': row.identifier,
+         'priority': row.priority,
+         'notification_type': row.notification_type,
+         'active': row.active,
+         'updated_at': row.updated_at,
+         'supports_international': row.supports_international,
+         'created_by_name': row.created_by_name,
+         'current_month_billable_sms': row.current_month_billable_sms}
+        for row in data
+    ]
+
+    return jsonify(provider_details=provider_details)
 
 
 @provider_details.route('/<uuid:provider_details_id>', methods=['GET'])
