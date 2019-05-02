@@ -391,6 +391,9 @@ def test_dao_fetch_live_services_data(sample_user, mock):
     template = create_template(service=service)
     service_2 = create_service(service_name='second', go_live_user=sample_user, go_live_at='2017-04-20T10:00:00')
     create_service(service_name='third', go_live_at='2016-04-20T10:00:00')
+    # below services should be filtered out:
+    create_service(service_name='restricted', restricted=True)
+    create_service(service_name='not_active', active=False)
     create_service(service_name='not_live', count_as_live=False)
     template2 = create_template(service=service, template_type='email')
     template_letter_1 = create_template(service=service, template_type='letter')

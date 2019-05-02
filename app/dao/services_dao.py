@@ -111,7 +111,9 @@ def dao_fetch_live_services_data():
     ).outerjoin(
         User, Service.go_live_user_id == User.id
     ).filter(
-        Service.count_as_live == True  # noqa
+        Service.count_as_live.is_(True),
+        Service.active.is_(True),
+        Service.restricted.is_(False),
     ).group_by(
         Service.id,
         Organisation.name,
