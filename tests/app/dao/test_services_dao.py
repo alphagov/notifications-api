@@ -386,7 +386,7 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
 
 @freeze_time('2019-04-23T10:00:00')
 def test_dao_fetch_live_services_data(sample_user, mock):
-    org = create_organisation()
+    org = create_organisation(organisation_type='crown')
     service = create_service(go_live_user=sample_user, go_live_at='2014-04-20T10:00:00')
     template = create_template(service=service)
     service_2 = create_service(service_name='second', go_live_user=sample_user, go_live_at='2017-04-20T10:00:00')
@@ -416,19 +416,19 @@ def test_dao_fetch_live_services_data(sample_user, mock):
     # checks the results and that they are ordered by date:
     assert results == [
         {'service_id': mock.ANY, 'service_name': 'Sample service', 'organisation_name': 'test_org_1',
-            'consent_to_research': None, 'contact_name': 'Test User',
+            'organisation_type': 'crown', 'consent_to_research': None, 'contact_name': 'Test User',
             'contact_email': 'notify@digital.cabinet-office.gov.uk', 'contact_mobile': '+447700900986',
             'live_date': datetime(2014, 4, 20, 10, 0), 'sms_volume_intent': None, 'email_volume_intent': None,
             'letter_volume_intent': None, 'sms_totals': 2, 'email_totals': 1, 'letter_totals': 1},
         {'service_id': mock.ANY, 'service_name': 'third', 'organisation_name': None, 'consent_to_research': None,
-            'contact_name': None, 'contact_email': None,
+            'organisation_type': None, 'contact_name': None, 'contact_email': None,
             'contact_mobile': None, 'live_date': datetime(2016, 4, 20, 10, 0), 'sms_volume_intent': None,
             'email_volume_intent': None, 'letter_volume_intent': None,
             'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0},
         {'service_id': mock.ANY, 'service_name': 'second', 'organisation_name': None, 'consent_to_research': None,
             'contact_name': 'Test User', 'contact_email': 'notify@digital.cabinet-office.gov.uk',
             'contact_mobile': '+447700900986', 'live_date': datetime(2017, 4, 20, 10, 0), 'sms_volume_intent': None,
-            'email_volume_intent': None, 'letter_volume_intent': None,
+            'organisation_type': None, 'email_volume_intent': None, 'letter_volume_intent': None,
             'sms_totals': 0, 'email_totals': 0, 'letter_totals': 1}
     ]
 

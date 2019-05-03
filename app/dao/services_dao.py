@@ -84,6 +84,7 @@ def dao_fetch_live_services_data():
     data = db.session.query(
         Service.id,
         Organisation.name.label("organisation_name"),
+        Organisation.organisation_type,
         Service.name.label("service_name"),
         Service.consent_to_research,
         Service.go_live_user_id,
@@ -117,6 +118,7 @@ def dao_fetch_live_services_data():
     ).group_by(
         Service.id,
         Organisation.name,
+        Organisation.organisation_type,
         Service.name,
         Service.consent_to_research,
         Service.count_as_live,
@@ -151,6 +153,7 @@ def dao_fetch_live_services_data():
                 "service_id": row.id,
                 "service_name": row.service_name,
                 "organisation_name": row.organisation_name,
+                "organisation_type": row.organisation_type,
                 "consent_to_research": row.consent_to_research,
                 "contact_name": row.user_name,
                 "contact_email": row.email_address,
