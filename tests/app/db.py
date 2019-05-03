@@ -541,10 +541,11 @@ def create_domain(domain, organisation_id):
     return domain
 
 
-def create_organisation(name='test_org_1', active=True):
+def create_organisation(name='test_org_1', active=True, organisation_type=None):
     data = {
         'name': name,
-        'active': active
+        'active': active,
+        'organisation_type': organisation_type
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)

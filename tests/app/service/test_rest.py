@@ -153,12 +153,12 @@ def test_get_live_services_data(sample_user, admin_request, mock):
             'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 0,
             'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
             'organisation_name': None, 'service_id': mock.ANY, 'service_name': 'second', 'sms_totals': 0,
-            'sms_volume_intent': None} in response
+            'sms_volume_intent': None, 'organisation_type': None} in response
     assert {'consent_to_research': None, 'contact_email': 'notify@digital.cabinet-office.gov.uk',
             'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 1,
             'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
             'organisation_name': 'test_org_1', 'service_id': mock.ANY, 'service_name': 'Sample service',
-            'sms_totals': 1, 'sms_volume_intent': None} in response
+            'sms_totals': 1, 'sms_volume_intent': None, 'organisation_type': None} in response
 
 
 def test_get_service_by_id(admin_request, sample_service):
