@@ -9,14 +9,19 @@ from app import clients
 from app.dao.provider_details_dao import (
     get_alternative_sms_provider,
     get_current_provider,
-    get_provider_details,
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
     dao_switch_sms_provider_to_provider_with_identifier,
     dao_toggle_sms_provider,
     dao_update_provider_details,
+    dao_get_provider_stats,
     dao_get_provider_versions,
     dao_get_sms_provider_with_equal_priority
+)
+from tests.app.db import (
+    create_ft_billing,
+    create_service,
+    create_template,
 )
 
 
@@ -29,10 +34,6 @@ def set_primary_sms_provider(identifier):
 
     dao_update_provider_details(primary_provider)
     dao_update_provider_details(secondary_provider)
-
-
-def test_can_get_all_providers(restore_provider_details):
-    assert len(get_provider_details()) == 5
 
 
 def test_can_get_sms_non_international_providers(restore_provider_details):
@@ -287,3 +288,47 @@ def test_get_current_sms_provider_returns_active_only(restore_provider_details):
     new_current_provider = get_current_provider('sms')
 
     assert current_provider.identifier != new_current_provider.identifier
+
+
+@freeze_time('2018-06-28 12:00')
+def test_dao_get_provider_stats(notify_db_session):
+    service_1 = create_service(service_name='1')
+    service_2 = create_service(service_name='2')
+    sms_template_1 = create_template(service_1, 'sms')
+    sms_template_2 = create_template(service_2, 'sms')
+
+    create_ft_billing('2017-06-05', 'sms', sms_template_2, service_1, provider='firetext', billable_unit=4)
+    create_ft_billing('2018-05-31', 'sms', sms_template_1, service_1, provider='mmg', billable_unit=1)
+    create_ft_billing('2018-06-01', 'sms', sms_template_1, service_1, provider='mmg',
+                      rate_multiplier=2, billable_unit=1)
+    create_ft_billing('2018-06-03', 'sms', sms_template_2, service_1, provider='firetext', billable_unit=4)
+    create_ft_billing('2018-06-15', 'sms', sms_template_1, service_2, provider='firetext', billable_unit=1)
+    create_ft_billing('2018-06-28', 'sms', sms_template_2, service_2, provider='mmg', billable_unit=2)
+
+    result = dao_get_provider_stats()
+
+    assert len(result) == 5
+
+    assert result[0].identifier == 'ses'
+    assert result[0].display_name == 'AWS SES'
+    assert result[0].created_by_name is None
+    assert result[0].current_month_billable_sms == 0
+
+    assert result[1].identifier == 'mmg'
+    assert result[1].display_name == 'MMG'
+    assert result[1].supports_international is True
+    assert result[1].active is True
+    assert result[1].current_month_billable_sms == 4
+
+    assert result[2].identifier == 'firetext'
+    assert result[2].notification_type == 'sms'
+    assert result[2].supports_international is False
+    assert result[2].active is True
+    assert result[2].current_month_billable_sms == 5
+
+    assert result[3].identifier == 'loadtesting'
+    assert result[3].current_month_billable_sms == 0
+
+    assert result[4].identifier == 'dvla'
+    assert result[4].current_month_billable_sms == 0
+    assert result[4].supports_international is False

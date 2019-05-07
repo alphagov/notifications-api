@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import asc, desc
+from notifications_utils.timezones import convert_utc_to_bst
+from sqlalchemy import asc, desc, func
 
 from app.dao.dao_utils import transactional
 from app.provider_details.switch_providers import (
@@ -8,12 +9,8 @@ from app.provider_details.switch_providers import (
     provider_is_primary,
     switch_providers
 )
-from app.models import ProviderDetails, ProviderDetailsHistory
+from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
-
-
-def get_provider_details():
-    return ProviderDetails.query.order_by(asc(ProviderDetails.priority), asc(ProviderDetails.notification_type)).all()
 
 
 def get_provider_details_by_id(provider_details_id):
@@ -110,3 +107,42 @@ def dao_get_sms_provider_with_equal_priority(identifier, priority):
     ).first()
 
     return provider
+
+
+def dao_get_provider_stats():
+    # this query does not include the current day since the task to populate ft_billing runs overnight
+
+    current_bst_datetime = convert_utc_to_bst(datetime.utcnow())
+    first_day_of_the_month = current_bst_datetime.date().replace(day=1)
+
+    subquery = db.session.query(
+        FactBilling.provider,
+        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label('current_month_billable_sms')
+    ).filter(
+        FactBilling.notification_type == SMS_TYPE,
+        FactBilling.bst_date >= first_day_of_the_month
+    ).group_by(
+        FactBilling.provider
+    ).subquery()
+
+    result = db.session.query(
+        ProviderDetails.id,
+        ProviderDetails.display_name,
+        ProviderDetails.identifier,
+        ProviderDetails.priority,
+        ProviderDetails.notification_type,
+        ProviderDetails.active,
+        ProviderDetails.updated_at,
+        ProviderDetails.supports_international,
+        User.name.label('created_by_name'),
+        func.coalesce(subquery.c.current_month_billable_sms, 0).label('current_month_billable_sms')
+    ).outerjoin(
+        subquery, ProviderDetails.identifier == subquery.c.provider
+    ).outerjoin(
+        User, ProviderDetails.created_by_id == User.id
+    ).order_by(
+        ProviderDetails.notification_type,
+        ProviderDetails.priority,
+    ).all()
+
+    return result

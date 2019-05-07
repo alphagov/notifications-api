@@ -1,9 +1,11 @@
 import pytest
 from flask import json
+from freezegun import freeze_time
 
 from app.models import ProviderDetails, ProviderDetailsHistory
 
 from tests import create_authorization_header
+from tests.app.db import create_ft_billing
 
 
 def test_get_provider_details_in_type_and_identifier_order(client, notify_db):
@@ -38,17 +40,22 @@ def test_get_provider_details_by_id(client, notify_db):
     assert provider['identifier'] == json_resp[0]['identifier']
 
 
-def test_get_provider_details_contains_correct_fields(client, notify_db):
+@freeze_time('2018-06-28 12:00')
+def test_get_provider_contains_correct_fields(client, sample_service, sample_template):
+    create_ft_billing('2018-06-01', 'sms', sample_template, sample_service, provider='mmg', billable_unit=1)
+
     response = client.get(
         '/provider-details',
         headers=[create_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))['provider_details']
     allowed_keys = {
-        "id", "created_by", "display_name",
+        "id", "created_by_name", "display_name",
         "identifier", "priority", 'notification_type',
-        "active", "version", "updated_at", "supports_international"
+        "active", "updated_at", "supports_international",
+        "current_month_billable_sms"
     }
+    assert len(json_resp) == 5
     assert allowed_keys == set(json_resp[0].keys())
 
 
