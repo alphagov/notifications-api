@@ -4,13 +4,17 @@ case $NOTIFY_APP_NAME in
     unset GUNICORN_CMD_ARGS
     scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py application
     ;;
-  delivery-worker)
+  delivery-worker-retry-tasks)
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
-    -Q job-tasks,retry-tasks,create-letters-pdf-tasks,letter-tasks 2> /dev/null
+    -Q retry-tasks 2> /dev/null
     ;;
-  delivery-worker-database)
+  delivery-worker-letters)
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
-    -Q database-tasks 2> /dev/null
+    -Q create-letters-pdf-tasks,letter-tasks 2> /dev/null
+    ;;
+  delivery-worker-jobs)
+    scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    -Q database-tasks,job-tasks 2> /dev/null
     ;;
   delivery-worker-research)
     scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=5 \
