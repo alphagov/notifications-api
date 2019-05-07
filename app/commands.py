@@ -27,7 +27,6 @@ from app.dao.fact_billing_dao import (
     get_service_ids_that_need_billing_populated,
     update_fact_billing,
 )
-from app.dao.notifications_dao import dao_update_notification
 from app.dao.organisation_dao import dao_get_organisation_by_email_address, dao_add_service_to_organisation
 
 from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
@@ -40,7 +39,11 @@ from app.dao.services_dao import (
 )
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes, get_user_by_email
-from app.models import PROVIDERS, User, Notification, Organisation, Domain, Service, KEY_TYPE_NORMAL
+from app.models import (
+    PROVIDERS, User, Notification, Organisation, Domain, Service, SMS_TYPE,
+    NOTIFICATION_CREATED,
+    KEY_TYPE_TEST
+)
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
 
@@ -850,9 +853,11 @@ def populate_go_live(file_name):
 @notify_command(name='fix-billable-units')
 def fix_billable_units():
     query = Notification.query.filter(
+        Notification.notification_type == SMS_TYPE,
+        Notification.status != NOTIFICATION_CREATED,
         Notification.sent_at == None,  # noqa
         Notification.billable_units == 0,
-        Notification.key_type == KEY_TYPE_NORMAL
+        Notification.key_type != KEY_TYPE_TEST,
     )
 
     for notification in query.all():
