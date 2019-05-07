@@ -876,5 +876,5 @@ def fix_billable_units():
         ).update(
             {"billable_units": template.fragment_count}
         )
-
+    db.session.commit()
     print("End fix_billable_units")
