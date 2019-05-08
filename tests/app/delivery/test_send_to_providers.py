@@ -539,7 +539,7 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(
     assert notification.billable_units == billable_units
 
 
-def test_should_set_notification_billable_units_and_provider_if_sending_to_provider_fails(
+def test_should_set_notification_billable_units_if_sending_to_provider_fails(
     sample_notification,
     mocker,
 ):
@@ -553,7 +553,6 @@ def test_should_set_notification_billable_units_and_provider_if_sending_to_provi
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
-    assert sample_notification.sent_by == 'mmg'
     assert mock_toggle_provider.called
 
 
