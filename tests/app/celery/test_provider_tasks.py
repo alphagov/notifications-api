@@ -112,18 +112,6 @@ def test_should_retry_and_log_exception(sample_notification, mocker):
     assert sample_notification.status == 'created'
 
 
-def test_send_sms_should_switch_providers_on_provider_failure(sample_notification, mocker):
-    provider_to_use = mocker.patch('app.delivery.send_to_providers.provider_to_use')
-    provider_to_use.return_value.send_sms.side_effect = Exception('Error')
-    switch_provider_mock = mocker.patch('app.delivery.send_to_providers.dao_toggle_sms_provider')
-    mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
-    mocker.patch('app.delivery.send_to_providers.update_notification_provider')
-
-    deliver_sms(sample_notification.id)
-
-    assert switch_provider_mock.called is True
-
-
 def test_send_sms_should_not_switch_providers_on_non_provider_failure(
     sample_notification,
     mocker
