@@ -55,18 +55,9 @@ def send_sms_to_provider(notification):
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
-            notification.billable_units = 0
+            send_sms_response(provider.get_name(), str(notification.id), notification.to)
             update_notification_to_sending(notification, provider)
-            try:
-                send_sms_response(provider.get_name(), str(notification.id), notification.to)
-            except HTTPError:
-                # when we retry, we only do anything if the notification is in created - it's currently in sending,
-                # so set it back so that we actually attempt the callback again
-                notification.sent_at = None
-                notification.sent_by = None
-                notification.status = NOTIFICATION_CREATED
-                dao_update_notification(notification)
-                raise
+
         else:
             try:
                 provider.send_sms(
@@ -83,7 +74,7 @@ def send_sms_to_provider(notification):
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-                update_notification_to_sending(notification, provider, notification.international)
+                update_notification_to_sending(notification, provider)
 
         current_app.logger.debug(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -145,13 +136,10 @@ def send_email_to_provider(notification):
         statsd_client.timing("email.total-time", delta_milliseconds)
 
 
-def update_notification_to_sending(notification, provider, international=False):
+def update_notification_to_sending(notification, provider):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
-    if international:
-        notification.status = NOTIFICATION_SENT
-    else:
-        notification.status = NOTIFICATION_SENDING
+    notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
     dao_update_notification(notification)
 
 
