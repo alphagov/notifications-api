@@ -319,7 +319,8 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     notification = create_notification(
         template=sample_email_template,
         to_field="john@smith.com",
-        key_type=key_type
+        key_type=key_type,
+        billable_units=0
     )
     sample_service.research_mode = research_mode
 

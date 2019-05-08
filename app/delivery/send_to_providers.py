@@ -90,9 +90,7 @@ def send_email_to_provider(notification):
         return
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE, notification.id)
-        current_app.logger.debug(
-            "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
-        )
+
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
         html_email = HTMLEmailTemplate(
@@ -107,11 +105,9 @@ def send_email_to_provider(notification):
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
-            reference = str(create_uuid())
-            notification.billable_units = 0
-            notification.reference = reference
+            notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
-            send_email_response(reference, notification.to)
+            send_email_response(notification.reference, notification.to)
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
