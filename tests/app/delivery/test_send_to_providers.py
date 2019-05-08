@@ -562,6 +562,25 @@ def test_should_update_billable_units_according_to_research_mode_and_key_type(
     assert sample_notification.billable_units == billable_units
 
 
+def test_should_set_notification_billable_units_and_provider_if_sending_to_provider_fails(
+    notify_db,
+    sample_service,
+    sample_notification,
+    mocker,
+):
+    mocker.patch('app.mmg_client.send_sms', side_effect=Exception())
+    mocker.patch('app.delivery.send_to_providers.dao_toggle_sms_provider')
+
+    sample_notification.billable_units = 0
+    assert sample_notification.sent_by is None
+
+    with pytest.raises(Exception):
+        send_to_providers.send_sms_to_provider(sample_notification)
+
+    assert sample_notification.billable_units == 1
+    assert sample_notification.sent_by == 'mmg'
+
+
 def test_should_send_sms_to_international_providers(
     restore_provider_details,
     sample_sms_template_with_html,

@@ -56,7 +56,7 @@ def send_sms_to_provider(notification):
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             notification.billable_units = 0
-            update_notification(notification, provider)
+            update_notification_to_sending(notification, provider)
             try:
                 send_sms_response(provider.get_name(), str(notification.id), notification.to)
             except HTTPError:
@@ -76,11 +76,14 @@ def send_sms_to_provider(notification):
                     sender=notification.reply_to_text
                 )
             except Exception as e:
+                notification.billable_units = template.fragment_count
+                notification.sent_by = provider.get_name()
+                dao_update_notification(notification)
                 dao_toggle_sms_provider(provider.name)
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-                update_notification(notification, provider, notification.international)
+                update_notification_to_sending(notification, provider, notification.international)
 
         current_app.logger.debug(
             "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
@@ -116,7 +119,7 @@ def send_email_to_provider(notification):
             reference = str(create_uuid())
             notification.billable_units = 0
             notification.reference = reference
-            update_notification(notification, provider)
+            update_notification_to_sending(notification, provider)
             send_email_response(reference, notification.to)
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
@@ -133,7 +136,7 @@ def send_email_to_provider(notification):
                 reply_to_address=validate_and_format_email_address(email_reply_to) if email_reply_to else None,
             )
             notification.reference = reference
-            update_notification(notification, provider)
+            update_notification_to_sending(notification, provider)
 
         current_app.logger.debug(
             "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
@@ -142,7 +145,7 @@ def send_email_to_provider(notification):
         statsd_client.timing("email.total-time", delta_milliseconds)
 
 
-def update_notification(notification, provider, international=False):
+def update_notification_to_sending(notification, provider, international=False):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
     if international:

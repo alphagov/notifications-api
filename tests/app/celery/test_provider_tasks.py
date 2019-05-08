@@ -117,6 +117,7 @@ def test_send_sms_should_switch_providers_on_provider_failure(sample_notificatio
     provider_to_use.return_value.send_sms.side_effect = Exception('Error')
     switch_provider_mock = mocker.patch('app.delivery.send_to_providers.dao_toggle_sms_provider')
     mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
+    mocker.patch('app.delivery.send_to_providers.update_notification_provider')
 
     deliver_sms(sample_notification.id)
 
