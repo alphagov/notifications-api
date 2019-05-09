@@ -156,7 +156,9 @@ This means that the first deployment of your app must happen manually.
 
 To do this:
 
-1. Ensure your code is backwards compatible
-1. From the root of this repo run `CF_APP=<APP_NAME> make <cf-space> cf-push`
+1. Run `cf target -s <cf-space>; cf v3-create-app <APP_NAME>`
+1. Repeat for each cf environment
 
 Once this is done, you can push your deployment changes to jenkins to have your app deployed on every deployment.
+
+To delete an unused app, repeat the steps in reverse order. After you are no longer scaling, deploying, or alerting on that box, it's safe to run `cf stop <APP_NAME>`. Then, wait for a minute to make sure all tasks have finished executing, and after one last check to make sure notify still works, delete with `cf delete <APP_NAME>`
