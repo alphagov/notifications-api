@@ -7,7 +7,7 @@ cffi==1.12.3
 celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
-flask-marshmallow==0.10.0
+flask-marshmallow==0.10.1
 Flask-Migrate==2.4.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.0.2
@@ -16,7 +16,7 @@ eventlet==0.24.1
 gunicorn==19.7.1  # pyup: ignore, >19.8 breaks eventlet patching
 iso8601==0.1.12
 jsonschema==3.0.1
-marshmallow-sqlalchemy==0.16.2
+marshmallow-sqlalchemy==0.16.3
 marshmallow==2.19.2
 psycopg2-binary==2.8.2
 PyJWT==1.7.1
@@ -40,12 +40,12 @@ alembic==1.0.10
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.1.0
-awscli==1.16.147
+awscli==1.16.155
 bcrypt==3.1.6
 billiard==3.3.0.23
 bleach==3.1.0
 boto3==1.6.16
-botocore==1.12.137
+botocore==1.12.145
 certifi==2019.3.9
 chardet==3.0.4
 Click==7.0
@@ -81,6 +81,6 @@ s3transfer==0.2.0
 six==1.12.0
 smartypants==2.0.1
 statsd==3.3.0
-urllib3==1.24.2
+urllib3==1.24.3
 webencodings==0.5.1
 Werkzeug==0.15.2
