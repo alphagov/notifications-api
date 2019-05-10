@@ -52,6 +52,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'letter_branding_id',
         'email_branding_id',
         'domains',
+        'request_to_go_live_notes',
     }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
@@ -64,6 +65,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['letter_branding_id'] is None
     assert response['email_branding_id'] is None
     assert response['domains'] == []
+    assert response['request_to_go_live_notes'] is None
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):

@@ -341,6 +341,7 @@ class Organisation(db.Model):
     agreement_signed_version = db.Column(db.Float, nullable=True)
     crown = db.Column(db.Boolean, nullable=True)
     organisation_type = db.Column(db.String(255), nullable=True)
+    request_to_go_live_notes = db.Column(db.Text)
 
     domains = db.relationship(
         'Domain',
@@ -376,6 +377,7 @@ class Organisation(db.Model):
             "domains": [
                 domain.domain for domain in self.domains
             ],
+            "request_to_go_live_notes": self.request_to_go_live_notes,
         }
 
 
