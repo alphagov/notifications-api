@@ -2491,6 +2491,27 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     assert not json_response[1]['updated_at']
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_verify_new_service_reply_to_email_address_should_send_verification_email(
+    client, sample_user, mocker, verify_reply_to_address_email_template
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = json.dumps({'email': 'reply-here@example.gov.uk'})
+    auth_header = create_authorization_header()
+    notify_service = verify_reply_to_address_email_template.service
+    response = client.post(
+        url_for('service.verify_new_service_reply_to_email_address'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201
+    notification = Notification.query.first()
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response["data"] == {"id": str(notification.id)}
+    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+    assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
+
+
 def test_add_service_reply_to_email_address(client, sample_service):
     data = json.dumps({"email_address": "new@reply.com", "is_default": True})
     response = client.post('/service/{}/email-reply-to'.format(sample_service.id),
