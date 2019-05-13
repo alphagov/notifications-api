@@ -19,7 +19,6 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    PRECOMPILED_LETTER,
     UPLOAD_DOCUMENT,
     PRIORITY,
     KEY_TYPE_TEST,
@@ -71,9 +70,8 @@ def post_precompiled_letter_notification():
 
     form = validate(request.get_json(), post_precompiled_letter_request)
 
-    # Check both permission to send letters and permission to send pre-compiled PDFs
+    # Check permission to send letters
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
-    check_service_has_permission(PRECOMPILED_LETTER, authenticated_service.permissions)
 
     check_rate_limiting(authenticated_service, api_user)
 

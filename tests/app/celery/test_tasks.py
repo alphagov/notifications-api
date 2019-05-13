@@ -41,7 +41,6 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     LETTER_TYPE,
     SMS_TYPE,
-    PRECOMPILED_LETTER
 )
 
 from tests.app import load_example_csv
@@ -1015,7 +1014,7 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
 
 @pytest.mark.parametrize('postage', ['first', 'second'])
 def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, notify_db_session, postage):
-    service = create_service(service_permissions=[LETTER_TYPE, PRECOMPILED_LETTER])
+    service = create_service(service_permissions=[LETTER_TYPE])
     template = sample_letter_template(service, postage=postage)
     letter_job = sample_letter_job(template)
 

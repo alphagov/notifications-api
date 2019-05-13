@@ -382,7 +382,7 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
     notify_user,
     mocker
 ):
-    sample_letter_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_letter_service = create_service(service_permissions=['letter'])
     mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf', return_value='test.pdf')
     data = {
@@ -421,25 +421,8 @@ def test_post_letter_notification_persists_notification_reply_to_text(
     assert notifications[0].reply_to_text == service_address
 
 
-def test_post_precompiled_letter_requires_permission(client, sample_service, notify_user, mocker):
-    mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
-    data = {
-        "reference": "letter-reference",
-        "content": "bGV0dGVyLWNvbnRlbnQ="
-    }
-    auth_header = create_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json['errors'][0]['message'] == 'Service is not allowed to send precompiled letters'
-
-
 def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_service = create_service(service_permissions=['letter'])
     mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
 
     data = {
@@ -467,7 +450,7 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
 def test_post_precompiled_letter_notification_returns_201(
     client, notify_user, mocker, notification_postage, expected_postage
 ):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_service = create_service(service_permissions=['letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
     mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     data = {
@@ -500,7 +483,7 @@ def test_post_precompiled_letter_notification_returns_201(
 
 
 def test_post_letter_notification_throws_error_for_invalid_postage(client, notify_user, mocker):
-    sample_service = create_service(service_permissions=['letter', 'precompiled_letter'])
+    sample_service = create_service(service_permissions=['letter'])
     data = {
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ=",
