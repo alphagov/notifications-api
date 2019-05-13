@@ -247,9 +247,6 @@ cf-deploy: scripts/statsd_exporter ## Deploys the app to Cloud Foundry
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	cf unbind-service notify-api-db-migration notify-db
-	cf unbind-service notify-api-db-migration notify-config
-	cf unbind-service notify-api-db-migration notify-aws
 	cf push notify-api-db-migration -f <(make -s CF_APP=notify-api-db-migration generate-manifest)
 	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
