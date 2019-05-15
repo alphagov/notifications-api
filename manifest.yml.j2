@@ -1,10 +1,9 @@
 {%- set app_vars = {
   'notify-api': {'NOTIFY_APP_NAME': 'api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
-      'preview': ['api.notify.works'],
-      'staging': ['api.staging-notify.works'],
-      'production': ['api.notifications.service.gov.uk'],
-    },
-    'healthcheck-endpoint': '/_status',
+      'preview': ['notify-api-preview.cloudapps.digital', 'api.notify.works'],
+      'staging': ['notify-api-staging.cloudapps.digital', 'api.staging-notify.works'],
+      'production': ['notify-api-production.cloudapps.digital', 'api.notifications.service.gov.uk'],
+    }
   },
   'notify-api-db-migration': {'NOTIFY_APP_NAME': 'api', 'instances': 0},
 
@@ -34,24 +33,24 @@ applications:
     memory: {{ app.get('memory', '1G') }}
     disk_quota: {{ app.get('disk_quota', '1G')}}
 
+    {% if 'routes' in app -%}
     routes:
-      {%- for route in app.get('routes', {}).get(environment, []) %}
+      {%- for route in app['routes'][environment] %}
       - route: {{ route }}
-      {%- endfor%}
+      {%- endfor -%}
+    {%- elif environment in app.get('local_statsd', []) -%}
+    health-check-type: none
+    routes:
       - route: {{ CF_APP }}-{{ environment }}.cloudapps.digital
-    {% if 'healthcheck-endpoint' in app %}
-    health-check-type: http
-    health-check-http-endpoint: {{ app['healthcheck-endpoint'] }}
-    {% else %}
-    health-check-type: process
+    {%- else -%}
+    health-check-type: none
+    no-route: true
     {% endif %}
 
     services:
       - notify-db
       - logit-ssl-syslog-drain
-      {% if environment in app.get('local_statsd', []) -%}
-      - notify-prometheus
-      {% endif %}
+      {% if environment in app.get('local_statsd', []) %}- notify-prometheus{% endif %}
 
     env:
       NOTIFY_APP_NAME: {{ app.get('NOTIFY_APP_NAME', CF_APP.replace('notify-', '')) }}

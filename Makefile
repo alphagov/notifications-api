@@ -231,18 +231,25 @@ cf-deploy: scripts/statsd_exporter ## Deploys the app to Cloud Foundry
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	@cf app --guid ${CF_APP} || exit 1
+	cf rename ${CF_APP} ${CF_APP}-rollback
+	cf push ${CF_APP} -f <(make -s generate-manifest)
+	cf scale -i $$(cf curl /v2/apps/$$(cf app --guid ${CF_APP}-rollback) | jq -r ".entity.instances" 2>/dev/null || echo "1") ${CF_APP}
+	cf stop ${CF_APP}-rollback
+	# sleep for 10 seconds to try and make sure that all worker threads (either web api or celery) have finished before we delete
+	# when we delete the DB is unbound from the app, which can cause "permission denied for relation" psycopg2 errors.
+	sleep 10
 
-	# cancel any existing deploys to ensure we can apply manifest (if a deploy is in progress you'll see ScaleDisabledDuringDeployment)
-	cf v3-cancel-zdt-push ${CF_APP} || true
-
-	cf v3-apply-manifest ${CF_APP} -f <(make -s generate-manifest)
-	cf v3-zdt-push ${CF_APP} --wait-for-deploy-complete  # fails after 5 mins if deploy doesn't work
-
+	# get the new GUID, and find all crash events for that. If there were any crashes we will abort the deploy.
+	[ $$(cf curl "/v2/events?q=type:app.crash&q=actee:$$(cf app --guid ${CF_APP})" | jq ".total_results") -eq 0 ]
+	cf delete -f ${CF_APP}-rollback
 
 .PHONY: cf-deploy-api-db-migration
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
+	cf unbind-service notify-api-db-migration notify-db
+	cf unbind-service notify-api-db-migration notify-config
+	cf unbind-service notify-api-db-migration notify-aws
 	cf push notify-api-db-migration -f <(make -s CF_APP=notify-api-db-migration generate-manifest)
 	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
 
@@ -253,7 +260,10 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 .PHONY: cf-rollback
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf v3-cancel-zdt-push ${CF_APP}
+	@cf app --guid ${CF_APP}-rollback || exit 1
+	@[ $$(cf curl /v2/apps/`cf app --guid ${CF_APP}-rollback` | jq -r ".entity.state") = "STARTED" ] || (echo "Error: rollback is not possible because ${CF_APP}-rollback is not in a started state" && exit 1)
+	cf delete -f ${CF_APP} || true
+	cf rename ${CF_APP}-rollback ${CF_APP}
 
 .PHONY: cf-push
 cf-push: scripts/statsd_exporter
