@@ -2495,12 +2495,13 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
 def test_verify_new_service_reply_to_email_address_should_send_verification_email(
     client, sample_user, mocker, verify_reply_to_address_email_template
 ):
+    service = create_service()
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({'email': 'reply-here@example.gov.uk'})
     auth_header = create_authorization_header()
     notify_service = verify_reply_to_address_email_template.service
     response = client.post(
-        url_for('service.verify_new_service_reply_to_email_address'),
+        url_for('service.verify_new_service_reply_to_email_address', service_id=service.id),
         data=data,
         headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -2510,6 +2511,21 @@ def test_verify_new_service_reply_to_email_address_should_send_verification_emai
     assert json_response["data"] == {"id": str(notification.id)}
     mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
+
+
+def test_verify_new_service_reply_to_email_address_doesnt_allow_duplicates(client, sample_user, mocker):
+    data = json.dumps({'email': 'reply-here@example.gov.uk'})
+    service = create_service()
+    create_reply_to_email(service, 'reply-here@example.gov.uk')
+    auth_header = create_authorization_header()
+    response = client.post(
+        url_for('service.verify_new_service_reply_to_email_address', service_id=service.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    assert response.json[
+        "message"
+    ] == "Your service already uses 'reply-here@example.gov.uk' as an email reply-to address."
 
 
 def test_add_service_reply_to_email_address(client, sample_service):
@@ -2523,6 +2539,20 @@ def test_add_service_reply_to_email_address(client, sample_service):
     results = ServiceEmailReplyTo.query.all()
     assert len(results) == 1
     assert json_resp['data'] == results[0].serialize()
+
+
+def test_add_service_reply_to_email_address_doesnt_allow_duplicates(client, sample_user, mocker):
+    data = json.dumps({"email_address": "reply-here@example.gov.uk", "is_default": True})
+    service = create_service()
+    create_reply_to_email(service, 'reply-here@example.gov.uk')
+    auth_header = create_authorization_header()
+    response = client.post('/service/{}/email-reply-to'.format(service.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    assert response.json[
+        "message"
+    ] == "Your service already uses 'reply-here@example.gov.uk' as an email reply-to address."
 
 
 def test_add_service_reply_to_email_address_can_add_multiple_addresses(client, sample_service):
@@ -2578,6 +2608,18 @@ def test_update_service_reply_to_email_address(client, sample_service):
     results = ServiceEmailReplyTo.query.all()
     assert len(results) == 1
     assert json_resp['data'] == results[0].serialize()
+
+
+def test_update_service_reply_to_email_address_doesnt_allow_duplicates(client, sample_user, mocker):
+    service = create_service()
+    original_reply_to = create_reply_to_email(service=service, email_address="some@email.com")
+    data = json.dumps({"email_address": "changed@reply.com", "is_default": True})
+    create_reply_to_email(service, 'changed@reply.com')
+    response = client.post('/service/{}/email-reply-to/{}'.format(service.id, original_reply_to.id),
+                           data=data,
+                           headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    assert response.status_code == 400
+    assert response.json["message"] == "Your service already uses 'changed@reply.com' as an email reply-to address."
 
 
 def test_update_service_reply_to_email_address_returns_400_when_no_default(client, sample_service):
