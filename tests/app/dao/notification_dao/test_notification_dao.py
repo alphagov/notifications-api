@@ -1523,6 +1523,25 @@ def test_dao_update_notifications_by_reference_set_returned_letter_status(sample
     assert Notification.query.get(notification.id).status == 'returned-letter'
 
 
+def test_dao_update_notifications_by_reference_updates_history_when_one_of_two_notifications_exists(
+     sample_letter_template
+):
+    notification1 = create_notification(template=sample_letter_template, reference='ref1')
+    notification2 = create_notification(template=sample_letter_template, reference='ref2')
+
+    Notification.query.filter_by(id=notification1.id).delete()
+    NotificationHistory.query.filter_by(id=notification2.id).delete()
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref1', 'ref2'],
+        update_dict={"status": "returned-letter"}
+    )
+
+    assert updated_count == 1
+    assert updated_history_count == 1
+    assert Notification.query.get(notification2.id).status == 'returned-letter'
+    assert NotificationHistory.query.get(notification1.id).status == 'returned-letter'
+
+
 def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template, notify_db):
     create_notification(template=sample_letter_template, reference='REF1')
     notification = dao_get_notification_by_reference('REF1')

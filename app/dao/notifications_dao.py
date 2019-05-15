@@ -526,7 +526,7 @@ def dao_update_notifications_by_reference(references, update_dict):
     )
 
     updated_history_count = 0
-    if updated_count == 0:
+    if updated_count != len(references):
         updated_history_count = NotificationHistory.query.filter(
             NotificationHistory.reference.in_(references)
         ).update(
