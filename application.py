@@ -8,5 +8,3 @@ from app import create_app
 application = Flask('app')
 
 create_app(application)
-
-1 / 0  # TODO: revert this change
