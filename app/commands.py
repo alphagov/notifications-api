@@ -10,7 +10,7 @@ import itertools
 from click_datetime import Datetime as click_dt
 from flask import current_app, json
 from notifications_utils.template import SMSMessageTemplate
-from psycopg2._psycopg import IntegrityError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from notifications_utils.statsd_decorators import statsd
 
