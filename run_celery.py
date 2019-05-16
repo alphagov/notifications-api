@@ -9,3 +9,5 @@ from app import notify_celery, create_app  # noqa
 application = Flask('delivery')
 create_app(application)
 application.app_context().push()
+
+1 / 0  # TODO: revert this change
