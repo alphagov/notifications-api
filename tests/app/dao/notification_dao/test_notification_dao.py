@@ -1473,12 +1473,11 @@ def test_dao_get_last_notification_added_for_job_id_no_job(sample_template, fake
 
 
 def test_dao_update_notifications_by_reference_updated_notifications(sample_template):
-    notification_0 = create_notification(template=sample_template, reference='noref')
-    notification_1 = create_notification(template=sample_template, reference='ref')
-    notification_2 = create_notification(template=sample_template, reference='ref')
+    notification_1 = create_notification(template=sample_template, reference='ref1')
+    notification_2 = create_notification(template=sample_template, reference='ref2')
 
     updated_count, updated_history_count = dao_update_notifications_by_reference(
-        references=['ref'],
+        references=['ref1', 'ref2'],
         update_dict={
             "status": "delivered",
             "billable_units": 2
@@ -1494,7 +1493,36 @@ def test_dao_update_notifications_by_reference_updated_notifications(sample_temp
 
     assert updated_history_count == 0
 
-    assert notification_0 == Notification.query.get(notification_0.id)
+
+def test_dao_update_notifications_by_reference_updates_history_some_notifications_exist(sample_template):
+    create_notification(template=sample_template, reference='ref1')
+    create_notification(template=sample_template, reference='ref2')
+    Notification.query.filter_by(reference='ref2').delete()
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref1', 'ref2'],
+        update_dict={
+            "status": "delivered",
+            "billable_units": 2
+        }
+    )
+    assert updated_count == 1
+    assert updated_history_count == 2
+
+
+def test_dao_update_notifications_by_reference_updates_history_no_notifications_exist(sample_template):
+    create_notification(template=sample_template, reference='ref1')
+    create_notification(template=sample_template, reference='ref2')
+    Notification.query.filter_by(reference='ref1').delete()
+    Notification.query.filter_by(reference='ref2').delete()
+    updated_count, updated_history_count = dao_update_notifications_by_reference(
+        references=['ref1', 'ref2'],
+        update_dict={
+            "status": "delivered",
+            "billable_units": 2
+        }
+    )
+    assert updated_count == 0
+    assert updated_history_count == 2
 
 
 def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db):
@@ -1524,7 +1552,7 @@ def test_dao_update_notifications_by_reference_set_returned_letter_status(sample
 
 
 def test_dao_update_notifications_by_reference_updates_history_when_one_of_two_notifications_exists(
-     sample_letter_template
+        sample_letter_template
 ):
     notification1 = create_notification(template=sample_letter_template, reference='ref1')
     notification2 = create_notification(template=sample_letter_template, reference='ref2')
