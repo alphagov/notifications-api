@@ -262,7 +262,7 @@ def test_toggle_sms_provider_switches_provider_stores_notify_user_id_in_history(
     assert old_provider_from_history.created_by_id == sample_user.id
 
 
-def test_can_get_all_provider_history(current_sms_provider):
+def test_can_get_all_provider_history(restore_provider_details, current_sms_provider):
     assert len(dao_get_provider_versions(current_sms_provider.id)) == 1
 
 
