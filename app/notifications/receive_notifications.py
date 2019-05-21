@@ -46,6 +46,10 @@ def receive_mmg_sms():
     if not service:
         # since this is an issue with our service <-> number mapping, or no inbound_sms service permission
         # we should still tell MMG that we received it successfully
+        current_app.logger.info(
+            'Inbound message received from MMG for number: {} which is not associated to a service'.format(
+                post_data['MSISDN'])
+        )
         return 'RECEIVED', 200
 
     statsd_client.incr('inbound.mmg.successful')
