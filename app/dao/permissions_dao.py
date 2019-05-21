@@ -38,6 +38,10 @@ class PermissionDAO(DAOClass):
         query = self.Meta.model.query.filter_by(user=user, service=service)
         query.delete()
 
+    def remove_user_service_permissions_for_all_services(self, user):
+        query = self.Meta.model.query.filter_by(user=user)
+        query.delete()
+
     def set_user_service_permission(self, user, service, permissions, _commit=False, replace=False):
         try:
             if replace:
@@ -58,6 +62,10 @@ class PermissionDAO(DAOClass):
     def get_permissions_by_user_id(self, user_id):
         return self.Meta.model.query.filter_by(user_id=user_id)\
                                     .join(Permission.service).filter_by(active=True).all()
+
+    def get_permissions_by_user_id_and_service_id(self, user_id, service_id):
+        return self.Meta.model.query.filter_by(user_id=user_id)\
+                                    .join(Permission.service).filter_by(active=True, id=service_id).all()
 
 
 permission_dao = PermissionDAO()

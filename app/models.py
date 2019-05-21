@@ -137,8 +137,14 @@ class User(db.Model):
     def check_password(self, password):
         return check_hash(password, self._password)
 
-    def get_permissions(self):
+    def get_permissions(self, service_id=None):
         from app.dao.permissions_dao import permission_dao
+
+        if service_id:
+            return [
+                x.permission for x in permission_dao.get_permissions_by_user_id_and_service_id(self.id, service_id)
+            ]
+
         retval = {}
         for x in permission_dao.get_permissions_by_user_id(self.id):
             service_id = str(x.service_id)

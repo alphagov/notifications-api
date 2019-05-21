@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import uuid
 
 from freezegun import freeze_time
 from sqlalchemy.exc import DataError
@@ -6,6 +7,7 @@ from sqlalchemy.orm.exc import NoResultFound
 import pytest
 
 from app import db
+from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from app.dao.users_dao import (
     save_model_user,
     save_user_attribute,
@@ -17,11 +19,14 @@ from app.dao.users_dao import (
     delete_codes_older_created_more_than_a_day_ago,
     update_user_password,
     count_user_verify_codes,
-    create_secret_code)
+    create_secret_code,
+    user_can_be_archived,
+    dao_archive_user,
+)
+from app.errors import InvalidRequest
+from app.models import EMAIL_AUTH_TYPE, User, VerifyCode
 
-from app.models import User, VerifyCode
-
-from tests.app.db import create_user
+from tests.app.db import create_permissions, create_service, create_template_folder, create_user
 
 
 @pytest.mark.parametrize('phone_number', [
@@ -168,3 +173,105 @@ def test_create_secret_code_different_subsequent_codes():
 def test_create_secret_code_returns_5_digits():
     code = create_secret_code()
     assert len(str(code)) == 5
+
+
+@freeze_time('2018-07-07 12:00:00')
+def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
+    sample_user.current_session_id = fake_uuid
+
+    # create 2 services for sample_user to be a member of (each with another active user)
+    service_1 = create_service(service_name='Service 1')
+    service_1_user = create_user(email='1@test.com')
+    service_1.users = [sample_user, service_1_user]
+    create_permissions(sample_user, service_1, 'manage_settings')
+    create_permissions(service_1_user, service_1, 'manage_settings', 'view_activity')
+
+    service_2 = create_service(service_name='Service 2')
+    service_2_user = create_user(email='2@test.com')
+    service_2.users = [sample_user, service_2_user]
+    create_permissions(sample_user, service_2, 'view_activity')
+    create_permissions(service_2_user, service_2, 'manage_settings')
+
+    # make sample_user an org member
+    sample_organisation.users = [sample_user]
+
+    # give sample_user folder permissions for a service_1 folder
+    folder = create_template_folder(service_1)
+    service_user = dao_get_service_user(sample_user.id, service_1.id)
+    service_user.folders = [folder]
+    dao_update_service_user(service_user)
+
+    dao_archive_user(sample_user)
+
+    assert sample_user.get_permissions() == {}
+    assert sample_user.services == []
+    assert sample_user.organisations == []
+    assert sample_user.auth_type == EMAIL_AUTH_TYPE
+    assert sample_user.email_address == '_archived_2018-07-07_notify@digital.cabinet-office.gov.uk'
+    assert sample_user.mobile_number is None
+    assert sample_user.current_session_id == uuid.UUID('00000000-0000-0000-0000-000000000000')
+    assert sample_user.state == 'inactive'
+    assert not sample_user.check_password('password')
+
+
+def test_user_can_be_archived_if_they_do_not_belong_to_any_services(sample_user):
+    assert sample_user.services == []
+    assert user_can_be_archived(sample_user)
+
+
+def test_user_can_be_archived_if_they_do_not_belong_to_any_active_services(sample_user, sample_service):
+    sample_user.services = [sample_service]
+    sample_service.active = False
+
+    assert len(sample_user.services) == 1
+    assert user_can_be_archived(sample_user)
+
+
+def test_user_can_be_archived_if_the_other_service_members_have_the_manage_settings_permission(sample_service):
+    user_1 = create_user(email='1@test.com')
+    user_2 = create_user(email='2@test.com')
+    user_3 = create_user(email='3@test.com')
+
+    sample_service.users = [user_1, user_2, user_3]
+
+    create_permissions(user_1, sample_service, 'manage_settings')
+    create_permissions(user_2, sample_service, 'manage_settings', 'view_activity')
+    create_permissions(user_3, sample_service, 'manage_settings', 'send_emails', 'send_letters', 'send_texts')
+
+    assert len(sample_service.users) == 3
+    assert user_can_be_archived(user_1)
+
+
+def test_dao_archive_user_raises_error_if_user_cannot_be_archived(sample_user, mocker):
+    mocker.patch('app.dao.users_dao.user_can_be_archived', return_value=False)
+
+    with pytest.raises(InvalidRequest):
+        dao_archive_user(sample_user.id)
+
+
+def test_user_cannot_be_archived_if_they_belong_to_a_service_with_no_other_active_users(sample_service):
+    active_user = create_user(email='1@test.com')
+    pending_user = create_user(email='2@test.com', state='pending')
+    inactive_user = create_user(email='3@test.com', state='inactive')
+
+    sample_service.users = [active_user, pending_user, inactive_user]
+
+    assert len(sample_service.users) == 3
+    assert not user_can_be_archived(active_user)
+
+
+def test_user_cannot_be_archived_if_the_other_service_members_do_not_have_the_manage_setting_permission(
+    sample_service,
+):
+    active_user = create_user(email='1@test.com')
+    pending_user = create_user(email='2@test.com')
+    inactive_user = create_user(email='3@test.com')
+
+    sample_service.users = [active_user, pending_user, inactive_user]
+
+    create_permissions(active_user, sample_service, 'manage_settings')
+    create_permissions(pending_user, sample_service, 'view_activity')
+    create_permissions(inactive_user, sample_service, 'send_emails', 'send_letters', 'send_texts')
+
+    assert len(sample_service.users) == 3
+    assert not user_can_be_archived(active_user)
