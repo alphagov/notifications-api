@@ -164,14 +164,10 @@ def update_notification_status_by_reference(reference, status):
 
 
 @statsd(namespace="dao")
+@transactional
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     db.session.add(notification)
-    if _should_record_notification_in_history_table(notification):
-        notification_history = NotificationHistory.query.get(notification.id)
-        notification_history.update_from_original(notification)
-        db.session.add(notification_history)
-    db.session.commit()
 
 
 @statsd(namespace="dao")
@@ -529,12 +525,14 @@ def dao_update_notifications_by_reference(references, update_dict):
         synchronize_session=False
     )
 
-    updated_history_count = NotificationHistory.query.filter(
-        NotificationHistory.reference.in_(references)
-    ).update(
-        update_dict,
-        synchronize_session=False
-    )
+    updated_history_count = 0
+    if updated_count != len(references):
+        updated_history_count = NotificationHistory.query.filter(
+            NotificationHistory.reference.in_(references)
+        ).update(
+            update_dict,
+            synchronize_session=False
+        )
 
     return updated_count, updated_history_count
 

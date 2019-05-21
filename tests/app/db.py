@@ -211,7 +211,6 @@ def create_notification(
         scheduled_for=None,
         normalised_to=None,
         one_off=False,
-        sms_sender_id=None,
         reply_to_text=None,
         created_by_id=None,
         postage=None

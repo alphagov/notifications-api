@@ -313,8 +313,7 @@ def test_send_sms_should_use_service_sms_sender(
     mocker.patch('app.mmg_client.send_sms')
 
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456', is_default=False)
-    db_notification = create_notification(template=sample_template, sms_sender_id=sms_sender.id,
-                                          reply_to_text=sms_sender.sms_sender)
+    db_notification = create_notification(template=sample_template, reply_to_text=sms_sender.sms_sender)
 
     send_to_providers.send_sms_to_provider(
         db_notification,
