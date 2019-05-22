@@ -104,6 +104,13 @@ function start_logs_tail {
   echo "tail pid: ${LOGS_TAIL_PID}"
 }
 
+function start_statsd_exporter {
+  echo "Starting statsd exporter..."
+  exec ./scripts/statsd_exporter --web.listen-address=":${PORT}" --statsd.listen-udp=":8125" --statsd.mapping-config=statsd_mapping.yml &
+  STATSD_EXPORTER_PID=$!
+  echo "Statsd exporter pid: ${STATSD_EXPORTER_PID}"
+}
+
 function ensure_celery_is_running {
   if [ "${APP_PIDS}" = "" ]; then
     echo "There are no celery processes running, this container is bad"
@@ -119,6 +126,7 @@ function ensure_celery_is_running {
     echo "Killing awslogs_agent and tail"
     kill -9 ${AWSLOGS_AGENT_PID}
     kill -9 ${LOGS_TAIL_PID}
+    kill -9 ${STATSD_EXPORTER_PID}
 
     exit 1
   fi
@@ -135,6 +143,9 @@ function run {
     done
     kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
     kill -0 ${LOGS_TAIL_PID} 2&>/dev/null || start_logs_tail
+    if [ "${STATSD_HOST}" == "localhost" ]; then
+        kill -0 ${STATSD_EXPORTER_PID} 2&>/dev/null || start_statsd_exporter
+    fi
     sleep 1
   done
 }
@@ -146,6 +157,9 @@ check_params
 trap "on_exit" EXIT
 
 configure_aws_logs
+if [ "${STATSD_HOST}" == "localhost" ]; then
+    start_statsd_exporter
+fi
 
 # The application has to start first!
 start_application "$@"
