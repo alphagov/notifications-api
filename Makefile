@@ -199,10 +199,7 @@ clean-docker-containers: ## Clean up any remaining docker containers
 
 .PHONY: clean
 clean:
-	rm -rf node_modules cache target venv .coverage build tests/.cache scripts/statsd_exporter
-
-scripts/statsd_exporter:
-	curl -sSL https://github.com/prometheus/statsd_exporter/releases/download/v0.9.0/statsd_exporter-0.9.0.linux-amd64.tar.gz | tar zx --strip-components=1 -C scripts/ statsd_exporter-0.9.0.linux-amd64/statsd_exporter
+	rm -rf node_modules cache target venv .coverage build tests/.cache
 
 .PHONY: cf-login
 cf-login: ## Log in to Cloud Foundry
@@ -226,7 +223,7 @@ generate-manifest:
 	    <(${DECRYPT_CMD} ${NOTIFY_CREDENTIALS}/credentials/${CF_SPACE}/paas/environment-variables.gpg) 2>&1
 
 .PHONY: cf-deploy
-cf-deploy: scripts/statsd_exporter ## Deploys the app to Cloud Foundry
+cf-deploy: ## Deploys the app to Cloud Foundry
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
@@ -256,7 +253,7 @@ cf-rollback: ## Rollbacks the app to the previous release
 	cf v3-cancel-zdt-push ${CF_APP}
 
 .PHONY: cf-push
-cf-push: scripts/statsd_exporter
+cf-push:
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	cf push ${CF_APP} -f <(make -s generate-manifest)
