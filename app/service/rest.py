@@ -651,7 +651,7 @@ def get_email_reply_to_address(service_id, reply_to_id):
 
 
 @service_blueprint.route('/<uuid:service_id>/email-reply-to/verify', methods=['POST'])
-def verify_new_service_reply_to_email_address(service_id):
+def verify_reply_to_email_address(service_id):
     email_address, errors = email_data_request_schema.load(request.get_json())
     check_if_reply_to_address_already_in_use(service_id, email_address["email"])
     template = dao_get_template_by_id(current_app.config['REPLY_TO_EMAIL_ADDRESS_VERIFICATION_TEMPLATE_ID'])
@@ -690,7 +690,6 @@ def update_service_reply_to_email_address(service_id, reply_to_email_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
-    check_if_reply_to_address_already_in_use(service_id, form['email_address'])
     new_reply_to = update_reply_to_email_address(service_id=service_id,
                                                  reply_to_id=reply_to_email_id,
                                                  email_address=form['email_address'],
@@ -910,5 +909,5 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
     existing_reply_to_addresses = dao_get_reply_to_by_service_id(service_id)
     if email_address in [i.email_address for i in existing_reply_to_addresses]:
         raise InvalidRequest(
-            "Your service already uses '{}' as an email reply-to address.".format(email_address), status_code=400
+            "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=400
         )
