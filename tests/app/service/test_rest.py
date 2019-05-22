@@ -2491,7 +2491,6 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
     assert not json_response[1]['updated_at']
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
 def test_verify_reply_to_email_address_should_send_verification_email(
     admin_request, notify_db, notify_db_session, mocker, verify_reply_to_address_email_template
 ):
@@ -2523,7 +2522,7 @@ def test_verify_reply_to_email_address_doesnt_allow_duplicates(admin_request, no
         _data=data,
         _expected_status=400
     )
-    assert response["message"] == "Your service already uses 'reply-here@example.gov.uk' as an email reply-to address."
+    assert response["message"] == "Your service already uses ‘reply-here@example.gov.uk’ as an email reply-to address."
 
 
 def test_add_service_reply_to_email_address(admin_request, sample_service):
@@ -2552,7 +2551,7 @@ def test_add_service_reply_to_email_address_doesnt_allow_duplicates(
         _data=data,
         _expected_status=400
     )
-    assert response["message"] == "Your service already uses 'reply-here@example.gov.uk' as an email reply-to address."
+    assert response["message"] == "Your service already uses ‘reply-here@example.gov.uk’ as an email reply-to address."
 
 
 def test_add_service_reply_to_email_address_can_add_multiple_addresses(admin_request, sample_service):
