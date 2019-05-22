@@ -17,6 +17,7 @@ from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import (desc, func, asc)
 from sqlalchemy.orm import joinedload
+from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
 from sqlalchemy.dialects.postgresql import insert
@@ -585,9 +586,16 @@ def dao_get_notification_by_reference(reference):
 
 @statsd(namespace="dao")
 def dao_get_notification_history_by_reference(reference):
-    return NotificationHistory.query.filter(
-        NotificationHistory.reference == reference
-    ).one()
+    try:
+        # This try except is necessary because in test keys and research mode does not create notification history.
+        # Otherwise we could just search for the NotificationHistory object
+        return Notification.query.filter(
+            Notification.reference == reference
+        ).one()
+    except NoResultFound:
+        return NotificationHistory.query.filter(
+            NotificationHistory.reference == reference
+        ).one()
 
 
 @statsd(namespace="dao")
