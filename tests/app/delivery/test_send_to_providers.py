@@ -243,28 +243,6 @@ def test_should_leave_as_created_if_fake_callback_function_fails(sample_notifica
     assert sample_notification.sent_by is None
 
 
-@pytest.mark.parametrize('research_mode,key_type', [
-    (True, KEY_TYPE_NORMAL),
-    (False, KEY_TYPE_TEST)
-])
-def test_should_set_billable_units_to_zero_in_research_mode_or_test_key(
-        notify_db, sample_service, sample_notification, mocker, research_mode, key_type):
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.send_sms_response')
-
-    if research_mode:
-        sample_service.research_mode = True
-        notify_db.session.add(sample_service)
-        notify_db.session.commit()
-    sample_notification.key_type = key_type
-
-    send_to_providers.send_sms_to_provider(
-        sample_notification
-    )
-    assert notifications_dao.get_notification_by_id(sample_notification.id).billable_units == 0
-
-
 def test_should_not_send_to_provider_when_status_is_not_created(
     sample_template,
     mocker
@@ -340,7 +318,8 @@ def test_send_email_to_provider_should_call_research_mode_task_response_task_if_
     notification = create_notification(
         template=sample_email_template,
         to_field="john@smith.com",
-        key_type=key_type
+        key_type=key_type,
+        billable_units=0
     )
     sample_service.research_mode = research_mode
 
@@ -513,19 +492,22 @@ def test_get_logo_url_works_for_different_environments(base_url, expected_url):
     assert logo_url == expected_url
 
 
-def test_should_not_set_billable_units_if_research_mode(notify_db, sample_service, sample_notification, mocker):
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.send_sms_response')
-
+def test_should_not_update_notification_if_research_mode_on_exception(
+        sample_service, sample_notification, mocker
+):
+    mocker.patch('app.delivery.send_to_providers.send_sms_response', side_effect=Exception())
+    update_mock = mocker.patch('app.delivery.send_to_providers.update_notification_to_sending')
     sample_service.research_mode = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
+    sample_notification.billable_units = 0
 
-    send_to_providers.send_sms_to_provider(
-        sample_notification
-    )
+    with pytest.raises(Exception):
+        send_to_providers.send_sms_to_provider(
+            sample_notification
+        )
+
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
+    assert not update_mock.called
 
 
 @pytest.mark.parametrize('research_mode,key_type, billable_units', [
@@ -537,33 +519,26 @@ def test_should_not_set_billable_units_if_research_mode(notify_db, sample_servic
     (False, KEY_TYPE_TEAM, 1)
 ])
 def test_should_update_billable_units_according_to_research_mode_and_key_type(
-    notify_db,
-    sample_service,
-    sample_notification,
+    sample_template,
     mocker,
     research_mode,
     key_type,
     billable_units
 ):
+    notification = create_notification(template=sample_template, billable_units=0, status='created', key_type=key_type)
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     if research_mode:
-        sample_service.research_mode = True
-        notify_db.session.add(sample_service)
-        notify_db.session.commit()
-
-    sample_notification.key_type = key_type
+        sample_template.service.research_mode = True
 
     send_to_providers.send_sms_to_provider(
-        sample_notification
+        notification
     )
-    assert sample_notification.billable_units == billable_units
+    assert notification.billable_units == billable_units
 
 
-def test_should_set_notification_billable_units_and_provider_if_sending_to_provider_fails(
-    notify_db,
-    sample_service,
+def test_should_set_notification_billable_units_if_sending_to_provider_fails(
     sample_notification,
     mocker,
 ):
@@ -577,7 +552,6 @@ def test_should_set_notification_billable_units_and_provider_if_sending_to_provi
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
-    assert sample_notification.sent_by == 'mmg'
     assert mock_toggle_provider.called
 
 
@@ -602,7 +576,7 @@ def test_should_send_sms_to_international_providers(
 
     db_notification_international = create_notification(
         template=sample_sms_template_with_html,
-        to_field="+447234123111",
+        to_field="+6011-17224412",
         personalisation={"name": "Jo"},
         status='created',
         international=True,
@@ -628,7 +602,7 @@ def test_should_send_sms_to_international_providers(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to="447234123111",
+        to="601117224412",
         content=ANY,
         reference=str(db_notification_international.id),
         sender=current_app.config['FROM_NUMBER']
@@ -641,48 +615,6 @@ def test_should_send_sms_to_international_providers(
     assert notification_uk.sent_by == 'firetext'
     assert notification_int.status == 'sent'
     assert notification_int.sent_by == 'mmg'
-
-
-def test_should_send_international_sms_with_formatted_phone_number(
-    notify_db,
-    sample_template,
-    mocker
-):
-    notification = create_notification(
-        template=sample_template,
-        to_field="+6011-17224412",
-        international=True
-    )
-
-    send_notification_mock = mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.send_sms_response')
-
-    send_to_providers.send_sms_to_provider(
-        notification
-    )
-
-    assert send_notification_mock.called is True
-
-
-def test_should_set_international_phone_number_to_sent_status(
-    notify_db,
-    sample_template,
-    mocker
-):
-    notification = create_notification(
-        template=sample_template,
-        to_field="+6011-17224412",
-        international=True
-    )
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.delivery.send_to_providers.send_sms_response')
-
-    send_to_providers.send_sms_to_provider(
-        notification
-    )
-
-    assert notification.status == 'sent'
 
 
 @pytest.mark.parametrize('sms_sender, expected_sender, prefix_sms, expected_content', [

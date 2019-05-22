@@ -7,7 +7,6 @@ from notifications_utils.recipients import (
     validate_and_format_email_address
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
-from requests.exceptions import HTTPError
 
 from app import clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
@@ -26,7 +25,6 @@ from app.models import (
     BRANDING_BOTH,
     BRANDING_ORG_BANNER,
     EMAIL_TYPE,
-    NOTIFICATION_CREATED,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENT,
     NOTIFICATION_SENDING
@@ -42,9 +40,7 @@ def send_sms_to_provider(notification):
 
     if notification.status == 'created':
         provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
-        current_app.logger.debug(
-            "Starting sending SMS {} to provider at {}".format(notification.id, datetime.utcnow())
-        )
+
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
 
         template = SMSMessageTemplate(
@@ -55,18 +51,9 @@ def send_sms_to_provider(notification):
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
-            notification.billable_units = 0
+            send_sms_response(provider.get_name(), str(notification.id), notification.to)
             update_notification_to_sending(notification, provider)
-            try:
-                send_sms_response(provider.get_name(), str(notification.id), notification.to)
-            except HTTPError:
-                # when we retry, we only do anything if the notification is in created - it's currently in sending,
-                # so set it back so that we actually attempt the callback again
-                notification.sent_at = None
-                notification.sent_by = None
-                notification.status = NOTIFICATION_CREATED
-                dao_update_notification(notification)
-                raise
+
         else:
             try:
                 provider.send_sms(
@@ -77,17 +64,13 @@ def send_sms_to_provider(notification):
                 )
             except Exception as e:
                 notification.billable_units = template.fragment_count
-                notification.sent_by = provider.get_name()
                 dao_update_notification(notification)
                 dao_toggle_sms_provider(provider.name)
                 raise e
             else:
                 notification.billable_units = template.fragment_count
-                update_notification_to_sending(notification, provider, notification.international)
+                update_notification_to_sending(notification, provider)
 
-        current_app.logger.debug(
-            "SMS {} sent to provider {} at {}".format(notification.id, provider.get_name(), notification.sent_at)
-        )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("sms.total-time", delta_milliseconds)
 
@@ -99,9 +82,7 @@ def send_email_to_provider(notification):
         return
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE, notification.id)
-        current_app.logger.debug(
-            "Starting sending EMAIL {} to provider at {}".format(notification.id, datetime.utcnow())
-        )
+
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
         html_email = HTMLEmailTemplate(
@@ -116,11 +97,9 @@ def send_email_to_provider(notification):
         )
 
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
-            reference = str(create_uuid())
-            notification.billable_units = 0
-            notification.reference = reference
+            notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
-            send_email_response(reference, notification.to)
+            send_email_response(notification.reference, notification.to)
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
@@ -138,20 +117,14 @@ def send_email_to_provider(notification):
             notification.reference = reference
             update_notification_to_sending(notification, provider)
 
-        current_app.logger.debug(
-            "Email {} sent to provider at {}".format(notification.id, notification.sent_at)
-        )
         delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
         statsd_client.timing("email.total-time", delta_milliseconds)
 
 
-def update_notification_to_sending(notification, provider, international=False):
+def update_notification_to_sending(notification, provider):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
-    if international:
-        notification.status = NOTIFICATION_SENT
-    else:
-        notification.status = NOTIFICATION_SENDING
+    notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
     dao_update_notification(notification)
 
 
