@@ -69,20 +69,10 @@ function start_aws_logs_agent {
   echo "AWS logs agent pid: ${AWSLOGS_AGENT_PID}"
 }
 
-function start_statsd_exporter {
-  echo "Starting statsd exporter..."
-  exec ./scripts/statsd_exporter --web.listen-address=":${PORT}" --statsd.listen-udp=":8125" --statsd.mapping-config=statsd_mapping.yml &
-  STATSD_EXPORTER_PID=$!
-  echo "Statsd exporter pid: ${STATSD_EXPORTER_PID}"
-}
-
 function run {
   while true; do
     kill -0 ${APP_PID} 2&>/dev/null || break
     kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
-    if [ "${STATSD_HOST}" == "localhost" ]; then
-        kill -0 ${STATSD_EXPORTER_PID} 2&>/dev/null || start_statsd_exporter
-    fi
     sleep 1
   done
 }
@@ -94,9 +84,6 @@ check_params
 trap "on_exit" EXIT
 
 configure_aws_logs
-if [ "${STATSD_HOST}" == "localhost" ]; then
-    start_statsd_exporter
-fi
 
 # The application has to start first!
 start_application "$@"
