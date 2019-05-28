@@ -12,6 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app.config import QueueNames
 from app.dao import notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.date_util import get_financial_year
@@ -77,13 +78,17 @@ from app.dao.service_letter_contact_dao import (
     add_letter_contact_for_service,
     update_letter_contact
 )
+from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
 from app.errors import (
     InvalidRequest,
     register_errors
 )
 from app.letters.utils import letter_print_day
-from app.models import LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service, EmailBranding, LetterBranding
+from app.models import (
+    KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service, EmailBranding, LetterBranding
+)
+from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.service_data_retention_schema import (
@@ -103,7 +108,8 @@ from app.schemas import (
     api_key_schema,
     notification_with_template_schema,
     notifications_filter_schema,
-    detailed_service_schema
+    detailed_service_schema,
+    email_data_request_schema
 )
 from app.user.users_schema import post_set_permissions_schema
 from app.utils import pagination_links
@@ -644,11 +650,35 @@ def get_email_reply_to_address(service_id, reply_to_id):
     return jsonify(result.serialize()), 200
 
 
+@service_blueprint.route('/<uuid:service_id>/email-reply-to/verify', methods=['POST'])
+def verify_reply_to_email_address(service_id):
+    email_address, errors = email_data_request_schema.load(request.get_json())
+    check_if_reply_to_address_already_in_use(service_id, email_address["email"])
+    template = dao_get_template_by_id(current_app.config['REPLY_TO_EMAIL_ADDRESS_VERIFICATION_TEMPLATE_ID'])
+    notify_service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=email_address["email"],
+        service=notify_service,
+        personalisation='',
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=notify_service.get_default_reply_to_email_address()
+    )
+
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+
+    return jsonify(data={"id": saved_notification.id}), 201
+
+
 @service_blueprint.route('/<uuid:service_id>/email-reply-to', methods=['POST'])
 def add_service_reply_to_email_address(service_id):
     # validate the service exists, throws ResultNotFound exception.
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_email_reply_to_request)
+    check_if_reply_to_address_already_in_use(service_id, form['email_address'])
     new_reply_to = add_reply_to_email_address_for_service(service_id=service_id,
                                                           email_address=form['email_address'],
                                                           is_default=form.get('is_default', True))
@@ -873,3 +903,11 @@ def check_request_args(request):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     return service_id, name, email_from
+
+
+def check_if_reply_to_address_already_in_use(service_id, email_address):
+    existing_reply_to_addresses = dao_get_reply_to_by_service_id(service_id)
+    if email_address in [i.email_address for i in existing_reply_to_addresses]:
+        raise InvalidRequest(
+            "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=400
+        )

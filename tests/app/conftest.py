@@ -952,6 +952,20 @@ def password_reset_email_template(notify_db,
 
 
 @pytest.fixture(scope='function')
+def verify_reply_to_address_email_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='REPLY_TO_EMAIL_ADDRESS_VERIFICATION_TEMPLATE_ID',
+        content="Hi,This address has been provided as the reply-to email address so we are verifying if it's working",
+        subject='Your GOV.UK Notify reply-to email address',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
 def team_member_email_edit_template(notify_db, notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)
 
