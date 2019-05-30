@@ -4,16 +4,16 @@ import pytest
 from flask import json
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db
 from app.dao.notifications_dao import get_notification_by_id
-from app.models import Complaint, NotificationHistory, Notification
+from app.models import Complaint
 from app.notifications.notifications_ses_callback import handle_complaint
 
 from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.db import (
     create_notification, ses_complaint_callback_malformed_message_id,
     ses_complaint_callback_with_missing_complaint_type,
-    ses_complaint_callback
+    ses_complaint_callback,
+    create_notification_history
 )
 
 
@@ -56,8 +56,6 @@ def test_handle_complaint_does_raise_exception_if_notification_not_found(notify_
 
 def test_process_ses_results_in_complaint_if_notification_history_does_not_exist(sample_email_template):
     notification = create_notification(template=sample_email_template, reference='ref1')
-    NotificationHistory.query.filter_by(id=notification.id).delete()
-    db.session.commit()
     handle_complaint(json.loads(ses_complaint_callback()['Message']))
     complaints = Complaint.query.all()
     assert len(complaints) == 1
@@ -65,9 +63,7 @@ def test_process_ses_results_in_complaint_if_notification_history_does_not_exist
 
 
 def test_process_ses_results_in_complaint_if_notification_does_not_exist(sample_email_template):
-    notification = create_notification(template=sample_email_template, reference='ref1')
-    Notification.query.filter_by(id=notification.id).delete()
-    db.session.commit()
+    notification = create_notification_history(template=sample_email_template, reference='ref1')
     handle_complaint(json.loads(ses_complaint_callback()['Message']))
     complaints = Complaint.query.all()
     assert len(complaints) == 1

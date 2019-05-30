@@ -73,27 +73,24 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
         reply_to_text=sample_template.service.get_default_sms_sender())
 
     assert Notification.query.get(notification.id) is not None
-    assert NotificationHistory.query.get(notification.id) is not None
 
     notification_from_db = Notification.query.one()
-    notification_history_from_db = NotificationHistory.query.one()
 
-    assert notification_from_db.id == notification_history_from_db.id
-    assert notification_from_db.template_id == notification_history_from_db.template_id
-    assert notification_from_db.template_version == notification_history_from_db.template_version
-    assert notification_from_db.api_key_id == notification_history_from_db.api_key_id
-    assert notification_from_db.key_type == notification_history_from_db.key_type
-    assert notification_from_db.key_type == notification_history_from_db.key_type
-    assert notification_from_db.billable_units == notification_history_from_db.billable_units
-    assert notification_from_db.notification_type == notification_history_from_db.notification_type
-    assert notification_from_db.created_at == notification_history_from_db.created_at
+    assert notification_from_db.id == notification.id
+    assert notification_from_db.template_id == notification.template_id
+    assert notification_from_db.template_version == notification.template_version
+    assert notification_from_db.api_key_id == notification.api_key_id
+    assert notification_from_db.key_type == notification.key_type
+    assert notification_from_db.key_type == notification.key_type
+    assert notification_from_db.billable_units == notification.billable_units
+    assert notification_from_db.notification_type == notification.notification_type
+    assert notification_from_db.created_at == notification.created_at
     assert not notification_from_db.sent_at
-    assert not notification_history_from_db.sent_at
-    assert notification_from_db.updated_at == notification_history_from_db.updated_at
-    assert notification_from_db.status == notification_history_from_db.status
-    assert notification_from_db.reference == notification_history_from_db.reference
-    assert notification_from_db.client_reference == notification_history_from_db.client_reference
-    assert notification_from_db.created_by_id == notification_history_from_db.created_by_id
+    assert notification_from_db.updated_at == notification.updated_at
+    assert notification_from_db.status == notification.status
+    assert notification_from_db.reference == notification.reference
+    assert notification_from_db.client_reference == notification.client_reference
+    assert notification_from_db.created_by_id == notification.created_by_id
     assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
 
     mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
@@ -187,7 +184,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
         created_by_id=sample_job.created_by_id
     )
     assert Notification.query.count() == 1
-    assert NotificationHistory.query.count() == 1
+    assert NotificationHistory.query.count() == 0
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.id == n_id
     persisted_notification.job_id == sample_job.id

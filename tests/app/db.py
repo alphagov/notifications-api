@@ -55,6 +55,7 @@ from app.models import (
     TemplateFolder,
     LetterBranding,
     Domain,
+    NotificationHistory
 )
 
 
@@ -281,6 +282,74 @@ def create_notification(
         dao_created_scheduled_notification(scheduled_notification)
 
     return notification
+
+
+def create_notification_history(
+        template=None,
+        job=None,
+        job_row_number=None,
+        status='created',
+        reference=None,
+        created_at=None,
+        sent_at=None,
+        updated_at=None,
+        billable_units=1,
+        api_key=None,
+        key_type=KEY_TYPE_NORMAL,
+        sent_by=None,
+        client_reference=None,
+        rate_multiplier=None,
+        international=False,
+        phone_prefix=None,
+        created_by_id=None,
+        postage=None
+):
+    assert job or template
+    if job:
+        template = job.template
+
+    if created_at is None:
+        created_at = datetime.utcnow()
+
+    if status != 'created':
+        sent_at = sent_at or datetime.utcnow()
+        updated_at = updated_at or datetime.utcnow()
+
+    if template.template_type == 'letter' and postage is None:
+        postage = 'second'
+
+    data = {
+        'id': uuid.uuid4(),
+        'job_id': job and job.id,
+        'job': job,
+        'service_id': template.service.id,
+        'service': template.service,
+        'template_id': template.id,
+        'template_version': template.version,
+        'status': status,
+        'reference': reference,
+        'created_at': created_at,
+        'sent_at': sent_at,
+        'billable_units': billable_units,
+        'notification_type': template.template_type,
+        'api_key': api_key,
+        'api_key_id': api_key and api_key.id,
+        'key_type': api_key.key_type if api_key else key_type,
+        'sent_by': sent_by,
+        'updated_at': updated_at,
+        'client_reference': client_reference,
+        'job_row_number': job_row_number,
+        'rate_multiplier': rate_multiplier,
+        'international': international,
+        'phone_prefix': phone_prefix,
+        'created_by_id': created_by_id,
+        'postage': postage
+    }
+    notification_history = NotificationHistory(**data)
+    db.session.add(notification_history)
+    db.session.commit()
+
+    return notification_history
 
 
 def create_job(

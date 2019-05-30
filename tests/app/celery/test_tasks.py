@@ -14,7 +14,6 @@ from notifications_utils.columns import Row
 
 from app import (
     DATETIME_FORMAT,
-    db,
     encryption
 )
 from app.celery import provider_tasks
@@ -60,6 +59,7 @@ from tests.app.db import (
     create_user,
     create_reply_to_email,
     create_service_with_defined_sms_sender,
+    create_notification_history
 )
 from tests.conftest import set_config_values
 
@@ -1601,11 +1601,9 @@ def test_process_returned_letters_list(sample_letter_template):
 def test_process_returned_letters_list_updates_history_if_notification_is_already_purged(
         sample_letter_template
 ):
-    create_notification(sample_letter_template, reference='ref1')
-    create_notification(sample_letter_template, reference='ref2')
+    create_notification_history(sample_letter_template, reference='ref1')
+    create_notification_history(sample_letter_template, reference='ref2')
 
-    Notification.query.delete()
-    db.session.commit()
     process_returned_letters_list(['ref1', 'ref2', 'unknown-ref'])
 
     notifications = NotificationHistory.query.all()
