@@ -378,6 +378,7 @@ def insert_update_notification_history(notification_type, date_to_delete_from, s
     stmt = stmt.on_conflict_do_update(
         constraint="notification_history_pkey",
         set_={"notification_status": stmt.excluded.status,
+              "reference": stmt.excluded.reference,
               "billable_units": stmt.excluded.billable_units,
               "updated_at": stmt.excluded.updated_at,
               "sent_at": stmt.excluded.sent_at,
