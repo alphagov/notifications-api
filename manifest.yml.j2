@@ -4,7 +4,7 @@
       'staging': ['api.staging-notify.works'],
       'production': ['api.notifications.service.gov.uk'],
     },
-    'healthcheck-endpoint': '/_status?simple=true',
+    'health-check-type': 'port',
   },
   'notify-api-db-migration': {'NOTIFY_APP_NAME': 'api', 'instances': 0},
 
@@ -39,12 +39,7 @@ applications:
       - route: {{ route }}
       {%- endfor%}
       - route: {{ CF_APP }}-{{ environment }}.cloudapps.digital
-    {% if 'healthcheck-endpoint' in app %}
-    health-check-type: http
-    health-check-http-endpoint: {{ app['healthcheck-endpoint'] }}
-    {% else %}
-    health-check-type: process
-    {% endif %}
+    health-check-type: {{ app.get('health-check-type', 'process') }}
 
     services:
       - notify-db
