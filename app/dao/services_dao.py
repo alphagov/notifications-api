@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import asc, func, case
+from sqlalchemy.sql.expression import asc, case, func
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -77,25 +77,25 @@ def dao_count_live_services():
 
 def dao_fetch_live_services_data():
     year_start_date, year_end_date = get_current_financial_year()
+
     this_year_ft_billing = FactBilling.query.filter(
         FactBilling.bst_date >= year_start_date,
         FactBilling.bst_date <= year_end_date,
     ).subquery()
+
     data = db.session.query(
-        Service.id,
-        Organisation.name.label("organisation_name"),
-        Organisation.organisation_type,
+        Service.id.label('service_id'),
         Service.name.label("service_name"),
-        Service.consent_to_research,
-        Service.go_live_user_id,
-        Service.count_as_live,
-        User.name.label('user_name'),
-        User.email_address,
-        User.mobile_number,
+        Organisation.name.label("organisation_name"),
+        Organisation.organisation_type.label('organisation_type'),
+        Service.consent_to_research.label('consent_to_research'),
+        User.name.label('contact_name'),
+        User.email_address.label('contact_email'),
+        User.mobile_number.label('contact_mobile'),
         Service.go_live_at.label("live_date"),
-        Service.volume_sms,
-        Service.volume_email,
-        Service.volume_letter,
+        Service.volume_sms.label('sms_volume_intent'),
+        Service.volume_email.label('email_volume_intent'),
+        Service.volume_letter.label('letter_volume_intent'),
         case([
             (this_year_ft_billing.c.notification_type == 'email', func.sum(this_year_ft_billing.c.notifications_sent))
         ], else_=0).label("email_totals"),
@@ -130,42 +130,20 @@ def dao_fetch_live_services_data():
         Service.volume_sms,
         Service.volume_email,
         Service.volume_letter,
-        this_year_ft_billing.c.notification_type
+        this_year_ft_billing.c.notification_type,
     ).order_by(
         asc(Service.go_live_at)
     ).all()
     results = []
     for row in data:
-        is_service_in_list = None
-        i = 0
-        while i < len(results):
-            if results[i]["service_id"] == row.id:
-                is_service_in_list = i
-                break
-            else:
-                i += 1
-        if is_service_in_list is not None:
-            results[is_service_in_list]["email_totals"] += row.email_totals
-            results[is_service_in_list]["sms_totals"] += row.sms_totals
-            results[is_service_in_list]["letter_totals"] += row.letter_totals
+        existing_service = next((x for x in results if x['service_id'] == row.service_id), None)
+
+        if existing_service is not None:
+            existing_service["email_totals"] += row.email_totals
+            existing_service["sms_totals"] += row.sms_totals
+            existing_service["letter_totals"] += row.letter_totals
         else:
-            results.append({
-                "service_id": row.id,
-                "service_name": row.service_name,
-                "organisation_name": row.organisation_name,
-                "organisation_type": row.organisation_type,
-                "consent_to_research": row.consent_to_research,
-                "contact_name": row.user_name,
-                "contact_email": row.email_address,
-                "contact_mobile": row.mobile_number,
-                "live_date": row.live_date,
-                "sms_volume_intent": row.volume_sms,
-                "email_volume_intent": row.volume_email,
-                "letter_volume_intent": row.volume_letter,
-                "sms_totals": row.sms_totals,
-                "email_totals": row.email_totals,
-                "letter_totals": row.letter_totals,
-            })
+            results.append(row._asdict())
     return results
 
 

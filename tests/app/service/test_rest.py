@@ -137,28 +137,57 @@ def test_get_service_list_should_return_empty_list_if_no_services(admin_request)
     assert len(json_resp['data']) == 0
 
 
-def test_get_live_services_data(sample_user, admin_request, mock):
+def test_get_live_services_data(sample_user, admin_request):
     org = create_organisation()
-    service = create_service(go_live_user=sample_user)
+
+    service = create_service(go_live_user=sample_user, go_live_at=datetime(2018, 1, 1))
+    create_service(service_name='second', go_live_at=datetime(2019, 1, 1), go_live_user=sample_user)
+
     template = create_template(service=service)
-    create_service(service_name='second', go_live_user=sample_user)
     template2 = create_template(service=service, template_type='email')
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
-    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2,
-                      service=service)
+    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2, service=service)
+
     response = admin_request.get('service.get_live_services_data')["data"]
+
     assert len(response) == 2
-    assert {'consent_to_research': None, 'contact_email': 'notify@digital.cabinet-office.gov.uk',
-            'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 0,
-            'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
-            'organisation_name': None, 'service_id': mock.ANY, 'service_name': 'second', 'sms_totals': 0,
-            'sms_volume_intent': None, 'organisation_type': None} in response
-    assert {'consent_to_research': None, 'contact_email': 'notify@digital.cabinet-office.gov.uk',
-            'contact_mobile': '+447700900986', 'contact_name': 'Test User', 'email_totals': 1,
-            'email_volume_intent': None, 'letter_totals': 0, 'letter_volume_intent': None, 'live_date': None,
-            'organisation_name': 'test_org_1', 'service_id': mock.ANY, 'service_name': 'Sample service',
-            'sms_totals': 1, 'sms_volume_intent': None, 'organisation_type': None} in response
+    assert response == [
+        {
+            'consent_to_research': None,
+            'contact_email': 'notify@digital.cabinet-office.gov.uk',
+            'contact_mobile': '+447700900986',
+            'contact_name': 'Test User',
+            'email_totals': 1,
+            'email_volume_intent': None,
+            'letter_totals': 0,
+            'letter_volume_intent': None,
+            'live_date': 'Mon, 01 Jan 2018 00:00:00 GMT',
+            'organisation_name': 'test_org_1',
+            'service_id': ANY,
+            'service_name': 'Sample service',
+            'sms_totals': 1,
+            'sms_volume_intent': None,
+            'organisation_type': None,
+        },
+        {
+            'consent_to_research': None,
+            'contact_email': 'notify@digital.cabinet-office.gov.uk',
+            'contact_mobile': '+447700900986',
+            'contact_name': 'Test User',
+            'email_totals': 0,
+            'email_volume_intent': None,
+            'letter_totals': 0,
+            'letter_volume_intent': None,
+            'live_date': 'Tue, 01 Jan 2019 00:00:00 GMT',
+            'organisation_name': None,
+            'service_id': ANY,
+            'service_name': 'second',
+            'sms_totals': 0,
+            'sms_volume_intent': None,
+            'organisation_type': None,
+        },
+    ]
 
 
 def test_get_service_by_id(admin_request, sample_service):
