@@ -51,6 +51,7 @@ from tests.app.db import (
     create_organisation,
     create_domain,
     create_email_branding,
+    create_annual_billing,
 )
 from tests.app.db import create_user
 
@@ -141,13 +142,16 @@ def test_get_live_services_data(sample_user, admin_request):
     org = create_organisation()
 
     service = create_service(go_live_user=sample_user, go_live_at=datetime(2018, 1, 1))
-    create_service(service_name='second', go_live_at=datetime(2019, 1, 1), go_live_user=sample_user)
+    service_2 = create_service(service_name='second', go_live_at=datetime(2019, 1, 1), go_live_user=sample_user)
 
     template = create_template(service=service)
     template2 = create_template(service=service, template_type='email')
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
     create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2, service=service)
+
+    create_annual_billing(service.id, 1, 2019)
+    create_annual_billing(service_2.id, 2, 2018)
 
     response = admin_request.get('service.get_live_services_data')["data"]
 
@@ -169,6 +173,7 @@ def test_get_live_services_data(sample_user, admin_request):
             'sms_totals': 1,
             'sms_volume_intent': None,
             'organisation_type': None,
+            'free_sms_fragment_limit': 1
         },
         {
             'consent_to_research': None,
@@ -186,6 +191,7 @@ def test_get_live_services_data(sample_user, admin_request):
             'sms_totals': 0,
             'sms_volume_intent': None,
             'organisation_type': None,
+            'free_sms_fragment_limit': 2
         },
     ]
 

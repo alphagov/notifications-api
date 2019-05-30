@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy.sql.expression import asc, case, func
+from sqlalchemy.sql.expression import asc, case, and_, func
 from sqlalchemy.orm import joinedload
 from flask import current_app
 
@@ -78,6 +78,13 @@ def dao_count_live_services():
 def dao_fetch_live_services_data():
     year_start_date, year_end_date = get_current_financial_year()
 
+    most_recent_annual_billing = db.session.query(
+        AnnualBilling.service_id,
+        func.max(AnnualBilling.financial_year_start).label('year')
+    ).group_by(
+        AnnualBilling.service_id
+    ).subquery()
+
     this_year_ft_billing = FactBilling.query.filter(
         FactBilling.bst_date >= year_start_date,
         FactBilling.bst_date <= year_end_date,
@@ -105,6 +112,15 @@ def dao_fetch_live_services_data():
         case([
             (this_year_ft_billing.c.notification_type == 'letter', func.sum(this_year_ft_billing.c.notifications_sent))
         ], else_=0).label("letter_totals"),
+        AnnualBilling.free_sms_fragment_limit,
+    ).join(
+        Service.annual_billing
+    ).join(
+        most_recent_annual_billing,
+        and_(
+            Service.id == most_recent_annual_billing.c.service_id,
+            AnnualBilling.financial_year_start == most_recent_annual_billing.c.year
+        )
     ).outerjoin(
         Service.organisation
     ).outerjoin(
@@ -131,6 +147,7 @@ def dao_fetch_live_services_data():
         Service.volume_email,
         Service.volume_letter,
         this_year_ft_billing.c.notification_type,
+        AnnualBilling.free_sms_fragment_limit,
     ).order_by(
         asc(Service.go_live_at)
     ).all()

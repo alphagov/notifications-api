@@ -74,7 +74,8 @@ from tests.app.db import (
     create_invited_user,
     create_email_branding,
     create_letter_branding,
-    create_notification_history
+    create_notification_history,
+    create_annual_billing,
 )
 
 
@@ -392,7 +393,7 @@ def test_dao_fetch_live_services_data(sample_user):
     service = create_service(go_live_user=sample_user, go_live_at='2014-04-20T10:00:00')
     template = create_template(service=service)
     service_2 = create_service(service_name='second', go_live_at='2017-04-20T10:00:00', go_live_user=sample_user)
-    create_service(service_name='third', go_live_at='2016-04-20T10:00:00')
+    service_3 = create_service(service_name='third', go_live_at='2016-04-20T10:00:00')
     # below services should be filtered out:
     create_service(service_name='restricted', restricted=True)
     create_service(service_name='not_active', active=False)
@@ -413,6 +414,14 @@ def test_dao_fetch_live_services_data(sample_user):
     # one letter billing record for 2nd service within current financial year:
     create_ft_billing(bst_date='2019-04-16', notification_type='letter', template=template_letter_2, service=service_2)
 
+    # 1st service: billing from 2018 and 2019
+    create_annual_billing(service.id, 500, 2018)
+    create_annual_billing(service.id, 100, 2019)
+    # 2nd service: billing from 2018
+    create_annual_billing(service_2.id, 300, 2018)
+    # 3rd service: billing from 2019
+    create_annual_billing(service_3.id, 200, 2019)
+
     results = dao_fetch_live_services_data()
     assert len(results) == 3
     # checks the results and that they are ordered by date:
@@ -421,17 +430,20 @@ def test_dao_fetch_live_services_data(sample_user):
             'organisation_type': 'crown', 'consent_to_research': None, 'contact_name': 'Test User',
             'contact_email': 'notify@digital.cabinet-office.gov.uk', 'contact_mobile': '+447700900986',
             'live_date': datetime(2014, 4, 20, 10, 0), 'sms_volume_intent': None, 'email_volume_intent': None,
-            'letter_volume_intent': None, 'sms_totals': 2, 'email_totals': 1, 'letter_totals': 1},
+            'letter_volume_intent': None, 'sms_totals': 2, 'email_totals': 1, 'letter_totals': 1,
+            'free_sms_fragment_limit': 100},
         {'service_id': mock.ANY, 'service_name': 'third', 'organisation_name': None, 'consent_to_research': None,
             'organisation_type': None, 'contact_name': None, 'contact_email': None,
             'contact_mobile': None, 'live_date': datetime(2016, 4, 20, 10, 0), 'sms_volume_intent': None,
             'email_volume_intent': None, 'letter_volume_intent': None,
-            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0},
+            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0,
+            'free_sms_fragment_limit': 200},
         {'service_id': mock.ANY, 'service_name': 'second', 'organisation_name': None, 'consent_to_research': None,
             'contact_name': 'Test User', 'contact_email': 'notify@digital.cabinet-office.gov.uk',
             'contact_mobile': '+447700900986', 'live_date': datetime(2017, 4, 20, 10, 0), 'sms_volume_intent': None,
             'organisation_type': None, 'email_volume_intent': None, 'letter_volume_intent': None,
-            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 1}
+            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 1,
+            'free_sms_fragment_limit': 300}
     ]
 
 
