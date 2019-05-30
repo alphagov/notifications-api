@@ -117,6 +117,30 @@ def test_delete_notifications_inserts_notification_history(sample_service, notif
     assert len(history) == 2
 
 
+def test_delete_notifications_updates_notification_history(sample_email_template, mocker):
+    mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    notification = create_notification(template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=8))
+    Notification.query.filter_by(id=notification.id).update(
+        {"status": "delivered",
+         "reference": "ses_reference",
+         "billable_units": 1,  # I know we don't update this for emails but this is a unit test
+         "updated_at": datetime.utcnow(),
+         "sent_at": datetime.utcnow(),
+         "sent_by": "ses"
+         }
+    )
+
+    delete_notifications_older_than_retention_by_type("email")
+
+    history = NotificationHistory.query.all()
+    assert len(history) == 1
+    assert history[0].status == 'delivered'
+    assert history[0].reference == 'ses_reference'
+    assert history[0].billable_units == 1
+    assert history[0].updated_at
+    assert history[0].sent_by == 'ses'
+
+
 def create_test_data(notification_type, sample_service, days_of_retention=3):
     service_with_default_data_retention = create_service(service_name='default data retention')
     email_template, letter_template, sms_template = _create_templates(sample_service)
