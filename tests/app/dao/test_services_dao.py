@@ -73,6 +73,7 @@ from tests.app.db import (
     create_invited_user,
     create_email_branding,
     create_letter_branding,
+    create_notification_history
 )
 
 
@@ -713,16 +714,13 @@ def test_fetch_stats_filters_on_service(notify_db_session):
     assert len(stats) == 0
 
 
-def test_fetch_stats_ignores_historical_notification_data(notify_db_session):
-    notification = create_notification(template=create_template(service=create_service()))
-    service_id = notification.service.id
-
-    db.session.delete(notification)
+def test_fetch_stats_ignores_historical_notification_data(sample_template):
+    create_notification_history(template=sample_template)
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
 
-    stats = dao_fetch_stats_for_service(service_id, 7)
+    stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
     assert len(stats) == 0
 
 

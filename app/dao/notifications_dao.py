@@ -77,8 +77,6 @@ def dao_create_notification(notification):
         notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
-    if _should_record_notification_in_history_table(notification):
-        db.session.add(NotificationHistory.from_original(notification))
 
 
 def _should_record_notification_in_history_table(notification):
@@ -338,20 +336,35 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     return deleted
 
 
-def _delete_notifications(
-        deleted, notification_type, date_to_delete_from, service_id, query_limit):
-
+def _delete_notifications(deleted, notification_type, date_to_delete_from, service_id, query_limit):
     subquery = db.session.query(
+        Notification.id
+    ).join(NotificationHistory, NotificationHistory.id == Notification.id).filter(
+        Notification.notification_type == notification_type,
+        Notification.service_id == service_id,
+        Notification.created_at < date_to_delete_from,
+    ).limit(query_limit).subquery()
+
+    deleted += _delete_for_query(subquery)
+
+    subquery_for_test_keys = db.session.query(
         Notification.id
     ).filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
-        Notification.created_at < date_to_delete_from
+        Notification.created_at < date_to_delete_from,
+        Notification.key_type == KEY_TYPE_TEST
     ).limit(query_limit).subquery()
 
+    deleted += _delete_for_query(subquery_for_test_keys)
+
+    return deleted
+
+
+def _delete_for_query(subquery):
     number_deleted = db.session.query(Notification).filter(
         Notification.id.in_(subquery)).delete(synchronize_session='fetch')
-    deleted += number_deleted
+    deleted = number_deleted
     db.session.commit()
     while number_deleted > 0:
         number_deleted = db.session.query(Notification).filter(
@@ -423,12 +436,9 @@ def _delete_letters_from_s3(
 
 @statsd(namespace="dao")
 @transactional
-def dao_delete_notifications_and_history_by_id(notification_id):
+def dao_delete_notifications_by_id(notification_id):
     db.session.query(Notification).filter(
         Notification.id == notification_id
-    ).delete(synchronize_session='fetch')
-    db.session.query(NotificationHistory).filter(
-        NotificationHistory.id == notification_id
     ).delete(synchronize_session='fetch')
 
 
@@ -438,17 +448,14 @@ def _timeout_notifications(current_statuses, new_status, timeout_start, updated_
         Notification.status.in_(current_statuses),
         Notification.notification_type != LETTER_TYPE
     ).all()
-    for table in [NotificationHistory, Notification]:
-        q = table.query.filter(
-            table.created_at < timeout_start,
-            table.status.in_(current_statuses),
-            table.notification_type != LETTER_TYPE
-        )
-        q.update(
-            {'status': new_status, 'updated_at': updated_at},
-            synchronize_session=False
-        )
-    # return a list of q = notification_ids in Notification table for sending delivery receipts
+    Notification.query.filter(
+        Notification.created_at < timeout_start,
+        Notification.status.in_(current_statuses),
+        Notification.notification_type != LETTER_TYPE
+    ).update(
+        {'status': new_status, 'updated_at': updated_at},
+        synchronize_session=False
+    )
     return notifications
 
 

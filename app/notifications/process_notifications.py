@@ -27,7 +27,7 @@ from app.models import (
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_delete_notifications_and_history_by_id,
+    dao_delete_notifications_by_id,
     dao_created_scheduled_notification
 )
 
@@ -142,7 +142,7 @@ def send_notification_to_queue(notification, research_mode, queue=None):
     try:
         deliver_task.apply_async([str(notification.id)], queue=queue)
     except Exception:
-        dao_delete_notifications_and_history_by_id(notification.id)
+        dao_delete_notifications_by_id(notification.id)
         raise
 
     current_app.logger.debug(

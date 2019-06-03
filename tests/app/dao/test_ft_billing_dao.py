@@ -28,7 +28,8 @@ from tests.app.db import (
     create_template,
     create_notification,
     create_rate,
-    create_letter_rate
+    create_letter_rate,
+    create_notification_history
 )
 
 
@@ -95,6 +96,7 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(noti
     assert results[0].notifications_sent == 2
 
 
+@freeze_time('2018-04-02 01:20:00')
 def test_fetch_billing_data_for_today_includes_data_with_the_right_date(notify_db_session):
     process_day = datetime(2018, 4, 1, 13, 30, 0)
     service = create_service()
@@ -235,8 +237,10 @@ def test_fetch_billing_data_for_day_returns_empty_list(notify_db_session):
 def test_fetch_billing_data_for_day_uses_notification_history(notify_db_session):
     service = create_service()
     sms_template = create_template(service=service, template_type='sms')
-    create_notification(template=sms_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=8))
-    create_notification(template=sms_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=8))
+    create_notification_history(template=sms_template, status='delivered',
+                                created_at=datetime.utcnow() - timedelta(days=8))
+    create_notification_history(template=sms_template, status='delivered',
+                                created_at=datetime.utcnow() - timedelta(days=8))
 
     Notification.query.delete()
     db.session.commit()

@@ -7,7 +7,6 @@ from flask import current_app
 
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
-    Notification,
     NotificationHistory,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -28,7 +27,7 @@ from app.celery.tasks import (
 )
 from app.dao.daily_sorted_letter_dao import dao_get_daily_sorted_letter_by_billing_day
 
-from tests.app.db import create_notification, create_service_callback_api
+from tests.app.db import create_notification, create_service_callback_api, create_notification_history
 from tests.conftest import set_config
 
 
@@ -56,9 +55,8 @@ def test_update_letter_notification_statuses_when_notification_does_not_exist_up
 ):
     valid_file = 'ref-foo|Sent|1|Unsorted'
     mocker.patch('app.celery.tasks.s3.get_s3_file', return_value=valid_file)
-    notification = create_notification(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
-                                       billable_units=1)
-    Notification.query.filter_by(id=notification.id).delete()
+    notification = create_notification_history(sample_letter_template, reference='ref-foo', status=NOTIFICATION_SENDING,
+                                               billable_units=1)
 
     update_letter_notifications_statuses(filename="NOTIFY-20170823160812-RSP.TXT")
 

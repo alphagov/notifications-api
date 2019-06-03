@@ -9,7 +9,6 @@ from app.config import QueueNames
 from app.models import (
     Job,
     Notification,
-    NotificationHistory,
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
@@ -474,9 +473,6 @@ def test_post_precompiled_letter_notification_returns_201(
     assert notification.billable_units == 0
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
     assert notification.postage == expected_postage
-
-    notification_history = NotificationHistory.query.one()
-    assert notification_history.postage == expected_postage
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference', 'postage': expected_postage}
