@@ -252,6 +252,19 @@ def test_delete_notifications_calls_subquery_multiple_times(sample_template):
     assert Notification.query.count() == 0
 
 
+def test_delete_notifications_returns_sum_correctly(sample_template, notify_db_session):
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
+
+    s2 = create_service(service_name='s2')
+    t2 = create_template(s2, template_type='sms')
+    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8))
+    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8))
+
+    ret = delete_notifications_older_than_retention_by_type('sms', qry_limit=1)
+    assert ret == 4
+
+
 @pytest.mark.parametrize('notification_type', ['sms'])
 def test_insert_update_notification_history(sample_service, notification_type):
     template = create_template(sample_service, template_type=notification_type)
