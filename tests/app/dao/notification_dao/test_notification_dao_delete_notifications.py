@@ -181,6 +181,14 @@ def test_delete_notifications_keep_data_for_days_of_retention_is_longer(sample_s
         mock_get_s3.assert_not_called()
 
 
+def test_delete_notifications_with_test_keys(sample_template, mocker):
+    mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    create_notification(template=sample_template, key_type='test', created_at=datetime.utcnow() - timedelta(days=8))
+    assert len(Notification.query.all()) == 1
+    delete_notifications_older_than_retention_by_type('sms')
+    assert len(Notification.query.filter_by().all()) == 0
+
+
 def test_delete_notifications_delete_notification_type_for_default_time_if_no_days_of_retention_for_type(
         sample_service, mocker
 ):
@@ -212,7 +220,7 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
     mock_get_s3.assert_not_called()
 
 
-@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+@pytest.mark.parametrize('notification_type', ['sms'])
 @freeze_time("2016-01-10 12:00:00.000000")
 def test_should_not_delete_notification_if_history_does_not_exist(sample_service, notification_type, mocker):
     mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
