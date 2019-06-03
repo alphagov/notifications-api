@@ -105,8 +105,8 @@ def test_will_remove_csv_files_for_jobs_older_than_retention_period(
     mocker.patch('app.celery.nightly_tasks.s3.remove_job_from_s3')
     service_1 = create_service(service_name='service 1')
     service_2 = create_service(service_name='service 2')
-    create_service_data_retention(service_id=service_1.id, notification_type=SMS_TYPE, days_of_retention=3)
-    create_service_data_retention(service_id=service_2.id, notification_type=EMAIL_TYPE, days_of_retention=30)
+    create_service_data_retention(service=service_1, notification_type=SMS_TYPE, days_of_retention=3)
+    create_service_data_retention(service=service_2, notification_type=EMAIL_TYPE, days_of_retention=30)
     sms_template_service_1 = create_template(service=service_1)
     email_template_service_1 = create_template(service=service_1, template_type='email')
 

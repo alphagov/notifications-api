@@ -806,12 +806,12 @@ def ses_notification_callback():
 
 
 def create_service_data_retention(
-        service_id,
+        service,
         notification_type='sms',
         days_of_retention=3
 ):
     data_retention = insert_service_data_retention(
-        service_id=service_id,
+        service_id=service.id,
         notification_type=notification_type,
         days_of_retention=days_of_retention
     )

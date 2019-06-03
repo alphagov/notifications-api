@@ -113,7 +113,7 @@ def test_post_to_get_inbound_sms_for_service_respects_data_retention(
     too_old_date,
     returned_date
 ):
-    create_service_data_retention(sample_service.id, 'sms', days_of_retention)
+    create_service_data_retention(sample_service, 'sms', days_of_retention)
     create_inbound_sms(sample_service, created_at=too_old_date)
     returned_inbound = create_inbound_sms(sample_service, created_at=returned_date)
 
@@ -217,7 +217,7 @@ def test_get_most_recent_inbound_sms_for_service_respects_data_retention(
     admin_request,
     sample_service
 ):
-    create_service_data_retention(sample_service.id, 'sms', 5)
+    create_service_data_retention(sample_service, 'sms', 5)
     for i in range(10):
         created = datetime.utcnow() - timedelta(days=i)
         create_inbound_sms(sample_service, user_number='44770090000{}'.format(i), created_at=created)
@@ -240,7 +240,7 @@ def test_get_most_recent_inbound_sms_for_service_respects_data_retention_if_olde
     admin_request,
     sample_service
 ):
-    create_service_data_retention(sample_service.id, 'sms', 14)
+    create_service_data_retention(sample_service, 'sms', 14)
     create_inbound_sms(sample_service, created_at=datetime(2017, 4, 1, 12, 0))
 
     response = admin_request.get('inbound_sms.get_most_recent_inbound_sms_for_service', service_id=sample_service.id)
@@ -254,7 +254,7 @@ def test_get_inbound_sms_for_service_respects_data_retention(
     admin_request,
     sample_service
 ):
-    create_service_data_retention(sample_service.id, 'sms', 5)
+    create_service_data_retention(sample_service, 'sms', 5)
     for i in range(10):
         created = datetime.utcnow() - timedelta(days=i)
         create_inbound_sms(sample_service, user_number='44770090000{}'.format(i), created_at=created)
