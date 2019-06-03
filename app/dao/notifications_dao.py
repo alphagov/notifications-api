@@ -344,7 +344,8 @@ def _delete_notifications(
     ).filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
-        Notification.created_at < date_to_delete_from
+        Notification.created_at < date_to_delete_from,
+        NotificationHistory.id == Notification.id
     ).limit(query_limit).subquery()
 
     number_deleted = db.session.query(Notification).filter(

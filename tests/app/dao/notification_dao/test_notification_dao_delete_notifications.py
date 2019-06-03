@@ -212,6 +212,23 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
     mock_get_s3.assert_not_called()
 
 
+@pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
+@freeze_time("2016-01-10 12:00:00.000000")
+def test_should_not_delete_notification_if_history_does_not_exist(sample_service, notification_type, mocker):
+    mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    mocker.patch("app.dao.notifications_dao.insert_update_notification_history")
+    with freeze_time('2016-01-01 12:00'):
+        email_template, letter_template, sms_template = _create_templates(sample_service)
+        create_notification(template=email_template, status='permanent-failure')
+        create_notification(template=sms_template, status='delivered')
+        create_notification(template=letter_template, status='temporary-failure')
+    assert Notification.query.count() == 3
+    assert NotificationHistory.query.count() == 0
+    delete_notifications_older_than_retention_by_type(notification_type)
+    assert Notification.query.count() == 3
+    assert NotificationHistory.query.count() == 0
+
+
 def test_delete_notifications_calls_subquery(
         notify_db_session, mocker
 ):
