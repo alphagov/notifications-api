@@ -141,8 +141,8 @@ def test_update_service_data_retention_does_not_update_row_if_data_retention_is_
                           ('letter', 'sms')]
                          )
 def test_fetch_service_data_retention_by_notification_type(sample_service, notification_type, alternate):
-    data_retention = create_service_data_retention(service_id=sample_service.id, notification_type=notification_type)
-    create_service_data_retention(service_id=sample_service.id, notification_type=alternate)
+    data_retention = create_service_data_retention(service=sample_service, notification_type=notification_type)
+    create_service_data_retention(service=sample_service, notification_type=alternate)
     result = fetch_service_data_retention_by_notification_type(sample_service.id, notification_type)
     assert result == data_retention
 

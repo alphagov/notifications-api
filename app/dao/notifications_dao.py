@@ -310,9 +310,7 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
 
         current_app.logger.info(
             "Deleting {} notifications for service id: {}".format(notification_type, f.service_id))
-        deleted += _delete_notifications(
-            deleted, notification_type, days_of_retention, f.service_id, qry_limit
-        )
+        deleted += _delete_notifications(notification_type, days_of_retention, f.service_id, qry_limit)
 
     current_app.logger.info(
         'Deleting {} notifications for services without flexible data retention'.format(notification_type))
@@ -327,16 +325,14 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
                 notification_type, service_id, seven_days_ago, qry_limit
             )
         insert_update_notification_history(notification_type, seven_days_ago, service_id)
-        deleted += _delete_notifications(
-            deleted, notification_type, seven_days_ago, service_id, qry_limit
-        )
+        deleted += _delete_notifications(notification_type, seven_days_ago, service_id, qry_limit)
 
     current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
 
     return deleted
 
 
-def _delete_notifications(deleted, notification_type, date_to_delete_from, service_id, query_limit):
+def _delete_notifications(notification_type, date_to_delete_from, service_id, query_limit):
     subquery = db.session.query(
         Notification.id
     ).join(NotificationHistory, NotificationHistory.id == Notification.id).filter(
@@ -345,7 +341,7 @@ def _delete_notifications(deleted, notification_type, date_to_delete_from, servi
         Notification.created_at < date_to_delete_from,
     ).limit(query_limit).subquery()
 
-    deleted += _delete_for_query(subquery)
+    deleted = _delete_for_query(subquery)
 
     subquery_for_test_keys = db.session.query(
         Notification.id
