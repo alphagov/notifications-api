@@ -1,11 +1,16 @@
 from random import (SystemRandom)
 from datetime import (datetime, timedelta)
+import uuid
 
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.models import (User, VerifyCode)
+from app.dao.permissions_dao import permission_dao
+from app.dao.service_user_dao import dao_get_service_users_by_user_id
+from app.dao.dao_utils import transactional
+from app.errors import InvalidRequest
+from app.models import (EMAIL_AUTH_TYPE, User, VerifyCode)
 from app.utils import escape_special_characters
 
 
@@ -135,3 +140,49 @@ def get_user_and_accounts(user_id):
         joinedload('organisations.services'),
         joinedload('services.organisation'),
     ).one()
+
+
+@transactional
+def dao_archive_user(user):
+    if not user_can_be_archived(user):
+        msg = "User can’t be removed from a service - check all services have another team member with manage_settings"
+        raise InvalidRequest(msg, 400)
+
+    permission_dao.remove_user_service_permissions_for_all_services(user)
+
+    service_users = dao_get_service_users_by_user_id(user.id)
+    for service_user in service_users:
+        db.session.delete(service_user)
+
+    user.organisations = []
+
+    user.auth_type = EMAIL_AUTH_TYPE
+    user.email_address = get_archived_email_address(user.email_address)
+    user.mobile_number = None
+    user.password = str(uuid.uuid4())
+    # Changing the current_session_id signs the user out
+    user.current_session_id = '00000000-0000-0000-0000-000000000000'
+    user.state = 'inactive'
+
+    db.session.add(user)
+
+
+def user_can_be_archived(user):
+    active_services = [x for x in user.services if x.active]
+
+    for service in active_services:
+        other_active_users = [x for x in service.users if x.state == 'active' and x != user]
+
+        if not other_active_users:
+            return False
+
+        if not any('manage_settings' in user.get_permissions(service.id) for user in other_active_users):
+            # no-one else has manage settings
+            return False
+
+    return True
+
+
+def get_archived_email_address(email_address):
+    date = datetime.utcnow().strftime("%Y-%m-%d")
+    return '_archived_{}_{}'.format(date, email_address)

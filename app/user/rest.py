@@ -21,7 +21,8 @@ from app.dao.users_dao import (
     save_user_attribute,
     update_user_password,
     count_user_verify_codes,
-    get_user_and_accounts
+    get_user_and_accounts,
+    dao_archive_user,
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
@@ -126,6 +127,14 @@ def update_user_attribute(user_id):
 
         send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
     return jsonify(data=user_to_update.serialize()), 200
+
+
+@user_blueprint.route('/<uuid:user_id>/archive', methods=['POST'])
+def archive_user(user_id):
+    user = get_user_by_id(user_id)
+    dao_archive_user(user)
+
+    return '', 204
 
 
 @user_blueprint.route('/<uuid:user_id>/activate', methods=['POST'])

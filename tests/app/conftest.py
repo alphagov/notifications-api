@@ -771,33 +771,6 @@ def sample_invited_org_user(
 
 
 @pytest.fixture(scope='function')
-def sample_permission(notify_db,
-                      notify_db_session,
-                      service=None,
-                      user=None,
-                      permission="manage_settings"):
-    if user is None:
-        user = create_user()
-    data = {
-        'user': user,
-        'permission': permission
-    }
-    if service is None:
-        service = create_service(check_if_service_exists=True)
-    if service:
-        data['service'] = service
-    p_model = Permission.query.filter_by(
-        user=user,
-        service=service,
-        permission=permission).first()
-    if not p_model:
-        p_model = Permission(**data)
-        db.session.add(p_model)
-        db.session.commit()
-    return p_model
-
-
-@pytest.fixture(scope='function')
 def sample_user_service_permission(
     notify_db, notify_db_session, service=None, user=None, permission="manage_settings"
 ):

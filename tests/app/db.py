@@ -13,6 +13,7 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification
 )
 from app.dao.organisation_dao import dao_create_organisation
+from app.dao.permissions_dao import permission_dao
 from app.dao.service_callback_api_dao import save_service_callback_api
 from app.dao.service_data_retention_dao import insert_service_data_retention
 from app.dao.service_inbound_api_dao import save_service_inbound_api
@@ -31,6 +32,7 @@ from app.models import (
     EmailBranding,
     LetterRate,
     Organisation,
+    Permission,
     Rate,
     Service,
     ServiceEmailReplyTo,
@@ -79,6 +81,15 @@ def create_user(
         user = User(**data)
     save_model_user(user)
     return user
+
+
+def create_permissions(user, service, *permissions):
+    permissions = [
+        Permission(service_id=service.id, user_id=user.id, permission=p)
+        for p in permissions
+    ]
+
+    permission_dao.set_user_service_permission(user, service, permissions)
 
 
 def create_service(

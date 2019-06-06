@@ -309,6 +309,45 @@ def test_post_user_attribute_with_updated_by(
         mock_persist_notification.assert_not_called()
 
 
+def test_archive_user(mocker, client, sample_user):
+    archive_mock = mocker.patch('app.user.rest.dao_archive_user')
+
+    response = client.post(
+        url_for('user.archive_user', user_id=sample_user.id),
+        headers=[create_authorization_header()]
+    )
+
+    assert response.status_code == 204
+    archive_mock.assert_called_once_with(sample_user)
+
+
+def test_archive_user_when_user_does_not_exist_gives_404(mocker, client, fake_uuid, notify_db_session):
+    archive_mock = mocker.patch('app.user.rest.dao_archive_user')
+
+    response = client.post(
+        url_for('user.archive_user', user_id=fake_uuid),
+        headers=[create_authorization_header()]
+    )
+
+    assert response.status_code == 404
+    archive_mock.assert_not_called()
+
+
+def test_archive_user_when_user_cannot_be_archived(mocker, client, sample_user):
+    mocker.patch('app.dao.users_dao.user_can_be_archived', return_value=False)
+
+    response = client.post(
+        url_for('user.archive_user', user_id=sample_user.id),
+        headers=[create_authorization_header()]
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    msg = "User can’t be removed from a service - check all services have another team member with manage_settings"
+
+    assert response.status_code == 400
+    assert json_resp['message'] == msg
+
+
 def test_get_user_by_email(client, sample_service):
     sample_user = sample_service.users[0]
     header = create_authorization_header()
