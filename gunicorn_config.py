@@ -7,6 +7,8 @@ worker_class = "eventlet"
 worker_connections = 256
 errorlog = "/home/vcap/logs/gunicorn_error.log"
 bind = "0.0.0.0:{}".format(os.getenv("PORT"))
+statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
+statsd_prefix = os.getenv("STATSD_PREFIX")
 
 
 def on_starting(server):
