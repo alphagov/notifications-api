@@ -5,6 +5,7 @@ from flask import (
     request,
     current_app
 )
+from notifications_utils.letter_timings import letter_can_be_cancelled
 
 from app.aws.s3 import get_job_metadata_from_s3
 from app.dao.jobs_dao import (
@@ -13,7 +14,8 @@ from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
-    dao_get_notification_outcomes_for_job)
+    dao_get_notification_outcomes_for_job, dao_cancel_letter_job
+)
 from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id

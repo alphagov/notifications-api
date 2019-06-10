@@ -14,6 +14,7 @@ from app.dao.jobs_dao import (
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
     dao_get_jobs_older_than_data_retention,
+    dao_cancel_letter_job
 )
 from app.models import (
     Job,
@@ -308,3 +309,17 @@ def assert_job_stat(job, result, sent, delivered, failed):
     assert result.sent == sent
     assert result.delivered == delivered
     assert result.failed == failed
+
+
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_job):
+    create_notification(template=sample_job.template, job=sample_job, status='sending')
+    create_notification(template=sample_job.template, job=sample_job, status='created')
+    assert not dao_cancel_letter_job(service_id=sample_job.service_id, job_id=sample_job.id)
+
+
+def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_job):
+    notification = create_notification(template=sample_job.template, job=sample_job, status='created')
+    assert dao_cancel_letter_job(service_id=sample_job.service_id, job_id=sample_job.id) == 1
+    assert notification.status == 'cancelled'
+    assert sample_job.job_status == 'cancelled'
+
