@@ -276,6 +276,11 @@ class Config(object):
             'schedule': crontab(hour=23, minute=00),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'check-precompiled-letter-state': {
+            'task': 'check-precompiled-letter-state',
+            'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
+            'options': {'queue', QueueNames.PERIODIC}
+        },
     }
     CELERY_QUEUES = []
 

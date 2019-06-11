@@ -692,6 +692,18 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
+def dao_precompiled_letters_still_pending_virus_check():
+    ninety_minutes_ago = datetime.utcnow() - timedelta(seconds=5400)
+
+    notifications = Notification.query.filter(
+        Notification.created_at < ninety_minutes_ago,
+        Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+    ).order_by(
+        Notification.created_at
+    ).all()
+    return notifications
+
+
 def guess_notification_type(search_term):
     if set(search_term) & set(string.ascii_letters + '@'):
         return EMAIL_TYPE

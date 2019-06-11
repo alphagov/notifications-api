@@ -19,7 +19,8 @@ from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
     dao_get_scheduled_notifications,
     set_scheduled_notification_to_processed,
-    notifications_not_yet_sent
+    notifications_not_yet_sent,
+    dao_precompiled_letters_still_pending_virus_check,
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -178,3 +179,17 @@ def replay_created_notifications():
 
         for n in notifications_to_resend:
             send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
+
+
+@notify_celery.task(name='check-precompiled-letter-state')
+@statsd(namespace="tasks")
+def check_precompiled_letter_state():
+    letters = dao_precompiled_letters_still_pending_virus_check()
+    letter_ids = [str(letter.id) for letter in letters]
+
+    if len(letters) > 0:
+        current_app.logger.exception(
+            '{} precompiled letters have been pending-virus-check for over 90 minutes. Notifications: {}'.format(
+                len(letters),
+                letter_ids)
+        )

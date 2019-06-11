@@ -13,7 +13,8 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     send_scheduled_notifications,
     switch_current_sms_provider_on_slow_delivery,
-    replay_created_notifications
+    replay_created_notifications,
+    check_precompiled_letter_state,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -26,6 +27,8 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
 )
 from app.v2.errors import JobIncompleteError
 
@@ -334,3 +337,29 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
         job_status=JOB_STATUS_FINISHED)
 
     check_job_status()
+
+
+@freeze_time("2019-05-30 14:00:00")
+def test_check_precompiled_letter_state(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    create_notification(template=sample_letter_template,
+                        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                        created_at=datetime.utcnow() - timedelta(seconds=5400))
+    create_notification(template=sample_letter_template,
+                        status=NOTIFICATION_DELIVERED,
+                        created_at=datetime.utcnow() - timedelta(seconds=6000))
+    noti_1 = create_notification(template=sample_letter_template,
+                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                 created_at=datetime.utcnow() - timedelta(seconds=5401))
+    noti_2 = create_notification(template=sample_letter_template,
+                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                 created_at=datetime.utcnow() - timedelta(seconds=70000))
+
+    check_precompiled_letter_state()
+
+    mock_logger.assert_called_once_with(
+        "2 precompiled letters have been pending-virus-check for over 90 minutes. Notifications: ['{}', '{}']".format(
+            noti_2.id,
+            noti_1.id)
+    )
