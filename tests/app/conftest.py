@@ -59,6 +59,7 @@ from tests.app.db import (
     create_inbound_number,
     create_letter_contact,
     create_invited_org_user,
+    create_job
 )
 
 
@@ -502,13 +503,14 @@ def sample_notification_with_job(
         api_key=None,
         key_type=KEY_TYPE_NORMAL
 ):
+    if not service:
+        service = create_service()
+    if not template:
+        template = create_template(service=service)
     if job is None:
-        job = sample_job(notify_db, notify_db_session, service=service, template=template)
-    return sample_notification(
-        notify_db,
-        notify_db_session,
-        service,
-        template,
+        job = create_job(template=template)
+    return create_notification(
+        template=template,
         job=job,
         job_row_number=job_row_number if job_row_number is not None else None,
         to_field=to_field,

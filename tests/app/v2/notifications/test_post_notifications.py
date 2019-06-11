@@ -10,7 +10,8 @@ from app.models import (
     NOTIFICATION_CREATED,
     SCHEDULE_NOTIFICATIONS,
     SMS_TYPE,
-    UPLOAD_DOCUMENT
+    UPLOAD_DOCUMENT,
+    INTERNATIONAL_SMS_TYPE
 )
 from flask import json, current_app
 
@@ -19,19 +20,14 @@ from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
 from tests import create_authorization_header
-from tests.app.conftest import (
-    sample_template as create_sample_template,
-    sample_service,
-    sample_template_without_email_permission,
-    sample_template_without_sms_permission
-)
 
 from tests.app.db import (
     create_service,
     create_template,
     create_reply_to_email,
     create_service_sms_sender,
-    create_service_with_inbound_number
+    create_service_with_inbound_number,
+    create_api_key
 )
 
 
@@ -375,17 +371,18 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
-def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
-                                                                                   notify_db_session,
-                                                                                   mocker,
-                                                                                   notification_type,
-                                                                                   key_send_to,
-                                                                                   send_to):
+def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(
+    client,
+    sample_service,
+    mocker,
+    notification_type,
+    key_send_to,
+    send_to
+):
     mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
+    sample = create_template(
+        service=sample_service,
         template_type=notification_type,
         process_type='priority'
     )
@@ -415,18 +412,13 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
 )
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
         client,
-        notify_db,
-        notify_db_session,
+        sample_service,
         mocker,
         notification_type,
         key_send_to,
         send_to
 ):
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_type=notification_type
-    )
+    sample = create_template(service=sample_service, template_type=notification_type)
     persist_mock = mocker.patch('app.v2.notifications.post_notifications.persist_notification')
     deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue')
     mocker.patch(
@@ -459,11 +451,10 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_int_sms(
         client,
-        notify_db,
         notify_db_session,
 ):
-    service = sample_service(notify_db, notify_db_session, permissions=[SMS_TYPE])
-    template = create_sample_template(notify_db, notify_db_session, service=service)
+    service = create_service(service_permissions=[SMS_TYPE])
+    template = create_template(service=service)
 
     data = {
         'phone_number': '20-12-1234-1234',
@@ -511,12 +502,14 @@ def test_post_sms_notification_with_archived_reply_to_id_returns_400(client, sam
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
-@pytest.mark.parametrize('recipient,label,template_factory,expected_error', [
-    ('07700 900000', 'phone_number', sample_template_without_sms_permission, 'text messages'),
-    ('someone@test.com', 'email_address', sample_template_without_email_permission, 'emails')])
+@pytest.mark.parametrize('recipient,label,permission_type, notification_type,expected_error', [
+    ('07700 900000', 'phone_number', 'email', 'sms', 'text messages'),
+    ('someone@test.com', 'email_address', 'sms', 'email', 'emails')])
 def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
-        client, template_factory, recipient, label, expected_error, notify_db, notify_db_session):
-    sample_template_without_permission = template_factory(notify_db, notify_db_session)
+        notify_db_session, client, recipient, label, permission_type, notification_type, expected_error
+):
+    service = create_service(service_permissions=[permission_type])
+    sample_template_without_permission = create_template(service=service, template_type=notification_type)
     data = {
         label: recipient,
         'template_id': sample_template_without_permission.id
@@ -535,6 +528,33 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
         {"error": "BadRequestError", "message": "Service is not allowed to send {}".format(expected_error)}
+    ]
+
+
+@pytest.mark.parametrize('restricted', [True, False])
+def test_post_sms_notification_returns_400_if_number_not_whitelisted(
+        notify_db_session, client, restricted
+):
+    service = create_service(restricted=restricted, service_permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])
+    template = create_template(service=service)
+    create_api_key(service=service, key_type='team')
+
+    data = {
+        "phone_number": '+327700900855',
+        "template_id": template.id,
+    }
+    auth_header = create_authorization_header(service_id=service.id, key_type='team')
+
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 400
+    error_json = json.loads(response.get_data(as_text=True))
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [
+        {"error": "BadRequestError", "message": 'Can’t send to this recipient using a team-only API key'}
     ]
 
 
@@ -750,10 +770,10 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(client, s
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
-def test_post_notification_with_document_upload(client, notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
-    template = create_sample_template(
-        notify_db, notify_db_session, service=service,
+def test_post_notification_with_document_upload(client, notify_db_session, mocker):
+    service = create_service(service_permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    template = create_template(
+        service=service,
         template_type='email',
         content="Document: ((document))"
     )
@@ -785,10 +805,10 @@ def test_post_notification_with_document_upload(client, notify_db, notify_db_ses
     assert resp_json['content']['body'] == 'Document: https://document-url/'
 
 
-def test_post_notification_with_document_upload_simulated(client, notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
-    template = create_sample_template(
-        notify_db, notify_db_session, service=service,
+def test_post_notification_with_document_upload_simulated(client, notify_db_session, mocker):
+    service = create_service(service_permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    template = create_template(
+        service=service,
         template_type='email',
         content="Document: ((document))"
     )
@@ -816,10 +836,10 @@ def test_post_notification_with_document_upload_simulated(client, notify_db, not
     assert resp_json['content']['body'] == 'Document: https://document-url/test-document'
 
 
-def test_post_notification_without_document_upload_permission(client, notify_db, notify_db_session, mocker):
-    service = sample_service(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
-    template = create_sample_template(
-        notify_db, notify_db_session, service=service,
+def test_post_notification_without_document_upload_permission(client, notify_db_session, mocker):
+    service = create_service(service_permissions=[EMAIL_TYPE])
+    template = create_template(
+        service=service,
         template_type='email',
         content="Document: ((document))"
     )
