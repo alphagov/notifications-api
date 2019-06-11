@@ -14,7 +14,7 @@ from notifications_utils.recipients import (
     try_validate_and_format_phone_number
 )
 from notifications_utils.statsd_decorators import statsd
-from notifications_utils.timezones import convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import (desc, func, asc)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
@@ -688,6 +688,20 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
         Notification.created_at <= older_than_date,
         Notification.notification_type == notification_type,
         Notification.status == NOTIFICATION_CREATED
+    ).all()
+    return notifications
+
+
+def dao_old_letters_with_created_status():
+    yesterday_bst = convert_utc_to_bst(datetime.utcnow()) - timedelta(days=1)
+    last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)
+
+    notifications = Notification.query.filter(
+        Notification.created_at < convert_bst_to_utc(last_processing_deadline),
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED
+    ).order_by(
+        Notification.created_at
     ).all()
     return notifications
 

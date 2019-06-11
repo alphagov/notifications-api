@@ -21,6 +21,7 @@ from app.dao.notifications_dao import (
     set_scheduled_notification_to_processed,
     notifications_not_yet_sent,
     dao_precompiled_letters_still_pending_virus_check,
+    dao_old_letters_with_created_status,
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -190,6 +191,20 @@ def check_precompiled_letter_state():
     if len(letters) > 0:
         current_app.logger.exception(
             '{} precompiled letters have been pending-virus-check for over 90 minutes. Notifications: {}'.format(
+                len(letters),
+                letter_ids)
+        )
+
+
+@notify_celery.task(name='check-templated-letter-state')
+@statsd(namespace="tasks")
+def check_templated_letter_state():
+    letters = dao_old_letters_with_created_status()
+    letter_ids = [str(letter.id) for letter in letters]
+
+    if len(letters) > 0:
+        current_app.logger.exception(
+            "{} letters were created before 17.30 yesterday and still have 'created' state. Notifications: {}".format(
                 len(letters),
                 letter_ids)
         )

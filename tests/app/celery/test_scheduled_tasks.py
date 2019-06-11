@@ -15,6 +15,7 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     replay_created_notifications,
     check_precompiled_letter_state,
+    check_templated_letter_state,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -362,4 +363,42 @@ def test_check_precompiled_letter_state(mocker, sample_letter_template):
         "2 precompiled letters have been pending-virus-check for over 90 minutes. Notifications: ['{}', '{}']".format(
             noti_2.id,
             noti_1.id)
+    )
+
+
+@freeze_time("2019-05-30 14:00:00")
+def test_check_templated_letter_state_during_bst(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
+    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 30))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 17, 29))
+    create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 5, 28, 10, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 30, 10, 0))
+
+    check_templated_letter_state()
+
+    mock_logger.assert_called_once_with(
+        "2 letters were created before 17.30 yesterday and still have 'created' state. "
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+    )
+
+
+@freeze_time("2019-01-30 14:00:00")
+def test_check_templated_letter_state_during_utc(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
+    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 30))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 18, 29))
+    create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 1, 29, 10, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 30, 10, 0))
+
+    check_templated_letter_state()
+
+    mock_logger.assert_called_once_with(
+        "2 letters were created before 17.30 yesterday and still have 'created' state. "
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
     )
