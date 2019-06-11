@@ -23,6 +23,7 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_failed,
     process_virus_scan_error,
     replay_letters_in_error,
+    _move_invalid_letter_and_update_status,
     _sanitise_precompiled_pdf
 )
 from app.letters.utils import get_letter_pdf_filename, ScanErrorType
@@ -46,6 +47,10 @@ from tests.conftest import set_config_values
 
 def test_should_have_decorated_tasks_functions():
     assert create_letters_pdf.__wrapped__.__name__ == 'create_letters_pdf'
+    assert collate_letter_pdfs_for_day.__wrapped__.__name__ == 'collate_letter_pdfs_for_day'
+    assert process_virus_scan_passed.__wrapped__.__name__ == 'process_virus_scan_passed'
+    assert process_virus_scan_failed.__wrapped__.__name__ == 'process_virus_scan_failed'
+    assert process_virus_scan_error.__wrapped__.__name__ == 'process_virus_scan_error'
 
 
 @pytest.mark.parametrize('personalisation', [{'name': 'test'}, None])
@@ -515,6 +520,67 @@ def test_process_letter_task_check_virus_scan_passed_when_file_cannot_be_opened(
     )
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     assert sample_letter_notification.billable_units == 0
+
+
+@mock_s3
+def test_process_virus_scan_passed_logs_error_and_sets_tech_failure_if_s3_error_uploading_to_live_bucket(
+    mocker,
+    sample_letter_notification,
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+
+    source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=source_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=1)
+    mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=b'pdf_content')
+
+    error_response = {
+        'Error': {
+            'Code': 'InvalidParameterValue',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
+    mocker.patch('app.celery.letters_pdf_tasks._upload_pdf_to_test_or_live_pdf_bucket',
+                 side_effect=ClientError(error_response, 'operation_name'))
+
+    process_virus_scan_passed(filename)
+
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
+    mock_logger.assert_called_once_with(
+        'Error uploading letter to live pdf bucket for notification: {}'.format(sample_letter_notification.id)
+    )
+
+
+def test_move_invalid_letter_and_update_status_logs_error_and_sets_tech_failure_state_if_s3_error(
+    mocker,
+    sample_letter_notification,
+):
+    error_response = {
+        'Error': {
+            'Code': 'InvalidParameterValue',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
+    mocker.patch('app.celery.letters_pdf_tasks.move_scan_to_invalid_pdf_bucket',
+                 side_effect=ClientError(error_response, 'operation_name'))
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    _move_invalid_letter_and_update_status(sample_letter_notification, 'filename', mocker.Mock())
+
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
+    mock_logger.assert_called_once_with(
+        'Error when moving letter with id {} to invalid PDF bucket'.format(sample_letter_notification.id)
+    )
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
