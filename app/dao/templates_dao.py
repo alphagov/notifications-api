@@ -24,16 +24,19 @@ def dao_create_template(template):
     template.id = uuid.uuid4()  # must be set now so version history model can use same id
     template.archived = False
 
-    redacted_dict = {
-        "template": template,
-        "redact_personalisation": False,
-    }
-    if template.created_by:
-        redacted_dict.update({"updated_by": template.created_by})
-    else:
-        redacted_dict.update({"updated_by_id": template.created_by_id})
+    # The template redacted is now being inserted via a trigger
+    # this will catch any Notify templates being added by a db migration
+    if not TemplateRedacted.query.filter(TemplateRedacted.template_id == template.id).first():
+        redacted_dict = {
+            "template": template,
+            "redact_personalisation": False,
+        }
+        if template.created_by:
+            redacted_dict.update({"updated_by": template.created_by})
+        else:
+            redacted_dict.update({"updated_by_id": template.created_by_id})
 
-    template.template_redacted = TemplateRedacted(**redacted_dict)
+        template.template_redacted = TemplateRedacted(**redacted_dict)
 
     db.session.add(template)
 

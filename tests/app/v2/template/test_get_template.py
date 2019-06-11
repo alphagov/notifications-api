@@ -17,7 +17,7 @@ valid_version_params = [None, 1]
 ])
 @pytest.mark.parametrize("version", valid_version_params)
 def test_get_template_by_id_returns_200(
-    client, sample_service, tmp_type, expected_name, expected_subject, version, postage
+    client, sample_service, mock, tmp_type, expected_name, expected_subject, version, postage
 ):
     template = create_template(sample_service, template_type=tmp_type)
     auth_header = create_authorization_header(service_id=sample_service.id)
@@ -36,7 +36,7 @@ def test_get_template_by_id_returns_200(
         'id': '{}'.format(template.id),
         'type': '{}'.format(template.template_type),
         'created_at': template.created_at.strftime(DATETIME_FORMAT),
-        'updated_at': None,
+        'updated_at': mock.ANY,
         'version': template.version,
         'created_by': template.created_by.email_address,
         'body': template.content,
