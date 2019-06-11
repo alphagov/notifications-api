@@ -12,6 +12,7 @@ from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils import logging, request_helper
+from sqlalchemy.pool import NullPool
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -38,6 +39,8 @@ class SQLAlchemy(_SQLAlchemy):
         options['connect_args']["options"] = "-c statement_timeout={}".format(
             int(app.config['SQLALCHEMY_STATEMENT_TIMEOUT']) * 1000
         )
+        # pgbouncer takes care of connection pooling
+        options['poolclass'] = NullPool
 
 
 db = SQLAlchemy()

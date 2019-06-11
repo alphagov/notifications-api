@@ -70,7 +70,8 @@ class Config(object):
     DANGEROUS_SALT = os.getenv('DANGEROUS_SALT')
 
     # DB conection string
-    SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI')
+    # postgresql://andy:password@notify-pgbouncer-preview.apps.internal:6532/rdsbroker_a0fbb859_77bf_41f7_9712_f5d9a6e08ef7
+    SQLALCHEMY_DATABASE_URI = os.getenv('PGBOUNCER_URI')
 
     # MMG API Key
     MMG_API_KEY = os.getenv('MMG_API_KEY')
@@ -122,9 +123,6 @@ class Config(object):
     NOTIFY_APP_NAME = 'api'
     SQLALCHEMY_RECORD_QUERIES = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    SQLALCHEMY_POOL_SIZE = int(os.environ.get('SQLALCHEMY_POOL_SIZE', 5))
-    SQLALCHEMY_POOL_TIMEOUT = 30
-    SQLALCHEMY_POOL_RECYCLE = 300
     SQLALCHEMY_STATEMENT_TIMEOUT = 1200
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250

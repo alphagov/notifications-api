@@ -1,5 +1,5 @@
 {%- set app_vars = {
-  'notify-api': {'NOTIFY_APP_NAME': 'api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
+  'notify-api': {'NOTIFY_APP_NAME': 'api', 'disk_quota': '2G', 'routes': {
       'preview': ['api.notify.works'],
       'staging': ['api.staging-notify.works'],
       'production': ['api.notifications.service.gov.uk'],
@@ -47,7 +47,6 @@ applications:
 
     env:
       NOTIFY_APP_NAME: {{ app.get('NOTIFY_APP_NAME', CF_APP.replace('notify-', '')) }}
-      SQLALCHEMY_POOL_SIZE: {{ app.get('sqlalchemy_pool_size', 1) }}
       FLASK_APP: application.py
 
       # Credentials variables
@@ -93,3 +92,5 @@ applications:
 
       TEMPLATE_PREVIEW_API_HOST: '{{ TEMPLATE_PREVIEW_API_HOST }}'
       TEMPLATE_PREVIEW_API_KEY: '{{ TEMPLATE_PREVIEW_API_KEY }}'
+
+      PGBOUNCER_URI: '{{ PGBOUNCER_URI }}'

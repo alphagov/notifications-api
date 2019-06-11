@@ -7,20 +7,8 @@ from app.cloudfoundry_config import extract_cloudfoundry_config, set_config_env_
 
 
 @pytest.fixture
-def postgres_config():
-    return [
-        {
-            'credentials': {
-                'uri': 'postgres uri'
-            }
-        }
-    ]
-
-
-@pytest.fixture
-def cloudfoundry_config(postgres_config):
+def cloudfoundry_config():
     return {
-        'postgres': postgres_config,
         'user-provided': []
     }
 
@@ -34,8 +22,6 @@ def cloudfoundry_environ(monkeypatch, cloudfoundry_config):
 @pytest.mark.usefixtures('os_environ', 'cloudfoundry_environ')
 def test_extract_cloudfoundry_config_populates_other_vars():
     extract_cloudfoundry_config()
-
-    assert os.environ['SQLALCHEMY_DATABASE_URI'] == 'postgres uri'
     assert os.environ['NOTIFY_ENVIRONMENT'] == '🚀🌌'
     assert os.environ['NOTIFY_LOG_PATH'] == '/home/vcap/logs/app.log'
 
