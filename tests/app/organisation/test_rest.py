@@ -26,8 +26,10 @@ def test_get_all_organisations(admin_request, notify_db_session):
     assert len(response) == 2
     assert response[0]['name'] == 'active org'
     assert response[0]['active'] is True
+    assert response[0]['count_of_live_services'] == 0
     assert response[1]['name'] == 'inactive org'
     assert response[1]['active'] is False
+    assert response[1]['count_of_live_services'] == 0
 
 
 def test_get_organisation_by_id(admin_request, notify_db_session):
@@ -53,6 +55,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'email_branding_id',
         'domains',
         'request_to_go_live_notes',
+        'count_of_live_services',
     }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
@@ -66,6 +69,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['email_branding_id'] is None
     assert response['domains'] == []
     assert response['request_to_go_live_notes'] is None
+    assert response['count_of_live_services'] == 0
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):

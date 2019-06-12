@@ -516,10 +516,7 @@ def get_orgs_and_services(user):
                     for service in org.services
                     if service.active and service in user.services
                 ],
-                'count_of_live_services': len([
-                    service for service in org.services
-                    if service.active and not service.restricted
-                ]),
+                'count_of_live_services': len(org.live_services),
             }
             for org in user.organisations if org.active
         ],
