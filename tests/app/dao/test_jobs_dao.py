@@ -311,15 +311,24 @@ def assert_job_stat(job, result, sent, delivered, failed):
     assert result.failed == failed
 
 
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_job):
-    create_notification(template=sample_job.template, job=sample_job, status='sending')
-    create_notification(template=sample_job.template, job=sample_job, status='created')
-    assert not dao_cancel_letter_job(service_id=sample_job.service_id, job_id=sample_job.id)
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_letter_template):
+    job = create_job(template=sample_letter_template, notification_count=2)
+    create_notification(template=job.template, job=job, status='sending')
+    create_notification(template=job.template, job=job, status='created')
+    assert not dao_cancel_letter_job(job)
 
 
 def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_job):
     notification = create_notification(template=sample_job.template, job=sample_job, status='created')
-    assert dao_cancel_letter_job(service_id=sample_job.service_id, job_id=sample_job.id) == 1
+    assert dao_cancel_letter_job(sample_job) == 1
     assert notification.status == 'cancelled'
     assert sample_job.job_status == 'cancelled'
+
+
+def test_dao_cancel_letter_job_returns_false_if_too_late():
+    pass
+
+
+def test_dao_cancel_letter_returns_false_if_not_a_letter_job():
+    pass
 

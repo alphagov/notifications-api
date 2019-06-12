@@ -5,7 +5,6 @@ from flask import (
     request,
     current_app
 )
-from notifications_utils.letter_timings import letter_can_be_cancelled
 
 from app.aws.s3 import get_job_metadata_from_s3
 from app.dao.jobs_dao import (
@@ -14,7 +13,9 @@ from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
-    dao_get_notification_outcomes_for_job, dao_cancel_letter_job
+    dao_get_notification_outcomes_for_job,
+    dao_cancel_letter_job,
+    can_cancel_letter_job
 )
 from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -60,6 +61,19 @@ def cancel_job(service_id, job_id):
     dao_update_job(job)
 
     return get_job_by_service_and_job_id(service_id, job_id)
+
+
+@job_blueprint.route('/<job_id>/cancel-letter-job')
+def cancel_letter_job(service_id, job_id):
+    job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
+    if can_cancel_letter_job(job):
+        dao_cancel_letter_job(job)
+        return jsonify(), 201
+    else:
+        # reasons the letter can't be cancelled:
+        # letters are not yet saved to db  --> can still cancel but later
+        # it's too late
+        return jsonify("CHANGE ME: some error to say the job can't be cancelled"), 400
 
 
 @job_blueprint.route('/<job_id>/notifications', methods=['GET'])

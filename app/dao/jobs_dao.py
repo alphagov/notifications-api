@@ -9,7 +9,6 @@ from sqlalchemy import (
     desc,
     func,
 )
-from sqlalchemy.testing import not_in_
 
 from app import db
 from app.dao.dao_utils import transactional
@@ -27,7 +26,6 @@ from app.models import (
     NOTIFICATION_CANCELLED,
     JOB_STATUS_CANCELLED
 )
-from app.variables import LETTER_TEST_API_FILENAME
 
 
 @statsd(namespace="dao")
@@ -156,36 +154,31 @@ def dao_get_jobs_older_than_data_retention(notification_types):
 
 
 @transactional
-def dao_cancel_letter_job(service_id, job_id):
-    if can_cancel_letter_job(job_id, service_id):
+def dao_cancel_letter_job(job):
+    if can_cancel_letter_job(job):
         number_of_notifications_cancelled = Notification.query.filter(
-            Notification.job_id == job_id
+            Notification.job_id == job.id
         ).update({'status': NOTIFICATION_CANCELLED,
                   'updated_at': datetime.utcnow(),
                   'billable_units': 0})
-        # calling this 2x - pass job into can_cancel_letter_job
-        job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
         return number_of_notifications_cancelled
+    else:
+        return False
 
 
-def can_cancel_letter_job(job_id, service_id):
-    job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
+def can_cancel_letter_job(job):
     # assert is a letter job
     # assert job status == finished???
     # Notifications are not in pending-virus-check
-    count_notifications_in_sending = Notification.query.filter(
-        Notification.job_id == job_id,
-        Notification.status.not_in_('created', 'pending-virus-check', 'cancelled')
+    count_notifications = Notification.query.filter(
+        Notification.job_id == job.id,
+        Notification.status.in_(['created', 'pending-virus-check', 'cancelled'])
     ).count()
-    if count_notifications_in_sending > 0:
+    if count_notifications != job.notification_count:
         return False
-    if not letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at):
-        return False
-    else:
-        return True
-
+    return letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at)
 
 
 
