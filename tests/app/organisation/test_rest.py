@@ -51,6 +51,8 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'agreement_signed_at',
         'agreement_signed_by_id',
         'agreement_signed_version',
+        'agreement_signed_on_behalf_of_name',
+        'agreement_signed_on_behalf_of_email_address',
         'letter_branding_id',
         'email_branding_id',
         'domains',
@@ -70,6 +72,8 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['domains'] == []
     assert response['request_to_go_live_notes'] is None
     assert response['count_of_live_services'] == 0
+    assert response['agreement_signed_on_behalf_of_name'] is None
+    assert response['agreement_signed_on_behalf_of_email_address'] is None
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):
@@ -197,6 +201,8 @@ def test_post_update_organisation_updates_fields(
         'active': False,
         'agreement_signed': agreement_signed,
         'crown': crown,
+        'agreement_signed_on_behalf_of_name': 'Firstname Lastname',
+        'agreement_signed_on_behalf_of_email_address': 'test@example.com',
     }
     assert org.agreement_signed is None
     assert org.crown is None
@@ -217,6 +223,8 @@ def test_post_update_organisation_updates_fields(
     assert organisation[0].agreement_signed == agreement_signed
     assert organisation[0].crown == crown
     assert organisation[0].domains == []
+    assert organisation[0].agreement_signed_on_behalf_of_name == 'Firstname Lastname'
+    assert organisation[0].agreement_signed_on_behalf_of_email_address == 'test@example.com'
 
 
 @pytest.mark.parametrize('domain_list', (
