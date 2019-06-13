@@ -12,16 +12,18 @@ from sqlalchemy import (
 
 from app import db
 from app.dao.dao_utils import transactional
+from app.dao.templates_dao import dao_get_template_by_id
 from app.utils import midnight_n_days_ago
+
 from app.models import (
     Job,
+    JOB_STATUS_FINISHED,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
     Notification,
     Template,
     ServiceDataRetention,
-    NOTIFICATION_SENDING,
     NOTIFICATION_CREATED,
     NOTIFICATION_CANCELLED,
     JOB_STATUS_CANCELLED
@@ -169,8 +171,11 @@ def dao_cancel_letter_job(job):
 
 
 def can_cancel_letter_job(job):
-    # assert is a letter job
-    # assert job status == finished???
+    template = dao_get_template_by_id(job.template_id)
+    if template.template_type != LETTER_TYPE:
+        return False
+    if job.job_status != JOB_STATUS_FINISHED:
+        return False
     # Notifications are not in pending-virus-check
     count_notifications = Notification.query.filter(
         Notification.job_id == job.id,
@@ -179,6 +184,3 @@ def can_cancel_letter_job(job):
     if count_notifications != job.notification_count:
         return False
     return letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at)
-
-
-
