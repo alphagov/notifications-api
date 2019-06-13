@@ -15,7 +15,7 @@ from app.dao.jobs_dao import (
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
     dao_cancel_letter_job,
-    can_cancel_letter_job
+    can_letter_job_be_cancelled
 )
 from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -63,17 +63,15 @@ def cancel_job(service_id, job_id):
     return get_job_by_service_and_job_id(service_id, job_id)
 
 
-@job_blueprint.route('/<job_id>/cancel-letter-job')
+@job_blueprint.route('/<job_id>/cancel-letter-job', methods=['POST'])
 def cancel_letter_job(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    if can_cancel_letter_job(job):
-        dao_cancel_letter_job(job)
-        return jsonify(), 201
+    can_we_cancel = can_letter_job_be_cancelled(job)
+    if can_we_cancel is True:
+        data = dao_cancel_letter_job(job)
+        return jsonify(data), 200
     else:
-        # reasons the letter can't be cancelled:
-        # letters are not yet saved to db  --> can still cancel but later
-        # it's too late
-        return jsonify("CHANGE ME: some error to say the job can't be cancelled"), 400
+        return jsonify(message=can_we_cancel), 400
 
 
 @job_blueprint.route('/<job_id>/notifications', methods=['GET'])

@@ -13,8 +13,7 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
-    dao_get_jobs_older_than_data_retention,
-    dao_cancel_letter_job
+    dao_get_jobs_older_than_data_retention
 )
 from app.models import (
     Job,
@@ -309,57 +308,3 @@ def assert_job_stat(job, result, sent, delivered, failed):
     assert result.sent == sent
     assert result.delivered == delivered
     assert result.failed == failed
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_letter_template):
-    job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
-    notification = create_notification(template=job.template, job=job, status='created')
-    assert dao_cancel_letter_job(job) == 1
-    assert notification.status == 'cancelled'
-    assert job.job_status == 'cancelled'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_letter_template):
-    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
-    letter_1 = create_notification(template=job.template, job=job, status='sending')
-    letter_2 = create_notification(template=job.template, job=job, status='created')
-    assert not dao_cancel_letter_job(job)
-    assert letter_1.status == 'sending'
-    assert letter_2.status == 'created'
-    assert job.job_status == 'finished'
-
-
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_letters_already_sent_to_dvla(sample_letter_template):
-    with freeze_time('2019-06-13 13:00'):
-        job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
-        letter = create_notification(template=job.template, job=job, status='created')
-
-    with freeze_time('2019-06-13 17:32'):
-        assert not dao_cancel_letter_job(job)
-    assert letter.status == 'created'
-    assert job.job_status == 'finished'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_not_a_letter_job(sample_template):
-    job = create_job(template=sample_template, notification_count=1, job_status='finished')
-    notification = create_notification(template=job.template, job=job, status='created')
-    assert not dao_cancel_letter_job(job)
-    assert notification.status == 'created'
-    assert job.job_status == 'finished'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_job_not_finished(sample_letter_template):
-    job = create_job(template=sample_letter_template, notification_count=1, job_status="finished")
-    create_notification(template=job.template, job=job, status='created')
-    assert not dao_cancel_letter_job(job)
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notifications_not_in_db_yet(sample_letter_template):
-    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
-    create_notification(template=job.template, job=job, status='created')
-    assert not dao_cancel_letter_job(job)

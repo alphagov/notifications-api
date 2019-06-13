@@ -71,6 +71,103 @@ def test_cant_cancel_normal_job(client, sample_job, mocker):
     assert mock_update.call_count == 0
 
 
+@freeze_time('2019-06-13 13:00')
+def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_letter_template, admin_request):
+    job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
+    notification = create_notification(template=job.template, job=job, status='created')
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+    )
+    assert response == 1
+    assert notification.status == 'cancelled'
+    assert job.job_status == 'cancelled'
+
+
+@freeze_time('2019-06-13 13:00')
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_letter_template, admin_request):
+    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
+    letter_1 = create_notification(template=job.template, job=job, status='sending')
+    letter_2 = create_notification(template=job.template, job=job, status='created')
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+        _expected_status=400
+    )
+    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert letter_1.status == 'sending'
+    assert letter_2.status == 'created'
+    assert job.job_status == 'finished'
+
+
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_letters_already_sent_to_dvla(
+    sample_letter_template, admin_request
+):
+    with freeze_time('2019-06-13 13:00'):
+        job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
+        letter = create_notification(template=job.template, job=job, status='created')
+
+    with freeze_time('2019-06-13 17:32'):
+        response = admin_request.post(
+            'job.cancel_letter_job',
+            service_id=job.service_id,
+            job_id=job.id,
+            _expected_status=400
+        )
+    assert response == "Sorry, it's too late, letters have already been sent."
+    assert letter.status == 'created'
+    assert job.job_status == 'finished'
+
+
+@freeze_time('2019-06-13 13:00')
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_not_a_letter_job(sample_template, admin_request):
+    job = create_job(template=sample_template, notification_count=1, job_status='finished')
+    notification = create_notification(template=job.template, job=job, status='created')
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+        _expected_status=400
+    )
+    assert response == "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
+    assert notification.status == 'created'
+    assert job.job_status == 'finished'
+
+
+@freeze_time('2019-06-13 13:00')
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_job_not_finished(sample_letter_template, admin_request):
+    job = create_job(template=sample_letter_template, notification_count=1, job_status="in progress")
+    letter = create_notification(template=job.template, job=job, status='created')
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+        _expected_status=400
+    )
+    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert letter.status == 'created'
+    assert job.job_status == 'in progress'
+
+
+@freeze_time('2019-06-13 13:00')
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_notifications_not_in_db_yet(
+    sample_letter_template, admin_request
+):
+    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
+    letter = create_notification(template=job.template, job=job, status='created')
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+        _expected_status=400
+    )
+    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert letter.status == 'created'
+    assert job.job_status == 'finished'
+
+
 def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     mocker.patch('app.celery.tasks.process_job.apply_async')
     mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={

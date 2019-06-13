@@ -30,6 +30,11 @@ from app.models import (
 )
 
 
+CANCELLABLE_LETTER_STATUSES = [
+    'created', 'cancelled', 'virus-scan-failed', 'validation-failed', 'technical-failure', 'pending-virus-check'
+]
+
+
 @statsd(namespace="dao")
 def dao_get_notification_outcomes_for_job(service_id, job_id):
     return db.session.query(
@@ -157,30 +162,30 @@ def dao_get_jobs_older_than_data_retention(notification_types):
 
 @transactional
 def dao_cancel_letter_job(job):
-    if can_cancel_letter_job(job):
-        number_of_notifications_cancelled = Notification.query.filter(
-            Notification.job_id == job.id
-        ).update({'status': NOTIFICATION_CANCELLED,
-                  'updated_at': datetime.utcnow(),
-                  'billable_units': 0})
-        job.job_status = JOB_STATUS_CANCELLED
-        dao_update_job(job)
-        return number_of_notifications_cancelled
-    else:
-        return False
+    number_of_notifications_cancelled = Notification.query.filter(
+        Notification.job_id == job.id
+    ).update({'status': NOTIFICATION_CANCELLED,
+              'updated_at': datetime.utcnow(),
+              'billable_units': 0})
+    job.job_status = JOB_STATUS_CANCELLED
+    dao_update_job(job)
+    return number_of_notifications_cancelled
 
 
-def can_cancel_letter_job(job):
+def can_letter_job_be_cancelled(job):
     template = dao_get_template_by_id(job.template_id)
     if template.template_type != LETTER_TYPE:
-        return False
+        return "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
     if job.job_status != JOB_STATUS_FINISHED:
-        return False
-    # Notifications are not in pending-virus-check
+        return "This job is still being processed. Wait a couple of minutes and try again."
+
     count_notifications = Notification.query.filter(
         Notification.job_id == job.id,
-        Notification.status.in_(['created', 'pending-virus-check', 'cancelled'])
+        Notification.status.in_(CANCELLABLE_LETTER_STATUSES)
     ).count()
     if count_notifications != job.notification_count:
-        return False
-    return letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at)
+        return "This job is still being processed. Wait a couple of minutes and try again."
+    if letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at):
+        return True
+    else:
+        return "Sorry, it's too late, letters have already been sent."
