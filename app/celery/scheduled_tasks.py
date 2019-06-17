@@ -8,7 +8,7 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery
+from app import notify_celery, zendesk_client
 from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
@@ -186,25 +186,39 @@ def replay_created_notifications():
 @statsd(namespace="tasks")
 def check_precompiled_letter_state():
     letters = dao_precompiled_letters_still_pending_virus_check()
-    letter_ids = [str(letter.id) for letter in letters]
 
     if len(letters) > 0:
-        current_app.logger.exception(
-            '{} precompiled letters have been pending-virus-check for over 90 minutes. Notifications: {}'.format(
-                len(letters),
-                letter_ids)
-        )
+        letter_ids = [str(letter.id) for letter in letters]
+
+        msg = "{} precompiled letters have been pending-virus-check for over 90 minutes. " \
+              "Notifications: {}".format(len(letters), letter_ids)
+
+        current_app.logger.exception(msg)
+
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            zendesk_client.create_ticket(
+                subject="[{}] Letters still pending virus check".format(current_app.config['NOTIFY_ENVIRONMENT']),
+                message=msg,
+                ticket_type=zendesk_client.TYPE_INCIDENT
+            )
 
 
 @notify_celery.task(name='check-templated-letter-state')
 @statsd(namespace="tasks")
 def check_templated_letter_state():
     letters = dao_old_letters_with_created_status()
-    letter_ids = [str(letter.id) for letter in letters]
 
     if len(letters) > 0:
-        current_app.logger.exception(
-            "{} letters were created before 17.30 yesterday and still have 'created' state. Notifications: {}".format(
-                len(letters),
-                letter_ids)
-        )
+        letter_ids = [str(letter.id) for letter in letters]
+
+        msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
+              "Notifications: {}".format(len(letters), letter_ids)
+
+        current_app.logger.exception(msg)
+
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            zendesk_client.create_ticket(
+                subject="[{}] Letters still in 'created' status".format(current_app.config['NOTIFY_ENVIRONMENT']),
+                message=msg,
+                ticket_type=zendesk_client.TYPE_INCIDENT
+            )
