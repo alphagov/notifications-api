@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 from freezegun import freeze_time
 
@@ -19,7 +19,7 @@ def test_send_processing_time_to_performance_platform_generates_correct_calls(mo
     create_notification(sample_template, created_at=created_at, sent_at=created_at + timedelta(seconds=15))
     create_notification(sample_template, created_at=datetime.utcnow() - timedelta(days=2))
 
-    send_processing_time_to_performance_platform()
+    send_processing_time_to_performance_platform(date(2016, 10, 17))
 
     send_mock.assert_any_call(datetime(2016, 10, 16, 23, 0), 'messages-total', 2)
     send_mock.assert_any_call(datetime(2016, 10, 16, 23, 0), 'messages-within-10-secs', 1)
