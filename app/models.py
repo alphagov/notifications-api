@@ -367,6 +367,13 @@ class Organisation(db.Model):
         nullable=True,
     )
 
+    @property
+    def live_services(self):
+        return [
+            service for service in self.services
+            if service.active and not service.restricted
+        ]
+
     def serialize(self):
         return {
             "id": str(self.id),
@@ -384,6 +391,7 @@ class Organisation(db.Model):
                 domain.domain for domain in self.domains
             ],
             "request_to_go_live_notes": self.request_to_go_live_notes,
+            "count_of_live_services": len(self.live_services),
         }
 
 
