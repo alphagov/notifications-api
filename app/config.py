@@ -259,6 +259,11 @@ class Config(object):
             # since we mark jobs as archived
             'options': {'queue': QueueNames.PERIODIC},
         },
+        'check-templated-letter-state': {
+            'task': 'check-templated-letter-state',
+            'schedule': crontab(day_of_week='mon-fri', hour=9, minute=0),
+            'options': {'queue', QueueNames.PERIODIC}
+        },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
             'schedule': crontab(hour=16, minute=30),
@@ -275,6 +280,11 @@ class Config(object):
             'task': 'raise-alert-if-no-letter-ack-file',
             'schedule': crontab(hour=23, minute=00),
             'options': {'queue': QueueNames.PERIODIC}
+        },
+        'check-precompiled-letter-state': {
+            'task': 'check-precompiled-letter-state',
+            'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
+            'options': {'queue', QueueNames.PERIODIC}
         },
     }
     CELERY_QUEUES = []
