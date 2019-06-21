@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
-from notifications_utils.letter_timings import letter_can_be_cancelled
+from notifications_utils.letter_timings import letter_can_be_cancelled, CANCELLABLE_JOB_LETTER_STATUSES
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import (
     asc,
@@ -28,11 +28,6 @@ from app.models import (
     NOTIFICATION_CANCELLED,
     JOB_STATUS_CANCELLED
 )
-
-
-CANCELLABLE_LETTER_STATUSES = [
-    'created', 'cancelled', 'virus-scan-failed', 'validation-failed', 'technical-failure', 'pending-virus-check'
-]
 
 
 @statsd(namespace="dao")
@@ -176,16 +171,19 @@ def can_letter_job_be_cancelled(job):
     template = dao_get_template_by_id(job.template_id)
     if template.template_type != LETTER_TYPE:
         return "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
-    if job.job_status != JOB_STATUS_FINISHED:
-        return "This job is still being processed. Wait a couple of minutes and try again."
 
-    count_notifications = Notification.query.filter(
-        Notification.job_id == job.id,
-        Notification.status.in_(CANCELLABLE_LETTER_STATUSES)
-    ).count()
-    if count_notifications != job.notification_count:
+    notifications = Notification.query.filter(
+        Notification.job_id == job.id
+    ).all()
+    count_notifications = len(notifications)
+    if job.job_status != JOB_STATUS_FINISHED or count_notifications != job.notification_count:
         return "This job is still being processed. Wait a couple of minutes and try again."
-    if letter_can_be_cancelled(NOTIFICATION_CREATED, job.created_at):
-        return True
-    else:
+    count_cancellable_notifications = len([
+        n for n in notifications if n.status in CANCELLABLE_JOB_LETTER_STATUSES
+    ])
+    if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
+        NOTIFICATION_CREATED, job.created_at
+    ):
         return "Sorry, it's too late, letters have already been sent."
+
+    return True

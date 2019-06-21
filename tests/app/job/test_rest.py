@@ -86,7 +86,9 @@ def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample
 
 
 @freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(sample_letter_template, admin_request):
+def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_status_sending(
+    sample_letter_template, admin_request
+):
     job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
     letter_1 = create_notification(template=job.template, job=job, status='sending')
     letter_2 = create_notification(template=job.template, job=job, status='created')
@@ -96,7 +98,7 @@ def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_in_sending(
         job_id=job.id,
         _expected_status=400
     )
-    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert response["message"] == "Sorry, it's too late, letters have already been sent."
     assert letter_1.status == 'sending'
     assert letter_2.status == 'created'
     assert job.job_status == 'finished'
@@ -116,7 +118,7 @@ def test_dao_cancel_letter_job_does_not_allow_cancel_if_letters_already_sent_to_
             job_id=job.id,
             _expected_status=400
         )
-    assert response == "Sorry, it's too late, letters have already been sent."
+    assert response["message"] == "Sorry, it's too late, letters have already been sent."
     assert letter.status == 'created'
     assert job.job_status == 'finished'
 
@@ -131,7 +133,7 @@ def test_dao_cancel_letter_job_does_not_allow_cancel_if_not_a_letter_job(sample_
         job_id=job.id,
         _expected_status=400
     )
-    assert response == "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
+    assert response["message"] == "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
     assert notification.status == 'created'
     assert job.job_status == 'finished'
 
@@ -146,7 +148,7 @@ def test_dao_cancel_letter_job_does_not_allow_cancel_if_job_not_finished(sample_
         job_id=job.id,
         _expected_status=400
     )
-    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert response["message"] == "This job is still being processed. Wait a couple of minutes and try again."
     assert letter.status == 'created'
     assert job.job_status == 'in progress'
 
@@ -163,7 +165,7 @@ def test_dao_cancel_letter_job_does_not_allow_cancel_if_notifications_not_in_db_
         job_id=job.id,
         _expected_status=400
     )
-    assert response == "This job is still being processed. Wait a couple of minutes and try again."
+    assert response["message"] == "This job is still being processed. Wait a couple of minutes and try again."
     assert letter.status == 'created'
     assert job.job_status == 'finished'
 
