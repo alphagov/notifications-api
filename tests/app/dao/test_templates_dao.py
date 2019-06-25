@@ -221,7 +221,7 @@ def test_redact_template(sample_template):
     assert redacted.updated_by_id == sample_template.created_by_id
 
 
-def test_get_all_templates_for_service(notify_db_session, service_factory):
+def test_get_all_templates_for_service(service_factory):
     service_1 = service_factory.get('service 1', email_from='service.1')
     service_2 = service_factory.get('service 2', email_from='service.2')
 
@@ -253,7 +253,7 @@ def test_get_all_templates_for_service(notify_db_session, service_factory):
     assert len(dao_get_all_templates_for_service(service_2.id)) == 2
 
 
-def test_get_all_templates_for_service_is_alphabetised(notify_db_session, sample_service):
+def test_get_all_templates_for_service_is_alphabetised(sample_service):
     create_template(
         template_name='Sample Template 1',
         template_type="sms",
@@ -289,7 +289,7 @@ def test_get_all_returns_empty_list_if_no_templates(sample_service):
     assert len(dao_get_all_templates_for_service(sample_service.id)) == 0
 
 
-def test_get_all_templates_ignores_archived_templates(notify_db_session, sample_service):
+def test_get_all_templates_ignores_archived_templates(sample_service):
     normal_template = create_template(
         template_name='Normal Template',
         service=sample_service,
@@ -309,7 +309,7 @@ def test_get_all_templates_ignores_archived_templates(notify_db_session, sample_
     assert templates[0] == normal_template
 
 
-def test_get_all_templates_ignores_hidden_templates(notify_db_session, sample_service):
+def test_get_all_templates_ignores_hidden_templates(sample_service):
     normal_template = create_template(
         template_name='Normal Template',
         service=sample_service,
@@ -328,7 +328,7 @@ def test_get_all_templates_ignores_hidden_templates(notify_db_session, sample_se
     assert templates[0] == normal_template
 
 
-def test_get_template_by_id_and_service(notify_db_session, sample_service):
+def test_get_template_by_id_and_service(sample_service):
     sample_template = create_template(
         template_name='Test Template',
         service=sample_service)
@@ -341,7 +341,7 @@ def test_get_template_by_id_and_service(notify_db_session, sample_service):
     assert not template.redact_personalisation
 
 
-def test_get_template_by_id_and_service_returns_none_for_hidden_templates(notify_db_session, sample_service):
+def test_get_template_by_id_and_service_returns_none_for_hidden_templates(sample_service):
     sample_template = create_template(
         template_name='Test Template',
         hidden=True,
@@ -355,7 +355,7 @@ def test_get_template_by_id_and_service_returns_none_for_hidden_templates(notify
         )
 
 
-def test_get_template_version_returns_none_for_hidden_templates(notify_db_session, sample_service):
+def test_get_template_version_returns_none_for_hidden_templates(sample_service):
     sample_template = create_template(
         template_name='Test Template',
         hidden=True,
@@ -477,7 +477,7 @@ def test_get_template_versions(sample_template):
     assert len(v) == 2
 
 
-def test_get_template_versions_is_empty_for_hidden_templates(notify_db, notify_db_session, sample_service):
+def test_get_template_versions_is_empty_for_hidden_templates(sample_service):
     sample_template = create_template(
         template_name='Test Template',
         hidden=True,

@@ -609,8 +609,9 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
                          [("sms", "phone_number", "07700 900 855"),
                           ("email", "email_address", "sample@email.com")])
 @freeze_time("2017-05-14 14:00:00")
-def test_post_notification_with_scheduled_for(client, notify_db, notify_db_session,
-                                              notification_type, key_send_to, send_to):
+def test_post_notification_with_scheduled_for(
+        client, notify_db_session, notification_type, key_send_to, send_to
+):
     service = create_service(service_name=str(uuid.uuid4()),
                              service_permissions=[EMAIL_TYPE, SMS_TYPE, SCHEDULE_NOTIFICATIONS])
     template = create_template(service=service, template_type=notification_type)
@@ -863,7 +864,7 @@ def test_post_notification_without_document_upload_permission(client, notify_db_
     assert response.status_code == 400, response.get_data(as_text=True)
 
 
-def test_post_notification_returns_400_when_get_json_throws_exception(client, sample_email_template, rmock, mocker):
+def test_post_notification_returns_400_when_get_json_throws_exception(client, sample_email_template):
     auth_header = create_authorization_header(service_id=sample_email_template.service_id)
     response = client.post(
         path="v2/notifications/email",

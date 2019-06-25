@@ -176,15 +176,11 @@ def test_notification_subject_is_none_for_sms():
     assert Notification(notification_type=SMS_TYPE).subject is None
 
 
-def test_notification_subject_fills_in_placeholders_for_email(sample_email_template_with_placeholders):
-    noti = create_notification(sample_email_template_with_placeholders, personalisation={'name': 'hello'})
-    assert noti.subject == 'hello'
-
-
-def test_notification_subject_fills_in_placeholders_for_letter(sample_service):
-    template = create_template(service=sample_service, template_type='email', subject='((name))')
-    noti = create_notification(template=template, personalisation={'name': 'hello'})
-    assert noti.subject == 'hello'
+@pytest.mark.parametrize('template_type', ['email', 'letter'])
+def test_notification_subject_fills_in_placeholders(sample_service, template_type):
+    template = create_template(service=sample_service, template_type=template_type, subject='((name))')
+    notification = create_notification(template=template, personalisation={'name': 'hello'})
+    assert notification.subject == 'hello'
 
 
 def test_letter_notification_serializes_with_address(client, sample_letter_notification):
