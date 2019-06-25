@@ -13,7 +13,9 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     send_scheduled_notifications,
     switch_current_sms_provider_on_slow_delivery,
-    replay_created_notifications
+    replay_created_notifications,
+    check_precompiled_letter_state,
+    check_templated_letter_state,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -26,6 +28,8 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
 )
 from app.v2.errors import JobIncompleteError
 
@@ -58,7 +62,7 @@ def prepare_current_provider(restore_provider_details):
     db.session.commit()
 
 
-def test_should_call_delete_codes_on_delete_verify_codes_task(notify_api, mocker):
+def test_should_call_delete_codes_on_delete_verify_codes_task(notify_db_session, mocker):
     mocker.patch('app.celery.scheduled_tasks.delete_codes_older_created_more_than_a_day_ago')
     delete_verify_codes()
     assert scheduled_tasks.delete_codes_older_created_more_than_a_day_ago.call_count == 1
@@ -334,3 +338,84 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
         job_status=JOB_STATUS_FINISHED)
 
     check_job_status()
+
+
+@freeze_time("2019-05-30 14:00:00")
+def test_check_precompiled_letter_state(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+
+    create_notification(template=sample_letter_template,
+                        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                        created_at=datetime.utcnow() - timedelta(seconds=5400))
+    create_notification(template=sample_letter_template,
+                        status=NOTIFICATION_DELIVERED,
+                        created_at=datetime.utcnow() - timedelta(seconds=6000))
+    noti_1 = create_notification(template=sample_letter_template,
+                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                 created_at=datetime.utcnow() - timedelta(seconds=5401))
+    noti_2 = create_notification(template=sample_letter_template,
+                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                 created_at=datetime.utcnow() - timedelta(seconds=70000))
+
+    check_precompiled_letter_state()
+
+    message = "2 precompiled letters have been pending-virus-check for over 90 minutes. " \
+              "Notifications: ['{}', '{}']".format(noti_2.id, noti_1.id)
+
+    mock_logger.assert_called_once_with(message)
+    mock_create_ticket.assert_called_with(
+        message=message,
+        subject='[test] Letters still pending virus check',
+        ticket_type='incident'
+    )
+
+
+@freeze_time("2019-05-30 14:00:00")
+def test_check_templated_letter_state_during_bst(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+
+    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
+    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 30))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 17, 29))
+    create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 5, 28, 10, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 30, 10, 0))
+
+    check_templated_letter_state()
+
+    message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
+              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+
+    mock_logger.assert_called_once_with(message)
+    mock_create_ticket.assert_called_with(
+        message=message,
+        subject="[test] Letters still in 'created' status",
+        ticket_type='incident'
+    )
+
+
+@freeze_time("2019-01-30 14:00:00")
+def test_check_templated_letter_state_during_utc(mocker, sample_letter_template):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+
+    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
+    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 30))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 18, 29))
+    create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 1, 29, 10, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 30, 10, 0))
+
+    check_templated_letter_state()
+
+    message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
+              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+
+    mock_logger.assert_called_once_with(message)
+    mock_create_ticket.assert_called_with(
+        message=message,
+        subject="[test] Letters still in 'created' status",
+        ticket_type='incident'
+    )

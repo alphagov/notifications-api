@@ -210,7 +210,7 @@ def process_virus_scan_passed(self, filename):
     try:
         billable_units = _get_page_count(notification, old_pdf)
     except PdfReadError:
-        _move_invalid_letter_and_update_status(notification.reference, filename, scan_pdf_object)
+        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
         return
 
     new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
@@ -222,7 +222,7 @@ def process_virus_scan_passed(self, filename):
 
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        _move_invalid_letter_and_update_status(notification.reference, filename, scan_pdf_object)
+        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
         return
     else:
         current_app.logger.info(
@@ -230,18 +230,23 @@ def process_virus_scan_passed(self, filename):
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
-    _upload_pdf_to_test_or_live_pdf_bucket(
-        new_pdf,
-        filename,
-        is_test_letter=is_test_key)
+    try:
+        _upload_pdf_to_test_or_live_pdf_bucket(
+            new_pdf,
+            filename,
+            is_test_letter=is_test_key)
 
-    update_letter_pdf_status(
-        reference=reference,
-        status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
-        billable_units=billable_units
-    )
-
-    scan_pdf_object.delete()
+        update_letter_pdf_status(
+            reference=reference,
+            status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
+            billable_units=billable_units
+        )
+        scan_pdf_object.delete()
+    except BotoClientError:
+        current_app.logger.exception(
+            "Error uploading letter to live pdf bucket for notification: {}".format(notification.id)
+        )
+        update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
 def _get_page_count(notification, old_pdf):
@@ -255,14 +260,20 @@ def _get_page_count(notification, old_pdf):
         raise e
 
 
-def _move_invalid_letter_and_update_status(notification_reference, filename, scan_pdf_object):
-    move_scan_to_invalid_pdf_bucket(filename)
-    scan_pdf_object.delete()
+def _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object):
+    try:
+        move_scan_to_invalid_pdf_bucket(filename)
+        scan_pdf_object.delete()
 
-    update_letter_pdf_status(
-        reference=notification_reference,
-        status=NOTIFICATION_VALIDATION_FAILED,
-        billable_units=0)
+        update_letter_pdf_status(
+            reference=notification.reference,
+            status=NOTIFICATION_VALIDATION_FAILED,
+            billable_units=0)
+    except BotoClientError:
+        current_app.logger.exception(
+            "Error when moving letter with id {} to invalid PDF bucket".format(notification.id)
+        )
+        update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
 def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):

@@ -150,11 +150,17 @@ def timeout_notifications():
 @notify_celery.task(name='send-daily-performance-platform-stats')
 @cronitor('send-daily-performance-platform-stats')
 @statsd(namespace="tasks")
-def send_daily_performance_platform_stats():
+def send_daily_performance_platform_stats(date=None):
+    # date is a string in the format of "YYYY-MM-DD"
+    if date is None:
+        date = (datetime.utcnow() - timedelta(days=1)).date()
+    else:
+        date = datetime.strptime(date, "%Y-%m-%d").date()
+
     if performance_platform_client.active:
-        yesterday = datetime.utcnow() - timedelta(days=1)
-        send_total_sent_notifications_to_performance_platform(bst_date=yesterday.date())
-        processing_time.send_processing_time_to_performance_platform()
+
+        send_total_sent_notifications_to_performance_platform(bst_date=date)
+        processing_time.send_processing_time_to_performance_platform(bst_date=date)
 
 
 def send_total_sent_notifications_to_performance_platform(bst_date):

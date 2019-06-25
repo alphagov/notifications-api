@@ -344,6 +344,8 @@ class Organisation(db.Model):
         db.ForeignKey('users.id'),
         nullable=True,
     )
+    agreement_signed_on_behalf_of_name = db.Column(db.String(255), nullable=True)
+    agreement_signed_on_behalf_of_email_address = db.Column(db.String(255), nullable=True)
     agreement_signed_version = db.Column(db.Float, nullable=True)
     crown = db.Column(db.Boolean, nullable=True)
     organisation_type = db.Column(db.String(255), nullable=True)
@@ -367,6 +369,13 @@ class Organisation(db.Model):
         nullable=True,
     )
 
+    @property
+    def live_services(self):
+        return [
+            service for service in self.services
+            if service.active and not service.restricted
+        ]
+
     def serialize(self):
         return {
             "id": str(self.id),
@@ -379,11 +388,14 @@ class Organisation(db.Model):
             "agreement_signed": self.agreement_signed,
             "agreement_signed_at": self.agreement_signed_at,
             "agreement_signed_by_id": self.agreement_signed_by_id,
+            "agreement_signed_on_behalf_of_name": self.agreement_signed_on_behalf_of_name,
+            "agreement_signed_on_behalf_of_email_address": self.agreement_signed_on_behalf_of_email_address,
             "agreement_signed_version": self.agreement_signed_version,
             "domains": [
                 domain.domain for domain in self.domains
             ],
             "request_to_go_live_notes": self.request_to_go_live_notes,
+            "count_of_live_services": len(self.live_services),
         }
 
 
