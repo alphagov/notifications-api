@@ -181,7 +181,8 @@ def get_html_email_options(service):
         'brand_banner': service.email_branding.brand_type == BRANDING_ORG_BANNER,
         'brand_colour': service.email_branding.colour,
         'brand_logo': logo_url,
-        'brand_name': service.email_branding.text,
+        'brand_text': service.email_branding.text,
+        'brand_name': service.email_branding.name,
     }
 
 
