@@ -1,15 +1,15 @@
 """
 
-Revision ID: 0296_template_redacted_fix
-Revises: 0295_api_key_constraint
-Create Date: 2019-06-07 17:02:14.350064
+Revision ID: 0297_template_redacted_fix
+Revises: 0296_agreement_signed_by_person
+Create Date: 2019-06-25 17:02:14.350064
 
 """
 from alembic import op
 
 
-revision = '0296_template_redacted_fix'
-down_revision = '0295_api_key_constraint'
+revision = '0297_template_redacted_fix'
+down_revision = '0296_agreement_signed_by_person'
 
 
 def upgrade():
