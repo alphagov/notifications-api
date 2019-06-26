@@ -387,6 +387,7 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
     assert options['govuk_banner'] is True
     assert 'brand_colour' not in options.keys()
     assert 'brand_logo' not in options.keys()
+    assert 'brand_text' not in options.keys()
     assert 'brand_name' not in options.keys()
 
 
@@ -412,7 +413,8 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
 
     assert options['govuk_banner'] == govuk_banner
     assert options['brand_colour'] == '#000000'
-    assert options['brand_name'] == 'League of Justice'
+    assert options['brand_text'] == 'League of Justice'
+    assert options['brand_name'] == 'Justice League'
 
     if branding_type == BRANDING_ORG_BANNER:
         assert options['brand_banner'] is True
@@ -470,8 +472,9 @@ def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api)
     assert renderer['govuk_banner'] is False
     assert renderer['brand_banner'] is True
     assert renderer['brand_logo'] is None
-    assert renderer['brand_name'] == 'League of Justice'
+    assert renderer['brand_text'] == 'League of Justice'
     assert renderer['brand_colour'] == '#000000'
+    assert renderer['brand_name'] == 'Justice League'
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
