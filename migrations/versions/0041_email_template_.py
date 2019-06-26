@@ -47,6 +47,16 @@ If you didn’t try to register for a GOV.UK Notify account recently, please let
                                datetime.utcnow(), content, service_id,
                                'Your GOV.UK Notify account', user_id))
 
+# If you are copying this migration, please remember about an insert to TemplateRedacted,
+# which was not originally included here either by mistake or because it was before TemplateRedacted existed
+    # op.execute(
+    #     """
+    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+    #         VALUES ('0880fbb1-a0c6-46f0-9a8e-36c986381ceb', '{}', '{}', '{}')
+    #         ;
+    #     """.format(False, datetime.utcnow(), user_id)
+    # )
+
 
 def downgrade():
     op.execute("delete from notifications where template_id = '0880fbb1-a0c6-46f0-9a8e-36c986381ceb'")

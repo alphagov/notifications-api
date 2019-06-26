@@ -113,7 +113,19 @@ GOV.UK Notify team
         )
     )
 
+# If you are copying this migration, please remember about an insert to TemplateRedacted,
+# which was not originally included here either by mistake or because it was before TemplateRedacted existed
+    # op.execute(
+    #     """
+    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+    #         VALUES ('{}', '{}', '{}', '{}')
+    #         ;
+    #     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+    # )
+
 
 def downgrade():
-   op.execute("DELETE FROM templates_history WHERE id = '{}'".format(template_id))
-   op.execute("DELETE FROM templates WHERE id = '{}'".format(template_id))
+    op.execute("DELETE FROM notifications WHERE template_id = '{}'".format(template_id))
+    op.execute("DELETE FROM notification_history WHERE template_id = '{}'".format(template_id))
+    op.execute("DELETE FROM templates_history WHERE id = '{}'".format(template_id))
+    op.execute("DELETE FROM templates WHERE id = '{}'".format(template_id))
