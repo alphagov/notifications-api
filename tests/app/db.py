@@ -176,6 +176,7 @@ def create_template(
         archived=False,
         folder=None,
         postage=None,
+        process_type='normal',
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -185,7 +186,8 @@ def create_template(
         'created_by': service.created_by,
         'reply_to': reply_to,
         'hidden': hidden,
-        'folder': folder
+        'folder': folder,
+        'process_type': process_type
     }
     if template_type == LETTER_TYPE:
         data["postage"] = postage or "second"

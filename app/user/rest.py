@@ -68,7 +68,7 @@ def handle_integrity_error(exc):
         current_app.logger.exception('Check constraint ck_users_mobile_or_email_auth triggered')
         return jsonify(result='error', message='Mobile number must be set if auth_type is set to sms_auth'), 400
 
-    raise
+    raise exc
 
 
 @user_blueprint.route('', methods=['POST'])
