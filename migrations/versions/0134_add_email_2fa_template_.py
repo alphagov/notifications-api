@@ -79,6 +79,6 @@ def upgrade():
 def downgrade():
     op.execute("DELETE FROM notifications WHERE template_id = '{}'".format(template_id))
     op.execute("DELETE FROM notification_history WHERE template_id = '{}'".format(template_id))
+    op.execute("DELETE FROM template_redacted WHERE template_id = '{}'".format(template_id))
     op.execute("DELETE FROM templates_history WHERE id = '{}'".format(template_id))
     op.execute("DELETE FROM templates WHERE id = '{}'".format(template_id))
-    op.execute("DELETE FROM template_redacted WHERE template_id = '{}'".format(template_id))
