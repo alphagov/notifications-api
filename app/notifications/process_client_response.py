@@ -2,6 +2,7 @@ import uuid
 
 from datetime import datetime
 from flask import current_app
+from notifications_utils.template import SMSMessageTemplate
 
 from app import statsd_client
 from app.clients import ClientException
@@ -15,6 +16,7 @@ from app.celery.service_callback_tasks import (
 from app.config import QueueNames
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
+from app.dao.templates_dao import dao_get_template_by_id
 from app.models import NOTIFICATION_PENDING
 
 sms_response_mapper = {
@@ -91,6 +93,19 @@ def _process_for_status(notification_status, client_name, provider_reference):
             datetime.utcnow(),
             notification.sent_at
         )
+
+    if notification.billable_units == 0:
+        service = notification.service
+        template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
+
+        template = SMSMessageTemplate(
+            template_model.__dict__,
+            values=notification.personalisation,
+            prefix=service.name,
+            show_prefix=service.prefix_sms,
+        )
+        notification.billable_units = template.fragment_count
+        notifications_dao.dao_update_notification(notification)
 
     if notification_status != NOTIFICATION_PENDING:
         service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
