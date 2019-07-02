@@ -96,7 +96,7 @@ def test_process_sms_response_does_not_send_status_update_for_pending(sample_not
     send_mock.assert_not_called()
 
 
-def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(notify_db, sample_notification):
+def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):
     sample_notification.sent_by = None
     success, error = process_sms_client_response(
         status='3', provider_reference=str(sample_notification.id), client_name='MMG')
@@ -105,7 +105,16 @@ def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(notify_db, 
     assert sample_notification.sent_by == 'mmg'
 
 
-def test_process_sms_does_not_update_sent_by_if_already_set(mocker, notify_db, sample_notification):
+def test_process_sms_updates_billable_units_if_zero(sample_notification):
+    sample_notification.billable_units = 0
+    success, error = process_sms_client_response(
+        status='3', provider_reference=str(sample_notification.id), client_name='MMG')
+    assert error is None
+    assert success == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+    assert sample_notification.billable_units == 1
+
+
+def test_process_sms_does_not_update_sent_by_if_already_set(mocker, sample_notification):
     mock_update = mocker.patch('app.notifications.process_client_response.set_notification_sent_by')
     sample_notification.sent_by = 'MMG'
     process_sms_client_response(
