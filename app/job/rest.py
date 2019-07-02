@@ -66,12 +66,12 @@ def cancel_job(service_id, job_id):
 @job_blueprint.route('/<job_id>/cancel-letter-job', methods=['POST'])
 def cancel_letter_job(service_id, job_id):
     job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
-    can_we_cancel = can_letter_job_be_cancelled(job)
-    if can_we_cancel is True:
+    can_we_cancel, errors = can_letter_job_be_cancelled(job)
+    if can_we_cancel:
         data = dao_cancel_letter_job(job)
         return jsonify(data), 200
     else:
-        return jsonify(message=can_we_cancel), 400
+        return jsonify(message=errors), 400
 
 
 @job_blueprint.route('/<job_id>/notifications', methods=['GET'])

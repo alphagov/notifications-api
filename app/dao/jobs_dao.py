@@ -170,20 +170,20 @@ def dao_cancel_letter_job(job):
 def can_letter_job_be_cancelled(job):
     template = dao_get_template_by_id(job.template_id)
     if template.template_type != LETTER_TYPE:
-        return "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
+        return False, "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
 
     notifications = Notification.query.filter(
         Notification.job_id == job.id
     ).all()
     count_notifications = len(notifications)
     if job.job_status != JOB_STATUS_FINISHED or count_notifications != job.notification_count:
-        return "This job is still being processed. Wait a couple of minutes and try again."
+        return False, "This job is still being processed. Wait a couple of minutes and try again."
     count_cancellable_notifications = len([
         n for n in notifications if n.status in CANCELLABLE_JOB_LETTER_STATUSES
     ])
     if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
         NOTIFICATION_CREATED, job.created_at
     ):
-        return "Sorry, it's too late, letters have already been sent."
+        return False, "Sorry, it's too late, letters have already been sent."
 
-    return True
+    return True, None
