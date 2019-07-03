@@ -72,102 +72,56 @@ def test_cant_cancel_normal_job(client, sample_job, mocker):
 
 
 @freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_letter_template, admin_request):
+def test_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_letter_template, admin_request, mocker):
     job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
-    notification = create_notification(template=job.template, job=job, status='created')
+    create_notification(template=job.template, job=job, status='created')
+
+    mock_get_job = mocker.patch('app.job.rest.dao_get_job_by_service_id_and_job_id', return_value=job)
+    mock_can_letter_job_be_cancelled = mocker.patch(
+        'app.job.rest.can_letter_job_be_cancelled', return_value=(True, None)
+    )
+    mock_dao_cancel_letter_job = mocker.patch('app.job.rest.dao_cancel_letter_job', return_value=1)
+
     response = admin_request.post(
         'job.cancel_letter_job',
         service_id=job.service_id,
         job_id=job.id,
     )
+
+    mock_get_job.assert_called_once_with(job.service_id, str(job.id))
+    mock_can_letter_job_be_cancelled.assert_called_once_with(job)
+    mock_dao_cancel_letter_job.assert_called_once_with(job)
+
     assert response == 1
-    assert notification.status == 'cancelled'
-    assert job.job_status == 'cancelled'
 
 
 @freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notification_status_sending(
-    sample_letter_template, admin_request
+def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_returns_False(
+    sample_letter_template, admin_request, mocker
 ):
     job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
-    letter_1 = create_notification(template=job.template, job=job, status='sending')
-    letter_2 = create_notification(template=job.template, job=job, status='created')
+    create_notification(template=job.template, job=job, status='sending')
+    create_notification(template=job.template, job=job, status='created')
+
+    mock_get_job = mocker.patch('app.job.rest.dao_get_job_by_service_id_and_job_id', return_value=job)
+    error_message = "Sorry, it's too late, letters have already been sent."
+    mock_can_letter_job_be_cancelled = mocker.patch(
+        'app.job.rest.can_letter_job_be_cancelled', return_value=(False, error_message)
+    )
+    mock_dao_cancel_letter_job = mocker.patch('app.job.rest.dao_cancel_letter_job')
+
     response = admin_request.post(
         'job.cancel_letter_job',
         service_id=job.service_id,
         job_id=job.id,
         _expected_status=400
     )
+
+    mock_get_job.assert_called_once_with(job.service_id, str(job.id))
+    mock_can_letter_job_be_cancelled.assert_called_once_with(job)
+    mock_dao_cancel_letter_job.assert_not_called
+
     assert response["message"] == "Sorry, it's too late, letters have already been sent."
-    assert letter_1.status == 'sending'
-    assert letter_2.status == 'created'
-    assert job.job_status == 'finished'
-
-
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_letters_already_sent_to_dvla(
-    sample_letter_template, admin_request
-):
-    with freeze_time('2019-06-13 13:00'):
-        job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
-        letter = create_notification(template=job.template, job=job, status='created')
-
-    with freeze_time('2019-06-13 17:32'):
-        response = admin_request.post(
-            'job.cancel_letter_job',
-            service_id=job.service_id,
-            job_id=job.id,
-            _expected_status=400
-        )
-    assert response["message"] == "Sorry, it's too late, letters have already been sent."
-    assert letter.status == 'created'
-    assert job.job_status == 'finished'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_not_a_letter_job(sample_template, admin_request):
-    job = create_job(template=sample_template, notification_count=1, job_status='finished')
-    notification = create_notification(template=job.template, job=job, status='created')
-    response = admin_request.post(
-        'job.cancel_letter_job',
-        service_id=job.service_id,
-        job_id=job.id,
-        _expected_status=400
-    )
-    assert response["message"] == "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
-    assert notification.status == 'created'
-    assert job.job_status == 'finished'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_job_not_finished(sample_letter_template, admin_request):
-    job = create_job(template=sample_letter_template, notification_count=1, job_status="in progress")
-    letter = create_notification(template=job.template, job=job, status='created')
-    response = admin_request.post(
-        'job.cancel_letter_job',
-        service_id=job.service_id,
-        job_id=job.id,
-        _expected_status=400
-    )
-    assert response["message"] == "This job is still being processed. Wait a couple of minutes and try again."
-    assert letter.status == 'created'
-    assert job.job_status == 'in progress'
-
-
-@freeze_time('2019-06-13 13:00')
-def test_dao_cancel_letter_job_does_not_allow_cancel_if_notifications_not_in_db_yet(
-    sample_letter_template, admin_request
-):
-    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
-    letter = create_notification(template=job.template, job=job, status='created')
-    response = admin_request.post(
-        'job.cancel_letter_job',
-        service_id=job.service_id,
-        job_id=job.id,
-        _expected_status=400
-    )
-    assert response["message"] == "This job is still being processed. Wait a couple of minutes and try again."
-    assert letter.status == 'created'
-    assert job.job_status == 'finished'
 
 
 def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
