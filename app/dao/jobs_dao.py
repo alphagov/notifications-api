@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
+from notifications_utils.letter_timings import letter_can_be_cancelled, CANCELLABLE_JOB_LETTER_STATUSES
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import (
     asc,
@@ -10,17 +11,23 @@ from sqlalchemy import (
 )
 
 from app import db
+from app.dao.dao_utils import transactional
+from app.dao.templates_dao import dao_get_template_by_id
 from app.utils import midnight_n_days_ago
+
 from app.models import (
     Job,
+    JOB_STATUS_FINISHED,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
     Notification,
     Template,
-    ServiceDataRetention
+    ServiceDataRetention,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_CANCELLED,
+    JOB_STATUS_CANCELLED
 )
-from app.variables import LETTER_TEST_API_FILENAME
 
 
 @statsd(namespace="dao")
@@ -148,16 +155,35 @@ def dao_get_jobs_older_than_data_retention(notification_types):
     return jobs
 
 
-def dao_get_all_letter_jobs():
-    return db.session.query(
-        Job
-    ).join(
-        Job.template
-    ).filter(
-        Template.template_type == LETTER_TYPE,
-        # test letter jobs (or from research mode services) are created with a different filename,
-        # exclude them so we don't see them on the send to CSV
-        Job.original_file_name != LETTER_TEST_API_FILENAME
-    ).order_by(
-        desc(Job.created_at)
+@transactional
+def dao_cancel_letter_job(job):
+    number_of_notifications_cancelled = Notification.query.filter(
+        Notification.job_id == job.id
+    ).update({'status': NOTIFICATION_CANCELLED,
+              'updated_at': datetime.utcnow(),
+              'billable_units': 0})
+    job.job_status = JOB_STATUS_CANCELLED
+    dao_update_job(job)
+    return number_of_notifications_cancelled
+
+
+def can_letter_job_be_cancelled(job):
+    template = dao_get_template_by_id(job.template_id)
+    if template.template_type != LETTER_TYPE:
+        return False, "Only letter jobs can be cancelled through this endpoint. This is not a letter job."
+
+    notifications = Notification.query.filter(
+        Notification.job_id == job.id
     ).all()
+    count_notifications = len(notifications)
+    if job.job_status != JOB_STATUS_FINISHED or count_notifications != job.notification_count:
+        return False, "This job is still being processed. Wait a couple of minutes and try again."
+    count_cancellable_notifications = len([
+        n for n in notifications if n.status in CANCELLABLE_JOB_LETTER_STATUSES
+    ])
+    if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
+        NOTIFICATION_CREATED, job.created_at
+    ):
+        return False, "Sorry, it's too late, letters have already been sent."
+
+    return True, None

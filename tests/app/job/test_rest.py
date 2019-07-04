@@ -71,6 +71,59 @@ def test_cant_cancel_normal_job(client, sample_job, mocker):
     assert mock_update.call_count == 0
 
 
+@freeze_time('2019-06-13 13:00')
+def test_cancel_letter_job_updates_notifications_and_job_to_cancelled(sample_letter_template, admin_request, mocker):
+    job = create_job(template=sample_letter_template, notification_count=1, job_status='finished')
+    create_notification(template=job.template, job=job, status='created')
+
+    mock_get_job = mocker.patch('app.job.rest.dao_get_job_by_service_id_and_job_id', return_value=job)
+    mock_can_letter_job_be_cancelled = mocker.patch(
+        'app.job.rest.can_letter_job_be_cancelled', return_value=(True, None)
+    )
+    mock_dao_cancel_letter_job = mocker.patch('app.job.rest.dao_cancel_letter_job', return_value=1)
+
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+    )
+
+    mock_get_job.assert_called_once_with(job.service_id, str(job.id))
+    mock_can_letter_job_be_cancelled.assert_called_once_with(job)
+    mock_dao_cancel_letter_job.assert_called_once_with(job)
+
+    assert response == 1
+
+
+@freeze_time('2019-06-13 13:00')
+def test_cancel_letter_job_does_not_call_cancel_if_can_letter_job_be_cancelled_returns_False(
+    sample_letter_template, admin_request, mocker
+):
+    job = create_job(template=sample_letter_template, notification_count=2, job_status='finished')
+    create_notification(template=job.template, job=job, status='sending')
+    create_notification(template=job.template, job=job, status='created')
+
+    mock_get_job = mocker.patch('app.job.rest.dao_get_job_by_service_id_and_job_id', return_value=job)
+    error_message = "Sorry, it's too late, letters have already been sent."
+    mock_can_letter_job_be_cancelled = mocker.patch(
+        'app.job.rest.can_letter_job_be_cancelled', return_value=(False, error_message)
+    )
+    mock_dao_cancel_letter_job = mocker.patch('app.job.rest.dao_cancel_letter_job')
+
+    response = admin_request.post(
+        'job.cancel_letter_job',
+        service_id=job.service_id,
+        job_id=job.id,
+        _expected_status=400
+    )
+
+    mock_get_job.assert_called_once_with(job.service_id, str(job.id))
+    mock_can_letter_job_be_cancelled.assert_called_once_with(job)
+    mock_dao_cancel_letter_job.assert_not_called
+
+    assert response["message"] == "Sorry, it's too late, letters have already been sent."
+
+
 def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
     mocker.patch('app.celery.tasks.process_job.apply_async')
     mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={

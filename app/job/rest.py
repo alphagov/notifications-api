@@ -13,7 +13,10 @@ from app.dao.jobs_dao import (
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
-    dao_get_notification_outcomes_for_job)
+    dao_get_notification_outcomes_for_job,
+    dao_cancel_letter_job,
+    can_letter_job_be_cancelled
+)
 from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
@@ -58,6 +61,17 @@ def cancel_job(service_id, job_id):
     dao_update_job(job)
 
     return get_job_by_service_and_job_id(service_id, job_id)
+
+
+@job_blueprint.route('/<job_id>/cancel-letter-job', methods=['POST'])
+def cancel_letter_job(service_id, job_id):
+    job = dao_get_job_by_service_id_and_job_id(service_id, job_id)
+    can_we_cancel, errors = can_letter_job_be_cancelled(job)
+    if can_we_cancel:
+        data = dao_cancel_letter_job(job)
+        return jsonify(data), 200
+    else:
+        return jsonify(message=errors), 400
 
 
 @job_blueprint.route('/<job_id>/notifications', methods=['GET'])
