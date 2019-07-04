@@ -2,7 +2,11 @@ from datetime import datetime
 
 import pytest
 
-from app.dao.date_util import get_financial_year, get_april_fools, get_month_start_and_end_date_in_utc
+from app.dao.date_util import (
+    get_financial_year,
+    get_april_fools,
+    get_month_start_and_end_date_in_utc,
+    which_financial_year)
 
 
 def test_get_financial_year():
@@ -29,3 +33,23 @@ def test_get_month_start_and_end_date_in_utc(month, year, expected_start, expect
     result = get_month_start_and_end_date_in_utc(month_year)
     assert result[0] == expected_start
     assert result[1] == expected_end
+
+
+@pytest.mark.parametrize("year, month, expected", [
+    (2019, 1, 2018),
+    (2019, 2, 2018),
+    (2019, 3, 2018),
+    (2019, 4, 2019),
+    (2019, 5, 2019),
+    (2019, 6, 2019),
+    (2019, 7, 2019),
+    (2019, 8, 2019),
+    (2019, 9, 2019),
+    (2019, 10, 2019),
+    (2019, 11, 2019),
+    (2019, 12, 2019),
+])
+def test_which_financial_year(year, month, expected):
+    answer = which_financial_year(datetime(year, month, 1))
+
+    assert answer == expected

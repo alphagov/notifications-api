@@ -1,12 +1,13 @@
+import itertools
 from datetime import datetime, timedelta, time
 
 from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func, case, desc, Date, Integer
+from sqlalchemy import func, case, desc, Date, Integer, and_
 
 from app import db
-from app.dao.date_util import get_financial_year
+from app.dao.date_util import get_financial_year, which_financial_year
 from app.models import (
     FactBilling,
     Notification,
@@ -19,9 +20,123 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     NotificationHistory,
     EMAIL_TYPE,
-    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
-)
+    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
+    Organisation, AnnualBilling)
 from app.utils import get_london_midnight_in_utc
+
+
+def fetch_billing_for_all_services(start_date, end_date):
+    """
+    select
+          ft_billing.service_id,
+          sum(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+          AND postage = 'first' THEN notifications_sent else 0 end) as letter_1_pg_first,
+          max(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+           AND postage = 'first' THEN rate else 0 end) as letter_1_pg_first_rate,
+          max(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+          AND postage = 'first' THEN notifications_sent * rate else 0 end) as letter_1_pg_first_cost,
+          sum(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+          AND postage = 'second' THEN notifications_sent else 0 end) as letter_1_page_second,
+          max(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+          AND postage = 'second' THEN rate else 0 end) as letter_1_pg_second_rate,
+          max(CASE when notification_type = 'letter' AND billable_units / notifications_sent = 1
+          AND postage = 'second' THEN notifications_sent * rate else 0 end) as letter_1_pg_second_cost,
+          sum(CASE when notification_type = 'sms'
+          THEN billable_units * rate_multiplier ELSE 0 END) as billable_x_rate_multiplier,
+          max(CASE when notification_type = 'sms'
+          THEN rate ELSE 0 END) as  sms_rate,
+          sum(CASE when notification_type = 'sms' T
+          HEN billable_units * rate_multiplier * rate ELSE 0 END) as sms_cost
+    from ft_billing
+    where
+         bst_date >= '2019-04-01' and
+         bst_date <= '2019-06-30' and
+         notification_type in ('letter', 'sms')
+         and ft_billing.service_id in ('a74fce18-ac57-418b-8766-d83394e73e27',
+         'a833f5d6-805f-4014-bc02-1890ff20d743', '2232718f-fc58-4413-9e41-135496648da7')
+    group by ft_billing.service_id
+    order by 1;
+    """
+    clauses = letter_billing_clauses()
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    billing_year = which_financial_year(start_date)
+    query = db.session.query(
+        Organisation.name.label("organisation_name"),
+        Organisation.id.label("organisation_id"),
+        FactBilling.service_id.label("service_id"),
+        Service.name.label("service_name"),
+        AnnualBilling.free_sms_fragment_limit,
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE,
+                 FactBilling.billable_units * FactBilling.rate_multiplier)
+            ], else_=0
+        )).label('sms_billable_units'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE,
+                 FactBilling.rate)
+            ], else_=0
+        )).label('sms_rate'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE,
+                 FactBilling.billable_units * FactBilling.rate_multiplier * FactBilling.rate)
+            ], else_=0
+        )).label('sms_cost'),
+        *clauses
+    ).join(
+        Service.organisation,
+        Service.annual_billing
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type.in_([SMS_TYPE, LETTER_TYPE]),
+        AnnualBilling.financial_year_start == billing_year,
+    ).group_by(
+        Organisation.name,
+        Organisation.id,
+        FactBilling.service_id,
+        Service.name,
+        AnnualBilling.free_sms_fragment_limit,
+    ).order_by(
+        Organisation.name,
+        Service.name,
+    )
+    return query.all()
+
+
+def letter_billing_clauses():
+    cross_product = itertools.product(range(1, 6), ['first', 'second'])
+    clauses = []
+    for page_count, first_or_second in cross_product:
+        select_clause = func.sum(case(
+            [
+                (and_(FactBilling.notification_type == LETTER_TYPE, FactBilling.postage == first_or_second,
+                      FactBilling.billable_units / FactBilling.notifications_sent == page_count),
+                 FactBilling.notifications_sent)
+            ], else_=0
+        )).label('letter_count_{}_page_{}_class'.format(page_count, first_or_second))
+
+        clauses.append(select_clause)
+        rate_clause = func.sum(case(
+            [
+                (and_(FactBilling.notification_type == LETTER_TYPE, FactBilling.postage == first_or_second,
+                      FactBilling.billable_units / FactBilling.notifications_sent == page_count),
+                 FactBilling.rate)
+            ], else_=0
+        )).label('letter_rate_{}_page_{}_class'.format(page_count, first_or_second))
+        clauses.append(rate_clause)
+        cost_clause = func.sum(case(
+            [
+                (and_(FactBilling.notification_type == LETTER_TYPE, FactBilling.postage == first_or_second,
+                      FactBilling.billable_units / FactBilling.notifications_sent == page_count),
+                 FactBilling.notifications_sent * FactBilling.rate)
+            ], else_=0
+        )).label('letter_cost_{}_page_{}_class'.format(page_count, first_or_second))
+        clauses.append(cost_clause)
+    return clauses
 
 
 def fetch_billing_totals_for_year(service_id, year):

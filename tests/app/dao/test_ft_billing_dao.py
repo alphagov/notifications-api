@@ -16,11 +16,12 @@ from app.dao.fact_billing_dao import (
     fetch_monthly_billing_for_year,
     get_rate,
     get_rates_for_billing,
-)
+    fetch_billing_for_all_services)
+from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import (
     FactBilling,
     Notification,
-    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES
 )
 from tests.app.db import (
     create_ft_billing,
@@ -29,8 +30,8 @@ from tests.app.db import (
     create_notification,
     create_rate,
     create_letter_rate,
-    create_notification_history
-)
+    create_notification_history,
+    create_organisation, create_annual_billing)
 
 
 def set_up_yearly_data():
@@ -478,3 +479,57 @@ def test_delete_billing_data(notify_db_session):
     assert sorted(x.billable_units for x in current_rows) == sorted(
         [other_day.billable_units, other_service.billable_units]
     )
+
+
+def test_fetch_billing_for_all_services(notify_db_session):
+    set_up_quarterly_data()
+    set_up_quarterly_data(service_name='Second Service')
+
+    results = fetch_billing_for_all_services(datetime(2016, 4, 1), datetime(2016, 6, 30))
+
+    assert len(results) == 2
+    assert results[0].organisation_name == 'Org for First service'
+    assert results[0].service_name == 'First service'
+    assert results[0].free_sms_fragment_limit == 25000
+    assert results[1].organisation_name == 'Org for Second Service'
+    assert results[1].service_name == 'Second Service'
+    assert results[1].free_sms_fragment_limit == 25000
+
+
+def set_up_quarterly_data(service_name='First service'):
+    year = 2016
+    org = create_organisation(name="Org for {}".format(service_name))
+    service = create_service(service_name=service_name)
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=year)
+    sms_template = create_template(service=service, template_type="sms")
+    email_template = create_template(service=service, template_type="email")
+    letter_template = create_template(service=service, template_type="letter")
+    for month in range(4, 5):
+        mon = str(month).zfill(2)
+        for day in range(1, 3):
+            d = str(day).zfill(2)
+            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                              service=service,
+                              template=sms_template,
+                              notification_type='sms',
+                              rate=0.162)
+            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                              service=service,
+                              template=email_template,
+                              notification_type='email',
+                              rate=0)
+            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                              service=service,
+                              template=letter_template,
+                              notification_type='letter',
+                              rate=0.33,
+                              postage='second')
+            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+                              service=service,
+                              template=letter_template,
+                              notification_type='letter',
+                              rate=0.30,
+                              billable_unit=2,
+                              postage='first')
+    return service
