@@ -64,7 +64,7 @@ def dao_update_organisation(organisation_id, **kwargs):
 
     domains = kwargs.pop('domains', None)
 
-    organisation = Organisation.query.filter_by(id=organisation_id).update(
+    num_updated = Organisation.query.filter_by(id=organisation_id).update(
         kwargs
     )
 
@@ -79,7 +79,7 @@ def dao_update_organisation(organisation_id, **kwargs):
 
         db.session.commit()
 
-    return organisation
+    return num_updated
 
 
 @transactional

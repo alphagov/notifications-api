@@ -96,7 +96,9 @@ def update_organisation(organisation_id):
     result = dao_update_organisation(organisation_id, **data)
 
     if data.get('agreement_signed') is True:
-        send_notifications_on_mou_signed(organisation_id)
+        # if a platform admin has manually adjusted the organisation, don't tell people
+        if data.get('agreement_signed_by_id'):
+            send_notifications_on_mou_signed(organisation_id)
 
     if result:
         return '', 204
@@ -159,6 +161,7 @@ def check_request_args(request):
 
 
 def send_notifications_on_mou_signed(organisation_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
     notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
 
     def _send_notification(template_id, recipient, personalisation):
@@ -178,7 +181,6 @@ def send_notifications_on_mou_signed(organisation_id):
 
         send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
 
-    organisation = dao_get_organisation_by_id(organisation_id)
     personalisation = {
         'mou_link': '{}/agreement/{}.pdf'.format(
             current_app.config['ADMIN_BASE_URL'],
