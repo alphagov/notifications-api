@@ -1,7 +1,7 @@
 from sqlalchemy.sql.expression import func
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import transactional, version_class
 from app.models import (
     Organisation,
     Domain,
@@ -77,18 +77,31 @@ def dao_update_organisation(organisation_id, **kwargs):
             for domain in domains
         ])
 
-        db.session.commit()
+    if 'organisation_type' in kwargs:
+        organisation = Organisation.query.get(organisation_id)
+        if organisation.services:
+            _update_org_type_for_organisation_services(organisation)
 
     return num_updated
 
 
+@version_class(Service)
+def _update_org_type_for_organisation_services(organisation):
+    for service in organisation.services:
+        service.organisation_type = organisation.organisation_type
+        db.session.add(service)
+
+
 @transactional
+@version_class(Service)
 def dao_add_service_to_organisation(service, organisation_id):
     organisation = Organisation.query.filter_by(
         id=organisation_id
     ).one()
 
     organisation.services.append(service)
+    service.organisation_type = organisation.organisation_type
+    db.session.add(service)
 
 
 def dao_get_invited_organisation_user(user_id):
