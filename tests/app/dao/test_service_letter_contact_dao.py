@@ -209,16 +209,22 @@ def test_archive_letter_contact_does_not_archive_a_service_default_letter_contac
     assert 'You cannot delete a default letter contact block' in str(e.value)
 
 
-def test_archive_letter_contact_does_not_archive_a_template_default_letter_contact(notify_db_session):
+def test_archive_letter_contact_does_dissociates_template_defaults_before_archiving(notify_db_session):
     service = create_service()
     create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
     template_default = create_letter_contact(service=service, contact_block='Aberdeen, AB12 23X', is_default=False)
-    create_template(service=service, template_type='letter', reply_to=template_default.id)
+    associated_template_1 = create_template(service=service, template_type='letter', reply_to=template_default.id)
+    associated_template_2 = create_template(service=service, template_type='letter', reply_to=template_default.id)
 
-    with pytest.raises(ArchiveValidationError) as e:
-        archive_letter_contact(service.id, template_default.id)
+    assert associated_template_1.reply_to == template_default.id
+    assert associated_template_2.reply_to == template_default.id
+    assert template_default.archived is False
 
-    assert 'You cannot delete the default letter contact block for a template' in str(e.value)
+    archive_letter_contact(service.id, template_default.id)
+
+    assert associated_template_1.reply_to is None
+    assert associated_template_2.reply_to is None
+    assert template_default.archived is True
 
 
 def test_dao_get_letter_contact_by_id(sample_service):

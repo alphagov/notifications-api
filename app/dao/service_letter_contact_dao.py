@@ -73,23 +73,19 @@ def archive_letter_contact(service_id, letter_contact_id):
         service_id=service_id
     ).one()
 
-    if _is_template_default(letter_contact_id):
-        raise ArchiveValidationError("You cannot delete the default letter contact block for a template")
     if letter_contact_to_archive.is_default:
         raise ArchiveValidationError("You cannot delete a default letter contact block")
+
+    Template.query.filter_by(
+        service_letter_contact_id=letter_contact_id
+    ).update({
+        'service_letter_contact_id': None
+    })
 
     letter_contact_to_archive.archived = True
 
     db.session.add(letter_contact_to_archive)
     return letter_contact_to_archive
-
-
-def _is_template_default(letter_contact_id):
-    template_defaults = Template.query.filter_by(
-        service_letter_contact_id=letter_contact_id
-    ).all()
-
-    return any(template_defaults)
 
 
 def _get_existing_default(service_id):
