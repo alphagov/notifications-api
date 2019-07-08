@@ -178,7 +178,6 @@ def send_notifications_on_mou_signed(organisation_id):
             key_type=KEY_TYPE_NORMAL,
             reply_to_text=notify_service.get_default_reply_to_email_address()
         )
-
         send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
 
     personalisation = {
@@ -198,8 +197,6 @@ def send_notifications_on_mou_signed(organisation_id):
     # let notify team know something's happened
     _send_notification(
         current_app.config['MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID'],
-
-        # TODO: decide should we do this to distinguish emails from different envs?
         'notify-support+{}@digital.cabinet-office.gov.uk'.format(current_app.config['NOTIFY_ENVIRONMENT']),
         personalisation
     )
