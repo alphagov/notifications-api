@@ -622,14 +622,17 @@ def create_domain(domain, organisation_id):
     return domain
 
 
-def create_organisation(name='test_org_1', active=True, organisation_type=None):
+def create_organisation(name='test_org_1', active=True, organisation_type=None, domains=None):
     data = {
         'name': name,
         'active': active,
-        'organisation_type': organisation_type
+        'organisation_type': organisation_type,
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
+
+    for domain in domains or []:
+        create_domain(domain, organisation.id)
 
     return organisation
 

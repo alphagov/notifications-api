@@ -45,7 +45,7 @@ def handle_integrity_error(exc):
 @organisation_blueprint.route('', methods=['GET'])
 def get_organisations():
     organisations = [
-        org.serialize() for org in dao_get_organisations()
+        org.serialize_for_list() for org in dao_get_organisations()
     ]
 
     return jsonify(organisations)

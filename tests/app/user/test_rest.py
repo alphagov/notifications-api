@@ -837,40 +837,19 @@ def test_get_orgs_and_services_nests_services(admin_request, sample_user):
 
     assert set(resp.keys()) == {
         'organisations',
-        'services_without_organisations',
         'services',
     }
     assert resp['organisations'] == [
         {
             'name': org1.name,
             'id': str(org1.id),
-            'services': [
-                {
-                    'name': service1.name,
-                    'id': str(service1.id),
-                    'restricted': False,
-                },
-                {
-                    'name': service2.name,
-                    'id': str(service2.id),
-                    'restricted': False,
-                }
-            ],
             'count_of_live_services': 2,
         },
         {
             'name': org2.name,
             'id': str(org2.id),
-            'services': [],
             'count_of_live_services': 0,
         },
-    ]
-    assert resp['services_without_organisations'] == [
-        {
-            'name': service3.name,
-            'id': str(service3.id),
-            'restricted': False,
-        }
     ]
     assert resp['services'] == [
         {
@@ -917,28 +896,13 @@ def test_get_orgs_and_services_only_returns_active(admin_request, sample_user):
 
     assert set(resp.keys()) == {
         'organisations',
-        'services_without_organisations',
         'services',
     }
     assert resp['organisations'] == [
         {
             'name': org1.name,
             'id': str(org1.id),
-            'services': [
-                {
-                    'name': service1.name,
-                    'id': str(service1.id),
-                    'restricted': False,
-                }
-            ],
             'count_of_live_services': 1,
-        }
-    ]
-    assert resp['services_without_organisations'] == [
-        {
-            'name': service4.name,
-            'id': str(service4.id),
-            'restricted': False,
         }
     ]
     assert resp['services'] == [
@@ -983,23 +947,13 @@ def test_get_orgs_and_services_only_shows_users_orgs_and_services(admin_request,
 
     assert set(resp.keys()) == {
         'organisations',
-        'services_without_organisations',
         'services',
     }
     assert resp['organisations'] == [
         {
             'name': org2.name,
             'id': str(org2.id),
-            'services': [],
             'count_of_live_services': 0,
-        }
-    ]
-    # service1 belongs to org1, but the user doesn't know about org1
-    assert resp['services_without_organisations'] == [
-        {
-            'name': service1.name,
-            'id': str(service1.id),
-            'restricted': False,
         }
     ]
     # 'services' always returns the org_id no matter whether the user
