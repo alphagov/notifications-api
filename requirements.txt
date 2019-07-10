@@ -31,7 +31,7 @@ awscli-cwlogs>=1.4,<1.5
 # Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
 itsdangerous==0.24  # pyup: <1.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@33.1.0#egg=notifications-utils==33.1.0
+git+https://github.com/alphagov/notifications-utils.git@33.2.1#egg=notifications-utils==33.2.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
 
@@ -40,12 +40,12 @@ alembic==1.0.11
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.1.0
-awscli==1.16.188
+awscli==1.16.195
 bcrypt==3.1.7
 billiard==3.3.0.23
 bleach==3.1.0
 boto3==1.6.16
-botocore==1.12.178
+botocore==1.12.185
 certifi==2019.6.16
 chardet==3.0.4
 Click==7.0
@@ -59,7 +59,7 @@ idna==2.8
 Jinja2==2.10.1
 jmespath==0.9.4
 kombu==3.0.37
-Mako==1.0.12
+Mako==1.0.13
 MarkupSafe==1.1.1
 mistune==0.8.4
 monotonic==1.5
@@ -68,7 +68,7 @@ phonenumbers==8.10.13
 pyasn1==0.4.5
 pycparser==2.19
 PyPDF2==1.26.0
-pyrsistent==0.15.2
+pyrsistent==0.15.3
 python-dateutil==2.8.0
 python-editor==1.0.4
 python-json-logger==0.1.11
