@@ -101,7 +101,12 @@ def dao_add_service_to_organisation(service, organisation_id):
 
     organisation.services.append(service)
     service.organisation_type = organisation.organisation_type
+    service.crown = organisation.crown
+
     db.session.add(service)
+
+
+
 
 
 def dao_get_invited_organisation_user(user_id):

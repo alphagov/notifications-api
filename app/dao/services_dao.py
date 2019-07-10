@@ -41,6 +41,7 @@ from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
+    NON_CROWN_ORGANISATION_TYPES,
     SMS_TYPE,
     LETTER_TYPE,
 )
@@ -282,7 +283,10 @@ def dao_create_service(
     service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
     service.research_mode = False
-    service.crown = service.organisation_type == 'central'
+    if organisation:
+        service.crown = organisation.crown
+    elif service.organisation_type in (NON_CROWN_ORGANISATION_TYPES + ['nhs']):
+        service.crown = False
     service.count_as_live = not user.platform_admin
 
     for permission in service_permissions:

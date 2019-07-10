@@ -61,8 +61,6 @@ DELIVERY_STATUS_CALLBACK_TYPE = 'delivery_status'
 COMPLAINT_CALLBACK_TYPE = 'complaint'
 SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
 
-ORGANISATION_TYPES = ['central', 'local', 'nhs']
-
 
 def filter_null_value_fields(obj):
     return dict(
@@ -326,6 +324,21 @@ class Domain(db.Model):
     organisation_id = db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False)
 
 
+ORGANISATION_TYPES = [
+    "central", "local", "nhs_central",
+    "nhs_local", "emergency_services", "school_or_college", "other",
+]
+NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_central", "nhs_local", "emergency_services", "school_or_college"]
+
+
+class OrganisationTypes(db.Model):
+    __tablename__ = 'organisation_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+    is_crown = db.Column(db.Boolean, nullable=True)
+    annual_free_sms_fragment_limit = db.Column(db.BigInteger, nullable=False)
+
+
 class Organisation(db.Model):
     __tablename__ = "organisation"
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, unique=False)
@@ -444,7 +457,7 @@ class Service(db.Model, Versioned):
         db.String(255),
         nullable=True,
     )
-    crown = db.Column(db.Boolean, index=False, nullable=False, default=True)
+    crown = db.Column(db.Boolean, index=False, nullable=True)
     rate_limit = db.Column(db.Integer, index=False, nullable=False, default=3000)
     contact_link = db.Column(db.String(255), nullable=True, unique=False)
     volume_sms = db.Column(db.Integer(), nullable=True, unique=False)

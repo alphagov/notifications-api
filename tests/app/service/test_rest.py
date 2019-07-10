@@ -697,10 +697,15 @@ def test_update_service_flags(client, sample_service):
 
 
 @pytest.mark.parametrize("org_type, expected",
-                         [("central", True),
-                          ('local', False),
-                          ("nhs", False)])
-def test_update_service_sets_crown(client, sample_service, org_type, expected):
+                         [("central", None),
+                          ("local", False),
+                          ("nhs_central", False),
+                          ("nhs_local", False),
+                          ("emergency_services", False),
+                          ("school_or_college", False),
+                          ("other", None)])
+def test_update_service_sets_crown_based_on_org_type(client, sample_service, org_type, expected):
+    sample_service.crown = None
     data = {
         'organisation_type': org_type,
     }
