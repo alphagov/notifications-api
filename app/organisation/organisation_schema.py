@@ -1,4 +1,4 @@
-from app.models import INVITED_USER_STATUS_TYPES
+from app.models import INVITED_USER_STATUS_TYPES, ORGANISATION_TYPES
 from app.schema_validation.definitions import uuid
 
 post_create_organisation_schema = {
@@ -7,9 +7,11 @@ post_create_organisation_schema = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
-        "active": {"type": ["boolean", "null"]}
+        "active": {"type": ["boolean", "null"]},
+        "crown": {"type": "boolean"},
+        "organisation_type": {"enum": ORGANISATION_TYPES},
     },
-    "required": ["name"]
+    "required": ["name", "crown", "organisation_type"]
 }
 
 post_update_organisation_schema = {
@@ -18,7 +20,9 @@ post_update_organisation_schema = {
     "type": "object",
     "properties": {
         "name": {"type": ["string", "null"]},
-        "active": {"type": ["boolean", "null"]}
+        "active": {"type": ["boolean", "null"]},
+        "crown": {"type": ["boolean", "null"]},
+        "organisation_type": {"enum": ORGANISATION_TYPES},
     },
     "required": []
 }

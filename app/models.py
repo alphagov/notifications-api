@@ -61,6 +61,8 @@ DELIVERY_STATUS_CALLBACK_TYPE = 'delivery_status'
 COMPLAINT_CALLBACK_TYPE = 'complaint'
 SERVICE_CALLBACK_TYPES = [DELIVERY_STATUS_CALLBACK_TYPE, COMPLAINT_CALLBACK_TYPE]
 
+ORGANISATION_TYPES = ['central', 'local', 'nhs']
+
 
 def filter_null_value_fields(obj):
     return dict(

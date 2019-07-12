@@ -135,7 +135,9 @@ def test_get_organisation_by_domain(
 def test_post_create_organisation(admin_request, notify_db_session):
     data = {
         'name': 'test organisation',
-        'active': True
+        'active': True,
+        'crown': False,
+        'organisation_type': 'local',
     }
 
     response = admin_request.post(
@@ -148,13 +150,18 @@ def test_post_create_organisation(admin_request, notify_db_session):
 
     assert data['name'] == response['name']
     assert data['active'] == response['active']
+    assert data['crown'] == response['crown']
+    assert data['organisation_type'] == response['organisation_type']
+
     assert len(organisation) == 1
 
 
 def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
     data = {
         'name': sample_organisation.name,
-        'active': True
+        'active': True,
+        'crown': True,
+        'organisation_type': 'central',
     }
 
     response = admin_request.post(
@@ -169,11 +176,41 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
     assert response['message'] == 'Organisation name already exists'
 
 
-def test_post_create_organisation_with_missing_name_gives_validation_error(admin_request, notify_db_session):
-    data = {
-        'active': False
-    }
-
+@pytest.mark.parametrize('data, expected_error', (
+    ({
+        'active': False,
+        'crown': True,
+        'organisation_type': 'central',
+    }, 'name is a required property'),
+    ({
+        'active': False,
+        'name': 'Service name',
+        'organisation_type': 'central',
+    }, 'crown is a required property'),
+    ({
+        'active': False,
+        'name': 'Service name',
+        'crown': True,
+    }, 'organisation_type is a required property'),
+    ({
+        'active': False,
+        'name': 'Service name',
+        'crown': None,
+        'organisation_type': 'central',
+    }, 'crown None is not of type boolean'),
+    ({
+        'active': False,
+        'name': 'Service name',
+        'crown': False,
+        'organisation_type': 'foo',
+    }, 'organisation_type foo is not one of [central, local, nhs]'),
+))
+def test_post_create_organisation_with_missing_name_gives_validation_error(
+    admin_request,
+    notify_db_session,
+    data,
+    expected_error,
+):
     response = admin_request.post(
         'organisation.create_organisation',
         _data=data,
@@ -182,7 +219,7 @@ def test_post_create_organisation_with_missing_name_gives_validation_error(admin
 
     assert len(response['errors']) == 1
     assert response['errors'][0]['error'] == 'ValidationError'
-    assert response['errors'][0]['message'] == 'name is a required property'
+    assert response['errors'][0]['message'] == expected_error
 
 
 @pytest.mark.parametrize('agreement_signed', (
@@ -205,6 +242,7 @@ def test_post_update_organisation_updates_fields(
         'crown': crown,
         'agreement_signed_on_behalf_of_name': 'Firstname Lastname',
         'agreement_signed_on_behalf_of_email_address': 'test@example.com',
+        'organisation_type': 'central',
     }
     assert org.agreement_signed is None
     assert org.crown is None
@@ -227,6 +265,7 @@ def test_post_update_organisation_updates_fields(
     assert organisation[0].domains == []
     assert organisation[0].agreement_signed_on_behalf_of_name == 'Firstname Lastname'
     assert organisation[0].agreement_signed_on_behalf_of_email_address == 'test@example.com'
+    assert organisation[0].organisation_type == 'central'
 
 
 @pytest.mark.parametrize('domain_list', (
