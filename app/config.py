@@ -293,7 +293,6 @@ class Config(object):
     }
     CELERY_QUEUES = []
 
-    NOTIFICATIONS_ALERT = 5  # five mins
     FROM_NUMBER = 'development'
 
     STATSD_HOST = os.getenv('STATSD_HOST')

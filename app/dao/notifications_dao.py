@@ -79,14 +79,6 @@ def dao_create_notification(notification):
     db.session.add(notification)
 
 
-def _should_record_notification_in_history_table(notification):
-    if notification.api_key_id and notification.key_type == KEY_TYPE_TEST:
-        return False
-    if notification.service.research_mode:
-        return False
-    return True
-
-
 def _decide_permanent_temporary_failure(current_status, status):
     # Firetext will send pending, then send either succes or fail.
     # If we go from pending to delivered we need to set failure type as temporary-failure
