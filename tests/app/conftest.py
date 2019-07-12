@@ -1001,6 +1001,35 @@ def change_email_confirmation_template(notify_db,
     return template
 
 
+@pytest.fixture(scope='function')
+def mou_signed_templates(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    import importlib
+    alembic_script = importlib.import_module('migrations.versions.0298_add_mou_signed_receipt')
+
+    return {
+        config_name: create_custom_template(
+            service,
+            user,
+            config_name,
+            'email',
+            content='\n'.join(
+                next(
+                    x
+                    for x in alembic_script.templates
+                    if x['id'] == current_app.config[config_name]
+                )['content_lines']
+            ),
+        )
+        for config_name in [
+            'MOU_SIGNER_RECEIPT_TEMPLATE_ID',
+            'MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID',
+            'MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID',
+            'MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID',
+        ]
+    }
+
+
 def create_custom_template(service, user, template_config_name, template_type, content='', subject=None):
     template = Template.query.get(current_app.config[template_config_name])
     if not template:

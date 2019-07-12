@@ -346,6 +346,7 @@ class Organisation(db.Model):
         db.ForeignKey('users.id'),
         nullable=True,
     )
+    agreement_signed_by = db.relationship('User')
     agreement_signed_on_behalf_of_name = db.Column(db.String(255), nullable=True)
     agreement_signed_on_behalf_of_email_address = db.Column(db.String(255), nullable=True)
     agreement_signed_version = db.Column(db.Float, nullable=True)

@@ -1,6 +1,7 @@
 from flask import abort, Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
 
+from app.config import QueueNames
 from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisations,
@@ -12,9 +13,11 @@ from app.dao.organisation_dao import (
     dao_get_users_for_organisation,
     dao_add_user_to_organisation
 )
+from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
-from app.models import Organisation
+from app.models import Organisation, KEY_TYPE_NORMAL
+from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_update_organisation_schema,
@@ -91,6 +94,12 @@ def update_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_update_organisation_schema)
     result = dao_update_organisation(organisation_id, **data)
+
+    if data.get('agreement_signed') is True:
+        # if a platform admin has manually adjusted the organisation, don't tell people
+        if data.get('agreement_signed_by_id'):
+            send_notifications_on_mou_signed(organisation_id)
+
     if result:
         return '', 204
     else:
@@ -149,3 +158,64 @@ def check_request_args(request):
     if errors:
         raise InvalidRequest(errors, status_code=400)
     return org_id, name
+
+
+def send_notifications_on_mou_signed(organisation_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
+
+    def _send_notification(template_id, recipient, personalisation):
+        template = dao_get_template_by_id(template_id)
+
+        saved_notification = persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient=recipient,
+            service=notify_service,
+            personalisation=personalisation,
+            notification_type=template.template_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            reply_to_text=notify_service.get_default_reply_to_email_address()
+        )
+        send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
+
+    personalisation = {
+        'mou_link': '{}/agreement/{}.pdf'.format(
+            current_app.config['ADMIN_BASE_URL'],
+            'crown' if organisation.crown else 'non-crown'
+        ),
+        'org_name': organisation.name,
+        'org_dashboard_link': '{}/organisations/{}'.format(
+            current_app.config['ADMIN_BASE_URL'],
+            organisation.id
+        ),
+        'signed_by_name': organisation.agreement_signed_by.name,
+        'on_behalf_of_name': organisation.agreement_signed_on_behalf_of_name
+    }
+
+    # let notify team know something's happened
+    _send_notification(
+        current_app.config['MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID'],
+        'notify-support+{}@digital.cabinet-office.gov.uk'.format(current_app.config['NOTIFY_ENVIRONMENT']),
+        personalisation
+    )
+
+    if not organisation.agreement_signed_on_behalf_of_email_address:
+        signer_template_id = 'MOU_SIGNER_RECEIPT_TEMPLATE_ID'
+    else:
+        signer_template_id = 'MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID'
+
+        # let the person who has been signed on behalf of know.
+        _send_notification(
+            current_app.config['MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID'],
+            organisation.agreement_signed_on_behalf_of_email_address,
+            personalisation
+        )
+
+    # let the person who signed know - the template is different depending on if they signed on behalf of someone
+    _send_notification(
+        current_app.config[signer_template_id],
+        organisation.agreement_signed_by.email_address,
+        personalisation
+    )
