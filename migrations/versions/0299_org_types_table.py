@@ -31,7 +31,7 @@ def upgrade():
                 ["local", False, 25000],
                 ["nhs_central", False, 250000],
                 ["nhs_local", False, 25000],
-                ["emergency_services", False, 25000],
+                ["emergency_service", False, 25000],
                 ["school_or_college", False, 25000],
                 ["other", None, 25000],
             ]
