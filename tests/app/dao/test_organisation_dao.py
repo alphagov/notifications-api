@@ -158,19 +158,23 @@ def test_update_organisation_updates_the_service_org_type_if_org_type_is_provide
 
 
 def test_add_service_to_organisation(sample_service, sample_organisation):
-    sample_service.organisation_type = 'local'
-    sample_organisation.organisation_type = 'central'
     assert sample_organisation.services == []
+
+    sample_service.organisation_type = "central"
+    sample_organisation.organisation_type = "local"
+    sample_organisation.crown = False
 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
 
     assert len(sample_organisation.services) == 1
     assert sample_organisation.services[0].id == sample_service.id
-    assert sample_organisation.services[0].organisation_type == 'central'
+
+    assert sample_service.organisation_type == sample_organisation.organisation_type
+    assert sample_service.crown == sample_organisation.crown
     assert Service.get_history_model().query.filter_by(
         id=sample_service.id,
         version=2
-    ).one().organisation_type == 'central'
+    ).one().organisation_type == sample_organisation.organisation_type
 
 
 def test_add_service_to_multiple_organisation_raises_error(sample_service, sample_organisation):

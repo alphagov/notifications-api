@@ -8,7 +8,7 @@ post_create_organisation_schema = {
     "properties": {
         "name": {"type": "string"},
         "active": {"type": ["boolean", "null"]},
-        "crown": {"type": "boolean"},
+        "crown": {"type": ["boolean", "null"]},
         "organisation_type": {"enum": ORGANISATION_TYPES},
     },
     "required": ["name", "crown", "organisation_type"]
