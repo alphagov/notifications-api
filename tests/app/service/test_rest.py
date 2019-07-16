@@ -696,31 +696,6 @@ def test_update_service_flags(client, sample_service):
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
-@pytest.mark.parametrize("org_type, expected",
-                         [("central", None),
-                          ("local", False),
-                          ("nhs_central", False),
-                          ("nhs_local", False),
-                          ("emergency_service", False),
-                          ("school_or_college", False),
-                          ("other", None)])
-def test_update_service_sets_crown_based_on_org_type(client, sample_service, org_type, expected):
-    sample_service.crown = None
-    data = {
-        'organisation_type': org_type,
-    }
-    auth_header = create_authorization_header()
-
-    resp = client.post(
-        '/service/{}'.format(sample_service.id),
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header]
-    )
-    result = resp.json
-    assert resp.status_code == 200
-    assert result['data']['crown'] is expected
-
-
 @pytest.mark.parametrize('field', (
     'volume_email',
     'volume_sms',

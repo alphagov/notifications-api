@@ -106,9 +106,6 @@ def dao_add_service_to_organisation(service, organisation_id):
     db.session.add(service)
 
 
-
-
-
 def dao_get_invited_organisation_user(user_id):
     return InvitedOrganisationUser.query.filter_by(id=user_id).one()
 

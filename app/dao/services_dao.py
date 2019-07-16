@@ -38,6 +38,7 @@ from app.models import (
     TemplateRedacted,
     User,
     VerifyCode,
+    CROWN_ORGANISATION_TYPES,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
@@ -285,6 +286,8 @@ def dao_create_service(
     service.research_mode = False
     if organisation:
         service.crown = organisation.crown
+    elif service.organisation_type in CROWN_ORGANISATION_TYPES:
+        service.crown = True
     elif service.organisation_type in (NON_CROWN_ORGANISATION_TYPES + ['nhs']):
         service.crown = False
     service.count_as_live = not user.platform_admin
