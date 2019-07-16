@@ -9,8 +9,10 @@ from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery, zendesk_client
+from app.billing.rest import get_or_create_free_sms_fragment_limit
 from app.celery.tasks import process_job
 from app.config import QueueNames, TaskNames
+from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending
@@ -34,6 +36,7 @@ from app.models import (
     JOB_STATUS_ERROR,
     SMS_TYPE,
     EMAIL_TYPE,
+    Service
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.v2.errors import JobIncompleteError
@@ -222,3 +225,13 @@ def check_templated_letter_state():
                 message=msg,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+
+
+@notify_celery.task(name='populate-free-sms-fragment-limit')
+@statsd(namespace="tasks")
+def populate_free_sms_fragment_limit():
+    current_year = get_current_financial_year_start_year()
+    services = Service.query.filter(Service.active.is_(True)).all()
+
+    for service in services:
+        get_or_create_free_sms_fragment_limit(financial_year_start=current_year, service_id=service.id)

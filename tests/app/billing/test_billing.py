@@ -5,7 +5,9 @@ import json
 import pytest
 from freezegun import freeze_time
 
-from app.models import FactBilling
+from app.celery.scheduled_tasks import populate_free_sms_fragment_limit
+from app.errors import InvalidRequest
+from app.models import FactBilling, AnnualBilling
 from app.dao.date_util import get_current_financial_year_start_year, get_month_start_and_end_date_in_utc
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
 from tests.app.db import (
@@ -155,6 +157,7 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
     assert annual_billing.free_sms_fragment_limit == 9999
+    assert annual_billing.financial_year_start == current_year
 
 
 @freeze_time('2018-04-21 14:00')
@@ -389,6 +392,26 @@ def test_get_yearly_billing_usage_summary_from_ft_billing_all_cases(client, noti
     assert json_response[5]["billing_units"] == 5
     assert json_response[5]["rate"] == 0.162
     assert json_response[5]["letter_total"] == 0
+
+
+def test_populate_free_sms_fragment_limit(notify_db_session):
+    active_service = create_service(active=True)
+    current_year = get_current_financial_year_start_year()
+    create_annual_billing(active_service.id, 25000, current_year - 1)
+    create_service(service_name='Inactive service', active=False)
+
+    assert AnnualBilling.query.filter(AnnualBilling.financial_year_start == current_year).all() == []
+    populate_free_sms_fragment_limit()
+
+    results = AnnualBilling.query.filter(AnnualBilling.financial_year_start == current_year).all()
+    assert len(results) == 1
+    assert results[0].service_id == active_service.id
+
+
+def test_populate_free_sms_fragment_limit(notify_db_session):
+    create_service(active=True)
+    with pytest.raises(expected_exception=InvalidRequest):
+        populate_free_sms_fragment_limit()
 
 
 def set_up_data_for_all_cases():

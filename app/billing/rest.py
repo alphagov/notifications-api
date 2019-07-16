@@ -58,8 +58,13 @@ def get_free_sms_fragment_limit(service_id):
 
     financial_year_start = request.args.get('financial_year_start')
 
-    annual_billing = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
+    annual_billing = get_or_create_free_sms_fragment_limit(financial_year_start, service_id)
 
+    return jsonify(annual_billing.serialize_free_sms_items()), 200
+
+
+def get_or_create_free_sms_fragment_limit(financial_year_start, service_id):
+    annual_billing = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
     if annual_billing is None:
         # An entry does not exist in annual_billing table for that service and year. If it is a past year,
         # we return the oldest entry.
@@ -75,15 +80,14 @@ def get_free_sms_fragment_limit(service_id):
 
             if int(financial_year_start) < get_current_financial_year_start_year():
                 # return the earliest historical entry
-                annual_billing = sms_list[0]   # The oldest entry
+                annual_billing = sms_list[0]  # The oldest entry
             else:
                 annual_billing = sms_list[-1]  # The newest entry
 
                 annual_billing = dao_create_or_update_annual_billing_for_year(service_id,
                                                                               annual_billing.free_sms_fragment_limit,
                                                                               financial_year_start)
-
-    return jsonify(annual_billing.serialize_free_sms_items()), 200
+    return annual_billing
 
 
 @billing_blueprint.route('/free-sms-fragment-limit', methods=["POST"])
