@@ -4,6 +4,7 @@ import uuid
 import pytest
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
+from app import db
 from app.dao.organisation_dao import (
     dao_get_organisations,
     dao_get_organisation_by_email_address,
@@ -16,7 +17,7 @@ from app.dao.organisation_dao import (
     dao_get_users_for_organisation,
     dao_add_user_to_organisation
 )
-from app.models import Organisation
+from app.models import Organisation, Service
 
 from tests.app.db import (
     create_domain,
@@ -29,7 +30,6 @@ from tests.app.db import (
 
 
 def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
-        notify_db,
         notify_db_session
 ):
     m_active_org = create_organisation(name='m_active_organisation')
@@ -48,7 +48,7 @@ def test_get_organisations_gets_all_organisations_alphabetically_with_active_org
     assert organisations[4] == z_inactive_org
 
 
-def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_session):
+def test_get_organisation_by_id_gets_correct_organisation(notify_db_session):
     organisation = create_organisation()
 
     organisation_from_db = dao_get_organisation_by_id(organisation.id)
@@ -56,10 +56,7 @@ def test_get_organisation_by_id_gets_correct_organisation(notify_db, notify_db_s
     assert organisation_from_db == organisation
 
 
-def test_update_organisation(
-    notify_db,
-    notify_db_session,
-):
+def test_update_organisation(notify_db_session):
     create_organisation()
 
     organisation = Organisation.query.one()
@@ -82,12 +79,16 @@ def test_update_organisation(
     for attribute, value in data.items():
         assert getattr(organisation, attribute) != value
 
+    assert organisation.updated_at is None
+
     dao_update_organisation(organisation.id, **data)
 
     organisation = Organisation.query.one()
 
     for attribute, value in data.items():
         assert getattr(organisation, attribute) == value
+
+    assert organisation.updated_at
 
 
 @pytest.mark.parametrize('domain_list, expected_domains', (
@@ -101,7 +102,6 @@ def test_update_organisation(
     ),
 ))
 def test_update_organisation_domains_lowercases(
-    notify_db,
     notify_db_session,
     domain_list,
     expected_domains,
@@ -119,17 +119,61 @@ def test_update_organisation_domains_lowercases(
     assert {domain.domain for domain in organisation.domains} == expected_domains
 
 
-def test_add_service_to_organisation(notify_db, notify_db_session, sample_service, sample_organisation):
+def test_update_organisation_does_not_update_the_service_org_type_if_org_type_is_not_provided(
+    sample_service,
+    sample_organisation,
+):
+    sample_service.organisation_type = 'local'
+    sample_organisation.organisation_type = 'central'
+
+    sample_organisation.services.append(sample_service)
+    db.session.commit()
+
+    assert sample_organisation.name == 'sample organisation'
+
+    dao_update_organisation(sample_organisation.id, name='updated org name')
+
+    assert sample_organisation.name == 'updated org name'
+    assert sample_service.organisation_type == 'local'
+
+
+def test_update_organisation_updates_the_service_org_type_if_org_type_is_provided(
+    sample_service,
+    sample_organisation,
+):
+    sample_service.organisation_type = 'local'
+    sample_organisation.organisation_type = 'local'
+
+    sample_organisation.services.append(sample_service)
+    db.session.commit()
+
+    dao_update_organisation(sample_organisation.id, organisation_type='central')
+
+    assert sample_organisation.organisation_type == 'central'
+    assert sample_service.organisation_type == 'central'
+    assert Service.get_history_model().query.filter_by(
+        id=sample_service.id,
+        version=2
+    ).one().organisation_type == 'central'
+
+
+def test_add_service_to_organisation(sample_service, sample_organisation):
+    sample_service.organisation_type = 'local'
+    sample_organisation.organisation_type = 'central'
     assert sample_organisation.services == []
 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
 
     assert len(sample_organisation.services) == 1
     assert sample_organisation.services[0].id == sample_service.id
+    assert sample_organisation.services[0].organisation_type == 'central'
+    assert Service.get_history_model().query.filter_by(
+        id=sample_service.id,
+        version=2
+    ).one().organisation_type == 'central'
 
 
-def test_add_service_to_multiple_organisation_raises_error(
-        notify_db, notify_db_session, sample_service, sample_organisation):
+def test_add_service_to_multiple_organisation_raises_error(sample_service, sample_organisation):
     another_org = create_organisation()
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
 
@@ -140,7 +184,7 @@ def test_add_service_to_multiple_organisation_raises_error(
     assert sample_organisation.services[0] == sample_service
 
 
-def test_get_organisation_services(notify_db, notify_db_session, sample_service, sample_organisation):
+def test_get_organisation_services(sample_service, sample_organisation):
     another_service = create_service(service_name='service 2')
     another_org = create_organisation()
 
@@ -154,7 +198,7 @@ def test_get_organisation_services(notify_db, notify_db_session, sample_service,
     assert not other_org_services
 
 
-def test_get_organisation_by_service_id(notify_db, notify_db_session, sample_service, sample_organisation):
+def test_get_organisation_by_service_id(sample_service, sample_organisation):
     another_service = create_service(service_name='service 2')
     another_org = create_organisation()
 
