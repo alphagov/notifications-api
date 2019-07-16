@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, time
 
 from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc
-from sqlalchemy import func
+from sqlalchemy import case, func, Date
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import literal, extract
 from sqlalchemy.types import DateTime, Integer
@@ -16,6 +16,14 @@ from app.models import (
     Notification,
     NotificationHistory,
     NOTIFICATION_CANCELLED,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    NOTIFICATION_PERMANENT_FAILURE,
     Service,
     SMS_TYPE,
     Template,
@@ -440,3 +448,67 @@ def get_total_sent_notifications_for_day_and_type(day, notification_type):
     ).scalar()
 
     return result or 0
+
+
+def fetch_monthly_notification_statuses_per_service(start_date, end_date):
+    return db.session.query(
+        func.date_trunc('month', FactNotificationStatus.bst_date).cast(Date).label('date_created'),
+        Service.id.label('service_id'),
+        Service.name.label('service_name'),
+        FactNotificationStatus.notification_type,
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status == NOTIFICATION_SENDING,
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_sending'),
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status == NOTIFICATION_DELIVERED,
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_delivered'),
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status.in_([NOTIFICATION_TECHNICAL_FAILURE, NOTIFICATION_FAILED]),
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_technical_failure'),
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status == NOTIFICATION_TEMPORARY_FAILURE,
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_temporary_failure'),
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status == NOTIFICATION_PERMANENT_FAILURE,
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_permanent_failure'),
+        func.sum(case(
+            [
+                (FactNotificationStatus.notification_status == NOTIFICATION_SENT,
+                 FactNotificationStatus.notification_count)
+            ],
+            else_=0)).label('count_sent'),
+    ).join(
+        Service, FactNotificationStatus.service_id == Service.id
+    ).filter(
+        FactNotificationStatus.notification_status != NOTIFICATION_CREATED,
+        Service.active.is_(True),
+        FactNotificationStatus.key_type != KEY_TYPE_TEST,
+        Service.research_mode.is_(False),
+        Service.restricted.is_(False),
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.bst_date <= end_date,
+    ).group_by(
+        Service.id,
+        Service.name,
+        func.date_trunc('month', FactNotificationStatus.bst_date).cast(Date),
+        FactNotificationStatus.notification_type,
+    ).order_by(
+        func.date_trunc('month', FactNotificationStatus.bst_date).cast(Date),
+        Service.id,
+        FactNotificationStatus.notification_type,
+    ).all()

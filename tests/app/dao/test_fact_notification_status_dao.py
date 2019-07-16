@@ -6,6 +6,7 @@ import mock
 
 from app.dao.fact_notification_status_dao import (
     update_fact_notification_status,
+    fetch_monthly_notification_statuses_per_service,
     fetch_notification_status_for_day,
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
@@ -15,7 +16,22 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service,
     get_total_sent_notifications_for_day_and_type
 )
-from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
+from app.models import (
+    FactNotificationStatus,
+    KEY_TYPE_TEST,
+    KEY_TYPE_TEAM,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_FAILED,
+    NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
+)
 from freezegun import freeze_time
 
 from tests.app.db import (
@@ -612,3 +628,65 @@ def test_get_total_sent_notifications_for_day_and_type_returns_zero_when_no_coun
     total = get_total_sent_notifications_for_day_and_type("2019-03-27", "sms")
 
     assert total == 0
+
+
+@freeze_time('2019-05-10 14:00')
+def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
+    service_one = create_service(service_name='service one', service_id=UUID('e4e34c4e-73c1-4802-811c-3dd273f21da4'))
+    service_two = create_service(service_name='service two', service_id=UUID('b19d7aad-6f09-4198-8b62-f6cf126b87e5'))
+
+    create_ft_notification_status(date(2019, 4, 30), notification_type='letter', service=service_one,
+                                  notification_status=NOTIFICATION_DELIVERED)
+    create_ft_notification_status(date(2019, 3, 1), notification_type='email', service=service_one,
+                                  notification_status=NOTIFICATION_SENDING, count=4)
+    create_ft_notification_status(date(2019, 3, 2), notification_type='email', service=service_one,
+                                  notification_status=NOTIFICATION_TECHNICAL_FAILURE, count=2)
+    create_ft_notification_status(date(2019, 3, 7), notification_type='email', service=service_one,
+                                  notification_status=NOTIFICATION_FAILED, count=1)
+    create_ft_notification_status(date(2019, 3, 10), notification_type='letter', service=service_two,
+                                  notification_status=NOTIFICATION_PERMANENT_FAILURE, count=1)
+    create_ft_notification_status(date(2019, 3, 10), notification_type='letter', service=service_two,
+                                  notification_status=NOTIFICATION_PERMANENT_FAILURE, count=1)
+    create_ft_notification_status(date(2019, 3, 13), notification_type='sms', service=service_one,
+                                  notification_status=NOTIFICATION_SENT, count=1)
+    create_ft_notification_status(date(2019, 4, 1), notification_type='letter', service=service_two,
+                                  notification_status=NOTIFICATION_TEMPORARY_FAILURE, count=10)
+    create_ft_notification_status(date(2019, 3, 31), notification_type='letter', service=service_one,
+                                  notification_status=NOTIFICATION_DELIVERED)
+
+    results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 4, 30))
+
+    assert len(results) == 6
+    # column order: date, service_id, service_name, notifaction_type, count_sending, count_delivered,
+    # count_technical_failure, count_temporary_failure, count_permanent_failure, count_sent
+    assert [x for x in results[0]] == [date(2019, 3, 1), service_two.id, 'service two', 'letter', 0, 0, 0, 0, 2, 0]
+    assert [x for x in results[1]] == [date(2019, 3, 1), service_one.id, 'service one', 'email', 4, 0, 3, 0, 0, 0]
+    assert [x for x in results[2]] == [date(2019, 3, 1), service_one.id, 'service one', 'letter', 0, 1, 0, 0, 0, 0]
+    assert [x for x in results[3]] == [date(2019, 3, 1), service_one.id, 'service one', 'sms', 0, 0, 0, 0, 0, 1]
+    assert [x for x in results[4]] == [date(2019, 4, 1), service_two.id, 'service two', 'letter', 0, 0, 0, 10, 0, 0]
+    assert [x for x in results[5]] == [date(2019, 4, 1), service_one.id, 'service one', 'letter', 0, 1, 0, 0, 0, 0]
+
+
+@freeze_time('2019-04-10 14:00')
+def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be_excluded(notify_db_session):
+    valid_service = create_service(service_name='valid service')
+    inactive_service = create_service(service_name='inactive', active=False)
+    research_mode_service = create_service(service_name='research_mode', research_mode=True)
+    restricted_service = create_service(service_name='restricted', restricted=True)
+
+    # notification in 'created' state
+    create_ft_notification_status(date(2019, 3, 15), service=valid_service, notification_status=NOTIFICATION_CREATED)
+    # notification created by inactive service
+    create_ft_notification_status(date(2019, 3, 15), service=inactive_service)
+    # notification created with test key
+    create_ft_notification_status(date(2019, 3, 12), service=valid_service, key_type=KEY_TYPE_TEST)
+    # notification created by research mode service
+    create_ft_notification_status(date(2019, 3, 2), service=research_mode_service)
+    # notification created by trial mode service
+    create_ft_notification_status(date(2019, 3, 19), service=restricted_service)
+    # notifications outside date range
+    create_ft_notification_status(date(2019, 2, 28), service=valid_service)
+    create_ft_notification_status(date(2019, 4, 1), service=valid_service)
+
+    results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 3, 31))
+    assert len(results) == 0
