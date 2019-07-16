@@ -408,7 +408,8 @@ def test_populate_free_sms_fragment_limit(notify_db_session):
     assert results[0].service_id == active_service.id
 
 
-def test_populate_free_sms_fragment_limit(notify_db_session):
+def test_populate_free_sms_fragment_limit_when_service_does_not_have_any_annual_billing(notify_db_session):
+    # This should be an unlikely/impossible error
     create_service(active=True)
     with pytest.raises(expected_exception=InvalidRequest):
         populate_free_sms_fragment_limit()
