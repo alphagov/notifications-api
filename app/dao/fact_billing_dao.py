@@ -159,7 +159,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
                 notification_type=notification_type,
                 start_date=start_date,
                 end_date=end_date,
-                service_id = id_of_service
+                service_id=id_of_service
             )
             # If data has been purged from Notification then use NotificationHistory
             if len(results) == 0:
@@ -284,10 +284,6 @@ def update_fact_billing(data, process_day):
                     data.letter_page_count,
                     data.postage)
     billing_record = create_billing_record(data, rate, process_day)
-
-    FactBilling.query.filter(
-        FactBilling.bst_date == process_day
-    ).delete()
 
     table = FactBilling.__table__
     '''

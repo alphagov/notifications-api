@@ -38,13 +38,22 @@ def fetch_notification_status_for_day(process_day):
     # if no rows try notificationHistory
     for service_id in service_ids:
         for notification_type in [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]:
-            table = Notification
-            data_for_service_and_type = query_for_fact_status_data(table, start_date, end_date, notification_type, service_id)
+            data_for_service_and_type = query_for_fact_status_data(
+                table=Notification,
+                start_date=start_date,
+                end_date=end_date,
+                notification_type=notification_type,
+                service_id=service_id
+            )
 
             if len(data_for_service_and_type) == 0:
-                table = NotificationHistory
-                data_for_service_and_type = query_for_fact_status_data(table, start_date, end_date, notification_type, service_id)
-
+                data_for_service_and_type = query_for_fact_status_data(
+                    table=NotificationHistory,
+                    start_date=start_date,
+                    end_date=end_date,
+                    notification_type=notification_type,
+                    service_id=service_id
+                )
             all_data_for_process_day = all_data_for_process_day + data_for_service_and_type
 
     return all_data_for_process_day
