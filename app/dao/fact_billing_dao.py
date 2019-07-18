@@ -146,67 +146,86 @@ def delete_billing_data_for_service_for_day(process_day, service_id):
 def fetch_billing_data_for_day(process_day, service_id=None):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
-    # use notification_history if process day is older than 7 days
-    # this is useful if we need to rebuild the ft_billing table for a date older than 7 days ago.
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
-    table = Notification
-    if start_date < datetime.utcnow() - timedelta(days=7):
-        table = NotificationHistory
     transit_data = []
-    for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-        billable_type_list = {
-            SMS_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
-            EMAIL_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
-            LETTER_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
-        }
-        query = db.session.query(
-            table.template_id,
-            table.service_id,
-            table.notification_type,
-            func.coalesce(table.sent_by,
-                          case(
-                              [
-                                  (table.notification_type == 'letter', 'dvla'),
-                                  (table.notification_type == 'sms', 'unknown'),
-                                  (table.notification_type == 'email', 'ses')
-                              ]),
-                          ).label('sent_by'),
-            func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
-            func.coalesce(table.international, False).label('international'),
-            case(
-                [
-                    (table.notification_type == 'letter', table.billable_units),
-                ]
-            ).label('letter_page_count'),
-            func.sum(table.billable_units).label('billable_units'),
-            func.count().label('notifications_sent'),
-            Service.crown,
-            func.coalesce(table.postage, 'none').label('postage')
-        ).filter(
-            table.status.in_(billable_type_list[notification_type]),
-            table.key_type != KEY_TYPE_TEST,
-            table.created_at >= start_date,
-            table.created_at < end_date,
-            table.notification_type == notification_type
-        ).group_by(
-            table.template_id,
-            table.service_id,
-            table.notification_type,
-            'sent_by',
-            'letter_page_count',
-            table.rate_multiplier,
-            table.international,
-            Service.crown,
-            table.postage,
-        ).join(
-            Service
-        )
-        if service_id:
-            query = query.filter(table.service_id == service_id)
+    if not service_id:
+        service_ids = [x.id for x in Service.query.all()]
+    else:
+        service_ids = [service_id]
+    for id_of_service in service_ids:
+        for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+            results = _query_for_billing_data(
+                table=Notification,
+                notification_type=notification_type,
+                start_date=start_date,
+                end_date=end_date,
+                service_id=id_of_service
+            )
+            # If data has been purged from Notification then use NotificationHistory
+            if len(results) == 0:
+                results = _query_for_billing_data(
+                    table=NotificationHistory,
+                    notification_type=notification_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    service_id=id_of_service
+                )
 
-        transit_data = transit_data + query.all()
+            transit_data = transit_data + results
 
     return transit_data
+
+
+def _query_for_billing_data(table, notification_type, start_date, end_date, service_id):
+    billable_type_list = {
+        SMS_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
+        EMAIL_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
+        LETTER_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
+    }
+    query = db.session.query(
+        table.template_id,
+        table.service_id,
+        table.notification_type,
+        func.coalesce(table.sent_by,
+                      case(
+                          [
+                              (table.notification_type == 'letter', 'dvla'),
+                              (table.notification_type == 'sms', 'unknown'),
+                              (table.notification_type == 'email', 'ses')
+                          ]),
+                      ).label('sent_by'),
+        func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
+        func.coalesce(table.international, False).label('international'),
+        case(
+            [
+                (table.notification_type == 'letter', table.billable_units),
+            ]
+        ).label('letter_page_count'),
+        func.sum(table.billable_units).label('billable_units'),
+        func.count().label('notifications_sent'),
+        Service.crown,
+        func.coalesce(table.postage, 'none').label('postage')
+    ).filter(
+        table.status.in_(billable_type_list[notification_type]),
+        table.key_type != KEY_TYPE_TEST,
+        table.created_at >= start_date,
+        table.created_at < end_date,
+        table.notification_type == notification_type,
+        table.service_id == service_id
+    ).group_by(
+        table.template_id,
+        table.service_id,
+        table.notification_type,
+        'sent_by',
+        'letter_page_count',
+        table.rate_multiplier,
+        table.international,
+        Service.crown,
+        table.postage,
+    ).join(
+        Service
+    )
+    return query.all()
 
 
 def get_rates_for_billing():
@@ -265,6 +284,7 @@ def update_fact_billing(data, process_day):
                     data.letter_page_count,
                     data.postage)
     billing_record = create_billing_record(data, rate, process_day)
+
     table = FactBilling.__table__
     '''
        This uses the Postgres upsert to avoid race conditions when two threads try to insert

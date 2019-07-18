@@ -18,7 +18,10 @@ from app.dao.fact_notification_status_dao import (
 from app.models import FactNotificationStatus, KEY_TYPE_TEST, KEY_TYPE_TEAM, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE
 from freezegun import freeze_time
 
-from tests.app.db import create_notification, create_service, create_template, create_ft_notification_status, create_job
+from tests.app.db import (
+    create_notification, create_service, create_template, create_ft_notification_status,
+    create_job, create_notification_history
+)
 
 
 def test_update_fact_notification_status(notify_db_session):
@@ -31,8 +34,9 @@ def test_update_fact_notification_status(notify_db_session):
 
     create_notification(template=first_template, status='delivered')
     create_notification(template=first_template, created_at=datetime.utcnow() - timedelta(days=1))
-    create_notification(template=second_template, status='temporary-failure')
-    create_notification(template=second_template, created_at=datetime.utcnow() - timedelta(days=1))
+    # simulate a service with data retention - data has been moved to history and does not exist in notifications
+    create_notification_history(template=second_template, status='temporary-failure')
+    create_notification_history(template=second_template, created_at=datetime.utcnow() - timedelta(days=1))
     create_notification(template=third_template, status='created')
     create_notification(template=third_template, created_at=datetime.utcnow() - timedelta(days=1))
 
