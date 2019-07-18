@@ -342,7 +342,7 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notifica
     create_notification(template=job.template, job=job, status='created')
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "Sorry, it's too late, letters have already been sent."
+    assert errors == "It's too late to cancel sending, these letters have already been sent."
 
 
 def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_letters_already_sent_to_dvla(
@@ -355,7 +355,7 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_letters_
     with freeze_time('2019-06-13 17:32'):
         result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "Sorry, it's too late, letters have already been sent."
+    assert errors == "It's too late to cancel sending, these letters have already been sent."
     assert letter.status == 'created'
     assert job.job_status == 'finished'
 
@@ -379,7 +379,7 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_job_not_
     create_notification(template=job.template, job=job, status='created')
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "This job is still being processed. Wait a couple of minutes and try again."
+    assert errors == "We are still processing these letters, please try again in a minute."
 
 
 @freeze_time('2019-06-13 13:00')
@@ -390,4 +390,4 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notifica
     create_notification(template=job.template, job=job, status='created')
     result, errors = can_letter_job_be_cancelled(job)
     assert not result
-    assert errors == "This job is still being processed. Wait a couple of minutes and try again."
+    assert errors == "We are still processing these letters, please try again in a minute."

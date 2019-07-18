@@ -177,13 +177,13 @@ def can_letter_job_be_cancelled(job):
     ).all()
     count_notifications = len(notifications)
     if job.job_status != JOB_STATUS_FINISHED or count_notifications != job.notification_count:
-        return False, "This job is still being processed. Wait a couple of minutes and try again."
+        return False, "We are still processing these letters, please try again in a minute."
     count_cancellable_notifications = len([
         n for n in notifications if n.status in CANCELLABLE_JOB_LETTER_STATUSES
     ])
     if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
         NOTIFICATION_CREATED, job.created_at
     ):
-        return False, "Sorry, it's too late, letters have already been sent."
+        return False, "It's too late to cancel sending, these letters have already been sent."
 
     return True, None
