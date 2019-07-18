@@ -325,7 +325,7 @@ class Domain(db.Model):
 
 
 ORGANISATION_TYPES = [
-    "central", "local", "nhs_central",
+    "central", "local", "nhs_central", "nhs",
     "nhs_local", "emergency_service", "school_or_college", "other",
 ]
 
