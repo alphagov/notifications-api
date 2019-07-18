@@ -2829,14 +2829,12 @@ def test_add_service_letter_contact_can_add_multiple_addresses(client, sample_se
     assert first_letter_contact_not_default[0].contact_block == 'London, E1 8QS'
 
 
-def test_add_service_letter_contact_block_raise_exception_if_no_default(client, sample_service):
+def test_add_service_letter_contact_block_fine_if_no_default(client, sample_service):
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
     response = client.post('/service/{}/letter-contact'.format(sample_service.id),
                            data=data,
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
-    assert response.status_code == 400
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp['message'] == 'You must have at least one letter contact as the default.'
+    assert response.status_code == 201
 
 
 def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, notify_db, notify_db_session):
@@ -2864,16 +2862,13 @@ def test_update_service_letter_contact(client, sample_service):
     assert json_resp['data'] == results[0].serialize()
 
 
-def test_update_service_letter_contact_returns_400_when_no_default(client, sample_service):
+def test_update_service_letter_contact_returns_200_when_no_default(client, sample_service):
     original_reply_to = create_letter_contact(service=sample_service, contact_block="Aberdeen, AB23 1XH")
     data = json.dumps({"contact_block": "London, E1 8QS", "is_default": False})
     response = client.post('/service/{}/letter-contact/{}'.format(sample_service.id, original_reply_to.id),
                            data=data,
                            headers=[('Content-Type', 'application/json'), create_authorization_header()])
-
-    assert response.status_code == 400
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert json_resp['message'] == 'You must have at least one letter contact as the default.'
+    assert response.status_code == 200
 
 
 def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db, notify_db_session):
