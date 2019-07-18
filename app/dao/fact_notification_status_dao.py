@@ -9,23 +9,49 @@ from sqlalchemy.types import DateTime, Integer
 
 from app import db
 from app.models import (
-    Notification, NotificationHistory, FactNotificationStatus, KEY_TYPE_TEST, Service, Template,
-    NOTIFICATION_CANCELLED
+    EMAIL_TYPE,
+    FactNotificationStatus,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    Notification,
+    NotificationHistory,
+    NOTIFICATION_CANCELLED,
+    Service,
+    SMS_TYPE,
+    Template,
 )
 from app.utils import get_london_midnight_in_utc, midnight_n_days_ago, get_london_month_from_utc_column
 
 
-def fetch_notification_status_for_day(process_day, service_id=None):
+def fetch_notification_status_for_day(process_day):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
     # use notification_history if process day is older than 7 days
     # this is useful if we need to rebuild the ft_billing table for a date older than 7 days ago.
     current_app.logger.info("Fetch ft_notification_status for {} to {}".format(start_date, end_date))
-    table = Notification
-    if start_date < datetime.utcnow() - timedelta(days=7):
-        table = NotificationHistory
 
-    transit_data = db.session.query(
+    all_data_for_process_day = []
+    service_ids = [x.id for x in Service.query.all()]
+    # for each service
+    # for each notification type
+    # query notifications for day
+    # if no rows try notificationHistory
+    for service_id in service_ids:
+        for notification_type in [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]:
+            table = Notification
+            data_for_service_and_type = query_for_fact_status_data(table, start_date, end_date, notification_type, service_id)
+
+            if len(data_for_service_and_type) == 0:
+                table = NotificationHistory
+                data_for_service_and_type = query_for_fact_status_data(table, start_date, end_date, notification_type, service_id)
+
+            all_data_for_process_day = all_data_for_process_day + data_for_service_and_type
+
+    return all_data_for_process_day
+
+
+def query_for_fact_status_data(table, start_date, end_date, notification_type, service_id):
+    query = db.session.query(
         table.template_id,
         table.service_id,
         func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
@@ -35,7 +61,9 @@ def fetch_notification_status_for_day(process_day, service_id=None):
         func.count().label('notification_count')
     ).filter(
         table.created_at >= start_date,
-        table.created_at < end_date
+        table.created_at < end_date,
+        table.notification_type == notification_type,
+        table.service_id == service_id
     ).group_by(
         table.template_id,
         table.service_id,
@@ -44,11 +72,7 @@ def fetch_notification_status_for_day(process_day, service_id=None):
         table.key_type,
         table.status
     )
-
-    if service_id:
-        transit_data = transit_data.filter(table.service_id == service_id)
-
-    return transit_data.all()
+    return query.all()
 
 
 def update_fact_notification_status(data, process_day):
@@ -56,6 +80,7 @@ def update_fact_notification_status(data, process_day):
     FactNotificationStatus.query.filter(
         FactNotificationStatus.bst_date == process_day
     ).delete()
+
     for row in data:
         stmt = insert(table).values(
             bst_date=process_day,
