@@ -43,5 +43,3 @@ def upgrade():
 
 def downgrade():
     op.execute('DROP TABLE organisation_types')
-    op.alter_column('services', 'crown', nullable=False)
-    op.alter_column('services_history', 'crown', nullable=False)

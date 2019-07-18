@@ -204,7 +204,7 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
         'name': 'Service name',
         'crown': False,
         'organisation_type': 'foo',
-    }, 'organisation_type foo is not one of [central, local, nhs_central, nhs_local, emergency_service, school_or_college, other]'),  # noqa
+    }, 'organisation_type foo is not one of [central, local, nhs_central, nhs, nhs_local, emergency_service, school_or_college, other]'),  # noqa
 ))
 def test_post_create_organisation_with_missing_data_gives_validation_error(
     admin_request,
