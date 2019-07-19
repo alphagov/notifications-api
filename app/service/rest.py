@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.config import QueueNames
-from app.dao import notifications_dao
+from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
 from app.dao.date_util import get_financial_year
 from app.dao.api_key_dao import (
@@ -885,6 +885,16 @@ def modify_service_data_retention(service_id, data_retention_id):
             status_code=404)
 
     return '', 204
+
+
+@service_blueprint.route('/monthly-data-by-service')
+def get_monthly_notification_data_by_service():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    result = fact_notification_status_dao.fetch_monthly_notification_statuses_per_service(start_date, end_date)
+
+    return jsonify(result)
 
 
 def check_request_args(request):
