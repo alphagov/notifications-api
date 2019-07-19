@@ -325,12 +325,11 @@ class Domain(db.Model):
 
 
 ORGANISATION_TYPES = [
-    "central", "local", "nhs_central", "nhs",
-    "nhs_local", "emergency_service", "school_or_college", "other",
+    "central", "local", "nhs_central", "nhs_local", "emergency_service", "school_or_college", "other",
 ]
 
 CROWN_ORGANISATION_TYPES = ["nhs_central"]
-NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "emergency_service", "school_or_college", "nhs"]
+NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "emergency_service", "school_or_college"]
 
 
 class OrganisationTypes(db.Model):
