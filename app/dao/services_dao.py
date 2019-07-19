@@ -288,7 +288,7 @@ def dao_create_service(
         service.crown = organisation.crown
     elif service.organisation_type in CROWN_ORGANISATION_TYPES:
         service.crown = True
-    elif service.organisation_type in (NON_CROWN_ORGANISATION_TYPES + ['nhs']):
+    elif service.organisation_type in NON_CROWN_ORGANISATION_TYPES:
         service.crown = False
     service.count_as_live = not user.platform_admin
 

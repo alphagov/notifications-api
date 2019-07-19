@@ -29,6 +29,7 @@ def upgrade():
             {'name': x, 'is_crown': y, 'annual_free_sms_fragment_limit': z} for x, y, z in [
                 ["central", None, 250000],
                 ["local", False, 25000],
+                ["nhs", None, 25000],
                 ["nhs_central", True, 250000],
                 ["nhs_local", False, 25000],
                 ["emergency_service", False, 25000],

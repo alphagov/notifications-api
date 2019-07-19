@@ -330,7 +330,7 @@ ORGANISATION_TYPES = [
 ]
 
 CROWN_ORGANISATION_TYPES = ["nhs_central"]
-NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "emergency_service", "school_or_college"]
+NON_CROWN_ORGANISATION_TYPES = ["local", "nhs_local", "emergency_service", "school_or_college", "nhs"]
 
 
 class OrganisationTypes(db.Model):
