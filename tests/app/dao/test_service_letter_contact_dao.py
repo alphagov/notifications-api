@@ -9,8 +9,6 @@ from app.dao.service_letter_contact_dao import (
     dao_get_letter_contact_by_id,
     update_letter_contact
 )
-from app.errors import InvalidRequest
-from app.exceptions import ArchiveValidationError
 from app.models import ServiceLetterContact
 from tests.app.db import create_letter_contact, create_service, create_template
 
@@ -99,14 +97,14 @@ def test_add_letter_contact_does_not_override_default(notify_db_session):
     assert not results[1].is_default
 
 
-def test_add_letter_contact_with_no_default_raises_exception(notify_db_session):
+def test_add_letter_contact_with_no_default_is_fine(notify_db_session):
     service = create_service()
-    with pytest.raises(expected_exception=InvalidRequest):
-        add_letter_contact_for_service(
-            service_id=service.id,
-            contact_block='Swansea, SN1 3CC',
-            is_default=False
-        )
+    letter_contact = add_letter_contact_for_service(
+        service_id=service.id,
+        contact_block='Swansea, SN1 3CC',
+        is_default=False
+    )
+    assert service.letter_contacts == [letter_contact]
 
 
 def test_add_letter_contact_when_multiple_defaults_exist_raises_exception(notify_db_session):
@@ -159,17 +157,16 @@ def test_update_letter_contact_as_default_overides_existing_default(notify_db_se
     assert not results[1].is_default
 
 
-def test_update_letter_contact_unset_default_for_only_letter_contact_raises_exception(notify_db_session):
+def test_update_letter_contact_unset_default_for_only_letter_contact_is_fine(notify_db_session):
     service = create_service()
     only_letter_contact = create_letter_contact(service=service, contact_block='Aberdeen, AB12 23X')
-
-    with pytest.raises(expected_exception=InvalidRequest):
-        update_letter_contact(
-            service_id=service.id,
-            letter_contact_id=only_letter_contact.id,
-            contact_block='Warwick, W14 TSR',
-            is_default=False
-        )
+    update_letter_contact(
+        service_id=service.id,
+        letter_contact_id=only_letter_contact.id,
+        contact_block='Warwick, W14 TSR',
+        is_default=False
+    )
+    assert only_letter_contact.is_default is False
 
 
 def test_archive_letter_contact(notify_db_session):
@@ -199,26 +196,29 @@ def test_archive_letter_contact_does_not_archive_a_letter_contact_for_a_differen
     assert not letter_contact.archived
 
 
-def test_archive_letter_contact_does_not_archive_a_service_default_letter_contact(notify_db_session):
+def test_archive_letter_contact_can_archive_a_service_default_letter_contact(notify_db_session):
     service = create_service()
     letter_contact = create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
-
-    with pytest.raises(ArchiveValidationError) as e:
-        archive_letter_contact(service.id, letter_contact.id)
-
-    assert 'You cannot delete a default letter contact block' in str(e.value)
+    archive_letter_contact(service.id, letter_contact.id)
+    assert letter_contact.archived is True
 
 
-def test_archive_letter_contact_does_not_archive_a_template_default_letter_contact(notify_db_session):
+def test_archive_letter_contact_does_dissociates_template_defaults_before_archiving(notify_db_session):
     service = create_service()
     create_letter_contact(service=service, contact_block='Edinburgh, ED1 1AA')
     template_default = create_letter_contact(service=service, contact_block='Aberdeen, AB12 23X', is_default=False)
-    create_template(service=service, template_type='letter', reply_to=template_default.id)
+    associated_template_1 = create_template(service=service, template_type='letter', reply_to=template_default.id)
+    associated_template_2 = create_template(service=service, template_type='letter', reply_to=template_default.id)
 
-    with pytest.raises(ArchiveValidationError) as e:
-        archive_letter_contact(service.id, template_default.id)
+    assert associated_template_1.reply_to == template_default.id
+    assert associated_template_2.reply_to == template_default.id
+    assert template_default.archived is False
 
-    assert 'You cannot delete the default letter contact block for a template' in str(e.value)
+    archive_letter_contact(service.id, template_default.id)
+
+    assert associated_template_1.reply_to is None
+    assert associated_template_2.reply_to is None
+    assert template_default.archived is True
 
 
 def test_dao_get_letter_contact_by_id(sample_service):

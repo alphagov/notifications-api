@@ -2,8 +2,6 @@ from sqlalchemy import desc
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.errors import InvalidRequest
-from app.exceptions import ArchiveValidationError
 from app.models import ServiceLetterContact, Template
 
 
@@ -37,8 +35,6 @@ def add_letter_contact_for_service(service_id, contact_block, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
         _reset_old_default_to_false(old_default)
-    else:
-        _raise_when_no_default(old_default)
 
     new_letter_contact = ServiceLetterContact(
         service_id=service_id,
@@ -55,9 +51,6 @@ def update_letter_contact(service_id, letter_contact_id, contact_block, is_defau
     # if we want to make this the default, ensure there are no other existing defaults
     if is_default:
         _reset_old_default_to_false(old_default)
-    else:
-        if old_default.id == letter_contact_id:
-            raise InvalidRequest("You must have at least one letter contact as the default.", 400)
 
     letter_contact_update = ServiceLetterContact.query.get(letter_contact_id)
     letter_contact_update.contact_block = contact_block
@@ -73,10 +66,11 @@ def archive_letter_contact(service_id, letter_contact_id):
         service_id=service_id
     ).one()
 
-    if _is_template_default(letter_contact_id):
-        raise ArchiveValidationError("You cannot delete the default letter contact block for a template")
-    if letter_contact_to_archive.is_default:
-        raise ArchiveValidationError("You cannot delete a default letter contact block")
+    Template.query.filter_by(
+        service_letter_contact_id=letter_contact_id
+    ).update({
+        'service_letter_contact_id': None
+    })
 
     letter_contact_to_archive.archived = True
 
@@ -84,37 +78,28 @@ def archive_letter_contact(service_id, letter_contact_id):
     return letter_contact_to_archive
 
 
-def _is_template_default(letter_contact_id):
-    template_defaults = Template.query.filter_by(
-        service_letter_contact_id=letter_contact_id
-    ).all()
-
-    return any(template_defaults)
-
-
 def _get_existing_default(service_id):
-    letter_contacts = dao_get_letter_contacts_by_service_id(service_id=service_id)
-    if letter_contacts:
-        old_default = [x for x in letter_contacts if x.is_default]
-        if len(old_default) == 1:
-            return old_default[0]
-        else:
-            raise Exception(
-                "There should only be one default letter contact for each service. Service {} has {}".format(
-                    service_id,
-                    len(old_default)
-                )
-            )
-    return None
+    old_defaults = [
+        x for x
+        in dao_get_letter_contacts_by_service_id(service_id=service_id)
+        if x.is_default
+    ]
+
+    if len(old_defaults) == 0:
+        return None
+
+    if len(old_defaults) == 1:
+        return old_defaults[0]
+
+    raise Exception(
+        "There should only be one default letter contact for each service. Service {} has {}".format(
+            service_id,
+            len(old_defaults)
+        )
+    )
 
 
 def _reset_old_default_to_false(old_default):
     if old_default:
         old_default.is_default = False
         db.session.add(old_default)
-
-
-def _raise_when_no_default(old_default):
-    # check that the update is not updating the only default to false
-    if not old_default:
-        raise InvalidRequest("You must have at least one letter contact as the default.", 400)
