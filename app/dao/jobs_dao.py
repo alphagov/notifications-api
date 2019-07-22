@@ -184,6 +184,6 @@ def can_letter_job_be_cancelled(job):
     if count_cancellable_notifications != job.notification_count or not letter_can_be_cancelled(
         NOTIFICATION_CREATED, job.created_at
     ):
-        return False, "It's too late to cancel sending, these letters have already been sent."
+        return False, "It’s too late to cancel sending, these letters have already been sent."
 
     return True, None
