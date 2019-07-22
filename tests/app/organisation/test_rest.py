@@ -132,11 +132,12 @@ def test_get_organisation_by_domain(
         assert response['result'] == 'error'
 
 
-def test_post_create_organisation(admin_request, notify_db_session):
+@pytest.mark.parametrize('crown', [True, False])
+def test_post_create_organisation(admin_request, notify_db_session, crown):
     data = {
         'name': 'test organisation',
         'active': True,
-        'crown': False,
+        'crown': crown,
         'organisation_type': 'local',
     }
 
@@ -203,9 +204,9 @@ def test_post_create_organisation_existing_name_raises_400(admin_request, sample
         'name': 'Service name',
         'crown': False,
         'organisation_type': 'foo',
-    }, 'organisation_type foo is not one of [central, local, nhs]'),
+    }, 'organisation_type foo is not one of [central, local, nhs_central, nhs, nhs_local, emergency_service, school_or_college, other]'),  # noqa
 ))
-def test_post_create_organisation_with_missing_name_gives_validation_error(
+def test_post_create_organisation_with_missing_data_gives_validation_error(
     admin_request,
     notify_db_session,
     data,

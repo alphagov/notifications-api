@@ -86,7 +86,8 @@ from app.errors import (
 )
 from app.letters.utils import letter_print_day
 from app.models import (
-    KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service, EmailBranding, LetterBranding
+    KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service,
+    EmailBranding, LetterBranding
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
@@ -223,9 +224,6 @@ def update_service(service_id):
     current_data.update(request.get_json())
 
     service = service_schema.load(current_data).data
-    org_type = req_json.get('organisation_type', None)
-    if org_type:
-        service.crown = org_type == 'central'
 
     if 'email_branding' in req_json:
         email_branding_id = req_json['email_branding']

@@ -101,6 +101,8 @@ def dao_add_service_to_organisation(service, organisation_id):
 
     organisation.services.append(service)
     service.organisation_type = organisation.organisation_type
+    service.crown = organisation.crown
+
     db.session.add(service)
 
 
