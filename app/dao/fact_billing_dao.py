@@ -7,7 +7,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, case, desc, Date, Integer, and_
 
 from app import db
-from app.dao.date_util import get_financial_year, which_financial_year
+from app.dao.date_util import (
+    get_financial_year,
+    which_financial_year,
+    get_april_fools as financial_year_start
+)
 from app.models import (
     FactBilling,
     Notification,
@@ -23,6 +27,38 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
     Organisation, AnnualBilling)
 from app.utils import get_london_midnight_in_utc
+
+
+def fetch_sms_free_allowance_remainder(start_date):
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    billing_year = which_financial_year(start_date)
+    start_of_year = financial_year_start(billing_year)
+    query = db.session.query(
+        FactBilling.service_id.label("service_id"),
+        AnnualBilling.free_sms_fragment_limit,
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE,
+                 FactBilling.billable_units * FactBilling.rate_multiplier)
+            ], else_=0
+        )).label('billable_units'),
+        func.greatest((AnnualBilling.free_sms_fragment_limit - func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE,
+                 FactBilling.billable_units * FactBilling.rate_multiplier)
+            ], else_=0
+        ))).cast(Integer), 0).label('sms_remainder')
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_of_year,
+        FactBilling.bst_date < start_date,
+        FactBilling.notification_type == SMS_TYPE,
+        AnnualBilling.financial_year_start == billing_year,
+    ).group_by(
+        FactBilling.service_id,
+        AnnualBilling.free_sms_fragment_limit,
+    ).subquery()
+    return query
 
 
 def fetch_billing_for_all_services(start_date, end_date):
@@ -60,12 +96,15 @@ def fetch_billing_for_all_services(start_date, end_date):
     clauses = letter_billing_clauses()
     # ASSUMPTION: AnnualBilling has been populated for year.
     billing_year = which_financial_year(start_date)
+    free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date)
+
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         FactBilling.service_id.label("service_id"),
         Service.name.label("service_name"),
         AnnualBilling.free_sms_fragment_limit,
+        func.coalesce(free_allowance_remainder.c.sms_remainder, 0).label("sms_remainder"),
         func.sum(case(
             [
                 (FactBilling.notification_type == SMS_TYPE,
@@ -87,7 +126,9 @@ def fetch_billing_for_all_services(start_date, end_date):
         *clauses
     ).join(
         Service.organisation,
-        Service.annual_billing
+        Service.annual_billing,
+    ).outerjoin(
+        free_allowance_remainder, Service.id == free_allowance_remainder.c.service_id
     ).filter(
         FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
@@ -100,6 +141,7 @@ def fetch_billing_for_all_services(start_date, end_date):
         FactBilling.service_id,
         Service.name,
         AnnualBilling.free_sms_fragment_limit,
+        free_allowance_remainder.c.sms_remainder,
     ).order_by(
         Organisation.name,
         Service.name,
