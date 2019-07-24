@@ -365,7 +365,12 @@ class Organisation(db.Model):
     agreement_signed_on_behalf_of_email_address = db.Column(db.String(255), nullable=True)
     agreement_signed_version = db.Column(db.Float, nullable=True)
     crown = db.Column(db.Boolean, nullable=True)
-    organisation_type = db.Column(db.String(255), nullable=True)
+    organisation_type = db.Column(
+        db.String(255),
+        db.ForeignKey('organisation_types.name'),
+        unique=False,
+        nullable=True,
+    )
     request_to_go_live_notes = db.Column(db.Text)
 
     domains = db.relationship(
@@ -456,6 +461,8 @@ class Service(db.Model, Versioned):
     prefix_sms = db.Column(db.Boolean, nullable=False, default=True)
     organisation_type = db.Column(
         db.String(255),
+        db.ForeignKey('organisation_types.name'),
+        unique=False,
         nullable=True,
     )
     crown = db.Column(db.Boolean, index=False, nullable=True)

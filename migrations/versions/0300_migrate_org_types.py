@@ -1,116 +1,75 @@
+import os
+
 """
 
 Revision ID: 0300_migrate_org_types
 Revises: 0299_org_types_table
-Create Date: 2019-07-19 11:13:41.286472
+Create Date: 2019-07-24 16:18:27.467361
 
 """
 from alembic import op
+import sqlalchemy as sa
 
 
 revision = '0300_migrate_org_types'
 down_revision = '0299_org_types_table'
 
+environment = os.environ['NOTIFY_ENVIRONMENT']
+
 
 def upgrade():
-    op.execute("""
-        UPDATE
-            organisation
-        SET
-            organisation_type = 'nhs_local'
-        FROM
-            organisation_to_service, annual_billing
-        WHERE
-            organisation.organisation_type = 'nhs'
-        AND
-            annual_billing.service_id = organisation_to_service.service_id
-        AND
-            organisation_to_service.organisation_id = organisation.id
-        AND
-            annual_billing.free_sms_fragment_limit = 25000
-    """)
+    if environment != "production":
+        op.execute("""
+            UPDATE
+                organisation
+            SET
+                organisation_type = 'nhs_local'
+            WHERE
+                organisation.organisation_type = 'nhs'
+        """)
 
-    op.execute("""
-        UPDATE
-            services
-        SET
-            organisation_type = 'nhs_local'
-        FROM
-            annual_billing
-        WHERE
-            services.organisation_type = 'nhs'
-        AND
-            annual_billing.service_id = services.id
-        AND
-            annual_billing.free_sms_fragment_limit = 25000
-    """)
+        op.execute("""
+            UPDATE
+                services
+            SET
+                organisation_type = 'nhs_local'
+            WHERE
+                services.organisation_type = 'nhs'
+        """)
 
-    op.execute("""
-        UPDATE
-            organisation
-        SET
-            organisation_type = 'nhs_central'
-        FROM
-            organisation_to_service, annual_billing
-        WHERE
-            organisation.organisation_type = 'nhs'
-        AND
-            annual_billing.service_id = organisation_to_service.service_id
-        AND
-            organisation_to_service.organisation_id = organisation.id
-        AND
-            annual_billing.free_sms_fragment_limit = 250000
-    """)
+    op.alter_column('organisation_types', 'name', existing_type=sa.VARCHAR(), type_=sa.String(length=255))
 
-    op.execute("""
-        UPDATE
-            services
-        SET
-            organisation_type = 'nhs_central'
-        FROM
-            annual_billing
-        WHERE
-            services.organisation_type = 'nhs'
-        AND
-            annual_billing.service_id = services.id
-        AND
-            annual_billing.free_sms_fragment_limit = 250000
-    """)
+    op.create_foreign_key(
+        'organisation_organisation_type_fkey', 'organisation', 'organisation_types', ['organisation_type'], ['name']
+    )
+
+    op.create_foreign_key(
+        'services_organisation_type_fkey', 'services', 'organisation_types', ['organisation_type'], ['name']
+    )
 
 
 def downgrade():
-    op.execute("""
-        UPDATE
-            organisation
-        SET
-            organisation_type = 'nhs'
-        WHERE
-            organisation_type = 'nhs_central'
-    """)
+    op.drop_constraint('services_organisation_type_fkey', 'services', type_='foreignkey')
 
-    op.execute("""
-        UPDATE
-            services
-        SET
-            organisation_type = 'nhs'
-        WHERE
-            organisation_type = 'nhs_central'
-    """)
+    op.drop_constraint('organisation_organisation_type_fkey', 'organisation', type_='foreignkey')
 
-    op.execute("""
-        UPDATE
-            organisation
-        SET
-            organisation_type = 'nhs'
-        WHERE
-            organisation_type = 'nhs_local'
-    """)
+    op.alter_column('organisation_types', 'name', existing_type=sa.String(length=255), type_=sa.VARCHAR())
 
-    op.execute("""
-        UPDATE
-            services
-        SET
-            organisation_type = 'nhs'
-        WHERE
-            organisation_type = 'nhs_local'
-    """)
+    if environment != "production":
+        op.execute("""
+            UPDATE
+                organisation
+            SET
+                organisation_type = 'nhs'
+            WHERE
+                organisation_type = 'nhs_local'
+        """)
+
+        op.execute("""
+            UPDATE
+                services
+            SET
+                organisation_type = 'nhs'
+            WHERE
+                organisation_type = 'nhs_local'
+        """)
