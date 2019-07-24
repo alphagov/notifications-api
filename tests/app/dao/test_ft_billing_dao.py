@@ -482,16 +482,34 @@ def test_delete_billing_data(notify_db_session):
     )
 
 
-# def test_fetch_sms_free_allowance_remainder_with_remainder(notify_db_session):
-#     service = create_service(service_name='test thing')
-#     create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2016)
-#     create_ft_billing(service=service, bst_date=datetime(2016, 4,20), notification_type='sms', billable_unit=2)
-#     results = fetch_sms_free_allowance_remainder(datetime(2016, 10, 1)).all()
-#
-#     assert results[0].billable_units == 2
-#     assert results[0].free_sms_fragment_limit == 3
-#
-#     assert results[0].sms_remainder == 1
+def test_fetch_sms_free_allowance_remainder_with_remainder(notify_db_session):
+    service = create_service(service_name='a test thing')
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2016)
+    create_ft_billing(service=service, bst_date=datetime(2016, 4,20), notification_type='sms', billable_unit=2)
+
+    service_2 = create_service(service_name='b second thing')
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2016)
+    create_ft_billing(service=service_2, bst_date=datetime(2016, 4, 20), notification_type='sms', billable_unit=4)
+    results = fetch_sms_free_allowance_remainder(datetime(2016, 10, 1)).all()
+
+    assert len(results) == 2
+    service_1_results = None
+    service_2_results = None
+
+    if results[0].service_id == service.id:
+        service_1_results == results[0]
+    else:
+        service_2_results == results[0]
+
+    if results[1].service_id == service.id:
+        service_1_results == results[1]
+    else:
+        service_2_results == results[1]
+
+    assert service_1_results.billable_units == 2
+    assert service_1_results.free_sms_fragment_limit == 3
+
+    assert service_1_results.sms_remainder == 1
 
 
 # def test_fetch_sms_free_allowance_remainder_with_negative_remainder_returns_zero(notify_db_session):
@@ -507,66 +525,93 @@ def test_delete_billing_data(notify_db_session):
 
 
 def test_fetch_billing_for_all_services_with_remainder(notify_db_session):
-    service = create_service(service_name='test thing')
+    service = create_service(service_name='has free allowance')
     org = create_organisation(name="Org for {}".format(service.name))
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2016)
-    create_ft_billing(service=service, bst_date=datetime(2016, 4, 20), notification_type='sms', billable_unit=2)
-    create_ft_billing(service=service, bst_date=datetime(2016, 5, 20), notification_type='sms', billable_unit=2)
+    create_ft_billing(service=service, bst_date=datetime(2016, 4, 20), notification_type='sms', billable_unit=2,
+                      rate=0.1)
+    create_ft_billing(service=service, bst_date=datetime(2016, 5, 20), notification_type='sms', billable_unit=2,
+                      rate=0.1)
+
+    service_2 = create_service(service_name='used free allowance')
+    org2 = create_organisation(name="Org for {}".format(service_2.name))
+    dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2016)
+    create_ft_billing(service=service_2, bst_date=datetime(2016, 4, 20), notification_type='sms', billable_unit=12,
+                      rate=0.11)
+    create_ft_billing(service=service_2, bst_date=datetime(2016, 5, 20), notification_type='sms', billable_unit=3,
+                      rate=0.11)
     results = fetch_billing_for_all_services(datetime(2016, 5, 1), datetime(2016, 5, 31))
-    assert len(results) == 1
-
-
-def test_fetch_billing_for_all_services(notify_db_session):
-    set_up_quarterly_data()
-    set_up_quarterly_data(service_name='Second Service')
-
-    results = fetch_billing_for_all_services(datetime(2016, 4, 1), datetime(2016, 6, 30))
     print(results)
     assert len(results) == 2
 
-    assert results[0].organisation_name == 'Org for First service'
-    assert results[0].service_name == 'First service'
-    assert results[0].free_sms_fragment_limit == 25000
-    assert results[1].organisation_name == 'Org for Second Service'
-    assert results[1].service_name == 'Second Service'
-    assert results[1].free_sms_fragment_limit == 25000
+    assert results[0].organisation_id == org.id
+    assert results[0].service_id == service.id
+    assert results[0].sms_billable_units == 2
+    assert results[0].sms_remainder == 8
+    assert results[0].remainder_minus_billable_units == 0
+    assert results[0].sms_cost == 0
 
+    # assert results[1].organisation_id == org2.id
+    # assert results[1].service_id == service_2.id
+    # assert results[1].sms_billable_units == 3
+    # assert results[1].sms_remainder == 0
+    # assert results[1].remainder_minus_billable_units == 3
+    # assert results[1].sms_cost == 0.2
 
-def set_up_quarterly_data(service_name='First service'):
-    year = 2016
-    org = create_organisation(name="Org for {}".format(service_name))
-    service = create_service(service_name=service_name)
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=year)
-    sms_template = create_template(service=service, template_type="sms")
-    email_template = create_template(service=service, template_type="email")
-    letter_template = create_template(service=service, template_type="letter")
-    for month in range(4, 6):
-        mon = str(month).zfill(2)
-        for day in range(1, 3):
-            d = str(day).zfill(2)
-            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
-                              service=service,
-                              template=sms_template,
-                              notification_type='sms',
-                              rate=0.162)
-            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
-                              service=service,
-                              template=email_template,
-                              notification_type='email',
-                              rate=0)
-            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
-                              service=service,
-                              template=letter_template,
-                              notification_type='letter',
-                              rate=0.33,
-                              postage='second')
-            create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
-                              service=service,
-                              template=letter_template,
-                              notification_type='letter',
-                              rate=0.30,
-                              billable_unit=2,
-                              postage='first')
-    return service
+#
+#
+# def test_fetch_billing_for_all_services(notify_db_session):
+#     set_up_quarterly_data()
+#     set_up_quarterly_data(service_name='Second Service')
+#
+#     results = fetch_billing_for_all_services(datetime(2016, 4, 1), datetime(2016, 6, 30))
+#     print(results)
+#     assert len(results) == 2
+#
+#     assert results[0].organisation_name == 'Org for First service'
+#     assert results[0].service_name == 'First service'
+#     assert results[0].free_sms_fragment_limit == 25000
+#     assert results[1].organisation_name == 'Org for Second Service'
+#     assert results[1].service_name == 'Second Service'
+#     assert results[1].free_sms_fragment_limit == 25000
+#
+#
+# def set_up_quarterly_data(service_name='First service'):
+#     year = 2016
+#     org = create_organisation(name="Org for {}".format(service_name))
+#     service = create_service(service_name=service_name)
+#     dao_add_service_to_organisation(service=service, organisation_id=org.id)
+#     create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=year)
+#     sms_template = create_template(service=service, template_type="sms")
+#     email_template = create_template(service=service, template_type="email")
+#     letter_template = create_template(service=service, template_type="letter")
+#     for month in range(4, 6):
+#         mon = str(month).zfill(2)
+#         for day in range(1, 3):
+#             d = str(day).zfill(2)
+#             create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+#                               service=service,
+#                               template=sms_template,
+#                               notification_type='sms',
+#                               rate=0.162)
+#             create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+#                               service=service,
+#                               template=email_template,
+#                               notification_type='email',
+#                               rate=0)
+#             create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+#                               service=service,
+#                               template=letter_template,
+#                               notification_type='letter',
+#                               rate=0.33,
+#                               postage='second')
+#             create_ft_billing(bst_date='{}-{}-{}'.format(year, mon, d),
+#                               service=service,
+#                               template=letter_template,
+#                               notification_type='letter',
+#                               rate=0.30,
+#                               billable_unit=2,
+#                               postage='first')
+#     return service
