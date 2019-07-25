@@ -18,7 +18,7 @@ environment = os.environ['NOTIFY_ENVIRONMENT']
 
 
 def upgrade():
-    if environment != "production":
+    if environment not in ["live", "production"]:
         op.execute("""
             UPDATE
                 organisation
@@ -55,7 +55,7 @@ def downgrade():
 
     op.alter_column('organisation_types', 'name', existing_type=sa.String(length=255), type_=sa.VARCHAR())
 
-    if environment != "production":
+    if environment not in ["live", "production"]:
         op.execute("""
             UPDATE
                 organisation
