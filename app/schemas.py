@@ -266,6 +266,7 @@ class ServiceSchema(BaseSchema):
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
+    organisation_type = field_for(models.Service, 'organisation_type')
 
     class Meta:
         model = models.Service

@@ -102,6 +102,7 @@ def notify_db_session(notify_db):
                             "provider_details_history",
                             "template_process_type",
                             "notification_status_types",
+                            "organisation_types",
                             "service_permission_types",
                             "auth_type",
                             "invite_status_type",
