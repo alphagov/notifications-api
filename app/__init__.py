@@ -3,7 +3,7 @@ import random
 import string
 import uuid
 
-from flask import _request_ctx_stack, request, g, jsonify
+from flask import _request_ctx_stack, request, g, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
@@ -12,6 +12,7 @@ from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils import logging, request_helper
+from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -263,7 +264,17 @@ def init_app(app):
     def exception(error):
         app.logger.exception(error)
         # error.code is set for our exception types.
-        return jsonify(result='error', message=error.message), error.code or 500
+        msg = getattr(error, 'message', str(error))
+        code = getattr(error, 'code', 500)
+        return jsonify(result='error', message=msg), code
+
+    @app.errorhandler(WerkzeugHTTPException)
+    def werkzeug_exception(e):
+        return make_response(
+            jsonify(result='error', message=e.description),
+            e.code,
+            e.get_headers()
+        )
 
     @app.errorhandler(404)
     def page_not_found(e):
