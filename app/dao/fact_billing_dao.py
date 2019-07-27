@@ -32,25 +32,17 @@ from app.utils import get_london_midnight_in_utc
 def fetch_sms_free_allowance_remainder(start_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     billing_year = which_financial_year(start_date)
-    start_of_year = financial_year_start(billing_year)
-    print(start_of_year, start_date)
+    start_of_year = convert_utc_to_bst(financial_year_start(billing_year))
     query = db.session.query(
         FactBilling.service_id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
-        func.sum(case(
-            [
-                (FactBilling.notification_type == SMS_TYPE,
-                 FactBilling.billable_units * FactBilling.rate_multiplier)
-            ], else_=0
-        )).label('billable_units'),
-        func.greatest((AnnualBilling.free_sms_fragment_limit - func.sum(case(
-            [
-                (FactBilling.notification_type == SMS_TYPE,
-                 FactBilling.billable_units * FactBilling.rate_multiplier)
-            ], else_=0
-        ))).cast(Integer), 0).label('sms_remainder')
+        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label('billable_units'),
+        func.greatest((AnnualBilling.free_sms_fragment_limit -
+                       func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+                       ).cast(Integer), 0).label('sms_remainder')
     ).filter(
         FactBilling.service_id == Service.id,
+        FactBilling.service_id == AnnualBilling.service_id,
         FactBilling.bst_date >= start_of_year,
         FactBilling.bst_date < start_date,
         FactBilling.notification_type == SMS_TYPE,
@@ -99,12 +91,6 @@ def fetch_billing_for_all_services(start_date, end_date):
     billing_year = which_financial_year(start_date)
     free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
 
-    sms_billable_units = func.sum(
-        case([(FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)],
-             else_=0))
-    remaining_billable_units = \
-        func.greatest(sms_billable_units - func.coalesce(free_allowance_remainder.c.sms_remainder, 0), 0)
-    sms_rate = func.sum(case([(FactBilling.notification_type == SMS_TYPE, FactBilling.rate)], else_=0))
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
@@ -112,10 +98,11 @@ def fetch_billing_for_all_services(start_date, end_date):
         Service.name.label("service_name"),
         AnnualBilling.free_sms_fragment_limit,
         func.coalesce(free_allowance_remainder.c.sms_remainder, 0).label("sms_remainder"),
-        sms_billable_units.label('sms_billable_units'),
-        remaining_billable_units.label("remainder_minus_billable_units"),
-        sms_rate.label('sms_rate'),
-        (remaining_billable_units * sms_rate).label('sms_cost'),
+        func.sum(
+            case(
+                [(FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)],
+                else_=0)).label('sms_billable_units'),
+        FactBilling.rate.label('sms_rate'),
         *clauses
     ).join(
         Service.organisation,
@@ -135,6 +122,7 @@ def fetch_billing_for_all_services(start_date, end_date):
         Service.name,
         AnnualBilling.free_sms_fragment_limit,
         free_allowance_remainder.c.sms_remainder,
+        FactBilling.rate
     ).order_by(
         Organisation.name,
         Service.name,
