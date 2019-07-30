@@ -718,7 +718,7 @@ def populate_organisations_from_file(file_name):
             columns = line.split('|')
             print(columns)
             email_branding = None
-            email_branding_column = columns[5]
+            email_branding_column = columns[5].strip()
             if len(email_branding_column) > 0:
                 email_branding = EmailBranding.query.filter(EmailBranding.name == email_branding_column).one()
             letter_branding = None
