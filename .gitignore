@@ -63,6 +63,7 @@ docs/_build/
 # PyBuilder
 target/
 .idea/
+.vscode
 
 # Mac
 *.DS_Store

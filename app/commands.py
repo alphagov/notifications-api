@@ -836,7 +836,7 @@ def populate_go_live(file_name):
     print("Populate go live user and date")
     with open(file_name, 'r') as f:
         rows = csv.reader(
-            f.read().splitlines(),
+            f,
             quoting=csv.QUOTE_MINIMAL,
             skipinitialspace=True,
         )
