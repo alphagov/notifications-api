@@ -70,7 +70,7 @@ applications:
       AWS_SECRET_ACCESS_KEY: '{{ AWS_SECRET_ACCESS_KEY }}'
 
       {% if environment in ['preview', 'staging'] %}
-      STATSD_HOST: "statsd.notify.tools"
+      STATSD_HOST: "notify-statsd-exporter-{{ environment }}.apps.internal"
       STATSD_PREFIX: ""
       {% else %}
       STATSD_HOST: "statsd.hostedgraphite.com"
