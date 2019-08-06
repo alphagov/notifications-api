@@ -6,7 +6,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, case, desc, Date, Integer
 
 from app import db
-from app.dao.date_util import get_financial_year
+from app.dao.date_util import (
+    get_april_fools as financial_year_start,
+    get_financial_year,
+    which_financial_year
+)
+
 from app.models import (
     FactBilling,
     Notification,
@@ -19,9 +24,154 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE,
     NotificationHistory,
     EMAIL_TYPE,
-    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
+    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
+    AnnualBilling,
+    Organisation,
+    organisation_to_service
 )
 from app.utils import get_london_midnight_in_utc
+
+
+def fetch_sms_free_allowance_remainder(start_date):
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    billing_year = which_financial_year(start_date)
+    start_of_year = convert_utc_to_bst(financial_year_start(billing_year))
+    query = db.session.query(
+        FactBilling.service_id.label("service_id"),
+        AnnualBilling.free_sms_fragment_limit,
+        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label('billable_units'),
+        func.greatest((AnnualBilling.free_sms_fragment_limit -
+                       func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+                       ).cast(Integer), 0).label('sms_remainder')
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.service_id == AnnualBilling.service_id,
+        FactBilling.bst_date >= start_of_year,
+        FactBilling.bst_date < start_date,
+        FactBilling.notification_type == SMS_TYPE,
+        AnnualBilling.financial_year_start == billing_year,
+    ).group_by(
+        FactBilling.service_id,
+        AnnualBilling.free_sms_fragment_limit,
+    )
+    return query
+
+
+def fetch_sms_billing_for_all_services(start_date, end_date):
+
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    billing_year = which_financial_year(start_date)
+    free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
+    sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+    sms_remainder = func.coalesce(free_allowance_remainder.c.sms_remainder, 0)
+    chargeable_sms = case([(sms_remainder == 0, sms_billable_units),
+                           (sms_billable_units - sms_remainder <= 0, 0),
+                           (sms_billable_units - sms_remainder > 0,
+                            sms_billable_units - sms_remainder)], else_=0)
+    sms_cost = case([(sms_remainder == 0, sms_billable_units * FactBilling.rate),
+                     (sms_billable_units - sms_remainder <= 0, 0),
+                     (sms_billable_units - sms_remainder > 0, (sms_billable_units - sms_remainder) * FactBilling.rate)
+                     ], else_=0)
+
+    query = db.session.query(
+        Organisation.name.label('organisation_name'),
+        Organisation.id.label('organisation_id'),
+        FactBilling.service_id.label("service_id"),
+        Service.name.label("service_name"),
+        AnnualBilling.free_sms_fragment_limit,
+        FactBilling.rate.label('sms_rate'),
+        sms_remainder.label("sms_remainder"),
+        sms_billable_units.label('sms_billable_units'),
+        chargeable_sms.label("chargeable_billable_sms"),
+        sms_cost.label('sms_cost'),
+    ).join(
+        Service.annual_billing,
+    ).outerjoin(
+        free_allowance_remainder, Service.id == free_allowance_remainder.c.service_id
+    ).outerjoin(
+        Organisation, Service.organisation_id == Organisation.id
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == SMS_TYPE,
+        AnnualBilling.financial_year_start == billing_year,
+    ).group_by(
+        Organisation.name,
+        Organisation.id,
+        FactBilling.service_id,
+        Service.name,
+        AnnualBilling.free_sms_fragment_limit,
+        free_allowance_remainder.c.sms_remainder,
+        FactBilling.rate,
+    ).order_by(
+        Organisation.name,
+        Service.name
+    )
+
+    return query.all()
+
+
+def fetch_letter_costs_for_all_services(start_date, end_date):
+    query = db.session.query(
+        Organisation.name.label("organisation_name"),
+        Organisation.id.label("organisation_id"),
+        FactBilling.service_id.label("service_id"),
+        Service.name.label("service_name"),
+        func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
+    ).outerjoin(
+        Organisation, Service.organisation_id == Organisation.id
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == LETTER_TYPE,
+    ).group_by(
+        Organisation.name,
+        Organisation.id,
+        FactBilling.service_id,
+        Service.name,
+    ).order_by(
+        Organisation.name,
+        Service.name
+    )
+
+    return query.all()
+
+
+def fetch_letter_line_items_for_all_services(start_date, end_date):
+    query = db.session.query(
+        Organisation.name.label("organisation_name"),
+        Organisation.id.label("organisation_id"),
+        FactBilling.service_id.label("service_id"),
+        Service.name.label("service_name"),
+        FactBilling.billable_units.label('sheet_count'),
+        FactBilling.rate.label("letter_rate"),
+        FactBilling.postage('postage'),
+        func.sum(FactBilling.notifications_sent).label("letters_sent"),
+    ).outerjoin(
+        Organisation, Service.organisation_id == Organisation.id
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == LETTER_TYPE,
+    ).group_by(
+        Organisation.name,
+        Organisation.id,
+        FactBilling.service_id,
+        Service.name,
+        FactBilling.billable_units,
+        FactBilling.rate,
+        FactBilling.postage
+    ).order_by(
+        Organisation.name,
+        Service.name,
+        FactBilling.billable_units,
+        FactBilling.postage
+    )
+
+    return query.all()
 
 
 def fetch_billing_totals_for_year(service_id, year):
