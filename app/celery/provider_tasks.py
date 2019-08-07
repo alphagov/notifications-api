@@ -31,6 +31,7 @@ def deliver_sms(self, notification_id):
             message = "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. " \
                       "Notification has been updated to technical-failure".format(notification_id)
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+            current_app.logger.error(message)
             raise NotificationTechnicalFailureException(message)
 
 
@@ -57,4 +58,5 @@ def deliver_email(self, notification_id):
                       "The task send_email_to_provider failed for notification {}. " \
                       "Notification has been updated to technical-failure".format(notification_id)
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+            current_app.logger.error(message)
             raise NotificationTechnicalFailureException(message)

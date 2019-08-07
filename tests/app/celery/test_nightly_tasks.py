@@ -65,7 +65,7 @@ def mock_s3_get_list_diff(bucket_name, subfolder='', suffix='', last_modified=No
 
 @freeze_time('2016-10-18T10:00:00')
 def test_will_remove_csv_files_for_jobs_older_than_seven_days(
-        notify_db, notify_db_session, mocker, sample_template
+    mocker, sample_template
 ):
     """
     Jobs older than seven days are deleted, but only two day's worth (two-day window)
@@ -175,40 +175,41 @@ def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_a
     mocked.assert_called_once_with('letter')
 
 
-def test_update_status_of_notifications_after_timeout(notify_api, sample_template):
-    with notify_api.test_request_context():
-        not1 = create_notification(
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not2 = create_notification(
-            template=sample_template,
-            status='created',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not3 = create_notification(
-            template=sample_template,
-            status='pending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        with pytest.raises(NotificationTechnicalFailureException) as e:
-            timeout_notifications()
-        assert str(not2.id) in e.value.message
-        assert not1.status == 'temporary-failure'
-        assert not2.status == 'technical-failure'
-        assert not3.status == 'temporary-failure'
-
-
-def test_not_update_status_of_notification_before_timeout(notify_api, sample_template):
-    with notify_api.test_request_context():
-        not1 = create_notification(
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
+def test_update_status_of_notifications_after_timeout(sample_template, mocker):
+    mocked_logger = mocker.patch("app.celery.nightly_tasks.current_app.logger.error")
+    not1 = create_notification(
+        template=sample_template,
+        status='sending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    not2 = create_notification(
+        template=sample_template,
+        status='created',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    not3 = create_notification(
+        template=sample_template,
+        status='pending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    with pytest.raises(NotificationTechnicalFailureException) as e:
         timeout_notifications()
-        assert not1.status == 'sending'
+        assert not3.id in e.value
+    assert str(not2.id) in e.value.message
+    assert not1.status == 'temporary-failure'
+    assert not2.status == 'technical-failure'
+    assert not3.status == 'temporary-failure'
+    assert mocked_logger.called
+
+
+def test_not_update_status_of_notification_before_timeout(sample_template):
+    not1 = create_notification(
+        template=sample_template,
+        status='sending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
+    timeout_notifications()
+    assert not1.status == 'sending'
 
 
 def test_should_not_update_status_of_letter_notifications(client, sample_letter_template):

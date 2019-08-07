@@ -131,30 +131,36 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     assert notification.personalisation == {"name": "Jo"}
 
 
-def test_should_not_send_email_message_when_service_is_inactive_notifcation_is_in_tech_failure(
+def test_should_not_send_email_message_when_service_is_inactive_notification_is_in_tech_failure(
         sample_service, sample_notification, mocker
 ):
+    mocked_logger = mocker.patch("app.delivery.send_to_providers.current_app.logger.error")
     sample_service.active = False
     send_mock = mocker.patch("app.aws_ses_client.send_email", return_value='reference')
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         send_to_providers.send_email_to_provider(sample_notification)
+        assert sample_notification.id in e.value
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
     assert str(sample_notification.id) in e.value.message
+    assert mocked_logger.called
 
 
 @pytest.mark.parametrize("client_send", ["app.mmg_client.send_sms", "app.firetext_client.send_sms"])
 def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_tech_failure(
         sample_service, sample_notification, mocker, client_send):
+    mocked_logger = mocker.patch("app.delivery.send_to_providers.current_app.logger.error")
     sample_service.active = False
     send_mock = mocker.patch(client_send, return_value='reference')
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         send_to_providers.send_sms_to_provider(sample_notification)
+        assert sample_notification.id in e.value
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
     assert str(sample_notification.id) in e.value.message
+    assert mocked_logger.called
 
 
 def test_send_sms_should_use_template_version_from_notification_not_latest(

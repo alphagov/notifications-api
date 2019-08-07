@@ -189,8 +189,7 @@ def get_html_email_options(service):
 def technical_failure(notification):
     notification.status = NOTIFICATION_TECHNICAL_FAILURE
     dao_update_notification(notification)
-    raise NotificationTechnicalFailureException(
-        "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
-            notification.notification_type,
-            notification.id,
-            notification.service_id))
+    message = "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
+        notification.notification_type, notification.id, notification.service_id)
+    current_app.logger.error(message)
+    raise NotificationTechnicalFailureException(message)

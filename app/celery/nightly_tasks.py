@@ -144,6 +144,7 @@ def timeout_notifications():
         message = "{} notifications have been updated to technical-failure because they " \
                   "have timed out and are still in created.Notification ids: {}".format(
                       len(technical_failure_notifications), [str(x.id) for x in technical_failure_notifications])
+        current_app.logger.error(message)
         raise NotificationTechnicalFailureException(message)
 
 

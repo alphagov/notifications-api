@@ -173,24 +173,25 @@ def test_update_letter_notifications_to_sent_to_dvla_updates_based_on_notificati
 
 
 def test_update_letter_notifications_to_error_updates_based_on_notification_references(
-    client,
-    sample_letter_template,
-    mocker
+    sample_letter_template, mocker
 ):
+    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.error")
     first = create_notification(sample_letter_template, reference='first ref')
     second = create_notification(sample_letter_template, reference='second ref')
     create_service_callback_api(service=sample_letter_template.service, url="https://original_url.com")
     dt = datetime.utcnow()
     with freeze_time(dt):
-        with pytest.raises(NotificationTechnicalFailureException) as e:
+        with pytest.raises(expected_exception=NotificationTechnicalFailureException):
             update_letter_notifications_to_error([first.reference])
-    assert first.reference in e.value.message
 
     assert first.status == NOTIFICATION_TECHNICAL_FAILURE
     assert first.sent_by is None
     assert first.sent_at is None
     assert first.updated_at == dt
     assert second.status == NOTIFICATION_CREATED
+    mock_logger.assert_called_once_with(
+        "Updated 1 letter notifications to technical-failure with references ['first ref']"
+    )
 
 
 def test_check_billable_units_when_billable_units_matches_page_count(
