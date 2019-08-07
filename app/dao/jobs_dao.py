@@ -134,7 +134,7 @@ def dao_get_jobs_older_than_data_retention(notification_types):
         end_date = today - timedelta(days=f.days_of_retention)
 
         jobs.extend(Job.query.join(Template).filter(
-            Job.created_at < end_date,
+            func.coalesce(Job.scheduled_for, Job.created_at) < end_date,
             Job.archived == False,  # noqa
             Template.template_type == f.notification_type,
             Job.service_id == f.service_id
@@ -146,7 +146,7 @@ def dao_get_jobs_older_than_data_retention(notification_types):
             x.service_id for x in flexible_data_retention if x.notification_type == notification_type
         ]
         jobs.extend(Job.query.join(Template).filter(
-            Job.created_at < end_date,
+            func.coalesce(Job.scheduled_for, Job.created_at) < end_date,
             Job.archived == False,  # noqa
             Template.template_type == notification_type,
             Job.service_id.notin_(services_with_data_retention)
