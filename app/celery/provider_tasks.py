@@ -26,7 +26,10 @@ def deliver_sms(self, notification_id):
             current_app.logger.exception(
                 "SMS notification delivery for id: {} failed".format(notification_id)
             )
-            self.retry(queue=QueueNames.RETRY)
+            if self.request.retries == 0:
+                self.retry(queue=QueueNames.RETRY, countdown=0)
+            else:
+                self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
             message = "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. " \
                       "Notification has been updated to technical-failure".format(notification_id)
