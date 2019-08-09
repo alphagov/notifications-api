@@ -190,7 +190,7 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     assert first.updated_at == dt
     assert second.status == NOTIFICATION_CREATED
     mock_logger.assert_called_once_with(
-        "Updated 1 letter notifications to technical-failure with references ['first ref']"
+        "Updated 1 letter notifications to technical-failure with references ['first ref']", exc_info=True
     )
 
 

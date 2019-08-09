@@ -144,7 +144,7 @@ def test_should_not_send_email_message_when_service_is_inactive_notification_is_
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
     assert str(sample_notification.id) in e.value.message
-    assert mocked_logger.called
+    assert mocked_logger.call_count == 1
 
 
 @pytest.mark.parametrize("client_send", ["app.mmg_client.send_sms", "app.firetext_client.send_sms"])
@@ -160,7 +160,7 @@ def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
     assert str(sample_notification.id) in e.value.message
-    assert mocked_logger.called
+    assert mocked_logger.call_count == 1
 
 
 def test_send_sms_should_use_template_version_from_notification_not_latest(

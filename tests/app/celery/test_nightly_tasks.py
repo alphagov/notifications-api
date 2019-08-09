@@ -199,7 +199,7 @@ def test_update_status_of_notifications_after_timeout(sample_template, mocker):
     assert not1.status == 'temporary-failure'
     assert not2.status == 'technical-failure'
     assert not3.status == 'temporary-failure'
-    assert mocked_logger.called
+    assert mocked_logger.call_count == 1
 
 
 def test_not_update_status_of_notification_before_timeout(sample_template):

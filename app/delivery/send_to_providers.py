@@ -191,5 +191,4 @@ def technical_failure(notification):
     dao_update_notification(notification)
     message = "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
         notification.notification_type, notification.id, notification.service_id)
-    current_app.logger.error(message)
     raise NotificationTechnicalFailureException(message)
