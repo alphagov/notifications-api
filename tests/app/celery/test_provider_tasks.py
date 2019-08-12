@@ -84,14 +84,14 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task
     assert str(sample_notification.id) in e.value.message
 
 
-def test_should_technical_error_and_not_retry_if_invalid_email(sample_notification, mocker):
+def test_should_go_into_permanent_failure_and_not_retry_if_invalid_email(sample_notification, mocker):
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=InvalidEmailError('bad email'))
     mocker.patch('app.celery.provider_tasks.deliver_email.retry')
 
     deliver_email(sample_notification.id)
 
     assert provider_tasks.deliver_email.retry.called is False
-    assert sample_notification.status == 'technical-failure'
+    assert sample_notification.status == 'permanent-failure'
 
 
 def test_should_retry_and_log_exception(sample_notification, mocker):
