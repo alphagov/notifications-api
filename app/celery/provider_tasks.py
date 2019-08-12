@@ -9,7 +9,7 @@ from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import NOTIFICATION_TECHNICAL_FAILURE
+from app.models import NOTIFICATION_PERMANENT_FAILURE, NOTIFICATION_TECHNICAL_FAILURE
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
@@ -47,8 +47,8 @@ def deliver_email(self, notification_id):
             raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
     except InvalidEmailError as e:
-        current_app.logger.exception(e)
-        update_notification_status_by_id(notification_id, 'technical-failure')
+        current_app.logger.info(e)
+        update_notification_status_by_id(notification_id, NOTIFICATION_PERMANENT_FAILURE)
     except Exception:
         try:
             current_app.logger.exception(
