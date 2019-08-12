@@ -352,7 +352,7 @@ class Organisation(db.Model):
 
     services = db.relationship(
         'Service',
-        secondary='services',
+        secondary='organisation_to_service',
         uselist=True)
 
     agreement_signed = db.Column(db.Boolean, nullable=True)
@@ -480,7 +480,11 @@ class Service(db.Model, Versioned):
     go_live_at = db.Column(db.DateTime, nullable=True)
 
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
-    organisation = db.relationship('Organisation', foreign_keys=[organisation_id])
+    organisation = db.relationship(
+        'Organisation',
+        secondary=organisation_to_service,
+        uselist=False,
+        single_parent=True)
 
     email_branding = db.relationship(
         'EmailBranding',

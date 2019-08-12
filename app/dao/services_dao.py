@@ -284,13 +284,6 @@ def dao_create_service(
     service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
     service.research_mode = False
-    if organisation:
-        service.crown = organisation.crown
-    elif service.organisation_type in CROWN_ORGANISATION_TYPES:
-        service.crown = True
-    elif service.organisation_type in NON_CROWN_ORGANISATION_TYPES:
-        service.crown = False
-    service.count_as_live = not user.platform_admin
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)
@@ -300,9 +293,9 @@ def dao_create_service(
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
 
     if organisation:
-
         service.organisation = organisation
-
+        service.organisation_id = organisation.id
+        service.organisation_type = organisation.organisation_type
         if organisation.email_branding:
             service.email_branding = organisation.email_branding
 
@@ -310,9 +303,15 @@ def dao_create_service(
             service.letter_branding = organisation.letter_branding
 
     elif service.organisation_type in ['nhs_central', 'nhs_local'] or email_address_is_nhs(user.email_address):
-
         service.email_branding = dao_get_email_branding_by_name('NHS')
         service.letter_branding = dao_get_letter_branding_by_name('NHS')
+    if organisation:
+        service.crown = organisation.crown
+    elif service.organisation_type in CROWN_ORGANISATION_TYPES:
+        service.crown = True
+    elif service.organisation_type in NON_CROWN_ORGANISATION_TYPES:
+        service.crown = False
+    service.count_as_live = not user.platform_admin
 
     db.session.add(service)
 
