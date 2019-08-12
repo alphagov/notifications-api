@@ -83,7 +83,7 @@ class AwsSesClient(EmailClient):
             response = self._client.send_email(
                 Source=source,
                 Destination={
-                    'ToAddresses': to_addresses,
+                    'ToAddresses': [punycode_encode_email(addr) for addr in to_addresses],
                     'CcAddresses': [],
                     'BccAddresses': []
                 },
@@ -93,7 +93,7 @@ class AwsSesClient(EmailClient):
                     },
                     'Body': body
                 },
-                ReplyToAddresses=reply_to_addresses
+                ReplyToAddresses=[punycode_encode_email(addr) for addr in reply_to_addresses]
             )
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")
@@ -116,3 +116,9 @@ class AwsSesClient(EmailClient):
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)
             self.statsd_client.incr("clients.ses.success")
             return response['MessageId']
+
+
+def punycode_encode_email(email_address):
+    # only the hostname should ever be punycode encoded.
+    local, hostname = email_address.split('@')
+    return '{}@{}'.format(local, hostname.encode('idna').decode('utf-8'))
