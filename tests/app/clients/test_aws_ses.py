@@ -45,21 +45,21 @@ def test_should_be_none_if_unrecognised_status_code():
     assert '99' in str(e.value)
 
 
-@pytest.mark.parametrize(
-    'reply_to_address, expected_value',
-    [(None, []), ('foo@bar.com', ['foo@bar.com'])],
-    ids=['empty', 'single_email']
-)
+@pytest.mark.parametrize('reply_to_address, expected_value', [
+    (None, []),
+    ('foo@bar.com', ['foo@bar.com']),
+    ('føøøø@bååååår.com', ['føøøø@xn--br-yiaaaaa.com'])
+], ids=['empty', 'single_email', 'punycode'])
 def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_address, expected_value):
     boto_mock = mocker.patch.object(aws_ses_client, '_client', create=True)
     mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
 
     with notify_api.app_context():
         aws_ses_client.send_email(
-            Mock(),
-            Mock(),
-            Mock(),
-            Mock(),
+            source=Mock(),
+            to_addresses='to@address.com',
+            subject=Mock(),
+            body=Mock(),
             reply_to_address=reply_to_address
         )
 
@@ -68,6 +68,26 @@ def test_send_email_handles_reply_to_address(notify_api, mocker, reply_to_addres
         Destination=ANY,
         Message=ANY,
         ReplyToAddresses=expected_value
+    )
+
+
+def test_send_email_handles_punycode_to_address(notify_api, mocker):
+    boto_mock = mocker.patch.object(aws_ses_client, '_client', create=True)
+    mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
+
+    with notify_api.app_context():
+        aws_ses_client.send_email(
+            Mock(),
+            to_addresses='føøøø@bååååår.com',
+            subject=Mock(),
+            body=Mock()
+        )
+
+    boto_mock.send_email.assert_called_once_with(
+        Source=ANY,
+        Destination={'ToAddresses': ['føøøø@xn--br-yiaaaaa.com'], 'CcAddresses': [], 'BccAddresses': []},
+        Message=ANY,
+        ReplyToAddresses=ANY
     )
 
 
@@ -87,13 +107,13 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
     with pytest.raises(InvalidEmailError) as excinfo:
         aws_ses_client.send_email(
             source=Mock(),
-            to_addresses='clearly@invalid@email.com',
+            to_addresses='definitely@invalid_email.com',
             subject=Mock(),
             body=Mock()
         )
 
     assert 'some error message from amazon' in str(excinfo.value)
-    assert 'clearly@invalid@email.com' in str(excinfo.value)
+    assert 'definitely@invalid_email.com' in str(excinfo.value)
 
 
 def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
@@ -112,7 +132,7 @@ def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):
     with pytest.raises(AwsSesClientException) as excinfo:
         aws_ses_client.send_email(
             source=Mock(),
-            to_addresses=Mock(),
+            to_addresses='foo@bar.com',
             subject=Mock(),
             body=Mock()
         )
