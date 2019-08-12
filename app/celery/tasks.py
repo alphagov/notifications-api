@@ -373,7 +373,7 @@ def update_letter_notifications_to_error(self, notification_references):
     message = "Updated {} letter notifications to technical-failure with references {}".format(
         updated_count, notification_references
     )
-    raise NotificationTechnicalFailureException(message=message)
+    raise NotificationTechnicalFailureException(message)
 
 
 def handle_exception(task, notification, notification_id, exc):
