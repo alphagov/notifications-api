@@ -138,6 +138,36 @@ def test_get_service_list_should_return_empty_list_if_no_services(admin_request)
     assert len(json_resp['data']) == 0
 
 
+def test_find_services_by_name_finds_services(notify_db, admin_request, mocker):
+    service_1 = create_service(service_name="ABCDEF")
+    service_2 = create_service(service_name="ABCGHT")
+    mock_get_services_by_partial_name = mocker.patch(
+        'app.service.rest.get_services_by_partial_name',
+        return_value=[service_1, service_2]
+    )
+    response = admin_request.get('service.find_services_by_name', service_name="ABC")["data"]
+    mock_get_services_by_partial_name.assert_called_once_with("ABC")
+    assert len(response) == 2
+
+
+def test_find_services_by_name_handles_no_results(notify_db, admin_request, mocker):
+    mock_get_services_by_partial_name = mocker.patch(
+        'app.service.rest.get_services_by_partial_name',
+        return_value=[]
+    )
+    response = admin_request.get('service.find_services_by_name', service_name="ABC")["data"]
+    mock_get_services_by_partial_name.assert_called_once_with("ABC")
+    assert len(response) == 0
+
+
+def test_find_services_by_name_handles_no_service_name(notify_db, admin_request, mocker):
+    mock_get_services_by_partial_name = mocker.patch(
+        'app.service.rest.get_services_by_partial_name'
+    )
+    admin_request.get('service.find_services_by_name', _expected_status=400)
+    mock_get_services_by_partial_name.assert_not_called()
+
+
 def test_get_live_services_data(sample_user, admin_request):
     org = create_organisation()
 
