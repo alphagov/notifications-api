@@ -175,6 +175,7 @@ def test_add_service_to_organisation(sample_service, sample_organisation):
         id=sample_service.id,
         version=2
     ).one().organisation_type == sample_organisation.organisation_type
+    assert sample_service.organisation_id == sample_organisation.id
 
 
 def test_add_service_to_multiple_organisation_raises_error(sample_service, sample_organisation):

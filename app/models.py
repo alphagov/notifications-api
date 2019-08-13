@@ -479,6 +479,7 @@ class Service(db.Model, Versioned):
     go_live_user = db.relationship('User', foreign_keys=[go_live_user_id])
     go_live_at = db.Column(db.DateTime, nullable=True)
 
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), index=True, nullable=True)
     organisation = db.relationship(
         'Organisation',
         secondary=organisation_to_service,
