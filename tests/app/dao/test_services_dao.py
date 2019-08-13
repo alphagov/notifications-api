@@ -58,6 +58,7 @@ from app.models import (
     INTERNATIONAL_SMS_TYPE,
     LETTER_TYPE,
     user_folder_permissions,
+    Organisation
 )
 from tests.app.db import (
     create_ft_billing,
@@ -124,6 +125,7 @@ def test_create_service_with_organisation(notify_db_session):
     dao_create_service(service, user)
     assert Service.query.count() == 1
     service_db = Service.query.one()
+    organisation = Organisation.query.get(organisation.id)
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.email_from == 'email_from'

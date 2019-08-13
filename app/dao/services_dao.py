@@ -293,7 +293,7 @@ def dao_create_service(
     insert_service_sms_sender(service, current_app.config['FROM_NUMBER'])
 
     if organisation:
-        service.organisation = organisation
+        # service.organisation = organisation
         service.organisation_id = organisation.id
         service.organisation_type = organisation.organisation_type
         if organisation.email_branding:
