@@ -222,21 +222,6 @@ class Config(object):
             'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'delete-sms-notifications': {
-            'task': 'delete-sms-notifications',
-            'schedule': crontab(hour=0, minute=45),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-email-notifications': {
-            'task': 'delete-email-notifications',
-            'schedule': crontab(hour=1, minute=0),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-letter-notifications': {
-            'task': 'delete-letter-notifications',
-            'schedule': crontab(hour=1, minute=20),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'delete-inbound-sms': {
             'task': 'delete-inbound-sms',
             'schedule': crontab(hour=1, minute=40),
