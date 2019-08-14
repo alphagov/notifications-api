@@ -15,7 +15,7 @@ gunicorn==19.7.1  # pyup: ignore, >19.8 breaks eventlet patching
 iso8601==0.1.12
 jsonschema==3.0.2
 marshmallow-sqlalchemy==0.17.0
-marshmallow==2.19.2
+marshmallow==2.20.1
 psycopg2-binary==2.8.2
 PyJWT==1.7.1
 SQLAlchemy==1.3.3
