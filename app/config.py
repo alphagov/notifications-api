@@ -20,7 +20,7 @@ class QueueNames(object):
     SEND_SMS = 'send-sms-tasks'
     SEND_EMAIL = 'send-email-tasks'
     RESEARCH_MODE = 'research-mode-tasks'
-    STATISTICS = 'statistics-tasks'
+    REPORTING = 'reporting-tasks'
     JOBS = 'job-tasks'
     RETRY = 'retry-tasks'
     NOTIFY = 'notify-internal-tasks'
@@ -39,7 +39,7 @@ class QueueNames(object):
             QueueNames.SEND_SMS,
             QueueNames.SEND_EMAIL,
             QueueNames.RESEARCH_MODE,
-            QueueNames.STATISTICS,
+            QueueNames.REPORTING,
             QueueNames.JOBS,
             QueueNames.RETRY,
             QueueNames.NOTIFY,
@@ -215,12 +215,12 @@ class Config(object):
         'create-nightly-billing': {
             'task': 'create-nightly-billing',
             'schedule': crontab(hour=0, minute=15),
-            'options': {'queue': QueueNames.PERIODIC}
+            'options': {'queue': QueueNames.REPORTING}
         },
         'create-nightly-notification-status': {
             'task': 'create-nightly-notification-status',
             'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
-            'options': {'queue': QueueNames.PERIODIC}
+            'options': {'queue': QueueNames.REPORTING}
         },
         'delete-sms-notifications': {
             'task': 'delete-sms-notifications',
