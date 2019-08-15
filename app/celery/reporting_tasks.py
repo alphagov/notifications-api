@@ -33,13 +33,35 @@ def create_nightly_billing(day_start=None):
     for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
 
-        transit_data = fetch_billing_data_for_day(process_day=process_day)
+        create_nightly_billing_for_day.apply_async(
+            kwargs={'process_day': process_day.isoformat()},
+            queue=QueueNames.REPORTING
+        )
 
-        for data in transit_data:
-            update_fact_billing(data, process_day)
 
-        current_app.logger.info(
-            "create-nightly-billing task complete. {} rows updated for day: {}".format(len(transit_data), process_day))
+@notify_celery.task(name="create-nightly-billing-for-day")
+@statsd(namespace="tasks")
+def create_nightly_billing_for_day(process_day):
+    process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
+
+    start = datetime.utcnow()
+    transit_data = fetch_billing_data_for_day(process_day=process_day)
+    end = datetime.utcnow()
+
+    current_app.logger.info('create-nightly-billing-for-day {} fetched in {} seconds'.format(
+        process_day,
+        (end - start).seconds)
+    )
+
+    for data in transit_data:
+        update_fact_billing(data, process_day)
+
+    current_app.logger.info(
+        "create-nightly-billing-for-day task complete. {} rows updated for day: {}".format(
+            len(transit_data),
+            process_day
+        )
+    )
 
 
 @notify_celery.task(name="create-nightly-notification-status")
@@ -56,17 +78,29 @@ def create_nightly_notification_status(day_start=None):
     for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
 
-        transit_data = fetch_notification_status_for_day(process_day=process_day)
-
-        update_fact_notification_status(transit_data, process_day)
-
-        current_app.logger.info(
-            "create-nightly-notification-status task: {} rows updated for day: {}".format(
-                len(transit_data), process_day
-            )
+        create_nightly_notification_status_for_day.apply_async(
+            kwargs={'process_day': process_day.isoformat()},
+            queue=QueueNames.REPORTING
         )
 
-    # delete jobs need to happen after nightly notification status is recorded to avoid conflict between the two tasks
-    delete_email_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
-    delete_sms_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
-    delete_letter_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+
+@notify_celery.task(name="create-nightly-notification-status-for-day")
+@statsd(namespace="tasks")
+def create_nightly_notification_status_for_day(process_day):
+    process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
+
+    start = datetime.utcnow()
+    transit_data = fetch_notification_status_for_day(process_day=process_day)
+    end = datetime.utcnow()
+    current_app.logger.info('create-nightly-notification-status-for-day {} fetched in {} seconds'.format(
+        process_day,
+        (end - start).seconds)
+    )
+
+    update_fact_notification_status(transit_data, process_day)
+
+    current_app.logger.info(
+        "create-nightly-notification-status-for-day task complete: {} rows updated for day: {}".format(
+            len(transit_data), process_day
+        )
+    )
