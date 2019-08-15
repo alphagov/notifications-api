@@ -5,12 +5,18 @@ from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
 
 from app import notify_celery
+from app.config import QueueNames
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     update_fact_billing
 )
 from app.dao.fact_notification_status_dao import fetch_notification_status_for_day, update_fact_notification_status
+from app.celery.nightly_tasks import (
+    delete_sms_notifications_older_than_retention,
+    delete_email_notifications_older_than_retention,
+    delete_letter_notifications_older_than_retention
+)
 
 
 @notify_celery.task(name="create-nightly-billing")
@@ -59,3 +65,8 @@ def create_nightly_notification_status(day_start=None):
                 len(transit_data), process_day
             )
         )
+
+    # delete jobs need to happen after nightly notification status is recorded to avoid conflict between the two tasks
+    delete_email_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+    delete_sms_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+    delete_letter_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
