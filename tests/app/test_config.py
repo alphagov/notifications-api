@@ -71,7 +71,7 @@ def test_queue_names_all_queues_correct():
         QueueNames.SEND_SMS,
         QueueNames.SEND_EMAIL,
         QueueNames.RESEARCH_MODE,
-        QueueNames.STATISTICS,
+        QueueNames.REPORTING,
         QueueNames.JOBS,
         QueueNames.RETRY,
         QueueNames.NOTIFY,

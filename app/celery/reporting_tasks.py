@@ -24,13 +24,13 @@ from app.celery.nightly_tasks import (
 @statsd(namespace="tasks")
 def create_nightly_billing(day_start=None):
     # day_start is a datetime.date() object. e.g.
-    # up to 10 days of data counting back from day_start is consolidated
+    # up to 4 days of data counting back from day_start is consolidated
     if day_start is None:
         day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
-    for i in range(0, 10):
+    for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
 
         transit_data = fetch_billing_data_for_day(process_day=process_day)
@@ -53,7 +53,7 @@ def create_nightly_notification_status(day_start=None):
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
-    for i in range(0, 10):
+    for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
 
         transit_data = fetch_notification_status_for_day(process_day=process_day)
