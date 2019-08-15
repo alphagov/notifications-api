@@ -178,17 +178,6 @@ def test_add_service_to_organisation(sample_service, sample_organisation):
     assert sample_service.organisation_id == sample_organisation.id
 
 
-def test_add_service_to_multiple_organisation_raises_error(sample_service, sample_organisation):
-    another_org = create_organisation()
-    dao_add_service_to_organisation(sample_service, sample_organisation.id)
-
-    with pytest.raises(IntegrityError):
-        dao_add_service_to_organisation(sample_service, another_org.id)
-
-    assert len(sample_organisation.services) == 1
-    assert sample_organisation.services[0] == sample_service
-
-
 def test_get_organisation_services(sample_service, sample_organisation):
     another_service = create_service(service_name='service 2')
     another_org = create_organisation()
