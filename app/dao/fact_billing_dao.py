@@ -325,7 +325,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
                     service_id=id_of_service
                 )
 
-            transit_data = transit_data + results
+            transit_data += results
 
     return transit_data
 

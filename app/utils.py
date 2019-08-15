@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 from flask import url_for
 from sqlalchemy import func
+from notifications_utils.timezones import convert_utc_to_bst
 from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, get_html_email_body
 
 local_timezone = pytz.timezone("Europe/London")
@@ -112,3 +113,26 @@ def email_address_is_nhs(email_address):
     return email_address.lower().endswith((
         '@nhs.uk', '@nhs.net', '.nhs.uk', '.nhs.net',
     ))
+
+
+def get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False):
+    """
+    Work out what table will contain notification data for a service by looking up their data retention.
+
+    Make sure that when you run this you think about whether the delete task has run for that day! If it's run, the
+    notifications from that day will have moved to NotificationHistory. By default we assume it hasn't run, since
+    """
+    from app.models import Notification, NotificationHistory
+
+    data_retention = service.data_retention.get(notification_type)
+    days_of_retention = data_retention.days_of_retention if data_retention else 7
+
+    todays_bst_date = convert_utc_to_bst(datetime.utcnow()).date()
+    days_ago = todays_bst_date - process_day
+
+    if not has_delete_task_run:
+        # if the task hasn't run yet, we've got an extra day of data in the notification table so can go back an extra
+        # day before looking at NotificationHistory
+        days_of_retention += 1
+
+    return Notification if days_ago <= timedelta(days=days_of_retention) else NotificationHistory

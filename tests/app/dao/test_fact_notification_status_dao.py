@@ -1,4 +1,4 @@
-from datetime import timedelta, datetime, date
+from datetime import timedelta, datetime, date, time
 from uuid import UUID
 
 import pytest
@@ -36,7 +36,8 @@ from freezegun import freeze_time
 
 from tests.app.db import (
     create_notification, create_service, create_template, create_ft_notification_status,
-    create_job, create_notification_history
+    create_job, create_notification_history,
+    create_service_data_retention
 )
 
 
@@ -48,24 +49,32 @@ def test_update_fact_notification_status(notify_db_session):
     third_service = create_service(service_name='third Service')
     third_template = create_template(service=third_service, template_type='letter')
 
-    create_notification(template=first_template, status='delivered')
-    create_notification(template=first_template, created_at=datetime.utcnow() - timedelta(days=1))
-    # simulate a service with data retention - data has been moved to history and does not exist in notifications
-    create_notification_history(template=second_template, status='temporary-failure')
-    create_notification_history(template=second_template, created_at=datetime.utcnow() - timedelta(days=1))
-    create_notification(template=third_template, status='created')
-    create_notification(template=third_template, created_at=datetime.utcnow() - timedelta(days=1))
+    create_service_data_retention(second_service, 'email', days_of_retention=3)
 
-    process_day = datetime.utcnow()
+    process_day = date.today() - timedelta(days=5)
+    with freeze_time(datetime.combine(process_day, time.min)):
+        create_notification(template=first_template, status='delivered')
+
+        # 2nd service email has 3 day data retention - data has been moved to history and doesn't exist in notifications
+        create_notification_history(template=second_template, status='temporary-failure')
+
+        create_notification(template=third_template, status='sending')
+
+    # these created notifications from a different day get ignored
+    with freeze_time(datetime.combine(date.today() - timedelta(days=4), time.min)):
+        create_notification(template=first_template)
+        create_notification_history(template=second_template)
+        create_notification(template=third_template)
+
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day.date())
+    update_fact_notification_status(data=data, process_day=process_day)
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
                                                           ).all()
 
     assert len(new_fact_data) == 3
-    assert new_fact_data[0].bst_date == process_day.date()
+    assert new_fact_data[0].bst_date == process_day
     assert new_fact_data[0].template_id == second_template.id
     assert new_fact_data[0].service_id == second_service.id
     assert new_fact_data[0].job_id == UUID('00000000-0000-0000-0000-000000000000')
@@ -73,15 +82,15 @@ def test_update_fact_notification_status(notify_db_session):
     assert new_fact_data[0].notification_status == 'temporary-failure'
     assert new_fact_data[0].notification_count == 1
 
-    assert new_fact_data[1].bst_date == process_day.date()
+    assert new_fact_data[1].bst_date == process_day
     assert new_fact_data[1].template_id == third_template.id
     assert new_fact_data[1].service_id == third_service.id
     assert new_fact_data[1].job_id == UUID('00000000-0000-0000-0000-000000000000')
     assert new_fact_data[1].notification_type == 'letter'
-    assert new_fact_data[1].notification_status == 'created'
+    assert new_fact_data[1].notification_status == 'sending'
     assert new_fact_data[1].notification_count == 1
 
-    assert new_fact_data[2].bst_date == process_day.date()
+    assert new_fact_data[2].bst_date == process_day
     assert new_fact_data[2].template_id == first_template.id
     assert new_fact_data[2].service_id == first_service.id
     assert new_fact_data[2].job_id == UUID('00000000-0000-0000-0000-000000000000')
@@ -95,9 +104,9 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
     first_template = create_template(service=first_service)
     create_notification(template=first_template, status='delivered')
 
-    process_day = datetime.utcnow()
+    process_day = date.today()
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day.date())
+    update_fact_notification_status(data=data, process_day=process_day)
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
@@ -108,7 +117,7 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
     create_notification(template=first_template, status='delivered')
 
     data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day.date())
+    update_fact_notification_status(data=data, process_day=process_day)
 
     updated_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                               FactNotificationStatus.notification_type

@@ -238,6 +238,7 @@ class ServiceSchema(BaseSchema):
             'reply_to_email_addresses',
             'letter_contacts',
             'complaints',
+            'data_retention',
         )
         strict = True
 

@@ -14,7 +14,6 @@ from app.models import (
     KEY_TYPE_TEST,
     LETTER_TYPE,
     Notification,
-    NotificationHistory,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -28,41 +27,39 @@ from app.models import (
     SMS_TYPE,
     Template,
 )
-from app.utils import get_london_midnight_in_utc, midnight_n_days_ago, get_london_month_from_utc_column
+from app.utils import (
+    get_london_midnight_in_utc,
+    midnight_n_days_ago,
+    get_london_month_from_utc_column,
+    get_notification_table_to_use,
+)
 
 
 def fetch_notification_status_for_day(process_day):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
-    # use notification_history if process day is older than 7 days
-    # this is useful if we need to rebuild the ft_billing table for a date older than 7 days ago.
+
     current_app.logger.info("Fetch ft_notification_status for {} to {}".format(start_date, end_date))
 
     all_data_for_process_day = []
-    service_ids = [x.id for x in Service.query.all()]
+    services = Service.query.all()
     # for each service
     # for each notification type
     # query notifications for day
     # if no rows try notificationHistory
-    for service_id in service_ids:
+    for service in services:
         for notification_type in [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]:
+            table = get_notification_table_to_use(service, notification_type, process_day)
+
             data_for_service_and_type = query_for_fact_status_data(
-                table=Notification,
+                table=table,
                 start_date=start_date,
                 end_date=end_date,
                 notification_type=notification_type,
-                service_id=service_id
+                service_id=service.id
             )
 
-            if len(data_for_service_and_type) == 0:
-                data_for_service_and_type = query_for_fact_status_data(
-                    table=NotificationHistory,
-                    start_date=start_date,
-                    end_date=end_date,
-                    notification_type=notification_type,
-                    service_id=service_id
-                )
-            all_data_for_process_day = all_data_for_process_day + data_for_service_and_type
+            all_data_for_process_day += data_for_service_and_type
 
     return all_data_for_process_day
 

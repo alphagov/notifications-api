@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import (
     JSON,
     JSONB,
 )
+from sqlalchemy.orm.collections import attribute_mapped_collection
 from sqlalchemy import UniqueConstraint, CheckConstraint, Index
 from notifications_utils.columns import Columns
 from notifications_utils.recipients import (
@@ -2044,7 +2045,13 @@ class ServiceDataRetention(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref('service_data_retention'))
+    service = db.relationship(
+        Service,
+        backref=db.backref(
+            'data_retention',
+            collection_class=attribute_mapped_collection('notification_type')
+        )
+    )
     notification_type = db.Column(notification_types, nullable=False)
     days_of_retention = db.Column(db.Integer, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
