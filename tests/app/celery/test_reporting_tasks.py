@@ -444,14 +444,10 @@ def test_create_nightly_notification_status(notify_db_session):
     create_notification(template=first_template, status='delivered', created_at=datetime.utcnow() - timedelta(days=10))
 
     create_notification(template=second_template, status='temporary-failure')
-    create_notification(template=second_template, status='temporary-failure',
-                        created_at=datetime.utcnow() - timedelta(days=1))
-    create_notification(template=second_template, status='temporary-failure',
-                        created_at=datetime.utcnow() - timedelta(days=2))
-    create_notification(template=second_template, status='temporary-failure',
-                        created_at=datetime.utcnow() - timedelta(days=10))
-    create_notification(template=second_template, status='temporary-failure',
-                        created_at=datetime.utcnow() - timedelta(days=10))
+    create_notification(template=second_template, status='temporary-failure', created_at=datetime.utcnow() - timedelta(days=1))  # noqa
+    create_notification(template=second_template, status='temporary-failure', created_at=datetime.utcnow() - timedelta(days=2))  # noqa
+    create_notification(template=second_template, status='temporary-failure', created_at=datetime.utcnow() - timedelta(days=10))  # noqa
+    create_notification(template=second_template, status='temporary-failure', created_at=datetime.utcnow() - timedelta(days=10))  # noqa
 
     create_notification(template=third_template, status='created')
     create_notification(template=third_template, status='created', created_at=datetime.utcnow() - timedelta(days=1))
@@ -464,12 +460,14 @@ def test_create_nightly_notification_status(notify_db_session):
     create_nightly_notification_status()
     new_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.bst_date,
-        FactNotificationStatus.notification_type
     ).all()
-    assert len(new_data) == 9
-    assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=10), "%Y-%m-%d")
-    assert str(new_data[3].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
-    assert str(new_data[6].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
+    assert len(new_data) == 6  #
+    assert str(new_data[0].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
+    assert str(new_data[1].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
+    assert str(new_data[2].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=2), "%Y-%m-%d")
+    assert str(new_data[3].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
+    assert str(new_data[4].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
+    assert str(new_data[5].bst_date) == datetime.strftime(datetime.utcnow() - timedelta(days=1), "%Y-%m-%d")
 
 
 # the job runs at 12:30am London time. 04/01 is in BST.
