@@ -311,15 +311,6 @@ class ServicePermissionTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
-organisation_to_service = db.Table(
-    'organisation_to_service',
-    db.Model.metadata,
-    # service_id is a primary key as you can only have one organisation per service
-    db.Column('service_id', UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False),
-    db.Column('organisation_id', UUID(as_uuid=True), db.ForeignKey('organisation.id'), nullable=False),
-)
-
-
 class Domain(db.Model):
     __tablename__ = "domain"
     domain = db.Column(db.String(255), primary_key=True)
