@@ -224,17 +224,17 @@ class Config(object):
         },
         'delete-sms-notifications': {
             'task': 'delete-sms-notifications',
-            'schedule': crontab(hour=0, minute=45),  # after 'create-nightly-notification-status'
+            'schedule': crontab(hour=4, minute=15),  # after 'create-nightly-notification-status'
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-email-notifications': {
             'task': 'delete-email-notifications',
-            'schedule': crontab(hour=1, minute=0),  # after 'create-nightly-notification-status'
+            'schedule': crontab(hour=4, minute=30),  # after 'create-nightly-notification-status'
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-letter-notifications': {
             'task': 'delete-letter-notifications',
-            'schedule': crontab(hour=1, minute=20),  # after 'create-nightly-notification-status'
+            'schedule': crontab(hour=4, minute=45),  # after 'create-nightly-notification-status'
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-inbound-sms': {
