@@ -434,13 +434,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(
 
 
 @freeze_time('2019-01-05')
-def test_create_nightly_notification_status_for_day(notify_db_session, mocker):
-    mocks = [
-        mocker.patch('app.celery.reporting_tasks.delete_email_notifications_older_than_retention'),
-        mocker.patch('app.celery.reporting_tasks.delete_sms_notifications_older_than_retention'),
-        mocker.patch('app.celery.reporting_tasks.delete_letter_notifications_older_than_retention'),
-    ]
-
+def test_create_nightly_notification_status_for_day(notify_db_session):
     first_service = create_service(service_name='First Service')
     first_template = create_template(service=first_service)
     second_service = create_service(service_name='second Service')
@@ -468,17 +462,10 @@ def test_create_nightly_notification_status_for_day(notify_db_session, mocker):
     assert new_data[1].bst_date == date(2019, 1, 1)
     assert new_data[2].bst_date == date(2019, 1, 1)
 
-    for mock in mocks:
-        mock.apply_async.assert_called_once_with(queue='periodic-tasks')
-
 
 # the job runs at 12:30am London time. 04/01 is in BST.
 @freeze_time('2019-04-01T23:30')
-def test_create_nightly_notification_status_for_day_respects_bst(sample_template, mocker):
-    mocker.patch('app.celery.reporting_tasks.delete_email_notifications_older_than_retention')
-    mocker.patch('app.celery.reporting_tasks.delete_sms_notifications_older_than_retention')
-    mocker.patch('app.celery.reporting_tasks.delete_letter_notifications_older_than_retention')
-
+def test_create_nightly_notification_status_for_day_respects_bst(sample_template):
     create_notification(sample_template, status='delivered', created_at=datetime(2019, 4, 1, 23, 0))  # too new
 
     create_notification(sample_template, status='created', created_at=datetime(2019, 4, 1, 22, 59))

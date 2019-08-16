@@ -12,11 +12,6 @@ from app.dao.fact_billing_dao import (
     update_fact_billing
 )
 from app.dao.fact_notification_status_dao import fetch_notification_status_for_day, update_fact_notification_status
-from app.celery.nightly_tasks import (
-    delete_sms_notifications_older_than_retention,
-    delete_email_notifications_older_than_retention,
-    delete_letter_notifications_older_than_retention
-)
 
 
 @notify_celery.task(name="create-nightly-billing")
