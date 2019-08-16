@@ -58,6 +58,7 @@ from app.dao.services_dao import (
     dao_remove_user_from_service,
     dao_suspend_service,
     dao_update_service,
+    get_services_by_partial_name,
 )
 from app.dao.service_whitelist_dao import (
     dao_fetch_service_whitelist,
@@ -164,6 +165,17 @@ def get_services():
         services = dao_fetch_all_services(only_active)
     data = service_schema.dump(services, many=True).data
     return jsonify(data=data)
+
+
+@service_blueprint.route('/find-services-by-name', methods=['GET'])
+def find_services_by_name():
+    service_name = request.args.get('service_name')
+    if not service_name:
+        errors = {'service_name': ['Missing data for required field.']}
+        raise InvalidRequest(errors, status_code=400)
+    fetched_services = get_services_by_partial_name(service_name)
+    data = service_schema.dump(fetched_services, many=True).data
+    return jsonify(data=data), 200
 
 
 @service_blueprint.route('/live-services-data', methods=['GET'])

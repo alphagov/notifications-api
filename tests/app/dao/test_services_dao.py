@@ -33,6 +33,7 @@ from app.dao.services_dao import (
     dao_resume_service,
     dao_fetch_active_users_for_service,
     dao_fetch_service_by_inbound_number,
+    get_services_by_partial_name,
 )
 from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from app.dao.users_dao import save_model_user, create_user_code
@@ -392,7 +393,22 @@ def test_get_all_services_for_user(notify_db_session):
     assert dao_fetch_all_services_by_user(user.id)[2].name == 'service 3'
 
 
-def test_get_all_only_services_user_has_access_to(notify_db_session):
+def test_get_services_by_partial_name(notify_db_session):
+    create_service(service_name="Tadfield Police")
+    create_service(service_name="Tadfield Air Base")
+    create_service(service_name="London M25 Management Body")
+    services_from_db = get_services_by_partial_name("Tadfield")
+    assert len(services_from_db) == 2
+    assert sorted([service.name for service in services_from_db]) == ["Tadfield Air Base", "Tadfield Police"]
+
+
+def test_get_services_by_partial_name_is_case_insensitive(notify_db_session):
+    create_service(service_name="Tadfield Police")
+    services_from_db = get_services_by_partial_name("tadfield")
+    assert services_from_db[0].name == "Tadfield Police"
+
+
+def test_get_all_user_services_only_returns_services_user_has_access_to(notify_db_session):
     user = create_user()
     create_service(service_name='service 1', user=user, email_from='service.1')
     create_service(service_name='service 2', user=user, email_from='service.2')

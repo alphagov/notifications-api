@@ -46,7 +46,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
 )
-from app.utils import email_address_is_nhs, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import email_address_is_nhs, escape_special_characters, get_london_midnight_in_utc, midnight_n_days_ago
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -67,6 +67,11 @@ def dao_fetch_all_services(only_active=False):
         query = query.filter(Service.active)
 
     return query.all()
+
+
+def get_services_by_partial_name(service_name):
+    service_name = escape_special_characters(service_name)
+    return Service.query.filter(Service.name.ilike("%{}%".format(service_name))).all()
 
 
 def dao_count_live_services():
