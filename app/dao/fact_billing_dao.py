@@ -75,8 +75,8 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
-        FactBilling.service_id.label("service_id"),
         Service.name.label("service_name"),
+        FactBilling.service_id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
         FactBilling.rate.label('sms_rate'),
         sms_remainder.label("sms_remainder"),
@@ -155,7 +155,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         FactBilling.bst_date >= start_date,
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == LETTER_TYPE,
-        ).group_by(
+    ).group_by(
         Organisation.name,
         Organisation.id,
         FactBilling.service_id,

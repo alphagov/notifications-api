@@ -537,7 +537,6 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
                       billable_unit=12, rate=0.11)
     create_ft_billing(service=service_2, template=template_2, bst_date=datetime(2019, 5, 20), notification_type='sms',
                       billable_unit=3, rate=0.11)
-    
     service_3 = create_service(service_name='c - partial allowance')
     template_3 = create_template(service=service_3)
     org_3 = create_organisation(name="Org for {}".format(service_3.name))
@@ -558,27 +557,13 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
     assert len(results) == 3
-
-    assert results[0].organisation_id == org.id
-    assert results[0].service_id == service.id
-    assert results[0].sms_billable_units == 3
-    assert results[0].sms_remainder == 8
-    assert results[0].chargeable_billable_sms == 0
-    assert results[0].sms_cost == Decimal('0')
-
-    assert results[1].organisation_id == org_2.id
-    assert results[1].service_id == service_2.id
-    assert results[1].sms_billable_units == 3
-    assert results[1].sms_remainder == 0
-    assert results[1].chargeable_billable_sms == 3
-    assert results[1].sms_cost == Decimal('0.33')
-
-    assert results[2].organisation_id == org_3.id
-    assert results[2].service_id == service_3.id
-    assert results[2].sms_billable_units == 7
-    assert results[2].sms_remainder == 5
-    assert results[2].chargeable_billable_sms == 2
-    assert results[2].sms_cost == Decimal('0.22')
+    # (organisation_name, organisation_id, service_name, free_sms_fragment_limit, sms_rate,
+    #  sms_remainder, sms_billable_units, chargeable_billable_sms, sms_cost)
+    assert results[0] == (org.name, org.id, service.name, service.id, 10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
+    assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, 10, Decimal('0.11'), 0, 3, 3,
+                          Decimal('0.33'))
+    assert results[2] == (org_3.name, org_3.id, service_3.name, service_3.id, 10, Decimal('0.11'), 5, 7, 2,
+                          Decimal('0.22'))
 
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
