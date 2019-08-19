@@ -174,7 +174,7 @@ def find_services_by_name():
         errors = {'service_name': ['Missing data for required field.']}
         raise InvalidRequest(errors, status_code=400)
     fetched_services = get_services_by_partial_name(service_name)
-    data = service_schema.dump(fetched_services, many=True).data
+    data = [service.serialize_for_org_dashboard() for service in fetched_services]
     return jsonify(data=data), 200
 
 
