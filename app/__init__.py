@@ -70,7 +70,6 @@ def create_app(application):
     application.config.from_object(configs[notify_environment])
 
     application.config['NOTIFY_APP_NAME'] = application.name
-    print(application.config['SQLALCHEMY_DATABASE_URI'])
     init_app(application)
     request_helper.init_app(application)
     db.init_app(application)
