@@ -175,6 +175,14 @@ class User(db.Model):
             'state': self.state,
         }
 
+    def serialize_for_users_list(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email_address': self.email_address,
+            'mobile_number': self.mobile_number,
+        }
+
 
 class ServiceUser(db.Model):
     __tablename__ = 'user_to_service'
