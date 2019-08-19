@@ -27,7 +27,6 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
     AnnualBilling,
     Organisation,
-    organisation_to_service
 )
 from app.utils import get_london_midnight_in_utc
 
@@ -116,8 +115,8 @@ def fetch_letter_costs_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
-        FactBilling.service_id.label("service_id"),
         Service.name.label("service_name"),
+        FactBilling.service_id.label("service_id"),
         func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
     ).outerjoin(
         Organisation, Service.organisation_id == Organisation.id
@@ -143,11 +142,11 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
-        FactBilling.service_id.label("service_id"),
         Service.name.label("service_name"),
-        FactBilling.billable_units.label('sheet_count'),
+        FactBilling.service_id.label("service_id"),
+        FactBilling.billable_units.label("sheet_count"),
         FactBilling.rate.label("letter_rate"),
-        FactBilling.postage('postage'),
+        FactBilling.postage.label("postage"),
         func.sum(FactBilling.notifications_sent).label("letters_sent"),
     ).outerjoin(
         Organisation, Service.organisation_id == Organisation.id
@@ -156,7 +155,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         FactBilling.bst_date >= start_date,
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == LETTER_TYPE,
-    ).group_by(
+        ).group_by(
         Organisation.name,
         Organisation.id,
         FactBilling.service_id,
@@ -167,10 +166,9 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     ).order_by(
         Organisation.name,
         Service.name,
-        FactBilling.billable_units,
-        FactBilling.postage
+        FactBilling.postage.desc(),
+        FactBilling.rate,
     )
-
     return query.all()
 
 

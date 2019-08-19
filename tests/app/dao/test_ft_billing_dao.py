@@ -621,29 +621,25 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
-    org, org_3, service, service_3 = set_up_letter_data()
+    org, org_2, service, service_2, service_3 = set_up_letter_data()
 
     results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
-    assert len(results) == 2
-    assert results[0].organisation_id == org.id
-    assert results[0].organisation_name == org.name
-    assert results[0].service_id == service.id
-    assert results[0].service_name == service.name
-    assert results[0].letter_cost == Decimal('3.40')
-
-    assert results[1].organisation_id == org_3.id
-    assert results[1].organisation_name == org_3.name
-    assert results[1].service_id == service_3.id
-    assert results[1].service_name == service_3.name
-    assert results[1].letter_cost == Decimal('6.20')
+    assert len(results) == 3
+    assert results[0] == (org.name, org.id, service.name, service.id, Decimal('3.40'))
+    assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal('14.00'))
+    assert results[2] == (None, None, service_3.name, service_3.id, Decimal('8.25'))
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
-    set_up_letter_data()
+    org_1, org_2, service_1, service_2, service_3 = set_up_letter_data()
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
-    print(results)
-    assert len(results) == 4
+    assert len(results) == 5
+    assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, 2, Decimal('0.45'), 'second', 6)
+    assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, 1, Decimal("0.35"), 'first', 2)
+    assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, 5, Decimal("0.65"), 'second', 20)
+    assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, 3, Decimal("0.50"), 'first', 2)
+    assert results[4] == (None, None, service_3.name, service_3.id, 4, Decimal("0.55"), 'second', 15)
 
 
 def set_up_letter_data():
@@ -658,6 +654,8 @@ def set_up_letter_data():
     template_3 = create_template(service=service_3)
     org_3 = create_organisation(name="Org for {}".format(service_3.name))
     dao_add_service_to_organisation(service=service_3, organisation_id=org_3.id)
+    service_4 = create_service(service_name='d - service without org')
+    template_4 = create_template(service=service_4, template_type='letter')
     create_ft_billing(bst_date=datetime(2019, 8, 12), service=service_2, notification_type='sms',
                       template=sms_template)
     create_ft_billing(bst_date=datetime(2019, 8, 15), service=service, notification_type='letter',
@@ -672,4 +670,11 @@ def set_up_letter_data():
     create_ft_billing(bst_date=datetime(2019, 9, 20), service=service_3, notification_type='letter',
                       template=template_3,
                       notifications_sent=8, billable_unit=5, rate=.65, postage='second')
-    return org, org_3, service, service_3
+    create_ft_billing(bst_date=datetime(2019, 9, 21), service=service_3, notification_type='letter',
+                      template=template_3,
+                      notifications_sent=12, billable_unit=5, rate=.65, postage='second')
+    create_ft_billing(bst_date=datetime(2019, 9, 12), service=service_4, notification_type='letter',
+                      template=template_4,
+                      notifications_sent=15, billable_unit=4, rate=.55, postage='second')
+
+    return org, org_3, service, service_3, service_4
