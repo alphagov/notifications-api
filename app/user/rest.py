@@ -423,7 +423,7 @@ def get_by_email():
 def find_users_by_email():
     email, errors = partial_email_data_request_schema.load(request.get_json())
     fetched_users = get_users_by_partial_email(email['email'])
-    result = [user.serialize() for user in fetched_users]
+    result = [user.serialize_for_users_list() for user in fetched_users]
     return jsonify(data=result), 200
 
 
