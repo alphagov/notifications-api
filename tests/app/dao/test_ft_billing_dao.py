@@ -627,13 +627,51 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
     assert results[4] == (None, None, service_3.name, service_3.id, 4, Decimal("0.55"), 'second', 15)
 
 
+def test_all_three(notify_db_session):
+    set_up_letter_data()
+    sms_costs = fetch_sms_billing_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    letter_costs = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    letter_breakdown = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+
+    combined = []
+    for s in sms_costs:
+        entry = {
+            "service_id": s.service_id,
+            "service_name": s.service_name,
+            "sms_cost": s.sms_cost,
+            "letter_cost": 0
+        }
+        combined.append(entry)
+    print("sms", combined)
+    print("letters", letter_costs)
+    for l in letter_costs:
+        row = [x for x in combined if x['service_id'] == l.service_id]
+        print("row: ", row)
+        if row:
+            row[0].update({'letter_cost': l.letter_cost})
+            print("row: ", row)
+        else:
+            letter_entry = {
+                "service_id": l.service_id,
+                "service_name": l.service_name,
+                "sms_cost": 0,
+                "letter_cost": l.letter_cost
+            }
+            combined.append(letter_entry)
+    print("final", combined)
+    assert 1==0
+
+
 def set_up_letter_data():
     service = create_service(service_name='a - first service')
     letter_template = create_template(service=service, template_type='letter')
+    sms_template_1 = create_template(service=service, template_type='sms')
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2019)
     org = create_organisation(name="Org for {}".format(service.name))
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     service_2 = create_service(service_name='b - second service')
-    sms_template = create_template(service=service, template_type='sms')
+    sms_template = create_template(service=service_2, template_type='sms')
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2019)
     dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
     service_3 = create_service(service_name='c - third service')
     template_3 = create_template(service=service_3)
@@ -641,8 +679,12 @@ def set_up_letter_data():
     dao_add_service_to_organisation(service=service_3, organisation_id=org_3.id)
     service_4 = create_service(service_name='d - service without org')
     template_4 = create_template(service=service_4, template_type='letter')
+    create_ft_billing(bst_date=datetime(2019, 8, 12), service=service, notification_type='sms',
+                      template=sms_template_1)
     create_ft_billing(bst_date=datetime(2019, 8, 12), service=service_2, notification_type='sms',
                       template=sms_template)
+    create_ft_billing(bst_date=datetime(2019, 9, 12), service=service_2, notification_type='sms',
+                      template=sms_template, billable_unit=20)
     create_ft_billing(bst_date=datetime(2019, 8, 15), service=service, notification_type='letter',
                       template=letter_template,
                       notifications_sent=2, billable_unit=1, rate=.35, postage='first')

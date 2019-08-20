@@ -12,7 +12,12 @@ from app.dao.annual_billing_dao import (
     dao_update_annual_billing_for_future_years
 )
 from app.dao.date_util import get_current_financial_year_start_year
-from app.dao.fact_billing_dao import fetch_monthly_billing_for_year, fetch_billing_totals_for_year
+from app.dao.fact_billing_dao import (
+    fetch_monthly_billing_for_year, fetch_billing_totals_for_year,
+    fetch_sms_billing_for_all_services,
+    fetch_letter_costs_for_all_services,
+    fetch_letter_line_items_for_all_services
+)
 
 from app.errors import InvalidRequest
 from app.errors import register_errors
@@ -26,6 +31,19 @@ billing_blueprint = Blueprint(
 
 
 register_errors(billing_blueprint)
+
+
+@billing_blueprint.route('usage-for-all-services')
+def get_usage_for_all_services():
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    sms_totals = fetch_sms_billing_for_all_services(start_date, end_date)
+    letter_totals = fetch_letter_costs_for_all_services(start_date, end_date)
+    letter_breakdown = fetch_letter_line_items_for_all_services(start_date, end_date)
+
+
+
 
 
 @billing_blueprint.route('/ft-monthly-usage')
