@@ -13,7 +13,6 @@ from app.dao.date_util import (
 
 from app.models import (
     FactBilling,
-    Notification,
     Service,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -27,7 +26,7 @@ from app.models import (
     AnnualBilling,
     Organisation,
 )
-from app.utils import get_london_midnight_in_utc
+from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
 
 
 def fetch_sms_free_allowance_remainder(start_date):
@@ -227,9 +226,12 @@ def fetch_billing_totals_for_year(service_id, year):
 
 
 def fetch_monthly_billing_for_year(service_id, year):
-    year_start_date, year_end_date = get_financial_year(year)
-    utcnow = datetime.utcnow()
-    today = convert_utc_to_bst(utcnow)
+    year_start_datetime, year_end_datetime = get_financial_year(year)
+
+    year_start_date = convert_utc_to_bst(year_start_datetime).date()
+    year_end_date = convert_utc_to_bst(year_end_datetime).date()
+
+    today = convert_utc_to_bst(datetime.utcnow()).date()
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end_date >= today:
         yesterday = today - timedelta(days=1)
@@ -303,27 +305,21 @@ def fetch_billing_data_for_day(process_day, service_id=None):
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
     transit_data = []
     if not service_id:
-        service_ids = [x.id for x in Service.query.all()]
+        services = Service.query.all()
     else:
-        service_ids = [service_id]
-    for id_of_service in service_ids:
+        services = [Service.query.get(service_id)]
+
+    for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+            table = get_notification_table_to_use(service, notification_type, process_day)
+
             results = _query_for_billing_data(
-                table=Notification,
+                table=table,
                 notification_type=notification_type,
                 start_date=start_date,
                 end_date=end_date,
-                service_id=id_of_service
+                service_id=service.id
             )
-            # If data has been purged from Notification then use NotificationHistory
-            if len(results) == 0:
-                results = _query_for_billing_data(
-                    table=NotificationHistory,
-                    notification_type=notification_type,
-                    start_date=start_date,
-                    end_date=end_date,
-                    service_id=id_of_service
-                )
 
             transit_data += results
 

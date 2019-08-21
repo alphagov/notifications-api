@@ -675,7 +675,7 @@ def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
 
 
 def create_ft_billing(bst_date,
-                      notification_type,
+                      notification_type=None,
                       template=None,
                       service=None,
                       provider='test',
@@ -686,10 +686,9 @@ def create_ft_billing(bst_date,
                       notifications_sent=1,
                       postage='none',
                       ):
-    if not service:
-        service = create_service()
-    if not template:
-        template = create_template(service=service, template_type=notification_type)
+    if template:
+        service = template.service
+        notification_type = template.template_type
 
     data = FactBilling(bst_date=bst_date,
                        service_id=service.id,
