@@ -80,7 +80,8 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
         table.created_at >= start_date,
         table.created_at < end_date,
         table.notification_type == notification_type,
-        table.service_id == service_id
+        table.service_id == service_id,
+        table.key_type != KEY_TYPE_TEST
     ).group_by(
         table.template_id,
         table.service_id,
