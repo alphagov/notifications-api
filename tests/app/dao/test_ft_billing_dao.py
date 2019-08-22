@@ -2,6 +2,9 @@ from calendar import monthrange
 from decimal import Decimal
 
 from datetime import datetime, timedelta, date
+from itertools import groupby
+from operator import itemgetter
+
 from freezegun import freeze_time
 
 import pytest
@@ -34,7 +37,8 @@ from tests.app.db import (
     create_letter_rate,
     create_notification_history,
     create_annual_billing,
-    create_organisation
+    create_organisation,
+    set_up_usage_data
 )
 
 
@@ -567,46 +571,18 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
-    service = create_service(service_name='a - has free allowance')
-    template = create_template(service=service)
-    org = create_organisation(name="Org for {}".format(service.name))
-    service.organisation = org
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    create_ft_billing(service=service, template=template,
-                      bst_date=datetime(2019, 4, 20), notification_type='sms', billable_unit=2, rate=0.11)
-    create_ft_billing(service=service, template=template, bst_date=datetime(2019, 5, 20), notification_type='sms',
-                      billable_unit=2, rate=0.11)
-    create_ft_billing(service=service, template=template, bst_date=datetime(2019, 5, 22), notification_type='sms',
-                      billable_unit=1, rate=0.11)
-
-    service_2 = create_service(service_name='b - used free allowance')
-    template_2 = create_template(service=service_2)
-
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    create_ft_billing(service=service_2, template=template_2, bst_date=datetime(2019, 4, 20), notification_type='sms',
-                      billable_unit=12, rate=0.11)
-    create_ft_billing(service=service_2, template=template_2, bst_date=datetime(2019, 5, 20), notification_type='sms',
-                      billable_unit=3, rate=0.11)
+    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 5, 1))
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
+
     assert len(results) == 2
-
-    assert results[0].organisation_name == org.name
-    assert results[0].service_id == service.id
-    assert results[0].sms_billable_units == 3
-    assert results[0].sms_remainder == 8
-    assert results[0].chargeable_billable_sms == 0
-    assert results[0].sms_cost == Decimal('0')
-
-    assert not results[1].organisation_name
-    assert results[1].service_id == service_2.id
-    assert results[1].sms_billable_units == 3
-    assert results[1].sms_remainder == 0
-    assert results[1].chargeable_billable_sms == 3
-    assert results[1].sms_cost == Decimal('0.33')
+    # organisation_name, organisation_id, service_name, service_id, free_sms_fragment_limit,
+    # sms_rate, sms_remainder, sms_billable_units, chargeable_billable_units, sms_cost
+    assert results[0] == (org.name, org.id, service.name, service.id, 10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
+    assert results[1] == (None, None, service_sms_only.name, service_sms_only.id, 10, Decimal('0.11'), 0, 3, 3, Decimal('0.33'))
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
-    org, org_2, service, service_2, service_3 = set_up_letter_data()
+    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
@@ -617,91 +593,13 @@ def test_fetch_letter_costs_for_all_services(notify_db_session):
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
-    org_1, org_2, service_1, service_2, service_3 = set_up_letter_data()
+    org_1, org_2, service_1, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
+
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+
     assert len(results) == 5
     assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, 2, Decimal('0.45'), 'second', 6)
     assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, 1, Decimal("0.35"), 'first', 2)
     assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, 5, Decimal("0.65"), 'second', 20)
     assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, 3, Decimal("0.50"), 'first', 2)
     assert results[4] == (None, None, service_3.name, service_3.id, 4, Decimal("0.55"), 'second', 15)
-
-
-def test_all_three(notify_db_session):
-    set_up_letter_data()
-    sms_costs = fetch_sms_billing_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
-    letter_costs = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
-    letter_breakdown = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
-
-    combined = []
-    for s in sms_costs:
-        entry = {
-            "service_id": s.service_id,
-            "service_name": s.service_name,
-            "sms_cost": s.sms_cost,
-            "letter_cost": 0
-        }
-        combined.append(entry)
-    print("sms", combined)
-    print("letters", letter_costs)
-    for l in letter_costs:
-        row = [x for x in combined if x['service_id'] == l.service_id]
-        print("row: ", row)
-        if row:
-            row[0].update({'letter_cost': l.letter_cost})
-            print("row: ", row)
-        else:
-            letter_entry = {
-                "service_id": l.service_id,
-                "service_name": l.service_name,
-                "sms_cost": 0,
-                "letter_cost": l.letter_cost
-            }
-            combined.append(letter_entry)
-    print("final", combined)
-    assert 1==0
-
-
-def set_up_letter_data():
-    service = create_service(service_name='a - first service')
-    letter_template = create_template(service=service, template_type='letter')
-    sms_template_1 = create_template(service=service, template_type='sms')
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2019)
-    org = create_organisation(name="Org for {}".format(service.name))
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    service_2 = create_service(service_name='b - second service')
-    sms_template = create_template(service=service_2, template_type='sms')
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
-    service_3 = create_service(service_name='c - third service')
-    template_3 = create_template(service=service_3)
-    org_3 = create_organisation(name="Org for {}".format(service_3.name))
-    dao_add_service_to_organisation(service=service_3, organisation_id=org_3.id)
-    service_4 = create_service(service_name='d - service without org')
-    template_4 = create_template(service=service_4, template_type='letter')
-    create_ft_billing(bst_date=datetime(2019, 8, 12), service=service, notification_type='sms',
-                      template=sms_template_1)
-    create_ft_billing(bst_date=datetime(2019, 8, 12), service=service_2, notification_type='sms',
-                      template=sms_template)
-    create_ft_billing(bst_date=datetime(2019, 9, 12), service=service_2, notification_type='sms',
-                      template=sms_template, billable_unit=20)
-    create_ft_billing(bst_date=datetime(2019, 8, 15), service=service, notification_type='letter',
-                      template=letter_template,
-                      notifications_sent=2, billable_unit=1, rate=.35, postage='first')
-    create_ft_billing(bst_date=datetime(2019, 8, 20), service=service, notification_type='letter',
-                      template=letter_template,
-                      notifications_sent=6, billable_unit=2, rate=.45, postage='second')
-    create_ft_billing(bst_date=datetime(2019, 9, 1), service=service_3, notification_type='letter',
-                      template=template_3,
-                      notifications_sent=2, billable_unit=3, rate=.50, postage='first')
-    create_ft_billing(bst_date=datetime(2019, 9, 20), service=service_3, notification_type='letter',
-                      template=template_3,
-                      notifications_sent=8, billable_unit=5, rate=.65, postage='second')
-    create_ft_billing(bst_date=datetime(2019, 9, 21), service=service_3, notification_type='letter',
-                      template=template_3,
-                      notifications_sent=12, billable_unit=5, rate=.65, postage='second')
-    create_ft_billing(bst_date=datetime(2019, 9, 12), service=service_4, notification_type='letter',
-                      template=template_4,
-                      notifications_sent=15, billable_unit=4, rate=.55, postage='second')
-
-    return org, org_3, service, service_3, service_4
