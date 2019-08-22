@@ -311,7 +311,7 @@ def fetch_billing_data_for_day(process_day, service_id=None):
 
     for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-            table = get_notification_table_to_use(service, notification_type, process_day)
+            table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
 
             results = _query_for_billing_data(
                 table=table,

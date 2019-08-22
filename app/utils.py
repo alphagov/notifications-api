@@ -115,12 +115,13 @@ def email_address_is_nhs(email_address):
     ))
 
 
-def get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False):
+def get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run):
     """
     Work out what table will contain notification data for a service by looking up their data retention.
 
     Make sure that when you run this you think about whether the delete task has run for that day! If it's run, the
-    notifications from that day will have moved to NotificationHistory. By default we assume it hasn't run, since
+    notifications from that day will have moved to NotificationHistory. The delete tasks run between 4 and 5am every
+    morning.
     """
     from app.models import Notification, NotificationHistory
 

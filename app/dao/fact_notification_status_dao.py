@@ -49,7 +49,7 @@ def fetch_notification_status_for_day(process_day):
     # if no rows try notificationHistory
     for service in services:
         for notification_type in [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]:
-            table = get_notification_table_to_use(service, notification_type, process_day)
+            table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
 
             data_for_service_and_type = query_for_fact_status_data(
                 table=table,

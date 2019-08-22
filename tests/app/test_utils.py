@@ -61,28 +61,25 @@ def test_midnight_n_days_ago(current_time, arg, expected_datetime):
 def test_get_notification_table_to_use(sample_service):
     # it's currently early morning of Thurs 10th Jan.
     # When the delete task runs a bit later, it'll delete data from last wednesday 2nd.
-    assert get_notification_table_to_use(sample_service, 'sms', date(2018, 12, 31)) == NotificationHistory
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1)) == NotificationHistory
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2)) == Notification
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 3)) == Notification
+    assert get_notification_table_to_use(sample_service, 'sms', date(2018, 12, 31), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), False) == Notification
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 3), False) == Notification
 
 
 @freeze_time('2019-01-10 00:30')
-@pytest.mark.parametrize('has_delete_task_run, table', [
-    (True, NotificationHistory),
-    (False, Notification),
-])
-def test_get_notification_table_to_use_knows_if_delete_task_has_run(sample_service, has_delete_task_run, table):
+def test_get_notification_table_to_use_knows_if_delete_task_has_run(sample_service):
     # it's currently early morning of Thurs 10th Jan.
     # The delete task deletes/moves data from last wednesday 2nd.
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), has_delete_task_run) == table
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), False) == Notification
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), True) == NotificationHistory
 
 
 @freeze_time('2019-06-09 23:30')
 def test_get_notification_table_to_use_respects_daylight_savings_time(sample_service):
     # current time is 12:30am on 10th july in BST
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 6, 1)) == NotificationHistory
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 6, 2)) == Notification
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 6, 1), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 6, 2), False) == Notification
 
 
 @freeze_time('2019-01-10 00:30')
@@ -92,9 +89,9 @@ def test_get_notification_table_to_use_checks_service_data_retention(sample_serv
     # it's currently early morning of Thurs 10th Jan.
     # three days retention means we'll delete sunday 6th's data when the delete task runs (so there's still three full
     # days of monday, tuesday and wednesday left over)
-    assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 5)) == NotificationHistory
-    assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 6)) == Notification
+    assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 5), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 6), False) == Notification
 
     # falls back to 7 days if not specified
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1)) == NotificationHistory
-    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2)) == Notification
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), False) == Notification
