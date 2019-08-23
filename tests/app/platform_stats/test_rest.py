@@ -126,7 +126,6 @@ def test_get_usage_for_all_services(notify_db_session, admin_request):
     response = admin_request.get("platform_stats.get_usage_for_all_services",
                                  start_date='2019-05-01',
                                  end_date='2019-06-30')
-    print(response)
     assert len(response) == 4
     assert response[0]["organisation_id"] == str(org.id)
     assert response[0]["service_id"] == str(service.id)
