@@ -67,16 +67,19 @@ def get_usage_for_all_services():
     letter_costs = fetch_letter_costs_for_all_services(start_date, end_date)
     letter_breakdown = fetch_letter_line_items_for_all_services(start_date, end_date)
 
-    lb_by_service = [(lb.service_id, "{} {} class letters at {}p".format(lb.letters_sent, lb.postage, lb.letter_rate))
-                     for lb in letter_breakdown]
+    lb_by_service = [
+        (lb.service_id, "{} {} class letters at {}p".format(lb.letters_sent, lb.postage, int(lb.letter_rate * 100)))
+        for lb in letter_breakdown
+    ]
     combined = {}
     for s in sms_costs:
         entry = {
-            "Organisation_id": str(s.organisation_id) if s.organisation_id else "",
-            "Organisation_name": s.organisation_name or "",
+            "organisation_id": str(s.organisation_id) if s.organisation_id else "",
+            "organisation_name": s.organisation_name or "",
             "service_id": str(s.service_id),
             "service_name": s.service_name,
-            "sms_cost": str(s.sms_cost),
+            "sms_cost": float(s.sms_cost),
+            "sms_fragments": s.chargeable_billable_sms,
             "letter_cost": 0,
             "letter_breakdown": ""
         }
@@ -87,12 +90,13 @@ def get_usage_for_all_services():
             combined[str(l.service_id)].update({'letter_cost': l.letter_cost})
         else:
             letter_entry = {
-                "Organisation_id": str(l.organisation_id) if l.organisation_id else "",
-                "Organisation_name": l.organisation_name or "",
+                "organisation_id": str(l.organisation_id) if l.organisation_id else "",
+                "organisation_name": l.organisation_name or "",
                 "service_id": str(l.service_id),
                 "service_name": l.service_name,
                 "sms_cost": 0,
-                "letter_cost": str(l.letter_cost),
+                "sms_fragments": 0,
+                "letter_cost": float(l.letter_cost),
                 "letter_breakdown": ""
             }
             combined[str(l.service_id)] = letter_entry

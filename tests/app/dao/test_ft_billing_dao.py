@@ -2,8 +2,6 @@ from calendar import monthrange
 from decimal import Decimal
 
 from datetime import datetime, timedelta, date
-from itertools import groupby
-from operator import itemgetter
 
 from freezegun import freeze_time
 
@@ -519,6 +517,21 @@ def test_fetch_sms_free_allowance_remainder_with_two_services(notify_db_session)
     assert service_2_result[0] == (service_2.id, 20, 22, 0)
 
 
+def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session):
+    # This test is useful because the inner query resultset is empty.
+    service = create_service(service_name='a - has free allowance')
+    template = create_template(service=service)
+    org = create_organisation(name="Org for {}".format(service.name))
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=2019)
+    create_ft_billing(service=service, template=template,
+                      bst_date=datetime(2019, 4, 20), notification_type='sms', billable_unit=44, rate=0.11)
+    results = fetch_sms_billing_for_all_services(datetime(2019, 4, 1), datetime(2019, 5, 30))
+    assert len(results) == 1
+    assert results[0] == (org.name, org.id, service.name, service.id, 25000, Decimal('0.11'), 25000, 44, 0,
+                          Decimal('0'))
+
+
 def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     service = create_service(service_name='a - has free allowance')
     template = create_template(service=service)
@@ -578,7 +591,8 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
     # organisation_name, organisation_id, service_name, service_id, free_sms_fragment_limit,
     # sms_rate, sms_remainder, sms_billable_units, chargeable_billable_units, sms_cost
     assert results[0] == (org.name, org.id, service.name, service.id, 10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
-    assert results[1] == (None, None, service_sms_only.name, service_sms_only.id, 10, Decimal('0.11'), 0, 3, 3, Decimal('0.33'))
+    assert results[1] == (None, None, service_sms_only.name, service_sms_only.id, 10, Decimal('0.11'),
+                          0, 3, 3, Decimal('0.33'))
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
