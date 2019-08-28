@@ -9,7 +9,7 @@ from app import db
 from app.dao.date_util import (
     get_april_fools as financial_year_start,
     get_financial_year,
-    which_financial_year
+    get_financial_year_for_datetime
 )
 
 from app.models import (
@@ -33,7 +33,7 @@ from app.utils import get_london_midnight_in_utc
 
 def fetch_sms_free_allowance_remainder(start_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    billing_year = which_financial_year(start_date)
+    billing_year = get_financial_year_for_datetime(start_date)
     print(billing_year)
     start_of_year = convert_utc_to_bst(financial_year_start(billing_year))
     query = db.session.query(
@@ -60,7 +60,7 @@ def fetch_sms_free_allowance_remainder(start_date):
 def fetch_sms_billing_for_all_services(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
-    billing_year = which_financial_year(start_date)
+    billing_year = get_financial_year_for_datetime(start_date)
     free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
     sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
     sms_remainder = func.coalesce(free_allowance_remainder.c.sms_remainder, AnnualBilling.free_sms_fragment_limit)

@@ -63,8 +63,9 @@ def get_current_financial_year_start_year():
     return financial_year_start
 
 
-def which_financial_year(start_date):
-    if start_date <= get_april_fools(int(start_date.strftime('%Y'))):
-        return int(start_date.strftime('%Y')) - 1
+def get_financial_year_for_datetime(start_date):
+    year = int(start_date.strftime('%Y'))
+    if start_date < get_april_fools(year):
+        return year - 1
     else:
-        return int(start_date.strftime('%Y'))
+        return year
