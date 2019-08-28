@@ -2,7 +2,7 @@ from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
-from app.dao.date_util import get_financial_year
+from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_sms_billing_for_all_services, fetch_letter_costs_for_all_services,
     fetch_letter_line_items_for_all_services
@@ -12,6 +12,7 @@ from app.errors import register_errors, InvalidRequest
 from app.platform_stats.platform_stats_schema import platform_stats_request
 from app.service.statistics import format_admin_stats
 from app.schema_validation import validate
+from app.utils import get_london_midnight_in_utc
 
 platform_stats_blueprint = Blueprint('platform_stats', __name__)
 
@@ -42,15 +43,11 @@ def validate_date_range_is_within_a_financial_year(start_date, end_date):
         raise InvalidRequest(message="Input must be a date in the format: YYYY-MM-DD", status_code=400)
     if end_date < start_date:
         raise InvalidRequest(message="Start date must be before end date", status_code=400)
-    if 4 <= int(start_date.strftime("%m")) <= 12:
-        year_start, year_end = get_financial_year(year=int(start_date.strftime("%Y")))
-    else:
-        year_start, year_end = get_financial_year(year=int(start_date.strftime("%Y")) - 1)
-    year_start = year_start.date()
-    year_end = year_end.date()
-    if year_start <= start_date <= year_end and year_start <= end_date <= year_end:
-        return True
-    else:
+
+    start_fy = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
+    end_fy = get_financial_year_for_datetime(get_london_midnight_in_utc(end_date))
+
+    if start_fy != end_fy:
         raise InvalidRequest(message="Date must be in a single financial year.", status_code=400)
 
 

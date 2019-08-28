@@ -85,8 +85,8 @@ def test_get_platform_stats_with_real_query(admin_request, notify_db_session):
                           ('2019-08-01', '2019-09-30'),
                           ('2019-01-01', '2019-03-31'),
                           ('2019-12-01', '2020-02-28')])
-def test_validate_date_range_is_within_a_financial_year_returns_true(start_date, end_date):
-    assert validate_date_range_is_within_a_financial_year(start_date, end_date)
+def test_validate_date_range_is_within_a_financial_year(start_date, end_date):
+    validate_date_range_is_within_a_financial_year(start_date, end_date)
 
 
 @pytest.mark.parametrize('start_date, end_date',
@@ -94,7 +94,7 @@ def test_validate_date_range_is_within_a_financial_year_returns_true(start_date,
                           ('2019-01-01', '2019-04-30'),
                           ('2019-12-01', '2020-04-30'),
                           ('2019-03-31', '2019-04-01')])
-def test_validate_date_range_is_within_a_financial_year_returns_false(start_date, end_date):
+def test_validate_date_range_is_within_a_financial_year_raises(start_date, end_date):
     with pytest.raises(expected_exception=InvalidRequest) as e:
         validate_date_range_is_within_a_financial_year(start_date, end_date)
         assert e.message == 'Date must be in a single financial year.'
