@@ -80,11 +80,11 @@ def get_usage_for_all_services():
             "letter_cost": 0,
             "letter_breakdown": ""
         }
-        combined[str(s.service_id)] = entry
+        combined[s.service_id] = entry
 
     for l in letter_costs:
         if l.service_id in combined:
-            combined[str(l.service_id)].update({'letter_cost': l.letter_cost})
+            combined[l.service_id].update({'letter_cost': l.letter_cost})
         else:
             letter_entry = {
                 "organisation_id": str(l.organisation_id) if l.organisation_id else "",
@@ -96,8 +96,8 @@ def get_usage_for_all_services():
                 "letter_cost": float(l.letter_cost),
                 "letter_breakdown": ""
             }
-            combined[str(l.service_id)] = letter_entry
+            combined[l.service_id] = letter_entry
     for service_id, breakdown in lb_by_service:
-        combined[str(service_id)]['letter_breakdown'] += (breakdown + '\n')
+        combined[service_id]['letter_breakdown'] += (breakdown + '\n')
 
     return jsonify(list(combined.values()))
