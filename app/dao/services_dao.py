@@ -42,6 +42,7 @@ from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     KEY_TYPE_TEST,
+    NHS_ORGANISATION_TYPES,
     NON_CROWN_ORGANISATION_TYPES,
     SMS_TYPE,
     LETTER_TYPE,
@@ -306,7 +307,7 @@ def dao_create_service(
         if organisation.letter_branding and not service.letter_branding:
             service.letter_branding = organisation.letter_branding
 
-    elif service.organisation_type in ['nhs_central', 'nhs_local'] or email_address_is_nhs(user.email_address):
+    elif service.organisation_type in NHS_ORGANISATION_TYPES or email_address_is_nhs(user.email_address):
         service.email_branding = dao_get_email_branding_by_name('NHS')
         service.letter_branding = dao_get_letter_branding_by_name('NHS')
     if organisation:

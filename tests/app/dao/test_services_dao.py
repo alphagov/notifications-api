@@ -143,6 +143,8 @@ def test_create_service_with_organisation(notify_db_session):
 
 @pytest.mark.parametrize('email_address, organisation_type', (
     ("test@example.gov.uk", 'nhs_central'),
+    ("test@example.gov.uk", 'nhs_local'),
+    ("test@example.gov.uk", 'nhs_gp'),
     ("test@nhs.net", 'nhs_local'),
     ("test@nhs.net", 'local'),
     ("test@nhs.net", 'central'),
