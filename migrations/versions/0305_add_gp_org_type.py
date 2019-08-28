@@ -12,7 +12,7 @@ from alembic import op
 
 revision = '0305_add_gp_org_type'
 down_revision = '0304_remove_org_to_service'
-GP_ORG_TYPE_NAME = 'gp'
+GP_ORG_TYPE_NAME = 'nhs_gp'
 
 
 def upgrade():
