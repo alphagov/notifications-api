@@ -100,4 +100,9 @@ def get_usage_for_all_services():
     for service_id, breakdown in lb_by_service:
         combined[service_id]['letter_breakdown'] += (breakdown + '\n')
 
-    return jsonify(list(combined.values()))
+    # sorting first by name == '' means that blank orgs will be sorted last.
+    return jsonify(sorted(combined.values(), key=lambda x: (
+        x['organisation_name'] == '',
+        x['organisation_name'],
+        x['service_name']
+    )))

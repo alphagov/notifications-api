@@ -133,19 +133,20 @@ def test_get_usage_for_all_services(notify_db_session, admin_request):
     assert response[0]["sms_fragments"] == 0
     assert response[0]["letter_cost"] == 3.40
     assert response[0]["letter_breakdown"] == "6 second class letters at 45p\n2 first class letters at 35p\n"
-    assert response[1]["organisation_id"] == ""
-    assert response[1]["service_id"] == str(service_sms_only.id)
-    assert response[1]["sms_cost"] == 0.33
-    assert response[1]["sms_fragments"] == 3
-    assert response[1]["letter_cost"] == 0
-    assert response[1]["letter_breakdown"] == ""
 
-    assert response[2]["organisation_id"] == str(org_2.id)
-    assert response[2]["service_id"] == str(service_2.id)
-    assert response[2]["sms_cost"] == 0
-    assert response[2]["sms_fragments"] == 0
-    assert response[2]["letter_cost"] == 14
-    assert response[2]["letter_breakdown"] == "20 second class letters at 65p\n2 first class letters at 50p\n"
+    assert response[1]["organisation_id"] == str(org_2.id)
+    assert response[1]["service_id"] == str(service_2.id)
+    assert response[1]["sms_cost"] == 0
+    assert response[1]["sms_fragments"] == 0
+    assert response[1]["letter_cost"] == 14
+    assert response[1]["letter_breakdown"] == "20 second class letters at 65p\n2 first class letters at 50p\n"
+
+    assert response[2]["organisation_id"] == ""
+    assert response[2]["service_id"] == str(service_sms_only.id)
+    assert response[2]["sms_cost"] == 0.33
+    assert response[2]["sms_fragments"] == 3
+    assert response[2]["letter_cost"] == 0
+    assert response[2]["letter_breakdown"] == ""
 
     assert response[3]["organisation_id"] == ""
     assert response[3]["service_id"] == str(service_3.id)
