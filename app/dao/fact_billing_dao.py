@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, time
 from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func, case, desc, Date, Integer
+from sqlalchemy import func, case, desc, Date, Integer, and_
 
 from app import db
 from app.dao.date_util import (
@@ -35,22 +35,27 @@ def fetch_sms_free_allowance_remainder(start_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     billing_year = get_financial_year_for_datetime(start_date)
     start_of_year = convert_utc_to_bst(financial_year_start(billing_year))
+
+    billable_units = func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0)
+
     query = db.session.query(
-        FactBilling.service_id.label("service_id"),
+        AnnualBilling.service_id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
-        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label('billable_units'),
-        func.greatest((AnnualBilling.free_sms_fragment_limit -
-                       func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
-                       ).cast(Integer), 0).label('sms_remainder')
-    ).join(
-        AnnualBilling, FactBilling.service_id == AnnualBilling.service_id,
+        billable_units.label('billable_units'),
+        func.greatest((AnnualBilling.free_sms_fragment_limit - billable_units).cast(Integer), 0).label('sms_remainder')
+    ).outerjoin(
+        # if there are no ft_billing rows for a service we still want to return the annual billing so we can use the
+        # free_sms_fragment_limit)
+        FactBilling, and_(
+            AnnualBilling.service_id == FactBilling.service_id,
+            FactBilling.bst_date >= start_of_year,
+            FactBilling.bst_date < start_date,
+            FactBilling.notification_type == SMS_TYPE,
+        )
     ).filter(
-        FactBilling.bst_date >= start_of_year,
-        FactBilling.bst_date < start_date,
-        FactBilling.notification_type == SMS_TYPE,
         AnnualBilling.financial_year_start == billing_year,
     ).group_by(
-        FactBilling.service_id,
+        AnnualBilling.service_id,
         AnnualBilling.free_sms_fragment_limit,
     )
     return query
