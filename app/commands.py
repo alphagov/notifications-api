@@ -249,8 +249,8 @@ def backfill_processing_time(start_date, end_date):
         send_processing_time_for_start_and_end(process_start_date, process_end_date)
 
 
-@notify_command(name='latest_annual_billing')
-@click.option('-y', '--year', required=True,
+@notify_command(name='populate-annual-billing')
+@click.option('-y', '--year', required=True, type=int,
               help="""The year to populate the annual billing data for, i.e. 2019""")
 def populate_annual_billing(year):
     """
@@ -263,18 +263,16 @@ def populate_annual_billing(year):
         from annual_billing
         where financial_year_start = :year
     """
-    services_without_annual_billing = db.session.execute(sql, {"year": int(year)})
+    services_without_annual_billing = db.session.execute(sql, {"year": year})
     for row in services_without_annual_billing:
         latest_annual_billing = """
             Select free_sms_fragment_limit
             from annual_billing
             where service_id = :service_id
-            order by financial_year_start limit 1
+            order by financial_year_start desc limit 1
         """
-        print(row.id)
         free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
         free_allowance = [x[0]for x in free_allowance_rows]
-        print(free_allowance)
         print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
         dao_create_or_update_annual_billing_for_year(service_id=row.id,
                                                      free_sms_fragment_limit=free_allowance[0],
