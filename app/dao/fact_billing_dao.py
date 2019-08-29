@@ -42,9 +42,9 @@ def fetch_sms_free_allowance_remainder(start_date):
         func.greatest((AnnualBilling.free_sms_fragment_limit -
                        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
                        ).cast(Integer), 0).label('sms_remainder')
+    ).join(
+        AnnualBilling, FactBilling.service_id == AnnualBilling.service_id,
     ).filter(
-        FactBilling.service_id == Service.id,
-        FactBilling.service_id == AnnualBilling.service_id,
         FactBilling.bst_date >= start_of_year,
         FactBilling.bst_date < start_date,
         FactBilling.notification_type == SMS_TYPE,
