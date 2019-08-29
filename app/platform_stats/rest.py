@@ -84,7 +84,7 @@ def get_usage_for_all_services():
 
     for l in letter_costs:
         if l.service_id in combined:
-            combined[l.service_id].update({'letter_cost': l.letter_cost})
+            combined[l.service_id].update({'letter_cost': float(l.letter_cost)})
         else:
             letter_entry = {
                 "organisation_id": str(l.organisation_id) if l.organisation_id else "",
