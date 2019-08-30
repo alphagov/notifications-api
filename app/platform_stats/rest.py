@@ -50,15 +50,15 @@ def validate_date_range_is_within_a_financial_year(start_date, end_date):
     if start_fy != end_fy:
         raise InvalidRequest(message="Date must be in a single financial year.", status_code=400)
 
+    return start_date, end_date
+
 
 @platform_stats_blueprint.route('usage-for-all-services')
 def get_usage_for_all_services():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    validate_date_range_is_within_a_financial_year(start_date, end_date)
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
     sms_costs = fetch_sms_billing_for_all_services(start_date, end_date)
     letter_costs = fetch_letter_costs_for_all_services(start_date, end_date)
