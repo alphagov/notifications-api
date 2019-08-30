@@ -278,8 +278,6 @@ def populate_annual_billing(year):
                                                      free_sms_fragment_limit=free_allowance[0],
                                                      financial_year_start=int(year))
 
-    db.session.commit()
-
 
 @notify_command(name='list-routes')
 def list_routes():

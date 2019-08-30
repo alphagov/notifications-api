@@ -161,7 +161,6 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     ).join(
         FactBilling, FactBilling.service_id == Service.id,
     ).filter(
-        FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == LETTER_TYPE,
