@@ -78,7 +78,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
-        FactBilling.service_id.label("service_id"),
+        Service.id.label("service_id"),
         free_allowance_remainder.c.free_sms_fragment_limit,
         FactBilling.rate.label('sms_rate'),
         sms_remainder.label("sms_remainder"),
@@ -100,7 +100,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     ).group_by(
         Organisation.name,
         Organisation.id,
-        FactBilling.service_id,
+        Service.id,
         Service.name,
         free_allowance_remainder.c.free_sms_fragment_limit,
         free_allowance_remainder.c.sms_remainder,
@@ -118,10 +118,14 @@ def fetch_letter_costs_for_all_services(start_date, end_date):
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
-        FactBilling.service_id.label("service_id"),
+        Service.id.label("service_id"),
         func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
+    ).select_from(
+        Service
     ).outerjoin(
-        Organisation, Service.organisation_id == Organisation.id
+        Service.organisation
+    ).join(
+        FactBilling, FactBilling.service_id == Service.id,
     ).filter(
         FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
@@ -130,7 +134,7 @@ def fetch_letter_costs_for_all_services(start_date, end_date):
     ).group_by(
         Organisation.name,
         Organisation.id,
-        FactBilling.service_id,
+        Service.id,
         Service.name,
     ).order_by(
         Organisation.name,
@@ -145,13 +149,17 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
-        FactBilling.service_id.label("service_id"),
+        Service.id.label("service_id"),
         FactBilling.billable_units.label("sheet_count"),
         FactBilling.rate.label("letter_rate"),
         FactBilling.postage.label("postage"),
         func.sum(FactBilling.notifications_sent).label("letters_sent"),
+    ).select_from(
+        Service
     ).outerjoin(
-        Organisation, Service.organisation_id == Organisation.id
+        Service.organisation
+    ).join(
+        FactBilling, FactBilling.service_id == Service.id,
     ).filter(
         FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
@@ -160,7 +168,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     ).group_by(
         Organisation.name,
         Organisation.id,
-        FactBilling.service_id,
+        Service.id,
         Service.name,
         FactBilling.billable_units,
         FactBilling.rate,
