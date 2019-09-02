@@ -21,6 +21,7 @@ from app.celery.nightly_tasks import send_total_sent_notifications_to_performanc
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames
+from app.dao.annual_billing_dao import dao_create_or_update_annual_billing_for_year
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
@@ -248,29 +249,34 @@ def backfill_processing_time(start_date, end_date):
         send_processing_time_for_start_and_end(process_start_date, process_end_date)
 
 
-@notify_command()
-def populate_annual_billing():
+@notify_command(name='populate-annual-billing')
+@click.option('-y', '--year', required=True, type=int,
+              help="""The year to populate the annual billing data for, i.e. 2019""")
+def populate_annual_billing(year):
     """
-    add annual_billing for 2016, 2017 and 2018.
+    add annual_billing for given year.
     """
-    financial_year = [2016, 2017, 2018]
-
-    for fy in financial_year:
-        populate_data = """
-        INSERT INTO annual_billing(id, service_id, free_sms_fragment_limit, financial_year_start,
-                created_at, updated_at)
-            SELECT uuid_in(md5(random()::text || now()::text)::cstring), id, 250000, {}, '{}', '{}'
-            FROM services
-            WHERE id NOT IN(
-                SELECT service_id
-                FROM annual_billing
-                WHERE financial_year_start={})
-        """.format(fy, datetime.utcnow(), datetime.utcnow(), fy)
-
-        services_result1 = db.session.execute(populate_data)
-        db.session.commit()
-
-        print("Populated annual billing {} for {} services".format(fy, services_result1.rowcount))
+    sql = """
+        Select id from services where active = true
+        except
+        select service_id
+        from annual_billing
+        where financial_year_start = :year
+    """
+    services_without_annual_billing = db.session.execute(sql, {"year": year})
+    for row in services_without_annual_billing:
+        latest_annual_billing = """
+            Select free_sms_fragment_limit
+            from annual_billing
+            where service_id = :service_id
+            order by financial_year_start desc limit 1
+        """
+        free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
+        free_allowance = [x[0]for x in free_allowance_rows]
+        print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
+        dao_create_or_update_annual_billing_for_year(service_id=row.id,
+                                                     free_sms_fragment_limit=free_allowance[0],
+                                                     financial_year_start=int(year))
 
 
 @notify_command(name='list-routes')

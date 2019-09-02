@@ -12,7 +12,9 @@ from app.dao.annual_billing_dao import (
     dao_update_annual_billing_for_future_years
 )
 from app.dao.date_util import get_current_financial_year_start_year
-from app.dao.fact_billing_dao import fetch_monthly_billing_for_year, fetch_billing_totals_for_year
+from app.dao.fact_billing_dao import (
+    fetch_monthly_billing_for_year, fetch_billing_totals_for_year,
+)
 
 from app.errors import InvalidRequest
 from app.errors import register_errors

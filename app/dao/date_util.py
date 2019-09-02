@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
 
 from notifications_utils.timezones import convert_bst_to_utc
 import pytz
@@ -61,3 +61,14 @@ def get_current_financial_year_start_year():
     if now < start_date:
         financial_year_start = financial_year_start - 1
     return financial_year_start
+
+
+def get_financial_year_for_datetime(start_date):
+    if type(start_date) == date:
+        start_date = datetime.combine(start_date, time.min)
+
+    year = int(start_date.strftime('%Y'))
+    if start_date < get_april_fools(year):
+        return year - 1
+    else:
+        return year

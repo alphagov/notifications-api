@@ -1,8 +1,13 @@
-from datetime import datetime
+from datetime import datetime, date
 
 import pytest
 
-from app.dao.date_util import get_financial_year, get_april_fools, get_month_start_and_end_date_in_utc
+from app.dao.date_util import (
+    get_financial_year,
+    get_april_fools,
+    get_month_start_and_end_date_in_utc,
+    get_financial_year_for_datetime,
+)
 
 
 def test_get_financial_year():
@@ -29,3 +34,14 @@ def test_get_month_start_and_end_date_in_utc(month, year, expected_start, expect
     result = get_month_start_and_end_date_in_utc(month_year)
     assert result[0] == expected_start
     assert result[1] == expected_end
+
+
+@pytest.mark.parametrize("dt, fy", [
+    (datetime(2018, 3, 31, 23, 0, 0), 2018),
+    (datetime(2019, 3, 31, 22, 59, 59), 2018),
+    (datetime(2019, 3, 31, 23, 0, 0), 2019),
+    (date(2019, 3, 31), 2018),
+    (date(2019, 4, 1), 2019),
+])
+def test_get_financial_year_for_datetime(dt, fy):
+    assert get_financial_year_for_datetime(dt) == fy
