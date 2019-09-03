@@ -149,7 +149,6 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        FactBilling.billable_units.label("sheet_count"),
         FactBilling.rate.label("letter_rate"),
         FactBilling.postage.label("postage"),
         func.sum(FactBilling.notifications_sent).label("letters_sent"),
@@ -168,7 +167,6 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         Organisation.id,
         Service.id,
         Service.name,
-        FactBilling.billable_units,
         FactBilling.rate,
         FactBilling.postage
     ).order_by(
