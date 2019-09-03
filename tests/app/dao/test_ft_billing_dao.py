@@ -612,8 +612,8 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 5
-    assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, 2, Decimal('0.45'), 'second', 6)
-    assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, 1, Decimal("0.35"), 'first', 2)
-    assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, 5, Decimal("0.65"), 'second', 20)
-    assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, 3, Decimal("0.50"), 'first', 2)
-    assert results[4] == (None, None, service_3.name, service_3.id, 4, Decimal("0.55"), 'second', 15)
+    assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal('0.45'), 'second', 6)
+    assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal("0.35"), 'first', 2)
+    assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.65"), 'second', 20)
+    assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.50"), 'first', 2)
+    assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)

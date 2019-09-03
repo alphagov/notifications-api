@@ -912,7 +912,10 @@ def set_up_usage_data(start_date):
                       notifications_sent=2, billable_unit=1, rate=.35, postage='first')
     create_ft_billing(bst_date=one_month_later, service=service, notification_type='letter',
                       template=letter_template,
-                      notifications_sent=6, billable_unit=2, rate=.45, postage='second')
+                      notifications_sent=4, billable_unit=2, rate=.45, postage='second')
+    create_ft_billing(bst_date=one_week_later, service=service, notification_type='letter',
+                      template=letter_template,
+                      notifications_sent=2, billable_unit=2, rate=.45, postage='second')
 
     create_ft_billing(bst_date=one_week_earlier, service=service_sms_only, notification_type='sms',
                       template=sms_template, rate=0.11, billable_unit=12)
