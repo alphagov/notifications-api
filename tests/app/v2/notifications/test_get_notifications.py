@@ -649,3 +649,38 @@ def test_get_notifications_renames_letter_statuses(client, sample_letter_templat
     json_response = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_response['status'] == expected_status
+
+
+@pytest.mark.parametrize('status,expected_body,mock_called', [
+    ('created', 'Zm9v', True),
+    ('sending', 'Zm9v', True),
+    ('pending-virus-check', '', False),
+    ('virus-scan-failed', '', False),
+    ('validation-failed', '', False),
+    ('technical-failure', '', False),
+])
+def test_get_notification_only_returns_pdf_content_if_right_status(
+    client,
+    sample_letter_notification,
+    mocker,
+    status,
+    expected_body,
+    mock_called
+):
+    mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
+    sample_letter_notification.status = status
+
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for(
+            'v2_notifications.get_notification_by_id',
+            notification_id=sample_letter_notification.id,
+            return_pdf_content='true'
+        ),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    json_response = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_response['body'] == expected_body
+    assert mock_get_letter_pdf.called == mock_called

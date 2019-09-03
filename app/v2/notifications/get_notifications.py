@@ -1,9 +1,14 @@
+import base64
+
 from flask import jsonify, request, url_for, current_app
+
 from app import api_user, authenticated_service
 from app.dao import notifications_dao
+from app.letters.utils import get_letter_pdf
 from app.schema_validation import validate
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import get_notifications_request, notification_by_id
+from app.models import NOTIFICATION_CREATED, NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS, LETTER_TYPE
 
 
 @v2_notification_blueprint.route("/<notification_id>", methods=['GET'])
@@ -14,7 +19,17 @@ def get_notification_by_id(notification_id):
         authenticated_service.id, notification_id, key_type=None
     )
 
-    return jsonify(notification.serialize()), 200
+    response = notification.serialize()
+
+    if request.args.get('return_pdf_content') and notification.notification_type == LETTER_TYPE:
+        if notification.status in (NOTIFICATION_CREATED, *NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS):
+            pdf_data = get_letter_pdf(notification)
+        else:
+            # precompiled letters that are still being virus scanned, or that failed validation/virus scan
+            pdf_data = b''
+        response['body'] = base64.b64encode(pdf_data).decode('utf-8')
+
+    return jsonify(response), 200
 
 
 @v2_notification_blueprint.route("", methods=['GET'])

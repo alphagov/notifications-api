@@ -1547,7 +1547,7 @@ class Notification(db.Model):
         elif self.status in [NOTIFICATION_DELIVERED, NOTIFICATION_RETURNED_LETTER]:
             return NOTIFICATION_STATUS_LETTER_RECEIVED
         else:
-            # Currently can only be technical-failure
+            # Currently can only be technical-failure OR pending-virus-check OR validation-failed
             return self.status
 
     def get_created_by_name(self):
