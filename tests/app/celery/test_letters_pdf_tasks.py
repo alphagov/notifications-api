@@ -1,5 +1,6 @@
 from unittest.mock import Mock, call, ANY
 
+import base64
 import boto3
 from PyPDF2.utils import PdfReadError
 from moto import mock_s3
@@ -411,30 +412,41 @@ def test_process_letter_task_check_virus_scan_passed(
     conn.create_bucket(Bucket=target_bucket_name)
 
     s3 = boto3.client('s3', region_name='eu-west-1')
-    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'old_pdf')
 
     mock_get_page_count = mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=1)
     mock_s3upload = mocker.patch('app.celery.letters_pdf_tasks.s3upload')
-    mock_sanitise = mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=b'pdf_content')
-
-    process_virus_scan_passed(filename)
+    endpoint = 'http://localhost:9999/precompiled/sanitise'
+    with requests_mock.mock() as rmock:
+        rmock.request(
+            "POST",
+            endpoint,
+            json={
+                "file": base64.b64encode(b"new_pdf").decode("utf-8"),
+                "validation_passed": True,
+                "errors": {
+                    "content_outside_of_printable_area": [],
+                    "document_not_a4_size_portrait_orientation": [],
+                }
+            },
+            status_code=200
+        )
+        process_virus_scan_passed(filename)
 
     assert letter_notification.status == noti_status
     assert letter_notification.billable_units == 1
-    mock_sanitise.assert_called_once_with(
-        ANY,
-        letter_notification,
-        b'pdf_content'
-    )
+    assert rmock.called
+    assert rmock.request_history[0].url == endpoint
+
     mock_s3upload.assert_called_once_with(
         bucket_name=target_bucket_name,
-        filedata=b'pdf_content',
+        filedata=b'new_pdf',
         file_location=destination_folder + filename,
         region='eu-west-1',
     )
     mock_get_page_count.assert_called_once_with(
         letter_notification,
-        b'pdf_content'
+        b'old_pdf'
     )
 
 
@@ -540,7 +552,6 @@ def test_process_virus_scan_passed_logs_error_and_sets_tech_failure_if_s3_error_
     s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
 
     mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=1)
-    mocker.patch('app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=b'pdf_content')
 
     error_response = {
         'Error': {
@@ -552,7 +563,22 @@ def test_process_virus_scan_passed_logs_error_and_sets_tech_failure_if_s3_error_
     mocker.patch('app.celery.letters_pdf_tasks._upload_pdf_to_test_or_live_pdf_bucket',
                  side_effect=ClientError(error_response, 'operation_name'))
 
-    process_virus_scan_passed(filename)
+    endpoint = 'http://localhost:9999/precompiled/sanitise'
+    with requests_mock.mock() as rmock:
+        rmock.request(
+            "POST",
+            endpoint,
+            json={
+                "file": base64.b64encode(b"new_pdf").decode("utf-8"),
+                "validation_passed": True,
+                "errors": {
+                    "content_outside_of_printable_area": [],
+                    "document_not_a4_size_portrait_orientation": [],
+                }
+            },
+            status_code=200
+        )
+        process_virus_scan_passed(filename)
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
     mock_logger.assert_called_once_with(
@@ -631,23 +657,54 @@ def test_replay_letters_in_error_for_one_file(notify_api, mocker):
 
 def test_sanitise_precompiled_pdf_returns_data_from_template_preview(rmock, sample_letter_notification):
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
-    rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=200)
-    mock_celery = Mock(**{'retry.side_effect': Retry})
+    endpoint = 'http://localhost:9999/precompiled/sanitise'
+    with requests_mock.mock() as rmock:
+        rmock.request(
+            "POST",
+            endpoint,
+            json={
+                "file": base64.b64encode(b"new_pdf").decode("utf-8"),
+                "validation_passed": True,
+                "errors": {
+                    "content_outside_of_printable_area": [],
+                    "document_not_a4_size_portrait_orientation": [],
+                }
+            },
+            status_code=200
+        )
+        mock_celery = Mock(**{'retry.side_effect': Retry})
+        response = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+        assert rmock.called
+        assert rmock.request_history[0].url == endpoint
 
-    res = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
-
-    assert res == b'new_pdf'
+    assert base64.b64decode(response.json()["file"].encode()) == b"new_pdf"
     assert rmock.last_request.text == 'old_pdf'
 
 
 def test_sanitise_precompiled_pdf_returns_none_on_validation_error(rmock, sample_letter_notification):
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
-    rmock.post('http://localhost:9999/precompiled/sanitise', content=b'new_pdf', status_code=400)
-    mock_celery = Mock(**{'retry.side_effect': Retry})
 
-    res = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+    endpoint = 'http://localhost:9999/precompiled/sanitise'
+    with requests_mock.mock() as rmock:
+        rmock.request(
+            "POST",
+            endpoint,
+            json={
+                "file": base64.b64encode(b"nyan").decode("utf-8"),
+                "validation_passed": False,
+                "errors": {
+                    "content_outside_of_printable_area": [1],
+                    "document_not_a4_size_portrait_orientation": [],
+                }
+            },
+            status_code=400
+        )
+        mock_celery = Mock(**{'retry.side_effect': Retry})
+        response = _sanitise_precompiled_pdf(mock_celery, sample_letter_notification, b'old_pdf')
+        assert rmock.called
+        assert rmock.request_history[0].url == endpoint
 
-    assert res is None
+    assert response is None
 
 
 def test_sanitise_precompiled_pdf_passes_the_service_id_and_notification_id_to_template_preview(
