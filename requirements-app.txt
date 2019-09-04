@@ -6,19 +6,19 @@ celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.10.1
-Flask-Migrate==2.4.0
+Flask-Migrate==2.5.2
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
-Flask==1.0.2
+Flask==1.1.1
 click-datetime==0.2
-eventlet==0.24.1
+eventlet==0.25.1
 gunicorn==19.7.1  # pyup: ignore, >19.8 breaks eventlet patching
 iso8601==0.1.12
-jsonschema==3.0.1
-marshmallow-sqlalchemy==0.16.3
-marshmallow==2.19.2
-psycopg2-binary==2.8.2
+jsonschema==3.0.2
+marshmallow-sqlalchemy==0.17.0
+marshmallow==2.20.2  # pyup: <3 throws errors
+psycopg2-binary==2.8.3
 PyJWT==1.7.1
-SQLAlchemy==1.3.3
+SQLAlchemy==1.3.8
 
 notifications-python-client==5.3.0
 
@@ -29,6 +29,6 @@ awscli-cwlogs>=1.4,<1.5
 # Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
 itsdangerous==0.24  # pyup: <1.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@33.2.9#egg=notifications-utils==33.2.9
+git+https://github.com/alphagov/notifications-utils.git@34.0.1#egg=notifications-utils==34.0.1
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
