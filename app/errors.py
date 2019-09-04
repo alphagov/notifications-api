@@ -111,5 +111,8 @@ def register_errors(blueprint):
     @blueprint.app_errorhandler(500)
     @blueprint.errorhandler(Exception)
     def internal_server_error(e):
+        # if e is a werkzeug InternalServerError then it may wrap the original exception. For more details see:
+        # https://flask.palletsprojects.com/en/1.1.x/errorhandling/?highlight=internalservererror#unhandled-exceptions
+        e = getattr(e, 'original_exception', e)
         current_app.logger.exception(e)
         return jsonify(result='error', message="Internal server error"), 500
