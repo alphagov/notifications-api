@@ -137,6 +137,15 @@ def move_scan_to_invalid_pdf_bucket(source_filename):
     _move_s3_object(scan_bucket, source_filename, invalid_pdf_bucket, source_filename)
 
 
+def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
+    _move_s3_object(
+        source_bucket=current_app.config['TRANSIENT_UPLOADED_LETTERS'],
+        source_filename=source_filename,
+        target_bucket=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        target_filename=upload_filename
+    )
+
+
 def get_file_names_from_error_bucket():
     s3 = boto3.resource('s3')
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
