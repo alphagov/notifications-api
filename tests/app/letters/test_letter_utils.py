@@ -27,6 +27,7 @@ def _sample_precompiled_letter_notification(sample_letter_notification):
     sample_letter_notification.reference = 'foo'
     with freeze_time(FROZEN_DATE_TIME):
         sample_letter_notification.created_at = datetime.utcnow()
+        sample_letter_notification.updated_at = datetime.utcnow()
     return sample_letter_notification
 
 
@@ -42,12 +43,26 @@ def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_le
 ])
 def test_get_bucket_name_and_prefix_for_notification_valid_notification(sample_notification, created_at, folder):
     sample_notification.created_at = created_at
+    sample_notification.updated_at = created_at
 
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
 
     assert bucket == current_app.config['LETTERS_PDF_BUCKET_NAME']
     assert bucket_prefix == '{folder}/NOTIFY.{reference}'.format(
         folder=folder,
+        reference=sample_notification.reference
+    ).upper()
+
+
+def test_get_bucket_name_and_prefix_for_notification_get_from_sent_at_date(sample_notification):
+    sample_notification.created_at = datetime(2019, 8, 1, 17, 35)
+    sample_notification.sent_at = datetime(2019, 8, 2, 17, 45)
+
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
+
+    assert bucket == current_app.config['LETTERS_PDF_BUCKET_NAME']
+    assert bucket_prefix == '{folder}/NOTIFY.{reference}'.format(
+        folder='2019-08-02',
         reference=sample_notification.reference
     ).upper()
 
