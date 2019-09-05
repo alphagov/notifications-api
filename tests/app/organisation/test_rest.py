@@ -15,7 +15,7 @@ from tests.app.db import (
 
 
 def test_get_all_organisations(admin_request, notify_db_session):
-    create_organisation(name='inactive org', active=False)
+    create_organisation(name='inactive org', active=False, organisation_type='nhs_central')
     create_organisation(name='active org', domains=['example.com'])
 
     response = admin_request.get(
@@ -24,14 +24,24 @@ def test_get_all_organisations(admin_request, notify_db_session):
     )
 
     assert len(response) == 2
+    assert set(response[0].keys()) == set(response[1].keys()) == {
+        'name',
+        'id',
+        'active',
+        'count_of_live_services',
+        'domains',
+        'organisation_type',
+    }
     assert response[0]['name'] == 'active org'
     assert response[0]['active'] is True
     assert response[0]['count_of_live_services'] == 0
     assert response[0]['domains'] == ['example.com']
+    assert response[0]['organisation_type'] is None
     assert response[1]['name'] == 'inactive org'
     assert response[1]['active'] is False
     assert response[1]['count_of_live_services'] == 0
     assert response[1]['domains'] == []
+    assert response[1]['organisation_type'] == 'nhs_central'
 
 
 def test_get_organisation_by_id(admin_request, notify_db_session):
