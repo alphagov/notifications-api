@@ -1,4 +1,3 @@
-import io
 import math
 import base64
 from datetime import datetime
@@ -9,7 +8,6 @@ from base64 import urlsafe_b64encode
 from PyPDF2.utils import PdfReadError
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
-from notifications_utils.pdf import pdf_page_count
 from requests import (
     post as requests_post,
     RequestException
@@ -39,7 +37,8 @@ from app.letters.utils import (
     move_failed_pdf,
     move_scan_to_invalid_pdf_bucket,
     move_error_pdf_to_scan_bucket,
-    get_file_names_from_error_bucket
+    get_file_names_from_error_bucket,
+    get_page_count,
 )
 from app.models import (
     KEY_TYPE_TEST,
@@ -211,8 +210,9 @@ def process_virus_scan_passed(self, filename):
     old_pdf = scan_pdf_object.get()['Body'].read()
 
     try:
-        billable_units = _get_page_count(notification, old_pdf)
+        billable_units = get_page_count(old_pdf)
     except PdfReadError:
+        current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
         _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
         return
 
@@ -265,17 +265,6 @@ def process_virus_scan_passed(self, filename):
             "Error uploading letter to live pdf bucket for notification: {}".format(notification.id)
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-
-
-def _get_page_count(notification, old_pdf):
-    try:
-        pages = pdf_page_count(io.BytesIO(old_pdf))
-        pages_per_sheet = 2
-        billable_units = math.ceil(pages / pages_per_sheet)
-        return billable_units
-    except PdfReadError as e:
-        current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
-        raise e
 
 
 def _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object):

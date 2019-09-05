@@ -1,3 +1,5 @@
+import io
+import math
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -5,6 +7,7 @@ import boto3
 from flask import current_app
 
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
+from notifications_utils.pdf import pdf_page_count
 from notifications_utils.s3 import s3upload
 from notifications_utils.timezones import convert_utc_to_bst
 
@@ -201,3 +204,10 @@ def letter_print_day(created_at):
     else:
         print_date = bst_print_datetime.strftime('%d %B').lstrip('0')
         return 'on {}'.format(print_date)
+
+
+def get_page_count(pdf):
+    pages = pdf_page_count(io.BytesIO(pdf))
+    pages_per_sheet = 2
+    billable_units = math.ceil(pages / pages_per_sheet)
+    return billable_units
