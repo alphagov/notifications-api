@@ -58,7 +58,10 @@ def get_bucket_name_and_prefix_for_notification(notification):
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        folder = get_folder_name(notification.created_at, False)
+        if notification.sent_at:
+            folder = "{}/".format(notification.sent_at.date())
+        else:
+            folder = get_folder_name(notification.updated_at, False)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
         folder=folder,
