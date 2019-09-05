@@ -25,7 +25,9 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_get_template_versions,
     dao_update_template_reply_to,
-    dao_get_template_by_id)
+    dao_get_template_by_id,
+    get_precompiled_letter_template,
+)
 from app.errors import (
     register_errors,
     InvalidRequest
@@ -136,6 +138,14 @@ def update_template(service_id, template_id):
 
     dao_update_template(update_dict)
     return jsonify(data=template_schema.dump(update_dict).data), 200
+
+
+@template_blueprint.route('/precompiled', methods=['GET'])
+def get_precompiled_template_for_service(service_id):
+    template = get_precompiled_letter_template(service_id)
+    template_dict = template_schema.dump(template).data
+
+    return jsonify(template_dict), 200
 
 
 @template_blueprint.route('', methods=['GET'])
