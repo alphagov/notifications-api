@@ -427,6 +427,7 @@ class Organisation(db.Model):
             'active': self.active,
             'count_of_live_services': len(self.live_services),
             'domains': self.domain_list,
+            'organisation_type': self.organisation_type,
         }
 
 
