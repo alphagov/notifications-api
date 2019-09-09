@@ -68,6 +68,20 @@ def test_get_bucket_name_and_prefix_for_notification_get_from_sent_at_date(sampl
     ).upper()
 
 
+def test_get_bucket_name_and_prefix_for_notification_from_created_at_date(sample_notification):
+    sample_notification.created_at = datetime(2019, 8, 1, 12, 00)
+    sample_notification.updated_at = datetime(2019, 8, 2, 12, 00)
+    sample_notification.sent_at = datetime(2019, 8, 3, 12, 00)
+
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
+
+    assert bucket == current_app.config['LETTERS_PDF_BUCKET_NAME']
+    assert bucket_prefix == '{folder}/NOTIFY.{reference}'.format(
+        folder='2019-08-03',
+        reference=sample_notification.reference
+    ).upper()
+
+
 @freeze_time(FROZEN_DATE_TIME)
 def test_get_bucket_name_and_prefix_for_notification_precompiled_letter_using_test_key(
     sample_precompiled_letter_notification_using_test_key
