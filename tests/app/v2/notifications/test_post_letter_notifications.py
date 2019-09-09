@@ -122,7 +122,7 @@ def test_post_letter_notification_sets_postage(
     'staging',
     'live',
 ])
-def test_post_letter_notification_with_test_key_set_status_to_delivered(
+def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_delivered(
         notify_api, client, sample_letter_template, mocker, env):
 
     data = {
@@ -148,7 +148,7 @@ def test_post_letter_notification_with_test_key_set_status_to_delivered(
 
     notification = Notification.query.one()
 
-    assert not fake_create_letter_task.called
+    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue='research-mode-tasks')
     assert not fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_DELIVERED
 
@@ -157,7 +157,7 @@ def test_post_letter_notification_with_test_key_set_status_to_delivered(
     'development',
     'preview',
 ])
-def test_post_letter_notification_with_test_key_sets_status_to_sending_and_sends_fake_response_file(
+def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_sending_and_sends_fake_response_file(
         notify_api, client, sample_letter_template, mocker, env):
 
     data = {
@@ -183,7 +183,7 @@ def test_post_letter_notification_with_test_key_sets_status_to_sending_and_sends
 
     notification = Notification.query.one()
 
-    assert not fake_create_letter_task.called
+    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue='research-mode-tasks')
     assert fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_SENDING
 
@@ -357,7 +357,7 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
         {'error': 'BadRequestError', 'message': 'Cannot send letters when service is in trial mode'}]
 
 
-def test_post_letter_notification_is_delivered_if_in_trial_mode_and_using_test_key(
+def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial_mode_and_using_test_key(
     client,
     sample_trial_letter_template,
     mocker
@@ -373,7 +373,7 @@ def test_post_letter_notification_is_delivered_if_in_trial_mode_and_using_test_k
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_DELIVERED
-    assert not fake_create_letter_task.called
+    fake_create_letter_task.assert_called_once_with([str(notification.id)], queue='research-mode-tasks')
 
 
 def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_letters_bucket_using_test_key(

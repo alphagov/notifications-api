@@ -50,11 +50,10 @@ def get_letter_pdf_filename(reference, crown, is_scan_letter=False, postage=SECO
 
 
 def get_bucket_name_and_prefix_for_notification(notification):
-    is_test_letter = notification.key_type == KEY_TYPE_TEST and notification.template.is_precompiled_letter
     folder = ''
     if notification.status == NOTIFICATION_VALIDATION_FAILED:
         bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
-    elif is_test_letter:
+    elif notification.key_type == KEY_TYPE_TEST:
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
@@ -90,6 +89,8 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
 
     if precompiled:
         bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    elif notification.key_type == KEY_TYPE_TEST:
+        bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
 
