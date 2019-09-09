@@ -1,5 +1,6 @@
 import io
 import math
+import base64
 from datetime import datetime
 from uuid import UUID
 from hashlib import sha512
@@ -48,6 +49,7 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 from app.cronitor import cronitor
+from json import JSONDecodeError
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -213,8 +215,14 @@ def process_virus_scan_passed(self, filename):
         _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
         return
 
-    new_pdf = _sanitise_precompiled_pdf(self, notification, old_pdf)
-
+    sanitise_response = _sanitise_precompiled_pdf(self, notification, old_pdf)
+    if not sanitise_response:
+        new_pdf = None
+    else:
+        try:
+            new_pdf = base64.b64decode(sanitise_response.json()["file"].encode())
+        except JSONDecodeError:
+            new_pdf = sanitise_response.content
     # TODO: Remove this once CYSP update their template to not cross over the margins
     if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
         # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
@@ -291,7 +299,7 @@ def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
 
 def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
     try:
-        resp = requests_post(
+        response = requests_post(
             '{}/precompiled/sanitise'.format(
                 current_app.config['TEMPLATE_PREVIEW_API_HOST']
             ),
@@ -300,12 +308,16 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
                      'Service-ID': str(notification.service_id),
                      'Notification-ID': str(notification.id)}
         )
-        resp.raise_for_status()
-        return resp.content
+        response.raise_for_status()
+        return response
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
+            message = "sanitise_precompiled_pdf validation error for notification: {}. ".format(notification.id)
+            if "message" in response.json():
+                message += response.json()["message"]
+
             current_app.logger.info(
-                "sanitise_precompiled_pdf validation error for notification: {}".format(notification.id)
+                message
             )
             return None
 
