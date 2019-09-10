@@ -113,6 +113,14 @@ def move_failed_pdf(source_filename, scan_error_type):
     _move_s3_object(scan_bucket, source_filename, scan_bucket, target_filename)
 
 
+def copy_redaction_failed_pdf(source_filename):
+    scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+
+    target_filename = 'REDACTION_FAILURE/' + source_filename
+
+    _copy_s3_object(scan_bucket, source_filename, scan_bucket, target_filename)
+
+
 def move_error_pdf_to_scan_bucket(source_filename):
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     error_file = 'ERROR/' + source_filename
@@ -163,6 +171,22 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
     s3.Object(source_bucket, source_filename).delete()
 
     current_app.logger.info("Moved letter PDF: {}/{} to {}/{}".format(
+        source_bucket, source_filename, target_bucket, target_filename))
+
+
+def _copy_s3_object(source_bucket, source_filename, target_bucket, target_filename):
+    s3 = boto3.resource('s3')
+    copy_source = {'Bucket': source_bucket, 'Key': source_filename}
+
+    target_bucket = s3.Bucket(target_bucket)
+    obj = target_bucket.Object(target_filename)
+
+    # Tags are copied across but the expiration time is reset in the destination bucket
+    # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
+    # in the destination bucket the expiration time will be reset to 7 days left to expire
+    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
+
+    current_app.logger.info("Copied letter PDF: {}/{} to {}/{}".format(
         source_bucket, source_filename, target_bucket, target_filename))
 
 

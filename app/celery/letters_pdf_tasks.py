@@ -31,6 +31,7 @@ from app.dao.notifications_dao import (
 )
 from app.errors import VirusScanError
 from app.letters.utils import (
+    copy_redaction_failed_pdf,
     get_reference_from_filename,
     get_folder_name,
     upload_letter_pdf,
@@ -219,10 +220,19 @@ def process_virus_scan_passed(self, filename):
     if not sanitise_response:
         new_pdf = None
     else:
+        sanitise_response = sanitise_response.json()
         try:
-            new_pdf = base64.b64decode(sanitise_response.json()["file"].encode())
+            new_pdf = base64.b64decode(sanitise_response["file"].encode())
         except JSONDecodeError:
             new_pdf = sanitise_response.content
+
+        redaction_failed_message = sanitise_response.get("redaction_failed_message")
+        if redaction_failed_message:
+            current_app.logger.info('{} for notification id {} ({})'.format(
+                redaction_failed_message, notification.id, filename)
+            )
+            copy_redaction_failed_pdf(filename)
+
     # TODO: Remove this once CYSP update their template to not cross over the margins
     if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
         # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
