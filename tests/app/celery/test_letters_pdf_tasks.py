@@ -452,11 +452,9 @@ def test_process_letter_task_check_virus_scan_passed(
 
 @freeze_time('2018-01-01 18:00')
 @mock_s3
-@pytest.mark.parametrize('key_type,is_test_letter', [
-    (KEY_TYPE_NORMAL, False), (KEY_TYPE_TEST, True)
-])
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEST])
 def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
-    sample_letter_notification, mocker, key_type, is_test_letter
+    sample_letter_notification, mocker, key_type
 ):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
@@ -496,11 +494,60 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
 
 @freeze_time('2018-01-01 18:00')
 @mock_s3
-@pytest.mark.parametrize('key_type,is_test_letter', [
-    (KEY_TYPE_NORMAL, False), (KEY_TYPE_TEST, True)
+@pytest.mark.parametrize('key_type,notification_status,bucket_config_name', [
+    (KEY_TYPE_NORMAL, NOTIFICATION_CREATED, 'LETTERS_PDF_BUCKET_NAME'),
+    (KEY_TYPE_TEST, NOTIFICATION_DELIVERED, 'TEST_LETTERS_BUCKET_NAME')
 ])
+def test_process_letter_task_check_virus_scan_passed_when_redaction_fails(
+    sample_letter_notification, mocker, key_type, notification_status, bucket_config_name
+):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    target_bucket_name = current_app.config[bucket_config_name]
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=bucket_name)
+    conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b'pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.key_type = key_type
+    mock_copy_s3 = mocker.patch('app.letters.utils._copy_s3_object')
+    mocker.patch('app.celery.letters_pdf_tasks._get_page_count', return_value=2)
+
+    endpoint = 'http://localhost:9999/precompiled/sanitise'
+    with requests_mock.mock() as rmock:
+        rmock.request(
+            "POST",
+            endpoint,
+            json={
+                "file": base64.b64encode(b"new_pdf").decode("utf-8"),
+                "validation_passed": True,
+                "redaction_failed_message": "No matches for address block during redaction procedure",
+                "errors": {
+                    "content_outside_of_printable_area": [],
+                    "document_not_a4_size_portrait_orientation": []
+                }
+            },
+            status_code=200
+        )
+        process_virus_scan_passed(filename)
+
+    assert sample_letter_notification.billable_units == 2
+    assert sample_letter_notification.status == notification_status
+    mock_copy_s3.assert_called_once_with(
+        bucket_name, filename,
+        bucket_name, 'REDACTION_FAILURE/' + filename
+    )
+
+
+@freeze_time('2018-01-01 18:00')
+@mock_s3
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEST])
 def test_process_letter_task_check_virus_scan_passed_when_file_cannot_be_opened(
-    sample_letter_notification, mocker, key_type, is_test_letter
+    sample_letter_notification, mocker, key_type
 ):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
     source_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
