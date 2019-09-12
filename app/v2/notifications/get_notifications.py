@@ -1,14 +1,20 @@
-import base64
+from io import BytesIO
 
-from flask import jsonify, request, url_for, current_app
+from flask import jsonify, request, url_for, current_app, send_file
 
 from app import api_user, authenticated_service
 from app.dao import notifications_dao
 from app.letters.utils import get_letter_pdf
 from app.schema_validation import validate
+from app.v2.errors import BadRequestError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import get_notifications_request, notification_by_id
-from app.models import NOTIFICATION_CREATED, NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS, LETTER_TYPE
+from app.models import (
+    NOTIFICATION_PENDING_VIRUS_CHECK,
+    NOTIFICATION_VIRUS_SCAN_FAILED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    LETTER_TYPE,
+)
 
 
 @v2_notification_blueprint.route("/<notification_id>", methods=['GET'])
@@ -18,18 +24,43 @@ def get_notification_by_id(notification_id):
     notification = notifications_dao.get_notification_with_personalisation(
         authenticated_service.id, notification_id, key_type=None
     )
+    return jsonify(notification.serialize()), 200
 
-    response = notification.serialize()
 
-    if request.args.get('return_pdf_content') and notification.notification_type == LETTER_TYPE:
-        if notification.status in (NOTIFICATION_CREATED, *NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS):
-            pdf_data = get_letter_pdf(notification)
-        else:
-            # precompiled letters that are still being virus scanned, or that failed validation/virus scan
-            pdf_data = b''
-        response['body'] = base64.b64encode(pdf_data).decode('utf-8')
+@v2_notification_blueprint.route('/<notification_id>/pdf', methods=['GET'])
+def get_pdf_for_notification(notification_id):
+    _data = {"notification_id": notification_id}
+    validate(_data, notification_by_id)
+    notification = notifications_dao.get_notification_by_id(
+        notification_id, authenticated_service.id, _raise=True
+    )
 
-    return jsonify(response), 200
+    if notification.notification_type != LETTER_TYPE:
+        raise BadRequestError(message="Notification is not a letter", status_code=400)
+
+    if notification.status in {
+        NOTIFICATION_PENDING_VIRUS_CHECK,
+        NOTIFICATION_VIRUS_SCAN_FAILED,
+        NOTIFICATION_TECHNICAL_FAILURE,
+    }:
+        raise BadRequestError(
+            message='PDF not available for letters in status {}'.format(notification.status),
+            status_code=400
+        )
+
+    try:
+        pdf_data = get_letter_pdf(notification)
+    except Exception:
+        # this probably means it's a templated letter that hasn't been created yet
+        current_app.logger.info('PDF not found for notification id {} status {}'.format(
+            notification.id,
+            notification.status
+        ))
+        raise BadRequestError(
+            message='PDF not available for letter, try again later',
+            status_code=400)
+
+    return send_file(filename_or_fp=BytesIO(pdf_data), mimetype='application/pdf')
 
 
 @v2_notification_blueprint.route("", methods=['GET'])
