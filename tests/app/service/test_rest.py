@@ -2273,6 +2273,29 @@ def test_send_one_off_notification(sample_service, admin_request, mocker):
     assert response['id'] == str(noti.id)
 
 
+def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake_uuid, notify_user):
+    mocker.patch('app.service.send_notification.utils_s3download')
+    mocker.patch('app.service.send_notification.get_page_count', return_value=1)
+    mocker.patch('app.service.send_notification.move_uploaded_pdf_to_letters_bucket')
+
+    user = sample_service_full_permissions.users[0]
+    data = json.dumps({
+        'filename': 'valid.pdf',
+        'created_by': str(user.id),
+        'file_id': fake_uuid
+    })
+
+    response = client.post(
+        url_for('service.create_pdf_letter', service_id=sample_service_full_permissions.id),
+        data=data,
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 201
+    assert json_resp == {'id': fake_uuid}
+
+
 def test_get_notification_for_service_includes_template_redacted(admin_request, sample_notification):
     resp = admin_request.get(
         'service.get_notification_for_service',

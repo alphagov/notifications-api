@@ -1,10 +1,13 @@
 from datetime import datetime
 import uuid
 
+from flask import current_app
 from sqlalchemy import asc, desc
 
 from app import db
 from app.models import (
+    LETTER_TYPE,
+    SECOND_CLASS,
     Template,
     TemplateHistory,
     TemplateRedacted
@@ -14,6 +17,7 @@ from app.dao.dao_utils import (
     version_class,
     VersionOptions,
 )
+from app.dao.users_dao import get_user_by_id
 
 
 @transactional
@@ -135,3 +139,28 @@ def dao_get_template_versions(service_id, template_id):
     ).order_by(
         desc(TemplateHistory.version)
     ).all()
+
+
+def get_precompiled_letter_template(service_id):
+    template = Template.query.filter_by(
+        service_id=service_id,
+        template_type=LETTER_TYPE,
+        hidden=True
+    ).first()
+    if template is not None:
+        return template
+
+    template = Template(
+        name='Pre-compiled PDF',
+        created_by=get_user_by_id(current_app.config['NOTIFY_USER_ID']),
+        service_id=service_id,
+        template_type=LETTER_TYPE,
+        hidden=True,
+        subject='Pre-compiled PDF',
+        content='',
+        postage=SECOND_CLASS
+    )
+
+    dao_create_template(template)
+
+    return template

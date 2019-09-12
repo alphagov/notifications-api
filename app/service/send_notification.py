@@ -1,3 +1,5 @@
+from flask import current_app
+from notifications_utils.s3 import S3ObjectNotFound, s3download as utils_s3download
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import create_random_identifier
@@ -6,6 +8,7 @@ from app.dao.notifications_dao import _update_notification_status
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.notifications.validators import (
+    check_service_has_permission,
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
     validate_template
@@ -21,10 +24,16 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
+    UPLOAD_LETTERS,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.templates_dao import dao_get_template_by_id_and_service_id
+from app.dao.templates_dao import dao_get_template_by_id_and_service_id, get_precompiled_letter_template
 from app.dao.users_dao import get_user_by_id
+from app.letters.utils import (
+    get_letter_pdf_filename,
+    get_page_count,
+    move_uploaded_pdf_to_letters_bucket,
+)
 from app.v2.errors import BadRequestError
 
 
@@ -121,3 +130,60 @@ def get_reply_to_text(notification_type, sender_id, service, template):
     else:
         reply_to = template.get_reply_to_text()
     return reply_to
+
+
+def send_pdf_letter_notification(service_id, post_data):
+    service = dao_fetch_service_by_id(service_id)
+
+    check_service_has_permission(LETTER_TYPE, service.permissions)
+    check_service_has_permission(UPLOAD_LETTERS, service.permissions)
+    check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
+    validate_created_by(service, post_data['created_by'])
+
+    template = get_precompiled_letter_template(service.id)
+    file_location = 'service-{}/{}.pdf'.format(service.id, post_data['file_id'])
+
+    try:
+        letter = utils_s3download(current_app.config['TRANSIENT_UPLOADED_LETTERS'], file_location)
+    except S3ObjectNotFound as e:
+        current_app.logger.exception('Letter {}.pdf not in transient {} bucket'.format(
+            post_data['file_id'], current_app.config['TRANSIENT_UPLOADED_LETTERS'])
+        )
+        raise e
+
+    # Getting the page count won't raise an error since admin has already checked the PDF is valid
+    billable_units = get_page_count(letter.read())
+
+    personalisation = {
+        'address_line_1': post_data['filename']
+    }
+
+    # TODO: stop hard-coding postage as 'second' once we get postage from the admin
+    notification = persist_notification(
+        notification_id=post_data['file_id'],
+        template_id=template.id,
+        template_version=template.version,
+        template_postage=template.postage,
+        recipient=post_data['filename'],
+        service=service,
+        personalisation=personalisation,
+        notification_type=LETTER_TYPE,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reference=create_one_off_reference(LETTER_TYPE),
+        client_reference=post_data['filename'],
+        created_by_id=post_data['created_by'],
+        billable_units=billable_units,
+        postage='second',
+    )
+
+    upload_filename = get_letter_pdf_filename(
+        notification.reference,
+        notification.service.crown,
+        is_scan_letter=False,
+        postage=notification.postage
+    )
+
+    move_uploaded_pdf_to_letters_bucket(file_location, upload_filename)
+
+    return {'id': str(notification.id)}

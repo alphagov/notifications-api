@@ -11,11 +11,9 @@ from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import update_notification_status_by_reference
-from app.dao.templates_dao import dao_create_template
-from app.dao.users_dao import get_user_by_id
+from app.dao.templates_dao import get_precompiled_letter_template
 from app.letters.utils import upload_letter_pdf
 from app.models import (
-    Template,
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
@@ -27,7 +25,6 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    SECOND_CLASS
 )
 from app.notifications.process_letter_notifications import (
     create_letter_notification
@@ -342,28 +339,3 @@ def get_reply_to_text(notification_type, form, template):
         reply_to = template.get_reply_to_text()
 
     return reply_to
-
-
-def get_precompiled_letter_template(service_id):
-    template = Template.query.filter_by(
-        service_id=service_id,
-        template_type=LETTER_TYPE,
-        hidden=True
-    ).first()
-    if template is not None:
-        return template
-
-    template = Template(
-        name='Pre-compiled PDF',
-        created_by=get_user_by_id(current_app.config['NOTIFY_USER_ID']),
-        service_id=service_id,
-        template_type=LETTER_TYPE,
-        hidden=True,
-        subject='Pre-compiled PDF',
-        content='',
-        postage=SECOND_CLASS
-    )
-
-    dao_create_template(template)
-
-    return template

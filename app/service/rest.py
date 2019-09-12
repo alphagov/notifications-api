@@ -104,7 +104,7 @@ from app.service.service_senders_schema import (
 )
 from app.service.utils import get_whitelist_objects
 from app.service.sender import send_notification_to_service_users
-from app.service.send_notification import send_one_off_notification
+from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
 from app.schemas import (
     service_schema,
     api_key_schema,
@@ -645,6 +645,12 @@ def get_monthly_template_usage(service_id):
 @service_blueprint.route('/<uuid:service_id>/send-notification', methods=['POST'])
 def create_one_off_notification(service_id):
     resp = send_one_off_notification(service_id, request.get_json())
+    return jsonify(resp), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/send-pdf-letter', methods=['POST'])
+def create_pdf_letter(service_id):
+    resp = send_pdf_letter_notification(service_id, request.get_json())
     return jsonify(resp), 201
 
 

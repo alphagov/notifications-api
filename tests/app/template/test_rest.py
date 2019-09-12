@@ -389,6 +389,50 @@ def test_should_be_able_to_archive_template(client, sample_template):
     assert Template.query.first().archived
 
 
+def test_get_precompiled_template_for_service(
+    client,
+    notify_user,
+    sample_service,
+):
+    assert len(sample_service.templates) == 0
+
+    response = client.get(
+        '/service/{}/template/precompiled'.format(sample_service.id),
+        headers=[create_authorization_header()],
+    )
+    assert response.status_code == 200
+    assert len(sample_service.templates) == 1
+
+    data = json.loads(response.get_data(as_text=True))
+    assert data['name'] == 'Pre-compiled PDF'
+    assert data['hidden'] is True
+
+
+def test_get_precompiled_template_for_service_when_service_has_existing_precompiled_template(
+    client,
+    notify_user,
+    sample_service,
+):
+    create_template(
+        sample_service,
+        template_name='Exisiting precompiled template',
+        template_type=LETTER_TYPE,
+        hidden=True)
+    assert len(sample_service.templates) == 1
+
+    response = client.get(
+        '/service/{}/template/precompiled'.format(sample_service.id),
+        headers=[create_authorization_header()],
+    )
+
+    assert response.status_code == 200
+    assert len(sample_service.templates) == 1
+
+    data = json.loads(response.get_data(as_text=True))
+    assert data['name'] == 'Exisiting precompiled template'
+    assert data['hidden'] is True
+
+
 def test_should_be_able_to_get_all_templates_for_a_service(client, sample_user, sample_service):
     data = {
         'name': 'my template 1',

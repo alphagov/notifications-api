@@ -1,3 +1,5 @@
+import io
+import math
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -5,6 +7,7 @@ import boto3
 from flask import current_app
 
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
+from notifications_utils.pdf import pdf_page_count
 from notifications_utils.s3 import s3upload
 from notifications_utils.timezones import convert_utc_to_bst
 
@@ -60,8 +63,10 @@ def get_bucket_name_and_prefix_for_notification(notification):
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
         if notification.sent_at:
             folder = "{}/".format(notification.sent_at.date())
-        else:
+        elif notification.updated_at:
             folder = get_folder_name(notification.updated_at, False)
+        else:
+            folder = get_folder_name(notification.created_at, False)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
         folder=folder,
@@ -134,6 +139,15 @@ def move_scan_to_invalid_pdf_bucket(source_filename):
     _move_s3_object(scan_bucket, source_filename, invalid_pdf_bucket, source_filename)
 
 
+def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
+    _move_s3_object(
+        source_bucket=current_app.config['TRANSIENT_UPLOADED_LETTERS'],
+        source_filename=source_filename,
+        target_bucket=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        target_filename=upload_filename
+    )
+
+
 def get_file_names_from_error_bucket():
     s3 = boto3.resource('s3')
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
@@ -201,3 +215,10 @@ def letter_print_day(created_at):
     else:
         print_date = bst_print_datetime.strftime('%d %B').lstrip('0')
         return 'on {}'.format(print_date)
+
+
+def get_page_count(pdf):
+    pages = pdf_page_count(io.BytesIO(pdf))
+    pages_per_sheet = 2
+    billable_units = math.ceil(pages / pages_per_sheet)
+    return billable_units
