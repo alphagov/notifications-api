@@ -4,6 +4,7 @@ from sqlalchemy import desc
 
 from app.dao.provider_details_dao import dao_update_provider_details
 from app.models import ProviderDetailsHistory
+from tests.app.db import create_api_key
 
 
 def test_job_schema_doesnt_return_notifications(sample_notification_with_job):
@@ -25,10 +26,13 @@ def test_notification_schema_ignores_absent_api_key(sample_notification_with_job
     assert data['key_name'] is None
 
 
-def test_notification_schema_adds_api_key_name(sample_notification_with_api_key):
+def test_notification_schema_adds_api_key_name(sample_notification):
     from app.schemas import notification_with_template_schema
 
-    data = notification_with_template_schema.dump(sample_notification_with_api_key).data
+    api_key = create_api_key(sample_notification.service, key_name='Test key')
+    sample_notification.api_key = api_key
+
+    data = notification_with_template_schema.dump(sample_notification).data
     assert data['key_name'] == 'Test key'
 
 

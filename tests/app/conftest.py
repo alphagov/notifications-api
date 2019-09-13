@@ -629,18 +629,6 @@ def sample_letter_notification(sample_letter_template):
 
 
 @pytest.fixture(scope='function')
-def sample_notification_with_api_key(notify_db, notify_db_session):
-    notification = sample_notification(notify_db, notify_db_session)
-    notification.api_key = sample_api_key(
-        notify_db,
-        notify_db_session,
-        name='Test key'
-    )
-    notification.api_key_id = notification.api_key.id
-    return notification
-
-
-@pytest.fixture(scope='function')
 def sample_email_notification(notify_db, notify_db_session):
     created_at = datetime.utcnow()
     service = create_service(check_if_service_exists=True)
