@@ -293,17 +293,21 @@ def test_dao_add_user_to_service_ignores_folders_which_do_not_exist_when_setting
 
 
 def test_dao_add_user_to_service_raises_error_if_adding_folder_permissions_for_a_different_service(
-    sample_user,
     sample_service,
 ):
+    user = create_user()
     other_service = create_service(service_name='other service')
     other_service_folder = create_template_folder(other_service)
     folder_permissions = [str(other_service_folder.id)]
 
+    assert ServiceUser.query.count() == 2
+
     with pytest.raises(IntegrityError) as e:
-        dao_add_user_to_service(sample_service, sample_user, folder_permissions=folder_permissions)
-        assert 'insert or update on table "user_folder_permissions" violates foreign key constraint' in str(e.value)
-        assert ServiceUser.query.count() == 0
+        dao_add_user_to_service(sample_service, user, folder_permissions=folder_permissions)
+
+    db.session.rollback()
+    assert 'insert or update on table "user_folder_permissions" violates foreign key constraint' in str(e.value)
+    assert ServiceUser.query.count() == 2
 
 
 def test_should_remove_user_from_service(notify_db_session):

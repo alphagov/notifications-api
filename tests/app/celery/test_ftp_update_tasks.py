@@ -182,7 +182,7 @@ def test_update_letter_notifications_to_error_updates_based_on_notification_refe
     with freeze_time(dt):
         with pytest.raises(NotificationTechnicalFailureException) as e:
             update_letter_notifications_to_error([first.reference])
-            assert first.reference in e.value
+    assert first.reference in str(e.value)
 
     assert first.status == NOTIFICATION_TECHNICAL_FAILURE
     assert first.sent_by is None
