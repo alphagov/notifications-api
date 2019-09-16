@@ -25,8 +25,8 @@ LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
 
-def get_folder_name(_now, is_test_or_scan_letter=False):
-    if is_test_or_scan_letter:
+def get_folder_name(_now, dont_use_sending_date=False):
+    if dont_use_sending_date:
         folder_name = ''
     else:
         print_datetime = convert_utc_to_bst(_now)
@@ -36,9 +36,9 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
     return folder_name
 
 
-def get_letter_pdf_filename(reference, crown, sending_date, is_scan_letter=False, postage=SECOND_CLASS):
+def get_letter_pdf_filename(reference, crown, sending_date, dont_use_sending_date=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(sending_date, is_scan_letter),
+        folder=get_folder_name(sending_date, dont_use_sending_date),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
@@ -81,7 +81,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
         reference=notification.reference,
         crown=notification.service.crown,
         sending_date=notification.created_at,
-        is_scan_letter=precompiled or notification.key_type == KEY_TYPE_TEST,
+        dont_use_sending_date=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage
     )
 
