@@ -181,7 +181,7 @@ def send_pdf_letter_notification(service_id, post_data):
         reference=notification.reference,
         crown=notification.service.crown,
         sending_date=notification.created_at,
-        is_scan_letter=False,
+        dont_use_sending_date=False,
         postage=notification.postage
     )
 
