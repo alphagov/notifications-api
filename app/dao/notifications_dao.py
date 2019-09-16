@@ -27,7 +27,7 @@ from app import db, create_uuid
 from app.aws.s3 import remove_s3_object, get_s3_bucket_objects
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
-from app.letters.utils import LETTERS_PDF_FILE_LOCATION_STRUCTURE
+from app.letters.utils import get_letter_pdf_filename
 from app.models import (
     Notification,
     NotificationHistory,
@@ -402,17 +402,13 @@ def _delete_letters_from_s3(
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+        # I don't think we need this anymore, we should update the query to get letters sent 7 days ago
         if letter.sent_at:
-            sent_at = str(letter.sent_at.date())
-            prefix = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-                folder=sent_at + "/",
-                reference=letter.reference,
-                duplex="D",
-                letter_class="2",
-                colour="C",
-                crown="C" if letter.service.crown else "N",
-                date=''
-            ).upper()[:-5]
+            prefix = get_letter_pdf_filename(reference=letter.reference,
+                                             crown=letter.service.crown,
+                                             sending_date=letter.created_at,
+                                             is_scan_letter=letter.key_type == KEY_TYPE_TEST,
+                                             postage=letter.postage)
             s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
             for s3_object in s3_objects:
                 try:
