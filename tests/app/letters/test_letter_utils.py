@@ -150,7 +150,8 @@ def test_get_letter_pdf_filename_returns_correct_postage_for_filename(
 def test_get_letter_pdf_filename_returns_correct_filename_for_test_letters(
         notify_api, mocker):
     sending_date = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown='C', sending_date=sending_date, is_scan_letter=True)
+    filename = get_letter_pdf_filename(reference='foo', crown='C',
+                                       sending_date=sending_date, dont_use_sending_date=True)
 
     assert filename == 'NOTIFY.FOO.D.2.C.C.20171204172900.PDF'
 
@@ -205,7 +206,7 @@ def test_upload_letter_pdf_to_correct_bucket(
         reference=sample_letter_notification.reference,
         crown=sample_letter_notification.service.crown,
         sending_date=sample_letter_notification.created_at,
-        is_scan_letter=is_precompiled_letter
+        dont_use_sending_date=is_precompiled_letter
     )
 
     upload_letter_pdf(sample_letter_notification, b'\x00\x01', precompiled=is_precompiled_letter)
@@ -232,7 +233,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(
         reference=letter_notification.reference,
         crown=letter_notification.service.crown,
         sending_date=letter_notification.created_at,
-        is_scan_letter=False,
+        dont_use_sending_date=False,
         postage=letter_notification.postage
     )
 
@@ -319,12 +320,12 @@ def test_copy_redaction_failed_pdf(notify_api):
 def test_get_folder_name_in_british_summer_time(notify_api, freeze_date, expected_folder_name):
     with freeze_time(freeze_date):
         now = datetime.utcnow()
-        folder_name = get_folder_name(_now=now, is_test_or_scan_letter=False)
+        folder_name = get_folder_name(_now=now, dont_use_sending_date=False)
     assert folder_name == expected_folder_name
 
 
 def test_get_folder_name_returns_empty_string_for_test_letter():
-    assert '' == get_folder_name(datetime.utcnow(), is_test_or_scan_letter=True)
+    assert '' == get_folder_name(datetime.utcnow(), dont_use_sending_date=True)
 
 
 @freeze_time('2017-07-07 20:00:00')
