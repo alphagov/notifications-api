@@ -122,7 +122,8 @@ def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
 
     filename = get_letter_pdf_filename(
         reference=sample_letter_notification.reference,
-        crown=sample_letter_notification.service.crown
+        crown=sample_letter_notification.service.crown,
+        sending_date=sample_letter_notification.created_at
     )
 
     mock_s3.assert_called_with(

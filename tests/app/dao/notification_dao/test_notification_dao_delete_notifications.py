@@ -28,7 +28,7 @@ def create_test_data(notification_type, sample_service, days_of_retention=3):
     create_notification(template=email_template, status='delivered')
     create_notification(template=sms_template, status='permanent-failure')
     create_notification(template=letter_template, status='temporary-failure',
-                        reference='LETTER_REF', sent_at=datetime.utcnow())
+                        reference='LETTER_REF', created_at=datetime.utcnow(), sent_at=datetime.utcnow())
     create_notification(template=email_template, status='delivered',
                         created_at=datetime.utcnow() - timedelta(days=4))
     create_notification(template=sms_template, status='permanent-failure',
@@ -127,12 +127,23 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
     assert Notification.query.count() == 7
     assert Notification.query.filter_by(notification_type=notification_type).count() == 1
     if notification_type == 'letter':
-        mock_get_s3.assert_called_with(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                       subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C".format(str(datetime.utcnow().date()))
-                                       )
         assert mock_get_s3.call_count == 2
     else:
         mock_get_s3.assert_not_called()
+
+
+def test_delete_notifications_deletes_letters_from_s3(sample_letter_template, mocker):
+    mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    create_notification(template=sample_letter_template, status='delivered',
+                        reference='LETTER_REF', created_at=eight_days_ago, sent_at=eight_days_ago
+                        )
+    delete_notifications_older_than_retention_by_type(notification_type='letter')
+    mock_get_s3.assert_called_once_with(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                                        subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
+                                            str(eight_days_ago.date()),
+                                            eight_days_ago.strftime('%Y%m%d%H%M%S'))
+                                        )
 
 
 def test_delete_notifications_inserts_notification_history(sample_service):
