@@ -95,6 +95,16 @@ def test_get_bucket_name_and_prefix_for_notification_precompiled_letter_using_te
 
 
 @freeze_time(FROZEN_DATE_TIME)
+def test_get_bucket_name_and_prefix_for_notification_templated_letter_using_test_key(sample_letter_notification):
+    sample_letter_notification.key_type = KEY_TYPE_TEST
+
+    bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_letter_notification)
+
+    assert bucket == current_app.config['TEST_LETTERS_BUCKET_NAME']
+    assert bucket_prefix == 'NOTIFY.{}'.format(sample_letter_notification.reference).upper()
+
+
+@freeze_time(FROZEN_DATE_TIME)
 def test_get_bucket_name_and_prefix_for_failed_validation(sample_precompiled_letter_notification):
     sample_precompiled_letter_notification.status = NOTIFICATION_VALIDATION_FAILED
     bucket, bucket_prefix = get_bucket_name_and_prefix_for_notification(sample_precompiled_letter_notification)

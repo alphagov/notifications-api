@@ -649,3 +649,87 @@ def test_get_notifications_renames_letter_statuses(client, sample_letter_templat
     json_response = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_response['status'] == expected_status
+
+
+def test_get_pdf_for_notification_returns_pdf_content(
+    client,
+    sample_letter_notification,
+    mocker,
+):
+    mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
+    sample_letter_notification.status = 'created'
+
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 200
+    assert response.get_data() == b'foo'
+    mock_get_letter_pdf.assert_called_once_with(sample_letter_notification)
+
+
+def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
+    client,
+    sample_letter_notification,
+    mocker,
+):
+    # if no files are returned get_letter_pdf throws StopIteration as the iterator runs out
+    mock_get_letter_pdf = mocker.patch(
+        'app.v2.notifications.get_notifications.get_letter_pdf',
+        side_effect=StopIteration
+    )
+    sample_letter_notification.status = 'created'
+
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 400
+    assert response.json['errors'] == [{
+        'error': 'PDFNotReadyError',
+        'message': 'PDF not available yet, try again later'
+    }]
+    mock_get_letter_pdf.assert_called_once_with(sample_letter_notification)
+
+
+@pytest.mark.parametrize('status, expected_message', [
+    ('virus-scan-failed', 'Document did not pass the virus scan'),
+    ('technical-failure', 'PDF not available for letters in status technical-failure'),
+])
+def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
+    client,
+    sample_letter_notification,
+    mocker,
+    status,
+    expected_message
+):
+    mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
+    sample_letter_notification.status = status
+
+    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 400
+    assert response.json['errors'] == [{
+        'error': 'BadRequestError',
+        'message': expected_message
+    }]
+    assert mock_get_letter_pdf.called is False
+
+
+def test_get_pdf_for_notification_fails_for_non_letters(client, sample_notification):
+    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    response = client.get(
+        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_notification.id),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 400
+    assert response.json['errors'] == [{'error': 'BadRequestError', 'message': 'Notification is not a letter'}]

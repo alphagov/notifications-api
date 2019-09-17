@@ -57,6 +57,11 @@ class BadRequestError(InvalidRequest):
         self.message = message if message else self.message
 
 
+class PDFNotReadyError(BadRequestError):
+    def __init__(self):
+        super().__init__(message='PDF not available yet, try again later', status_code=400)
+
+
 def register_errors(blueprint):
     @blueprint.errorhandler(InvalidEmailError)
     def invalid_format(error):

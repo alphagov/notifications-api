@@ -256,10 +256,11 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    should_send = not (api_key.key_type == KEY_TYPE_TEST)
+    test_key = api_key.key_type == KEY_TYPE_TEST
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
-    status = NOTIFICATION_CREATED if should_send else NOTIFICATION_SENDING
+    status = NOTIFICATION_CREATED if not test_key else NOTIFICATION_SENDING
+    queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
 
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
@@ -267,18 +268,19 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                               status=status,
                                               reply_to_text=reply_to_text)
 
-    if should_send:
-        create_letters_pdf.apply_async(
-            [str(notification.id)],
-            queue=QueueNames.CREATE_LETTERS_PDF
-        )
-    elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
-        create_fake_letter_response_file.apply_async(
-            (notification.reference,),
-            queue=QueueNames.RESEARCH_MODE
-        )
-    else:
-        update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
+    create_letters_pdf.apply_async(
+        [str(notification.id)],
+        queue=queue
+    )
+
+    if test_key:
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+            create_fake_letter_response_file.apply_async(
+                (notification.reference,),
+                queue=queue
+            )
+        else:
+            update_notification_status_by_reference(notification.reference, NOTIFICATION_DELIVERED)
 
     return notification
 

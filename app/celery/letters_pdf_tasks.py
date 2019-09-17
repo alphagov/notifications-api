@@ -66,8 +66,9 @@ def create_letters_pdf(self, notification_id):
 
         upload_letter_pdf(notification, pdf_data)
 
-        notification.billable_units = billable_units
-        dao_update_notification(notification)
+        if notification.key_type != KEY_TYPE_TEST:
+            notification.billable_units = billable_units
+            dao_update_notification(notification)
 
         current_app.logger.info(
             'Letter notification reference {reference}: billable units set to {billable_units}'.format(
