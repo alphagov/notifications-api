@@ -690,22 +690,22 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
 
     assert response.status_code == 400
     assert response.json['errors'] == [{
-        'error': 'BadRequestError',
-        'message': 'PDF not available for letter, try again later'
+        'error': 'PDFNotReadyError',
+        'message': 'PDF not available yet, try again later'
     }]
     mock_get_letter_pdf.assert_called_once_with(sample_letter_notification)
 
 
-@pytest.mark.parametrize('status', [
-    'pending-virus-check',
-    'virus-scan-failed',
-    'technical-failure',
+@pytest.mark.parametrize('status, expected_message', [
+    ('virus-scan-failed', 'Document did not pass the virus scan'),
+    ('technical-failure', 'PDF not available for letters in status technical-failure'),
 ])
 def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
     client,
     sample_letter_notification,
     mocker,
     status,
+    expected_message
 ):
     mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
     sample_letter_notification.status = status
@@ -719,7 +719,7 @@ def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
     assert response.status_code == 400
     assert response.json['errors'] == [{
         'error': 'BadRequestError',
-        'message': 'PDF not available for letters in status {}'.format(status)
+        'message': expected_message
     }]
     assert mock_get_letter_pdf.called is False
 

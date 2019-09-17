@@ -6,7 +6,7 @@ from app import api_user, authenticated_service
 from app.dao import notifications_dao
 from app.letters.utils import get_letter_pdf
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import get_notifications_request, notification_by_id
 from app.models import (
@@ -36,29 +36,21 @@ def get_pdf_for_notification(notification_id):
     )
 
     if notification.notification_type != LETTER_TYPE:
-        raise BadRequestError(message="Notification is not a letter", status_code=400)
+        raise BadRequestError(message="Notification is not a letter")
 
-    if notification.status in {
-        NOTIFICATION_PENDING_VIRUS_CHECK,
-        NOTIFICATION_VIRUS_SCAN_FAILED,
-        NOTIFICATION_TECHNICAL_FAILURE,
-    }:
-        raise BadRequestError(
-            message='PDF not available for letters in status {}'.format(notification.status),
-            status_code=400
-        )
+    if notification.status == NOTIFICATION_VIRUS_SCAN_FAILED:
+        raise BadRequestError(message='Document did not pass the virus scan')
+
+    if notification.status == NOTIFICATION_TECHNICAL_FAILURE:
+        raise BadRequestError(message='PDF not available for letters in status {}'.format(notification.status))
+
+    if notification.status == NOTIFICATION_PENDING_VIRUS_CHECK:
+        raise PDFNotReadyError()
 
     try:
         pdf_data = get_letter_pdf(notification)
     except Exception:
-        # this probably means it's a templated letter that hasn't been created yet
-        current_app.logger.info('PDF not found for notification id {} status {}'.format(
-            notification.id,
-            notification.status
-        ))
-        raise BadRequestError(
-            message='PDF not available for letter, try again later',
-            status_code=400)
+        raise PDFNotReadyError()
 
     return send_file(filename_or_fp=BytesIO(pdf_data), mimetype='application/pdf')
 
