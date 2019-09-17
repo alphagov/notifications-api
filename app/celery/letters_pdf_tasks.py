@@ -228,7 +228,7 @@ def process_virus_scan_passed(self, filename):
             new_pdf = sanitise_response.content
 
         redaction_failed_message = sanitise_response.get("redaction_failed_message")
-        if redaction_failed_message:
+        if redaction_failed_message and not is_test_key:
             current_app.logger.info('{} for notification id {} ({})'.format(
                 redaction_failed_message, notification.id, filename)
             )

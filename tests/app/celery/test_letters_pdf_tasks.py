@@ -532,10 +532,13 @@ def test_process_letter_task_check_virus_scan_passed_when_redaction_fails(
 
     assert sample_letter_notification.billable_units == 2
     assert sample_letter_notification.status == notification_status
-    mock_copy_s3.assert_called_once_with(
-        bucket_name, filename,
-        bucket_name, 'REDACTION_FAILURE/' + filename
-    )
+    if key_type == KEY_TYPE_NORMAL:
+        mock_copy_s3.assert_called_once_with(
+            bucket_name, filename,
+            bucket_name, 'REDACTION_FAILURE/' + filename
+        )
+    else:
+        mock_copy_s3.assert_not_called()
 
 
 @freeze_time('2018-01-01 18:00')
