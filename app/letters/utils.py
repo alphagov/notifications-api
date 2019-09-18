@@ -88,7 +88,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     upload_file_name = get_letter_pdf_filename(
         notification.reference,
         notification.service.crown,
-        is_scan_letter=precompiled,
+        is_scan_letter=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage
     )
 
