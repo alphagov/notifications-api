@@ -17,7 +17,7 @@ function check_params {
 }
 
 function configure_aws_logs {
-  # create files so that aws logs agent doesn't complain
+  # create files so that aws logs agent does not complain
   touch ${LOGS_DIR}/gunicorn_error.log
   touch ${LOGS_DIR}/app.log.json
 
