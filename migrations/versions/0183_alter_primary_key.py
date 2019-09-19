@@ -67,7 +67,7 @@ def upgrade():
 
 
 def downgrade():
-    # We don't downgrade populated data
+    # We do not downgrade populated data
     op.drop_constraint('ft_billing_pkey', 'ft_billing', type_='primary')
 
     op.create_primary_key('ft_billing_pkey', 'ft_billing', ['bst_date',
