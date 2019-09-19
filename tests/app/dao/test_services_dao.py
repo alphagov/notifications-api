@@ -237,7 +237,7 @@ def test_cannot_create_service_with_no_user(notify_db_session):
                       created_by=user)
     with pytest.raises(ValueError) as excinfo:
         dao_create_service(service, None)
-    assert "Can't create a service without a user" in str(excinfo.value)
+    assert "Cannot create a service without a user" in str(excinfo.value)
 
 
 def test_should_add_user_to_service(notify_db_session):
