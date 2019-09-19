@@ -35,7 +35,7 @@ Sign in here: ((signin_url))
 If you’ve forgotten your password, you can reset it here: ((forgot_password_url))
 
 
-If you didn’t try to register for a GOV.UK Notify account recently, please let us know here: ((feedback_url))"""
+If you did not try to register for a GOV.UK Notify account recently, please let us know here: ((feedback_url))"""
 
     op.get_bind()
     op.execute(template_history_insert.format('0880fbb1-a0c6-46f0-9a8e-36c986381ceb',
