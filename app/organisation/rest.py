@@ -152,9 +152,9 @@ def check_request_args(request):
     name = request.args.get('name', None)
     errors = []
     if not org_id:
-        errors.append({'org_id': ["Can't be empty"]})
+        errors.append({'org_id': ["Cannot be empty"]})
     if not name:
-        errors.append({'name': ["Can't be empty"]})
+        errors.append({'name': ["Cannot be empty"]})
     if errors:
         raise InvalidRequest(errors, status_code=400)
     return org_id, name
