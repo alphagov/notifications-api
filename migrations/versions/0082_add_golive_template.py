@@ -74,7 +74,7 @@ For non-emergency problems or questions, use our support page and we’ll reply 
 https://www.notifications.service.gov.uk/support
 #Escalation for emergency problems
 
-If we haven’t acknowledged an emergency problem you’ve reported within 30 minutes and you need to know what’s happening, you can escalate to:
+If we have not acknowledged an emergency problem you’ve reported within 30 minutes and you need to know what’s happening, you can escalate to:
 
 or
 
