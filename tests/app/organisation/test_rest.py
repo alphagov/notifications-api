@@ -735,5 +735,5 @@ def test_is_organisation_name_unique_returns_400_when_name_does_not_exist(admin_
         _expected_status=400
     )
 
-    assert response["message"][0]["org_id"] == ["Can't be empty"]
-    assert response["message"][1]["name"] == ["Can't be empty"]
+    assert response["message"][0]["org_id"] == ["Cannot be empty"]
+    assert response["message"][1]["name"] == ["Cannot be empty"]
