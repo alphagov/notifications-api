@@ -81,7 +81,7 @@ def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type,
         [NOTIFICATION_FAILED, NOTIFICATION_STATUS_LETTER_ACCEPTED],
         NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_SENDING, NOTIFICATION_CREATED]
     ),
-    # checking we don't end up with duplicates
+    # checking we do not end up with duplicates
     (
         [NOTIFICATION_FAILED, NOTIFICATION_CREATED, NOTIFICATION_TECHNICAL_FAILURE],
         NOTIFICATION_STATUS_TYPES_FAILED + [NOTIFICATION_CREATED]
