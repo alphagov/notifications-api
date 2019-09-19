@@ -132,7 +132,7 @@ class Config(object):
     ONE_OFF_MESSAGE_FILENAME = 'Report'
     MAX_VERIFY_CODE_COUNT = 10
 
-    # be careful increasing this size without being sure that we won't see slowness in pysftp
+    # be careful increasing this size without being sure that we will not see slowness in pysftp
     MAX_LETTER_PDF_ZIP_FILESIZE = 40 * 1024 * 1024  # 40mb
     MAX_LETTER_PDF_COUNT_PER_ZIP = 500
 
