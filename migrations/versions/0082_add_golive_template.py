@@ -41,7 +41,7 @@ As a live service, you’ll need to know who to contact if you have a question, 
 ^To get email updates whenever there is a problem with Notify, it’s important that you subscribe to our system status page:
 https://status.notifications.service.gov.uk
 
-If our system status page shows a problem, then we’ve been alerted and are working on it – you don’t need to contact us.
+If our system status page shows a problem, then we’ve been alerted and are working on it – you do not need to contact us.
 #Problems or questions during office hours
 
 Our office hours are 9.30am to 5.30pm, Monday to Friday.
@@ -66,7 +66,7 @@ It’s only an emergency if:
 If you have one of these emergencies, email details to:
 ooh-gov-uk-notify-support@digital.cabinet-office.gov.uk
 
-^Only use this email address for out of hours emergencies. Don’t share this address with people outside of your team.
+^Only use this email address for out of hours emergencies. Do not share this address with people outside of your team.
 
 We’ll get back to you within 30 minutes and give you hourly updates until the problem’s fixed.
 
