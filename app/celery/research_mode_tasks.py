@@ -147,7 +147,7 @@ def create_fake_letter_response_file(self, reference):
     current_app.logger.info("Fake DVLA response file {}, content [{}], uploaded to {}, created at {}".format(
         upload_file_name, dvla_response_data, current_app.config['DVLA_RESPONSE_BUCKET_NAME'], now))
 
-    # on development we can't trigger SNS callbacks so we need to manually hit the DVLA callback endpoint
+    # on development we cannot trigger SNS callbacks so we need to manually hit the DVLA callback endpoint
     if current_app.config['NOTIFY_ENVIRONMENT'] == 'development':
         make_request('letter', 'dvla', _fake_sns_s3_callback(upload_file_name), None)
 
