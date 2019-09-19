@@ -310,7 +310,7 @@ def test_send_one_off_notification_fails_if_created_by_other_service(sample_temp
     with pytest.raises(BadRequestError) as e:
         send_one_off_notification(sample_template.service_id, post_data)
 
-    assert e.value.message == 'Can’t create notification - Test User is not part of the "Sample service" service'
+    assert e.value.message == 'Cannot create notification - Test User is not part of the "Sample service" service'
 
 
 def test_send_one_off_notification_should_add_email_reply_to_text_for_notification(sample_email_template, celery_mock):
