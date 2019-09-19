@@ -150,7 +150,7 @@ def test_delete_notifications_updates_notification_history(sample_email_template
     Notification.query.filter_by(id=notification.id).update(
         {"status": "delivered",
          "reference": "ses_reference",
-         "billable_units": 1,  # I know we don't update this for emails but this is a unit test
+         "billable_units": 1,  # I know we do not update this for emails but this is a unit test
          "updated_at": datetime.utcnow(),
          "sent_at": datetime.utcnow(),
          "sent_by": "ses"
