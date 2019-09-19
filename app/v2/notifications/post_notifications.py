@@ -258,7 +258,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 
-    # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+    # if we do not want to actually send the letter, then start it off in SENDING so we do not pick it up
     status = NOTIFICATION_CREATED if not test_key else NOTIFICATION_SENDING
     queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
 
