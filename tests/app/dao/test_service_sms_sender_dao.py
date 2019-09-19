@@ -221,7 +221,7 @@ def test_archive_sms_sender_raises_an_error_if_attempting_to_archive_an_inbound_
 
     inbound_number = next(x for x in service.service_sms_senders if x.inbound_number_id)
 
-    # regardless of whether inbound number is default or not, can't delete it
+    # regardless of whether inbound number is default or not, cannot delete it
     dao_update_service_sms_sender(service.id, inbound_number.id, is_default=is_default)
 
     with pytest.raises(ArchiveValidationError) as e:
