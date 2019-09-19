@@ -1748,7 +1748,7 @@ class InvitedUser(db.Model):
     )
     folder_permissions = db.Column(JSONB(none_as_null=True), nullable=False, default=[])
 
-    # would like to have used properties for this but haven't found a way to make them
+    # would like to have used properties for this but have not found a way to make them
     # play nice with marshmallow yet
     def get_permissions(self):
         return self.permissions.split(',')
