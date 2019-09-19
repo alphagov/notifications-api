@@ -146,7 +146,7 @@ def check_job_status():
     ).order_by(Job.processing_started).all()
 
     # temporarily mark them as ERROR so that they do not get picked up by future check_job_status tasks
-    # if they haven't been re-processed in time.
+    # if they have not been re-processed in time.
     job_ids = []
     for job in jobs_not_complete_after_30_minutes:
         job.job_status = JOB_STATUS_ERROR
