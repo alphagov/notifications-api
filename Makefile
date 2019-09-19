@@ -108,7 +108,7 @@ freeze-requirements:
 .PHONY: test-requirements
 test-requirements:
 	@diff requirements-app.txt requirements.txt | grep '<' \
-	    && { echo "requirements.txt doesn't match requirements-app.txt."; \
+	    && { echo "requirements.txt does not match requirements-app.txt."; \
 	         echo "Run 'make freeze-requirements' to update."; exit 1; } \
 || { echo "requirements.txt is up to date"; exit 0; }
 
@@ -233,7 +233,7 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	cf v3-cancel-zdt-push ${CF_APP} || true
 
 	cf v3-apply-manifest ${CF_APP} -f <(make -s generate-manifest)
-	cf v3-zdt-push ${CF_APP} --wait-for-deploy-complete  # fails after 5 mins if deploy doesn't work
+	cf v3-zdt-push ${CF_APP} --wait-for-deploy-complete  # fails after 5 mins if deploy does not work
 
 
 .PHONY: cf-deploy-api-db-migration
