@@ -762,12 +762,12 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     # job2's new enough
     create_notification(job=job_2, status='created', created_at=not_quite_three_days_ago)
 
-    # this isn't picked up because the job is too new
+    # this is not picked up because the job is too new
     create_ft_notification_status(date(2017, 6, 7), job=job_2, notification_status='delivered', count=8)
-    # this isn't picked up - while the job is old, it started in last 3 days so we look at notification table instead
+    # this is not picked up - while the job is old, it started in last 3 days so we look at notification table instead
     create_ft_notification_status(date(2017, 6, 7), job=job_3, notification_status='delivered', count=16)
 
-    # this isn't picked up because we're using the ft status table for job_1 as it's old
+    # this is not picked up because we're using the ft status table for job_1 as it's old
     create_notification(job=job_1, status='created', created_at=not_quite_three_days_ago)
 
     resp_json = admin_request.get('job.get_jobs_by_service', service_id=sample_template.service_id)
