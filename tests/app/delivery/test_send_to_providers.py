@@ -478,7 +478,7 @@ def test_get_html_email_renderer_handles_email_branding_without_logo(notify_api)
 
 
 @pytest.mark.parametrize('base_url, expected_url', [
-    # don't change localhost to prevent errors when testing locally
+    # do not change localhost to prevent errors when testing locally
     ('http://localhost:6012', 'http://static-logos.notify.tools/filename.png'),
     ('https://www.notifications.service.gov.uk', 'https://static-logos.notifications.service.gov.uk/filename.png'),
     ('https://notify.works', 'https://static-logos.notify.works/filename.png'),
