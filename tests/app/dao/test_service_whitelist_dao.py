@@ -51,7 +51,7 @@ def test_remove_service_whitelist_only_removes_for_my_service(notify_db, notify_
 def test_remove_service_whitelist_does_not_commit(notify_db, sample_service_whitelist):
     dao_remove_service_whitelist(sample_service_whitelist.service_id)
 
-    # since dao_remove_service_whitelist doesn't commit, we can still rollback its changes
+    # since dao_remove_service_whitelist does not commit, we can still rollback its changes
     notify_db.session.rollback()
 
     assert ServiceWhitelist.query.count() == 1
