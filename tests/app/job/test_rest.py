@@ -753,7 +753,7 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
 
     job_1 = create_job(sample_template, created_at=just_three_days_ago, processing_started=just_three_days_ago)
     job_2 = create_job(sample_template, created_at=just_three_days_ago, processing_started=not_quite_three_days_ago)
-    # is old but hasn't started yet (probably a scheduled job). We don't have any stats for this job yet.
+    # is old but hasn't started yet (probably a scheduled job). We do not have any stats for this job yet.
     job_3 = create_job(sample_template, created_at=just_three_days_ago, processing_started=None)
 
     # some notifications created more than three days ago, some created after the midnight cutoff
