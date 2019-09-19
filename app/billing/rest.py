@@ -111,7 +111,7 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
         free_sms_fragment_limit,
         financial_year_start
     )
-    # if we're trying to update historical data, don't touch other rows.
+    # if we're trying to update historical data, do not touch other rows.
     # Otherwise, make sure that future years will get the new updated value.
     if financial_year_start >= current_year:
         dao_update_annual_billing_for_future_years(
