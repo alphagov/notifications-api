@@ -1132,7 +1132,7 @@ def restore_provider_details(notify_db, notify_db_session):
     priority. This fixture is designed to be used in tests that will knowingly touch provider details, to restore them
     to previous state.
 
-    Note: This doesn't technically require notify_db_session (only notify_db), but kept as a requirement to encourage
+    Note: This does not technically require notify_db_session (only notify_db), but kept as a requirement to encourage
     good usage - if you're modifying ProviderDetails' state then it's good to clear down the rest of the DB too
     """
     existing_provider_details = ProviderDetails.query.all()
