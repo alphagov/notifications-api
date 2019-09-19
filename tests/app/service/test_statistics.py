@@ -199,7 +199,7 @@ def test_add_monthly_notification_status_stats():
         rows.append(m)
 
     data = create_empty_monthly_notification_status_stats_dict(2018)
-    # this data won't be affected
+    # this data will not be affected
     data['2018-05']['email']['sending'] = 32
 
     # this data will get combined with the 8 from row_data
