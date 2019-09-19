@@ -38,7 +38,7 @@ def test_populated_live_service_and_organisation_counts(admin_request):
     inactive_service_1 = create_service(service_name='i1', active=False)
     inactive_service_1.organisation = org_1
 
-    # This service isn’t associated to an org, but should still be counted as live
+    # This service is not associated to an org, but should still be counted as live
     create_service(service_name='4')
 
     # Org 2 has no real live services
@@ -53,11 +53,11 @@ def test_populated_live_service_and_organisation_counts(admin_request):
     # Org 2 has no services at all
     create_organisation('org 3')
 
-    # This service isn’t associated to an org, and should not be counted as live
+    # This service is not associated to an org, and should not be counted as live
     # because it’s marked as not counted
     create_service(service_name='f3', count_as_live=False)
 
-    # This service isn’t associated to an org, and should not be counted as live
+    # This service is not associated to an org, and should not be counted as live
     # because it’s in trial mode
     create_service(service_name='t', restricted=True)
     create_service(service_name='i', restricted=False, active=False)
