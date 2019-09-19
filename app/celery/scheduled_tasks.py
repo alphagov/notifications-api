@@ -145,7 +145,7 @@ def check_job_status():
         and_(thirty_five_minutes_ago < Job.processing_started, Job.processing_started < thirty_minutes_ago)
     ).order_by(Job.processing_started).all()
 
-    # temporarily mark them as ERROR so that they don't get picked up by future check_job_status tasks
+    # temporarily mark them as ERROR so that they do not get picked up by future check_job_status tasks
     # if they haven't been re-processed in time.
     job_ids = []
     for job in jobs_not_complete_after_30_minutes:
