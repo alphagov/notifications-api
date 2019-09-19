@@ -204,7 +204,7 @@ validate_elb() {
         --query 'LoadBalancerDescriptions[*].Instances[*].InstanceId' \
         --output text)
     if [ $? != 0 ]; then
-        msg "Couldn't describe ELB instance named '$elb_name'"
+        msg "Could not describe ELB instance named '$elb_name'"
         return 1
     fi
 
@@ -358,7 +358,7 @@ get_instance_name_from_tags() {
         --query Tags[0].Value \
         --output text)
     if [ $? != 0 ]; then
-        error_exit "Couldn't get instance name for '$instance_id'"
+        error_exit "Could not get instance name for '$instance_id'"
     fi
     echo $instance_name
     return $?
