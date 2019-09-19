@@ -234,7 +234,7 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
     VersionOptions(Template, history_class=TemplateHistory, must_write_history=False),
 )
 def dao_archive_service(service_id):
-    # have to eager load templates and api keys so that we don't flush when we loop through them
+    # have to eager load templates and api keys so that we do not flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
         joinedload('templates'),
@@ -494,7 +494,7 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
     VersionOptions(Service),
 )
 def dao_suspend_service(service_id):
-    # have to eager load api keys so that we don't flush when we loop through them
+    # have to eager load api keys so that we do not flush when we loop through them
     # to ensure that db.session still contains the models when it comes to creating history objects
     service = Service.query.options(
         joinedload('api_keys'),
