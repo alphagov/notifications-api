@@ -35,7 +35,7 @@ def upgrade():
     billable_services = conn.execute('''
         SELECT id FROM services_history WHERE id not in (select id from services_history where research_mode)
     ''')
-    # set to 'null' if there are no billable services so we don't get a syntax error in the update statement
+    # set to 'null' if there are no billable services so we do not get a syntax error in the update statement
     service_ids = ','.join("'{}'".format(service.id) for service in billable_services) or 'null'
 
 
@@ -81,7 +81,7 @@ def downgrade():
     billable_services = conn.execute('''
         SELECT id FROM services_history WHERE id not in (select id from services_history where research_mode)
     ''')
-    # set to 'null' if there are no billable services so we don't get a syntax error in the update statement
+    # set to 'null' if there are no billable services so we do not get a syntax error in the update statement
     service_ids = ','.join("'{}'".format(service.id) for service in billable_services) or 'null'
 
     # caveats:
