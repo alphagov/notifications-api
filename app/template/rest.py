@@ -111,7 +111,7 @@ def update_template(service_id, template_id):
 
     data = request.get_json()
 
-    # if redacting, don't update anything else
+    # if redacting, do not update anything else
     if data.get('redact_personalisation') is True:
         return redact_template(fetched_template, data)
 
@@ -209,7 +209,7 @@ def _template_has_not_changed(current_data, updated_template):
 
 
 def redact_template(template, data):
-    # we also don't need to check what was passed in redact_personalisation - its presence in the dict is enough.
+    # we also do not need to check what was passed in redact_personalisation - its presence in the dict is enough.
     if 'created_by' not in data:
         message = 'Field is required'
         errors = {'created_by': [message]}
