@@ -220,7 +220,7 @@ def test_get_monthly_notification_stats_combines_todays_data_and_historic_stats(
     create_notification(sample_template, created_at=datetime(2016, 6, 5), status='created')
     create_notification(sample_template, created_at=datetime(2016, 6, 5), status='delivered')
 
-    # this doesn't get returned in the stats because it is old - it should be in ft_notification_status by now
+    # this does not get returned in the stats because it is old - it should be in ft_notification_status by now
     create_notification(sample_template, created_at=datetime(2016, 6, 4), status='sending')
 
     response = admin_request.get(
