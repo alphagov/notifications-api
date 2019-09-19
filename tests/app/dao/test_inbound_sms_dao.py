@@ -99,7 +99,7 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
 
     create_service_data_retention(long_retention_service, notification_type='sms', days_of_retention=30)
     create_service_data_retention(short_retention_service, notification_type='sms', days_of_retention=3)
-    # email retention doesn't affect anything
+    # email retention does not affect anything
     create_service_data_retention(short_retention_service, notification_type='email', days_of_retention=4)
 
     dates = [
