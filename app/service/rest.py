@@ -553,7 +553,7 @@ def get_whitelist(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
 def update_whitelist(service_id):
-    # doesn't commit so if there are any errors, we preserve old values in db
+    # does not commit so if there are any errors, we preserve old values in db
     dao_remove_service_whitelist(service_id)
     try:
         whitelist_objs = get_whitelist_objects(service_id, request.get_json())
