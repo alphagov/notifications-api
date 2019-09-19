@@ -22,7 +22,7 @@ from app.models import Job, Template, NotificationHistory
 def upgrade():
     #
     # REMOVED
-    # This script has been applied and doesn't need to be re-applied
+    # This script has been applied and does not need to be re-applied
     # note that by referencing the model objects in migration files, any subsequent alteration of the model and thus
     # the database causes all previous migration scripts to fail as the model and DB will be inconsistent in this
     # past state.
