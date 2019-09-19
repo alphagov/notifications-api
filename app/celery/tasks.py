@@ -299,7 +299,7 @@ def save_letter(
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
 
     try:
-        # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
+        # if we do not want to actually send the letter, then start it off in SENDING so we do not pick it up
         status = NOTIFICATION_CREATED if not service.research_mode else NOTIFICATION_SENDING
 
         saved_notification = persist_notification(
@@ -398,7 +398,7 @@ def get_template_class(template_type):
     if template_type == SMS_TYPE:
         return SMSMessageTemplate
     elif template_type in (EMAIL_TYPE, LETTER_TYPE):
-        # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
+        # since we do not need rendering capabilities (we only need to extract placeholders) both email and letter can
         # use the same base template
         return WithSubjectTemplate
 
@@ -452,7 +452,7 @@ def parse_dvla_file(filename):
 
 
 def get_billing_date_in_bst_from_filename(filename):
-    # exclude seconds from the date since we don't need it. We got a date ending in 60 second - which is not valid.
+    # exclude seconds from the date since we do not need it. We got a date ending in 60 second - which is not valid.
     datetime_string = filename.split('-')[1][:-2]
     datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M')
     return convert_utc_to_bst(datetime_obj).date()
