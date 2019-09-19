@@ -64,7 +64,7 @@ def handle_integrity_error(exc):
     Handle integrity errors caused by the auth type/mobile number check constraint
     """
     if 'ck_users_mobile_or_email_auth' in str(exc):
-        # we don't expect this to trip, so still log error
+        # we do not expect this to trip, so still log error
         current_app.logger.exception('Check constraint ck_users_mobile_or_email_auth triggered')
         return jsonify(result='error', message='Mobile number must be set if auth_type is set to sms_auth'), 400
 
