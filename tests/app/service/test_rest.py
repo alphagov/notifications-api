@@ -2521,9 +2521,9 @@ def test_is_service_name_unique_returns_400_when_name_does_not_exist(admin_reque
         _expected_status=400
     )
 
-    assert response["message"][0]["service_id"] == ["Can't be empty"]
-    assert response["message"][1]["name"] == ["Can't be empty"]
-    assert response["message"][2]["email_from"] == ["Can't be empty"]
+    assert response["message"][0]["service_id"] == ["Cannot be empty"]
+    assert response["message"][1]["name"] == ["Cannot be empty"]
+    assert response["message"][2]["email_from"] == ["Cannot be empty"]
 
 
 def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses(client, sample_service):
