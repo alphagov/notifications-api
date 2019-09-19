@@ -154,7 +154,7 @@ def test_create_service_with_organisation(notify_db_session):
 ))
 @pytest.mark.parametrize('branding_name_to_create, expected_branding', (
     ('NHS', True),
-    # Need to check that nothing breaks in environments that don’t have
+    # Need to check that nothing breaks in environments that do not have
     # the NHS branding set up
     ('SHN', False),
 ))
