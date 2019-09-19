@@ -126,7 +126,7 @@ def create_fake_letter_response_file(self, reference):
     now = datetime.utcnow()
     dvla_response_data = '{}|Sent|0|Sorted'.format(reference)
 
-    # try and find a filename that hasn't been taken yet - from a random time within the last 30 seconds
+    # try and find a filename that has not been taken yet - from a random time within the last 30 seconds
     for i in sorted(range(30), key=lambda _: random.random()):
         upload_file_name = 'NOTIFY-{}-RSP.TXT'.format((now - timedelta(seconds=i)).strftime('%Y%m%d%H%M%S'))
         if not file_exists(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], upload_file_name):
