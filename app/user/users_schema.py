@@ -19,7 +19,7 @@ post_send_user_email_code_schema = {
     ),
     'type': 'object',
     'properties': {
-        # doesn't need 'to' as we'll just grab user.email_address. but lets keep it
+        # does not need 'to' as we'll just grab user.email_address. but lets keep it
         # as allowed to keep admin code cleaner, but only as null to prevent confusion
         'to': {'type': 'null'},
         'email_auth_link_host': {'type': ['string', 'null']},
