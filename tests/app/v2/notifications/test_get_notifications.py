@@ -588,7 +588,7 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
 
     assert response.status_code == 200
     assert response.headers['Content-type'] == "application/json"
-    # query parameters aren't returned in order
+    # query parameters are not returned in order
     for url_part in [
         "/v2/notifications?",
         "template_type=email",
