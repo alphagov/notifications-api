@@ -82,7 +82,7 @@ def upgrade():
 
     password_reset_content = "Hi ((user_name)),\n\n" \
                              "We received a request to reset your password on GOV.UK Notify.\n\n" \
-                             "If you didn''t request this email, you can ignore it – " \
+                             "If you did not request this email, you can ignore it – " \
                              "your password has not been changed.\n\n" \
                              "To reset your password, click this link:\n\n" \
                              "((url))"
