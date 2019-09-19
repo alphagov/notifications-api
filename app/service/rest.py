@@ -774,7 +774,7 @@ def add_service_sms_sender(service_id):
         # the sms_sender in the form is not set, use the inbound number
         sms_sender = updated_number.number
         existing_sms_sender = dao_get_sms_senders_by_service_id(service_id)
-        # we don't want to create a new sms sender for the service if we are allocating an inbound number.
+        # we do not want to create a new sms sender for the service if we are allocating an inbound number.
         if len(existing_sms_sender) == 1:
             update_existing_sms_sender = existing_sms_sender[0]
             new_sms_sender = update_existing_sms_sender_with_inbound_number(
