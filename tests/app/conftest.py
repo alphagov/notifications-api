@@ -1128,7 +1128,7 @@ def sample_organisation(notify_db, notify_db_session):
 @pytest.fixture
 def restore_provider_details(notify_db, notify_db_session):
     """
-    We view ProviderDetails as a static in notify_db_session, since we don't modify it... except we do, we updated
+    We view ProviderDetails as a static in notify_db_session, since we do not modify it... except we do, we updated
     priority. This fixture is designed to be used in tests that will knowingly touch provider details, to restore them
     to previous state.
 
