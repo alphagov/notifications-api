@@ -247,7 +247,7 @@ def create_notification(
         updated_at = updated_at or datetime.utcnow()
 
     if not one_off and (job is None and api_key is None):
-        # we didn't specify in test - lets create it
+        # we did not specify in test - lets create it
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:
             api_key = create_api_key(template.service, key_type=key_type)
