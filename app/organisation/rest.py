@@ -96,7 +96,7 @@ def update_organisation(organisation_id):
     result = dao_update_organisation(organisation_id, **data)
 
     if data.get('agreement_signed') is True:
-        # if a platform admin has manually adjusted the organisation, don't tell people
+        # if a platform admin has manually adjusted the organisation, do not tell people
         if data.get('agreement_signed_by_id'):
             send_notifications_on_mou_signed(organisation_id)
 
