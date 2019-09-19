@@ -945,7 +945,7 @@ def test_update_redact_template_does_nothing_if_already_redacted(admin_request, 
     assert resp is None
 
     assert sample_template.redact_personalisation is True
-    # make sure that it hasn't been updated
+    # make sure that it has not been updated
     assert sample_template.template_redacted.updated_at == dt
 
 
