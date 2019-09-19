@@ -554,7 +554,7 @@ def test_post_sms_notification_returns_400_if_number_not_whitelisted(
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
-        {"error": "BadRequestError", "message": 'Can’t send to this recipient using a team-only API key'}
+        {"error": "BadRequestError", "message": 'Cannot send to this recipient using a team-only API key'}
     ]
 
 
