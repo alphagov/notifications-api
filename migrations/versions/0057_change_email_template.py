@@ -31,7 +31,7 @@ def upgrade():
     template_content = \
         """Hi ((name)),\n\nClick this link to confirm your new email address:
         \n\n((url))
-        \n\nIf you didn’t try to change the email address for your GOV.​UK Notify account, let us know here:
+        \n\nIf you did not try to change the email address for your GOV.​UK Notify account, let us know here:
         \n\n((feedback_url))"""
 
     template_name = 'Confirm new email address'
