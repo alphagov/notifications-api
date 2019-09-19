@@ -29,7 +29,7 @@ def downgrade():
         sa.Column('filename', sa.VARCHAR(length=255), autoincrement=False, nullable=False),
         sa.PrimaryKeyConstraint('id', name='dvla_organisation_pkey')
     )
-    # can't repopulate the services, but we can put the static data back in dvla_organisation
+    # cannot repopulate the services, but we can put the static data back in dvla_organisation
     op.execute("""
         INSERT INTO dvla_organisation VALUES
         ('001', 'HM Government', 'hm-government'),
