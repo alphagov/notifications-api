@@ -277,7 +277,7 @@ def dao_create_service(
     # migration is completed, this code should be able to be removed.
 
     if not user:
-        raise ValueError("Can't create a service without a user")
+        raise ValueError("Cannot create a service without a user")
 
     if service_permissions is None:
         service_permissions = DEFAULT_SERVICE_PERMISSIONS
