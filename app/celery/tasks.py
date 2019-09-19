@@ -570,7 +570,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
 def process_incomplete_jobs(job_ids):
     jobs = [dao_get_job_by_id(job_id) for job_id in job_ids]
 
-    # reset the processing start time so that the check_job_status scheduled task doesn't pick this job up again
+    # reset the processing start time so that the check_job_status scheduled task does not pick this job up again
     for job in jobs:
         job.job_status = JOB_STATUS_IN_PROGRESS
         job.processing_started = datetime.utcnow()
