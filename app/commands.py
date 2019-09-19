@@ -104,7 +104,7 @@ def purge_functional_test_data(user_email_prefix):
         try:
             uuid.UUID(usr.email_address.split("@")[0].split('+')[1])
         except ValueError:
-            print("Skipping {} as the user email doesn't contain a UUID.".format(usr.email_address))
+            print("Skipping {} as the user email does not contain a UUID.".format(usr.email_address))
         else:
             services = dao_fetch_all_services_by_user(usr.id)
             if services:
