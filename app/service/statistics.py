@@ -9,7 +9,7 @@ from app.dao.date_util import get_months_for_financial_year
 
 def format_statistics(statistics):
     # statistics come in a named tuple with uniqueness from 'notification_type', 'status' - however missing
-    # statuses/notification types won't be represented and the status types need to be simplified/summed up
+    # statuses/notification types will not be represented and the status types need to be simplified/summed up
     # so we can return emails/sms * created, sent, and failed
     counts = create_zeroed_stats_dicts()
     for row in statistics:
