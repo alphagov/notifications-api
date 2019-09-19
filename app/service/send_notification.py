@@ -151,7 +151,7 @@ def send_pdf_letter_notification(service_id, post_data):
         )
         raise e
 
-    # Getting the page count won't raise an error since admin has already checked the PDF is valid
+    # Getting the page count will not raise an error since admin has already checked the PDF is valid
     billable_units = get_page_count(letter.read())
 
     personalisation = {
