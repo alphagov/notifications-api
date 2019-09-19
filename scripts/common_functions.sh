@@ -222,7 +222,7 @@ validate_elb() {
 #   Ensures that this instance is related to the named ELB. After execution, the variable
 #   "ELB_LIST" will contain the list of load balancers for the given instance.
 #
-#   If the given instance ID isn't found registered to any ELBs, the function returns non-zero
+#   If the given instance ID is not found registered to any ELBs, the function returns non-zero
 get_elb_list() {
     local instance_id=$1
     local required_elb=$2
