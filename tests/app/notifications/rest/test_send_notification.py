@@ -253,7 +253,7 @@ def test_should_not_send_notification_if_restricted_and_not_a_service_user(notif
 
             assert response.status_code == 400
             assert [(
-                'Can’t send to this recipient when service is in trial mode '
+                'Cannot send to this recipient when service is in trial mode '
                 '– see https://www.notifications.service.gov.uk/trial-mode'
             )] == json_resp['message']['to']
 
@@ -554,7 +554,7 @@ def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api
 
         assert response.status_code == 400
         assert [
-            'Can’t send to this recipient using a team-only API key'
+            'Cannot send to this recipient using a team-only API key'
         ] == json_resp['message']['to']
 
 
@@ -579,7 +579,7 @@ def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, 
 
         assert response.status_code == 400
         assert [
-            'Can’t send to this recipient using a team-only API key'
+            'Cannot send to this recipient using a team-only API key'
         ] == json_resp['message']['to']
 
 
@@ -889,9 +889,9 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
         headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))])
 
     expected_response_message = (
-        'Can’t send to this recipient when service is in trial mode '
+        'Cannot send to this recipient when service is in trial mode '
         '– see https://www.notifications.service.gov.uk/trial-mode'
-    ) if key_type == KEY_TYPE_NORMAL else ('Can’t send to this recipient using a team-only API key')
+    ) if key_type == KEY_TYPE_NORMAL else ('Cannot send to this recipient using a team-only API key')
 
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
