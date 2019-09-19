@@ -69,10 +69,10 @@ def check_template_is_active(template):
 def service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_recipients=True):
     if not service_allowed_to_send_to(send_to, service, key_type, allow_whitelisted_recipients):
         if key_type == KEY_TYPE_TEAM:
-            message = 'Can’t send to this recipient using a team-only API key'
+            message = 'Cannot send to this recipient using a team-only API key'
         else:
             message = (
-                'Can’t send to this recipient when service is in trial mode '
+                'Cannot send to this recipient when service is in trial mode '
                 '– see https://www.notifications.service.gov.uk/trial-mode'
             )
         raise BadRequestError(message=message)
@@ -96,7 +96,7 @@ def check_service_can_schedule_notification(permissions, scheduled_for):
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_whitelisted_recipients=True):
     if send_to is None:
-        raise BadRequestError(message="Recipient can't be empty")
+        raise BadRequestError(message="Recipient cannot be empty")
 
     service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_recipients)
 
