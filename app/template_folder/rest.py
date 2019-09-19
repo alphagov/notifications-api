@@ -91,7 +91,7 @@ def update_template_folder(service_id, template_folder_id):
 def delete_template_folder(service_id, template_folder_id):
     template_folder = dao_get_template_folder_by_id_and_service_id(template_folder_id, service_id)
 
-    # don't allow deleting if there's anything in the folder (even if it's just more empty subfolders)
+    # do not allow deleting if there's anything in the folder (even if it's just more empty subfolders)
     if template_folder.subfolders or template_folder.templates:
         return jsonify(result='error', message='Folder is not empty'), 400
 
