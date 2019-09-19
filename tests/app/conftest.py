@@ -559,7 +559,7 @@ def sample_notification(
         template = create_template(service=service)
 
     if job is None and api_key is None:
-        # we didn't specify in test - lets create it
+        # we did not specify in test - lets create it
         api_key = ApiKey.query.filter(ApiKey.service == template.service, ApiKey.key_type == key_type).first()
         if not api_key:
             api_key = create_api_key(template.service, key_type=key_type)
@@ -990,7 +990,7 @@ def change_email_confirmation_template(notify_db,
     content = """Hi ((name)),
               Click this link to confirm your new email address:
               ((url))
-              If you didn’t try to change the email address for your GOV.UK Notify account, let us know here:
+              If you did not try to change the email address for your GOV.UK Notify account, let us know here:
               ((feedback_url))"""
     template = create_custom_template(
         service=service,
