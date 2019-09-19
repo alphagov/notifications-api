@@ -145,7 +145,7 @@ def get_user_and_accounts(user_id):
 @transactional
 def dao_archive_user(user):
     if not user_can_be_archived(user):
-        msg = "User can’t be removed from a service - check all services have another team member with manage_settings"
+        msg = "User cannot be removed from a service - check all services have another team member with manage_settings"
         raise InvalidRequest(msg, 400)
 
     permission_dao.remove_user_service_permissions_for_all_services(user)
