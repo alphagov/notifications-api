@@ -25,7 +25,7 @@ LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
 
-def get_folder_name(_now, dont_use_sending_date=False):
+def get_folder_name(_now, *, dont_use_sending_date=False):
     if dont_use_sending_date:
         folder_name = ''
     else:
@@ -38,7 +38,7 @@ def get_folder_name(_now, dont_use_sending_date=False):
 
 def get_letter_pdf_filename(reference, crown, sending_date, dont_use_sending_date=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(sending_date, dont_use_sending_date),
+        folder=get_folder_name(sending_date, dont_use_sending_date=dont_use_sending_date),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
@@ -58,7 +58,7 @@ def get_bucket_name_and_prefix_for_notification(notification):
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        folder = get_folder_name(notification.created_at, False)
+        folder = get_folder_name(notification.created_at, dont_use_sending_date=False)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
         folder=folder,
