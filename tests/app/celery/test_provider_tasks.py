@@ -65,7 +65,7 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(s
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         deliver_sms(sample_notification.id)
-        assert sample_notification.id in e.value
+    assert str(sample_notification.id) in str(e.value)
 
     provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks", countdown=0)
 
@@ -78,7 +78,7 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         deliver_email(sample_notification.id)
-        assert sample_notification.id in e.value
+    assert str(sample_notification.id) in str(e.value)
 
     provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
     assert sample_notification.status == 'technical-failure'

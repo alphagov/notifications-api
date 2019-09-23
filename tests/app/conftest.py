@@ -272,17 +272,15 @@ def sample_template_without_letter_permission(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_template_with_placeholders(notify_db, notify_db_session):
+def sample_template_with_placeholders(sample_service):
     # deliberate space and title case in placeholder
-    return sample_template(notify_db, notify_db_session, content="Hello (( Name))\nYour thing is due soon")
+    return create_template(sample_service, content="Hello (( Name))\nYour thing is due soon")
 
 
 @pytest.fixture(scope='function')
-def sample_sms_template_with_html(notify_db, notify_db_session):
+def sample_sms_template_with_html(sample_service):
     # deliberate space and title case in placeholder
-    return sample_template(notify_db, notify_db_session, content=(
-        "Hello (( Name))\nHere is <em>some HTML</em> & entities"
-    ))
+    return create_template(sample_service, content="Hello (( Name))\nHere is <em>some HTML</em> & entities")
 
 
 @pytest.fixture(scope='function')
@@ -411,31 +409,20 @@ def sample_job(
 
 @pytest.fixture(scope='function')
 def sample_job_with_placeholdered_template(
-        notify_db,
-        notify_db_session,
-        service=None
+        sample_job,
+        sample_template_with_placeholders,
 ):
-    return sample_job(
-        notify_db,
-        notify_db_session,
-        service=service,
-        template=sample_template_with_placeholders(notify_db, notify_db_session)
-    )
+    sample_job.template = sample_template_with_placeholders
+
+    return sample_job
 
 
 @pytest.fixture(scope='function')
-def sample_scheduled_job(
-    notify_db,
-    notify_db_session,
-    service=None
-):
-    return sample_job(
-        notify_db,
-        notify_db_session,
-        service=service,
-        template=sample_template_with_placeholders(notify_db, notify_db_session),
-        scheduled_for=(datetime.utcnow() + timedelta(minutes=60)).isoformat(),
-        job_status='scheduled'
+def sample_scheduled_job(sample_template_with_placeholders):
+    return create_job(
+        sample_template_with_placeholders,
+        job_status='scheduled',
+        scheduled_for=(datetime.utcnow() + timedelta(minutes=60)).isoformat()
     )
 
 
@@ -626,18 +613,6 @@ def sample_letter_notification(sample_letter_template):
         'postcode': 'A_POST'
     }
     return create_notification(sample_letter_template, reference='foo', personalisation=address)
-
-
-@pytest.fixture(scope='function')
-def sample_notification_with_api_key(notify_db, notify_db_session):
-    notification = sample_notification(notify_db, notify_db_session)
-    notification.api_key = sample_api_key(
-        notify_db,
-        notify_db_session,
-        name='Test key'
-    )
-    notification.api_key_id = notification.api_key.id
-    return notification
 
 
 @pytest.fixture(scope='function')

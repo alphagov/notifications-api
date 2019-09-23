@@ -139,7 +139,7 @@ def test_should_not_send_email_message_when_service_is_inactive_notifcation_is_i
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         send_to_providers.send_email_to_provider(sample_notification)
-        assert sample_notification.id in e.value
+    assert str(sample_notification.id) in str(e.value)
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
 
@@ -152,7 +152,7 @@ def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
         send_to_providers.send_sms_to_provider(sample_notification)
-        assert sample_notification.id in e.value
+    assert str(sample_notification.id) in str(e.value)
     send_mock.assert_not_called()
     assert Notification.query.get(sample_notification.id).status == 'technical-failure'
 
