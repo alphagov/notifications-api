@@ -253,7 +253,9 @@ def process_virus_scan_passed(self, filename):
         _upload_pdf_to_test_or_live_pdf_bucket(
             new_pdf,
             filename,
-            is_test_letter=is_test_key)
+            is_test_letter=is_test_key,
+            created_at=notification.created_at
+        )
 
         update_letter_pdf_status(
             reference=reference,
@@ -284,10 +286,10 @@ def _move_invalid_letter_and_update_status(notification, filename, scan_pdf_obje
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
-def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter):
+def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter, created_at):
     target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
     target_bucket_name = current_app.config[target_bucket_config]
-    target_filename = get_folder_name(datetime.utcnow(), is_test_letter) + filename
+    target_filename = get_folder_name(created_at, dont_use_sending_date=is_test_letter) + filename
 
     s3upload(
         filedata=pdf_data,
