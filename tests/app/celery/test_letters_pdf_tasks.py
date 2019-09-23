@@ -27,7 +27,7 @@ from app.celery.letters_pdf_tasks import (
     _move_invalid_letter_and_update_status,
     _sanitise_precompiled_pdf
 )
-from app.letters.utils import ScanErrorType
+from app.letters.utils import ScanErrorType, get_letter_pdf_filename
 from app.models import (
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -135,12 +135,12 @@ def test_create_letters_pdf_calls_s3upload(mocker, sample_letter_notification):
 
 
 @freeze_time("2017-12-04 17:31:00")
-def test_create_letters_pdf_calls_s3upload_for_test_letters(mocker, sample_letter_notification):
+def test_create_letters_pdf_calls_s3upload_for_test_letters(mocker, sample_letter_template):
     mocker.patch('app.celery.letters_pdf_tasks.get_letters_pdf', return_value=(b'\x00\x01', '1'))
     mock_s3 = mocker.patch('app.letters.utils.s3upload')
-    sample_letter_notification.key_type = 'test'
+    notification = create_notification(template=sample_letter_template, reference='FOO', key_type='test')
 
-    create_letters_pdf(sample_letter_notification.id)
+    create_letters_pdf(notification.id)
 
     mock_s3.assert_called_with(
         bucket_name=current_app.config['TEST_LETTERS_BUCKET_NAME'],

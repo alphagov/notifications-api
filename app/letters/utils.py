@@ -81,7 +81,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
         reference=notification.reference,
         crown=notification.service.crown,
         sending_date=notification.created_at,
-        dont_use_sending_date=precompiled,
+        dont_use_sending_date=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage
     )
 
