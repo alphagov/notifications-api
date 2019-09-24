@@ -563,6 +563,14 @@ def test_get_all_notifications_for_job_returns_correct_format(
     assert resp['notifications'][0]['status'] == sample_notification_with_job.status
 
 
+def test_get_notification_count_for_job_id(admin_request, mocker):
+    mock_dao = mocker.patch('app.job.rest.dao_get_notification_count_for_job_id', return_value=3)
+    job_id = uuid.uuid4()
+    response = admin_request.get('job.get_notification_count_for_job_id', service_id=uuid.uuid4(), job_id=job_id)
+    mock_dao.assert_called_once_with(str(job_id))
+    assert response["count"] == 3
+
+
 def test_get_job_by_id(admin_request, sample_job):
     job_id = str(sample_job.id)
     service_id = sample_job.service.id

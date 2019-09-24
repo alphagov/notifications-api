@@ -15,6 +15,7 @@ from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
     dao_get_last_template_usage,
     dao_get_notifications_by_to_field,
+    dao_get_notification_count_for_job_id,
     dao_get_scheduled_notifications,
     dao_timeout_notifications,
     dao_update_notification,
@@ -552,6 +553,27 @@ def test_get_all_notifications_for_job_by_status(sample_job):
             assert len(notifications(filter_dict={'status': status}).items) == 1
 
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
+
+
+def test_dao_get_notification_count_for_job_id(notify_db_session, notify_db):
+    service = create_service()
+    template = create_template(service)
+    job = create_job(template, notification_count=3)
+    for i in range(3):
+        create_notification(job=job)
+
+    create_notification(template)
+
+    assert dao_get_notification_count_for_job_id(job.id) == 3
+
+
+def test_dao_get_notification_count_for_job_id_only_finds_notification_already_in_db(notify_db_session, notify_db):
+    service = create_service()
+    template = create_template(service)
+    job = create_job(template, notification_count=3)
+    create_notification(template)
+
+    assert dao_get_notification_count_for_job_id(job.id) == 0
 
 
 def test_update_notification_sets_status(sample_notification):
