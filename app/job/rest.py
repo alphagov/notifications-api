@@ -110,7 +110,7 @@ def get_all_notifications_for_service_job(service_id, job_id):
 
 @job_blueprint.route('/<job_id>/notification_count', methods=['GET'])
 def get_notification_count_for_job_id(service_id, job_id):
-    count = dao_get_notification_count_for_job_id(job_id)
+    count = dao_get_notification_count_for_job_id(service_id=service_id, job_id=job_id)
     return jsonify(
         count=count
     ), 200
