@@ -25,8 +25,8 @@ LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
 
-def get_folder_name(_now, is_test_or_scan_letter=False):
-    if is_test_or_scan_letter:
+def get_folder_name(_now, *, dont_use_sending_date=False):
+    if dont_use_sending_date:
         folder_name = ''
     else:
         print_datetime = convert_utc_to_bst(_now)
@@ -36,19 +36,16 @@ def get_folder_name(_now, is_test_or_scan_letter=False):
     return folder_name
 
 
-def get_letter_pdf_filename(reference, crown, is_scan_letter=False, postage=SECOND_CLASS):
-    now = datetime.utcnow()
-
+def get_letter_pdf_filename(reference, crown, sending_date, dont_use_sending_date=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(now, is_scan_letter),
+        folder=get_folder_name(sending_date, dont_use_sending_date=dont_use_sending_date),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
         colour="C",
         crown="C" if crown else "N",
-        date=now.strftime('%Y%m%d%H%M%S')
+        date=sending_date.strftime('%Y%m%d%H%M%S')
     ).upper()
-
     return upload_file_name
 
 
@@ -60,12 +57,7 @@ def get_bucket_name_and_prefix_for_notification(notification):
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        if notification.sent_at:
-            folder = "{}/".format(notification.sent_at.date())
-        elif notification.updated_at:
-            folder = get_folder_name(notification.updated_at, False)
-        else:
-            folder = get_folder_name(notification.created_at, False)
+        folder = get_folder_name(notification.created_at, dont_use_sending_date=False)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
         folder=folder,
@@ -86,9 +78,10 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
     upload_file_name = get_letter_pdf_filename(
-        notification.reference,
-        notification.service.crown,
-        is_scan_letter=precompiled or notification.key_type == KEY_TYPE_TEST,
+        reference=notification.reference,
+        crown=notification.service.crown,
+        sending_date=notification.created_at,
+        dont_use_sending_date=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage
     )
 
