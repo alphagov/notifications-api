@@ -1,7 +1,7 @@
 from sqlalchemy.sql.expression import func
 
 from app import db
-from app.dao.dao_utils import transactional, version_class
+from app.dao.dao_utils import VersionOptions, transactional, version_class
 from app.models import (
     Organisation,
     Domain,
@@ -77,18 +77,46 @@ def dao_update_organisation(organisation_id, **kwargs):
             for domain in domains
         ])
 
+    organisation = Organisation.query.get(organisation_id)
+
     if 'organisation_type' in kwargs:
-        organisation = Organisation.query.get(organisation_id)
-        if organisation.services:
-            _update_org_type_for_organisation_services(organisation)
+        _update_org_type_for_organisation_services(organisation)
+
+    if 'email_branding_id' in kwargs:
+        _update_email_branding_for_organisation_services(organisation)
+
+    if 'letter_branding_id' in kwargs:
+        _update_letter_branding_for_organisation_services(organisation)
 
     return num_updated
 
 
-@version_class(Service)
+@version_class(
+    VersionOptions(Service, must_write_history=False)
+)
 def _update_org_type_for_organisation_services(organisation):
     for service in organisation.services:
         service.organisation_type = organisation.organisation_type
+        db.session.add(service)
+
+
+@version_class(
+    VersionOptions(Service, must_write_history=False)
+)
+def _update_email_branding_for_organisation_services(organisation):
+    for service in organisation.services:
+        if service.email_branding is None:
+            service.email_branding = organisation.email_branding
+        db.session.add(service)
+
+
+@version_class(
+    VersionOptions(Service, must_write_history=False)
+)
+def _update_letter_branding_for_organisation_services(organisation):
+    for service in organisation.services:
+        if service.letter_branding is None:
+            service.letter_branding = organisation.letter_branding
         db.session.add(service)
 
 
