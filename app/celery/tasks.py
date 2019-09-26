@@ -153,15 +153,17 @@ def process_row(row, template, job, service, sender_id=None):
     if sender_id:
         task_kwargs['sender_id'] = sender_id
 
+    notification_id = create_uuid()
     send_fn.apply_async(
         (
             str(service.id),
-            create_uuid(),
+            notification_id,
             encrypted,
         ),
         task_kwargs,
         queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE
     )
+    return notification_id
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
