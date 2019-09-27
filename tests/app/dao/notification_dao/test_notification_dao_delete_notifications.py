@@ -132,6 +132,7 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
         mock_get_s3.assert_not_called()
 
 
+@freeze_time('2019-09-01 04:30')
 def test_delete_notifications_deletes_letters_from_s3(sample_letter_template, mocker):
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
