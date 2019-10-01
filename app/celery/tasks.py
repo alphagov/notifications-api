@@ -76,6 +76,7 @@ from app.service.utils import service_allowed_to_send_to
 def process_job(job_id, sender_id=None):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
+    current_app.logger.info("Starting process-job task for job id {} with status: {}".format(job_id, job.job_status))
 
     if job.job_status != JOB_STATUS_PENDING:
         return
@@ -101,7 +102,7 @@ def process_job(job_id, sender_id=None):
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
 
-    current_app.logger.debug("Starting job {} processing {} notifications".format(job_id, job.notification_count))
+    current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
     for row in RecipientCSV(
             s3.get_job_from_s3(str(service.id), str(job_id)),
