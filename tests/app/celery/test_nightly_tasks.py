@@ -394,7 +394,7 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
     remove_s3_mock.assert_not_called()
 
 
-@freeze_time("2018-01-17 17:00:00")
+@freeze_time("Thursday 17th January 2018 17:00")
 def test_alert_if_letter_notifications_still_sending(sample_letter_template, mocker):
     two_days_ago = datetime(2018, 1, 15, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
@@ -421,7 +421,7 @@ def test_alert_if_letter_notifications_still_sending_a_day_ago_no_alert(sample_l
     assert not mock_create_ticket.called
 
 
-@freeze_time("2018-01-17 17:00:00")
+@freeze_time("Thursday 17th January 2018 17:00")
 def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_letter_template, mocker):
     two_days_ago = datetime(2018, 1, 15, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
@@ -439,7 +439,7 @@ def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_
     )
 
 
-@freeze_time("2018-01-17 17:00:00")
+@freeze_time("Thursday 17th January 2018 17:00")
 def test_alert_if_letter_notifications_still_sending_alerts_for_older_than_offset(sample_letter_template, mocker):
     three_days_ago = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=three_days_ago)
@@ -455,7 +455,7 @@ def test_alert_if_letter_notifications_still_sending_alerts_for_older_than_offse
     )
 
 
-@freeze_time("2018-01-14 17:00:00")
+@freeze_time("Sunday 14th January 2018 17:00")
 def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend(sample_letter_template, mocker):
     yesterday = datetime(2018, 1, 13, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
@@ -467,7 +467,7 @@ def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend
     assert not mock_create_ticket.called
 
 
-@freeze_time("2018-01-15 17:00:00")
+@freeze_time("Monday 15th January 2018 17:00")
 def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_letters(sample_letter_template, mocker):
     thursday = datetime(2018, 1, 11, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
@@ -485,7 +485,7 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_let
     )
 
 
-@freeze_time("2018-01-16 17:00:00")
+@freeze_time("Tuesday 16th January 2018 17:00")
 def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
     friday = datetime(2018, 1, 12, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
