@@ -555,7 +555,7 @@ def test_get_all_notifications_for_job_by_status(sample_job):
     assert len(notifications(filter_dict={'status': NOTIFICATION_STATUS_TYPES[:3]}).items) == 3
 
 
-def test_dao_get_notification_count_for_job_id(notify_db_session, notify_db):
+def test_dao_get_notification_count_for_job_id(notify_db_session):
     service = create_service()
     template = create_template(service)
     job = create_job(template, notification_count=3)
@@ -564,27 +564,16 @@ def test_dao_get_notification_count_for_job_id(notify_db_session, notify_db):
 
     create_notification(template)
 
-    assert dao_get_notification_count_for_job_id(service_id=service.id, job_id=job.id) == 3
+    assert dao_get_notification_count_for_job_id(job_id=job.id) == 3
 
 
-def test_dao_get_notification_count_for_job_id_only_finds_notification_already_in_db(notify_db_session, notify_db):
+def test_dao_get_notification_count_for_job_id_returns_zero_for_no_notifications_for_job(notify_db_session):
     service = create_service()
     template = create_template(service)
     job = create_job(template, notification_count=3)
     create_notification(template)
 
-    assert dao_get_notification_count_for_job_id(service_id=service.id, job_id=job.id) == 0
-
-
-def test_dao_get_notification_count_for_job_id_doesnt_work_with_non_existing_service_id(notify_db_session, notify_db):
-    service = create_service()
-    template = create_template(service)
-    job = create_job(template, notification_count=3)
-    for i in range(3):
-        create_notification(job=job)
-    fake_service_id = str(uuid.uuid4())
-
-    assert dao_get_notification_count_for_job_id(service_id=fake_service_id, job_id=job.id) == 0
+    assert dao_get_notification_count_for_job_id(job_id=job.id) == 0
 
 
 def test_update_notification_sets_status(sample_notification):
