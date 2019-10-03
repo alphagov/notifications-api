@@ -20,7 +20,7 @@ from app.dao.jobs_dao import (
 from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.notifications_dao import get_notifications_for_job
+from app.dao.notifications_dao import dao_get_notification_count_for_job_id, get_notifications_for_job
 from app.schemas import (
     job_schema,
     unarchived_template_schema,
@@ -105,6 +105,15 @@ def get_all_notifications_for_service_job(service_id, job_id):
             '.get_all_notifications_for_service_job',
             **kwargs
         )
+    ), 200
+
+
+@job_blueprint.route('/<job_id>/notification_count', methods=['GET'])
+def get_notification_count_for_job_id(service_id, job_id):
+    dao_get_job_by_service_id_and_job_id(service_id, job_id)
+    count = dao_get_notification_count_for_job_id(job_id=job_id)
+    return jsonify(
+        count=count
     ), 200
 
 
