@@ -119,12 +119,17 @@ def test_update_organisation_domains_lowercases(
     assert {domain.domain for domain in organisation.domains} == expected_domains
 
 
-def test_update_organisation_does_not_update_the_service_org_type_if_org_type_is_not_provided(
+def test_update_organisation_does_not_update_the_service_if_certain_attributes_not_provided(
     sample_service,
     sample_organisation,
 ):
+    email_branding = create_email_branding()
+    letter_branding = create_letter_branding()
+
     sample_service.organisation_type = 'local'
     sample_organisation.organisation_type = 'central'
+    sample_organisation.email_branding = email_branding
+    sample_organisation.letter_branding = letter_branding
 
     sample_organisation.services.append(sample_service)
     db.session.commit()
@@ -134,7 +139,15 @@ def test_update_organisation_does_not_update_the_service_org_type_if_org_type_is
     dao_update_organisation(sample_organisation.id, name='updated org name')
 
     assert sample_organisation.name == 'updated org name'
+
+    assert sample_organisation.organisation_type == 'central'
     assert sample_service.organisation_type == 'local'
+
+    assert sample_organisation.email_branding == email_branding
+    assert sample_service.email_branding is None
+
+    assert sample_organisation.letter_branding == letter_branding
+    assert sample_service.letter_branding is None
 
 
 def test_update_organisation_updates_the_service_org_type_if_org_type_is_provided(
@@ -155,6 +168,49 @@ def test_update_organisation_updates_the_service_org_type_if_org_type_is_provide
         id=sample_service.id,
         version=2
     ).one().organisation_type == 'central'
+
+
+def test_update_organisation_updates_the_service_branding_if_branding_is_provided(
+    sample_service,
+    sample_organisation,
+):
+    email_branding = create_email_branding()
+    letter_branding = create_letter_branding()
+
+    sample_organisation.services.append(sample_service)
+    db.session.commit()
+
+    dao_update_organisation(sample_organisation.id, email_branding_id=email_branding.id)
+    dao_update_organisation(sample_organisation.id, letter_branding_id=letter_branding.id)
+
+    assert sample_organisation.email_branding == email_branding
+    assert sample_organisation.letter_branding == letter_branding
+    assert sample_service.email_branding == email_branding
+    assert sample_service.letter_branding == letter_branding
+
+
+def test_update_organisation_does_not_override_service_branding(
+    sample_service,
+    sample_organisation,
+):
+    email_branding = create_email_branding()
+    custom_email_branding = create_email_branding(name='custom')
+    letter_branding = create_letter_branding()
+    custom_letter_branding = create_letter_branding(name='custom', filename='custom')
+
+    sample_service.email_branding = custom_email_branding
+    sample_service.letter_branding = custom_letter_branding
+
+    sample_organisation.services.append(sample_service)
+    db.session.commit()
+
+    dao_update_organisation(sample_organisation.id, email_branding_id=email_branding.id)
+    dao_update_organisation(sample_organisation.id, letter_branding_id=letter_branding.id)
+
+    assert sample_organisation.email_branding == email_branding
+    assert sample_organisation.letter_branding == letter_branding
+    assert sample_service.email_branding == custom_email_branding
+    assert sample_service.letter_branding == custom_letter_branding
 
 
 def test_add_service_to_organisation(sample_service, sample_organisation):
