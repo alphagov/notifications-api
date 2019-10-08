@@ -471,8 +471,8 @@ def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend
 def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_letters(sample_letter_template, mocker):
     thursday = datetime(2018, 1, 11, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=thursday)
-    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+    create_notification(template=sample_letter_template, status='sending', sent_at=thursday, postage='second')
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='second')
 
     mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
 
@@ -489,8 +489,10 @@ def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_let
 def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
     friday = datetime(2018, 1, 12, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=friday)
-    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
+    create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='first')
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='first')
+    # doesn't get reported because it's second class, and it's tuesday today
+    create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='second')
 
     mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
 

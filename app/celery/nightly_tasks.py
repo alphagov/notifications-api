@@ -258,19 +258,27 @@ def raise_alert_if_letter_notifications_still_sending():
     today = datetime.utcnow().date()
 
     # Do nothing on the weekend
-    if today.isoweekday() in [6, 7]:
+    if today.isoweekday() in {6, 7}:  # sat, sun
         return
 
-    if today.isoweekday() in [1, 2]:
+    if today.isoweekday() in {1, 2}:  # mon, tues. look for files from before the weekend
         offset_days = 4
     else:
         offset_days = 2
-    still_sending = Notification.query.filter(
+
+    q = Notification.query.filter(
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_SENDING,
         Notification.key_type == KEY_TYPE_NORMAL,
         func.date(Notification.sent_at) <= today - timedelta(days=offset_days)
-    ).count()
+    )
+
+    if today.isoweekday() in {2, 4}:  # on tue, thu, we only care about first class letters
+        q = q.filter(
+            Notification.postage == 'first'
+        )
+
+    still_sending = q.count()
 
     if still_sending:
         message = "There are {} letters in the 'sending' state from {}".format(
