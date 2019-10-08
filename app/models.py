@@ -1998,29 +1998,6 @@ class FactBilling(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
-class DateTimeDimension(db.Model):
-    __tablename__ = "dm_datetime"
-    bst_date = db.Column(db.Date, nullable=False, primary_key=True, index=True)
-    year = db.Column(db.Integer(), nullable=False)
-    month = db.Column(db.Integer(), nullable=False)
-    month_name = db.Column(db.Text(), nullable=False)
-    day = db.Column(db.Integer(), nullable=False)
-    bst_day = db.Column(db.Integer(), nullable=False)
-    day_of_year = db.Column(db.Integer(), nullable=False)
-    week_day_name = db.Column(db.Text(), nullable=False)
-    calendar_week = db.Column(db.Integer(), nullable=False)
-    quartal = db.Column(db.Text(), nullable=False)
-    year_quartal = db.Column(db.Text(), nullable=False)
-    year_month = db.Column(db.Text(), nullable=False)
-    year_calendar_week = db.Column(db.Text(), nullable=False)
-    financial_year = db.Column(db.Integer(), nullable=False)
-    utc_daytime_start = db.Column(db.DateTime, nullable=False)
-    utc_daytime_end = db.Column(db.DateTime, nullable=False)
-
-
-Index('ix_dm_datetime_yearmonth', DateTimeDimension.year, DateTimeDimension.month)
-
-
 class FactNotificationStatus(db.Model):
     __tablename__ = "ft_notification_status"
 
