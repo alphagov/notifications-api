@@ -49,7 +49,6 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 from app.cronitor import cronitor
-from json import JSONDecodeError
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -214,18 +213,16 @@ def process_virus_scan_passed(self, filename):
         billable_units = get_page_count(old_pdf)
     except PdfReadError:
         current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
-        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
+        _move_invalid_letter_and_update_status(
+            notification=notification, filename=filename, scan_pdf_object=scan_pdf_object
+        )
         return
 
     sanitise_response = _sanitise_precompiled_pdf(self, notification, old_pdf)
-    if not sanitise_response:
+    if sanitise_response["message"]:  # is response without message attribute possible now? I think not?
         new_pdf = None
     else:
-        sanitise_response = sanitise_response.json()
-        try:
-            new_pdf = base64.b64decode(sanitise_response["file"].encode())
-        except JSONDecodeError:
-            new_pdf = sanitise_response.content
+        new_pdf = base64.b64decode(sanitise_response["file"].encode())
 
         redaction_failed_message = sanitise_response.get("redaction_failed_message")
         if redaction_failed_message and not is_test_key:
@@ -241,7 +238,14 @@ def process_virus_scan_passed(self, filename):
 
     if not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
+        _move_invalid_letter_and_update_status(
+            notification=notification,
+            filename=filename,
+            scan_pdf_object=scan_pdf_object,
+            message=sanitise_response["message"],
+            invalid_pages=sanitise_response.get("invalid_pages"),
+            page_count=sanitise_response.get("page_count")
+        )
         return
     else:
         current_app.logger.info(
@@ -270,9 +274,16 @@ def process_virus_scan_passed(self, filename):
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
-def _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object):
+def _move_invalid_letter_and_update_status(
+    *, notification, filename, scan_pdf_object, message=None, invalid_pages=None, page_count=None
+):
     try:
-        move_scan_to_invalid_pdf_bucket(filename)
+        move_scan_to_invalid_pdf_bucket(
+            source_filename=filename,
+            message=message,
+            invalid_pages=invalid_pages,
+            page_count=page_count
+        )
         scan_pdf_object.delete()
 
         update_letter_pdf_status(
@@ -311,17 +322,19 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
                      'Notification-ID': str(notification.id)}
         )
         response.raise_for_status()
-        return response
+        return response.json()
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
             message = "sanitise_precompiled_pdf validation error for notification: {}. ".format(notification.id)
             if "message" in response.json():
                 message += response.json()["message"]
+            if "invalid_pages" in response.json():
+                message += (" on pages: " + ", ".join(map(str, response.json()["invalid_pages"])))
 
             current_app.logger.info(
                 message
             )
-            return None
+            return response.json()
 
         try:
             current_app.logger.exception(
