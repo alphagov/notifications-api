@@ -367,8 +367,10 @@ def _delete_for_query(subquery):
     return deleted
 
 
-def insert_update_notification_history(notification_type, date_to_delete_from, service_id):
-    notifications = db.session.query(
+def insert_update_notification_history(notification_type, date_to_delete_from, service_id, query_limit=10000):
+    offset = 0
+
+    notification_query = db.session.query(
         *[x.name for x in NotificationHistory.__table__.c]
     ).filter(
         Notification.notification_type == notification_type,
@@ -376,23 +378,29 @@ def insert_update_notification_history(notification_type, date_to_delete_from, s
         Notification.created_at < date_to_delete_from,
         Notification.key_type != KEY_TYPE_TEST
     )
-    stmt = insert(NotificationHistory).from_select(
-        NotificationHistory.__table__.c,
-        notifications
-    )
+    notifications_count = notification_query.count()
 
-    stmt = stmt.on_conflict_do_update(
-        constraint="notification_history_pkey",
-        set_={"notification_status": stmt.excluded.status,
-              "reference": stmt.excluded.reference,
-              "billable_units": stmt.excluded.billable_units,
-              "updated_at": stmt.excluded.updated_at,
-              "sent_at": stmt.excluded.sent_at,
-              "sent_by": stmt.excluded.sent_by
-              }
-    )
-    db.session.connection().execute(stmt)
-    db.session.commit()
+    while offset < notifications_count:
+        stmt = insert(NotificationHistory).from_select(
+            NotificationHistory.__table__.c,
+            notification_query.limit(query_limit).offset(offset)
+        )
+
+        stmt = stmt.on_conflict_do_update(
+            constraint="notification_history_pkey",
+            set_={
+                "notification_status": stmt.excluded.status,
+                "reference": stmt.excluded.reference,
+                "billable_units": stmt.excluded.billable_units,
+                "updated_at": stmt.excluded.updated_at,
+                "sent_at": stmt.excluded.sent_at,
+                "sent_by": stmt.excluded.sent_by
+            }
+        )
+        db.session.connection().execute(stmt)
+        db.session.commit()
+
+        offset += query_limit
 
 
 def _delete_letters_from_s3(

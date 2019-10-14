@@ -9,6 +9,7 @@ from freezegun import freeze_time
 
 from app.dao.notifications_dao import (
     delete_notifications_older_than_retention_by_type,
+    db,
     insert_update_notification_history
 )
 from app.models import Notification, NotificationHistory
@@ -285,6 +286,35 @@ def test_insert_update_notification_history(sample_service):
     assert notification_1.id not in history_ids
     assert notification_2.id in history_ids
     assert notification_3.id in history_ids
+
+
+def test_insert_update_notification_history_with_more_notifications_than_query_limit(mocker, sample_service):
+    template = create_template(sample_service, template_type='sms')
+    notification_1 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=3))
+    notification_2 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=8))
+    notification_3 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=9))
+    other_types = ['email', 'letter']
+    for template_type in other_types:
+        t = create_template(service=sample_service, template_type=template_type)
+        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=3))
+        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=8))
+
+    db_connection_spy = mocker.spy(db.session, 'connection')
+    db_commit_spy = mocker.spy(db.session, 'commit')
+
+    insert_update_notification_history(
+        notification_type='sms', date_to_delete_from=datetime.utcnow() - timedelta(days=7),
+        service_id=sample_service.id, query_limit=1)
+    history = NotificationHistory.query.all()
+    assert len(history) == 2
+
+    history_ids = [x.id for x in history]
+    assert notification_1.id not in history_ids
+    assert notification_2.id in history_ids
+    assert notification_3.id in history_ids
+
+    assert db_connection_spy.call_count == 2
+    assert db_commit_spy.call_count == 2
 
 
 def test_insert_update_notification_history_only_insert_update_given_service(sample_service):
