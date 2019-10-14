@@ -40,7 +40,7 @@ def test_should_return_highest_priority_active_provider(restore_provider_details
     first = providers[0]
     second = providers[1]
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
+    assert send_to_providers.provider_to_use('sms').name == first.identifier
 
     first.priority = 20
     second.priority = 10
@@ -48,7 +48,7 @@ def test_should_return_highest_priority_active_provider(restore_provider_details
     provider_details_dao.dao_update_provider_details(first)
     provider_details_dao.dao_update_provider_details(second)
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == second.identifier
+    assert send_to_providers.provider_to_use('sms').name == second.identifier
 
     first.priority = 10
     first.active = False
@@ -57,12 +57,12 @@ def test_should_return_highest_priority_active_provider(restore_provider_details
     provider_details_dao.dao_update_provider_details(first)
     provider_details_dao.dao_update_provider_details(second)
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == second.identifier
+    assert send_to_providers.provider_to_use('sms').name == second.identifier
 
     first.active = True
     provider_details_dao.dao_update_provider_details(first)
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
+    assert send_to_providers.provider_to_use('sms').name == first.identifier
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
