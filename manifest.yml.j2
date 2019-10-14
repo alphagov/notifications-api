@@ -1,12 +1,28 @@
 {%- set app_vars = {
-  'notify-api': {'NOTIFY_APP_NAME': 'api', 'disk_quota': '2G', 'sqlalchemy_pool_size': 20, 'routes': {
+  'notify-api': {
+    'NOTIFY_APP_NAME': 'api',
+    'disk_quota': '2G',
+    'sqlalchemy_pool_size': 20,
+    'routes': {
       'preview': ['api.notify.works'],
       'staging': ['api.staging-notify.works'],
       'production': ['api.notifications.service.gov.uk'],
     },
     'health-check-type': 'port',
+    'instances': {
+      'preview': None,
+      'staging': None,
+      'production': 25
+    },
   },
-  'notify-api-db-migration': {'NOTIFY_APP_NAME': 'api', 'instances': 0},
+  'notify-api-db-migration': {
+    'NOTIFY_APP_NAME': 'api',
+    'instances': {
+      'preview': 0,
+      'staging': 0,
+      'production': 0
+    },
+  },
 
   'notify-delivery-celery-beat': {'memory': '128M'},
   'notify-delivery-worker-jobs': {},
@@ -23,14 +39,15 @@
 } -%}
 
 {%- set app = app_vars[CF_APP] -%}
+{%- set instance_count = app.get('instances', {}).get(environment) -%}
 
 ---
 
 applications:
   - name: {{ CF_APP }}
     buildpack: python_buildpack
-    {% if 'instances' in app %}
-    instances: {{ app['instances'] }}
+    {% if instance_count is not none %}
+    instances: {{ instance_count }}
     {%- endif %}
     memory: {{ app.get('memory', '1G') }}
     disk_quota: {{ app.get('disk_quota', '1G')}}
