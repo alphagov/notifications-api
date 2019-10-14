@@ -2,14 +2,12 @@
 SHELL := /bin/bash
 DATE = $(shell date +%Y-%m-%d:%H:%M:%S)
 
-PIP_ACCEL_CACHE ?= ${CURDIR}/cache/pip-accel
 APP_VERSION_FILE = app/version.py
 
 GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detached")
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
-DOCKER_IMAGE_TAG := $(shell cat docker/VERSION)
-DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:${DOCKER_IMAGE_TAG}
+DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:master
 DOCKER_TTY ?= $(if ${JENKINS_HOME},,t)
 
 BUILD_TAG ?= notifications-api-manual
@@ -33,21 +31,9 @@ NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: venv
-venv: venv/bin/activate ## Create virtualenv if it does not exist
-
-venv/bin/activate:
-	test -d venv || virtualenv venv -p python3
-	. venv/bin/activate && pip install pip-accel
-
 .PHONY: check-env-vars
 check-env-vars: ## Check mandatory environment variables
 	$(if ${DEPLOY_ENV},,$(error Must specify DEPLOY_ENV))
-
-.PHONY: sandbox
-sandbox: ## Set environment to sandbox
-	$(eval export DEPLOY_ENV=sandbox)
-	@true
 
 .PHONY: preview
 preview: ## Set environment to preview
@@ -64,18 +50,9 @@ production: ## Set environment to production
 	$(eval export DEPLOY_ENV=production)
 	@true
 
-.PHONY: dependencies
-dependencies: venv ## Install build dependencies
-	mkdir -p ${PIP_ACCEL_CACHE}
-	. venv/bin/activate && PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} pip-accel install -r requirements_for_test.txt
-
 .PHONY: generate-version-file
 generate-version-file: ## Generates the app version file
 	@echo -e "__travis_commit__ = \"${GIT_COMMIT}\"\n__time__ = \"${DATE}\"\n__travis_job_number__ = \"${BUILD_NUMBER}\"\n__travis_job_url__ = \"${BUILD_URL}\"" > ${APP_VERSION_FILE}
-
-.PHONY: build
-build: dependencies generate-version-file ## Build project
-	. venv/bin/activate && PIP_ACCEL_CACHE=${PIP_ACCEL_CACHE} pip-accel install -r requirements.txt
 
 .PHONY: build-paas-artifact
 build-paas-artifact:  ## Build the deploy artifact for PaaS
@@ -90,7 +67,7 @@ upload-paas-artifact:
 	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${JENKINS_S3_BUCKET}/build/notifications-api/${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: test
-test: venv generate-version-file ## Run tests
+test: generate-version-file ## Run tests
 	./scripts/run_tests.sh
 
 .PHONY: freeze-requirements
@@ -113,40 +90,25 @@ test-requirements:
 || { echo "requirements.txt is up to date"; exit 0; }
 
 .PHONY: coverage
-coverage: venv ## Create coverage report
-	. venv/bin/activate && coveralls
+coverage: ; ## don't do anything
 
 .PHONY: prepare-docker-build-image
-prepare-docker-build-image: ## Prepare the Docker builder image
-	mkdir -p ${PIP_ACCEL_CACHE}
-	make -C docker build
+prepare-docker-build-image: generate-version-file ## Prepare the Docker builder image
+	docker build -f docker/Dockerfile \
+		--build-arg HTTP_PROXY="${HTTP_PROXY}" \
+		--build-arg HTTPS_PROXY="${HTTP_PROXY}" \
+		--build-arg NO_PROXY="${NO_PROXY}" \
+		-t ${DOCKER_BUILDER_IMAGE_NAME} \
+		.
 
 .PHONY: build-with-docker
-build-with-docker: prepare-docker-build-image ## Build inside a Docker container
-	@docker run -i${DOCKER_TTY} --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-build" \
-		-v "`pwd`:/var/project" \
-		-v "${PIP_ACCEL_CACHE}:/var/project/cache/pip-accel" \
-		-e UID=$(shell id -u) \
-		-e GID=$(shell id -g) \
-		-e GIT_COMMIT=${GIT_COMMIT} \
-		-e BUILD_NUMBER=${BUILD_NUMBER} \
-		-e BUILD_URL=${BUILD_URL} \
-		-e http_proxy="${HTTP_PROXY}" \
-		-e HTTP_PROXY="${HTTP_PROXY}" \
-		-e https_proxy="${HTTPS_PROXY}" \
-		-e HTTPS_PROXY="${HTTPS_PROXY}" \
-		-e NO_PROXY="${NO_PROXY}" \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		gosu hostuser make build
+build-with-docker: ; ## don't do anything
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
 	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
-		-e UID=$(shell id -u) \
-		-e GID=$(shell id -g) \
 		-e SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@postgres/test_notification_api \
 		-e GIT_COMMIT=${GIT_COMMIT} \
 		-e BUILD_NUMBER=${BUILD_NUMBER} \
@@ -156,9 +118,8 @@ test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests 
 		-e https_proxy="${HTTPS_PROXY}" \
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
-		-v "`pwd`:/var/project" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		gosu hostuser make test
+		make test
 
 .PHONY: create-docker-test-db
 create-docker-test-db: ## Start the test database in a Docker container
@@ -175,9 +136,6 @@ create-docker-test-db: ## Start the test database in a Docker container
 coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
 	@docker run -i${DOCKER_TTY} --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
-		-v "`pwd`:/var/project" \
-		-e UID=$(shell id -u) \
-		-e GID=$(shell id -g) \
 		-e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} \
 		-e CIRCLECI=1 \
 		-e CI_NAME=${CI_NAME} \
@@ -191,7 +149,7 @@ coverage-with-docker: prepare-docker-build-image ## Generates coverage report in
 		-e HTTPS_PROXY="${HTTPS_PROXY}" \
 		-e NO_PROXY="${NO_PROXY}" \
 		${DOCKER_BUILDER_IMAGE_NAME} \
-		gosu hostuser make coverage
+		make coverage
 
 .PHONY: clean-docker-containers
 clean-docker-containers: ## Clean up any remaining docker containers
