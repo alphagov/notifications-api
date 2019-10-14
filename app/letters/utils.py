@@ -132,9 +132,10 @@ def move_scan_to_invalid_pdf_bucket(source_filename, message=None, invalid_pages
     if message:
         metadata["validation_failed_message"] = message
     if invalid_pages:
-        metadata["invalid_pages"] = [str(p) for p in invalid_pages]
+        metadata["invalid_pages"] = "-".join(map(str, invalid_pages))
     if page_count:
         metadata["page_count"] = str(page_count)
+
     _move_s3_object(
         source_bucket=current_app.config['LETTERS_SCAN_BUCKET_NAME'],
         source_filename=source_filename,
@@ -187,7 +188,8 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
     # in the destination bucket the expiration time will be reset to 7 days left to expire
     put_args = {'ServerSideEncryption': 'AES256'}
     if metadata:
-        metadata = put_args['Metadata'] = metadata
+        put_args['Metadata'] = metadata
+        put_args["MetadataDirective"] = "REPLACE"
     obj.copy(copy_source, ExtraArgs=put_args)
 
     s3.Object(source_bucket, source_filename).delete()

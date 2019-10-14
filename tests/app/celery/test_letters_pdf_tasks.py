@@ -482,7 +482,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
         "file": base64.b64encode(b"nyan").decode("utf-8"),
         "validation_passed": False,
         "message": "content-outside-printable-area",
-        "invalid_pages": [1],
+        "invalid_pages": [1, 2],
         "page_count": 1
     }
     mock_sanitise = mocker.patch(
@@ -503,7 +503,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
         source_bucket=source_bucket_name, source_filename=filename,
         target_bucket=target_bucket_name, target_filename=filename, metadata={
             "validation_failed_message": "content-outside-printable-area",
-            "invalid_pages": ["1"],
+            "invalid_pages": "1-2",
             "page_count": "1"
         }
     )
