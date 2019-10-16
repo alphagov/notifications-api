@@ -30,6 +30,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id, get_precompiled_letter_template
 from app.dao.users_dao import get_user_by_id
 from app.letters.utils import (
+    get_billable_units_for_letter_page_count,
     get_letter_pdf_filename,
     get_page_count,
     move_uploaded_pdf_to_letters_bucket,
@@ -152,7 +153,8 @@ def send_pdf_letter_notification(service_id, post_data):
         raise e
 
     # Getting the page count won't raise an error since admin has already checked the PDF is valid
-    billable_units = get_page_count(letter.read())
+    page_count = get_page_count(letter.read())
+    billable_units = get_billable_units_for_letter_page_count(page_count)
 
     personalisation = {
         'address_line_1': post_data['filename']
