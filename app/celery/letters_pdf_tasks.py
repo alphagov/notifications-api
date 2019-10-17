@@ -209,9 +209,8 @@ def process_virus_scan_passed(self, filename):
     old_pdf = scan_pdf_object.get()['Body'].read()
 
     sanitise_response, result = _sanitise_precompiled_pdf(self, notification, old_pdf)
-    if result == "validation_failed":
-        new_pdf = None
-    else:
+    new_pdf = None
+    if result == 'validation_passed':
         new_pdf = base64.b64decode(sanitise_response["file"].encode())
 
         redaction_failed_message = sanitise_response.get("redaction_failed_message")
@@ -228,7 +227,7 @@ def process_virus_scan_passed(self, filename):
         # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
         new_pdf = old_pdf
 
-    if not new_pdf:
+    if result == 'validation_failed' and not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
         _move_invalid_letter_and_update_status(
             notification=notification,
@@ -239,9 +238,6 @@ def process_virus_scan_passed(self, filename):
             page_count=sanitise_response.get("page_count")
         )
         return
-    else:
-        current_app.logger.info(
-            "Validation was successful for precompiled pdf {} ({})".format(notification.id, filename))
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
