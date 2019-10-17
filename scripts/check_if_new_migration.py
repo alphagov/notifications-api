@@ -14,7 +14,7 @@ def get_latest_db_migration_to_apply():
 
 
 def get_current_db_version():
-    api_status_url = '{}/_status'.format(os.getenv('API_HOST_NAME'))
+    api_status_url = '{}/_status/db-version'.format(os.getenv('API_HOST_NAME'))
     response = requests.get(api_status_url)
 
     if response.status_code != 200:
