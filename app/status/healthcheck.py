@@ -4,7 +4,7 @@ from flask import (
     request
 )
 
-from app import db, version
+from app import version
 from app.dao.services_dao import dao_count_live_services
 from app.dao.organisation_dao import dao_count_organsations_with_live_services
 
@@ -19,10 +19,10 @@ def show_status():
     else:
         return jsonify(
             status="ok",  # This should be considered part of the public API
-            travis_commit=version.__travis_commit__,
-            travis_build_number=version.__travis_job_number__,
-            build_time=version.__time__,
-            db_version=get_db_version()), 200
+            git_commit=version.__git_commit__,
+            jenkins_build_number=version.__jenkins_job_number__,
+            build_time=version.__time__
+        )
 
 
 @status.route('/_status/live-service-and-organisation-counts')
@@ -31,9 +31,3 @@ def live_service_and_organisation_counts():
         organisations=dao_count_organsations_with_live_services(),
         services=dao_count_live_services(),
     ), 200
-
-
-def get_db_version():
-    query = 'SELECT version_num FROM alembic_version'
-    full_name = db.session.execute(query).fetchone()[0]
-    return full_name

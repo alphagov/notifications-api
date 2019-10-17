@@ -1,4 +1,4 @@
-__travis_commit__ = ""
+__git_commit__ = ""
 __time__ = ""
-__travis_job_number__ = ""
-__travis_job_url__ = ""
+__jenkins_job_number__ = ""
+__jenkins_job_url__ = ""
