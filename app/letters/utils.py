@@ -1,17 +1,19 @@
+import boto3
 import io
+import json
 import math
+
+from app.models import KEY_TYPE_TEST, SECOND_CLASS, RESOLVE_POSTAGE_FOR_FILE_NAME, NOTIFICATION_VALIDATION_FAILED
+
 from datetime import datetime, timedelta
 from enum import Enum
 
-import boto3
 from flask import current_app
 
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.pdf import pdf_page_count
 from notifications_utils.s3 import s3upload
 from notifications_utils.timezones import convert_utc_to_bst
-
-from app.models import KEY_TYPE_TEST, SECOND_CLASS, RESOLVE_POSTAGE_FOR_FILE_NAME, NOTIFICATION_VALIDATION_FAILED
 
 
 class ScanErrorType(Enum):
@@ -127,10 +129,22 @@ def move_error_pdf_to_scan_bucket(source_filename):
     _move_s3_object(scan_bucket, error_file, scan_bucket, source_filename)
 
 
-def move_scan_to_invalid_pdf_bucket(source_filename):
-    scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-    invalid_pdf_bucket = current_app.config['INVALID_PDF_BUCKET_NAME']
-    _move_s3_object(scan_bucket, source_filename, invalid_pdf_bucket, source_filename)
+def move_scan_to_invalid_pdf_bucket(source_filename, message=None, invalid_pages=None, page_count=None):
+    metadata = {}
+    if message:
+        metadata["message"] = message
+    if invalid_pages:
+        metadata["invalid_pages"] = json.dumps(invalid_pages)
+    if page_count:
+        metadata["page_count"] = str(page_count)
+
+    _move_s3_object(
+        source_bucket=current_app.config['LETTERS_SCAN_BUCKET_NAME'],
+        source_filename=source_filename,
+        target_bucket=current_app.config['INVALID_PDF_BUCKET_NAME'],
+        target_filename=source_filename,
+        metadata=metadata
+    )
 
 
 def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
@@ -138,7 +152,7 @@ def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
         source_bucket=current_app.config['TRANSIENT_UPLOADED_LETTERS'],
         source_filename=source_filename,
         target_bucket=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-        target_filename=upload_filename
+        target_filename=upload_filename,
     )
 
 
@@ -164,7 +178,7 @@ def get_letter_pdf(notification):
     return obj.get()["Body"].read()
 
 
-def _move_s3_object(source_bucket, source_filename, target_bucket, target_filename):
+def _move_s3_object(source_bucket, source_filename, target_bucket, target_filename, metadata=None):
     s3 = boto3.resource('s3')
     copy_source = {'Bucket': source_bucket, 'Key': source_filename}
 
@@ -174,7 +188,11 @@ def _move_s3_object(source_bucket, source_filename, target_bucket, target_filena
     # Tags are copied across but the expiration time is reset in the destination bucket
     # e.g. if a file has 5 days left to expire on a ONE_WEEK retention in the source bucket,
     # in the destination bucket the expiration time will be reset to 7 days left to expire
-    obj.copy(copy_source, ExtraArgs={'ServerSideEncryption': 'AES256'})
+    put_args = {'ServerSideEncryption': 'AES256'}
+    if metadata:
+        put_args['Metadata'] = metadata
+        put_args["MetadataDirective"] = "REPLACE"
+    obj.copy(copy_source, ExtraArgs=put_args)
 
     s3.Object(source_bucket, source_filename).delete()
 
@@ -212,7 +230,12 @@ def letter_print_day(created_at):
 
 
 def get_page_count(pdf):
-    pages = pdf_page_count(io.BytesIO(pdf))
+    return pdf_page_count(io.BytesIO(pdf))
+
+
+def get_billable_units_for_letter_page_count(page_count):
+    if not page_count:
+        return 0
     pages_per_sheet = 2
-    billable_units = math.ceil(pages / pages_per_sheet)
+    billable_units = math.ceil(page_count / pages_per_sheet)
     return billable_units

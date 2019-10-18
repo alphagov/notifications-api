@@ -5,7 +5,6 @@ from uuid import UUID
 from hashlib import sha512
 from base64 import urlsafe_b64encode
 
-from PyPDF2.utils import PdfReadError
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from requests import (
@@ -30,6 +29,7 @@ from app.dao.notifications_dao import (
 from app.errors import VirusScanError
 from app.letters.utils import (
     copy_redaction_failed_pdf,
+    get_billable_units_for_letter_page_count,
     get_reference_from_filename,
     get_folder_name,
     upload_letter_pdf,
@@ -38,7 +38,6 @@ from app.letters.utils import (
     move_scan_to_invalid_pdf_bucket,
     move_error_pdf_to_scan_bucket,
     get_file_names_from_error_bucket,
-    get_page_count,
 )
 from app.models import (
     KEY_TYPE_TEST,
@@ -49,7 +48,6 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 from app.cronitor import cronitor
-from json import JSONDecodeError
 
 
 @notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
@@ -210,22 +208,10 @@ def process_virus_scan_passed(self, filename):
     scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
     old_pdf = scan_pdf_object.get()['Body'].read()
 
-    try:
-        billable_units = get_page_count(old_pdf)
-    except PdfReadError:
-        current_app.logger.exception(msg='Invalid PDF received for notification_id: {}'.format(notification.id))
-        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
-        return
-
-    sanitise_response = _sanitise_precompiled_pdf(self, notification, old_pdf)
-    if not sanitise_response:
-        new_pdf = None
-    else:
-        sanitise_response = sanitise_response.json()
-        try:
-            new_pdf = base64.b64decode(sanitise_response["file"].encode())
-        except JSONDecodeError:
-            new_pdf = sanitise_response.content
+    sanitise_response, result = _sanitise_precompiled_pdf(self, notification, old_pdf)
+    new_pdf = None
+    if result == 'validation_passed':
+        new_pdf = base64.b64decode(sanitise_response["file"].encode())
 
         redaction_failed_message = sanitise_response.get("redaction_failed_message")
         if redaction_failed_message and not is_test_key:
@@ -234,18 +220,24 @@ def process_virus_scan_passed(self, filename):
             )
             copy_redaction_failed_pdf(filename)
 
+    billable_units = get_billable_units_for_letter_page_count(sanitise_response.get("page_count"))
+
     # TODO: Remove this once CYSP update their template to not cross over the margins
     if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
         # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
         new_pdf = old_pdf
 
-    if not new_pdf:
+    if result == 'validation_failed' and not new_pdf:
         current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object)
+        _move_invalid_letter_and_update_status(
+            notification=notification,
+            filename=filename,
+            scan_pdf_object=scan_pdf_object,
+            message=sanitise_response["message"],
+            invalid_pages=sanitise_response.get("invalid_pages"),
+            page_count=sanitise_response.get("page_count")
+        )
         return
-    else:
-        current_app.logger.info(
-            "Validation was successful for precompiled pdf {} ({})".format(notification.id, filename))
 
     current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
 
@@ -270,9 +262,16 @@ def process_virus_scan_passed(self, filename):
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
-def _move_invalid_letter_and_update_status(notification, filename, scan_pdf_object):
+def _move_invalid_letter_and_update_status(
+    *, notification, filename, scan_pdf_object, message=None, invalid_pages=None, page_count=None
+):
     try:
-        move_scan_to_invalid_pdf_bucket(filename)
+        move_scan_to_invalid_pdf_bucket(
+            source_filename=filename,
+            message=message,
+            invalid_pages=invalid_pages,
+            page_count=page_count
+        )
         scan_pdf_object.delete()
 
         update_letter_pdf_status(
@@ -311,17 +310,19 @@ def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
                      'Notification-ID': str(notification.id)}
         )
         response.raise_for_status()
-        return response
+        return response.json(), "validation_passed"
     except RequestException as ex:
         if ex.response is not None and ex.response.status_code == 400:
             message = "sanitise_precompiled_pdf validation error for notification: {}. ".format(notification.id)
-            if "message" in response.json():
+            if response.json().get("message"):
                 message += response.json()["message"]
+                if response.json().get("invalid_pages"):
+                    message += (" on pages: " + ", ".join(map(str, response.json()["invalid_pages"])))
 
             current_app.logger.info(
                 message
             )
-            return None
+            return response.json(), "validation_failed"
 
         try:
             current_app.logger.exception(
