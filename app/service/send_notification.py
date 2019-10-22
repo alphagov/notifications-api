@@ -140,6 +140,13 @@ def send_pdf_letter_notification(service_id, post_data):
     check_service_has_permission(UPLOAD_LETTERS, service.permissions)
     check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
     validate_created_by(service, post_data['created_by'])
+    validate_and_format_recipient(
+        send_to=post_data['filename'],
+        key_type=KEY_TYPE_NORMAL,
+        service=service,
+        notification_type=LETTER_TYPE,
+        allow_whitelisted_recipients=False,
+    )
 
     template = get_precompiled_letter_template(service.id)
     file_location = 'service-{}/{}.pdf'.format(service.id, post_data['file_id'])
