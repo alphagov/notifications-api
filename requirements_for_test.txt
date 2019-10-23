@@ -13,4 +13,4 @@ requests-mock==1.5.2
 strict-rfc3339==0.7
 rfc3987==1.3.8
 # used for creating manifest file locally
-jinja2-cli[yaml]==0.6.0
+jinja2-cli[yaml]==0.7.0
