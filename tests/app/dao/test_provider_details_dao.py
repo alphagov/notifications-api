@@ -326,9 +326,6 @@ def test_dao_get_provider_stats(notify_db_session):
     assert result[2].active is True
     assert result[2].current_month_billable_sms == 5
 
-    assert result[3].identifier == 'loadtesting'
+    assert result[3].identifier == 'dvla'
     assert result[3].current_month_billable_sms == 0
-
-    assert result[4].identifier == 'dvla'
-    assert result[4].current_month_billable_sms == 0
-    assert result[4].supports_international is False
+    assert result[3].supports_international is False

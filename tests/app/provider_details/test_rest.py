@@ -20,8 +20,7 @@ def test_get_provider_details_in_type_and_identifier_order(client, notify_db):
     assert json_resp[0]['identifier'] == 'ses'
     assert json_resp[1]['identifier'] == 'mmg'
     assert json_resp[2]['identifier'] == 'firetext'
-    assert json_resp[3]['identifier'] == 'loadtesting'
-    assert json_resp[4]['identifier'] == 'dvla'
+    assert json_resp[3]['identifier'] == 'dvla'
 
 
 def test_get_provider_details_by_id(client, notify_db):
