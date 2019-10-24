@@ -23,6 +23,7 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
+    POSTAGE_TYPES,
     NOTIFICATION_DELIVERED,
     UPLOAD_LETTERS,
 )
@@ -148,6 +149,11 @@ def send_pdf_letter_notification(service_id, post_data):
         allow_whitelisted_recipients=False,
     )
 
+    postage = post_data.get('postage')
+    if postage not in POSTAGE_TYPES:
+        message = "postage must be set as 'first' or 'second'"
+        raise BadRequestError(message=message)
+
     template = get_precompiled_letter_template(service.id)
     file_location = 'service-{}/{}.pdf'.format(service.id, post_data['file_id'])
 
@@ -167,7 +173,6 @@ def send_pdf_letter_notification(service_id, post_data):
         'address_line_1': post_data['filename']
     }
 
-    # TODO: stop hard-coding postage as 'second' once we get postage from the admin
     notification = persist_notification(
         notification_id=post_data['file_id'],
         template_id=template.id,
@@ -183,7 +188,7 @@ def send_pdf_letter_notification(service_id, post_data):
         client_reference=post_data['filename'],
         created_by_id=post_data['created_by'],
         billable_units=billable_units,
-        postage='second',
+        postage=postage,
     )
 
     upload_filename = get_letter_pdf_filename(

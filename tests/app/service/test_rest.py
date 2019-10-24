@@ -2282,7 +2282,8 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
     data = json.dumps({
         'filename': 'valid.pdf',
         'created_by': str(user.id),
-        'file_id': fake_uuid
+        'file_id': fake_uuid,
+        'postage': 'second'
     })
 
     response = client.post(
