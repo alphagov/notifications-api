@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import gunicorn
 
 workers = 4
 worker_class = "eventlet"
@@ -9,6 +10,7 @@ errorlog = "/home/vcap/logs/gunicorn_error.log"
 bind = "0.0.0.0:{}".format(os.getenv("PORT"))
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 statsd_prefix = os.getenv("STATSD_PREFIX")
+gunicorn.SERVER_SOFTWARE = 'None'
 
 
 def on_starting(server):
