@@ -51,26 +51,6 @@ def test_send_pdf_letter_notification_validates_created_by(
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
 
 
-def test_send_pdf_letter_notification_validates_postage(
-    sample_service_full_permissions, fake_uuid, notify_user
-):
-    user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid, 'postage': 'third'}
-
-    with pytest.raises(BadRequestError):
-        send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
-
-
-def test_send_pdf_letter_notification_requires_postage(
-    sample_service_full_permissions, fake_uuid, notify_user
-):
-    user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid}
-
-    with pytest.raises(BadRequestError):
-        send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
-
-
 def test_send_pdf_letter_notification_raises_error_if_service_in_trial_mode(
     mocker,
     sample_service_full_permissions,

@@ -93,6 +93,7 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
 from app.service import statistics
+from app.service.send_pdf_letter_schema import send_pdf_letter_request
 from app.service.service_data_retention_schema import (
     add_service_data_retention_request,
     update_service_data_retention_request
@@ -650,7 +651,8 @@ def create_one_off_notification(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/send-pdf-letter', methods=['POST'])
 def create_pdf_letter(service_id):
-    resp = send_pdf_letter_notification(service_id, request.get_json())
+    data = validate(request.get_json(), send_pdf_letter_request)
+    resp = send_pdf_letter_notification(service_id, data)
     return jsonify(resp), 201
 
 
