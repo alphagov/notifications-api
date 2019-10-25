@@ -4,11 +4,10 @@ send_pdf_letter_request = {
     "type": "object",
     "title": "Send an uploaded pdf letter",
     "properties": {
-        "postage": {"enum": ["first", "second"]},
+        "postage": {"type": "string", "format": "postage"},
         "filename": {"type": "string"},
         "created_by": {"type": "string"},
         "file_id": {"type": "string"},
     },
-
     "required": ["postage", "filename", "created_by", "file_id"]
 }
