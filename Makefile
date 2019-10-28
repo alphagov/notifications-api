@@ -60,8 +60,8 @@ build-paas-artifact:  ## Build the deploy artifact for PaaS
 	mkdir -p target
 	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
 
-.PHONY: upload-paas-artifact ## Upload the deploy artifact for PaaS
-upload-paas-artifact:
+.PHONY: upload-paas-artifact
+upload-paas-artifact: ## Upload the deploy artifact for PaaS
 	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
 	$(if ${JENKINS_S3_BUCKET},,$(error Must specify JENKINS_S3_BUCKET))
 	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${JENKINS_S3_BUCKET}/build/notifications-api/${DEPLOY_BUILD_NUMBER}.zip
@@ -71,7 +71,7 @@ test: generate-version-file ## Run tests
 	./scripts/run_tests.sh
 
 .PHONY: freeze-requirements
-freeze-requirements:
+freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
 	rm -rf venv-freeze
 	virtualenv -p python3 venv-freeze
 	$$(pwd)/venv-freeze/bin/pip install -r requirements-app.txt
