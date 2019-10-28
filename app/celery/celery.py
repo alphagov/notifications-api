@@ -2,7 +2,8 @@ import time
 
 from celery import Celery, Task
 from celery.signals import worker_process_shutdown
-from flask import current_app
+from flask import current_app, g, request
+from flask.ctx import has_request_context
 
 
 @worker_process_shutdown.connect
@@ -32,7 +33,19 @@ def make_task(app):
             # ensure task has flask context to access config, logger, etc
             with app.app_context():
                 self.start = time.time()
+                # Remove 'request_id' from the kwargs (so the task doesn't get an unexpected kwarg), then add it to g
+                # so that it gets logged
+                g.request_id = kwargs.pop('request_id', None)
                 return super().__call__(*args, **kwargs)
+
+        def apply_async(self, args=None, kwargs=None, task_id=None, producer=None,
+                        link=None, link_error=None, **options):
+            kwargs = kwargs or {}
+
+            if has_request_context() and hasattr(request, 'request_id'):
+                kwargs['request_id'] = request.request_id
+
+            return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
 
     return NotifyTask
 

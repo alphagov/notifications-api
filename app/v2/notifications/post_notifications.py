@@ -1,9 +1,9 @@
 import base64
 import functools
 
-import werkzeug
 from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
+from werkzeug.exceptions import BadRequest
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
 from app.celery.letters_pdf_tasks import create_letters_pdf, process_virus_scan_passed
@@ -101,7 +101,7 @@ def post_precompiled_letter_notification():
 def post_notification(notification_type):
     try:
         request_json = request.get_json()
-    except werkzeug.exceptions.BadRequest as e:
+    except BadRequest as e:
         raise BadRequestError(message="Error decoding arguments: {}".format(e.description),
                               status_code=400)
 
