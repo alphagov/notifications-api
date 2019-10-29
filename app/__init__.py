@@ -20,7 +20,6 @@ from app.clients import Clients
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.sms.firetext import FiretextClient
-from app.clients.sms.loadtesting import LoadtestingClient
 from app.clients.sms.mmg import MMGClient
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.encryption import Encryption
@@ -46,7 +45,6 @@ migrate = Migrate()
 ma = Marshmallow()
 notify_celery = NotifyCelery()
 firetext_client = FiretextClient()
-loadtest_client = LoadtestingClient()
 mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
 encryption = Encryption()
@@ -79,7 +77,6 @@ def create_app(application):
     statsd_client.init_app(application)
     logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)
-    loadtest_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     notify_celery.init_app(application)
@@ -87,7 +84,7 @@ def create_app(application):
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
     document_download_client.init_app(application)
-    clients.init_app(sms_clients=[firetext_client, mmg_client, loadtest_client], email_clients=[aws_ses_client])
+    clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=[aws_ses_client])
 
     register_blueprint(application)
     register_v2_blueprints(application)

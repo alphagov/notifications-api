@@ -78,9 +78,6 @@ class Config(object):
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
 
-    # Firetext simluation key
-    LOADTESTING_API_KEY = os.getenv("LOADTESTING_API_KEY")
-
     # Hosted graphite statsd prefix
     STATSD_PREFIX = os.getenv('STATSD_PREFIX')
 
