@@ -1088,7 +1088,14 @@ def test_preview_letter_template_precompiled_pdf_file_type(
 
             content = b'\x00\x01'
 
-            mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=content)
+            mock_get_letter_pdf = mocker.patch(
+                'app.template.rest.get_letter_pdf_and_metadata',
+                return_value=(content, {
+                    "message": "",
+                    "invalid_pages": "",
+                    "page_count": "1"
+                })
+            )
 
             resp = admin_request.get(
                 'template.preview_letter_template_by_notification_id',
@@ -1123,7 +1130,7 @@ def test_preview_letter_template_precompiled_s3_error(
     }):
         with requests_mock.Mocker():
 
-            mocker.patch('app.template.rest.get_letter_pdf',
+            mocker.patch('app.template.rest.get_letter_pdf_and_metadata',
                          side_effect=botocore.exceptions.ClientError(
                              {'Error': {'Code': '403', 'Message': 'Unauthorized'}},
                              'GetObject'
@@ -1143,11 +1150,11 @@ def test_preview_letter_template_precompiled_s3_error(
 
 
 @pytest.mark.parametrize(
-    "filetype, post_url, overlay",
+    "filetype, post_url, message",
     [
-        ('png', 'precompiled-preview.png', None),
-        ('png', 'precompiled/overlay.png?page_number=1', 1),
-        ('pdf', 'precompiled/overlay.pdf', 1)
+        ('png', 'precompiled-preview.png', ""),
+        ('png', 'precompiled/overlay.png?page_number=1', "content-outside-printable-area"),
+        ('pdf', 'precompiled/overlay.pdf', "content-outside-printable-area")
     ]
 )
 def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
@@ -1158,7 +1165,7 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
         mocker,
         filetype,
         post_url,
-        overlay
+        message
 ):
 
     template = create_template(sample_service,
@@ -1178,7 +1185,16 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
             pdf_content = b'\x00\x01'
             expected_returned_content = b'\x00\x02'
 
-            mock_get_letter_pdf = mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+            metadata = {
+                "message": message,
+                "invalid_pages": "[1]",
+                "page_count": "1"
+            }
+
+            mock_get_letter_pdf = mocker.patch(
+                'app.template.rest.get_letter_pdf_and_metadata',
+                return_value=(pdf_content, metadata)
+            )
 
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
@@ -1189,18 +1205,18 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
                 status_code=200
             )
 
-            resp = admin_request.get(
+            response = admin_request.get(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
                 file_type=filetype,
-                overlay=overlay,
             )
 
             with pytest.raises(ValueError):
                 mock_post.last_request.json()
             assert mock_get_letter_pdf.called_once_with(notification)
-            assert base64.b64decode(resp['content']) == expected_returned_content
+            assert base64.b64decode(response['content']) == expected_returned_content
+            assert response["metadata"] == metadata
 
 
 @pytest.mark.parametrize('page_number,expect_preview_url', [
@@ -1234,7 +1250,14 @@ def test_preview_letter_template_precompiled_png_file_type_hide_notify_tag_only_
         png_content = b'\x00\x02'
         encoded = base64.b64encode(png_content).decode('utf-8')
 
-        mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+        mocker.patch(
+            'app.template.rest.get_letter_pdf_and_metadata',
+            return_value=(pdf_content, {
+                "message": "",
+                "invalid_pages": "",
+                "page_count": "2"
+            })
+        )
         mocker.patch('app.template.rest.extract_page_from_pdf', return_value=png_content)
         mock_get_png_preview = mocker.patch('app.template.rest._get_png_preview_or_overlaid_pdf', return_value=encoded)
 
@@ -1276,7 +1299,11 @@ def test_preview_letter_template_precompiled_png_template_preview_500_error(
             pdf_content = b'\x00\x01'
             png_content = b'\x00\x02'
 
-            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+            mocker.patch('app.template.rest.get_letter_pdf_and_metadata', return_value=(pdf_content, {
+                "message": "",
+                "invalid_pages": "",
+                "page_count": "1"
+            }))
 
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
@@ -1325,7 +1352,11 @@ def test_preview_letter_template_precompiled_png_template_preview_400_error(
             pdf_content = b'\x00\x01'
             png_content = b'\x00\x02'
 
-            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+            mocker.patch('app.template.rest.get_letter_pdf_and_metadata', return_value=(pdf_content, {
+                "message": "",
+                "invalid_pages": "",
+                "page_count": "1"
+            }))
 
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
@@ -1373,7 +1404,11 @@ def test_preview_letter_template_precompiled_png_template_preview_pdf_error(
             pdf_content = b'\x00\x01'
             png_content = b'\x00\x02'
 
-            mocker.patch('app.template.rest.get_letter_pdf', return_value=pdf_content)
+            mocker.patch('app.template.rest.get_letter_pdf_and_metadata', return_value=(pdf_content, {
+                "message": "",
+                "invalid_pages": "",
+                "page_count": "1"
+            }))
 
             error_message = "PDF Error message"
             mocker.patch('app.template.rest.extract_page_from_pdf', side_effect=PdfReadError(error_message))

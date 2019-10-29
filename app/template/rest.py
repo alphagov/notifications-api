@@ -32,7 +32,7 @@ from app.errors import (
     register_errors,
     InvalidRequest
 )
-from app.letters.utils import get_letter_pdf
+from app.letters.utils import get_letter_pdf_and_metadata
 from app.models import SMS_TYPE, Template, SECOND_CLASS, LETTER_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
@@ -231,11 +231,12 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
     notification = get_notification_by_id(notification_id)
 
     template = dao_get_template_by_id(notification.template_id)
+    metadata = {}
 
     if template.is_precompiled_letter:
         try:
 
-            pdf_file = get_letter_pdf(notification)
+            pdf_file, metadata = get_letter_pdf_and_metadata(notification)
 
         except botocore.exceptions.ClientError as e:
             raise InvalidRequest(
@@ -245,7 +246,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             )
 
         content = base64.b64encode(pdf_file).decode('utf-8')
-        overlay = request.args.get('overlay')
+        overlay = metadata.get("message") == "content-outside-printable-area"
         page_number = page if page else "1"
 
         if overlay:
@@ -300,7 +301,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         )
         response_content = _get_png_preview_or_overlaid_pdf(url, data, notification.id, json=True)
 
-    return jsonify({"content": response_content})
+    return jsonify({"content": response_content, "metadata": metadata})
 
 
 def _get_png_preview_or_overlaid_pdf(url, data, notification_id, json=True):

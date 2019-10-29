@@ -10,7 +10,7 @@ from app.letters.utils import (
     copy_redaction_failed_pdf,
     get_bucket_name_and_prefix_for_notification,
     get_letter_pdf_filename,
-    get_letter_pdf,
+    get_letter_pdf_and_metadata,
     letter_print_day,
     upload_letter_pdf,
     ScanErrorType, move_failed_pdf, get_folder_name
@@ -194,9 +194,9 @@ def test_get_letter_pdf_gets_pdf_from_correct_bucket(
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=bucket_name, Key=filename, Body=b'pdf_content')
 
-    ret = get_letter_pdf(sample_precompiled_letter_notification_using_test_key)
+    file_data, metadata = get_letter_pdf_and_metadata(sample_precompiled_letter_notification_using_test_key)
 
-    assert ret == b'pdf_content'
+    assert file_data == b'pdf_content'
 
 
 @pytest.mark.parametrize('is_precompiled_letter,bucket_config_name', [

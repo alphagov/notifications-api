@@ -656,7 +656,13 @@ def test_get_pdf_for_notification_returns_pdf_content(
     sample_letter_notification,
     mocker,
 ):
-    mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
+    mock_get_letter_pdf = mocker.patch(
+        'app.v2.notifications.get_notifications.get_letter_pdf_and_metadata', return_value=(b'foo', {
+            "message": "",
+            "invalid_pages": "",
+            "page_count": "1"
+        })
+    )
     sample_letter_notification.status = 'created'
 
     auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
@@ -677,8 +683,8 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
 ):
     # if no files are returned get_letter_pdf throws StopIteration as the iterator runs out
     mock_get_letter_pdf = mocker.patch(
-        'app.v2.notifications.get_notifications.get_letter_pdf',
-        side_effect=StopIteration
+        'app.v2.notifications.get_notifications.get_letter_pdf_and_metadata',
+        side_effect=(StopIteration, {})
     )
     sample_letter_notification.status = 'created'
 
@@ -707,7 +713,13 @@ def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
     status,
     expected_message
 ):
-    mock_get_letter_pdf = mocker.patch('app.v2.notifications.get_notifications.get_letter_pdf', return_value=b'foo')
+    mock_get_letter_pdf = mocker.patch(
+        'app.v2.notifications.get_notifications.get_letter_pdf_and_metadata', return_value=(b'foo', {
+            "message": "",
+            "invalid_pages": "",
+            "page_count": "1"
+        })
+    )
     sample_letter_notification.status = status
 
     auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)

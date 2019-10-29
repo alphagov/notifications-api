@@ -480,7 +480,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
         "validation_passed": False,
         "message": "content-outside-printable-area",
         "invalid_pages": [1, 2],
-        "page_count": 1
+        "page_count": 2
     }
     mock_sanitise = mocker.patch(
         'app.celery.letters_pdf_tasks._sanitise_precompiled_pdf', return_value=(sanitise_response, "validation_failed")
@@ -500,7 +500,7 @@ def test_process_letter_task_check_virus_scan_passed_when_sanitise_fails(
         target_bucket=target_bucket_name, target_filename=filename, metadata={
             "message": "content-outside-printable-area",
             "invalid_pages": "[1, 2]",
-            "page_count": "1"
+            "page_count": "2"
         }
     )
 
