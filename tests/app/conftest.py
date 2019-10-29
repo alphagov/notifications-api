@@ -357,13 +357,23 @@ def sample_api_key(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_test_api_key(notify_db, notify_db_session, service=None):
-    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEST)
+def sample_test_api_key(sample_api_key):
+    service = create_service(check_if_service_exists=True)
+
+    return create_api_key(
+        service,
+        key_type=KEY_TYPE_TEST
+    )
 
 
 @pytest.fixture(scope='function')
-def sample_team_api_key(notify_db, notify_db_session, service=None):
-    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEAM)
+def sample_team_api_key(sample_api_key):
+    service = create_service(check_if_service_exists=True)
+
+    return create_api_key(
+        service,
+        key_type=KEY_TYPE_TEAM
+    )
 
 
 @pytest.fixture(scope='function')
@@ -613,11 +623,11 @@ def sample_letter_notification(sample_letter_template):
 
 
 @pytest.fixture(scope='function')
-def sample_email_notification(notify_db, notify_db_session):
+def sample_email_notification(notify_db_session):
     created_at = datetime.utcnow()
     service = create_service(check_if_service_exists=True)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    template = create_template(service, template_type=EMAIL_TYPE)
+    job = create_job(template)
 
     notification_id = uuid.uuid4()
 
