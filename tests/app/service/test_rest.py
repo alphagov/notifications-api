@@ -2282,7 +2282,8 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
     data = json.dumps({
         'filename': 'valid.pdf',
         'created_by': str(user.id),
-        'file_id': fake_uuid
+        'file_id': fake_uuid,
+        'postage': 'second'
     })
 
     response = client.post(
@@ -2294,6 +2295,37 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
 
     assert response.status_code == 201
     assert json_resp == {'id': fake_uuid}
+
+
+@pytest.mark.parametrize('post_data, expected_errors', [
+    (
+        {},
+        [
+            {'error': 'ValidationError', 'message': 'postage is a required property'},
+            {'error': 'ValidationError', 'message': 'filename is a required property'},
+            {'error': 'ValidationError', 'message': 'created_by is a required property'},
+            {'error': 'ValidationError', 'message': 'file_id is a required property'}
+        ]
+    ),
+    (
+        {"postage": "third", "filename": "string", "created_by": "string", "file_id": "string"},
+        [
+            {'error': 'ValidationError', 'message': 'postage invalid. It must be either first or second.'}
+        ]
+    )
+])
+def test_create_pdf_letter_validates_against_json_schema(
+    sample_service_full_permissions, client, post_data, expected_errors
+):
+    response = client.post(
+        url_for('service.create_pdf_letter', service_id=sample_service_full_permissions.id),
+        data=json.dumps(post_data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    json_resp = json.loads(response.get_data(as_text=True))
+
+    assert response.status_code == 400
+    assert json_resp['errors'] == expected_errors
 
 
 def test_get_notification_for_service_includes_template_redacted(admin_request, sample_notification):
