@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pytest
 from flask import json
 from sqlalchemy.exc import SQLAlchemyError
@@ -8,7 +6,6 @@ from app.dao.notifications_dao import get_notification_by_id
 from app.models import Complaint
 from app.notifications.notifications_ses_callback import handle_complaint
 
-from tests.app.conftest import sample_notification as create_sample_notification
 from tests.app.db import (
     create_notification, ses_complaint_callback_malformed_message_id,
     ses_complaint_callback_with_missing_complaint_type,
@@ -17,19 +14,8 @@ from tests.app.db import (
 )
 
 
-def test_ses_callback_should_not_set_status_once_status_is_delivered(client,
-                                                                     notify_db,
-                                                                     notify_db_session,
-                                                                     sample_email_template,
-                                                                     mocker):
-    notification = create_sample_notification(
-        notify_db,
-        notify_db_session,
-        template=sample_email_template,
-        reference='ref',
-        status='delivered',
-        sent_at=datetime.utcnow()
-    )
+def test_ses_callback_should_not_set_status_once_status_is_delivered(sample_email_template):
+    notification = create_notification(sample_email_template, status='delivered', )
 
     assert get_notification_by_id(notification.id).status == 'delivered'
 

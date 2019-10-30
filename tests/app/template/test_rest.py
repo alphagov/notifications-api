@@ -23,7 +23,6 @@ from app.models import (
 from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
 
 from tests import create_authorization_header
-from tests.app.conftest import sample_template as create_sample_template
 from tests.app.db import (
     create_service, create_letter_contact, create_template, create_notification,
     create_template_folder,
@@ -520,21 +519,17 @@ def test_should_get_only_templates_for_that_service(admin_request, notify_db_ses
     ]
 )
 def test_should_get_a_single_template(
-    notify_db,
     client,
     sample_user,
-    service_factory,
+    sample_service,
     subject,
     content,
     template_type
 ):
-
-    template = create_sample_template(
-        notify_db, notify_db.session, subject_line=subject, content=content, template_type=template_type
-    )
+    template = create_template(sample_service, template_type=template_type, subject=subject, content=content)
 
     response = client.get(
-        '/service/{}/template/{}'.format(template.service.id, template.id),
+        '/service/{}/template/{}'.format(sample_service.id, template.id),
         headers=[create_authorization_header()]
     )
 
@@ -583,10 +578,8 @@ def test_should_get_a_single_template(
     ]
 )
 def test_should_preview_a_single_template(
-    notify_db,
     client,
-    sample_user,
-    service_factory,
+    sample_service,
     subject,
     content,
     path,
@@ -594,13 +587,10 @@ def test_should_preview_a_single_template(
     expected_content,
     expected_error
 ):
-
-    template = create_sample_template(
-        notify_db, notify_db.session, subject_line=subject, content=content, template_type=EMAIL_TYPE
-    )
+    template = create_template(sample_service, template_type=EMAIL_TYPE, subject=subject, content=content)
 
     response = client.get(
-        path.format(template.service.id, template.id),
+        path.format(sample_service.id, template.id),
         headers=[create_authorization_header()]
     )
 

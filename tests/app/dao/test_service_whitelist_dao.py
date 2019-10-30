@@ -10,8 +10,7 @@ from app.dao.service_whitelist_dao import (
     dao_add_and_commit_whitelisted_contacts,
     dao_remove_service_whitelist
 )
-
-from tests.app.conftest import sample_service as create_service
+from tests.app.db import create_service
 
 
 def test_fetch_service_whitelist_gets_whitelists(sample_service_whitelist):
@@ -35,8 +34,8 @@ def test_add_and_commit_whitelisted_contacts_saves_data(sample_service):
 
 
 def test_remove_service_whitelist_only_removes_for_my_service(notify_db, notify_db_session):
-    service_1 = create_service(notify_db, notify_db_session, service_name="service 1")
-    service_2 = create_service(notify_db, notify_db_session, service_name="service 2")
+    service_1 = create_service(service_name="service 1")
+    service_2 = create_service(service_name="service 2")
     dao_add_and_commit_whitelisted_contacts([
         ServiceWhitelist.from_string(service_1.id, EMAIL_TYPE, 'service1@example.com'),
         ServiceWhitelist.from_string(service_2.id, EMAIL_TYPE, 'service2@example.com')
