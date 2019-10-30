@@ -23,8 +23,6 @@ from app.notifications.process_notifications import (
 )
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
-from tests.app.conftest import sample_api_key as create_api_key
-
 from tests.app.db import create_service, create_template
 
 
@@ -129,10 +127,8 @@ def test_cache_is_not_incremented_on_failure_to_persist_notification(sample_api_
 
 
 def test_persist_notification_does_not_increment_cache_if_test_key(
-        notify_db, notify_db_session, sample_template, sample_job, mocker
+        sample_template, sample_job, mocker, sample_test_api_key
 ):
-    api_key = create_api_key(notify_db=notify_db, notify_db_session=notify_db_session, service=sample_template.service,
-                             key_type='test')
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value="cache")
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash', return_value="cache")
     daily_limit_cache = mocker.patch('app.notifications.process_notifications.redis_store.incr')
@@ -147,8 +143,8 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
         service=sample_template.service,
         personalisation={},
         notification_type='sms',
-        api_key_id=api_key.id,
-        key_type=api_key.key_type,
+        api_key_id=sample_test_api_key.id,
+        key_type=sample_test_api_key.key_type,
         job_id=sample_job.id,
         job_row_number=100,
         reference="ref",
@@ -472,26 +468,24 @@ def test_persist_email_notification_stores_normalised_email(
 )
 def test_persist_letter_notification_finds_correct_postage(
     mocker,
-    notify_db,
-    notify_db_session,
     postage_argument,
     template_postage,
-    expected_postage
+    expected_postage,
+    sample_service_full_permissions,
+    sample_api_key,
 ):
-    service = create_service(service_permissions=[LETTER_TYPE])
-    api_key = create_api_key(notify_db, notify_db_session, service=service)
-    template = create_template(service, template_type=LETTER_TYPE, postage=template_postage)
+    template = create_template(sample_service_full_permissions, template_type=LETTER_TYPE, postage=template_postage)
     mocker.patch('app.dao.templates_dao.dao_get_template_by_id', return_value=template)
     persist_notification(
         template_id=template.id,
         template_version=template.version,
         template_postage=template.postage,
         recipient="Jane Doe, 10 Downing Street, London",
-        service=service,
+        service=sample_service_full_permissions,
         personalisation=None,
         notification_type=LETTER_TYPE,
-        api_key_id=api_key.id,
-        key_type=api_key.key_type,
+        api_key_id=sample_api_key.id,
+        key_type=sample_api_key.key_type,
         postage=postage_argument
     )
     persisted_notification = Notification.query.all()[0]

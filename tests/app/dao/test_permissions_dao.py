@@ -1,5 +1,5 @@
 from app.dao.permissions_dao import permission_dao
-from tests.app.conftest import sample_service as create_service
+from tests.app.db import create_service
 
 
 def test_get_permissions_by_user_id_returns_all_permissions(sample_service):
@@ -15,11 +15,10 @@ def test_get_permissions_by_user_id_returns_all_permissions(sample_service):
                    "view_activity"]) == sorted([i.permission for i in permissions])
 
 
-def test_get_permissions_by_user_id_returns_only_active_service(notify_db, notify_db_session, sample_user):
-    active_service = create_service(notify_db, notify_db_session, service_name="Active service", user=sample_user)
-    inactive_service = create_service(notify_db, notify_db_session, service_name="Inactive service",
-                                      user=sample_user)
-    inactive_service.active = False
+def test_get_permissions_by_user_id_returns_only_active_service(sample_user):
+    active_service = create_service(user=sample_user, service_name="Active service")
+    inactive_service = create_service(user=sample_user, service_name="Inactive service", active=False)
+
     permissions = permission_dao.get_permissions_by_user_id(user_id=sample_user.id)
     assert len(permissions) == 8
     assert active_service in [i.service for i in permissions]

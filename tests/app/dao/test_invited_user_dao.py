@@ -15,6 +15,7 @@ from app.dao.invited_user_dao import (
     get_invited_user_by_id,
     delete_invitations_created_more_than_two_days_ago
 )
+from tests.app.db import create_invited_user
 
 
 def test_create_invited_user(notify_db, notify_db_session, sample_service):
@@ -84,15 +85,11 @@ def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sam
 
 
 def test_get_invited_users_for_service(notify_db, notify_db_session, sample_service):
-    from tests.app.conftest import sample_invited_user
     invites = []
     for i in range(0, 5):
         email = 'invited_user_{}@service.gov.uk'.format(i)
 
-        invited_user = sample_invited_user(notify_db,
-                                           notify_db_session,
-                                           sample_service,
-                                           email)
+        invited_user = create_invited_user(sample_service, to_email_address=email)
         invites.append(invited_user)
 
     all_from_db = get_invited_users_for_service(sample_service.id)

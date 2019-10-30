@@ -262,13 +262,9 @@ def sample_template(
 
 
 @pytest.fixture(scope='function')
-def sample_template_without_sms_permission(notify_db, notify_db_session):
-    return sample_template(notify_db, notify_db_session, permissions=[EMAIL_TYPE])
-
-
-@pytest.fixture(scope='function')
-def sample_template_without_letter_permission(notify_db, notify_db_session):
-    return sample_template(notify_db, notify_db_session, template_type="letter", permissions=[EMAIL_TYPE])
+def sample_template_without_sms_permission(notify_db_session):
+    service = create_service(service_permissions=[EMAIL_TYPE], check_if_service_exists=True)
+    return create_template(service, template_type=SMS_TYPE)
 
 
 @pytest.fixture(scope='function')
@@ -312,8 +308,9 @@ def sample_email_template(
 
 
 @pytest.fixture(scope='function')
-def sample_template_without_email_permission(notify_db, notify_db_session):
-    return sample_email_template(notify_db, notify_db_session, permissions=[SMS_TYPE])
+def sample_template_without_email_permission(notify_db_session):
+    service = create_service(service_permissions=[SMS_TYPE], check_if_service_exists=True)
+    return create_template(service, template_type=EMAIL_TYPE)
 
 
 @pytest.fixture
@@ -360,13 +357,23 @@ def sample_api_key(notify_db,
 
 
 @pytest.fixture(scope='function')
-def sample_test_api_key(notify_db, notify_db_session, service=None):
-    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEST)
+def sample_test_api_key(sample_api_key):
+    service = create_service(check_if_service_exists=True)
+
+    return create_api_key(
+        service,
+        key_type=KEY_TYPE_TEST
+    )
 
 
 @pytest.fixture(scope='function')
-def sample_team_api_key(notify_db, notify_db_session, service=None):
-    return sample_api_key(notify_db, notify_db_session, service, KEY_TYPE_TEAM)
+def sample_team_api_key(sample_api_key):
+    service = create_service(check_if_service_exists=True)
+
+    return create_api_key(
+        service,
+        key_type=KEY_TYPE_TEAM
+    )
 
 
 @pytest.fixture(scope='function')
@@ -616,11 +623,11 @@ def sample_letter_notification(sample_letter_template):
 
 
 @pytest.fixture(scope='function')
-def sample_email_notification(notify_db, notify_db_session):
+def sample_email_notification(notify_db_session):
     created_at = datetime.utcnow()
     service = create_service(check_if_service_exists=True)
-    template = sample_email_template(notify_db, notify_db_session, service=service)
-    job = sample_job(notify_db, notify_db_session, service=service, template=template)
+    template = create_template(service, template_type=EMAIL_TYPE)
+    job = create_job(template)
 
     notification_id = uuid.uuid4()
 

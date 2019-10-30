@@ -38,7 +38,6 @@ from tests.app.db import (
     create_template,
     create_job,
 )
-from tests.app.conftest import sample_job as create_sample_job
 
 
 def _create_slow_delivery_notification(template, provider='mmg'):
@@ -74,11 +73,11 @@ def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, m
     assert scheduled_tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
 
 
-def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
+def test_should_update_scheduled_jobs_and_put_on_queue(mocker, sample_template):
     mocked = mocker.patch('app.celery.tasks.process_job.apply_async')
 
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
-    job = create_sample_job(notify_db, notify_db_session, scheduled_for=one_minute_in_the_past, job_status='scheduled')
+    job = create_job(sample_template, job_status='scheduled', scheduled_for=one_minute_in_the_past)
 
     run_scheduled_jobs()
 
@@ -87,30 +86,15 @@ def test_should_update_scheduled_jobs_and_put_on_queue(notify_db, notify_db_sess
     mocked.assert_called_with([str(job.id)], queue="job-tasks")
 
 
-def test_should_update_all_scheduled_jobs_and_put_on_queue(notify_db, notify_db_session, mocker):
+def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mocker):
     mocked = mocker.patch('app.celery.tasks.process_job.apply_async')
 
     one_minute_in_the_past = datetime.utcnow() - timedelta(minutes=1)
     ten_minutes_in_the_past = datetime.utcnow() - timedelta(minutes=10)
     twenty_minutes_in_the_past = datetime.utcnow() - timedelta(minutes=20)
-    job_1 = create_sample_job(
-        notify_db,
-        notify_db_session,
-        scheduled_for=one_minute_in_the_past,
-        job_status='scheduled'
-    )
-    job_2 = create_sample_job(
-        notify_db,
-        notify_db_session,
-        scheduled_for=ten_minutes_in_the_past,
-        job_status='scheduled'
-    )
-    job_3 = create_sample_job(
-        notify_db,
-        notify_db_session,
-        scheduled_for=twenty_minutes_in_the_past,
-        job_status='scheduled'
-    )
+    job_1 = create_job(sample_template, job_status='scheduled', scheduled_for=one_minute_in_the_past)
+    job_2 = create_job(sample_template, job_status='scheduled', scheduled_for=ten_minutes_in_the_past)
+    job_3 = create_job(sample_template, job_status='scheduled', scheduled_for=twenty_minutes_in_the_past)
 
     run_scheduled_jobs()
 

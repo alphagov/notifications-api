@@ -30,8 +30,7 @@ from tests.app.conftest import (
     sample_service_whitelist as create_sample_service_whitelist,
     sample_api_key as create_sample_api_key,
     sample_service,
-    sample_template_without_sms_permission,
-    sample_template_without_email_permission)
+)
 from tests.app.db import create_service, create_reply_to_email
 
 
@@ -1187,26 +1186,22 @@ def test_should_allow_international_number_on_sms_notification(client, notify_db
     assert response.status_code == 201
 
 
-@pytest.mark.parametrize(
-    'template_factory, to, expected_error', [
-        (sample_template_without_sms_permission, '+447700900986', 'Cannot send text messages'),
-        (sample_template_without_email_permission, 'notify@digital.cabinet-office.gov.uk', 'Cannot send emails')
-    ])
-def test_should_not_allow_notification_if_service_permission_not_set(
-        client, notify_db, notify_db_session, mocker, template_factory, to, expected_error):
-    template_without_permission = template_factory(notify_db, notify_db_session)
-    mocked = mocker.patch(
-        'app.celery.provider_tasks.deliver_{}.apply_async'.format(template_without_permission.template_type))
+def test_should_not_allow_sms_notifications_if_service_permission_not_set(
+    client,
+    mocker,
+    sample_template_without_sms_permission,
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
-        'to': to,
-        'template': str(template_without_permission.id)
+        'to': '+447700900986',
+        'template': str(sample_template_without_sms_permission.id)
     }
 
-    auth_header = create_authorization_header(service_id=template_without_permission.service_id)
+    auth_header = create_authorization_header(service_id=sample_template_without_sms_permission.service_id)
 
     response = client.post(
-        path='/notifications/{}'.format(template_without_permission.template_type),
+        path='/notifications/sms',
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
 
@@ -1215,7 +1210,34 @@ def test_should_not_allow_notification_if_service_permission_not_set(
     error_json = json.loads(response.get_data(as_text=True))
 
     assert error_json['result'] == 'error'
-    assert error_json['message']['service'][0] == expected_error
+    assert error_json['message']['service'][0] == 'Cannot send text messages'
+
+
+def test_should_not_allow_email_notifications_if_service_permission_not_set(
+    client,
+    mocker,
+    sample_template_without_email_permission,
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        'to': 'notify@digital.cabinet-office.gov.uk',
+        'template': str(sample_template_without_email_permission.id)
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template_without_email_permission.service_id)
+
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert not mocked.called
+    assert response.status_code == 400
+    error_json = json.loads(response.get_data(as_text=True))
+
+    assert error_json['result'] == 'error'
+    assert error_json['message']['service'][0] == 'Cannot send emails'
 
 
 @pytest.mark.parametrize(
