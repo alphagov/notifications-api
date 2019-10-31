@@ -325,21 +325,23 @@ def sample_trial_letter_template(sample_service_full_permissions):
 
 
 @pytest.fixture(scope='function')
-def sample_email_template_with_placeholders(notify_db, notify_db_session):
-    return sample_email_template(
-        notify_db,
-        notify_db_session,
+def sample_email_template_with_placeholders(sample_service):
+    return create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+        subject="((name))",
         content="Hello ((name))\nThis is an email from GOV.UK",
-        subject_line="((name))")
+    )
 
 
 @pytest.fixture(scope='function')
-def sample_email_template_with_html(notify_db, notify_db_session):
-    return sample_email_template(
-        notify_db,
-        notify_db_session,
+def sample_email_template_with_html(sample_service):
+    return create_template(
+        sample_service,
+        template_type=EMAIL_TYPE,
+        subject="((name)) <em>some HTML</em>",
         content="Hello ((name))\nThis is an email from GOV.UK with <em>some HTML</em>",
-        subject_line="((name)) <em>some HTML</em>")
+    )
 
 
 @pytest.fixture(scope='function')
@@ -499,7 +501,7 @@ def sample_notification_with_job(
         key_type=KEY_TYPE_NORMAL
 ):
     if not service:
-        service = create_service()
+        service = create_service(check_if_service_exists=True)
     if not template:
         template = create_template(service=service)
     if job is None:
