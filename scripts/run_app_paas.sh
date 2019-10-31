@@ -81,7 +81,7 @@ echo "Run script pid: $$"
 
 check_params
 
-trap "on_exit" EXIT TERM
+trap "on_exit" EXIT
 
 configure_aws_logs
 
