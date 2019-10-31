@@ -42,9 +42,11 @@ from app.models import (
     ScheduledNotification,
     ServicePermission,
     ServiceSmsSender,
+    ServiceWhitelist,
     Template,
     User,
     EMAIL_TYPE,
+    MOBILE_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
     KEY_TYPE_NORMAL,
@@ -89,7 +91,7 @@ def create_permissions(user, service, *permissions):
         for p in permissions
     ]
 
-    permission_dao.set_user_service_permission(user, service, permissions)
+    permission_dao.set_user_service_permission(user, service, permissions, _commit=True)
 
 
 def create_service(
@@ -736,6 +738,19 @@ def create_ft_notification_status(
     db.session.add(data)
     db.session.commit()
     return data
+
+
+def create_service_whitelist(service, email_address=None, mobile_number=None):
+    if email_address:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, email_address)
+    elif mobile_number:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, MOBILE_TYPE, mobile_number)
+    else:
+        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
+
+    db.session.add(whitelisted_user)
+    db.session.commit()
+    return whitelisted_user
 
 
 def create_complaint(service=None,
