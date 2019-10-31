@@ -686,7 +686,7 @@ def test_process_letter_task_check_virus_scan_failed(sample_letter_notification,
     with pytest.raises(VirusScanError) as e:
         process_virus_scan_failed(filename)
 
-    assert "Virus scan failed:" in str(e)
+    assert "Virus scan failed:" in str(e.value)
     mock_move_failed_pdf.assert_called_once_with(filename, ScanErrorType.FAILURE)
     assert sample_letter_notification.status == NOTIFICATION_VIRUS_SCAN_FAILED
 
