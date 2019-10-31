@@ -5,9 +5,7 @@ from flask import url_for
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.dao.api_key_dao import expire_api_key
 from tests import create_authorization_header
-from tests.app.conftest import sample_api_key as create_sample_api_key
-from tests.app.conftest import sample_service as create_sample_service
-from tests.app.db import create_user
+from tests.app.db import create_api_key, create_service, create_user
 
 
 def test_api_key_should_create_new_api_key_for_service(notify_api, sample_service):
@@ -96,26 +94,18 @@ def test_api_key_should_create_multiple_new_api_key_for_service(notify_api, samp
             assert ApiKey.query.count() == 2
 
 
-def test_get_api_keys_should_return_all_keys_for_service(notify_api, notify_db,
-                                                         notify_db_session,
-                                                         sample_api_key):
+def test_get_api_keys_should_return_all_keys_for_service(notify_api, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             another_user = create_user(email='another@it.gov.uk')
 
-            another_service = create_sample_service(
-                notify_db,
-                notify_db_session,
-                service_name='another',
-                user=another_user,
-                email_from='another'
-            )
+            another_service = create_service(user=another_user, service_name='Another service')
             # key for another service
-            create_sample_api_key(notify_db, notify_db_session, service=another_service)
+            create_api_key(another_service)
 
             # this service already has one key, add two more, one expired
-            create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
-            one_to_expire = create_sample_api_key(notify_db, notify_db_session, service=sample_api_key.service)
+            create_api_key(sample_api_key.service)
+            one_to_expire = create_api_key(sample_api_key.service)
             expire_api_key(service_id=one_to_expire.service_id, api_key_id=one_to_expire.id)
 
             assert ApiKey.query.count() == 4

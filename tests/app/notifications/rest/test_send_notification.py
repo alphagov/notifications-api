@@ -1,7 +1,6 @@
 import random
 import string
 import pytest
-from datetime import datetime
 
 from flask import (json, current_app)
 from freezegun import freeze_time
@@ -11,7 +10,7 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 import app
 from app.dao import notifications_dao
 from app.models import (
-    INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE,
+    SMS_TYPE, EMAIL_TYPE,
     ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
 )
 from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
@@ -22,16 +21,14 @@ from app.models import Template
 from app.v2.errors import RateLimitError, TooManyRequestsError
 
 from tests import create_authorization_header
-from tests.app.conftest import (
-    sample_notification as create_sample_notification,
-    sample_service as create_sample_service,
-    sample_email_template as create_sample_email_template,
-    sample_template as create_sample_template,
-    sample_service_whitelist as create_sample_service_whitelist,
-    sample_api_key as create_sample_api_key,
-    sample_service,
+from tests.app.db import (
+    create_api_key,
+    create_notification,
+    create_service,
+    create_service_whitelist,
+    create_template,
+    create_reply_to_email,
 )
-from tests.app.db import create_service, create_reply_to_email
 
 
 @pytest.mark.parametrize('template_type',
@@ -409,7 +406,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
 
 @freeze_time("2016-01-01 12:00:00.061258")
 def test_should_block_api_call_if_over_day_limit_for_live_service(
-        notify_db,
         notify_db_session,
         notify_api,
         mocker):
@@ -420,12 +416,9 @@ def test_should_block_api_call_if_over_day_limit_for_live_service(
                 side_effect=TooManyRequestsError(1)
             )
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=False)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
-            create_sample_notification(
-                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
-            )
+            service = create_service(message_limit=1)
+            email_template = create_template(service, template_type=EMAIL_TYPE)
+            create_notification(template=email_template)
 
             data = {
                 'to': 'ok@ok.com',
@@ -444,7 +437,6 @@ def test_should_block_api_call_if_over_day_limit_for_live_service(
 
 @freeze_time("2016-01-01 12:00:00.061258")
 def test_should_block_api_call_if_over_day_limit_for_restricted_service(
-        notify_db,
         notify_db_session,
         notify_api,
         mocker):
@@ -455,12 +447,9 @@ def test_should_block_api_call_if_over_day_limit_for_restricted_service(
                 'app.notifications.validators.check_service_over_daily_message_limit',
                 side_effect=TooManyRequestsError(1)
             )
-
-            service = create_sample_service(notify_db, notify_db_session, limit=1, restricted=True)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
-            create_sample_notification(
-                notify_db, notify_db_session, template=email_template, service=service, created_at=datetime.utcnow()
-            )
+            service = create_service(restricted=True, message_limit=1)
+            email_template = create_template(service, template_type=EMAIL_TYPE)
+            create_notification(template=email_template)
 
             data = {
                 'to': 'ok@ok.com',
@@ -481,8 +470,6 @@ def test_should_block_api_call_if_over_day_limit_for_restricted_service(
 @pytest.mark.parametrize('restricted', [True, False])
 @freeze_time("2016-01-01 12:00:00.061258")
 def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
-        notify_db,
-        notify_db_session,
         notify_api,
         sample_user,
         mocker,
@@ -491,10 +478,10 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-            service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=restricted)
-            email_template = create_sample_email_template(notify_db, notify_db_session, service=service)
-            sms_template = create_sample_template(notify_db, notify_db_session, service=service)
-            create_sample_notification(notify_db, notify_db_session, template=email_template, service=service)
+            service = create_service(restricted=restricted, message_limit=2)
+            email_template = create_template(service, template_type=EMAIL_TYPE)
+            sms_template = create_template(service, template_type=SMS_TYPE)
+            create_notification(template=email_template)
 
             data = {
                 'to': sample_user.mobile_number,
@@ -511,11 +498,11 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(
             assert response.status_code == 201
 
 
-def test_should_not_return_html_in_body(notify_api, notify_db, notify_db_session, mocker):
+def test_should_not_return_html_in_body(notify_api, sample_service, mocker):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            email_template = create_sample_email_template(notify_db, notify_db_session, content='hello\nthere')
+            email_template = create_template(sample_service, template_type=EMAIL_TYPE, content='hello\nthere')
 
             data = {
                 'to': 'ok@ok.com',
@@ -850,36 +837,35 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
 @pytest.mark.parametrize('key_type', [
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM
 ])
-@pytest.mark.parametrize('notification_type, to, _create_sample_template', [
-    (SMS_TYPE, '07827992635', create_sample_template),
-    (EMAIL_TYPE, 'non_whitelist_recipient@mail.com', create_sample_email_template)]
+@pytest.mark.parametrize('notification_type, to', [
+    (SMS_TYPE, '07827992635'),
+    (EMAIL_TYPE, 'non_whitelist_recipient@mail.com')]
 )
 def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
     client,
-    notify_db,
-    notify_db_session,
+    sample_service_whitelist,
     notification_type,
     to,
-    _create_sample_template,
     key_type,
     mocker
 ):
-    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=True)
-    service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session, service=service)
+    service = sample_service_whitelist.service
+    service.restricted = True
+    service.message_limit = 2
 
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    template = _create_sample_template(notify_db, notify_db_session, service=service)
-    assert service_whitelist.service_id == service.id
+    template = create_template(service, template_type=notification_type)
+    assert sample_service_whitelist.service_id == service.id
     assert to not in [member.recipient for member in service.whitelist]
 
-    create_sample_notification(notify_db, notify_db_session, template=template, service=service)
+    create_notification(template=template)
 
     data = {
         'to': to,
         'template': str(template.id)
     }
 
-    api_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=key_type)
+    api_key = create_api_key(service, key_type=key_type)
     auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
     response = client.post(
@@ -905,42 +891,40 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
 @pytest.mark.parametrize('key_type', [
     KEY_TYPE_NORMAL, KEY_TYPE_TEAM
 ])
-@pytest.mark.parametrize('notification_type, to, _create_sample_template', [
-    (SMS_TYPE, '07123123123', create_sample_template),
-    (EMAIL_TYPE, 'whitelist_recipient@mail.com', create_sample_email_template)]
+@pytest.mark.parametrize('notification_type, to', [
+    (SMS_TYPE, '07123123123'),
+    (EMAIL_TYPE, 'whitelist_recipient@mail.com')]
 )
 def test_should_send_notification_to_whitelist_recipient(
     client,
-    notify_db,
-    notify_db_session,
+    sample_service,
     notification_type,
     to,
-    _create_sample_template,
     key_type,
     service_restricted,
     mocker
 ):
-    service = create_sample_service(notify_db, notify_db_session, limit=2, restricted=service_restricted)
+    sample_service.message_limit = 2
+    sample_service.restricted = service_restricted
+
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    template = _create_sample_template(notify_db, notify_db_session, service=service)
+    template = create_template(sample_service, template_type=notification_type)
     if notification_type == SMS_TYPE:
-        service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
-                                                            service=service, mobile_number=to)
+        service_whitelist = create_service_whitelist(sample_service, mobile_number=to)
     elif notification_type == EMAIL_TYPE:
-        service_whitelist = create_sample_service_whitelist(notify_db, notify_db_session,
-                                                            service=service, email_address=to)
+        service_whitelist = create_service_whitelist(sample_service, email_address=to)
 
-    assert service_whitelist.service_id == service.id
-    assert to in [member.recipient for member in service.whitelist]
+    assert service_whitelist.service_id == sample_service.id
+    assert to in [member.recipient for member in sample_service.whitelist]
 
-    create_sample_notification(notify_db, notify_db_session, template=template, service=service)
+    create_notification(template=template)
 
     data = {
         'to': to,
         'template': str(template.id)
     }
 
-    sample_key = create_sample_api_key(notify_db, notify_db_session, service, key_type=key_type)
+    sample_key = create_api_key(sample_service, key_type=key_type)
     auth_header = create_jwt_token(secret=sample_key.secret, client_id=str(sample_key.service_id))
 
     response = client.post(
@@ -963,13 +947,12 @@ def test_should_send_notification_to_whitelist_recipient(
     ])
 def test_should_error_if_notification_type_does_not_match_template_type(
         client,
-        notify_db,
-        notify_db_session,
+        sample_service,
         template_type,
         notification_type,
         to
 ):
-    template = create_sample_template(notify_db, notify_db_session, template_type=template_type)
+    template = create_template(sample_service, template_type=template_type)
     data = {
         'to': to,
         'template': template.id
@@ -1010,17 +993,11 @@ def test_create_template_doesnt_raise_with_too_much_personalisation(
     ]
 )
 def test_create_template_raises_invalid_request_when_content_too_large(
-        notify_db,
-        notify_db_session,
+        sample_service,
         template_type,
         should_error
 ):
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
-        content="((long_text))",
-        template_type=template_type
-    )
+    sample = create_template(sample_service, template_type=template_type, content="((long_text))")
     template = Template.query.get(sample.id)
     from app.notifications.rest import create_template_object_for_notification
     try:
@@ -1041,15 +1018,14 @@ def test_create_template_raises_invalid_request_when_content_too_large(
 @pytest.mark.parametrize("notification_type, send_to",
                          [("sms", "07700 900 855"),
                           ("email", "sample@email.com")])
-def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(client, notify_db,
-                                                                                   notify_db_session, mocker,
-                                                                                   notification_type, send_to):
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_type=notification_type,
-        process_type='priority'
-    )
+def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(
+    client,
+    sample_service,
+    mocker,
+    notification_type,
+    send_to,
+):
+    sample = create_template(sample_service, template_type=notification_type, process_type='priority')
     mocked = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
 
     data = {
@@ -1077,17 +1053,12 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
 )
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     client,
-    notify_db,
-    notify_db_session,
+    sample_service,
     mocker,
     notification_type,
     send_to
 ):
-    sample = create_sample_template(
-        notify_db,
-        notify_db_session,
-        template_type=notification_type
-    )
+    sample = create_template(sample_service, template_type=notification_type)
     persist_mock = mocker.patch('app.notifications.rest.persist_notification')
     deliver_mock = mocker.patch('app.notifications.rest.send_notification_to_queue')
 
@@ -1165,18 +1136,16 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
     assert error_json['message']['to'][0] == 'Cannot send to international mobile numbers'
 
 
-def test_should_allow_international_number_on_sms_notification(client, notify_db, notify_db_session, mocker):
+def test_should_allow_international_number_on_sms_notification(client, sample_service_full_permissions, mocker):
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-
-    service = sample_service(notify_db, notify_db_session, permissions=[INTERNATIONAL_SMS_TYPE, SMS_TYPE])
-    template = create_sample_template(notify_db, notify_db_session, service=service)
+    template = create_template(sample_service_full_permissions)
 
     data = {
         'to': '20-12-1234-1234',
         'template': str(template.id)
     }
 
-    auth_header = create_authorization_header(service_id=service.id)
+    auth_header = create_authorization_header(service_id=sample_service_full_permissions.id)
 
     response = client.post(
         path='/notifications/sms',
@@ -1259,16 +1228,14 @@ def test_should_throw_exception_if_notification_type_is_invalid(client, sample_s
                           ("email", "test@gov.uk")
                           ]
                          )
-def test_post_notification_should_set_reply_to_text(client, notify_db, notify_db_session, mocker, notification_type,
+def test_post_notification_should_set_reply_to_text(client, sample_service, mocker, notification_type,
                                                     recipient):
     mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
-    service = create_service()
-    template = create_sample_template(notify_db=notify_db, notify_db_session=notify_db_session,
-                                      service=service, template_type=notification_type)
+    template = create_template(sample_service, template_type=notification_type)
     expected_reply_to = current_app.config['FROM_NUMBER']
     if notification_type == EMAIL_TYPE:
         expected_reply_to = 'reply_to@gov.uk'
-        create_reply_to_email(service=service, email_address=expected_reply_to, is_default=True)
+        create_reply_to_email(service=sample_service, email_address=expected_reply_to, is_default=True)
 
     data = {
         'to': recipient,
@@ -1277,7 +1244,7 @@ def test_post_notification_should_set_reply_to_text(client, notify_db, notify_db
     response = client.post("/notifications/{}".format(notification_type),
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'),
-                                    create_authorization_header(service_id=service.id)]
+                                    create_authorization_header(service_id=sample_service.id)]
                            )
     assert response.status_code == 201
     notifications = Notification.query.all()
