@@ -38,7 +38,7 @@ def set_primary_sms_provider(identifier):
 
 def test_can_get_sms_non_international_providers(restore_provider_details):
     sms_providers = get_provider_details_by_notification_type('sms')
-    assert len(sms_providers) == 3
+    assert len(sms_providers) == 2
     assert all('sms' == prov.notification_type for prov in sms_providers)
 
 
@@ -307,7 +307,7 @@ def test_dao_get_provider_stats(notify_db_session):
 
     result = dao_get_provider_stats()
 
-    assert len(result) == 5
+    assert len(result) == 4
 
     assert result[0].identifier == 'ses'
     assert result[0].display_name == 'AWS SES'
