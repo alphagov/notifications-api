@@ -164,7 +164,7 @@ def get_file_names_from_error_bucket():
     return bucket.objects.filter(Prefix="ERROR")
 
 
-def get_letter_pdf(notification):
+def get_letter_pdf_and_metadata(notification):
     bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
 
     s3 = boto3.resource('s3')
@@ -174,8 +174,8 @@ def get_letter_pdf(notification):
     obj = s3.Object(
         bucket_name=bucket_name,
         key=item.key
-    )
-    return obj.get()["Body"].read()
+    ).get()
+    return obj["Body"].read(), obj["Metadata"]
 
 
 def _move_s3_object(source_bucket, source_filename, target_bucket, target_filename, metadata=None):

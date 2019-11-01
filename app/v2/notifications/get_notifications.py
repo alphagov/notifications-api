@@ -4,7 +4,7 @@ from flask import jsonify, request, url_for, current_app, send_file
 
 from app import api_user, authenticated_service
 from app.dao import notifications_dao
-from app.letters.utils import get_letter_pdf
+from app.letters.utils import get_letter_pdf_and_metadata
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError, PDFNotReadyError
 from app.v2.notifications import v2_notification_blueprint
@@ -48,7 +48,7 @@ def get_pdf_for_notification(notification_id):
         raise PDFNotReadyError()
 
     try:
-        pdf_data = get_letter_pdf(notification)
+        pdf_data, metadata = get_letter_pdf_and_metadata(notification)
     except Exception:
         raise PDFNotReadyError()
 
