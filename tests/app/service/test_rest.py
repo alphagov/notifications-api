@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import datetime, timedelta, date
-from functools import partial
 from unittest.mock import ANY
 
 import pytest
@@ -10,7 +9,7 @@ from freezegun import freeze_time
 
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
-from app.dao.services_dao import dao_remove_user_from_service
+from app.dao.services_dao import dao_add_user_to_service, dao_remove_user_from_service
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
@@ -18,6 +17,7 @@ from app.models import (
     EmailBranding,
     InboundNumber,
     Notification,
+    Permission,
     Service,
     ServiceEmailReplyTo,
     ServiceLetterContact,
@@ -29,11 +29,6 @@ from app.models import (
     INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
 )
 from tests import create_authorization_header
-from tests.app.conftest import (
-    sample_user_service_permission as create_user_service_permission,
-    sample_notification as create_sample_notification,
-    sample_notification_with_job
-)
 from tests.app.db import (
     create_ft_billing,
     create_ft_notification_status,
@@ -1494,18 +1489,22 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
 
 def test_remove_user_from_service(
-        notify_db, notify_db_session, client, sample_user_service_permission
+        client, sample_user_service_permission
 ):
     second_user = create_user(email="new@digital.cabinet-office.gov.uk")
+    service = sample_user_service_permission.service
+
     # Simulates successfully adding a user to the service
-    second_permission = create_user_service_permission(
-        notify_db,
-        notify_db_session,
-        user=second_user)
+    dao_add_user_to_service(
+        service,
+        second_user,
+        permissions=[Permission(service_id=service.id, user_id=second_user.id, permission='manage_settings')]
+    )
+
     endpoint = url_for(
         'service.remove_user_from_service',
-        service_id=str(second_permission.service.id),
-        user_id=str(second_permission.user.id))
+        service_id=str(service.id),
+        user_id=str(second_user.id))
     auth_header = create_authorization_header()
     resp = client.delete(
         endpoint,
@@ -1549,10 +1548,7 @@ def test_cannot_remove_only_user_from_service(notify_api,
 
 # This test is just here verify get_service_and_api_key_history that is a temp solution
 # until proper ui is sorted out on admin app
-def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_session, sample_service):
-    from tests.app.conftest import sample_api_key as create_sample_api_key
-    api_key = create_sample_api_key(notify_db, notify_db_session, service=sample_service)
-
+def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_key):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             auth_header = create_authorization_header()
@@ -1564,19 +1560,23 @@ def test_get_service_and_api_key_history(notify_api, notify_db, notify_db_sessio
 
             json_resp = json.loads(response.get_data(as_text=True))
             assert json_resp['data']['service_history'][0]['id'] == str(sample_service.id)
-            assert json_resp['data']['api_key_history'][0]['id'] == str(api_key.id)
+            assert json_resp['data']['api_key_history'][0]['id'] == str(sample_api_key.id)
 
 
-def test_get_all_notifications_for_service_in_order(notify_api, notify_db, notify_db_session):
+def test_get_all_notifications_for_service_in_order(notify_api, notify_db_session):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         service_1 = create_service(service_name="1", email_from='1')
         service_2 = create_service(service_name="2", email_from='2')
 
-        create_sample_notification(notify_db, notify_db_session, service=service_2)
+        service_1_template = create_template(service_1)
+        service_2_template = create_template(service_2)
 
-        notification_1 = create_sample_notification(notify_db, notify_db_session, service=service_1)
-        notification_2 = create_sample_notification(notify_db, notify_db_session, service=service_1)
-        notification_3 = create_sample_notification(notify_db, notify_db_session, service=service_1)
+        # create notification for service_2
+        create_notification(service_2_template)
+
+        notification_1 = create_notification(service_1_template)
+        notification_2 = create_notification(service_1_template)
+        notification_3 = create_notification(service_1_template)
 
         auth_header = create_authorization_header()
 
@@ -1619,18 +1619,21 @@ def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_
     assert response.status_code == 404
 
 
-def test_get_notification_for_service(client, notify_db, notify_db_session):
+def test_get_notification_for_service(client, notify_db_session):
 
     service_1 = create_service(service_name="1", email_from='1')
     service_2 = create_service(service_name="2", email_from='2')
 
+    service_1_template = create_template(service_1)
+    service_2_template = create_template(service_2)
+
     service_1_notifications = [
-        create_sample_notification(notify_db, notify_db_session, service=service_1),
-        create_sample_notification(notify_db, notify_db_session, service=service_1),
-        create_sample_notification(notify_db, notify_db_session, service=service_1),
+        create_notification(service_1_template),
+        create_notification(service_1_template),
+        create_notification(service_1_template),
     ]
 
-    create_sample_notification(notify_db, notify_db_session, service=service_2)
+    create_notification(service_2_template)
 
     for notification in service_1_notifications:
         response = client.get(
@@ -1694,18 +1697,15 @@ def test_get_notification_for_service_returns_old_template_version(admin_request
 )
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
         client,
-        notify_db,
-        notify_db_session,
         sample_service,
         include_from_test_key,
-        expected_count_of_notifications
+        expected_count_of_notifications,
+        sample_notification,
+        sample_notification_with_job,
+        sample_template,
 ):
-    with_job = sample_notification_with_job(notify_db, notify_db_session, service=sample_service)
-    without_job = create_sample_notification(notify_db, notify_db_session, service=sample_service)
-    # from_test_api_key
-    create_sample_notification(
-        notify_db, notify_db_session, service=sample_service, key_type=KEY_TYPE_TEST
-    )
+    # notification from_test_api_key
+    create_notification(sample_template, key_type=KEY_TYPE_TEST)
 
     auth_header = create_authorization_header()
 
@@ -1718,8 +1718,8 @@ def test_get_all_notifications_for_service_including_ones_made_by_jobs(
 
     resp = json.loads(response.get_data(as_text=True))
     assert len(resp['notifications']) == expected_count_of_notifications
-    assert resp['notifications'][0]['to'] == with_job.to
-    assert resp['notifications'][1]['to'] == without_job.to
+    assert resp['notifications'][0]['to'] == sample_notification_with_job.to
+    assert resp['notifications'][1]['to'] == sample_notification.to
     assert response.status_code == 200
 
 
@@ -1829,11 +1829,11 @@ def test_set_sms_prefixing_for_service_cant_be_none(
     ('False', {'requested': 2, 'delivered': 1, 'failed': 0}),
     ('True', {'requested': 1, 'delivered': 0, 'failed': 0})
 ], ids=['seven_days', 'today'])
-def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_service, today_only, stats):
+def test_get_detailed_service(sample_template, notify_api, sample_service, today_only, stats):
     with notify_api.test_request_context(), notify_api.test_client() as client:
         create_ft_notification_status(date(2000, 1, 1), 'sms', sample_service, count=1)
         with freeze_time('2000-01-02T12:00:00'):
-            create_sample_notification(notify_db, notify_db_session, status='created')
+            create_notification(template=sample_template, status='created')
             resp = client.get(
                 '/service/{}?detailed=True&today_only={}'.format(sample_service.id, today_only),
                 headers=[create_authorization_header()]
@@ -1847,11 +1847,11 @@ def test_get_detailed_service(notify_db, notify_db_session, notify_api, sample_s
     assert service['statistics'][SMS_TYPE] == stats
 
 
-def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
+def test_get_services_with_detailed_flag(client, sample_template):
     notifications = [
-        create_sample_notification(notify_db, notify_db_session),
-        create_sample_notification(notify_db, notify_db_session),
-        create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+        create_notification(sample_template),
+        create_notification(sample_template),
+        create_notification(sample_template, key_type=KEY_TYPE_TEST),
     ]
     resp = client.get(
         '/service?detailed=True',
@@ -1870,12 +1870,12 @@ def test_get_services_with_detailed_flag(client, notify_db, notify_db_session):
     }
 
 
-def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, notify_db, notify_db_session):
-    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_NORMAL),
-    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEAM),
-    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST),
-    create_sample_notification(notify_db, notify_db_session, key_type=KEY_TYPE_TEST)
+def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, sample_template):
+    create_notification(sample_template, key_type=KEY_TYPE_NORMAL)
+    create_notification(sample_template, key_type=KEY_TYPE_TEAM)
+    create_notification(sample_template, key_type=KEY_TYPE_TEST)
+    create_notification(sample_template, key_type=KEY_TYPE_TEST)
+    create_notification(sample_template, key_type=KEY_TYPE_TEST)
 
     with notify_api.test_request_context(), notify_api.test_client() as client:
         resp = client.get(
@@ -1927,16 +1927,19 @@ def test_get_services_with_detailed_flag_defaults_to_today(client, mocker):
     assert resp.status_code == 200
 
 
-def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
+def test_get_detailed_services_groups_by_service(notify_db_session):
     from app.service.rest import get_detailed_services
 
     service_1 = create_service(service_name="1", email_from='1')
     service_2 = create_service(service_name="2", email_from='2')
 
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
-    create_sample_notification(notify_db, notify_db_session, service=service_2, status='created')
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='delivered')
-    create_sample_notification(notify_db, notify_db_session, service=service_1, status='created')
+    service_1_template = create_template(service_1)
+    service_2_template = create_template(service_2)
+
+    create_notification(service_1_template, status='created')
+    create_notification(service_2_template, status='created')
+    create_notification(service_1_template, status='delivered')
+    create_notification(service_1_template, status='created')
 
     data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
     data = sorted(data, key=lambda x: x['name'])
@@ -1956,13 +1959,14 @@ def test_get_detailed_services_groups_by_service(notify_db, notify_db_session):
     }
 
 
-def test_get_detailed_services_includes_services_with_no_notifications(notify_db, notify_db_session):
+def test_get_detailed_services_includes_services_with_no_notifications(notify_db_session):
     from app.service.rest import get_detailed_services
 
     service_1 = create_service(service_name="1", email_from='1')
     service_2 = create_service(service_name="2", email_from='2')
 
-    create_sample_notification(notify_db, notify_db_session, service=service_1)
+    service_1_template = create_template(service_1)
+    create_notification(service_1_template)
 
     data = get_detailed_services(start_date=datetime.utcnow().date(),
                                  end_date=datetime.utcnow().date())
@@ -1983,13 +1987,13 @@ def test_get_detailed_services_includes_services_with_no_notifications(notify_db
     }
 
 
-def test_get_detailed_services_only_includes_todays_notifications(notify_db, notify_db_session):
+def test_get_detailed_services_only_includes_todays_notifications(sample_template):
     from app.service.rest import get_detailed_services
 
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 9, 23, 59))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 0, 0))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 12, 0))
-    create_sample_notification(notify_db, notify_db_session, created_at=datetime(2015, 10, 10, 23, 0))
+    create_notification(sample_template, created_at=datetime(2015, 10, 9, 23, 59))
+    create_notification(sample_template, created_at=datetime(2015, 10, 10, 0, 0))
+    create_notification(sample_template, created_at=datetime(2015, 10, 10, 12, 0))
+    create_notification(sample_template, created_at=datetime(2015, 10, 10, 23, 0))
 
     with freeze_time('2015-10-10T12:00:00'):
         data = get_detailed_services(start_date=datetime.utcnow().date(), end_date=datetime.utcnow().date())
@@ -2055,11 +2059,10 @@ def test_search_for_notification_by_to_field(client, sample_template, sample_ema
 
 
 def test_search_for_notification_by_to_field_return_empty_list_if_there_is_no_match(
-    client, notify_db, notify_db_session
+    client, sample_template, sample_email_template
 ):
-    create_notification = partial(create_sample_notification, notify_db, notify_db_session)
-    notification1 = create_notification(to_field='+447700900855')
-    create_notification(to_field='jack@gmail.com')
+    notification1 = create_notification(sample_template, to_field='+447700900855')
+    create_notification(sample_email_template, to_field='jack@gmail.com')
 
     response = client.get(
         '/service/{}/notifications?to={}&template_type={}'.format(notification1.service_id, '+447700900800', 'sms'),
@@ -2071,12 +2074,12 @@ def test_search_for_notification_by_to_field_return_empty_list_if_there_is_no_ma
     assert len(notifications) == 0
 
 
-def test_search_for_notification_by_to_field_return_multiple_matches(client, notify_db, notify_db_session):
-    create_notification = partial(create_sample_notification, notify_db, notify_db_session)
-    notification1 = create_notification(to_field='+447700900855', normalised_to='447700900855')
-    notification2 = create_notification(to_field=' +44 77009 00855 ', normalised_to='447700900855')
-    notification3 = create_notification(to_field='+44770 0900 855', normalised_to='447700900855')
-    notification4 = create_notification(to_field='jack@gmail.com', normalised_to='jack@gmail.com')
+def test_search_for_notification_by_to_field_return_multiple_matches(client, sample_template, sample_email_template):
+    notification1 = create_notification(sample_template, to_field='+447700900855', normalised_to='447700900855')
+    notification2 = create_notification(sample_template, to_field=' +44 77009 00855 ', normalised_to='447700900855')
+    notification3 = create_notification(sample_template, to_field='+44770 0900 855', normalised_to='447700900855')
+    notification4 = create_notification(
+        sample_email_template, to_field='jack@gmail.com', normalised_to='jack@gmail.com')
 
     response = client.get(
         '/service/{}/notifications?to={}&template_type={}'.format(notification1.service_id, '+447700900855', 'sms'),
@@ -2173,16 +2176,10 @@ def test_update_service_does_not_call_send_notification_when_restricted_not_chan
     assert not send_notification_mock.called
 
 
-def test_search_for_notification_by_to_field_filters_by_status(client, notify_db, notify_db_session):
-    create_notification = partial(
-        create_sample_notification,
-        notify_db,
-        notify_db_session,
-        to_field='+447700900855',
-        normalised_to='447700900855'
-    )
-    notification1 = create_notification(status='delivered')
-    create_notification(status='sending')
+def test_search_for_notification_by_to_field_filters_by_status(client, sample_template):
+    notification1 = create_notification(
+        sample_template, to_field='+447700900855', status='delivered', normalised_to='447700900855')
+    create_notification(sample_template, to_field='+447700900855', status='sending', normalised_to='447700900855')
 
     response = client.get(
         '/service/{}/notifications?to={}&status={}&template_type={}'.format(
@@ -2198,16 +2195,17 @@ def test_search_for_notification_by_to_field_filters_by_status(client, notify_db
     assert str(notification1.id) in notification_ids
 
 
-def test_search_for_notification_by_to_field_filters_by_statuses(client, notify_db, notify_db_session):
-    create_notification = partial(
-        create_sample_notification,
-        notify_db,
-        notify_db_session,
+def test_search_for_notification_by_to_field_filters_by_statuses(client, sample_template):
+    notification1 = create_notification(
+        sample_template,
         to_field='+447700900855',
-        normalised_to='447700900855'
-    )
-    notification1 = create_notification(status='delivered')
-    notification2 = create_notification(status='sending')
+        status='delivered',
+        normalised_to='447700900855')
+    notification2 = create_notification(
+        sample_template,
+        to_field='+447700900855',
+        status='sending',
+        normalised_to='447700900855')
 
     response = client.get(
         '/service/{}/notifications?to={}&status={}&status={}&template_type={}'.format(
@@ -2226,17 +2224,13 @@ def test_search_for_notification_by_to_field_filters_by_statuses(client, notify_
 
 def test_search_for_notification_by_to_field_returns_content(
     client,
-    notify_db,
-    notify_db_session,
     sample_template_with_placeholders
 ):
-    notification = create_sample_notification(
-        notify_db,
-        notify_db_session,
+    notification = create_notification(
+        sample_template_with_placeholders,
         to_field='+447700900855',
+        personalisation={"name": "Foo"},
         normalised_to='447700900855',
-        template=sample_template_with_placeholders,
-        personalisation={"name": "Foo"}
     )
 
     response = client.get(
@@ -2402,17 +2396,13 @@ def test_get_all_notifications_for_service_includes_template_hidden(admin_reques
 
 def test_search_for_notification_by_to_field_returns_personlisation(
     client,
-    notify_db,
-    notify_db_session,
     sample_template_with_placeholders
 ):
-    create_sample_notification(
-        notify_db,
-        notify_db_session,
+    create_notification(
+        sample_template_with_placeholders,
         to_field='+447700900855',
+        personalisation={"name": "Foo"},
         normalised_to='447700900855',
-        template=sample_template_with_placeholders,
-        personalisation={"name": "Foo"}
     )
 
     response = client.get(
@@ -2431,25 +2421,11 @@ def test_search_for_notification_by_to_field_returns_personlisation(
 
 def test_search_for_notification_by_to_field_returns_notifications_by_type(
     client,
-    notify_db,
-    notify_db_session,
     sample_template,
     sample_email_template
 ):
-    sms_notification = create_sample_notification(
-        notify_db,
-        notify_db_session,
-        to_field='+447700900855',
-        normalised_to='447700900855',
-        template=sample_template
-    )
-    create_sample_notification(
-        notify_db,
-        notify_db_session,
-        to_field='44770@gamil.com',
-        normalised_to='44770@gamil.com',
-        template=sample_email_template
-    )
+    sms_notification = create_notification(sample_template, to_field='+447700900855', normalised_to='447700900855')
+    create_notification(sample_email_template, to_field='44770@gamil.com', normalised_to='44770@gamil.com')
 
     response = client.get(
         '/service/{}/notifications?to={}&template_type={}'.format(

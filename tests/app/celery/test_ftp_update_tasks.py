@@ -46,7 +46,7 @@ def test_update_letter_notifications_statuses_raises_for_invalid_format(notify_a
 
     with pytest.raises(DVLAException) as e:
         update_letter_notifications_statuses(filename='NOTIFY-20170823160812-RSP.TXT')
-    assert 'DVLA response file: {} has an invalid format'.format('NOTIFY-20170823160812-RSP.TXT') in str(e)
+    assert 'DVLA response file: {} has an invalid format'.format('NOTIFY-20170823160812-RSP.TXT') in str(e.value)
 
 
 def test_update_letter_notification_statuses_when_notification_does_not_exist_updates_notification_history(
@@ -75,7 +75,7 @@ def test_update_letter_notifications_statuses_raises_dvla_exception(notify_api, 
     failed = ["ref-foo"]
     assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
         filename="failed.txt", failures=failed
-    ) in str(e)
+    ) in str(e.value)
 
 
 def test_update_letter_notifications_statuses_calls_with_correct_bucket_location(notify_api, mocker):
@@ -136,7 +136,7 @@ def test_update_letter_notifications_statuses_persisted(notify_api, mocker, samp
     assert failed_letter.billable_units == 2
     assert failed_letter.updated_at
     assert "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
-        filename="NOTIFY-20170823160812-RSP.TXT", failures=[format(failed_letter.reference)]) in str(e)
+        filename="NOTIFY-20170823160812-RSP.TXT", failures=[format(failed_letter.reference)]) in str(e.value)
 
 
 def test_update_letter_notifications_does_not_call_send_callback_if_no_db_entry(notify_api, mocker,
