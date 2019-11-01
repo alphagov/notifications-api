@@ -16,7 +16,6 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.organisation_dao import dao_create_organisation
-from app.dao.provider_rates_dao import create_provider_rates
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
@@ -122,21 +121,6 @@ def create_code(notify_db, notify_db_session, code_type, usr=None, code=None):
     if usr is None:
         usr = create_user()
     return create_user_code(usr, code, code_type), code
-
-
-@pytest.fixture(scope='function')
-def sample_email_code(notify_db,
-                      notify_db_session,
-                      code=None,
-                      code_type="email",
-                      usr=None):
-    code, txt_code = create_code(notify_db,
-                                 notify_db_session,
-                                 code_type,
-                                 usr=usr,
-                                 code=code)
-    code.txt_code = txt_code
-    return code
 
 
 @pytest.fixture(scope='function')
@@ -435,34 +419,6 @@ def sample_scheduled_job(sample_template_with_placeholders):
     )
 
 
-@pytest.fixture(scope='function')
-def sample_email_job(notify_db,
-                     notify_db_session,
-                     service=None,
-                     template=None):
-    if service is None:
-        service = create_service(check_if_service_exists=True)
-    if template is None:
-        template = sample_email_template(
-            notify_db,
-            notify_db_session,
-            service=service)
-    job_id = uuid.uuid4()
-    data = {
-        'id': job_id,
-        'service_id': service.id,
-        'service': service,
-        'template_id': template.id,
-        'template_version': template.version,
-        'original_file_name': 'some.csv',
-        'notification_count': 1,
-        'created_by': service.created_by
-    }
-    job = Job(**data)
-    dao_create_job(job)
-    return job
-
-
 @pytest.fixture
 def sample_letter_job(sample_letter_template):
     service = sample_letter_template.service
@@ -703,21 +659,6 @@ def sample_notification_history(
 
 
 @pytest.fixture(scope='function')
-def mock_celery_send_sms_code(mocker):
-    return mocker.patch('app.celery.tasks.send_sms_code.apply_async')
-
-
-@pytest.fixture(scope='function')
-def mock_celery_email_registration_verification(mocker):
-    return mocker.patch('app.celery.tasks.email_registration_verification.apply_async')
-
-
-@pytest.fixture(scope='function')
-def mock_celery_send_email(mocker):
-    return mocker.patch('app.celery.tasks.send_email.apply_async')
-
-
-@pytest.fixture(scope='function')
 def mock_encryption(mocker):
     return mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
 
@@ -798,11 +739,6 @@ def current_sms_provider():
 @pytest.fixture(scope='function')
 def ses_provider():
     return ProviderDetails.query.filter_by(identifier='ses').one()
-
-
-@pytest.fixture(scope='function')
-def firetext_provider():
-    return ProviderDetails.query.filter_by(identifier='firetext').one()
 
 
 @pytest.fixture(scope='function')
@@ -1081,15 +1017,6 @@ def sample_service_whitelist(notify_db, notify_db_session, service=None, email_a
     notify_db.session.add(whitelisted_user)
     notify_db.session.commit()
     return whitelisted_user
-
-
-@pytest.fixture(scope='function')
-def sample_provider_rate(notify_db, notify_db_session, valid_from=None, rate=None, provider_identifier=None):
-    create_provider_rates(
-        provider_identifier=provider_identifier if provider_identifier is not None else 'mmg',
-        valid_from=valid_from if valid_from is not None else datetime.utcnow(),
-        rate=rate if rate is not None else 1,
-    )
 
 
 @pytest.fixture
