@@ -56,6 +56,8 @@ def validate_schema_date_with_hour(instance):
 
 
 def validate(json_to_validate, schema):
+    if json_to_validate == None:
+        raise ValidationError("Request body arguments not JSON or incorrect Content-Type header supplied.")
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:
