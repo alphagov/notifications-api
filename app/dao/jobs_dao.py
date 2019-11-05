@@ -8,6 +8,7 @@ from sqlalchemy import (
     asc,
     desc,
     func,
+    and_
 )
 
 from app import db
@@ -187,3 +188,38 @@ def can_letter_job_be_cancelled(job):
         return False, "It’s too late to cancel sending, these letters have already been sent."
 
     return True, None
+
+
+def find_jobs_with_missing_rows():
+    jobs_with_rows_missing = db.session.query(
+        func.count(Notification.id).label('count_notifications'),
+        Job.notification_count,
+        Job.id.label('job_id'),
+        Job.service_id
+    ).filter(
+        Job.job_status == JOB_STATUS_FINISHED
+    ).group_by(
+        Job.notification_count,
+        Job.id.label('job_id'),
+        Job.service_id
+    ).having(
+        func.count(Notification.id) != Job.notification_count
+    )
+
+    return jobs_with_rows_missing.all()
+
+
+def find_missing_row_for_job(job_id, job_size):
+    expected_row_numbers = db.session.query(
+        func.generate_series(0, job_size-1).label('row')
+    ).subquery()
+
+    query = db.session.query(
+        Notification.job_row_number,
+        expected_row_numbers.c.row.label('missing_row')
+    ).outerjoin(
+        Notification, and_(expected_row_numbers.c.row == Notification.job_row_number, Notification.job_id == job_id)
+    ).filter(
+        Notification.job_row_number == None  #noqa
+    )
+    return query.all()
