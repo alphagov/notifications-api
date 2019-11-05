@@ -4,6 +4,7 @@ from functools import partial
 
 import pytest
 from freezegun import freeze_time
+from sqlalchemy.exc import IntegrityError
 
 from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
@@ -415,21 +416,45 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notifica
 
 
 def test_find_jobs_with_missing_rows(sample_email_template):
-    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED)
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11)
+                     )
     for i in range(0, 4):
         create_notification(job=job, job_row_number=i)
 
     results = find_jobs_with_missing_rows()
 
     assert len(results) == 1
-    assert results[0] == (4, 4, job.id, job.service_id)
+    assert results[0][0] == 4
+    assert results[0][1] == job
+
+
+def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_than_10_minutes_ago(
+        sample_email_template
+):
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=9)
+                     )
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    results = find_jobs_with_missing_rows()
+
+    assert len(results) == 0
 
 
 @pytest.mark.parametrize('status', ['pending', 'in progress', 'cancelled', 'scheduled'])
 def test_find_jobs_with_missing_rows_doesnt_return_jobs_that_are_not_finished(
         sample_email_template, status
 ):
-    job = create_job(template=sample_email_template, notification_count=5, job_status=status)
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=status,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
     for i in range(0, 4):
         create_notification(job=job, job_row_number=i)
 
@@ -439,7 +464,10 @@ def test_find_jobs_with_missing_rows_doesnt_return_jobs_that_are_not_finished(
 
 
 def test_find_missing_row_for_job(sample_email_template):
-    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED)
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
     create_notification(job=job, job_row_number=0)
     create_notification(job=job, job_row_number=1)
     create_notification(job=job, job_row_number=3)
@@ -451,7 +479,8 @@ def test_find_missing_row_for_job(sample_email_template):
 
 
 def test_find_missing_row_for_job_more_than_one_missing_row(sample_email_template):
-    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED)
+    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
     create_notification(job=job, job_row_number=0)
     create_notification(job=job, job_row_number=1)
     create_notification(job=job, job_row_number=4)
@@ -463,10 +492,18 @@ def test_find_missing_row_for_job_more_than_one_missing_row(sample_email_templat
 
 
 def test_find_missing_row_for_job_return_none_when_row_isnt_missing(sample_email_template):
-    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED)
+    job = create_job(template=sample_email_template, notification_count=5, job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
     for i in range(0, 5):
         create_notification(job=job, job_row_number=i)
 
     results = find_missing_row_for_job(job.id, 5)
     print(results)
     assert len(results) == 0
+
+
+def test_unique_key_on_job_id_and_job_row_number(sample_email_template):
+    job = create_job(template=sample_email_template)
+    create_notification(job=job, job_row_number=0)
+    with pytest.raises(expected_exception=IntegrityError):
+        create_notification(job=job, job_row_number=0)

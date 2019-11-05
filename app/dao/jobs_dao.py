@@ -191,17 +191,17 @@ def can_letter_job_be_cancelled(job):
 
 
 def find_jobs_with_missing_rows():
+    # Jobs can be a maximum of 50,000 rows. It typically takes 5 minutes to create all those notifications.
+    # Using 10 minutes as a condition seems reasonable.
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
     jobs_with_rows_missing = db.session.query(
         func.count(Notification.id).label('count_notifications'),
-        Job.notification_count,
-        Job.id.label('job_id'),
-        Job.service_id
+        Job
     ).filter(
-        Job.job_status == JOB_STATUS_FINISHED
+        Job.job_status == JOB_STATUS_FINISHED,
+        Job.processing_finished < ten_minutes_ago
     ).group_by(
-        Job.notification_count,
-        Job.id.label('job_id'),
-        Job.service_id
+        Job
     ).having(
         func.count(Notification.id) != Job.notification_count
     )
@@ -211,7 +211,7 @@ def find_jobs_with_missing_rows():
 
 def find_missing_row_for_job(job_id, job_size):
     expected_row_numbers = db.session.query(
-        func.generate_series(0, job_size-1).label('row')
+        func.generate_series(0, job_size - 1).label('row')
     ).subquery()
 
     query = db.session.query(
@@ -220,6 +220,6 @@ def find_missing_row_for_job(job_id, job_size):
     ).outerjoin(
         Notification, and_(expected_row_numbers.c.row == Notification.job_row_number, Notification.job_id == job_id)
     ).filter(
-        Notification.job_row_number == None  #noqa
+        Notification.job_row_number == None  # noqa
     )
     return query.all()

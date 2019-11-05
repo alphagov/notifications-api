@@ -3,6 +3,7 @@ from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
+from mock import mock
 
 from app import db
 from app.celery import scheduled_tasks
@@ -16,6 +17,7 @@ from app.celery.scheduled_tasks import (
     replay_created_notifications,
     check_precompiled_letter_state,
     check_templated_letter_state,
+    check_for_missing_rows_in_completed_jobs
 )
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -32,6 +34,7 @@ from app.models import (
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
 from app.v2.errors import JobIncompleteError
+from tests.app import load_example_csv
 
 from tests.app.db import (
     create_notification,
@@ -402,4 +405,48 @@ def test_check_templated_letter_state_during_utc(mocker, sample_letter_template)
         message=message,
         subject="[test] Letters still in 'created' status",
         ticket_type='incident'
+    )
+
+
+def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    process_row = mocker.patch('app.celery.scheduled_tasks.process_row')
+
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    check_for_missing_rows_in_completed_jobs()
+
+    process_row.assert_called_once_with(
+        mock.ANY, mock.ANY, job, job.service
+    )
+
+
+def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sample_email_template):
+    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    save_email_task = mocker.patch('app.celery.tasks.save_email.apply_async')
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
+
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    check_for_missing_rows_in_completed_jobs()
+    save_email_task.assert_called_once_with(
+        (
+            str(job.service_id),
+            "uuid",
+            "something_encrypted",
+        ),
+        {},
+        queue="database-tasks"
     )
