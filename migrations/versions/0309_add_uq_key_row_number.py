@@ -16,4 +16,4 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_constraint('uq_notifications_job_row_number')
+    op.drop_constraint('uq_notifications_job_row_number', 'notifications', type_='unique')
