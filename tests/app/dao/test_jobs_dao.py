@@ -498,7 +498,6 @@ def test_find_missing_row_for_job_return_none_when_row_isnt_missing(sample_email
         create_notification(job=job, job_row_number=i)
 
     results = find_missing_row_for_job(job.id, 5)
-    print(results)
     assert len(results) == 0
 
 
@@ -507,3 +506,12 @@ def test_unique_key_on_job_id_and_job_row_number(sample_email_template):
     create_notification(job=job, job_row_number=0)
     with pytest.raises(expected_exception=IntegrityError):
         create_notification(job=job, job_row_number=0)
+
+
+def test_unique_key_on_job_id_and_job_row_number_no_error_if_row_number_for_different_job(
+        sample_email_template
+):
+    job_1 = create_job(template=sample_email_template)
+    job_2 = create_job(template=sample_email_template)
+    create_notification(job=job_1, job_row_number=0)
+    create_notification(job=job_2, job_row_number=0)
