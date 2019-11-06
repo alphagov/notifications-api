@@ -198,8 +198,8 @@ class Config(object):
             'schedule': crontab(),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'check_for_missing_rows_in_completed_jobs': {
-            'task': 'check-job-status',
+        'check-for-missing-rows-in-completed-jobs': {
+            'task': 'check-for-missing-rows-in-completed-jobs',
             'schedule': crontab(minute='*/10'),
             'options': {'queue': QueueNames.PERIODIC}
         },
