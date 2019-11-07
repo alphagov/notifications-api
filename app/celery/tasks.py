@@ -97,18 +97,11 @@ def process_job(job_id, sender_id=None):
     job.processing_started = start
     dao_update_job(job)
 
-    db_template = dao_get_template_by_id(job.template_id, job.template_version)
-
-    TemplateClass = get_template_class(db_template.template_type)
-    template = TemplateClass(db_template.__dict__)
+    recipient_csv, template = get_recipient_csv_and_template(job)
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
-    for row in RecipientCSV(
-            s3.get_job_from_s3(str(service.id), str(job_id)),
-            template_type=template.template_type,
-            placeholders=template.placeholders
-    ).get_rows():
+    for row in recipient_csv.get_rows():
         process_row(row, template, job, service, sender_id=sender_id)
 
     job_complete(job, start=start)
@@ -129,6 +122,18 @@ def job_complete(job, resumed=False, start=None):
         current_app.logger.info(
             "Job {} created at {} started at {} finished at {}".format(job.id, job.created_at, start, finished)
         )
+
+
+def get_recipient_csv_and_template(job):
+    db_template = dao_get_template_by_id(job.template_id, job.template_version)
+
+    TemplateClass = get_template_class(db_template.template_type)
+    template = TemplateClass(db_template.__dict__)
+
+    recipient_csv = RecipientCSV(file_data=s3.get_job_from_s3(str(job.service_id), str(job.id)),
+                                 template_type=template.template_type,
+                                 placeholders=template.placeholders)
+    return recipient_csv, template
 
 
 def process_row(row, template, job, service, sender_id=None):
@@ -596,16 +601,9 @@ def process_incomplete_job(job_id):
 
     current_app.logger.info("Resuming job {} from row {}".format(job_id, resume_from_row))
 
-    db_template = dao_get_template_by_id(job.template_id, job.template_version)
+    recipient_csv, template = get_recipient_csv_and_template(job)
 
-    TemplateClass = get_template_class(db_template.template_type)
-    template = TemplateClass(db_template.__dict__)
-
-    for row in RecipientCSV(
-            s3.get_job_from_s3(str(job.service_id), str(job.id)),
-            template_type=template.template_type,
-            placeholders=template.placeholders
-    ).get_rows():
+    for row in recipient_csv.get_rows():
         if row.index > resume_from_row:
             process_row(row, template, job, job.service)
 

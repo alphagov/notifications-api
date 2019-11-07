@@ -9,11 +9,19 @@ from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery, zendesk_client
-from app.celery.tasks import process_job
+from app.celery.tasks import (
+    process_job,
+    get_recipient_csv_and_template,
+    process_row
+)
 from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
-from app.dao.jobs_dao import dao_set_scheduled_jobs_to_pending
+from app.dao.jobs_dao import (
+    dao_set_scheduled_jobs_to_pending,
+    find_jobs_with_missing_rows,
+    find_missing_row_for_job
+)
 from app.dao.jobs_dao import dao_update_job
 from app.dao.notifications_dao import (
     is_delivery_slow_for_provider,
@@ -222,3 +230,20 @@ def check_templated_letter_state():
                 message=msg,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+
+
+@notify_celery.task(name='check-for-missing-rows-in-completed-jobs')
+def check_for_missing_rows_in_completed_jobs():
+    jobs_and_job_size = find_jobs_with_missing_rows()
+    for x in jobs_and_job_size:
+        job = x[1]
+        missing_rows = find_missing_row_for_job(job.id, job.notification_count)
+        for row_to_process in missing_rows:
+            # The sender_id is passed in with job, at this point we no longer have the sender that is passed in.
+            # The notification will be created with the default sender.
+            # There is a bug to fix this https://www.pivotaltracker.com/story/show/169569144
+            recipient_csv, template = get_recipient_csv_and_template(job)
+            for row in recipient_csv.get_rows():
+                if row.index == row_to_process.missing_row:
+                    current_app.logger.info("Processing missing row: {} for job: {}")
+                    process_row(row, template, job, job.service)

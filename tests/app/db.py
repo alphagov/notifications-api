@@ -377,6 +377,7 @@ def create_job(
         job_status='pending',
         scheduled_for=None,
         processing_started=None,
+        processing_finished=None,
         original_file_name='some.csv',
         archived=False
 ):
@@ -393,6 +394,7 @@ def create_job(
         'job_status': job_status,
         'scheduled_for': scheduled_for,
         'processing_started': processing_started,
+        'processing_finished': processing_finished,
         'archived': archived
     }
     job = Job(**data)

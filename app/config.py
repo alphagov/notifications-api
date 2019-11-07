@@ -198,6 +198,11 @@ class Config(object):
             'schedule': crontab(),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'check-for-missing-rows-in-completed-jobs': {
+            'task': 'check-for-missing-rows-in-completed-jobs',
+            'schedule': crontab(minute='*/10'),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'replay-created-notifications': {
             'task': 'replay-created-notifications',
             'schedule': crontab(minute='0, 15, 30, 45'),
