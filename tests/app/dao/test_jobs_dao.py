@@ -416,19 +416,26 @@ def test_can_letter_job_be_cancelled_returns_false_and_error_message_if_notifica
 
 
 def test_find_jobs_with_missing_rows(sample_email_template):
-    job = create_job(template=sample_email_template,
-                     notification_count=5,
-                     job_status=JOB_STATUS_FINISHED,
-                     processing_finished=datetime.utcnow() - timedelta(minutes=11)
-                     )
+    healthy_job = create_job(template=sample_email_template,
+                             notification_count=3,
+                             job_status=JOB_STATUS_FINISHED,
+                             processing_finished=datetime.utcnow() - timedelta(minutes=11)
+                             )
+    for i in range(0, 3):
+        create_notification(job=healthy_job, job_row_number=i)
+    job_with_missing_rows = create_job(template=sample_email_template,
+                                       notification_count=5,
+                                       job_status=JOB_STATUS_FINISHED,
+                                       processing_finished=datetime.utcnow() - timedelta(minutes=11)
+                                       )
     for i in range(0, 4):
-        create_notification(job=job, job_row_number=i)
+        create_notification(job=job_with_missing_rows, job_row_number=i)
 
     results = find_jobs_with_missing_rows()
 
     assert len(results) == 1
-    assert results[0][0] == 4
-    assert results[0][1] == job
+    assert results[0].actual_count == 4
+    assert results[0][1] == job_with_missing_rows
 
 
 def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_than_10_minutes_ago(

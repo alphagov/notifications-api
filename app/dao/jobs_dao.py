@@ -195,11 +195,12 @@ def find_jobs_with_missing_rows():
     # Using 10 minutes as a condition seems reasonable.
     ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
     jobs_with_rows_missing = db.session.query(
-        func.count(Notification.id).label('count_notifications'),
+        func.count(Notification.id).label('actual_count'),
         Job
     ).filter(
         Job.job_status == JOB_STATUS_FINISHED,
-        Job.processing_finished < ten_minutes_ago
+        Job.processing_finished < ten_minutes_ago,
+        Job.id == Notification.job_id
     ).group_by(
         Job
     ).having(
