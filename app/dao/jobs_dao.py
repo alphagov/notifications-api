@@ -194,13 +194,16 @@ def find_jobs_with_missing_rows():
     # Jobs can be a maximum of 50,000 rows. It typically takes 5 minutes to create all those notifications.
     # Using 10 minutes as a condition seems reasonable.
     ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    yesterday = datetime.utcnow() - timedelta(days=1)
     jobs_with_rows_missing = db.session.query(
         func.count(Notification.id).label('actual_count'),
         Job
     ).filter(
         Job.job_status == JOB_STATUS_FINISHED,
         Job.processing_finished < ten_minutes_ago,
-        Job.id == Notification.job_id
+        Job.processing_finished > yesterday,
+        Job.id == Notification.job_id,
+
     ).group_by(
         Job
     ).having(

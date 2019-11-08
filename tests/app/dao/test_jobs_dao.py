@@ -454,6 +454,22 @@ def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_th
     assert len(results) == 0
 
 
+def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_more_that_a_day_ago(
+        sample_email_template
+):
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(days=1)
+                     )
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    results = find_jobs_with_missing_rows()
+
+    assert len(results) == 0
+
+
 @pytest.mark.parametrize('status', ['pending', 'in progress', 'cancelled', 'scheduled'])
 def test_find_jobs_with_missing_rows_doesnt_return_jobs_that_are_not_finished(
         sample_email_template, status
