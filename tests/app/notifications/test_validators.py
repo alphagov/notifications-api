@@ -4,8 +4,11 @@ from flask import current_app
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
+from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import (
+    check_if_notification_content_is_not_empty,
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
     check_template_is_active,
@@ -283,6 +286,30 @@ def test_check_sms_content_char_count_fails(char_count, notify_api):
     assert e.value.status_code == 400
     assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
         SMS_CHAR_COUNT_LIMIT)
+    assert e.value.fields == []
+
+
+def test_check_if_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
+    template_id = create_template(sample_service, content="Content is not empty").id
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=sample_service.id
+    )
+    template_with_content = create_content_for_notification(template, {})
+    assert check_if_notification_content_is_not_empty(template_with_content) is None
+
+
+def test_check_if_notification_content_is_not_empty_fails(notify_api, mocker, sample_service):
+    template_id = create_template(sample_service, content="").id
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=sample_service.id
+    )
+    template_with_content = create_content_for_notification(template, {})
+    with pytest.raises(BadRequestError) as e:
+        check_if_notification_content_is_not_empty(template_with_content)
+    assert e.value.status_code == 400
+    assert e.value.message == 'This message is empty.'
     assert e.value.fields == []
 
 
