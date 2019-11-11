@@ -22,10 +22,6 @@ from app.celery.scheduled_tasks import (
 from app.config import QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
-from app.dao.provider_details_dao import (
-    dao_update_provider_details,
-    get_current_provider
-)
 from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_ERROR,
@@ -54,14 +50,6 @@ def _create_slow_delivery_notification(template, provider='mmg'):
         updated_at=five_minutes_from_now,
         sent_at=now,
     )
-
-
-@pytest.fixture(scope='function')
-def prepare_current_provider(restore_provider_details):
-    initial_provider = get_current_provider('sms')
-    dao_update_provider_details(initial_provider)
-    initial_provider.updated_at = datetime.utcnow() - timedelta(minutes=30)
-    db.session.commit()
 
 
 def test_should_call_delete_codes_on_delete_verify_codes_task(notify_db_session, mocker):
@@ -115,28 +103,10 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock
 def test_switch_providers_on_slow_delivery_switches_once_then_does_not_switch_if_already_switched(
         notify_api,
         mocker,
-        prepare_current_provider,
         sample_user,
         sample_template
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    starting_provider = get_current_provider('sms')
-
-    _create_slow_delivery_notification(sample_template)
-    _create_slow_delivery_notification(sample_template)
-
-    switch_current_sms_provider_on_slow_delivery()
-
-    new_provider = get_current_provider('sms')
-    _create_slow_delivery_notification(sample_template, new_provider.identifier)
-    _create_slow_delivery_notification(sample_template, new_provider.identifier)
-    switch_current_sms_provider_on_slow_delivery()
-
-    final_provider = get_current_provider('sms')
-
-    assert new_provider.identifier != starting_provider.identifier
-    assert new_provider.priority < starting_provider.priority
-    assert final_provider.identifier == new_provider.identifier
+    raise NotImplementedError  # TODO
 
 
 @freeze_time("2017-05-01 14:00:00")

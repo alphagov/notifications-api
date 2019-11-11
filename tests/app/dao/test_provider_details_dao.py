@@ -2,13 +2,11 @@ import pytest
 
 from datetime import datetime
 from freezegun import freeze_time
-from sqlalchemy import asc, desc
 
 from app.models import ProviderDetails, ProviderDetailsHistory
 from app import clients
 from app.dao.provider_details_dao import (
     get_alternative_sms_provider,
-    get_current_provider,
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
     dao_update_provider_details,
@@ -25,7 +23,7 @@ from tests.app.db import (
 
 def set_primary_sms_provider(identifier):
     primary_provider = get_provider_details_by_identifier(identifier)
-    secondary_provider = get_alternative_sms_provider(identifier)
+    secondary_provider = get_provider_details_by_identifier(get_alternative_sms_provider(identifier))
 
     primary_provider.priority = 10
     secondary_provider.priority = 20
@@ -103,21 +101,12 @@ def test_update_adds_history(restore_provider_details):
 
 
 def test_update_sms_provider_to_inactive_sets_inactive(restore_provider_details):
-    set_primary_sms_provider('mmg')
-    primary_provider = get_current_provider('sms')
-    primary_provider.active = False
+    mmg = get_provider_details_by_identifier('mmg')
 
-    dao_update_provider_details(primary_provider)
+    mmg.active = False
+    dao_update_provider_details(mmg)
 
-    assert not primary_provider.active
-
-
-def test_get_current_sms_provider_returns_correct_provider(restore_provider_details):
-    set_primary_sms_provider('mmg')
-
-    provider = get_current_provider('sms')
-
-    assert provider.identifier == 'mmg'
+    assert not mmg.active
 
 
 @pytest.mark.parametrize('identifier, expected', [
@@ -146,7 +135,7 @@ def test_get_alternative_sms_provider_fails_if_unrecognised():
     ({'mmg': -100, 'firetext': 50}, {'mmg': 0, 'firetext': 60}),
     ({'mmg': 50, 'firetext': -100}, {'mmg': 40, 'firetext': -90}),
 ])
-def test_change_sms_provider_priority_switches_provider(
+def test_reduce_sms_provider_priority_switches_provider(
     restore_provider_details,
     starting_priorities,
     expected_priorities
@@ -164,108 +153,51 @@ def test_change_sms_provider_priority_switches_provider(
     assert mmg.priority == expected_priorities['mmg']
 
 
-def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
-    mocker,
-    restore_provider_details,
-    sample_user
-):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    current_provider = get_current_provider('sms')
-    new_provider = get_alternative_sms_provider(current_provider.identifier)
-
-    current_provider.priority = new_provider.priority
-    dao_update_provider_details(current_provider)
-
-    dao_toggle_sms_provider(current_provider.identifier)
-
-    old_starting_provider = get_provider_details_by_identifier(current_provider.identifier)
-
-    assert new_provider.identifier != old_starting_provider.identifier
-    assert new_provider.priority < old_starting_provider.priority
-
-
-def test_toggle_sms_provider_updates_provider_history(
+def test_reduce_sms_provider_priority_adds_rows_to_history_table(
     mocker,
     restore_provider_details,
     current_sms_provider,
     sample_user
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == current_sms_provider.id
-    ).order_by(
-        desc(ProviderDetailsHistory.version)
-    ).all()
+    raise NotImplementedError
+    # mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    # provider_history_rows = ProviderDetailsHistory.query.filter(
+    #     ProviderDetailsHistory.id == current_sms_provider.id
+    # ).order_by(
+    #     desc(ProviderDetailsHistory.version)
+    # ).all()
 
-    dao_toggle_sms_provider(current_sms_provider.identifier)
+    # dao_toggle_sms_provider(current_sms_provider.identifier)
 
-    updated_provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == current_sms_provider.id
-    ).order_by(
-        desc(ProviderDetailsHistory.version)
-    ).all()
+    # updated_provider_history_rows = ProviderDetailsHistory.query.filter(
+    #     ProviderDetailsHistory.id == current_sms_provider.id
+    # ).order_by(
+    #     desc(ProviderDetailsHistory.version)
+    # ).all()
 
-    assert len(updated_provider_history_rows) - len(provider_history_rows) == 1
-    assert updated_provider_history_rows[0].version - provider_history_rows[0].version == 1
+    # assert len(updated_provider_history_rows) - len(provider_history_rows) == 1
+    # assert updated_provider_history_rows[0].version - provider_history_rows[0].version == 1
 
 
-def test_toggle_sms_provider_switches_provider_stores_notify_user_id(
+def test_reduce_sms_provider_priority_records_notify_user(
     restore_provider_details,
     sample_user,
     mocker
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    raise NotImplementedError
+    # mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
 
-    current_provider = get_current_provider('sms')
-    dao_toggle_sms_provider(current_provider.identifier)
-    new_provider = get_current_provider('sms')
+    # current_provider = get_current_provider('sms')
+    # dao_toggle_sms_provider(current_provider.identifier)
+    # new_provider = get_current_provider('sms')
 
-    assert current_provider.identifier != new_provider.identifier
-    assert new_provider.created_by.id == sample_user.id
-    assert new_provider.created_by_id == sample_user.id
-
-
-def test_toggle_sms_provider_switches_provider_stores_notify_user_id_in_history(
-    restore_provider_details,
-    sample_user,
-    mocker
-):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-
-    old_provider = get_current_provider('sms')
-    dao_toggle_sms_provider(old_provider.identifier)
-    new_provider = get_current_provider('sms')
-
-    old_provider_from_history = ProviderDetailsHistory.query.filter_by(
-        identifier=old_provider.identifier,
-        version=old_provider.version
-    ).order_by(
-        asc(ProviderDetailsHistory.priority)
-    ).first()
-    new_provider_from_history = ProviderDetailsHistory.query.filter_by(
-        identifier=new_provider.identifier,
-        version=new_provider.version
-    ).order_by(
-        asc(ProviderDetailsHistory.priority)
-    ).first()
-
-    assert old_provider.version == old_provider_from_history.version
-    assert new_provider.version == new_provider_from_history.version
-    assert new_provider_from_history.created_by_id == sample_user.id
-    assert old_provider_from_history.created_by_id == sample_user.id
+    # assert current_provider.identifier != new_provider.identifier
+    # assert new_provider.created_by.id == sample_user.id
+    # assert new_provider.created_by_id == sample_user.id
 
 
 def test_can_get_all_provider_history(restore_provider_details, current_sms_provider):
     assert len(dao_get_provider_versions(current_sms_provider.id)) == 1
-
-
-def test_get_current_sms_provider_returns_active_only(restore_provider_details):
-    current_provider = get_current_provider('sms')
-    current_provider.active = False
-    dao_update_provider_details(current_provider)
-    new_current_provider = get_current_provider('sms')
-
-    assert current_provider.identifier != new_current_provider.identifier
 
 
 @freeze_time('2018-06-28 12:00')

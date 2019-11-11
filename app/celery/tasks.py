@@ -42,7 +42,7 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_get_notification_history_by_reference,
 )
-from app.dao.provider_details_dao import get_current_provider
+from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
@@ -352,7 +352,7 @@ def save_letter(
 @statsd(namespace="tasks")
 def update_letter_notifications_to_sent_to_dvla(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
-    provider = get_current_provider(LETTER_TYPE)
+    provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
 
     updated_count, _ = dao_update_notifications_by_reference(
         notification_references,

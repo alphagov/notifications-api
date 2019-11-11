@@ -29,15 +29,6 @@ def get_alternative_sms_provider(identifier):
     raise ValueError('Unrecognised sms provider {}'.format(identifier))
 
 
-def get_current_provider(notification_type):
-    return ProviderDetails.query.filter_by(
-        notification_type=notification_type,
-        active=True
-    ).order_by(
-        asc(ProviderDetails.priority)
-    ).first()
-
-
 def dao_get_provider_versions(provider_id):
     return ProviderDetailsHistory.query.filter_by(
         id=provider_id
@@ -60,11 +51,6 @@ def dao_reduce_sms_provider_priority(identifier):
     # always keep values between 0 and 100
     providers[identifier].priority = max(0, providers[identifier].priority - 10)
     providers[other].priority = min(100, providers[other].priority + 10)
-
-
-def dao_toggle_sms_provider(*args, **kwargs):
-    raise NotImplementedError
-
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
 
