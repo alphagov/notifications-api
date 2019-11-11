@@ -2,7 +2,7 @@ import pytest
 from marshmallow import ValidationError
 from sqlalchemy import desc
 
-from app.dao.provider_details_dao import dao_update_provider_details
+from app.dao.provider_details_dao import dao_update_provider_details, get_provider_details_by_identifier
 from app.models import ProviderDetailsHistory
 from tests.app.db import create_api_key
 
@@ -101,9 +101,10 @@ def test_user_update_schema_rejects_disallowed_attribute_keys(user_attribute):
 def test_provider_details_schema_returns_user_details(
     mocker,
     sample_user,
-    current_sms_provider
+    restore_provider_details
 ):
     from app.schemas import provider_details_schema
+    current_sms_provider = get_provider_details_by_identifier('mmg')
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     current_sms_provider.created_by = sample_user
     data = provider_details_schema.dump(current_sms_provider).data
@@ -115,10 +116,10 @@ def test_provider_details_history_schema_returns_user_details(
     mocker,
     sample_user,
     restore_provider_details,
-    current_sms_provider
 ):
     from app.schemas import provider_details_schema
     mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    current_sms_provider = get_provider_details_by_identifier('mmg')
     current_sms_provider.created_by_id = sample_user.id
     data = provider_details_schema.dump(current_sms_provider).data
 

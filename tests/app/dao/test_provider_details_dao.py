@@ -32,32 +32,32 @@ def set_primary_sms_provider(identifier):
     dao_update_provider_details(secondary_provider)
 
 
-def test_can_get_sms_non_international_providers(restore_provider_details):
+def test_can_get_sms_non_international_providers(notify_db_session):
     sms_providers = get_provider_details_by_notification_type('sms')
     assert len(sms_providers) == 2
     assert all('sms' == prov.notification_type for prov in sms_providers)
 
 
-def test_can_get_sms_international_providers(restore_provider_details):
+def test_can_get_sms_international_providers(notify_db_session):
     sms_providers = get_provider_details_by_notification_type('sms', True)
     assert len(sms_providers) == 1
     assert all('sms' == prov.notification_type for prov in sms_providers)
     assert all(prov.supports_international for prov in sms_providers)
 
 
-def test_can_get_sms_providers_in_order_of_priority(restore_provider_details):
+def test_can_get_sms_providers_in_order_of_priority(notify_db_session):
     providers = get_provider_details_by_notification_type('sms', False)
 
     assert providers[0].priority < providers[1].priority
 
 
-def test_can_get_email_providers_in_order_of_priority(restore_provider_details):
+def test_can_get_email_providers_in_order_of_priority(notify_db_session):
     providers = get_provider_details_by_notification_type('email')
 
     assert providers[0].identifier == "ses"
 
 
-def test_can_get_email_providers(restore_provider_details):
+def test_can_get_email_providers(notify_db_session):
     assert len(get_provider_details_by_notification_type('email')) == 1
     types = [provider.notification_type for provider in get_provider_details_by_notification_type('email')]
     assert all('email' == notification_type for notification_type in types)
@@ -136,7 +136,7 @@ def test_get_alternative_sms_provider_fails_if_unrecognised():
     ({'mmg': 50, 'firetext': -100}, {'mmg': 40, 'firetext': -90}),
 ])
 def test_reduce_sms_provider_priority_switches_provider(
-    restore_provider_details,
+    notify_db_session,
     starting_priorities,
     expected_priorities
 ):
@@ -156,21 +156,20 @@ def test_reduce_sms_provider_priority_switches_provider(
 def test_reduce_sms_provider_priority_adds_rows_to_history_table(
     mocker,
     restore_provider_details,
-    current_sms_provider,
     sample_user
 ):
     raise NotImplementedError
     # mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     # provider_history_rows = ProviderDetailsHistory.query.filter(
-    #     ProviderDetailsHistory.id == current_sms_provider.id
+    #     ProviderDetailsHistory.id == mmg.id
     # ).order_by(
     #     desc(ProviderDetailsHistory.version)
     # ).all()
 
-    # dao_toggle_sms_provider(current_sms_provider.identifier)
+    # dao_toggle_sms_provider(mmg.identifier)
 
     # updated_provider_history_rows = ProviderDetailsHistory.query.filter(
-    #     ProviderDetailsHistory.id == current_sms_provider.id
+    #     ProviderDetailsHistory.id == mmg.id
     # ).order_by(
     #     desc(ProviderDetailsHistory.version)
     # ).all()
@@ -196,8 +195,8 @@ def test_reduce_sms_provider_priority_records_notify_user(
     # assert new_provider.created_by_id == sample_user.id
 
 
-def test_can_get_all_provider_history(restore_provider_details, current_sms_provider):
-    assert len(dao_get_provider_versions(current_sms_provider.id)) == 1
+def test_can_get_all_provider_history(notify_db_session):
+    assert len(dao_get_provider_versions('mmg')) == 1
 
 
 @freeze_time('2018-06-28 12:00')

@@ -565,7 +565,6 @@ def test_should_set_notification_billable_units_if_sending_to_provider_fails(
 
 
 def test_should_send_sms_to_international_providers(
-    restore_provider_details,
     sample_template,
     sample_user,
     mocker
