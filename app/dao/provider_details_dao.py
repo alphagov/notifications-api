@@ -4,11 +4,6 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
 
 from app.dao.dao_utils import transactional
-from app.provider_details.switch_providers import (
-    provider_is_inactive,
-    provider_is_primary,
-    switch_providers
-)
 from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
 
@@ -51,6 +46,7 @@ def dao_reduce_sms_provider_priority(identifier):
     # always keep values between 0 and 100
     providers[identifier].priority = max(0, providers[identifier].priority - 10)
     providers[other].priority = min(100, providers[other].priority + 10)
+
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
 

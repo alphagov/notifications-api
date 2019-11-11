@@ -5,7 +5,6 @@ import pytest
 from freezegun import freeze_time
 from mock import mock
 
-from app import db
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     check_job_status,
@@ -13,7 +12,6 @@ from app.celery.scheduled_tasks import (
     delete_verify_codes,
     run_scheduled_jobs,
     send_scheduled_notifications,
-    switch_current_sms_provider_on_slow_delivery,
     replay_created_notifications,
     check_precompiled_letter_state,
     check_templated_letter_state,

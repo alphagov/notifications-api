@@ -530,8 +530,6 @@ def is_delivery_slow_for_providers(
         ProviderDetails.identifier,
         "slow"
     )
-    print(slow_notification_counts)
-    print([x for x in slow_notification_counts])
 
     slow_providers = {}
     for provider, rows in groupby(slow_notification_counts, key=attrgetter('identifier')):
