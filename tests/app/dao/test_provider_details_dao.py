@@ -12,11 +12,11 @@ from app.dao.provider_details_dao import (
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
     dao_switch_sms_provider_to_provider_with_identifier,
-    dao_toggle_sms_provider,
     dao_update_provider_details,
     dao_get_provider_stats,
     dao_get_provider_versions,
-    dao_get_sms_provider_with_equal_priority
+    dao_get_sms_provider_with_equal_priority,
+    dao_reduce_sms_provider_priority,
 )
 from tests.app.db import (
     create_ft_billing,
@@ -122,10 +122,17 @@ def test_get_current_sms_provider_returns_correct_provider(restore_provider_deta
     assert provider.identifier == 'mmg'
 
 
-@pytest.mark.parametrize('provider_identifier', ['firetext', 'mmg'])
-def test_get_alternative_sms_provider_returns_expected_provider(notify_db, provider_identifier):
-    provider = get_alternative_sms_provider(provider_identifier)
-    assert provider.identifier != provider
+@pytest.mark.parametrize('identifier, expected', [
+    ('firetext', 'mmg'),
+    ('mmg', 'firetext'),
+])
+def test_get_alternative_sms_provider_returns_expected_provider(identifier, expected):
+    assert get_alternative_sms_provider(identifier) == expected
+
+
+def test_get_alternative_sms_provider_fails_if_unrecognised():
+    with pytest.raises(ValueError):
+        get_alternative_sms_provider('ses')
 
 
 def test_switch_sms_provider_to_current_provider_does_not_switch(
@@ -154,21 +161,35 @@ def test_switch_sms_provider_to_inactive_provider_does_not_switch(
     assert new_provider.identifier == current_sms_provider.identifier
 
 
-def test_toggle_sms_provider_switches_provider(
-    mocker,
+@pytest.mark.parametrize(['starting_priorities', 'expected_priorities'], [
+    ({'mmg': 50, 'firetext': 50}, {'mmg': 40, 'firetext': 60}),
+    ({'mmg': 0, 'firetext': 20}, {'mmg': 0, 'firetext': 30}),  # lower bound respected
+    ({'mmg': 50, 'firetext': 100}, {'mmg': 40, 'firetext': 100}),  # upper bound respected
+
+    # document what happens if they have unexpected values outside of the 0 - 100 range (due to manual setting from
+    # the admin app). the code never causes further issues, but sometimes doesn't actively reset the vaues to 0-100.
+    ({'mmg': 150, 'firetext': 50}, {'mmg': 140, 'firetext': 60}),
+    ({'mmg': 50, 'firetext': 150}, {'mmg': 40, 'firetext': 100}),
+
+    ({'mmg': -100, 'firetext': 50}, {'mmg': 0, 'firetext': 60}),
+    ({'mmg': 50, 'firetext': -100}, {'mmg': 40, 'firetext': -90}),
+])
+def test_change_sms_provider_priority_switches_provider(
     restore_provider_details,
-    current_sms_provider,
-    sample_user
-
+    starting_priorities,
+    expected_priorities
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    dao_toggle_sms_provider(current_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
 
-    old_starting_provider = get_provider_details_by_identifier(current_sms_provider.identifier)
+    mmg.priority = starting_priorities['mmg']
+    firetext.priority = starting_priorities['firetext']
 
-    assert new_provider.identifier != old_starting_provider.identifier
-    assert new_provider.priority < old_starting_provider.priority
+    # switch away from mmg. currently both 50/50
+    dao_reduce_sms_provider_priority('mmg')
+
+    assert firetext.priority == expected_priorities['firetext']
+    assert mmg.priority == expected_priorities['mmg']
 
 
 def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(

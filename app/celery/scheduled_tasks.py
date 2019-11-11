@@ -35,7 +35,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
-    dao_toggle_sms_provider
+    dao_reduce_sms_provider_priority
 )
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.models import (
@@ -129,7 +129,7 @@ def switch_current_sms_provider_on_slow_delivery():
             )
         )
 
-        dao_toggle_sms_provider(current_provider.identifier)
+        dao_reduce_sms_provider_priority(current_provider.identifier)
 
 
 @notify_celery.task(name='check-job-status')

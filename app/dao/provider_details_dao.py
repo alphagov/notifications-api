@@ -22,13 +22,11 @@ def get_provider_details_by_identifier(identifier):
 
 
 def get_alternative_sms_provider(identifier):
-    alternate_provider = None
     if identifier == 'firetext':
-        alternate_provider = 'mmg'
+        return 'mmg'
     elif identifier == 'mmg':
-        alternate_provider = 'firetext'
-
-    return ProviderDetails.query.filter_by(identifier=alternate_provider).one()
+        return 'firetext'
+    raise ValueError('Unrecognised sms provider {}'.format(identifier))
 
 
 def get_current_provider(notification_type):
@@ -49,9 +47,23 @@ def dao_get_provider_versions(provider_id):
 
 
 @transactional
-def dao_toggle_sms_provider(identifier):
-    alternate_provider = get_alternative_sms_provider(identifier)
-    dao_switch_sms_provider_to_provider_with_identifier(alternate_provider.identifier)
+def dao_reduce_sms_provider_priority(identifier):
+    # get current priority of both providers
+    q = ProviderDetails.query.filter(
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.active
+    ).with_for_update()
+
+    providers = {provider.identifier: provider for provider in q}
+    other = get_alternative_sms_provider(identifier)
+
+    # always keep values between 0 and 100
+    providers[identifier].priority = max(0, providers[identifier].priority - 10)
+    providers[other].priority = min(100, providers[other].priority + 10)
+
+
+def dao_toggle_sms_provider(*args, **kwargs):
+    raise NotImplementedError
 
 
 @transactional
