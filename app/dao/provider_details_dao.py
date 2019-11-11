@@ -66,29 +66,6 @@ def dao_toggle_sms_provider(*args, **kwargs):
     raise NotImplementedError
 
 
-@transactional
-def dao_switch_sms_provider_to_provider_with_identifier(identifier):
-    new_provider = get_provider_details_by_identifier(identifier)
-
-    if provider_is_inactive(new_provider):
-        return
-
-    # Check first to see if there is another provider with the same priority
-    # as this needs to be updated differently
-    conflicting_provider = dao_get_sms_provider_with_equal_priority(new_provider.identifier, new_provider.priority)
-    providers_to_update = []
-
-    if conflicting_provider:
-        switch_providers(conflicting_provider, new_provider)
-    else:
-        current_provider = get_current_provider('sms')
-        if not provider_is_primary(current_provider, new_provider, identifier):
-            providers_to_update = switch_providers(current_provider, new_provider)
-
-        for provider in providers_to_update:
-            dao_update_provider_details(provider)
-
-
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
 
     filters = [ProviderDetails.notification_type == notification_type]
@@ -106,19 +83,6 @@ def dao_update_provider_details(provider_details):
     history = ProviderDetailsHistory.from_original(provider_details)
     db.session.add(provider_details)
     db.session.add(history)
-
-
-def dao_get_sms_provider_with_equal_priority(identifier, priority):
-    provider = db.session.query(ProviderDetails).filter(
-        ProviderDetails.identifier != identifier,
-        ProviderDetails.notification_type == 'sms',
-        ProviderDetails.priority == priority,
-        ProviderDetails.active
-    ).order_by(
-        asc(ProviderDetails.priority)
-    ).first()
-
-    return provider
 
 
 def dao_get_provider_stats():

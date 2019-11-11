@@ -11,11 +11,9 @@ from app.dao.provider_details_dao import (
     get_current_provider,
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
-    dao_switch_sms_provider_to_provider_with_identifier,
     dao_update_provider_details,
     dao_get_provider_stats,
     dao_get_provider_versions,
-    dao_get_sms_provider_with_equal_priority,
     dao_reduce_sms_provider_priority,
 )
 from tests.app.db import (
@@ -133,32 +131,6 @@ def test_get_alternative_sms_provider_returns_expected_provider(identifier, expe
 def test_get_alternative_sms_provider_fails_if_unrecognised():
     with pytest.raises(ValueError):
         get_alternative_sms_provider('ses')
-
-
-def test_switch_sms_provider_to_current_provider_does_not_switch(
-    restore_provider_details,
-    current_sms_provider
-):
-    dao_switch_sms_provider_to_provider_with_identifier(current_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
-
-    assert current_sms_provider.id == new_provider.id
-    assert current_sms_provider.identifier == new_provider.identifier
-
-
-def test_switch_sms_provider_to_inactive_provider_does_not_switch(
-    restore_provider_details,
-    current_sms_provider
-):
-    alternative_sms_provider = get_alternative_sms_provider(current_sms_provider.identifier)
-    alternative_sms_provider.active = False
-    dao_update_provider_details(alternative_sms_provider)
-
-    dao_switch_sms_provider_to_provider_with_identifier(alternative_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
-
-    assert new_provider.id == current_sms_provider.id
-    assert new_provider.identifier == current_sms_provider.identifier
 
 
 @pytest.mark.parametrize(['starting_priorities', 'expected_priorities'], [
@@ -285,21 +257,6 @@ def test_toggle_sms_provider_switches_provider_stores_notify_user_id_in_history(
 
 def test_can_get_all_provider_history(restore_provider_details, current_sms_provider):
     assert len(dao_get_provider_versions(current_sms_provider.id)) == 1
-
-
-def test_get_sms_provider_with_equal_priority_returns_provider(
-    restore_provider_details
-):
-    current_provider = get_current_provider('sms')
-    new_provider = get_alternative_sms_provider(current_provider.identifier)
-
-    current_provider.priority = new_provider.priority
-    dao_update_provider_details(current_provider)
-
-    conflicting_provider = \
-        dao_get_sms_provider_with_equal_priority(current_provider.identifier, current_provider.priority)
-
-    assert conflicting_provider
 
 
 def test_get_current_sms_provider_returns_active_only(restore_provider_details):
