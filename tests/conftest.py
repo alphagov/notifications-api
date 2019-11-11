@@ -8,6 +8,7 @@ import pytest
 import sqlalchemy
 
 from app import create_app, db
+from app.dao.provider_details_dao import get_provider_details_by_identifier
 
 
 @pytest.fixture(scope='session')
@@ -90,7 +91,18 @@ def notify_db(notify_api, worker_id):
 
 
 @pytest.fixture(scope='function')
-def notify_db_session(notify_db):
+def sms_providers(notify_db):
+    """
+    In production we randomly choose which provider to use based on their priority. To guarantee tests run the same each
+    time, make sure we always choose mmg. You'll need to override them in your tests if you wish to do something
+    different.
+    """
+    get_provider_details_by_identifier('mmg').priority = 100
+    get_provider_details_by_identifier('firetext').priority = 0
+
+
+@pytest.fixture(scope='function')
+def notify_db_session(notify_db, sms_providers):
     yield notify_db
 
     notify_db.session.remove()
