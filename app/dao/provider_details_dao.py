@@ -2,8 +2,10 @@ from datetime import datetime
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
+from flask import current_app
 
 from app.dao.dao_utils import transactional
+from app.dao.users_dao import get_user_by_id
 from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
 
@@ -34,6 +36,9 @@ def dao_get_provider_versions(provider_id):
 
 @transactional
 def dao_reduce_sms_provider_priority(identifier):
+    # TODO: do we want to hold off on reducing priority if we've already adjusted priorities recently?
+    # do we want to do anything differently between slow delivery vs 500s?
+
     # get current priority of both providers
     q = ProviderDetails.query.filter(
         ProviderDetails.notification_type == 'sms',
@@ -41,11 +46,22 @@ def dao_reduce_sms_provider_priority(identifier):
     ).with_for_update()
 
     providers = {provider.identifier: provider for provider in q}
-    other = get_alternative_sms_provider(identifier)
+    other_identifier = get_alternative_sms_provider(identifier)
+
+    reduced_provider = providers[identifier]
+    increased_provider = providers[other_identifier]
 
     # always keep values between 0 and 100
-    providers[identifier].priority = max(0, providers[identifier].priority - 10)
-    providers[other].priority = min(100, providers[other].priority + 10)
+    reduced_provider.priority = max(0, reduced_provider.priority - 10)
+    increased_provider.priority = min(100, increased_provider.priority + 10)
+
+    # Automatic update so set as notify user
+    notify_user = get_user_by_id(current_app.config['NOTIFY_USER_ID'])
+    reduced_provider.created_by_id = notify_user.id
+    increased_provider.created_by_id = notify_user.id
+
+    _update_provider_details_without_commit(reduced_provider)
+    _update_provider_details_without_commit(increased_provider)
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
@@ -60,6 +76,13 @@ def get_provider_details_by_notification_type(notification_type, supports_intern
 
 @transactional
 def dao_update_provider_details(provider_details):
+    _update_provider_details_without_commit(provider_details)
+
+
+def _update_provider_details_without_commit(provider_details):
+    """
+    Doesn't commit, for when you need to control the database transaction manually
+    """
     provider_details.version += 1
     provider_details.updated_at = datetime.utcnow()
     history = ProviderDetailsHistory.from_original(provider_details)
