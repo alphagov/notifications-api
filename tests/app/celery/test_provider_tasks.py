@@ -120,9 +120,11 @@ def test_send_sms_should_not_switch_providers_on_non_provider_failure(
         'app.delivery.send_to_providers.send_sms_to_provider',
         side_effect=Exception("Non Provider Exception")
     )
-    switch_provider_mock = mocker.patch('app.delivery.send_to_providers.dao_toggle_sms_provider')
+    mock_dao_reduce_sms_provider_priority = mocker.patch(
+        'app.delivery.send_to_providers.dao_reduce_sms_provider_priority'
+    )
     mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
 
     deliver_sms(sample_notification.id)
 
-    assert switch_provider_mock.called is False
+    assert mock_dao_reduce_sms_provider_priority.called is False

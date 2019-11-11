@@ -15,7 +15,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
-    dao_toggle_sms_provider
+    dao_reduce_sms_provider_priority
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
@@ -66,7 +66,7 @@ def send_sms_to_provider(notification):
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
-                dao_reduce_sms_provider_priority(provider)
+                dao_reduce_sms_provider_priority(provider.get_name())
                 raise e
             else:
                 notification.billable_units = template.fragment_count

@@ -8,7 +8,7 @@ from tests import create_authorization_header
 from tests.app.db import create_ft_billing
 
 
-def test_get_provider_details_returns_all_providers(admin_request, db_session):
+def test_get_provider_details_returns_all_providers(admin_request, notify_db_session):
     json_resp = admin_request.get('provider_details.get_providers')['provider_details']
 
     assert len(json_resp) == 4
