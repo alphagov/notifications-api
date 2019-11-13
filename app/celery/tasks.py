@@ -27,7 +27,6 @@ from app import (
     notify_celery,
 )
 from app.aws import s3
-from app.aws.s3 import get_job_and_metadata_from_s3
 from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
 from app.config import QueueNames
 from app.dao.daily_sorted_letter_dao import dao_create_or_update_daily_sorted_letter
@@ -98,7 +97,6 @@ def process_job(job_id, sender_id=None):
     job.processing_started = start
     dao_update_job(job)
 
-    # should I rename the variable?
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
@@ -131,7 +129,7 @@ def get_recipient_csv_and_template_and_sender_id(job):
 
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
-    contents, meta_data = get_job_and_metadata_from_s3(service_id=str(job.service_id), job_id=str(job.id))
+    contents, meta_data = s3.get_job_and_metadata_from_s3(service_id=str(job.service_id), job_id=str(job.id))
     recipient_csv = RecipientCSV(file_data=contents,
                                  template_type=template.template_type,
                                  placeholders=template.placeholders)
