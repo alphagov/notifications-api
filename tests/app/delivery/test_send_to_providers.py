@@ -10,7 +10,7 @@ from requests import HTTPError
 
 import app
 from app import mmg_client, firetext_client
-from app.dao import (provider_details_dao, notifications_dao)
+from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
@@ -34,35 +34,47 @@ from tests.app.db import (
 )
 
 
-def test_should_return_highest_priority_active_provider(restore_provider_details):
-    providers = provider_details_dao.get_provider_details_by_notification_type('sms')
+def test_provider_to_use_should_return_random_provider(mocker, notify_db_session):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.priority = 25
+    firetext.priority = 75
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
 
-    first = providers[0]
-    second = providers[1]
+    ret = send_to_providers.provider_to_use('sms', international=False)
 
-    assert send_to_providers.provider_to_use('sms').name == first.identifier
+    mock_choices.assert_called_once_with([mmg, firetext], weights=[25, 75])
+    assert ret.get_name() == 'mmg'
 
-    first.priority = 20
-    second.priority = 10
 
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
+def test_provider_to_use_should_only_return_mmg_for_international(mocker, notify_db_session):
+    mmg = get_provider_details_by_identifier('mmg')
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
 
-    assert send_to_providers.provider_to_use('sms').name == second.identifier
+    ret = send_to_providers.provider_to_use('sms', international=True)
 
-    first.priority = 10
-    first.active = False
-    second.priority = 20
+    mock_choices.assert_called_once_with([mmg], weights=[100])
+    assert ret.get_name() == 'mmg'
 
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
 
-    assert send_to_providers.provider_to_use('sms').name == second.identifier
+def test_provider_to_use_should_only_return_active_providers(mocker, restore_provider_details):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.active = False
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[firetext])
 
-    first.active = True
-    provider_details_dao.dao_update_provider_details(first)
+    ret = send_to_providers.provider_to_use('sms')
 
-    assert send_to_providers.provider_to_use('sms').name == first.identifier
+    mock_choices.assert_called_once_with([firetext], weights=[0])
+    assert ret.get_name() == 'firetext'
+
+
+def test_provider_to_use_raises_if_no_active_providers(mocker, restore_provider_details):
+    mmg = get_provider_details_by_identifier('mmg')
+    mmg.active = False
+
+    with pytest.raises(Exception):
+        send_to_providers.provider_to_use('sms', international=True)
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
