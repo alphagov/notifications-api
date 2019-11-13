@@ -30,6 +30,7 @@ from app.dao.notifications_dao import (
     notifications_not_yet_sent,
     dao_precompiled_letters_still_pending_virus_check,
     dao_old_letters_with_created_status,
+    letters_missing_from_sending_bucket
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -188,6 +189,25 @@ def replay_created_notifications():
 
         for n in notifications_to_resend:
             send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
+
+    # if the letter has not be send after 4 hours + 15 minutes, then create a zendesk ticket
+    letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
+
+    if len(letters) > 0:
+        msg = "{} letters were created four hours and 15 minutes ago, " \
+              "but do not have an updated_at timestamp or billable units. " \
+              "It is likely you need to run the " \
+              "app.celery.letters_pdf_tasks.create_letters_pdf task again with " \
+              "the notification id.\n {}".format(len(letters),
+                                                 [x.id for x in letters])
+        current_app.logger.info(msg)
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            zendesk_client.create_ticket(
+                subject="[{}] Letters still in created status might be missing from S3".format(
+                    current_app.config['NOTIFY_ENVIRONMENT']),
+                message=msg,
+                ticket_type=zendesk_client.TYPE_INCIDENT
+            )
 
 
 @notify_celery.task(name='check-precompiled-letter-state')
