@@ -149,6 +149,8 @@ def test_reduce_sms_provider_priority_switches_provider(
 
     mmg.priority = starting_priorities['mmg']
     firetext.priority = starting_priorities['firetext']
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
 
     # switch away from mmg. currently both 50/50
     dao_reduce_sms_provider_priority('mmg')
@@ -166,6 +168,9 @@ def test_reduce_sms_provider_priority_adds_rows_to_history_table(
 ):
     mocker.patch('app.dao.provider_details_dao.get_user_by_id', return_value=sample_user)
     mmg = get_provider_details_by_identifier('mmg')
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
+
     provider_history_rows = ProviderDetailsHistory.query.filter(
         ProviderDetailsHistory.id == mmg.id
     ).order_by(
@@ -185,14 +190,14 @@ def test_reduce_sms_provider_priority_adds_rows_to_history_table(
     assert updated_provider_history_rows[0].priority == 90
 
 
-@freeze_time('2017-05-01 14:00:00')
 def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_changed(
     mocker,
     restore_provider_details,
 ):
     mock_is_slow = mocker.patch('app.celery.scheduled_tasks.is_delivery_slow_for_providers')
     mock_reduce = mocker.patch('app.celery.scheduled_tasks.dao_reduce_sms_provider_priority')
-    get_provider_details_by_identifier('mmg').updated_at = datetime(2017, 5, 1, 13, 51)
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'firetext').update({'updated_at': datetime.min})
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': datetime.utcnow()})
 
     dao_reduce_sms_provider_priority('firetext')
 
