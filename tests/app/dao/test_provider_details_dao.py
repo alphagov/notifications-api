@@ -185,6 +185,21 @@ def test_reduce_sms_provider_priority_adds_rows_to_history_table(
     assert updated_provider_history_rows[0].priority == 90
 
 
+@freeze_time('2017-05-01 14:00:00')
+def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_changed(
+    mocker,
+    restore_provider_details,
+):
+    mock_is_slow = mocker.patch('app.celery.scheduled_tasks.is_delivery_slow_for_providers')
+    mock_reduce = mocker.patch('app.celery.scheduled_tasks.dao_reduce_sms_provider_priority')
+    get_provider_details_by_identifier('mmg').updated_at = datetime(2017, 5, 1, 13, 51)
+
+    dao_reduce_sms_provider_priority('firetext')
+
+    assert mock_is_slow.called is False
+    assert mock_reduce.called is False
+
+
 @freeze_time('2018-06-28 12:00')
 def test_dao_get_provider_stats(notify_db_session):
     service_1 = create_service(service_name='1')

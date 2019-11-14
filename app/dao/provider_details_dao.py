@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
@@ -36,30 +36,47 @@ def dao_get_provider_versions(provider_id):
 
 @transactional
 def dao_reduce_sms_provider_priority(identifier):
-    # TODO: do we want to hold off on reducing priority if we've already adjusted priorities recently?
-    # do we want to do anything differently between slow delivery vs 500s?
-
     # get current priority of both providers
     q = ProviderDetails.query.filter(
         ProviderDetails.notification_type == 'sms',
         ProviderDetails.active
-    ).with_for_update()
+    ).with_for_update().all()
 
     providers = {provider.identifier: provider for provider in q}
     other_identifier = get_alternative_sms_provider(identifier)
 
+    # if something updated recently, don't update again. If the updated_at is null, treat it as min time
+    if any((provider.updated_at or datetime.min) > datetime.utcnow() - timedelta(minutes=10) for provider in q):
+        current_app.logger.info("Not adjusting providers, providers updated less than 10 minutes ago.")
+        return
+
     reduced_provider = providers[identifier]
     increased_provider = providers[other_identifier]
+    pre_reduction_priority = reduced_provider.priority
+    pre_increase_priority = increased_provider.priority
 
     # always keep values between 0 and 100
     reduced_provider.priority = max(0, reduced_provider.priority - 10)
     increased_provider.priority = min(100, increased_provider.priority + 10)
+
+    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
+        reduced_provider.identifier,
+        reduced_provider.priority,
+        pre_reduction_priority
+    ))
+    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
+        increased_provider.identifier,
+        increased_provider.priority,
+        pre_increase_priority
+    ))
 
     # Automatic update so set as notify user
     notify_user = get_user_by_id(current_app.config['NOTIFY_USER_ID'])
     reduced_provider.created_by_id = notify_user.id
     increased_provider.created_by_id = notify_user.id
 
+    # update without commit so that both rows can be changed without ending the transaction
+    # and releasing the for_update lock
     _update_provider_details_without_commit(reduced_provider)
     _update_provider_details_without_commit(increased_provider)
 

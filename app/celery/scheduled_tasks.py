@@ -35,7 +35,6 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import dao_reduce_sms_provider_priority
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.models import (
     Job,
     JOB_STATUS_IN_PROGRESS,
@@ -111,13 +110,6 @@ def switch_current_sms_provider_on_slow_delivery():
     in the last ten minutes. If both providers are slow, don't do anything. If we changed the providers in the
     last ten minutes, then don't update them again either.
     """
-    providers = get_provider_details_by_notification_type('sms')
-    # if something updated recently, don't update again. If the updated_at is null, set it to min time
-    # just to prevent errors
-    if any((provider.updated_at or datetime.min) > datetime.utcnow() - timedelta(minutes=10) for provider in providers):
-        current_app.logger.info("Slow delivery notifications provider switched less than 10 minutes ago.")
-        return
-
     slow_delivery_notifications = is_delivery_slow_for_providers(
         threshold=0.3,
         created_at=datetime.utcnow() - timedelta(minutes=10),
