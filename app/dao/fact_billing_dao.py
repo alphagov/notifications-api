@@ -336,25 +336,20 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
         EMAIL_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE,
         LETTER_TYPE: NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS
     }
+    sent_by_func = func.coalesce(table.sent_by, case(
+        [(table.notification_type == 'letter', 'dvla'),
+         (table.notification_type == 'sms', 'unknown'),
+         (table.notification_type == 'email', 'ses')]), )
+    letter_page_count = case([(table.notification_type == 'letter', table.billable_units), ])
+
     query = db.session.query(
         table.template_id,
         table.service_id,
         table.notification_type,
-        func.coalesce(table.sent_by,
-                      case(
-                          [
-                              (table.notification_type == 'letter', 'dvla'),
-                              (table.notification_type == 'sms', 'unknown'),
-                              (table.notification_type == 'email', 'ses')
-                          ]),
-                      ).label('sent_by'),
+        sent_by_func.label('sent_by'),
         func.coalesce(table.rate_multiplier, 1).cast(Integer).label('rate_multiplier'),
         func.coalesce(table.international, False).label('international'),
-        case(
-            [
-                (table.notification_type == 'letter', table.billable_units),
-            ]
-        ).label('letter_page_count'),
+        letter_page_count.label('letter_page_count'),
         func.sum(table.billable_units).label('billable_units'),
         func.count().label('notifications_sent'),
         Service.crown,
@@ -370,8 +365,8 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
         table.template_id,
         table.service_id,
         table.notification_type,
-        'sent_by',
-        'letter_page_count',
+        sent_by_func,
+        letter_page_count,
         table.rate_multiplier,
         table.international,
         Service.crown,
