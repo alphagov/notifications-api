@@ -221,6 +221,34 @@ def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
     assert len(results) == 3
 
 
+def test_fetch_billing_data_for_day_groups_by_sent_by(notify_db_session):
+    service = create_service()
+    letter_template = create_template(service=service, template_type='letter')
+    email_template = create_template(service=service, template_type='email')
+    create_notification(template=letter_template, status='delivered', postage='second', sent_by='dvla')
+    create_notification(template=letter_template, status='delivered', postage='second', sent_by='dvla')
+    create_notification(template=letter_template, status='delivered', postage='second', sent_by=None)
+    create_notification(template=email_template, status='delivered')
+
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(today)
+    assert len(results) == 2
+
+
+def test_fetch_billing_data_for_day_groups_by_page_count(notify_db_session):
+    service = create_service()
+    letter_template = create_template(service=service, template_type='letter')
+    email_template = create_template(service=service, template_type='email')
+    create_notification(template=letter_template, status='delivered', postage='second', billable_units=1)
+    create_notification(template=letter_template, status='delivered', postage='second', billable_units=1)
+    create_notification(template=letter_template, status='delivered', postage='second', billable_units=2)
+    create_notification(template=email_template, status='delivered')
+
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(today)
+    assert len(results) == 3
+
+
 def test_fetch_billing_data_for_day_sets_postage_for_emails_and_sms_to_none(notify_db_session):
     service = create_service()
     sms_template = create_template(service=service, template_type='sms')
