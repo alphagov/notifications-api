@@ -242,6 +242,6 @@ def check_for_missing_rows_in_completed_jobs():
             recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
             for row in recipient_csv.get_rows():
                 if row.index == row_to_process.missing_row:
-                    current_app.logger(
+                    current_app.logger.info(
                         "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
                     process_row(row, template, job, job.service, sender_id=sender_id)

@@ -100,15 +100,16 @@ def email_job_with_placeholders(notify_db, notify_db_session, sample_email_templ
 
 
 def test_should_process_sms_job(sample_job, mocker):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('sms'), {'sender_id': None}))
     mocker.patch('app.celery.tasks.save_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(sample_job.id)
-    s3.get_job_from_s3.assert_called_once_with(
-        str(sample_job.service.id),
-        str(sample_job.id)
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job.service.id),
+        job_id=str(sample_job.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123123'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job.template.id)
@@ -127,7 +128,8 @@ def test_should_process_sms_job(sample_job, mocker):
 
 
 def test_should_process_sms_job_with_sender_id(sample_job, mocker, fake_uuid):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('sms'), {'sender_id': fake_uuid}))
     mocker.patch('app.celery.tasks.save_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
@@ -150,14 +152,15 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(
     service = create_service(message_limit=9)
     template = create_template(service=service)
     job = create_job(template=template, notification_count=10, original_file_name='multiple_sms.csv')
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_from_s3.called is False
+    assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
 
 
@@ -170,14 +173,15 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(
 
     create_notification(template=template, job=job)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('sms'), {'sender_id': None}))
     mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_from_s3.called is False
+    assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
 
 
@@ -189,26 +193,26 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     create_notification(template=template, job=job)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3')
     mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_from_s3.called is False
+    assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
 
 
 def test_should_not_process_job_if_already_pending(sample_template, mocker):
     job = create_job(template=sample_template, job_status='scheduled')
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3')
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3')
     mocker.patch('app.celery.tasks.process_row')
 
     process_job(job.id)
 
-    assert s3.get_job_from_s3.called is False
+    assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
 
 
@@ -218,16 +222,17 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db_session,
     template = create_template(service=service, template_type='email')
     job = create_job(template=template, notification_count=10)
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {"sender_id": None}))
     mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(
-        str(job.service.id),
-        str(job.id)
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(job.service.id),
+        job_id=str(job.id)
     )
     job = jobs_dao.dao_get_job_by_id(job.id)
     assert job.job_status == 'finished'
@@ -243,14 +248,15 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db_session,
 
 
 def test_should_not_create_save_task_for_empty_file(sample_job, mocker):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('empty'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('empty'), {"sender_id": None}))
     mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     process_job(sample_job.id)
 
-    s3.get_job_from_s3.assert_called_once_with(
-        str(sample_job.service.id),
-        str(sample_job.id)
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job.service.id),
+        job_id=str(sample_job.id)
     )
     job = jobs_dao.dao_get_job_by_id(sample_job.id)
     assert job.job_status == 'finished'
@@ -261,16 +267,16 @@ def test_should_process_email_job(email_job_with_placeholders, mocker):
     email_csv = """email_address,name
     test@test.com,foo
     """
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=email_csv)
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3', return_value=(email_csv, {"sender_id": None}))
     mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(email_job_with_placeholders.id)
 
-    s3.get_job_from_s3.assert_called_once_with(
-        str(email_job_with_placeholders.service.id),
-        str(email_job_with_placeholders.id)
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(email_job_with_placeholders.service.id),
+        job_id=str(email_job_with_placeholders.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == 'test@test.com'
     assert encryption.encrypt.call_args[0][0]['template'] == str(email_job_with_placeholders.template.id)
@@ -293,7 +299,7 @@ def test_should_process_email_job_with_sender_id(email_job_with_placeholders, mo
     email_csv = """email_address,name
     test@test.com,foo
     """
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=email_csv)
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3', return_value=(email_csv, {"sender_id": fake_uuid}))
     mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
@@ -314,15 +320,16 @@ def test_should_process_letter_job(sample_letter_job, mocker):
     csv = """address_line_1,address_line_2,address_line_3,address_line_4,postcode,name
     A1,A2,A3,A4,A_POST,Alice
     """
-    s3_mock = mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=csv)
+    s3_mock = mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                           return_value=(csv, {"sender_id": None}))
     process_row_mock = mocker.patch('app.celery.tasks.process_row')
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(sample_letter_job.id)
 
     s3_mock.assert_called_once_with(
-        str(sample_letter_job.service.id),
-        str(sample_letter_job.id)
+        service_id=str(sample_letter_job.service.id),
+        job_id=str(sample_letter_job.id)
     )
 
     row_call = process_row_mock.mock_calls[0][1]
@@ -345,16 +352,17 @@ def test_should_process_letter_job(sample_letter_job, mocker):
 
 def test_should_process_all_sms_job(sample_job_with_placeholdered_template,
                                     mocker):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {"sender_id": None}))
     mocker.patch('app.celery.tasks.save_sms.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
 
     process_job(sample_job_with_placeholdered_template.id)
 
-    s3.get_job_from_s3.assert_called_once_with(
-        str(sample_job_with_placeholdered_template.service.id),
-        str(sample_job_with_placeholdered_template.id)
+    s3.get_job_and_metadata_from_s3.assert_called_once_with(
+        service_id=str(sample_job_with_placeholdered_template.service.id),
+        job_id=str(sample_job_with_placeholdered_template.id)
     )
     assert encryption.encrypt.call_args[0][0]['to'] == '+441234123120'
     assert encryption.encrypt.call_args[0][0]['template'] == str(sample_job_with_placeholdered_template.template.id)
@@ -1373,7 +1381,8 @@ def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(not
 
 def test_process_incomplete_job_sms(mocker, sample_template):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     job = create_job(template=sample_template, notification_count=10,
@@ -1398,7 +1407,8 @@ def test_process_incomplete_job_sms(mocker, sample_template):
 
 def test_process_incomplete_job_with_notifications_all_sent(mocker, sample_template):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     job = create_job(template=sample_template, notification_count=10,
@@ -1431,7 +1441,8 @@ def test_process_incomplete_job_with_notifications_all_sent(mocker, sample_templ
 
 def test_process_incomplete_jobs_sms(mocker, sample_template):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     job = create_job(template=sample_template, notification_count=10,
@@ -1473,7 +1484,8 @@ def test_process_incomplete_jobs_sms(mocker, sample_template):
 
 
 def test_process_incomplete_jobs_no_notifications_added(mocker, sample_template):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     job = create_job(template=sample_template, notification_count=10,
@@ -1495,7 +1507,8 @@ def test_process_incomplete_jobs_no_notifications_added(mocker, sample_template)
 
 def test_process_incomplete_jobs(mocker):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     jobs = []
@@ -1506,7 +1519,8 @@ def test_process_incomplete_jobs(mocker):
 
 def test_process_incomplete_job_no_job_in_database(mocker, fake_uuid):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_sms'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mock_save_sms = mocker.patch('app.celery.tasks.save_sms.apply_async')
 
     with pytest.raises(expected_exception=Exception):
@@ -1517,7 +1531,8 @@ def test_process_incomplete_job_no_job_in_database(mocker, fake_uuid):
 
 def test_process_incomplete_job_email(mocker, sample_email_template):
 
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {'sender_id': None}))
     mock_email_saver = mocker.patch('app.celery.tasks.save_email.apply_async')
 
     job = create_job(template=sample_email_template, notification_count=10,
@@ -1541,7 +1556,8 @@ def test_process_incomplete_job_email(mocker, sample_email_template):
 
 
 def test_process_incomplete_job_letter(mocker, sample_letter_template):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_letter'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_letter'), {'sender_id': None}))
     mock_letter_saver = mocker.patch('app.celery.tasks.save_letter.apply_async')
 
     job = create_job(template=sample_letter_template, notification_count=10,

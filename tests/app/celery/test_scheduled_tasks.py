@@ -409,7 +409,8 @@ def test_check_templated_letter_state_during_utc(mocker, sample_letter_template)
 
 
 def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {"sender_id": None}))
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     process_row = mocker.patch('app.celery.scheduled_tasks.process_row')
 
@@ -423,12 +424,13 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template)
     check_for_missing_rows_in_completed_jobs()
 
     process_row.assert_called_once_with(
-        mock.ANY, mock.ANY, job, job.service
+        mock.ANY, mock.ANY, job, job.service, sender_id=None
     )
 
 
 def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sample_email_template):
-    mocker.patch('app.celery.tasks.s3.get_job_from_s3', return_value=load_example_csv('multiple_email'))
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {'sender_id': None}))
     save_email_task = mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value='uuid')
@@ -449,4 +451,22 @@ def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sampl
         ),
         {},
         queue="database-tasks"
+    )
+
+
+def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_email_template, fake_uuid):
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {'sender_id': fake_uuid}))
+    mock_process_row = mocker.patch('app.celery.scheduled_tasks.process_row')
+
+    job = create_job(template=sample_email_template,
+                     notification_count=5,
+                     job_status=JOB_STATUS_FINISHED,
+                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    check_for_missing_rows_in_completed_jobs()
+    mock_process_row.assert_called_once_with(
+        mock.ANY, mock.ANY, job, job.service, sender_id=fake_uuid
     )
