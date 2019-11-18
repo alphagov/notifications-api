@@ -97,7 +97,7 @@ def process_job(job_id, sender_id=None):
     job.processing_started = start
     dao_update_job(job)
 
-    recipient_csv, template = get_recipient_csv_and_template(job)
+    recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
     current_app.logger.info("Starting job {} processing {} notifications".format(job_id, job.notification_count))
 
@@ -124,16 +124,17 @@ def job_complete(job, resumed=False, start=None):
         )
 
 
-def get_recipient_csv_and_template(job):
+def get_recipient_csv_and_template_and_sender_id(job):
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
     TemplateClass = get_template_class(db_template.template_type)
     template = TemplateClass(db_template.__dict__)
-
-    recipient_csv = RecipientCSV(file_data=s3.get_job_from_s3(str(job.service_id), str(job.id)),
+    contents, meta_data = s3.get_job_and_metadata_from_s3(service_id=str(job.service_id), job_id=str(job.id))
+    recipient_csv = RecipientCSV(file_data=contents,
                                  template_type=template.template_type,
                                  placeholders=template.placeholders)
-    return recipient_csv, template
+
+    return recipient_csv, template, meta_data.get("sender_id")
 
 
 def process_row(row, template, job, service, sender_id=None):
@@ -601,11 +602,11 @@ def process_incomplete_job(job_id):
 
     current_app.logger.info("Resuming job {} from row {}".format(job_id, resume_from_row))
 
-    recipient_csv, template = get_recipient_csv_and_template(job)
+    recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
     for row in recipient_csv.get_rows():
         if row.index > resume_from_row:
-            process_row(row, template, job, job.service)
+            process_row(row, template, job, job.service, sender_id=sender_id)
 
     job_complete(job, resumed=True)
 

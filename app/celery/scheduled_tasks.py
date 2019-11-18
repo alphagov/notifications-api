@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import notify_celery, zendesk_client
 from app.celery.tasks import (
     process_job,
-    get_recipient_csv_and_template,
+    get_recipient_csv_and_template_and_sender_id,
     process_row
 )
 from app.config import QueueNames, TaskNames
@@ -239,12 +239,9 @@ def check_for_missing_rows_in_completed_jobs():
         job = x[1]
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
-            # The sender_id is passed in with job, at this point we no longer have the sender that is passed in.
-            # The notification will be created with the default sender.
-            # There is a bug to fix this https://www.pivotaltracker.com/story/show/169569144
-            recipient_csv, template = get_recipient_csv_and_template(job)
+            recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
             for row in recipient_csv.get_rows():
                 if row.index == row_to_process.missing_row:
                     current_app.logger.info(
                         "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
-                    process_row(row, template, job, job.service)
+                    process_row(row, template, job, job.service, sender_id=sender_id)
