@@ -200,7 +200,7 @@ def create_template_object_for_notification(template, personalisation):
 
     if (
         template_object.template_type == SMS_TYPE and
-        template_object.content_count > SMS_CHAR_COUNT_LIMIT
+        template_object.is_message_too_long()
     ):
         message = 'Content has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)
         errors = {'content': [message]}
