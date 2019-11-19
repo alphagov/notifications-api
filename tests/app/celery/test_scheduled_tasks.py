@@ -309,10 +309,10 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
                                                queue="send-sms-tasks")
 
 
-def test_replay_created_notifications_create_zendesk_ticket_for_letters_not_ready_to_send(
+def test_replay_created_notifications_create_letters_pdf_tasks_for_letters_not_ready_to_send(
         sample_letter_template, mocker
 ):
-    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_task = mocker.patch('app.celery.scheduled_tasks.create_letters_pdf.apply_async')
     create_notification(template=sample_letter_template, billable_units=0,
                         created_at=datetime.utcnow() - timedelta(hours=4))
 
@@ -323,18 +323,10 @@ def test_replay_created_notifications_create_zendesk_ticket_for_letters_not_read
 
     replay_created_notifications()
 
-    message = "{} letters were created four hours and 15 minutes ago, " \
-              "but do not have an updated_at timestamp or billable units. " \
-              "It is likely you need to run the " \
-              "app.celery.letters_pdf_tasks.create_letters_pdf task again with " \
-              "the notification id.\n {}".format(2,
-                                                 [notification_2.id, notification_1.id])
-
-    mock_create_ticket.assert_called_with(
-        message=message,
-        subject='[test] Letters still in created status might be missing from S3',
-        ticket_type='incident'
-    )
+    calls = [call([notification_1.id], queue=QueueNames.LETTERS),
+             call([notification_2.id], queue=QueueNames.LETTERS),
+             ]
+    mock_task.assert_has_calls(calls, any_order=True)
 
 
 def test_check_job_status_task_does_not_raise_error(sample_template):

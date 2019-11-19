@@ -14,6 +14,7 @@ from app.celery.tasks import (
     get_recipient_csv_and_template,
     process_row
 )
+from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -196,18 +197,13 @@ def replay_created_notifications():
     if len(letters) > 0:
         msg = "{} letters were created four hours and 15 minutes ago, " \
               "but do not have an updated_at timestamp or billable units. " \
-              "It is likely you need to run the " \
-              "app.celery.letters_pdf_tasks.create_letters_pdf task again with " \
-              "the notification id.\n {}".format(len(letters),
-                                                 [x.id for x in letters])
+              "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 " \
+              "and update notifications for the following notification ids: " \
+              "\n {}".format(len(letters), [x.id for x in letters])
+
         current_app.logger.info(msg)
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            zendesk_client.create_ticket(
-                subject="[{}] Letters still in created status might be missing from S3".format(
-                    current_app.config['NOTIFY_ENVIRONMENT']),
-                message=msg,
-                ticket_type=zendesk_client.TYPE_INCIDENT
-            )
+        for letter in letters:
+            create_letters_pdf.apply_async([letter.id], queue=QueueNames.LETTERS)
 
 
 @notify_celery.task(name='check-precompiled-letter-state')

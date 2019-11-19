@@ -710,11 +710,11 @@ def dao_old_letters_with_created_status():
 
 def letters_missing_from_sending_bucket(seconds_to_subtract):
     older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
-
+    # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
     notifications = Notification.query.filter(
+        Notification.billable_units == 0,
         Notification.updated_at == None,  # noqa
         Notification.status == NOTIFICATION_CREATED,
-        Notification.billable_units == 0,
         Notification.created_at <= older_than_date,
         Notification.notification_type == LETTER_TYPE,
         Notification.key_type == KEY_TYPE_NORMAL
