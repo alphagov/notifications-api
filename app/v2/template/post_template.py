@@ -11,6 +11,9 @@ from app.v2.template.template_schemas import post_template_preview_request, crea
 
 @v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
+    if not request.content_type or request.content_type != 'application/json':
+        raise BadRequestError(message="Content-Type header is not set to application/json.",
+                              status_code=400)
     _data = request.get_json()
     if _data is None:
         _data = {}

@@ -496,3 +496,23 @@ def test_post_letter_notification_throws_error_for_invalid_postage(client, notif
     assert resp_json['errors'][0]['message'] == "postage invalid. It must be either first or second."
 
     assert not Notification.query.first()
+
+
+@pytest.mark.parametrize('content_type',
+                         ['application/json', 'application/text'])
+def test_post_letter_notification_when_payload_is_invalid_json_returns_400(
+        client, sample_service, content_type):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    payload_not_json = {
+        "template_id": "dont-convert-to-json",
+    }
+    response = client.post(
+        path='/v2/notifications/letter',
+        data=payload_not_json,
+        headers=[('Content-Type', content_type), auth_header],
+    )
+
+    assert response.status_code == 400
+    error_msg = json.loads(response.get_data(as_text=True))["errors"][0]["message"]
+
+    assert error_msg == 'Invalid JSON supplied in POST data'

@@ -871,3 +871,64 @@ def test_post_notification_returns_400_when_get_json_throws_exception(client, sa
         data="[",
         headers=[('Content-Type', 'application/json'), auth_header])
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize('notification_type, content_type',
+                         [('email', 'application/json'),
+                          ('email', 'application/text'),
+                          ('sms', 'application/json'),
+                          ('sms', 'application/text')]
+                         )
+def test_post_notification_when_payload_is_invalid_json_returns_400(
+        client, sample_service, notification_type, content_type):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    payload_not_json = {
+        "template_id": "dont-convert-to-json",
+    }
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=payload_not_json,
+        headers=[('Content-Type', content_type), auth_header],
+    )
+
+    assert response.status_code == 400
+    error_msg = json.loads(response.get_data(as_text=True))["errors"][0]["message"]
+
+    assert error_msg == 'Invalid JSON supplied in POST data'
+
+
+@pytest.mark.parametrize('notification_type', ['email', 'sms'])
+def test_post_notification_returns_201_when_content_type_is_missing_but_payload_is_valid_json(
+        client, sample_service, notification_type, mocker):
+    template = create_template(service=sample_service, template_type=notification_type)
+    mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
+    auth_header = create_authorization_header(service_id=sample_service.id)
+
+    valid_json = {
+        "template_id": str(template.id),
+    }
+    if notification_type == 'email':
+        valid_json.update({"email_address": sample_service.users[0].email_address})
+    else:
+        valid_json.update({"phone_number": "+447700900855"})
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(valid_json),
+        headers=[auth_header],
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize('notification_type', ['email', 'sms'])
+def test_post_email_notification_when_data_is_empty_returns_400(
+        client, sample_service, notification_type):
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    data = None
+    response = client.post(
+        path='/v2/notifications/{}'.format(notification_type),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header],
+    )
+    error_msg = json.loads(response.get_data(as_text=True))["errors"][0]["message"]
+    assert response.status_code == 400
+    assert error_msg == 'Request body is empty.'

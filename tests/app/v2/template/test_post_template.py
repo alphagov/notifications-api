@@ -152,3 +152,15 @@ def test_post_template_with_non_existent_template_id_returns_404(client, fake_uu
         ],
         "status_code": 404
     }
+
+
+def test_post_template_without_content_header(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=json.dumps(valid_personalisation),
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+
+    assert response.status_code == 400
+    json_response = json.loads(response.get_data(as_text=True))
+    assert json_response['errors'][0]['message'] == 'Content-Type header is not set to application/json.'

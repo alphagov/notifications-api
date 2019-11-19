@@ -62,10 +62,11 @@ from app.v2.notifications.notification_schemas import (
 
 @v2_notification_blueprint.route('/{}'.format(LETTER_TYPE), methods=['POST'])
 def post_precompiled_letter_notification():
-    if 'content' not in (request.get_json() or {}):
+    request_json = get_valid_json()
+    if 'content' not in (request_json or {}):
         return post_notification(LETTER_TYPE)
 
-    form = validate(request.get_json(), post_precompiled_letter_request)
+    form = validate(request_json, post_precompiled_letter_request)
 
     # Check permission to send letters
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
@@ -99,11 +100,7 @@ def post_precompiled_letter_notification():
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
 def post_notification(notification_type):
-    try:
-        request_json = request.get_json()
-    except BadRequest as e:
-        raise BadRequestError(message="Error decoding arguments: {}".format(e.description),
-                              status_code=400)
+    request_json = get_valid_json()
 
     if notification_type == EMAIL_TYPE:
         form = validate(request_json, post_email_request)
@@ -174,6 +171,15 @@ def post_notification(notification_type):
         scheduled_for=scheduled_for
     )
     return jsonify(resp), 201
+
+
+def get_valid_json():
+    try:
+        request_json = request.get_json(force=True)
+    except BadRequest:
+        raise BadRequestError(message="Invalid JSON supplied in POST data",
+                              status_code=400)
+    return request_json
 
 
 def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):

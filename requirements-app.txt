@@ -1,7 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
-cffi==1.12.3
+cffi==1.13.1
 celery==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
@@ -13,14 +13,14 @@ click-datetime==0.2
 eventlet==0.25.1
 gunicorn==19.7.1  # pyup: ignore, >19.8 breaks eventlet patching
 iso8601==0.1.12
-jsonschema==3.0.2
-marshmallow-sqlalchemy==0.17.0
+jsonschema==3.1.1
+marshmallow-sqlalchemy==0.19.0
 marshmallow==2.20.2  # pyup: <3 throws errors
-psycopg2-binary==2.8.3
+psycopg2-binary==2.8.4
 PyJWT==1.7.1
-SQLAlchemy==1.3.8
+SQLAlchemy==1.3.10
 
-notifications-python-client==5.3.0
+notifications-python-client==5.4.0
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
@@ -29,6 +29,6 @@ awscli-cwlogs>=1.4,<1.5
 # Putting upgrade on hold due to v1.0.0 using sha512 instead of sha1 by default
 itsdangerous==0.24  # pyup: <1.0.0
 
-git+https://github.com/alphagov/notifications-utils.git@36.1.0#egg=notifications-utils==36.1.0
+git+https://github.com/alphagov/notifications-utils.git@36.1.2#egg=notifications-utils==36.1.2
 
 git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3

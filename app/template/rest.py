@@ -49,7 +49,7 @@ def _content_count_greater_than_limit(content, template_type):
     if template_type != SMS_TYPE:
         return False
     template = SMSMessageTemplate({'content': content, 'template_type': template_type})
-    return template.content_count > SMS_CHAR_COUNT_LIMIT
+    return template.is_message_too_long()
 
 
 def validate_parent_folder(template_json):
