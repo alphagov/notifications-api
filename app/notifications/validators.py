@@ -121,8 +121,8 @@ def check_sms_content_char_count(content_count):
         raise BadRequestError(message=message)
 
 
-def check_if_notification_content_is_not_empty(template_with_content):
-    if len(template_with_content.__str__()) == 0:
+def check_notification_content_is_not_empty(template_with_content):
+    if template_with_content.is_message_empty():
         message = 'This message is empty.'
         raise BadRequestError(message=message)
 
@@ -140,10 +140,12 @@ def validate_template(template_id, personalisation, service, notification_type):
 
     check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
+
     template_with_content = create_content_for_notification(template, personalisation)
+    check_notification_content_is_not_empty(template_with_content)
     if template.template_type == SMS_TYPE:
         check_sms_content_char_count(template_with_content.content_count)
-    check_if_notification_content_is_not_empty(template_with_content)
+
     return template, template_with_content
 
 
