@@ -1,6 +1,6 @@
 import random
 from urllib import parse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.recipients import (
@@ -66,7 +66,7 @@ def send_sms_to_provider(notification):
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
-                dao_reduce_sms_provider_priority(provider.get_name())
+                dao_reduce_sms_provider_priority(provider.get_name(), time_threshold=timedelta(minutes=1))
                 raise e
             else:
                 notification.billable_units = template.fragment_count

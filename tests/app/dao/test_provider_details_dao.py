@@ -1,6 +1,6 @@
 import pytest
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from freezegun import freeze_time
 from sqlalchemy.sql import desc
 
@@ -153,7 +153,7 @@ def test_reduce_sms_provider_priority_switches_provider(
     ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
 
     # switch away from mmg. currently both 50/50
-    dao_reduce_sms_provider_priority('mmg')
+    dao_reduce_sms_provider_priority('mmg', time_threshold=timedelta(minutes=10))
 
     assert firetext.priority == expected_priorities['firetext']
     assert mmg.priority == expected_priorities['mmg']
@@ -177,7 +177,7 @@ def test_reduce_sms_provider_priority_adds_rows_to_history_table(
         desc(ProviderDetailsHistory.version)
     ).all()
 
-    dao_reduce_sms_provider_priority(mmg.identifier)
+    dao_reduce_sms_provider_priority(mmg.identifier, time_threshold=timedelta(minutes=10))
 
     updated_provider_history_rows = ProviderDetailsHistory.query.filter(
         ProviderDetailsHistory.id == mmg.id
@@ -197,9 +197,11 @@ def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_ch
     mock_is_slow = mocker.patch('app.celery.scheduled_tasks.is_delivery_slow_for_providers')
     mock_reduce = mocker.patch('app.celery.scheduled_tasks.dao_reduce_sms_provider_priority')
     ProviderDetails.query.filter(ProviderDetails.identifier == 'firetext').update({'updated_at': datetime.min})
-    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': datetime.utcnow()})
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update(
+        {'updated_at': datetime.utcnow() - timedelta(minutes=4, seconds=59)}
+    )
 
-    dao_reduce_sms_provider_priority('firetext')
+    dao_reduce_sms_provider_priority('firetext', time_threshold=timedelta(minutes=5))
 
     assert mock_is_slow.called is False
     assert mock_reduce.called is False

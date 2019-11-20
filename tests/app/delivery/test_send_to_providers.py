@@ -1,6 +1,6 @@
 import uuid
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -560,12 +560,12 @@ def test_should_update_billable_units_and_status_according_to_research_mode_and_
     assert notification.status == expected_status
 
 
-def test_should_set_notification_billable_units_if_sending_to_provider_fails(
+def test_should_set_notification_billable_units_and_reduces_provider_priority_if_sending_to_provider_fails(
     sample_notification,
     mocker,
 ):
     mocker.patch('app.mmg_client.send_sms', side_effect=Exception())
-    mocker.patch('app.delivery.send_to_providers.dao_reduce_sms_provider_priority')
+    mock_reduce = mocker.patch('app.delivery.send_to_providers.dao_reduce_sms_provider_priority')
 
     sample_notification.billable_units = 0
     assert sample_notification.sent_by is None
@@ -574,6 +574,7 @@ def test_should_set_notification_billable_units_if_sending_to_provider_fails(
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
+    mock_reduce.assert_called_once_with('mmg', time_threshold=timedelta(minutes=1))
 
 
 def test_should_send_sms_to_international_providers(

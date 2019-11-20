@@ -58,7 +58,7 @@ def test_should_call_delete_codes_on_delete_verify_codes_task(notify_db_session,
     assert scheduled_tasks.delete_codes_older_created_more_than_a_day_ago.call_count == 1
 
 
-def test_should_call_delete_invotations_on_delete_invitations_task(notify_api, mocker):
+def test_should_call_delete_invotations_on_delete_invitations_task(notify_db_session, mocker):
     mocker.patch('app.celery.scheduled_tasks.delete_invitations_created_more_than_two_days_ago')
     delete_invitations()
     assert scheduled_tasks.delete_invitations_created_more_than_two_days_ago.call_count == 1
@@ -119,7 +119,7 @@ def test_switch_current_sms_provider_on_slow_delivery_switches_when_one_provider
         created_at=datetime(2017, 5, 1, 13, 50),
         delivery_time=timedelta(minutes=4)
     )
-    mock_reduce.assert_called_once_with('firetext')
+    mock_reduce.assert_called_once_with('firetext', time_threshold=timedelta(minutes=10))
 
 
 @freeze_time('2017-05-01 14:00:00')

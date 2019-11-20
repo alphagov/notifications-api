@@ -122,7 +122,7 @@ def switch_current_sms_provider_on_slow_delivery():
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
                 current_app.logger.warning('Slow delivery notifications detected for provider {}'.format(provider_name))
-                dao_reduce_sms_provider_priority(provider_name)
+                dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
 
 
 @notify_celery.task(name='check-job-status')

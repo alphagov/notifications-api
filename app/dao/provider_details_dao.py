@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
@@ -35,7 +35,13 @@ def dao_get_provider_versions(provider_id):
 
 
 @transactional
-def dao_reduce_sms_provider_priority(identifier):
+def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
+    """
+    Will reduce a chosen sms provider's priority, and increase the other provider's priority by 10 points each.
+    If either provider has been updated in the last `time_threshold`, then it won't take any action.
+    """
+    amount_to_reduce_by = 10
+
     # get current priority of both providers
     q = ProviderDetails.query.filter(
         ProviderDetails.notification_type == 'sms',
@@ -46,8 +52,8 @@ def dao_reduce_sms_provider_priority(identifier):
     other_identifier = get_alternative_sms_provider(identifier)
 
     # if something updated recently, don't update again. If the updated_at is null, treat it as min time
-    if any((provider.updated_at or datetime.min) > datetime.utcnow() - timedelta(minutes=10) for provider in q):
-        current_app.logger.info("Not adjusting providers, providers updated less than 10 minutes ago.")
+    if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
+        current_app.logger.info("Not adjusting providers, providers updated less than {} ago.".format(time_threshold))
         return
 
     reduced_provider = providers[identifier]
@@ -56,8 +62,8 @@ def dao_reduce_sms_provider_priority(identifier):
     pre_increase_priority = increased_provider.priority
 
     # always keep values between 0 and 100
-    reduced_provider.priority = max(0, reduced_provider.priority - 10)
-    increased_provider.priority = min(100, increased_provider.priority + 10)
+    reduced_provider.priority = max(0, reduced_provider.priority - amount_to_reduce_by)
+    increased_provider.priority = min(100, increased_provider.priority + amount_to_reduce_by)
 
     current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
         reduced_provider.identifier,
