@@ -316,7 +316,7 @@ def test_check_notification_content_is_not_empty_fails(
     with pytest.raises(BadRequestError) as e:
         check_notification_content_is_not_empty(template_with_content)
     assert e.value.status_code == 400
-    assert e.value.message == 'This message is empty.'
+    assert e.value.message == 'Your message is empty.'
     assert e.value.fields == []
 
 
