@@ -7,8 +7,6 @@ from jsonschema import (Draft7Validator, ValidationError, FormatChecker)
 from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
                                             InvalidEmailError)
 
-from app.v2.errors import BadRequestError
-
 format_checker = FormatChecker()
 
 
@@ -57,9 +55,6 @@ def validate_schema_date_with_hour(instance):
 
 
 def validate(json_to_validate, schema):
-    if json_to_validate is None:
-        raise BadRequestError(message="Request body is empty.",
-                              status_code=400)
     validator = Draft7Validator(schema, format_checker=format_checker)
     errors = list(validator.iter_errors(json_to_validate))
     if errors.__len__() > 0:

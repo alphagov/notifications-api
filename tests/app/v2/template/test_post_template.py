@@ -154,13 +154,40 @@ def test_post_template_with_non_existent_template_id_returns_404(client, fake_uu
     }
 
 
-def test_post_template_without_content_header(client, sample_template):
+def test_post_template_returns_200_without_personalisation(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=None,
+        headers=[('Content-Type', 'application/json'),
+                 create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_without_personalisation_and_missing_content_header(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=None,
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_without_personalisation_as_valid_json_and_missing_content_header(
+        client, sample_template
+):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=json.dumps(None),
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_with_valid_json_and_missing_content_header(client, sample_template):
     response = client.post(
         path='/v2/template/{}/preview'.format(sample_template.id),
         data=json.dumps(valid_personalisation),
         headers=[create_authorization_header(service_id=sample_template.service_id)]
     )
-
-    assert response.status_code == 400
-    json_response = json.loads(response.get_data(as_text=True))
-    assert json_response['errors'][0]['message'] == 'Content-Type header is not set to application/json.'
+    assert response.status_code == 200

@@ -3,7 +3,6 @@ import functools
 
 from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
-from werkzeug.exceptions import BadRequest
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
 from app.celery.letters_pdf_tasks import create_letters_pdf, process_virus_scan_passed
@@ -58,6 +57,7 @@ from app.v2.notifications.notification_schemas import (
     post_letter_request,
     post_precompiled_letter_request
 )
+from app.v2.utils import get_valid_json
 
 
 @v2_notification_blueprint.route('/{}'.format(LETTER_TYPE), methods=['POST'])
@@ -171,15 +171,6 @@ def post_notification(notification_type):
         scheduled_for=scheduled_for
     )
     return jsonify(resp), 201
-
-
-def get_valid_json():
-    try:
-        request_json = request.get_json(force=True)
-    except BadRequest:
-        raise BadRequestError(message="Invalid JSON supplied in POST data",
-                              status_code=400)
-    return request_json
 
 
 def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):

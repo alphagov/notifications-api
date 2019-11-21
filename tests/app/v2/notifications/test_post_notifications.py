@@ -931,4 +931,7 @@ def test_post_email_notification_when_data_is_empty_returns_400(
     )
     error_msg = json.loads(response.get_data(as_text=True))["errors"][0]["message"]
     assert response.status_code == 400
-    assert error_msg == 'Request body is empty.'
+    if notification_type == 'sms':
+        assert error_msg == 'phone_number is a required property'
+    else:
+        assert error_msg == 'email_address is a required property'
