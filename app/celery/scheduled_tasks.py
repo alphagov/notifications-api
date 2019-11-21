@@ -175,8 +175,8 @@ def check_job_status():
 @notify_celery.task(name='replay-created-notifications')
 @statsd(namespace="tasks")
 def replay_created_notifications():
-    # if the notification has not be send after 4 hours + 15 minutes, then try to resend.
-    resend_created_notifications_older_than = (60 * 60 * 4) + (60 * 15)
+    # if the notification has not be send after 1 hour, then try to resend.
+    resend_created_notifications_older_than = (60 * 60)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
         notifications_to_resend = notifications_not_yet_sent(
             resend_created_notifications_older_than,
@@ -195,7 +195,7 @@ def replay_created_notifications():
     letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
 
     if len(letters) > 0:
-        msg = "{} letters were created four hours and 15 minutes ago, " \
+        msg = "{} letters were created over an hour ago, " \
               "but do not have an updated_at timestamp or billable units. " \
               "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 " \
               "and update notifications for the following notification ids: " \

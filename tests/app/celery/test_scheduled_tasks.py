@@ -285,7 +285,7 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
 
     sms_template = create_template(service=sample_service, template_type='sms')
     email_template = create_template(service=sample_service, template_type='email')
-    older_than = (60 * 60 * 4) + (60 * 15)  # 4 hours 15 minutes
+    older_than = (60 * 60) + (60 * 15)  # 1 hour 15 minutes
     # notifications expected to be resent
     old_sms = create_notification(template=sms_template, created_at=datetime.utcnow() - timedelta(seconds=older_than),
                                   status='created')
@@ -316,8 +316,10 @@ def test_replay_created_notifications_create_letters_pdf_tasks_for_letters_not_r
     create_notification(template=sample_letter_template, billable_units=0,
                         created_at=datetime.utcnow() - timedelta(hours=4))
 
+    create_notification(template=sample_letter_template, billable_units=0,
+                        created_at=datetime.utcnow() - timedelta(minutes=20))
     notification_1 = create_notification(template=sample_letter_template, billable_units=0,
-                                         created_at=datetime.utcnow() - timedelta(hours=4, minutes=20))
+                                         created_at=datetime.utcnow() - timedelta(hours=1, minutes=20))
     notification_2 = create_notification(template=sample_letter_template, billable_units=0,
                                          created_at=datetime.utcnow() - timedelta(hours=5))
 
