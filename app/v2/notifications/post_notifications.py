@@ -3,7 +3,6 @@ import functools
 
 from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
-from werkzeug.exceptions import BadRequest
 
 from app import api_user, authenticated_service, notify_celery, document_download_client
 from app.celery.letters_pdf_tasks import create_letters_pdf, process_virus_scan_passed
@@ -58,14 +57,16 @@ from app.v2.notifications.notification_schemas import (
     post_letter_request,
     post_precompiled_letter_request
 )
+from app.v2.utils import get_valid_json
 
 
 @v2_notification_blueprint.route('/{}'.format(LETTER_TYPE), methods=['POST'])
 def post_precompiled_letter_notification():
-    if 'content' not in (request.get_json() or {}):
+    request_json = get_valid_json()
+    if 'content' not in (request_json or {}):
         return post_notification(LETTER_TYPE)
 
-    form = validate(request.get_json(), post_precompiled_letter_request)
+    form = validate(request_json, post_precompiled_letter_request)
 
     # Check permission to send letters
     check_service_has_permission(LETTER_TYPE, authenticated_service.permissions)
@@ -99,11 +100,7 @@ def post_precompiled_letter_notification():
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
 def post_notification(notification_type):
-    try:
-        request_json = request.get_json()
-    except BadRequest as e:
-        raise BadRequestError(message="Error decoding arguments: {}".format(e.description),
-                              status_code=400)
+    request_json = get_valid_json()
 
     if notification_type == EMAIL_TYPE:
         form = validate(request_json, post_email_request)

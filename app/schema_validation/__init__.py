@@ -7,7 +7,6 @@ from jsonschema import (Draft7Validator, ValidationError, FormatChecker)
 from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
                                             InvalidEmailError)
 
-
 format_checker = FormatChecker()
 
 

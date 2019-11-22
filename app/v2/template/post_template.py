@@ -6,14 +6,21 @@ from app.schema_validation import validate
 from app.utils import get_template_instance
 from app.v2.errors import BadRequestError
 from app.v2.template import v2_template_blueprint
-from app.v2.template.template_schemas import post_template_preview_request, create_post_template_preview_response
+from app.v2.template.template_schemas import (
+    post_template_preview_request,
+    create_post_template_preview_response
+)
+from app.v2.utils import get_valid_json
 
 
 @v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
-    _data = request.get_json()
-    if _data is None:
+    # The payload is empty when there are no place holders in the template.
+    _data = request.get_data(as_text=True)
+    if not _data:
         _data = {}
+    else:
+        _data = get_valid_json()
 
     _data['id'] = template_id
 

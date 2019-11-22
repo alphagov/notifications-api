@@ -152,3 +152,42 @@ def test_post_template_with_non_existent_template_id_returns_404(client, fake_uu
         ],
         "status_code": 404
     }
+
+
+def test_post_template_returns_200_without_personalisation(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=None,
+        headers=[('Content-Type', 'application/json'),
+                 create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_without_personalisation_and_missing_content_header(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=None,
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_without_personalisation_as_valid_json_and_missing_content_header(
+        client, sample_template
+):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=json.dumps(None),
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
+
+
+def test_post_template_returns_200_with_valid_json_and_missing_content_header(client, sample_template):
+    response = client.post(
+        path='/v2/template/{}/preview'.format(sample_template.id),
+        data=json.dumps(valid_personalisation),
+        headers=[create_authorization_header(service_id=sample_template.service_id)]
+    )
+    assert response.status_code == 200
