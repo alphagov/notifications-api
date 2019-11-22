@@ -15,7 +15,7 @@ from app.v2.utils import get_valid_json
 
 @v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
 def post_template_preview(template_id):
-    # If the payload is is empty if there is no personalisation in the template.
+    # The payload is empty when there are no place holders in the template.
     _data = request.get_data(as_text=True)
     if not _data:
         _data = {}
