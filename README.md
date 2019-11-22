@@ -12,7 +12,7 @@ Contains:
 
 ### Python version
 
-This codebase is Python 3 only. At the moment we run 3.5 in production. You will run into problems if you try to use Python 3.4 or older, or Python 3.7 or newer.
+This codebase is Python 3 only. At the moment we run 3.6 in production. You will run into problems if you try to use Python 3.5 or older, or Python 3.7 or newer.
 
 ### AWS credentials
 
