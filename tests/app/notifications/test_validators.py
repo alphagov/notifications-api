@@ -4,19 +4,23 @@ from flask import current_app
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
+from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import (
+    check_notification_content_is_not_empty,
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
     check_template_is_active,
-    service_can_send_to_recipient,
     check_sms_content_char_count,
     check_service_over_api_rate_limit,
-    validate_and_format_recipient,
     check_service_email_reply_to_id,
     check_service_sms_sender_id,
     check_service_letter_contact_id,
     check_reply_to,
+    service_can_send_to_recipient,
+    validate_and_format_recipient,
+    validate_template
 )
 
 from app.v2.errors import (
@@ -284,6 +288,52 @@ def test_check_sms_content_char_count_fails(char_count, notify_api):
     assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
         SMS_CHAR_COUNT_LIMIT)
     assert e.value.fields == []
+
+
+def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
+    template_id = create_template(sample_service, content="Content is not empty").id
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=sample_service.id
+    )
+    template_with_content = create_content_for_notification(template, {})
+    assert check_notification_content_is_not_empty(template_with_content) is None
+
+
+@pytest.mark.parametrize('template_content,notification_values', [
+    ("", {}),
+    ("((placeholder))", {"placeholder": ""})
+])
+def test_check_notification_content_is_not_empty_fails(
+    notify_api, mocker, sample_service, template_content, notification_values
+):
+    template_id = create_template(sample_service, content=template_content).id
+    template = templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=sample_service.id
+    )
+    template_with_content = create_content_for_notification(template, notification_values)
+    with pytest.raises(BadRequestError) as e:
+        check_notification_content_is_not_empty(template_with_content)
+    assert e.value.status_code == 400
+    assert e.value.message == 'Your message is empty.'
+    assert e.value.fields == []
+
+
+def test_validate_template(mocker, fake_uuid, sample_service):
+    template = create_template(sample_service, template_type="email")
+    mock_check_type = mocker.patch('app.notifications.validators.check_template_is_for_notification_type')
+    mock_check_if_active = mocker.patch('app.notifications.validators.check_template_is_active')
+    mock_create_conent = mocker.patch(
+        'app.notifications.validators.create_content_for_notification', return_value="content"
+    )
+    mock_check_not_empty = mocker.patch('app.notifications.validators.check_notification_content_is_not_empty')
+    validate_template(template.id, {}, sample_service, "email")
+
+    mock_check_type.assert_called_once_with("email", "email")
+    mock_check_if_active.assert_called_once_with(template)
+    mock_create_conent.assert_called_once_with(template, {})
+    mock_check_not_empty.assert_called_once_with("content")
 
 
 @pytest.mark.parametrize('key_type', ['team', 'live', 'test'])
