@@ -32,6 +32,7 @@ from app.models import (
     Notification,
     NotificationHistory,
     ScheduledNotification,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
@@ -46,7 +47,7 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     ServiceDataRetention,
-    Service
+    Service,
 )
 from app.utils import get_london_midnight_in_utc
 from app.utils import midnight_n_days_ago, escape_special_characters
@@ -698,12 +699,29 @@ def dao_old_letters_with_created_status():
     last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)
 
     notifications = Notification.query.filter(
-        Notification.updated_at < convert_bst_to_utc(last_processing_deadline),
+        Notification.created_at < convert_bst_to_utc(last_processing_deadline),
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED
     ).order_by(
-        Notification.updated_at
+        Notification.created_at
     ).all()
+    return notifications
+
+
+def letters_missing_from_sending_bucket(seconds_to_subtract):
+    older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
+    # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
+    notifications = Notification.query.filter(
+        Notification.billable_units == 0,
+        Notification.updated_at == None,  # noqa
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.created_at <= older_than_date,
+        Notification.notification_type == LETTER_TYPE,
+        Notification.key_type == KEY_TYPE_NORMAL
+    ).order_by(
+        Notification.created_at
+    ).all()
+
     return notifications
 
 

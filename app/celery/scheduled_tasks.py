@@ -14,6 +14,7 @@ from app.celery.tasks import (
     get_recipient_csv_and_template_and_sender_id,
     process_row
 )
+from app.celery.letters_pdf_tasks import create_letters_pdf
 from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -30,6 +31,7 @@ from app.dao.notifications_dao import (
     notifications_not_yet_sent,
     dao_precompiled_letters_still_pending_virus_check,
     dao_old_letters_with_created_status,
+    letters_missing_from_sending_bucket
 )
 from app.dao.provider_details_dao import (
     get_current_provider,
@@ -173,8 +175,8 @@ def check_job_status():
 @notify_celery.task(name='replay-created-notifications')
 @statsd(namespace="tasks")
 def replay_created_notifications():
-    # if the notification has not be send after 4 hours + 15 minutes, then try to resend.
-    resend_created_notifications_older_than = (60 * 60 * 4) + (60 * 15)
+    # if the notification has not be send after 1 hour, then try to resend.
+    resend_created_notifications_older_than = (60 * 60)
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
         notifications_to_resend = notifications_not_yet_sent(
             resend_created_notifications_older_than,
@@ -188,6 +190,20 @@ def replay_created_notifications():
 
         for n in notifications_to_resend:
             send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
+
+    # if the letter has not be send after an hour, then create a zendesk ticket
+    letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
+
+    if len(letters) > 0:
+        msg = "{} letters were created over an hour ago, " \
+              "but do not have an updated_at timestamp or billable units. " \
+              "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 " \
+              "and update notifications for the following notification ids: " \
+              "\n {}".format(len(letters), [x.id for x in letters])
+
+        current_app.logger.info(msg)
+        for letter in letters:
+            create_letters_pdf.apply_async([letter.id], queue=QueueNames.LETTERS)
 
 
 @notify_celery.task(name='check-precompiled-letter-state')
