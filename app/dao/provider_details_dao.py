@@ -2,13 +2,10 @@ from datetime import datetime
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
+from flask import current_app
 
 from app.dao.dao_utils import transactional
-from app.provider_details.switch_providers import (
-    provider_is_inactive,
-    provider_is_primary,
-    switch_providers
-)
+from app.dao.users_dao import get_user_by_id
 from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
 
@@ -22,22 +19,11 @@ def get_provider_details_by_identifier(identifier):
 
 
 def get_alternative_sms_provider(identifier):
-    alternate_provider = None
     if identifier == 'firetext':
-        alternate_provider = 'mmg'
+        return 'mmg'
     elif identifier == 'mmg':
-        alternate_provider = 'firetext'
-
-    return ProviderDetails.query.filter_by(identifier=alternate_provider).one()
-
-
-def get_current_provider(notification_type):
-    return ProviderDetails.query.filter_by(
-        notification_type=notification_type,
-        active=True
-    ).order_by(
-        asc(ProviderDetails.priority)
-    ).first()
+        return 'firetext'
+    raise ValueError('Unrecognised sms provider {}'.format(identifier))
 
 
 def dao_get_provider_versions(provider_id):
@@ -49,32 +35,56 @@ def dao_get_provider_versions(provider_id):
 
 
 @transactional
-def dao_toggle_sms_provider(identifier):
-    alternate_provider = get_alternative_sms_provider(identifier)
-    dao_switch_sms_provider_to_provider_with_identifier(alternate_provider.identifier)
+def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
+    """
+    Will reduce a chosen sms provider's priority, and increase the other provider's priority by 10 points each.
+    If either provider has been updated in the last `time_threshold`, then it won't take any action.
+    """
+    amount_to_reduce_by = 10
 
+    # get current priority of both providers
+    q = ProviderDetails.query.filter(
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.active
+    ).with_for_update().all()
 
-@transactional
-def dao_switch_sms_provider_to_provider_with_identifier(identifier):
-    new_provider = get_provider_details_by_identifier(identifier)
+    providers = {provider.identifier: provider for provider in q}
+    other_identifier = get_alternative_sms_provider(identifier)
 
-    if provider_is_inactive(new_provider):
+    # if something updated recently, don't update again. If the updated_at is null, treat it as min time
+    if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
+        current_app.logger.info("Not adjusting providers, providers updated less than {} ago.".format(time_threshold))
         return
 
-    # Check first to see if there is another provider with the same priority
-    # as this needs to be updated differently
-    conflicting_provider = dao_get_sms_provider_with_equal_priority(new_provider.identifier, new_provider.priority)
-    providers_to_update = []
+    reduced_provider = providers[identifier]
+    increased_provider = providers[other_identifier]
+    pre_reduction_priority = reduced_provider.priority
+    pre_increase_priority = increased_provider.priority
 
-    if conflicting_provider:
-        switch_providers(conflicting_provider, new_provider)
-    else:
-        current_provider = get_current_provider('sms')
-        if not provider_is_primary(current_provider, new_provider, identifier):
-            providers_to_update = switch_providers(current_provider, new_provider)
+    # always keep values between 0 and 100
+    reduced_provider.priority = max(0, reduced_provider.priority - amount_to_reduce_by)
+    increased_provider.priority = min(100, increased_provider.priority + amount_to_reduce_by)
 
-        for provider in providers_to_update:
-            dao_update_provider_details(provider)
+    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
+        reduced_provider.identifier,
+        reduced_provider.priority,
+        pre_reduction_priority
+    ))
+    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
+        increased_provider.identifier,
+        increased_provider.priority,
+        pre_increase_priority
+    ))
+
+    # Automatic update so set as notify user
+    notify_user = get_user_by_id(current_app.config['NOTIFY_USER_ID'])
+    reduced_provider.created_by_id = notify_user.id
+    increased_provider.created_by_id = notify_user.id
+
+    # update without commit so that both rows can be changed without ending the transaction
+    # and releasing the for_update lock
+    _update_provider_details_without_commit(reduced_provider)
+    _update_provider_details_without_commit(increased_provider)
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
@@ -89,24 +99,18 @@ def get_provider_details_by_notification_type(notification_type, supports_intern
 
 @transactional
 def dao_update_provider_details(provider_details):
+    _update_provider_details_without_commit(provider_details)
+
+
+def _update_provider_details_without_commit(provider_details):
+    """
+    Doesn't commit, for when you need to control the database transaction manually
+    """
     provider_details.version += 1
     provider_details.updated_at = datetime.utcnow()
     history = ProviderDetailsHistory.from_original(provider_details)
     db.session.add(provider_details)
     db.session.add(history)
-
-
-def dao_get_sms_provider_with_equal_priority(identifier, priority):
-    provider = db.session.query(ProviderDetails).filter(
-        ProviderDetails.identifier != identifier,
-        ProviderDetails.notification_type == 'sms',
-        ProviderDetails.priority == priority,
-        ProviderDetails.active
-    ).order_by(
-        asc(ProviderDetails.priority)
-    ).first()
-
-    return provider
 
 
 def dao_get_provider_stats():

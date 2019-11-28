@@ -8,19 +8,11 @@ from tests import create_authorization_header
 from tests.app.db import create_ft_billing
 
 
-def test_get_provider_details_in_type_and_identifier_order(client, notify_db):
-    response = client.get(
-        '/provider-details',
-        headers=[create_authorization_header()]
-    )
-    assert response.status_code == 200
-    json_resp = json.loads(response.get_data(as_text=True))['provider_details']
-    assert len(json_resp) == 4
+def test_get_provider_details_returns_all_providers(admin_request, notify_db_session):
+    json_resp = admin_request.get('provider_details.get_providers')['provider_details']
 
-    assert json_resp[0]['identifier'] == 'ses'
-    assert json_resp[1]['identifier'] == 'mmg'
-    assert json_resp[2]['identifier'] == 'firetext'
-    assert json_resp[3]['identifier'] == 'dvla'
+    assert len(json_resp) == 4
+    assert {x['identifier'] for x in json_resp} == {'ses', 'firetext', 'mmg', 'dvla'}
 
 
 def test_get_provider_details_by_id(client, notify_db):

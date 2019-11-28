@@ -1,6 +1,6 @@
 import uuid
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
@@ -10,8 +10,8 @@ from requests import HTTPError
 
 import app
 from app import mmg_client, firetext_client
-from app.dao import (provider_details_dao, notifications_dao)
-from app.dao.provider_details_dao import dao_switch_sms_provider_to_provider_with_identifier
+from app.dao import notifications_dao
+from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
@@ -34,35 +34,47 @@ from tests.app.db import (
 )
 
 
-def test_should_return_highest_priority_active_provider(restore_provider_details):
-    providers = provider_details_dao.get_provider_details_by_notification_type('sms')
+def test_provider_to_use_should_return_random_provider(mocker, notify_db_session):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.priority = 25
+    firetext.priority = 75
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
 
-    first = providers[0]
-    second = providers[1]
+    ret = send_to_providers.provider_to_use('sms', international=False)
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
+    mock_choices.assert_called_once_with([mmg, firetext], weights=[25, 75])
+    assert ret.get_name() == 'mmg'
 
-    first.priority = 20
-    second.priority = 10
 
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
+def test_provider_to_use_should_only_return_mmg_for_international(mocker, notify_db_session):
+    mmg = get_provider_details_by_identifier('mmg')
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == second.identifier
+    ret = send_to_providers.provider_to_use('sms', international=True)
 
-    first.priority = 10
-    first.active = False
-    second.priority = 20
+    mock_choices.assert_called_once_with([mmg], weights=[100])
+    assert ret.get_name() == 'mmg'
 
-    provider_details_dao.dao_update_provider_details(first)
-    provider_details_dao.dao_update_provider_details(second)
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == second.identifier
+def test_provider_to_use_should_only_return_active_providers(mocker, restore_provider_details):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.active = False
+    mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[firetext])
 
-    first.active = True
-    provider_details_dao.dao_update_provider_details(first)
+    ret = send_to_providers.provider_to_use('sms')
 
-    assert send_to_providers.provider_to_use('sms', '1234').name == first.identifier
+    mock_choices.assert_called_once_with([firetext], weights=[0])
+    assert ret.get_name() == 'firetext'
+
+
+def test_provider_to_use_raises_if_no_active_providers(mocker, restore_provider_details):
+    mmg = get_provider_details_by_identifier('mmg')
+    mmg.active = False
+
+    with pytest.raises(Exception):
+        send_to_providers.provider_to_use('sms', international=True)
 
 
 def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
@@ -548,12 +560,12 @@ def test_should_update_billable_units_and_status_according_to_research_mode_and_
     assert notification.status == expected_status
 
 
-def test_should_set_notification_billable_units_if_sending_to_provider_fails(
+def test_should_set_notification_billable_units_and_reduces_provider_priority_if_sending_to_provider_fails(
     sample_notification,
     mocker,
 ):
     mocker.patch('app.mmg_client.send_sms', side_effect=Exception())
-    mock_toggle_provider = mocker.patch('app.delivery.send_to_providers.dao_toggle_sms_provider')
+    mock_reduce = mocker.patch('app.delivery.send_to_providers.dao_reduce_sms_provider_priority')
 
     sample_notification.billable_units = 0
     assert sample_notification.sent_by is None
@@ -562,69 +574,64 @@ def test_should_set_notification_billable_units_if_sending_to_provider_fails(
         send_to_providers.send_sms_to_provider(sample_notification)
 
     assert sample_notification.billable_units == 1
-    assert mock_toggle_provider.called
+    mock_reduce.assert_called_once_with('mmg', time_threshold=timedelta(minutes=1))
 
 
 def test_should_send_sms_to_international_providers(
-    restore_provider_details,
-    sample_sms_template_with_html,
+    sample_template,
     sample_user,
     mocker
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.firetext_client.send_sms')
 
-    dao_switch_sms_provider_to_provider_with_identifier('firetext')
+    # set firetext to active
+    get_provider_details_by_identifier('firetext').priority = 100
+    get_provider_details_by_identifier('mmg').priority = 0
 
-    db_notification_uk = create_notification(
-        template=sample_sms_template_with_html,
+    notification_uk = create_notification(
+        template=sample_template,
         to_field="+447234123999",
         personalisation={"name": "Jo"},
         status='created',
         international=False,
-        reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender()
+        reply_to_text=sample_template.service.get_default_sms_sender()
     )
 
-    db_notification_international = create_notification(
-        template=sample_sms_template_with_html,
+    notification_international = create_notification(
+        template=sample_template,
         to_field="+6011-17224412",
         personalisation={"name": "Jo"},
         status='created',
         international=True,
-        reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender()
+        reply_to_text=sample_template.service.get_default_sms_sender()
     )
-
-    mocker.patch('app.mmg_client.send_sms')
-    mocker.patch('app.firetext_client.send_sms')
-
     send_to_providers.send_sms_to_provider(
-        db_notification_uk
+        notification_uk
     )
 
     firetext_client.send_sms.assert_called_once_with(
         to="447234123999",
         content=ANY,
-        reference=str(db_notification_uk.id),
+        reference=str(notification_uk.id),
         sender=current_app.config['FROM_NUMBER']
     )
 
     send_to_providers.send_sms_to_provider(
-        db_notification_international
+        notification_international
     )
 
     mmg_client.send_sms.assert_called_once_with(
         to="601117224412",
         content=ANY,
-        reference=str(db_notification_international.id),
+        reference=str(notification_international.id),
         sender=current_app.config['FROM_NUMBER']
     )
 
-    notification_uk = Notification.query.filter_by(id=db_notification_uk.id).one()
-    notification_int = Notification.query.filter_by(id=db_notification_international.id).one()
-
     assert notification_uk.status == 'sending'
     assert notification_uk.sent_by == 'firetext'
-    assert notification_int.status == 'sent'
-    assert notification_int.sent_by == 'mmg'
+    assert notification_international.status == 'sent'
+    assert notification_international.sent_by == 'mmg'
 
 
 @pytest.mark.parametrize('sms_sender, expected_sender, prefix_sms, expected_content', [

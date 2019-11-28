@@ -1,5 +1,7 @@
 import functools
 import string
+from itertools import groupby
+from operator import attrgetter
 from datetime import (
     datetime,
     timedelta,
@@ -15,7 +17,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import (desc, func, asc)
+from sqlalchemy import (desc, func, asc, and_)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
@@ -31,6 +33,7 @@ from app.letters.utils import get_letter_pdf_filename
 from app.models import (
     Notification,
     NotificationHistory,
+    ProviderDetails,
     ScheduledNotification,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
@@ -486,40 +489,61 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     return technical_failure_notifications, temporary_failure_notifications
 
 
-def is_delivery_slow_for_provider(
+def is_delivery_slow_for_providers(
         created_at,
-        provider,
         threshold,
         delivery_time,
 ):
-    count = db.session.query(
+    """
+    Returns a dict of providers and whether they are currently slow or not. eg:
+    {
+        'mmg': True,
+        'firetext': False
+    }
+    """
+    slow_notification_counts = db.session.query(
+        ProviderDetails.identifier,
         case(
             [(
                 Notification.status == NOTIFICATION_DELIVERED,
                 (Notification.updated_at - Notification.sent_at) >= delivery_time
             )],
             else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time
-        ).label("slow"), func.count()
-
+        ).label("slow"),
+        func.count().label('count')
+    ).select_from(
+        ProviderDetails
+    ).outerjoin(
+        Notification, and_(
+            Notification.sent_by == ProviderDetails.identifier,
+            Notification.created_at >= created_at,
+            Notification.sent_at.isnot(None),
+            Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+            Notification.key_type != KEY_TYPE_TEST
+        )
     ).filter(
-        Notification.created_at >= created_at,
-        Notification.sent_at.isnot(None),
-        Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
-        Notification.sent_by == provider,
-        Notification.key_type != KEY_TYPE_TEST
-    ).group_by("slow").all()
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.active
+    ).order_by(
+        ProviderDetails.identifier
+    ).group_by(
+        ProviderDetails.identifier,
+        "slow"
+    )
 
-    counts = {c[0]: c[1] for c in count}
-    total_notifications = sum(counts.values())
-    slow_notifications = counts.get(True, 0)
+    slow_providers = {}
+    for provider, rows in groupby(slow_notification_counts, key=attrgetter('identifier')):
+        rows = list(rows)
+        total_notifications = sum(row.count for row in rows)
+        slow_notifications = sum(row.count for row in rows if row.slow)
 
-    if total_notifications:
+        slow_providers[provider] = (slow_notifications / total_notifications >= threshold)
+
         current_app.logger.info("Slow delivery notifications count for provider {}: {} out of {}. Ratio {}".format(
             provider, slow_notifications, total_notifications, slow_notifications / total_notifications
         ))
-        return slow_notifications / total_notifications >= threshold
-    else:
-        return False
+
+    return slow_providers
 
 
 @statsd(namespace="dao")

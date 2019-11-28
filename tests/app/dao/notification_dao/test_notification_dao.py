@@ -26,7 +26,7 @@ from app.dao.notifications_dao import (
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
-    is_delivery_slow_for_provider,
+    is_delivery_slow_for_providers,
     set_scheduled_notification_to_processed,
     update_notification_status_by_id,
     update_notification_status_by_reference,
@@ -957,7 +957,7 @@ def test_should_exclude_test_key_notifications_by_default(
     ]
 )
 @freeze_time("2018-12-04 12:00:00.000000")
-def test_is_delivery_slow_for_provider(
+def test_is_delivery_slow_for_providers(
     notify_db_session,
     sample_template,
     normal_sending,
@@ -992,7 +992,11 @@ def test_is_delivery_slow_for_provider(
     for _ in range(slow_delivered):
         slow_notification(status='delivered')
 
-    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", threshold, timedelta(minutes=4)) is expected_result
+    result = is_delivery_slow_for_providers(datetime.utcnow(), threshold, timedelta(minutes=4))
+    assert result == {
+        'firetext': False,
+        'mmg': expected_result
+    }
 
 
 @pytest.mark.parametrize("options,expected_result", [
@@ -1008,22 +1012,23 @@ def test_is_delivery_slow_for_provider(
 
 ])
 @freeze_time("2018-12-04 12:00:00.000000")
-def test_delivery_is_delivery_slow_for_provider_filters_out_notifications_it_should_not_count(
+def test_delivery_is_delivery_slow_for_providers_filters_out_notifications_it_should_not_count(
     notify_db_session,
     sample_template,
     options,
     expected_result
 ):
-    create_notification_with = {
+    create_slow_notification_with = {
         "template": sample_template,
         "sent_at": datetime.now() - timedelta(minutes=5),
         "updated_at": datetime.now(),
     }
-    create_notification_with.update(options)
+    create_slow_notification_with.update(options)
     create_notification(
-        **create_notification_with
+        **create_slow_notification_with
     )
-    assert is_delivery_slow_for_provider(datetime.utcnow(), "mmg", 0.1, timedelta(minutes=4)) is expected_result
+    result = is_delivery_slow_for_providers(datetime.utcnow(), 0.1, timedelta(minutes=4))
+    assert result['mmg'] == expected_result
 
 
 def test_dao_get_notifications_by_to_field(sample_template):

@@ -1,5 +1,6 @@
+import random
 from urllib import parse
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.recipients import (
@@ -14,7 +15,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
-    dao_toggle_sms_provider
+    dao_reduce_sms_provider_priority
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.dao.templates_dao import dao_get_template_by_id
@@ -39,7 +40,7 @@ def send_sms_to_provider(notification):
         return
 
     if notification.status == 'created':
-        provider = provider_to_use(SMS_TYPE, notification.id, notification.international)
+        provider = provider_to_use(SMS_TYPE, notification.international)
 
         template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
 
@@ -65,7 +66,7 @@ def send_sms_to_provider(notification):
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
-                dao_toggle_sms_provider(provider.name)
+                dao_reduce_sms_provider_priority(provider.get_name(), time_threshold=timedelta(minutes=1))
                 raise e
             else:
                 notification.billable_units = template.fragment_count
@@ -81,7 +82,7 @@ def send_email_to_provider(notification):
         technical_failure(notification=notification)
         return
     if notification.status == 'created':
-        provider = provider_to_use(EMAIL_TYPE, notification.id)
+        provider = provider_to_use(EMAIL_TYPE)
 
         template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
 
@@ -128,18 +129,20 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
-def provider_to_use(notification_type, notification_id, international=False):
-    active_providers_in_order = [
+def provider_to_use(notification_type, international=False):
+    active_providers = [
         p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
     ]
 
-    if not active_providers_in_order:
+    if not active_providers:
         current_app.logger.error(
-            "{} {} failed as no active providers".format(notification_type, notification_id)
+            "{} failed as no active providers".format(notification_type)
         )
         raise Exception("No active {} providers".format(notification_type))
 
-    return clients.get_client_by_name_and_type(active_providers_in_order[0].identifier, notification_type)
+    chosen_provider = random.choices(active_providers, weights=[p.priority for p in active_providers])[0]
+
+    return clients.get_client_by_name_and_type(chosen_provider.identifier, notification_type)
 
 
 def get_logo_url(base_url, logo_file):

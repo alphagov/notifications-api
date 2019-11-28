@@ -1,22 +1,18 @@
 import pytest
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from freezegun import freeze_time
-from sqlalchemy import asc, desc
+from sqlalchemy.sql import desc
 
 from app.models import ProviderDetails, ProviderDetailsHistory
 from app import clients
 from app.dao.provider_details_dao import (
     get_alternative_sms_provider,
-    get_current_provider,
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
-    dao_switch_sms_provider_to_provider_with_identifier,
-    dao_toggle_sms_provider,
     dao_update_provider_details,
     dao_get_provider_stats,
-    dao_get_provider_versions,
-    dao_get_sms_provider_with_equal_priority
+    dao_reduce_sms_provider_priority,
 )
 from tests.app.db import (
     create_ft_billing,
@@ -27,7 +23,7 @@ from tests.app.db import (
 
 def set_primary_sms_provider(identifier):
     primary_provider = get_provider_details_by_identifier(identifier)
-    secondary_provider = get_alternative_sms_provider(identifier)
+    secondary_provider = get_provider_details_by_identifier(get_alternative_sms_provider(identifier))
 
     primary_provider.priority = 10
     secondary_provider.priority = 20
@@ -36,32 +32,32 @@ def set_primary_sms_provider(identifier):
     dao_update_provider_details(secondary_provider)
 
 
-def test_can_get_sms_non_international_providers(restore_provider_details):
+def test_can_get_sms_non_international_providers(notify_db_session):
     sms_providers = get_provider_details_by_notification_type('sms')
     assert len(sms_providers) == 2
     assert all('sms' == prov.notification_type for prov in sms_providers)
 
 
-def test_can_get_sms_international_providers(restore_provider_details):
+def test_can_get_sms_international_providers(notify_db_session):
     sms_providers = get_provider_details_by_notification_type('sms', True)
     assert len(sms_providers) == 1
     assert all('sms' == prov.notification_type for prov in sms_providers)
     assert all(prov.supports_international for prov in sms_providers)
 
 
-def test_can_get_sms_providers_in_order_of_priority(restore_provider_details):
+def test_can_get_sms_providers_in_order_of_priority(notify_db_session):
     providers = get_provider_details_by_notification_type('sms', False)
 
     assert providers[0].priority < providers[1].priority
 
 
-def test_can_get_email_providers_in_order_of_priority(restore_provider_details):
+def test_can_get_email_providers_in_order_of_priority(notify_db_session):
     providers = get_provider_details_by_notification_type('email')
 
     assert providers[0].identifier == "ses"
 
 
-def test_can_get_email_providers(restore_provider_details):
+def test_can_get_email_providers(notify_db_session):
     assert len(get_provider_details_by_notification_type('email')) == 1
     types = [provider.notification_type for provider in get_provider_details_by_notification_type('email')]
     assert all('email' == notification_type for notification_type in types)
@@ -105,189 +101,110 @@ def test_update_adds_history(restore_provider_details):
 
 
 def test_update_sms_provider_to_inactive_sets_inactive(restore_provider_details):
-    set_primary_sms_provider('mmg')
-    primary_provider = get_current_provider('sms')
-    primary_provider.active = False
+    mmg = get_provider_details_by_identifier('mmg')
 
-    dao_update_provider_details(primary_provider)
+    mmg.active = False
+    dao_update_provider_details(mmg)
 
-    assert not primary_provider.active
-
-
-def test_get_current_sms_provider_returns_correct_provider(restore_provider_details):
-    set_primary_sms_provider('mmg')
-
-    provider = get_current_provider('sms')
-
-    assert provider.identifier == 'mmg'
+    assert not mmg.active
 
 
-@pytest.mark.parametrize('provider_identifier', ['firetext', 'mmg'])
-def test_get_alternative_sms_provider_returns_expected_provider(notify_db, provider_identifier):
-    provider = get_alternative_sms_provider(provider_identifier)
-    assert provider.identifier != provider
+@pytest.mark.parametrize('identifier, expected', [
+    ('firetext', 'mmg'),
+    ('mmg', 'firetext'),
+])
+def test_get_alternative_sms_provider_returns_expected_provider(identifier, expected):
+    assert get_alternative_sms_provider(identifier) == expected
 
 
-def test_switch_sms_provider_to_current_provider_does_not_switch(
-    restore_provider_details,
-    current_sms_provider
-):
-    dao_switch_sms_provider_to_provider_with_identifier(current_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
-
-    assert current_sms_provider.id == new_provider.id
-    assert current_sms_provider.identifier == new_provider.identifier
+def test_get_alternative_sms_provider_fails_if_unrecognised():
+    with pytest.raises(ValueError):
+        get_alternative_sms_provider('ses')
 
 
-def test_switch_sms_provider_to_inactive_provider_does_not_switch(
-    restore_provider_details,
-    current_sms_provider
-):
-    alternative_sms_provider = get_alternative_sms_provider(current_sms_provider.identifier)
-    alternative_sms_provider.active = False
-    dao_update_provider_details(alternative_sms_provider)
+@pytest.mark.parametrize(['starting_priorities', 'expected_priorities'], [
+    ({'mmg': 50, 'firetext': 50}, {'mmg': 40, 'firetext': 60}),
+    ({'mmg': 0, 'firetext': 20}, {'mmg': 0, 'firetext': 30}),  # lower bound respected
+    ({'mmg': 50, 'firetext': 100}, {'mmg': 40, 'firetext': 100}),  # upper bound respected
 
-    dao_switch_sms_provider_to_provider_with_identifier(alternative_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
+    # document what happens if they have unexpected values outside of the 0 - 100 range (due to manual setting from
+    # the admin app). the code never causes further issues, but sometimes doesn't actively reset the vaues to 0-100.
+    ({'mmg': 150, 'firetext': 50}, {'mmg': 140, 'firetext': 60}),
+    ({'mmg': 50, 'firetext': 150}, {'mmg': 40, 'firetext': 100}),
 
-    assert new_provider.id == current_sms_provider.id
-    assert new_provider.identifier == current_sms_provider.identifier
-
-
-def test_toggle_sms_provider_switches_provider(
+    ({'mmg': -100, 'firetext': 50}, {'mmg': 0, 'firetext': 60}),
+    ({'mmg': 50, 'firetext': -100}, {'mmg': 40, 'firetext': -90}),
+])
+def test_reduce_sms_provider_priority_switches_provider(
+    notify_db_session,
     mocker,
     restore_provider_details,
-    current_sms_provider,
-    sample_user
-
+    sample_user,
+    starting_priorities,
+    expected_priorities,
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    dao_toggle_sms_provider(current_sms_provider.identifier)
-    new_provider = get_current_provider('sms')
+    mocker.patch('app.dao.provider_details_dao.get_user_by_id', return_value=sample_user)
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
 
-    old_starting_provider = get_provider_details_by_identifier(current_sms_provider.identifier)
+    mmg.priority = starting_priorities['mmg']
+    firetext.priority = starting_priorities['firetext']
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
 
-    assert new_provider.identifier != old_starting_provider.identifier
-    assert new_provider.priority < old_starting_provider.priority
+    # switch away from mmg. currently both 50/50
+    dao_reduce_sms_provider_priority('mmg', time_threshold=timedelta(minutes=10))
+
+    assert firetext.priority == expected_priorities['firetext']
+    assert mmg.priority == expected_priorities['mmg']
+    assert mmg.created_by is sample_user
+    assert firetext.created_by is sample_user
 
 
-def test_toggle_sms_provider_switches_when_provider_priorities_are_equal(
+def test_reduce_sms_provider_priority_adds_rows_to_history_table(
     mocker,
     restore_provider_details,
     sample_user
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-    current_provider = get_current_provider('sms')
-    new_provider = get_alternative_sms_provider(current_provider.identifier)
+    mocker.patch('app.dao.provider_details_dao.get_user_by_id', return_value=sample_user)
+    mmg = get_provider_details_by_identifier('mmg')
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
 
-    current_provider.priority = new_provider.priority
-    dao_update_provider_details(current_provider)
-
-    dao_toggle_sms_provider(current_provider.identifier)
-
-    old_starting_provider = get_provider_details_by_identifier(current_provider.identifier)
-
-    assert new_provider.identifier != old_starting_provider.identifier
-    assert new_provider.priority < old_starting_provider.priority
-
-
-def test_toggle_sms_provider_updates_provider_history(
-    mocker,
-    restore_provider_details,
-    current_sms_provider,
-    sample_user
-):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
     provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == current_sms_provider.id
+        ProviderDetailsHistory.id == mmg.id
     ).order_by(
         desc(ProviderDetailsHistory.version)
     ).all()
 
-    dao_toggle_sms_provider(current_sms_provider.identifier)
+    dao_reduce_sms_provider_priority(mmg.identifier, time_threshold=timedelta(minutes=10))
 
     updated_provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == current_sms_provider.id
+        ProviderDetailsHistory.id == mmg.id
     ).order_by(
         desc(ProviderDetailsHistory.version)
     ).all()
 
     assert len(updated_provider_history_rows) - len(provider_history_rows) == 1
     assert updated_provider_history_rows[0].version - provider_history_rows[0].version == 1
+    assert updated_provider_history_rows[0].priority == 90
 
 
-def test_toggle_sms_provider_switches_provider_stores_notify_user_id(
+def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_changed(
+    mocker,
     restore_provider_details,
-    sample_user,
-    mocker
 ):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
+    mock_is_slow = mocker.patch('app.celery.scheduled_tasks.is_delivery_slow_for_providers')
+    mock_reduce = mocker.patch('app.celery.scheduled_tasks.dao_reduce_sms_provider_priority')
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'firetext').update({'updated_at': datetime.min})
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update(
+        {'updated_at': datetime.utcnow() - timedelta(minutes=4, seconds=59)}
+    )
 
-    current_provider = get_current_provider('sms')
-    dao_toggle_sms_provider(current_provider.identifier)
-    new_provider = get_current_provider('sms')
+    dao_reduce_sms_provider_priority('firetext', time_threshold=timedelta(minutes=5))
 
-    assert current_provider.identifier != new_provider.identifier
-    assert new_provider.created_by.id == sample_user.id
-    assert new_provider.created_by_id == sample_user.id
-
-
-def test_toggle_sms_provider_switches_provider_stores_notify_user_id_in_history(
-    restore_provider_details,
-    sample_user,
-    mocker
-):
-    mocker.patch('app.provider_details.switch_providers.get_user_by_id', return_value=sample_user)
-
-    old_provider = get_current_provider('sms')
-    dao_toggle_sms_provider(old_provider.identifier)
-    new_provider = get_current_provider('sms')
-
-    old_provider_from_history = ProviderDetailsHistory.query.filter_by(
-        identifier=old_provider.identifier,
-        version=old_provider.version
-    ).order_by(
-        asc(ProviderDetailsHistory.priority)
-    ).first()
-    new_provider_from_history = ProviderDetailsHistory.query.filter_by(
-        identifier=new_provider.identifier,
-        version=new_provider.version
-    ).order_by(
-        asc(ProviderDetailsHistory.priority)
-    ).first()
-
-    assert old_provider.version == old_provider_from_history.version
-    assert new_provider.version == new_provider_from_history.version
-    assert new_provider_from_history.created_by_id == sample_user.id
-    assert old_provider_from_history.created_by_id == sample_user.id
-
-
-def test_can_get_all_provider_history(restore_provider_details, current_sms_provider):
-    assert len(dao_get_provider_versions(current_sms_provider.id)) == 1
-
-
-def test_get_sms_provider_with_equal_priority_returns_provider(
-    restore_provider_details
-):
-    current_provider = get_current_provider('sms')
-    new_provider = get_alternative_sms_provider(current_provider.identifier)
-
-    current_provider.priority = new_provider.priority
-    dao_update_provider_details(current_provider)
-
-    conflicting_provider = \
-        dao_get_sms_provider_with_equal_priority(current_provider.identifier, current_provider.priority)
-
-    assert conflicting_provider
-
-
-def test_get_current_sms_provider_returns_active_only(restore_provider_details):
-    current_provider = get_current_provider('sms')
-    current_provider.active = False
-    dao_update_provider_details(current_provider)
-    new_current_provider = get_current_provider('sms')
-
-    assert current_provider.identifier != new_current_provider.identifier
+    assert mock_is_slow.called is False
+    assert mock_reduce.called is False
 
 
 @freeze_time('2018-06-28 12:00')
@@ -314,17 +231,17 @@ def test_dao_get_provider_stats(notify_db_session):
     assert result[0].created_by_name is None
     assert result[0].current_month_billable_sms == 0
 
-    assert result[1].identifier == 'mmg'
-    assert result[1].display_name == 'MMG'
-    assert result[1].supports_international is True
+    assert result[1].identifier == 'firetext'
+    assert result[1].notification_type == 'sms'
+    assert result[1].supports_international is False
     assert result[1].active is True
-    assert result[1].current_month_billable_sms == 4
+    assert result[1].current_month_billable_sms == 5
 
-    assert result[2].identifier == 'firetext'
-    assert result[2].notification_type == 'sms'
-    assert result[2].supports_international is False
+    assert result[2].identifier == 'mmg'
+    assert result[2].display_name == 'MMG'
+    assert result[2].supports_international is True
     assert result[2].active is True
-    assert result[2].current_month_billable_sms == 5
+    assert result[2].current_month_billable_sms == 4
 
     assert result[3].identifier == 'dvla'
     assert result[3].current_month_billable_sms == 0
