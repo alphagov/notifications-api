@@ -67,13 +67,13 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
 
     current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
         reduced_provider.identifier,
+        pre_reduction_priority,
         reduced_provider.priority,
-        pre_reduction_priority
     ))
     current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
         increased_provider.identifier,
+        pre_increase_priority,
         increased_provider.priority,
-        pre_increase_priority
     ))
 
     # Automatic update so set as notify user
