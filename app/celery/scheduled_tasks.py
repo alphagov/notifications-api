@@ -45,6 +45,8 @@ from app.models import (
 from app.notifications.process_notifications import send_notification_to_queue
 from app.v2.errors import JobIncompleteError
 
+from app.service.utils import get_services_with_high_failure_rates
+
 
 @notify_celery.task(name="run-scheduled-jobs")
 @statsd(namespace="tasks")
@@ -253,3 +255,28 @@ def check_for_missing_rows_in_completed_jobs():
                     current_app.logger.info(
                         "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
                     process_row(row, template, job, job.service, sender_id=sender_id)
+
+
+@notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
+@statsd(namespace="tasks")
+def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
+    services_with_failures = get_services_with_high_failure_rates()
+    # services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(number=100)
+
+    if services_with_failures:
+        message = "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours: ".format(
+            len(services_with_failures)
+        )
+        for service in services_with_failures:
+            message += "service id: {} failure rate: {}, ".format(service["id"], service["permanent_failure_rate"])
+
+        current_app.logger.exception(message)
+
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            zendesk_client.create_ticket(
+                subject="[{}] High failure rates for sms spotted for services".format(
+                    current_app.config['NOTIFY_ENVIRONMENT']
+                ),
+                message=message,
+                ticket_type=zendesk_client.TYPE_INCIDENT
+            )

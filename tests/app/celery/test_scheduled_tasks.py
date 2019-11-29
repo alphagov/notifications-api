@@ -16,6 +16,7 @@ from app.celery.scheduled_tasks import (
     check_precompiled_letter_state,
     check_templated_letter_state,
     check_for_missing_rows_in_completed_jobs,
+    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
 )
 from app.config import QueueNames, TaskNames
@@ -493,4 +494,31 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_
     check_for_missing_rows_in_completed_jobs()
     mock_process_row.assert_called_once_with(
         mock.ANY, mock.ANY, job, job.service, sender_id=fake_uuid
+    )
+
+
+@pytest.mark.parametrize("failure_rates, expected_message", [
+    [
+        [{"id": "123", "name": "Service 1", "permanent_failure_rate": 0.3}],
+        "1 service(s) have had high permanent-failure rates for sms messages in last "
+        "24 hours: service id: 123 failure rate: 0.3, "
+    ]
+])
+def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
+    mocker, notify_db_session, failure_rates, expected_message
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_failure_rates = mocker.patch(
+        'app.celery.scheduled_tasks.get_services_with_high_failure_rates', return_value=failure_rates
+    )
+
+    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
+
+    assert mock_failure_rates.called
+    mock_logger.assert_called_once_with(expected_message)
+    mock_create_ticket.assert_called_with(
+        message=expected_message,
+        subject="[test] High failure rates for sms spotted for services",
+        ticket_type='incident'
     )
