@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest import mock
 
 import pytest
@@ -23,6 +23,7 @@ from app.dao.services_dao import (
     dao_fetch_live_services_data,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
+    dao_find_services_sending_to_tv_numbers,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
     dao_fetch_stats_for_service,
@@ -1099,3 +1100,41 @@ def create_email_sms_letter_template():
     template_two = create_template(service=service, template_name='2', template_type='sms')
     template_three = create_template(service=service, template_name='3', template_type='letter')
     return template_one, template_three, template_two
+
+
+@freeze_time("2019-12-02 12:00:00.000000")
+def test_dao_find_services_sending_to_tv_numbers(notify_db_session):
+    service_1 = create_service(service_name="Service 1")
+    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
+    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
+    service_5 = create_service(service_name="Service 5", active=False)  # not active
+    services = [service_1, service_3, service_4, service_5]
+
+    tv_number = "447700900001"
+    normal_number = "447711900001"
+    normal_number_resembling_tv_number = "447227700900"
+
+    for service in services:
+        template = create_template(service)
+        for x in range(0, 5):
+            create_notification(template, normalised_to=tv_number, status="permanent-failure")
+
+    service_6 = create_service(service_name="Service 6")  # notifications too old
+    with freeze_time("2019-11-30 15:00:00.000000"):
+        template_6 = create_template(service_6)
+        for x in range(0, 5):
+            create_notification(template_6, normalised_to=tv_number, status="permanent-failure")
+
+    service_2 = create_service(service_name="Service 2")  # below threshold
+    template_2 = create_template(service_2)
+    create_notification(template_2, normalised_to=tv_number, status="permanent-failure")
+    for x in range(0, 5):
+        create_notification(template_2, normalised_to=normal_number, status="delivered")
+        create_notification(template_2, normalised_to=normal_number_resembling_tv_number, status="delivered")
+
+    start_date = (datetime.utcnow() - timedelta(days=1))
+    end_date = datetime.utcnow()
+
+    result = dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=4)
+    assert len(result) == 1
+    assert result[0].service_name == "Service 1"

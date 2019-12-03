@@ -8,7 +8,6 @@ from app.models import (
     KEY_TYPE_TEST, KEY_TYPE_TEAM, KEY_TYPE_NORMAL)
 
 from app.service import statistics
-from datetime import datetime, timedelta
 
 from app.dao.fact_notification_status_dao import fetch_stats_for_all_services_by_date_range
 
@@ -59,13 +58,10 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_whitelisted_r
         )
 
 
-def get_services_with_high_failure_rates(rate=0.25, threshold=100):
-    start_date = (datetime.utcnow() - timedelta(days=1)).date()
-    end_date = datetime.utcnow().date()
-
+def get_services_with_high_failure_rates(start_date, end_date, rate=0.25, threshold=100):
     stats = fetch_stats_for_all_services_by_date_range(
-        start_date=start_date,
-        end_date=end_date,
+        start_date=start_date.date(),
+        end_date=end_date.date(),
         include_from_test_key=False,
     )
     results = []

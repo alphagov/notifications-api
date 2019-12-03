@@ -521,3 +521,27 @@ def dao_fetch_active_users_for_service(service_id):
     )
 
     return query.all()
+
+
+def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=100):
+
+    return db.session.query(
+        Service.name.label('service_name'),
+        Notification.service_id.label('service_id'),
+        func.count(Notification.id).label('notification_count')
+    ).filter(
+        Notification.service_id == Service.id,
+        Notification.created_at >= start_date,
+        Notification.created_at <= end_date,
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == SMS_TYPE,
+        func.substr(Notification.normalised_to, 3, 7) == '7700900',
+        Service.restricted == False,  # noqa
+        Service.research_mode == False,
+        Service.active == True,
+    ).group_by(
+        Notification.service_id,
+        Service.name
+    ).having(
+        func.count(Notification.id) > threshold
+    ).all()

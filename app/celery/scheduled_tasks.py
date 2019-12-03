@@ -35,6 +35,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import dao_reduce_sms_provider_priority
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.services_dao import dao_find_services_sending_to_tv_numbers
 from app.models import (
     Job,
     JOB_STATUS_IN_PROGRESS,
@@ -260,16 +261,33 @@ def check_for_missing_rows_in_completed_jobs():
 @notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
 @statsd(namespace="tasks")
 def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
-    services_with_failures = get_services_with_high_failure_rates()
-    # services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(number=100)
+    start_date = (datetime.utcnow() - timedelta(days=1))
+    end_date = datetime.utcnow()
+    message = ""
+
+    services_with_failures = get_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
+    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(
+        threshold=100,
+        start_date=start_date,
+        end_date=end_date
+    )
 
     if services_with_failures:
-        message = "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours: ".format(
+        message += "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n".format(
             len(services_with_failures)
         )
         for service in services_with_failures:
-            message += "service id: {} failure rate: {}, ".format(service["id"], service["permanent_failure_rate"])
+            message += "service id: {} failure rate: {},\n".format(service["id"], service["permanent_failure_rate"])
+    elif services_sending_to_tv_numbers:
+        message += "{} service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n".format(
+            len(services_sending_to_tv_numbers)
+        )
+        for service in services_sending_to_tv_numbers:
+            message += "service id: {}, count of sms to tv numbers: {},\n".format(
+                service.service_id, service.notification_count
+            )
 
+    if services_with_failures or services_sending_to_tv_numbers:
         current_app.logger.exception(message)
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:

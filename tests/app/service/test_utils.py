@@ -2,6 +2,7 @@ from app.dao.date_util import get_current_financial_year_start_year
 from freezegun import freeze_time
 from tests.app.db import create_service, create_notification, create_template
 from app.service.utils import get_services_with_high_failure_rates
+from datetime import datetime, timedelta
 
 
 # see get_financial_year for conversion of financial years.
@@ -39,8 +40,10 @@ def test_get_services_with_high_failure_rates(notify_db_session):
     service_2 = create_service(service_name="Service 2")  # below threshold
     template_2 = create_template(service_2)
     create_notification(template_2, status="permanent-failure")
+    start_date = (datetime.utcnow() - timedelta(days=1))
+    end_date = datetime.utcnow()
 
-    assert get_services_with_high_failure_rates(threshold=3) == [{
+    assert get_services_with_high_failure_rates(start_date, end_date, threshold=3) == [{
         'id': str(service_1.id),
         'name': service_1.name,
         'permanent_failure_rate': 0.25
