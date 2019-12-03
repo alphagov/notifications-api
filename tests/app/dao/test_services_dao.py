@@ -23,6 +23,7 @@ from app.dao.services_dao import (
     dao_fetch_live_services_data,
     dao_fetch_service_by_id,
     dao_fetch_all_services_by_user,
+    dao_find_real_sms_notification_count_by_status_for_live_services,
     dao_find_services_sending_to_tv_numbers,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
@@ -1103,8 +1104,8 @@ def create_email_sms_letter_template():
 
 
 @freeze_time("2019-12-02 12:00:00.000000")
-def test_dao_find_services_sending_to_tv_numbers(notify_db_session):
-    service_1 = create_service(service_name="Service 1")
+def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
+    service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
     service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
     service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
     service_5 = create_service(service_name="Service 5", active=False)  # not active
@@ -1137,4 +1138,36 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session):
 
     result = dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=4)
     assert len(result) == 1
-    assert result[0].service_name == "Service 1"
+    assert str(result[0].service_id) == fake_uuid
+
+
+def test_dao_find_real_sms_notification_count_by_status_for_live_services(notify_db_session, fake_uuid):
+    service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
+    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
+    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
+    service_5 = create_service(service_name="Service 5", active=False)  # not active
+    services = [service_1, service_3, service_4, service_5]
+
+    for service in services:
+        template = create_template(service)
+        for x in range(0, 3):
+            create_notification(template, status="permanent-failure")
+            create_notification(template, status="delivered")
+            create_notification(template, status="temporary-failure")
+
+    service_6 = create_service(service_name="Service 6")  # notifications too old
+    with freeze_time("2019-11-30 15:00:00.000000"):
+        template_6 = create_template(service_6)
+        for x in range(0, 2):
+            create_notification(template_6, status="permanent-failure")
+
+    service_2 = create_service(service_name="Service 2")  # below threshold
+    template_2 = create_template(service_2)
+    create_notification(template_2, status="permanent-failure", key_type='test')  # test key type
+
+    start_date = (datetime.utcnow() - timedelta(days=1))
+    end_date = datetime.utcnow()
+
+    result = dao_find_real_sms_notification_count_by_status_for_live_services(start_date, end_date)
+    assert len(result) == 3
+    assert str(result[0].service_id) == fake_uuid

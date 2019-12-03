@@ -45,6 +45,5 @@ def test_get_services_with_high_failure_rates(notify_db_session):
 
     assert get_services_with_high_failure_rates(start_date, end_date, threshold=3) == [{
         'id': str(service_1.id),
-        'name': service_1.name,
         'permanent_failure_rate': 0.25
     }]

@@ -266,11 +266,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     message = ""
 
     services_with_failures = get_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
-    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(
-        threshold=100,
-        start_date=start_date,
-        end_date=end_date
-    )
+    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
 
     if services_with_failures:
         message += "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n".format(
@@ -291,6 +287,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         current_app.logger.exception(message)
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            message += "\nThings to do: contact service? revoke their key?"
             zendesk_client.create_ticket(
                 subject="[{}] High failure rates for sms spotted for services".format(
                     current_app.config['NOTIFY_ENVIRONMENT']

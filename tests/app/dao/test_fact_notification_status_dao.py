@@ -14,7 +14,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service,
-    get_total_sent_notifications_for_day_and_type,
+    get_total_sent_notifications_for_day_and_type
 )
 from app.models import (
     FactNotificationStatus,

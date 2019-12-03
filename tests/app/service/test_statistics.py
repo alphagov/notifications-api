@@ -79,12 +79,6 @@ def test_format_statistics(stats, email_counts, sms_counts, letter_counts):
         StatsRow('sms', 'permanent-failure', 100),
         StatsRow('sms', 'delivered', 300),
     ], 0.25),
-    'ignores_other_notification_types': ([
-        StatsRow('sms', 'permanent-failure', 100),
-        StatsRow('sms', 'delivered', 300),
-        StatsRow('email', 'delivered', 300),
-        StatsRow('letter', 'created', 300),
-    ], 0.25),
     'only_counts_permanent_failure_as_failed': ([
         StatsRow('sms', 'permanent-failure', 100),
         StatsRow('sms', 'temporary-failure', 100),

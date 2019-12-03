@@ -524,9 +524,7 @@ def dao_fetch_active_users_for_service(service_id):
 
 
 def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=100):
-
     return db.session.query(
-        Service.name.label('service_name'),
         Notification.service_id.label('service_id'),
         func.count(Notification.id).label('notification_count')
     ).filter(
@@ -541,7 +539,27 @@ def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=100)
         Service.active == True,
     ).group_by(
         Notification.service_id,
-        Service.name
     ).having(
         func.count(Notification.id) > threshold
+    ).all()
+
+
+def dao_find_real_sms_notification_count_by_status_for_live_services(start_date, end_date):
+    #  only works within services' retention period
+    return db.session.query(
+        Notification.service_id.label('service_id'),
+        Notification.status.label('status'),
+        func.count(Notification.id).label('count')
+    ).filter(
+        Notification.service_id == Service.id,
+        Notification.created_at >= start_date,
+        Notification.created_at <= end_date,
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == SMS_TYPE,
+        Service.restricted == False,  # noqa
+        Service.research_mode == False,
+        Service.active == True,
+    ).group_by(
+        Notification.service_id,
+        Notification.status
     ).all()
