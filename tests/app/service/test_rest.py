@@ -169,11 +169,11 @@ def test_get_live_services_data(sample_user, admin_request):
     service = create_service(go_live_user=sample_user, go_live_at=datetime(2018, 1, 1))
     service_2 = create_service(service_name='second', go_live_at=datetime(2019, 1, 1), go_live_user=sample_user)
 
-    template = create_template(service=service)
-    template2 = create_template(service=service, template_type='email')
+    sms_template = create_template(service=service)
+    email_template = create_template(service=service, template_type='email')
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
-    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2, service=service)
+    create_ft_billing(bst_date='2019-04-20', template=sms_template)
+    create_ft_billing(bst_date='2019-04-20', template=email_template)
 
     create_annual_billing(service.id, 1, 2019)
     create_annual_billing(service_2.id, 2, 2018)
