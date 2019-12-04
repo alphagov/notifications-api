@@ -27,6 +27,7 @@ from app.models import (
     SMS_TYPE,
     Template,
 )
+from app.dao.dao_utils import transactional
 from app.utils import (
     get_london_midnight_in_utc,
     midnight_n_days_ago,
@@ -90,6 +91,7 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
     return query.all()
 
 
+@transactional
 def update_fact_notification_status(data, process_day):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
@@ -108,7 +110,6 @@ def update_fact_notification_status(data, process_day):
             notification_count=row.notification_count,
         )
         db.session.connection().execute(stmt)
-    db.session.commit()
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):

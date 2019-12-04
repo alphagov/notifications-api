@@ -85,12 +85,16 @@ def test_get_notification_table_to_use_respects_daylight_savings_time(sample_ser
 @freeze_time('2019-01-10 00:30')
 def test_get_notification_table_to_use_checks_service_data_retention(sample_service):
     create_service_data_retention(sample_service, 'email', days_of_retention=3)
+    create_service_data_retention(sample_service, 'letter', days_of_retention=9)
 
     # it's currently early morning of Thurs 10th Jan.
     # three days retention means we'll delete sunday 6th's data when the delete task runs (so there's still three full
     # days of monday, tuesday and wednesday left over)
     assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 5), False) == NotificationHistory
     assert get_notification_table_to_use(sample_service, 'email', date(2019, 1, 6), False) == Notification
+
+    assert get_notification_table_to_use(sample_service, 'letter', date(2018, 12, 30), False) == NotificationHistory
+    assert get_notification_table_to_use(sample_service, 'letter', date(2018, 12, 31), False) == Notification
 
     # falls back to 7 days if not specified
     assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1), False) == NotificationHistory

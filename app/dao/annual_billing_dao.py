@@ -1,7 +1,5 @@
 from app import db
-from app.dao.dao_utils import (
-    transactional,
-)
+from app.dao.dao_utils import transactional
 from app.models import AnnualBilling
 from app.dao.date_util import get_current_financial_year_start_year
 
