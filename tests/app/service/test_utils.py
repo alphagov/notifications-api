@@ -1,7 +1,7 @@
 from app.dao.date_util import get_current_financial_year_start_year
 from freezegun import freeze_time
-from tests.app.db import create_service, create_notification, create_template
 from app.service.utils import get_services_with_high_failure_rates
+from collections import namedtuple
 from datetime import datetime, timedelta
 
 
@@ -18,32 +18,35 @@ def test_get_current_financial_year_start_year_after_april():
     assert current_fy == 2017
 
 
+MockServicesNotificationCounts = namedtuple(
+    'ServicesSendingToTVNumbers',
+    [
+        'service_id',
+        'status',
+        'count',
+    ]
+)
+
+
 @freeze_time("2019-12-02 12:00:00.000000")
-def test_get_services_with_high_failure_rates(notify_db_session):
-    service_1 = create_service(service_name="Service 1")
-    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
-    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
-    service_5 = create_service(service_name="Service 5", active=False)  # not active
-    services = [service_1, service_3, service_4, service_5]
-    for service in services:
-        template = create_template(service)
-        create_notification(template, status="permanent-failure")
-        for x in range(0, 3):
-            create_notification(template, status="delivered")
-
-    service_6 = create_service(service_name="Service 6")  # notifications too old
-    with freeze_time("2019-11-30 15:00:00.000000"):
-        template_6 = create_template(service_6)
-        for x in range(0, 4):
-            create_notification(template_6, status="permanent-failure")
-
-    service_2 = create_service(service_name="Service 2")  # below threshold
-    template_2 = create_template(service_2)
-    create_notification(template_2, status="permanent-failure")
+def test_get_services_with_high_failure_rates(mocker, notify_db_session):
+    mock_query_results = [
+        MockServicesNotificationCounts('123', 'delivered', 150),
+        MockServicesNotificationCounts('123', 'permanent-failure', 50),  # these will show up
+        MockServicesNotificationCounts('456', 'delivered', 150),
+        MockServicesNotificationCounts('456', 'permanent-failure', 5),  # ratio too low
+        MockServicesNotificationCounts('789', 'permanent-failure', 5),  # below threshold
+        MockServicesNotificationCounts('444', 'delivered', 100),
+        MockServicesNotificationCounts('444', 'permanent-failure', 100),  # these will show up
+    ]
+    mocker.patch(
+        'app.service.utils.dao_find_real_sms_notification_count_by_status_for_live_services',
+        return_value=mock_query_results
+    )
     start_date = (datetime.utcnow() - timedelta(days=1))
     end_date = datetime.utcnow()
 
-    assert get_services_with_high_failure_rates(start_date, end_date, threshold=3) == [{
-        'id': str(service_1.id),
-        'permanent_failure_rate': 0.25
-    }]
+    assert get_services_with_high_failure_rates(start_date, end_date) == [
+        {'id': '123', 'permanent_failure_rate': 0.25},
+        {'id': '444', 'permanent_failure_rate': 0.5}
+    ]

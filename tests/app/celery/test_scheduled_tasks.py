@@ -502,7 +502,6 @@ MockServicesSendingToTVNumbers = namedtuple(
     'ServicesSendingToTVNumbers',
     [
         'service_id',
-        'service_name',
         'notification_count',
     ]
 )
@@ -517,7 +516,7 @@ MockServicesSendingToTVNumbers = namedtuple(
     ],
     [
         [],
-        [MockServicesSendingToTVNumbers("123", "Service 1", 300)],
+        [MockServicesSendingToTVNumbers("123", 300)],
         "1 service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n"
         "service id: 123, count of sms to tv numbers: 300,\n"
     ]
