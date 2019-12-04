@@ -2,6 +2,7 @@ from unittest.mock import Mock, call, ANY
 
 import base64
 import boto3
+from datetime import datetime
 from moto import mock_s3
 from flask import current_app
 from freezegun import freeze_time
@@ -13,19 +14,23 @@ from requests import RequestException
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.errors import VirusScanError
+from app.exceptions import NotificationTechnicalFailureException
 from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
     collate_letter_pdfs_for_day,
     group_letters,
     letter_in_created_state,
+    process_sanitised_letter,
     process_virus_scan_passed,
     process_virus_scan_failed,
     process_virus_scan_error,
     replay_letters_in_error,
+    sanitise_letter,
     _move_invalid_letter_and_update_status,
     _sanitise_precompiled_pdf
 )
+from app.config import QueueNames, TaskNames
 from app.letters.utils import ScanErrorType
 from app.models import (
     KEY_TYPE_NORMAL,
@@ -51,6 +56,8 @@ def test_should_have_decorated_tasks_functions():
     assert process_virus_scan_passed.__wrapped__.__name__ == 'process_virus_scan_passed'
     assert process_virus_scan_failed.__wrapped__.__name__ == 'process_virus_scan_failed'
     assert process_virus_scan_error.__wrapped__.__name__ == 'process_virus_scan_error'
+    assert sanitise_letter.__wrapped__.__name__ == 'sanitise_letter'
+    assert process_sanitised_letter.__wrapped__.__name__ == 'process_sanitised_letter'
 
 
 @pytest.mark.parametrize('personalisation', [{'name': 'test'}, None])
@@ -666,16 +673,204 @@ def test_move_invalid_letter_and_update_status_logs_error_and_sets_tech_failure_
                  side_effect=ClientError(error_response, 'operation_name'))
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
 
-    _move_invalid_letter_and_update_status(
-        notification=sample_letter_notification,
-        filename='filename',
-        scan_pdf_object=mocker.Mock()
-    )
+    with pytest.raises(NotificationTechnicalFailureException):
+        _move_invalid_letter_and_update_status(
+            notification=sample_letter_notification,
+            filename='filename',
+            scan_pdf_object=mocker.Mock()
+        )
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
     mock_logger.assert_called_once_with(
         'Error when moving letter with id {} to invalid PDF bucket'.format(sample_letter_notification.id)
     )
+
+
+def test_sanitise_letter_calls_template_preview_sanitise_task(mocker, sample_letter_notification):
+    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+
+    sanitise_letter(filename)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SANITISE_LETTER,
+        kwargs={'notification_id': str(sample_letter_notification.id), 'filename': filename},
+        queue=QueueNames.SANITISE_LETTERS,
+    )
+
+
+def test_sanitise_letter_does_not_call_template_preview_sanitise_task_if_notification_in_wrong_state(
+    mocker,
+    sample_letter_notification,
+):
+    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+
+    sanitise_letter(filename)
+
+    assert not mock_celery.called
+
+
+def test_sanitise_letter_does_not_call_template_preview_sanitise_task_if_there_is_an_exception(
+    mocker,
+    sample_letter_notification,
+):
+    mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
+    mock_celery_retry = mocker.patch('app.celery.letters_pdf_tasks.sanitise_letter.retry')
+
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+
+    sanitise_letter(filename)
+
+    mock_celery_retry.assert_called_once_with(queue='retry-tasks')
+
+
+def test_sanitise_letter_puts_letter_into_technical_failure_if_max_retries_exceeded(sample_letter_notification, mocker):
+    mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
+    mocker.patch('app.celery.letters_pdf_tasks.sanitise_letter.retry', side_effect=MaxRetriesExceededError())
+
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+
+    with pytest.raises(NotificationTechnicalFailureException):
+        sanitise_letter(filename)
+
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
+
+
+@mock_s3
+@pytest.mark.parametrize('key_type, destination_bucket, expected_status, destination_filename', [
+    (KEY_TYPE_NORMAL, 'LETTERS_PDF_BUCKET_NAME', NOTIFICATION_CREATED, '2018-07-01/NOTIFY.foo'),
+    (KEY_TYPE_TEST, 'TEST_LETTERS_BUCKET_NAME', NOTIFICATION_DELIVERED, 'NOTIFY.foo'),
+])
+def test_process_sanitised_letter_with_valid_letter(
+    sample_letter_notification,
+    key_type,
+    destination_bucket,
+    expected_status,
+    destination_filename,
+):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+
+    scan_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
+    destination_bucket_name = current_app.config[destination_bucket]
+    conn = boto3.resource('s3', region_name='eu-west-1')
+
+    scan_bucket = conn.create_bucket(Bucket=scan_bucket_name)
+    template_preview_bucket = conn.create_bucket(Bucket=template_preview_bucket_name)
+    destination_bucket = conn.create_bucket(Bucket=destination_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
+    s3.put_object(Bucket=template_preview_bucket_name, Key=filename, Body=b'sanitised_pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.key_type = key_type
+    sample_letter_notification.billable_units = 1
+    sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
+
+    process_sanitised_letter(
+        page_count=2,
+        message=None,
+        invalid_pages=None,
+        validation_status='passed',
+        filename=filename,
+        notification_id=str(sample_letter_notification.id)
+    )
+
+    assert sample_letter_notification.status == expected_status
+    assert sample_letter_notification.billable_units == 1
+
+    assert not [x for x in scan_bucket.objects.all()]
+    assert not [x for x in template_preview_bucket.objects.all()]
+    assert len([x for x in destination_bucket.objects.all()]) == 1
+
+    file_contents = conn.Object(destination_bucket_name, destination_filename).get()['Body'].read().decode('utf-8')
+    assert file_contents == 'sanitised_pdf_content'
+
+
+@mock_s3
+@pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEST])
+def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification, key_type):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+
+    scan_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
+    invalid_letter_bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
+    conn = boto3.resource('s3', region_name='eu-west-1')
+
+    scan_bucket = conn.create_bucket(Bucket=scan_bucket_name)
+    template_preview_bucket = conn.create_bucket(Bucket=template_preview_bucket_name)
+    invalid_letter_bucket = conn.create_bucket(Bucket=invalid_letter_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.key_type = key_type
+    sample_letter_notification.billable_units = 1
+    sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
+
+    process_sanitised_letter(
+        page_count=2,
+        message='content-outside-printable-area',
+        invalid_pages=[1],
+        validation_status='failed',
+        filename=filename,
+        notification_id=str(sample_letter_notification.id)
+    )
+
+    assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
+    assert sample_letter_notification.billable_units == 0
+
+    assert not [x for x in scan_bucket.objects.all()]
+    assert not [x for x in template_preview_bucket.objects.all()]
+    assert len([x for x in invalid_letter_bucket.objects.all()]) == 1
+
+    file_contents = conn.Object(invalid_letter_bucket_name, filename).get()['Body'].read().decode('utf-8')
+    assert file_contents == 'original_pdf_content'
+
+
+def test_process_sanitised_letter_when_letter_status_is_not_pending_virus_scan(
+    sample_letter_notification,
+    mocker,
+):
+    mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3')
+    sample_letter_notification.status = NOTIFICATION_CREATED
+
+    process_sanitised_letter(
+        page_count=2,
+        message=None,
+        invalid_pages=None,
+        validation_status='passed',
+        filename='NOTIFY.{}'.format(sample_letter_notification.reference),
+        notification_id=str(sample_letter_notification.id)
+    )
+
+    assert not mock_s3.called
+
+
+def test_process_sanitised_letter_puts_letter_into_tech_failure_for_boto_errors(
+    sample_letter_notification,
+    mocker,
+):
+    mocker.patch('app.celery.letters_pdf_tasks.s3.get_s3_object', side_effect=ClientError({}, 'operation_name'))
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+
+    with pytest.raises(NotificationTechnicalFailureException):
+        process_sanitised_letter(
+            page_count=2,
+            message=None,
+            invalid_pages=None,
+            validation_status='passed',
+            filename='NOTIFY.{}'.format(sample_letter_notification.reference),
+            notification_id=str(sample_letter_notification.id)
+        )
+
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
