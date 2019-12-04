@@ -29,6 +29,7 @@ class QueueNames(object):
     CALLBACKS = 'service-callbacks'
     LETTERS = 'letter-tasks'
     ANTIVIRUS = 'antivirus-tasks'
+    SANITISE_LETTERS = 'sanitise-letter-tasks'
 
     @staticmethod
     def all_queues():
@@ -53,6 +54,7 @@ class TaskNames(object):
     PROCESS_INCOMPLETE_JOBS = 'process-incomplete-jobs'
     ZIP_AND_SEND_LETTER_PDFS = 'zip-and-send-letter-pdfs'
     SCAN_FILE = 'scan-file'
+    SANITISE_LETTER = 'sanitise-and-upload-letter'
 
 
 class Config(object):
@@ -375,6 +377,7 @@ class Development(Config):
     LETTERS_SCAN_BUCKET_NAME = 'development-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'development-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'development-transient-uploaded-letters'
+    LETTER_SANITISE_BUCKET_NAME = 'development-letters-sanitise'
 
     ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
     SECRET_KEY = 'dev-notify-secret-key'
@@ -415,6 +418,7 @@ class Test(Development):
     LETTERS_SCAN_BUCKET_NAME = 'test-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'test-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'test-transient-uploaded-letters'
+    LETTER_SANITISE_BUCKET_NAME = 'test-letters-sanitise'
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
@@ -449,6 +453,7 @@ class Preview(Config):
     LETTERS_SCAN_BUCKET_NAME = 'preview-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'preview-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'preview-transient-uploaded-letters'
+    LETTER_SANITISE_BUCKET_NAME = 'preview-letters-sanitise'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
@@ -464,6 +469,7 @@ class Staging(Config):
     LETTERS_SCAN_BUCKET_NAME = 'staging-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'staging-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'staging-transient-uploaded-letters'
+    LETTER_SANITISE_BUCKET_NAME = 'staging-letters-sanitise'
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -480,6 +486,7 @@ class Live(Config):
     LETTERS_SCAN_BUCKET_NAME = 'production-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'production-transient-uploaded-letters'
+    LETTER_SANITISE_BUCKET_NAME = 'production-letters-sanitise'
     FROM_NUMBER = 'GOVUK'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
