@@ -9,10 +9,8 @@ from sqlalchemy.types import DateTime, Integer
 
 from app import db
 from app.models import (
-    EMAIL_TYPE,
     FactNotificationStatus,
     KEY_TYPE_TEST,
-    LETTER_TYPE,
     Notification,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
@@ -24,7 +22,6 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     Service,
-    SMS_TYPE,
     Template,
 )
 from app.dao.dao_utils import transactional
@@ -36,7 +33,7 @@ from app.utils import (
 )
 
 
-def fetch_notification_status_for_day(process_day):
+def fetch_notification_status_for_day(process_day, notification_type):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
 
@@ -44,23 +41,19 @@ def fetch_notification_status_for_day(process_day):
 
     all_data_for_process_day = []
     services = Service.query.all()
-    # for each service
-    # for each notification type
-    # query notifications for day
-    # if no rows try notificationHistory
+    # for each service query notifications or notification_history for the day, depending on their data retention
     for service in services:
-        for notification_type in [EMAIL_TYPE, SMS_TYPE, LETTER_TYPE]:
-            table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
+        table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
 
-            data_for_service_and_type = query_for_fact_status_data(
-                table=table,
-                start_date=start_date,
-                end_date=end_date,
-                notification_type=notification_type,
-                service_id=service.id
-            )
+        data_for_service_and_type = query_for_fact_status_data(
+            table=table,
+            start_date=start_date,
+            end_date=end_date,
+            notification_type=notification_type,
+            service_id=service.id
+        )
 
-            all_data_for_process_day += data_for_service_and_type
+        all_data_for_process_day += data_for_service_and_type
 
     return all_data_for_process_day
 
@@ -92,10 +85,11 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
 
 
 @transactional
-def update_fact_notification_status(data, process_day):
+def update_fact_notification_status(data, process_day, notification_type):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
-        FactNotificationStatus.bst_date == process_day
+        FactNotificationStatus.bst_date == process_day,
+        FactNotificationStatus.notification_type == notification_type
     ).delete()
 
     for row in data:

@@ -44,11 +44,19 @@ from app.dao.services_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes, get_user_by_email
 from app.models import (
-    PROVIDERS, User, Notification, Organisation, Domain, Service, SMS_TYPE,
+    PROVIDERS,
     NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    User,
+    Notification,
+    Organisation,
+    Domain,
+    Service,
     EmailBranding,
-    LetterBranding
+    LetterBranding,
 )
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
@@ -490,16 +498,23 @@ def rebuild_ft_billing_for_day(service_id, day):
 @notify_command(name='migrate-data-to-ft-notification-status')
 @click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
 @click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-t', '--notification-type', required=False, help="notification type (or leave blank for all types)")
 @statsd(namespace="tasks")
-def migrate_data_to_ft_notification_status(start_date, end_date):
+def migrate_data_to_ft_notification_status(start_date, end_date, notification_type=None):
+    notification_types = [SMS_TYPE, LETTER_TYPE, EMAIL_TYPE] if notification_type is None else [notification_type]
+
     start_date = start_date.date()
     for day_diff in range((end_date - start_date).days):
         process_day = start_date + timedelta(days=day_diff)
-        print('create_nightly_notification_status_for_day triggered for {}'.format(process_day))
-        create_nightly_notification_status_for_day.apply_async(
-            kwargs={'process_day': process_day.strftime('%Y-%m-%d')},
-            queue=QueueNames.REPORTING
-        )
+        for notification_type in notification_types:
+            print('create_nightly_notification_status_for_day triggered for {} and {}'.format(
+                process_day,
+                notification_type
+            ))
+            create_nightly_notification_status_for_day.apply_async(
+                kwargs={'process_day': process_day.strftime('%Y-%m-%d'), 'notification_type': notification_type},
+                queue=QueueNames.REPORTING
+            )
 
 
 @notify_command(name='bulk-invite-user-to-service')
