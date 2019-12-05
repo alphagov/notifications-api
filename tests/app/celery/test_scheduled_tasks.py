@@ -20,7 +20,7 @@ from app.celery.scheduled_tasks import (
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
 )
-from app.config import QueueNames, TaskNames
+from app.config import QueueNames, TaskNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import get_provider_details_by_identifier
@@ -512,13 +512,17 @@ MockServicesSendingToTVNumbers = namedtuple(
         [{"id": "123", "permanent_failure_rate": 0.3}],
         [],
         "1 service(s) have had high permanent-failure rates for sms messages in last "
-        "24 hours:\nservice id: 123 failure rate: 0.3,\n"
+        "24 hours:\nservice: {} failure rate: 0.3,\n".format(
+            Config.ADMIN_BASE_URL + "/services/" + "123"
+        )
     ],
     [
         [],
         [MockServicesSendingToTVNumbers("123", 300)],
         "1 service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n"
-        "service id: 123, count of sms to tv numbers: 300,\n"
+        "service: {} count of sms to tv numbers: 300,\n".format(
+            Config.ADMIN_BASE_URL + "/services/" + "123"
+        )
     ]
 ])
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(

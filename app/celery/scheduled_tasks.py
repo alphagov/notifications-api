@@ -273,14 +273,16 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             len(services_with_failures)
         )
         for service in services_with_failures:
-            message += "service id: {} failure rate: {},\n".format(service["id"], service["permanent_failure_rate"])
+            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service["id"]
+            message += "service: {} failure rate: {},\n".format(service_dashboard, service["permanent_failure_rate"])
     elif services_sending_to_tv_numbers:
         message += "{} service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n".format(
             len(services_sending_to_tv_numbers)
         )
         for service in services_sending_to_tv_numbers:
-            message += "service id: {}, count of sms to tv numbers: {},\n".format(
-                service.service_id, service.notification_count
+            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service.service_id
+            message += "service: {} count of sms to tv numbers: {},\n".format(
+                service_dashboard, service.notification_count
             )
 
     if services_with_failures or services_sending_to_tv_numbers:
