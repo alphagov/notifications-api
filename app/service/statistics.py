@@ -21,18 +21,6 @@ def format_statistics(statistics):
     return counts
 
 
-def get_rate_of_permanent_failures_for_service(statistics, threshold=100):
-    counts = {"permanent_failure": 0, "all_other_statuses": 0}
-    for row in statistics:
-        _count_if_status_is_permanent_failure_from_row(counts, row)
-
-    if counts['permanent_failure'] + counts['all_other_statuses'] >= threshold:
-        rate = counts['permanent_failure'] / (counts['permanent_failure'] + counts['all_other_statuses'])
-    else:
-        rate = 0
-    return rate
-
-
 def format_admin_stats(statistics):
     counts = create_stats_dict()
 
@@ -104,13 +92,6 @@ def _update_statuses_from_row(update_dict, row):
             'failed', 'technical-failure', 'temporary-failure',
             'permanent-failure', 'validation-failed', 'virus-scan-failed'):
         update_dict['failed'] += row.count
-
-
-def _count_if_status_is_permanent_failure_from_row(update_dict, row):
-    if row.status == 'permanent-failure':
-        update_dict['permanent_failure'] += row.count
-    else:
-        update_dict['all_other_statuses'] += row.count
 
 
 def create_empty_monthly_notification_status_stats_dict(year):

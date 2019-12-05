@@ -8,79 +8,49 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
-from app.dao.inbound_numbers_dao import (
-    dao_set_inbound_number_to_service,
-    dao_get_available_inbound_numbers,
-    dao_set_inbound_number_active_flag
-)
+from app.dao.inbound_numbers_dao import (dao_get_available_inbound_numbers,
+                                         dao_set_inbound_number_active_flag,
+                                         dao_set_inbound_number_to_service)
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.dao.service_permissions_dao import dao_add_service_permission, dao_remove_service_permission
-from app.dao.services_dao import (
-    dao_create_service,
-    dao_add_user_to_service,
-    dao_remove_user_from_service,
-    dao_fetch_all_services,
-    dao_fetch_live_services_data,
-    dao_fetch_service_by_id,
-    dao_fetch_all_services_by_user,
-    dao_find_real_sms_notification_count_by_status_for_live_services,
-    dao_find_services_sending_to_tv_numbers,
-    dao_update_service,
-    delete_service_and_all_associated_db_objects,
-    dao_fetch_stats_for_service,
-    dao_fetch_todays_stats_for_service,
-    fetch_todays_total_message_count,
-    dao_fetch_todays_stats_for_all_services,
-    dao_suspend_service,
-    dao_resume_service,
-    dao_fetch_active_users_for_service,
-    dao_fetch_service_by_inbound_number,
-    get_services_by_partial_name,
-)
-from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
-from app.dao.users_dao import save_model_user, create_user_code
-from app.models import (
-    VerifyCode,
-    ApiKey,
-    Template,
-    TemplateHistory,
-    Job,
-    Notification,
-    NotificationHistory,
-    Permission,
-    User,
-    InvitedUser,
-    Service,
-    ServicePermission,
-    ServiceUser,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    EMAIL_TYPE,
-    SMS_TYPE,
-    INTERNATIONAL_SMS_TYPE,
-    LETTER_TYPE,
-    user_folder_permissions,
-    Organisation
-)
-from tests.app.db import (
-    create_ft_billing,
-    create_inbound_number,
-    create_organisation,
-    create_user,
-    create_service,
-    create_service_with_inbound_number,
-    create_service_with_defined_sms_sender,
-    create_template,
-    create_template_folder,
-    create_notification,
-    create_api_key,
-    create_invited_user,
-    create_email_branding,
-    create_letter_branding,
-    create_notification_history,
-    create_annual_billing,
-)
+from app.dao.service_permissions_dao import (dao_add_service_permission,
+                                             dao_remove_service_permission)
+from app.dao.service_user_dao import (dao_get_service_user,
+                                      dao_update_service_user)
+from app.dao.services_dao import (dao_add_user_to_service, dao_create_service,
+                                  dao_fetch_active_users_for_service,
+                                  dao_fetch_all_services,
+                                  dao_fetch_all_services_by_user,
+                                  dao_fetch_live_services_data,
+                                  dao_fetch_service_by_id,
+                                  dao_fetch_service_by_inbound_number,
+                                  dao_fetch_stats_for_service,
+                                  dao_fetch_todays_stats_for_all_services,
+                                  dao_fetch_todays_stats_for_service,
+                                  dao_find_services_sending_to_tv_numbers,
+                                  dao_find_services_with_high_failure_rates,
+                                  dao_remove_user_from_service,
+                                  dao_resume_service, dao_suspend_service,
+                                  dao_update_service,
+                                  delete_service_and_all_associated_db_objects,
+                                  fetch_todays_total_message_count,
+                                  get_services_by_partial_name)
+from app.dao.users_dao import create_user_code, save_model_user
+from app.models import (EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, KEY_TYPE_NORMAL,
+                        KEY_TYPE_TEAM, KEY_TYPE_TEST, LETTER_TYPE, SMS_TYPE,
+                        ApiKey, InvitedUser, Job, Notification,
+                        NotificationHistory, Organisation, Permission, Service,
+                        ServicePermission, ServiceUser, Template,
+                        TemplateHistory, User, VerifyCode,
+                        user_folder_permissions)
+from tests.app.db import (create_annual_billing, create_api_key,
+                          create_email_branding, create_ft_billing,
+                          create_inbound_number, create_invited_user,
+                          create_letter_branding, create_notification,
+                          create_notification_history, create_organisation,
+                          create_service,
+                          create_service_with_defined_sms_sender,
+                          create_service_with_inbound_number, create_template,
+                          create_template_folder, create_user)
 
 
 def test_should_have_decorated_services_dao_functions():
@@ -1106,9 +1076,9 @@ def create_email_sms_letter_template():
 @freeze_time("2019-12-02 12:00:00.000000")
 def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
     service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
-    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
-    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
-    service_5 = create_service(service_name="Service 5", active=False)  # not active
+    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted is excluded
+    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode is excluded
+    service_5 = create_service(service_name="Service 5", active=False)  # not active is excluded
     services = [service_1, service_3, service_4, service_5]
 
     tv_number = "447700900001"
@@ -1120,13 +1090,13 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
         for x in range(0, 5):
             create_notification(template, normalised_to=tv_number, status="permanent-failure")
 
-    service_6 = create_service(service_name="Service 6")  # notifications too old
+    service_6 = create_service(service_name="Service 6")  # notifications too old are excluded
     with freeze_time("2019-11-30 15:00:00.000000"):
         template_6 = create_template(service_6)
         for x in range(0, 5):
             create_notification(template_6, normalised_to=tv_number, status="permanent-failure")
 
-    service_2 = create_service(service_name="Service 2")  # below threshold
+    service_2 = create_service(service_name="Service 2")  # below threshold is excluded
     template_2 = create_template(service_2)
     create_notification(template_2, normalised_to=tv_number, status="permanent-failure")
     for x in range(0, 5):
@@ -1141,11 +1111,11 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
     assert str(result[0].service_id) == fake_uuid
 
 
-def test_dao_find_real_sms_notification_count_by_status_for_live_services(notify_db_session, fake_uuid):
+def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid):
     service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
-    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted
-    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode
-    service_5 = create_service(service_name="Service 5", active=False)  # not active
+    service_3 = create_service(service_name="Service 3", restricted=True)  # restricted is excluded
+    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode is excluded
+    service_5 = create_service(service_name="Service 5", active=False)  # not active is excluded
     services = [service_1, service_3, service_4, service_5]
 
     for service in services:
@@ -1153,21 +1123,27 @@ def test_dao_find_real_sms_notification_count_by_status_for_live_services(notify
         for x in range(0, 3):
             create_notification(template, status="permanent-failure")
             create_notification(template, status="delivered")
+            create_notification(template, status="sending")
             create_notification(template, status="temporary-failure")
 
-    service_6 = create_service(service_name="Service 6")  # notifications too old
+    service_6 = create_service(service_name="Service 6")
     with freeze_time("2019-11-30 15:00:00.000000"):
         template_6 = create_template(service_6)
-        for x in range(0, 2):
-            create_notification(template_6, status="permanent-failure")
+        for x in range(0, 4):
+            create_notification(template_6, status="permanent-failure")  # notifications too old are excluded
 
-    service_2 = create_service(service_name="Service 2")  # below threshold
+    service_2 = create_service(service_name="Service 2")
     template_2 = create_template(service_2)
-    create_notification(template_2, status="permanent-failure", key_type='test')  # test key type
+    for x in range(0, 4):
+        create_notification(template_2, status="permanent-failure", key_type='test')  # test key type is excluded
+    create_notification(template_2, status="permanent-failure")  # below threshold is excluded
 
     start_date = (datetime.utcnow() - timedelta(days=1))
     end_date = datetime.utcnow()
 
-    result = dao_find_real_sms_notification_count_by_status_for_live_services(start_date, end_date)
-    assert len(result) == 3
+    result = dao_find_services_with_high_failure_rates(start_date, end_date, threshold=3)
+    # assert len(result) == 3
+    # assert str(result[0].service_id) == fake_uuid
+    assert len(result) == 1
     assert str(result[0].service_id) == fake_uuid
+    assert result[0].permanent_failure_rate == 0.25

@@ -35,7 +35,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import dao_reduce_sms_provider_priority
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
-from app.dao.services_dao import dao_find_services_sending_to_tv_numbers
+from app.dao.services_dao import dao_find_services_sending_to_tv_numbers, dao_find_services_with_high_failure_rates
 from app.models import (
     Job,
     JOB_STATUS_IN_PROGRESS,
@@ -45,8 +45,6 @@ from app.models import (
 )
 from app.notifications.process_notifications import send_notification_to_queue
 from app.v2.errors import JobIncompleteError
-
-from app.service.utils import get_services_with_high_failure_rates
 
 
 @notify_celery.task(name="run-scheduled-jobs")
@@ -265,7 +263,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     end_date = datetime.utcnow()
     message = ""
 
-    services_with_failures = get_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
+    services_with_failures = dao_find_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
     services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
 
     if services_with_failures:
@@ -273,8 +271,8 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             len(services_with_failures)
         )
         for service in services_with_failures:
-            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service["id"]
-            message += "service: {} failure rate: {},\n".format(service_dashboard, service["permanent_failure_rate"])
+            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service.service_id
+            message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
     elif services_sending_to_tv_numbers:
         message += "{} service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n".format(
             len(services_sending_to_tv_numbers)

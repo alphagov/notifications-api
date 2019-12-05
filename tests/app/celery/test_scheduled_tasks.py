@@ -505,11 +505,18 @@ MockServicesSendingToTVNumbers = namedtuple(
         'notification_count',
     ]
 )
+MockServicesWithHighFailureRate = namedtuple(
+    'ServicesWithHighFailureRate',
+    [
+        'service_id',
+        'permanent_failure_rate',
+    ]
+)
 
 
 @pytest.mark.parametrize("failure_rates, sms_to_tv_numbers, expected_message", [
     [
-        [{"id": "123", "permanent_failure_rate": 0.3}],
+        [MockServicesWithHighFailureRate("123", 0.3)],
         [],
         "1 service(s) have had high permanent-failure rates for sms messages in last "
         "24 hours:\nservice: {} failure rate: 0.3,\n".format(
@@ -531,7 +538,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
     mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
     mock_failure_rates = mocker.patch(
-        'app.celery.scheduled_tasks.get_services_with_high_failure_rates', return_value=failure_rates
+        'app.celery.scheduled_tasks.dao_find_services_with_high_failure_rates', return_value=failure_rates
     )
     mock_sms_to_tv_numbers = mocker.patch(
         'app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers', return_value=sms_to_tv_numbers

@@ -11,8 +11,7 @@ from app.service.statistics import (
     create_stats_dict,
     create_zeroed_stats_dicts,
     format_admin_stats,
-    format_statistics,
-    get_rate_of_permanent_failures_for_service
+    format_statistics
 )
 
 StatsRow = collections.namedtuple('row', ('notification_type', 'status', 'count'))
@@ -72,26 +71,6 @@ def test_format_statistics(stats, email_counts, sms_counts, letter_counts):
         for status, count
         in zip(['requested', 'delivered', 'failed'], letter_counts)
     }
-
-
-@pytest.mark.idparametrize("statistics, expected_result", {
-    'counts_rate_for_sms': ([
-        StatsRow('sms', 'permanent-failure', 100),
-        StatsRow('sms', 'delivered', 300),
-    ], 0.25),
-    'only_counts_permanent_failure_as_failed': ([
-        StatsRow('sms', 'permanent-failure', 100),
-        StatsRow('sms', 'temporary-failure', 100),
-        StatsRow('sms', 'delivered', 300),
-    ], 0.2),
-    'below_threshold': ([
-        StatsRow('sms', 'permanent-failure', 5),
-        StatsRow('sms', 'delivered', 3),
-    ], 0),
-})
-def test_get_rate_of_permanent_failures_for_service(statistics, expected_result):
-    rate = get_rate_of_permanent_failures_for_service(statistics)
-    assert rate == expected_result
 
 
 def test_create_zeroed_stats_dicts():
