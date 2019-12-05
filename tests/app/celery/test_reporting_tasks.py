@@ -50,16 +50,15 @@ def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_
 
 
 @freeze_time('2019-08-01')
-@pytest.mark.parametrize('day_start, expected_kwargs', [
-    (None, ['2019-07-31', '2019-07-30', '2019-07-29', '2019-07-28']),
-    ('2019-07-21', ['2019-07-21', '2019-07-20', '2019-07-19', '2019-07-18']),
-])
-def test_create_nightly_notification_status_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
+def test_create_nightly_notification_status_triggers_tasks_for_days(notify_api, mocker):
     mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_day')
-    create_nightly_notification_status(day_start)
+    create_nightly_notification_status()
 
     assert mock_celery.apply_async.call_count == 4 * 3  # four days, three notification types
-    for process_date, notification_type in itertools.product(expected_kwargs, ['sms', 'email', 'letter']):
+    for process_date, notification_type in itertools.product(
+        ['2019-07-31', '2019-07-30', '2019-07-29', '2019-07-28'],
+        ['sms', 'email', 'letter']
+    ):
         mock_celery.apply_async.assert_any_call(
             kwargs={'process_day': process_date, 'notification_type': notification_type},
             queue=QueueNames.REPORTING

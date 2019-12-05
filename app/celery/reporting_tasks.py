@@ -67,14 +67,9 @@ def create_nightly_billing_for_day(process_day):
 @notify_celery.task(name="create-nightly-notification-status")
 @cronitor("create-nightly-notification-status")
 @statsd(namespace="tasks")
-def create_nightly_notification_status(day_start=None):
-    # day_start is a datetime.date() object. e.g.
-    # 4 days of data counting back from day_start is consolidated
-    if day_start is None:
-        day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
-    else:
-        # When calling the task its a string in the format of "YYYY-MM-DD"
-        day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
+def create_nightly_notification_status():
+    day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
+
     for i in range(0, 4):
         process_day = day_start - timedelta(days=i)
         for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
