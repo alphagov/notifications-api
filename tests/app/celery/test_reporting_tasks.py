@@ -54,13 +54,24 @@ def test_create_nightly_notification_status_triggers_tasks_for_days(notify_api, 
     mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_day')
     create_nightly_notification_status()
 
-    assert mock_celery.apply_async.call_count == 4 * 3  # four days, three notification types
+    assert mock_celery.apply_async.call_count == (
+        (4 * 3)  # four days, three notification types
+        +
+        6  # six more days of just letters
+    )
+
     for process_date, notification_type in itertools.product(
         ['2019-07-31', '2019-07-30', '2019-07-29', '2019-07-28'],
-        ['sms', 'email', 'letter']
+        [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
     ):
         mock_celery.apply_async.assert_any_call(
             kwargs={'process_day': process_date, 'notification_type': notification_type},
+            queue=QueueNames.REPORTING
+        )
+
+    for process_date in ['2019-07-27', '2019-07-26', '2019-07-25', '2019-07-24', '2019-07-23', '2019-07-22']:
+        mock_celery.apply_async.assert_any_call(
+            kwargs={'process_day': process_date, 'notification_type': LETTER_TYPE},
             queue=QueueNames.REPORTING
         )
 

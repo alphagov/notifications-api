@@ -68,15 +68,23 @@ def create_nightly_billing_for_day(process_day):
 @cronitor("create-nightly-notification-status")
 @statsd(namespace="tasks")
 def create_nightly_notification_status():
-    day_start = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
+    yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
-    for i in range(0, 4):
-        process_day = day_start - timedelta(days=i)
-        for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
+    # email and sms
+    for i in range(4):
+        process_day = yesterday - timedelta(days=i)
+        for notification_type in [SMS_TYPE, EMAIL_TYPE]:
             create_nightly_notification_status_for_day.apply_async(
                 kwargs={'process_day': process_day.isoformat(), 'notification_type': notification_type},
                 queue=QueueNames.REPORTING
             )
+    # letters get modified for a longer time period than sms and email, so we need to reprocess for more days
+    for i in range(10):
+        process_day = yesterday - timedelta(days=i)
+        create_nightly_notification_status_for_day.apply_async(
+            kwargs={'process_day': process_day.isoformat(), 'notification_type': LETTER_TYPE},
+            queue=QueueNames.REPORTING
+        )
 
 
 @notify_celery.task(name="create-nightly-notification-status-for-day")
