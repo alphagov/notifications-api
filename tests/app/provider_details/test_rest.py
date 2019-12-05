@@ -32,8 +32,8 @@ def test_get_provider_details_by_id(client, notify_db):
 
 
 @freeze_time('2018-06-28 12:00')
-def test_get_provider_contains_correct_fields(client, sample_service, sample_template):
-    create_ft_billing('2018-06-01', 'sms', sample_template, sample_service, provider='mmg', billable_unit=1)
+def test_get_provider_contains_correct_fields(client, sample_template):
+    create_ft_billing('2018-06-01', sample_template, provider='mmg', billable_unit=1)
 
     response = client.get(
         '/provider-details',

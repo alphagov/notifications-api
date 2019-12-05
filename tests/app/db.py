@@ -675,9 +675,8 @@ def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
 
 
 def create_ft_billing(bst_date,
-                      notification_type,
-                      template=None,
-                      service=None,
+                      template,
+                      *,
                       provider='test',
                       rate_multiplier=1,
                       international=False,
@@ -686,15 +685,10 @@ def create_ft_billing(bst_date,
                       notifications_sent=1,
                       postage='none',
                       ):
-    if not service:
-        service = create_service()
-    if not template:
-        template = create_template(service=service, template_type=notification_type)
-
     data = FactBilling(bst_date=bst_date,
-                       service_id=service.id,
+                       service_id=template.service_id,
                        template_id=template.id,
-                       notification_type=notification_type,
+                       notification_type=template.template_type,
                        provider=provider,
                        rate_multiplier=rate_multiplier,
                        international=international,
@@ -903,59 +897,46 @@ def set_up_usage_data(start_date):
     one_month_later = start_date + timedelta(days=31)
 
     service = create_service(service_name='a - with sms and letter')
-    letter_template = create_template(service=service, template_type='letter')
+    letter_template_1 = create_template(service=service, template_type='letter')
     sms_template_1 = create_template(service=service, template_type='sms')
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=year)
     org = create_organisation(name="Org for {}".format(service.name))
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
 
     service_3 = create_service(service_name='c - letters only')
-    template_3 = create_template(service=service_3)
+    letter_template_3 = create_template(service=service_3, template_type='letter')
     org_3 = create_organisation(name="Org for {}".format(service_3.name))
     dao_add_service_to_organisation(service=service_3, organisation_id=org_3.id)
 
     service_4 = create_service(service_name='d - service without org')
-    template_4 = create_template(service=service_4, template_type='letter')
+    letter_template_4 = create_template(service=service_4, template_type='letter')
 
     service_sms_only = create_service(service_name='b - chargeable sms')
     sms_template = create_template(service=service_sms_only, template_type='sms')
     create_annual_billing(service_id=service_sms_only.id, free_sms_fragment_limit=10, financial_year_start=year)
 
-    create_ft_billing(bst_date=one_week_earlier, service=service, notification_type='sms',
-                      template=sms_template_1, billable_unit=2, rate=0.11)
-    create_ft_billing(bst_date=start_date, service=service, notification_type='sms',
-                      template=sms_template_1, billable_unit=2, rate=0.11)
-    create_ft_billing(bst_date=two_days_later, service=service, notification_type='sms',
-                      template=sms_template_1, billable_unit=1, rate=0.11)
-    create_ft_billing(bst_date=one_week_later, service=service, notification_type='letter',
-                      template=letter_template,
+    create_ft_billing(bst_date=one_week_earlier, template=sms_template_1, billable_unit=2, rate=0.11)
+    create_ft_billing(bst_date=start_date, template=sms_template_1, billable_unit=2, rate=0.11)
+    create_ft_billing(bst_date=two_days_later, template=sms_template_1, billable_unit=1, rate=0.11)
+    create_ft_billing(bst_date=one_week_later, template=letter_template_1,
                       notifications_sent=2, billable_unit=1, rate=.35, postage='first')
-    create_ft_billing(bst_date=one_month_later, service=service, notification_type='letter',
-                      template=letter_template,
+    create_ft_billing(bst_date=one_month_later, template=letter_template_1,
                       notifications_sent=4, billable_unit=2, rate=.45, postage='second')
-    create_ft_billing(bst_date=one_week_later, service=service, notification_type='letter',
-                      template=letter_template,
+    create_ft_billing(bst_date=one_week_later, template=letter_template_1,
                       notifications_sent=2, billable_unit=2, rate=.45, postage='second')
 
-    create_ft_billing(bst_date=one_week_earlier, service=service_sms_only, notification_type='sms',
-                      template=sms_template, rate=0.11, billable_unit=12)
-    create_ft_billing(bst_date=two_days_later, service=service_sms_only, notification_type='sms',
-                      template=sms_template, rate=0.11)
-    create_ft_billing(bst_date=one_week_later, service=service_sms_only, notification_type='sms',
-                      template=sms_template, billable_unit=2, rate=0.11)
+    create_ft_billing(bst_date=one_week_earlier, template=sms_template, rate=0.11, billable_unit=12)
+    create_ft_billing(bst_date=two_days_later, template=sms_template, rate=0.11)
+    create_ft_billing(bst_date=one_week_later, template=sms_template, billable_unit=2, rate=0.11)
 
-    create_ft_billing(bst_date=start_date, service=service_3, notification_type='letter',
-                      template=template_3,
+    create_ft_billing(bst_date=start_date, template=letter_template_3,
                       notifications_sent=2, billable_unit=3, rate=.50, postage='first')
-    create_ft_billing(bst_date=one_week_later, service=service_3, notification_type='letter',
-                      template=template_3,
+    create_ft_billing(bst_date=one_week_later, template=letter_template_3,
                       notifications_sent=8, billable_unit=5, rate=.65, postage='second')
-    create_ft_billing(bst_date=one_month_later, service=service_3, notification_type='letter',
-                      template=template_3,
+    create_ft_billing(bst_date=one_month_later, template=letter_template_3,
                       notifications_sent=12, billable_unit=5, rate=.65, postage='second')
 
-    create_ft_billing(bst_date=two_days_later, service=service_4, notification_type='letter',
-                      template=template_4,
+    create_ft_billing(bst_date=two_days_later, template=letter_template_4,
                       notifications_sent=15, billable_unit=4, rate=.55, postage='second')
 
     return org, org_3, service, service_3, service_4, service_sms_only

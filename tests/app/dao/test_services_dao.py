@@ -444,28 +444,28 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
 def test_dao_fetch_live_services_data(sample_user):
     org = create_organisation(organisation_type='nhs_central')
     service = create_service(go_live_user=sample_user, go_live_at='2014-04-20T10:00:00')
-    template = create_template(service=service)
+    sms_template = create_template(service=service)
     service_2 = create_service(service_name='second', go_live_at='2017-04-20T10:00:00', go_live_user=sample_user)
     service_3 = create_service(service_name='third', go_live_at='2016-04-20T10:00:00')
     # below services should be filtered out:
     create_service(service_name='restricted', restricted=True)
     create_service(service_name='not_active', active=False)
     create_service(service_name='not_live', count_as_live=False)
-    template2 = create_template(service=service, template_type='email')
+    email_template = create_template(service=service, template_type='email')
     template_letter_1 = create_template(service=service, template_type='letter')
     template_letter_2 = create_template(service=service_2, template_type='letter')
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     # two sms billing records for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-20', notification_type='sms', template=template, service=service)
-    create_ft_billing(bst_date='2019-04-21', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2019-04-20', template=sms_template)
+    create_ft_billing(bst_date='2019-04-21', template=sms_template)
     # one sms billing record for 1st service from previous financial year, should not appear in the result:
-    create_ft_billing(bst_date='2018-04-20', notification_type='sms', template=template, service=service)
+    create_ft_billing(bst_date='2018-04-20', template=sms_template)
     # one email billing record for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-20', notification_type='email', template=template2, service=service)
+    create_ft_billing(bst_date='2019-04-20', template=email_template)
     # one letter billing record for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-15', notification_type='letter', template=template_letter_1, service=service)
+    create_ft_billing(bst_date='2019-04-15', template=template_letter_1)
     # one letter billing record for 2nd service within current financial year:
-    create_ft_billing(bst_date='2019-04-16', notification_type='letter', template=template_letter_2, service=service_2)
+    create_ft_billing(bst_date='2019-04-16', template=template_letter_2)
 
     # 1st service: billing from 2018 and 2019
     create_annual_billing(service.id, 500, 2018)

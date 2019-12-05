@@ -214,13 +214,13 @@ def test_dao_get_provider_stats(notify_db_session):
     sms_template_1 = create_template(service_1, 'sms')
     sms_template_2 = create_template(service_2, 'sms')
 
-    create_ft_billing('2017-06-05', 'sms', sms_template_2, service_1, provider='firetext', billable_unit=4)
-    create_ft_billing('2018-05-31', 'sms', sms_template_1, service_1, provider='mmg', billable_unit=1)
-    create_ft_billing('2018-06-01', 'sms', sms_template_1, service_1, provider='mmg',
+    create_ft_billing('2017-06-05', sms_template_2, provider='firetext', billable_unit=4)
+    create_ft_billing('2018-05-31', sms_template_1, provider='mmg', billable_unit=1)
+    create_ft_billing('2018-06-01', sms_template_1, provider='mmg',
                       rate_multiplier=2, billable_unit=1)
-    create_ft_billing('2018-06-03', 'sms', sms_template_2, service_1, provider='firetext', billable_unit=4)
-    create_ft_billing('2018-06-15', 'sms', sms_template_1, service_2, provider='firetext', billable_unit=1)
-    create_ft_billing('2018-06-28', 'sms', sms_template_2, service_2, provider='mmg', billable_unit=2)
+    create_ft_billing('2018-06-03', sms_template_2, provider='firetext', billable_unit=4)
+    create_ft_billing('2018-06-15', sms_template_1, provider='firetext', billable_unit=1)
+    create_ft_billing('2018-06-28', sms_template_2, provider='mmg', billable_unit=2)
 
     result = dao_get_provider_stats()
 
