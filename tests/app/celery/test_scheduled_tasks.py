@@ -544,7 +544,8 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         'app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers', return_value=sms_to_tv_numbers
     )
 
-    zendesk_actions = "\nThings to do: contact service? revoke their key?"
+    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\n"
+    "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
 
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
 
