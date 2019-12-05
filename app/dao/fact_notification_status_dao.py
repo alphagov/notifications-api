@@ -63,7 +63,6 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
         table.template_id,
         table.service_id,
         func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
-        table.notification_type,
         table.key_type,
         table.status,
         func.count().label('notification_count')
@@ -77,7 +76,6 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
         table.template_id,
         table.service_id,
         'job_id',
-        table.notification_type,
         table.key_type,
         table.status
     )
@@ -98,7 +96,7 @@ def update_fact_notification_status(data, process_day, notification_type):
             template_id=row.template_id,
             service_id=row.service_id,
             job_id=row.job_id,
-            notification_type=row.notification_type,
+            notification_type=notification_type,
             key_type=row.key_type,
             notification_status=row.status,
             notification_count=row.notification_count,
