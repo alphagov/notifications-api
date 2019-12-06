@@ -504,6 +504,7 @@ def migrate_data_to_ft_notification_status(start_date, end_date, notification_ty
     notification_types = [SMS_TYPE, LETTER_TYPE, EMAIL_TYPE] if notification_type is None else [notification_type]
 
     start_date = start_date.date()
+    end_date = end_date.date()
     for day_diff in range((end_date - start_date).days):
         process_day = start_date + timedelta(days=day_diff)
         for notification_type in notification_types:
