@@ -66,8 +66,9 @@ def test_update_fact_notification_status(notify_db_session):
         create_notification_history(template=second_template)
         create_notification(template=third_template)
 
-    data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    for notification_type in ('letter', 'sms', 'email'):
+        data = fetch_notification_status_for_day(process_day=process_day, notification_type=notification_type)
+        update_fact_notification_status(data=data, process_day=process_day, notification_type=notification_type)
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
@@ -105,8 +106,8 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
     create_notification(template=first_template, status='delivered')
 
     process_day = date.today()
-    data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    data = fetch_notification_status_for_day(process_day=process_day, notification_type='sms')
+    update_fact_notification_status(data=data, process_day=process_day, notification_type='sms')
 
     new_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                           FactNotificationStatus.notification_type
@@ -116,8 +117,8 @@ def test__update_fact_notification_status_updates_row(notify_db_session):
 
     create_notification(template=first_template, status='delivered')
 
-    data = fetch_notification_status_for_day(process_day=process_day)
-    update_fact_notification_status(data=data, process_day=process_day)
+    data = fetch_notification_status_for_day(process_day=process_day, notification_type='sms')
+    update_fact_notification_status(data=data, process_day=process_day, notification_type='sms')
 
     updated_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date,
                                                               FactNotificationStatus.notification_type

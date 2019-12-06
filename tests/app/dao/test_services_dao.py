@@ -664,8 +664,10 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
         EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE,
     ))
 
-    assert len(Service.get_history_model().query.filter_by(name='service_name').all()) == 3
-    assert Service.get_history_model().query.filter_by(name='service_name').all()[2].version == 3
+    history = Service.get_history_model().query.filter_by(name='service_name').order_by('version').all()
+
+    assert len(history) == 3
+    assert history[2].version == 3
 
 
 def test_create_service_and_history_is_transactional(notify_db_session):

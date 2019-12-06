@@ -21,6 +21,7 @@ from app.celery.tasks import record_daily_sorted_counts, get_template_class, pro
 from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.reporting_tasks import create_nightly_notification_status_for_day
 from app.config import QueueNames
 from app.dao.annual_billing_dao import dao_create_or_update_annual_billing_for_year
 from app.dao.fact_billing_dao import (
@@ -43,11 +44,19 @@ from app.dao.services_dao import (
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import delete_model_user, delete_user_verify_codes, get_user_by_email
 from app.models import (
-    PROVIDERS, User, Notification, Organisation, Domain, Service, SMS_TYPE,
+    PROVIDERS,
     NOTIFICATION_CREATED,
     KEY_TYPE_TEST,
+    SMS_TYPE,
+    EMAIL_TYPE,
+    LETTER_TYPE,
+    User,
+    Notification,
+    Organisation,
+    Domain,
+    Service,
     EmailBranding,
-    LetterBranding
+    LetterBranding,
 )
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
 from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
@@ -489,54 +498,23 @@ def rebuild_ft_billing_for_day(service_id, day):
 @notify_command(name='migrate-data-to-ft-notification-status')
 @click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
 @click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@click.option('-t', '--notification-type', required=False, help="notification type (or leave blank for all types)")
 @statsd(namespace="tasks")
-def migrate_data_to_ft_notification_status(start_date, end_date):
+def migrate_data_to_ft_notification_status(start_date, end_date, notification_type=None):
+    notification_types = [SMS_TYPE, LETTER_TYPE, EMAIL_TYPE] if notification_type is None else [notification_type]
 
-    print('Notification statuses migration from date {} to {}'.format(start_date, end_date))
-
-    process_date = start_date
-    total_updated = 0
-
-    while process_date < end_date:
-        start_time = datetime.now()
-        # migrate data into ft_notification_status and update if record already exists
-
-        db.session.execute(
-            'delete from ft_notification_status where bst_date = :process_date',
-            {"process_date": process_date}
-        )
-
-        sql = \
-            """
-            insert into ft_notification_status (bst_date, template_id, service_id, job_id, notification_type, key_type,
-                notification_status, created_at, notification_count)
-                select
-                    (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
-                    coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
-                    n.service_id,
-                    coalesce(n.job_id, '00000000-0000-0000-0000-000000000000') as job_id,
-                    n.notification_type,
-                    n.key_type,
-                    n.notification_status,
-                    now() as created_at,
-                    count(*) as notification_count
-                from notification_history n
-                where n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-                    and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-                group by bst_date, template_id, service_id, job_id, notification_type, key_type, notification_status
-                order by bst_date
-            """
-        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
-        db.session.commit()
-        print('ft_notification_status: --- Completed took {}ms. Migrated {} rows for {}.'.format(
-            datetime.now() - start_time,
-            result.rowcount,
-            process_date
-        ))
-        process_date += timedelta(days=1)
-
-        total_updated += result.rowcount
-    print('Total inserted/updated records = {}'.format(total_updated))
+    start_date = start_date.date()
+    for day_diff in range((end_date - start_date).days):
+        process_day = start_date + timedelta(days=day_diff)
+        for notification_type in notification_types:
+            print('create_nightly_notification_status_for_day triggered for {} and {}'.format(
+                process_day,
+                notification_type
+            ))
+            create_nightly_notification_status_for_day.apply_async(
+                kwargs={'process_day': process_day.strftime('%Y-%m-%d'), 'notification_type': notification_type},
+                queue=QueueNames.REPORTING
+            )
 
 
 @notify_command(name='bulk-invite-user-to-service')

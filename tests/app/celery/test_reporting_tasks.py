@@ -1,9 +1,11 @@
+import itertools
 from datetime import datetime, timedelta, date
 from decimal import Decimal
 
 import pytest
 from freezegun import freeze_time
 
+from app.config import QueueNames
 from app.celery.reporting_tasks import (
     create_nightly_billing,
     create_nightly_notification_status,
@@ -56,9 +58,12 @@ def test_create_nightly_notification_status_triggers_tasks_for_days(notify_api, 
     mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_day')
     create_nightly_notification_status(day_start)
 
-    assert mock_celery.apply_async.call_count == 4
-    for i in range(4):
-        assert mock_celery.apply_async.call_args_list[i][1]['kwargs'] == {'process_day': expected_kwargs[i]}
+    assert mock_celery.apply_async.call_count == 4 * 3  # four days, three notification types
+    for process_date, notification_type in itertools.product(expected_kwargs, ['sms', 'email', 'letter']):
+        mock_celery.apply_async.assert_any_call(
+            kwargs={'process_day': process_date, 'notification_type': notification_type},
+            queue=QueueNames.REPORTING
+        )
 
 
 @pytest.mark.parametrize('second_rate, records_num, billable_units, multiplier',
@@ -453,14 +458,24 @@ def test_create_nightly_notification_status_for_day(notify_db_session):
 
     assert len(FactNotificationStatus.query.all()) == 0
 
-    create_nightly_notification_status_for_day('2019-01-01')
+    create_nightly_notification_status_for_day('2019-01-01', 'sms')
+    create_nightly_notification_status_for_day('2019-01-01', 'email')
+    create_nightly_notification_status_for_day('2019-01-01', 'letter')
 
-    new_data = FactNotificationStatus.query.all()
+    new_data = FactNotificationStatus.query.order_by(FactNotificationStatus.created_at).all()
 
     assert len(new_data) == 3
     assert new_data[0].bst_date == date(2019, 1, 1)
     assert new_data[1].bst_date == date(2019, 1, 1)
     assert new_data[2].bst_date == date(2019, 1, 1)
+
+    assert new_data[0].notification_type == 'sms'
+    assert new_data[1].notification_type == 'email'
+    assert new_data[2].notification_type == 'letter'
+
+    assert new_data[0].notification_status == 'delivered'
+    assert new_data[1].notification_status == 'temporary-failure'
+    assert new_data[2].notification_status == 'created'
 
 
 # the job runs at 12:30am London time. 04/01 is in BST.
@@ -473,7 +488,7 @@ def test_create_nightly_notification_status_for_day_respects_bst(sample_template
 
     create_notification(sample_template, status='delivered', created_at=datetime(2019, 3, 31, 22, 59))  # too old
 
-    create_nightly_notification_status_for_day('2019-04-01')
+    create_nightly_notification_status_for_day('2019-04-01', 'sms')
 
     noti_status = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date).all()
     assert len(noti_status) == 1
