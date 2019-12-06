@@ -10,6 +10,8 @@ from app.utils import midnight_n_days_ago
 
 
 def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size=50):
+    # Hardcoded filter to exclude cancelled or scheduled jobs
+    # for the moment, but we may want to change this method take 'statuses' as a argument in the future
     jobs_query_filter = [
         Job.service_id == service_id,
         Job.original_file_name != current_app.config['TEST_MESSAGE_FILENAME'],

@@ -18,7 +18,7 @@ def create_uploaded_letter(letter_template, service, status='created', created_a
     )
 
 
-def create_precompiled_template(service):
+def create_uploaded_template(service):
     return create_template(
         service,
         template_type=LETTER_TYPE,
@@ -32,13 +32,13 @@ def create_precompiled_template(service):
 
 def test_get_uploads_for_service(sample_template):
     job = create_job(sample_template, processing_started=datetime.utcnow())
-    letter_template = create_precompiled_template(sample_template.service)
+    letter_template = create_uploaded_template(sample_template.service)
     letter = create_uploaded_letter(letter_template, sample_template.service)
 
     other_service = create_service(service_name="other service")
     other_template = create_template(service=other_service)
     other_job = create_job(other_template, processing_started=datetime.utcnow())
-    other_letter_template = create_precompiled_template(other_service)
+    other_letter_template = create_uploaded_template(other_service)
     other_letter = create_uploaded_letter(other_letter_template, other_service)
 
     uploads_from_db = dao_get_uploads_by_service_id(job.service_id).items
@@ -75,14 +75,14 @@ def test_get_uploads_for_service(sample_template):
 def test_get_uploads_does_not_return_cancelled_jobs_or_letters(sample_template):
     create_job(sample_template, job_status='scheduled')
     create_job(sample_template, job_status='cancelled')
-    letter_template = create_precompiled_template(sample_template.service)
+    letter_template = create_uploaded_template(sample_template.service)
     create_uploaded_letter(letter_template, sample_template.service, status='cancelled')
 
     assert len(dao_get_uploads_by_service_id(sample_template.service_id).items) == 0
 
 
 def test_get_uploads_orders_by_created_at_desc(sample_template):
-    letter_template = create_precompiled_template(sample_template.service)
+    letter_template = create_uploaded_template(sample_template.service)
 
     upload_1 = create_job(sample_template, processing_started=datetime.utcnow(),
                           job_status=JOB_STATUS_IN_PROGRESS)
@@ -115,30 +115,30 @@ def test_get_uploads_orders_by_processing_started_desc(sample_template):
 
 
 def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_template):
-    letter_template = create_precompiled_template(sample_template.service)
+    letter_template = create_uploaded_template(sample_template.service)
 
     days_ago = datetime.utcnow() - timedelta(days=4)
-    upload_0 = create_uploaded_letter(letter_template, service=letter_template.service)
-    upload_1 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=1),
+    upload_1 = create_uploaded_letter(letter_template, service=letter_template.service)
+    upload_2 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=1),
                           created_at=days_ago,
                           job_status=JOB_STATUS_IN_PROGRESS)
-    upload_2 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=2),
+    upload_3 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=2),
                           created_at=days_ago,
                           job_status=JOB_STATUS_IN_PROGRESS)
-    upload_3 = create_uploaded_letter(letter_template, service=letter_template.service,
+    upload_4 = create_uploaded_letter(letter_template, service=letter_template.service,
                                       created_at=datetime.utcnow() - timedelta(days=3))
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
 
     assert len(results) == 4
-    assert results[0].id == upload_0.id
-    assert results[1].id == upload_1.id
-    assert results[2].id == upload_2.id
-    assert results[3].id == upload_3.id
+    assert results[0].id == upload_1.id
+    assert results[1].id == upload_2.id
+    assert results[2].id == upload_3.id
+    assert results[3].id == upload_4.id
 
 
 def test_get_uploads_is_paginated(sample_template):
-    letter_template = create_precompiled_template(sample_template.service)
+    letter_template = create_uploaded_template(sample_template.service)
 
     upload_1 = create_uploaded_letter(letter_template, sample_template.service, status='delivered',
                                       created_at=datetime.utcnow() - timedelta(minutes=3))

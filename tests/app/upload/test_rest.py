@@ -92,33 +92,31 @@ def test_get_uploads_should_return_statistics(admin_request, sample_template):
     earlier = datetime.utcnow() - timedelta(days=1)
     job_1 = create_job(template=sample_template, job_status='pending')
     job_2 = create_job(sample_template, processing_started=earlier)
-    for _ in range(0, 3):
+    for _ in range(3):
         create_notification(template=sample_template, job=job_2, status='created')
 
     job_3 = create_job(sample_template, processing_started=now)
-    for _ in range(0, 4):
+    for _ in range(4):
         create_notification(template=sample_template, job=job_3, status='sending')
+
     letter_template = create_precompiled_template(sample_template.service)
     letter_1 = create_uploaded_letter(letter_template, sample_template.service, status='delivered',
                                       created_at=datetime.utcnow() - timedelta(days=3))
-    letter_2 = create_uploaded_letter(letter_template, sample_template.service, status='delivered',
-                                      created_at=datetime.utcnow() - timedelta(days=2))
+
     resp_json = admin_request.get('upload.get_uploads_by_service', service_id=sample_template.service_id)['data']
-    assert len(resp_json) == 5
+    assert len(resp_json) == 4
     assert resp_json[0]['id'] == str(job_1.id)
     assert resp_json[0]['statistics'] == []
     assert resp_json[1]['id'] == str(job_3.id)
     assert resp_json[1]['statistics'] == [{'status': 'sending', 'count': 4}]
     assert resp_json[2]['id'] == str(job_2.id)
     assert resp_json[2]['statistics'] == [{'status': 'created', 'count': 3}]
-    assert resp_json[3]['id'] == str(letter_2.id)
+    assert resp_json[3]['id'] == str(letter_1.id)
     assert resp_json[3]['statistics'] == [{'status': 'delivered', 'count': 1}]
-    assert resp_json[4]['id'] == str(letter_1.id)
-    assert resp_json[4]['statistics'] == [{'status': 'delivered', 'count': 1}]
 
 
 def test_get_uploads_should_paginate(admin_request, sample_template):
-    for _ in range(0, 10):
+    for _ in range(10):
         create_job(sample_template)
 
     with set_config(admin_request.app, 'PAGE_SIZE', 2):
@@ -132,7 +130,7 @@ def test_get_uploads_should_paginate(admin_request, sample_template):
 
 
 def test_get_uploads_accepts_page_parameter(admin_request, sample_template):
-    for _ in range(0, 10):
+    for _ in range(10):
         create_job(sample_template)
 
     with set_config(admin_request.app, 'PAGE_SIZE', 2):

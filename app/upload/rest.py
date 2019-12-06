@@ -12,7 +12,6 @@ from app.dao.jobs_dao import (
 from app.dao.uploads_dao import dao_get_uploads_by_service_id
 from app.errors import (
     register_errors,
-    InvalidRequest
 )
 from app.utils import pagination_links, midnight_n_days_ago
 
@@ -23,17 +22,9 @@ register_errors(upload_blueprint)
 
 @upload_blueprint.route('', methods=['GET'])
 def get_uploads_by_service(service_id):
-    if request.args.get('limit_days'):
-        try:
-            limit_days = int(request.args['limit_days'])
-        except ValueError:
-            errors = {'limit_days': ['{} is not an integer'.format(request.args['limit_days'])]}
-            raise InvalidRequest(errors, status_code=400)
-    else:
-        limit_days = None
-
-    page = int(request.args.get('page', 1))
-    return jsonify(**get_paginated_uploads(service_id, limit_days, page))
+    return jsonify(**get_paginated_uploads(service_id,
+                                           request.args.get('limit_days', type=int),
+                                           request.args.get('page', type=int)))
 
 
 def get_paginated_uploads(service_id, limit_days, page):
