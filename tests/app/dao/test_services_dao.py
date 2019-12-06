@@ -1100,6 +1100,10 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
     template_2 = create_template(service_2)
     create_notification(template_2, normalised_to=tv_number, status="permanent-failure")
     for x in range(0, 5):
+        # test key type is excluded
+        create_notification(template_2, normalised_to=tv_number, status="permanent-failure", key_type='test')
+    for x in range(0, 5):
+        # normal numbers are not counted by the query
         create_notification(template_2, normalised_to=normal_number, status="delivered")
         create_notification(template_2, normalised_to=normal_number_resembling_tv_number, status="delivered")
 
