@@ -6,12 +6,12 @@ from freezegun import freeze_time
 import pytest
 
 from app.service.statistics import (
-    format_admin_stats,
-    format_statistics,
+    add_monthly_notification_status_stats,
+    create_empty_monthly_notification_status_stats_dict,
     create_stats_dict,
     create_zeroed_stats_dicts,
-    create_empty_monthly_notification_status_stats_dict,
-    add_monthly_notification_status_stats
+    format_admin_stats,
+    format_statistics
 )
 
 StatsRow = collections.namedtuple('row', ('notification_type', 'status', 'count'))

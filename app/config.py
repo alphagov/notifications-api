@@ -276,6 +276,11 @@ class Config(object):
             'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers': {
+            'task': 'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers',
+            'schedule': crontab(day_of_week='mon-fri', hour=10, minute=30),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
             'schedule': crontab(hour=16, minute=30),

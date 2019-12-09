@@ -35,6 +35,7 @@ from app.dao.notifications_dao import (
 )
 from app.dao.provider_details_dao import dao_reduce_sms_provider_priority
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
+from app.dao.services_dao import dao_find_services_sending_to_tv_numbers, dao_find_services_with_high_failure_rates
 from app.models import (
     Job,
     JOB_STATUS_IN_PROGRESS,
@@ -253,3 +254,45 @@ def check_for_missing_rows_in_completed_jobs():
                     current_app.logger.info(
                         "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
                     process_row(row, template, job, job.service, sender_id=sender_id)
+
+
+@notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
+@statsd(namespace="tasks")
+def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
+    start_date = (datetime.utcnow() - timedelta(days=1))
+    end_date = datetime.utcnow()
+    message = ""
+
+    services_with_failures = dao_find_services_with_high_failure_rates(start_date=start_date, end_date=end_date)
+    services_sending_to_tv_numbers = dao_find_services_sending_to_tv_numbers(start_date=start_date, end_date=end_date)
+
+    if services_with_failures:
+        message += "{} service(s) have had high permanent-failure rates for sms messages in last 24 hours:\n".format(
+            len(services_with_failures)
+        )
+        for service in services_with_failures:
+            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service.service_id
+            message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
+    elif services_sending_to_tv_numbers:
+        message += "{} service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n".format(
+            len(services_sending_to_tv_numbers)
+        )
+        for service in services_sending_to_tv_numbers:
+            service_dashboard = current_app.config['ADMIN_BASE_URL'] + "/services/" + service.service_id
+            message += "service: {} count of sms to tv numbers: {},\n".format(
+                service_dashboard, service.notification_count
+            )
+
+    if services_with_failures or services_sending_to_tv_numbers:
+        current_app.logger.exception(message)
+
+        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            message += "\nYou can find instructions for this ticket in our manual:\n"
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+            zendesk_client.create_ticket(
+                subject="[{}] High failure rates for sms spotted for services".format(
+                    current_app.config['NOTIFY_ENVIRONMENT']
+                ),
+                message=message,
+                ticket_type=zendesk_client.TYPE_INCIDENT
+            )

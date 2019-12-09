@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.sql.expression import asc, case, and_, func
 from sqlalchemy.orm import joinedload
+from sqlalchemy import cast, Float
 from flask import current_app
 
 from app import db
@@ -44,6 +45,7 @@ from app.models import (
     KEY_TYPE_TEST,
     NHS_ORGANISATION_TYPES,
     NON_CROWN_ORGANISATION_TYPES,
+    NOTIFICATION_PERMANENT_FAILURE,
     SMS_TYPE,
     LETTER_TYPE,
 )
@@ -518,6 +520,76 @@ def dao_fetch_active_users_for_service(service_id):
     query = User.query.filter(
         User.services.any(id=service_id),
         User.state == 'active'
+    )
+
+    return query.all()
+
+
+def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=100):
+    return db.session.query(
+        Notification.service_id.label('service_id'),
+        func.count(Notification.id).label('notification_count')
+    ).filter(
+        Notification.service_id == Service.id,
+        Notification.created_at >= start_date,
+        Notification.created_at <= end_date,
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == SMS_TYPE,
+        func.substr(Notification.normalised_to, 3, 7) == '7700900',
+        Service.restricted == False,  # noqa
+        Service.research_mode == False,
+        Service.active == True,
+    ).group_by(
+        Notification.service_id,
+    ).having(
+        func.count(Notification.id) > threshold
+    ).all()
+
+
+def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=100):
+    subquery = db.session.query(
+        func.count(Notification.id).label('total_count'),
+        Notification.service_id.label('service_id')
+    ).filter(
+        Notification.service_id == Service.id,
+        Notification.created_at >= start_date,
+        Notification.created_at <= end_date,
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == SMS_TYPE,
+        Service.restricted == False,  # noqa
+        Service.research_mode == False,
+        Service.active == True,
+    ).group_by(
+        Notification.service_id,
+    ).having(
+        func.count(Notification.id) >= threshold
+    )
+
+    subquery = subquery.subquery()
+
+    query = db.session.query(
+        Notification.service_id.label('service_id'),
+        func.count(Notification.id).label('permanent_failure_count'),
+        subquery.c.total_count.label('total_count'),
+        (cast(func.count(Notification.id), Float) / cast(subquery.c.total_count, Float)).label('permanent_failure_rate')
+    ).join(
+        subquery,
+        subquery.c.service_id == Notification.service_id
+    ).filter(
+        Notification.service_id == Service.id,
+        Notification.created_at >= start_date,
+        Notification.created_at <= end_date,
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.notification_type == SMS_TYPE,
+        Notification.status == NOTIFICATION_PERMANENT_FAILURE,
+        Service.restricted == False,  # noqa
+        Service.research_mode == False,
+        Service.active == True,
+    ).group_by(
+        Notification.service_id,
+        subquery.c.total_count
+    ).having(
+        cast(func.count(Notification.id), Float) / cast(subquery.c.total_count, Float) >= 0.25
     )
 
     return query.all()

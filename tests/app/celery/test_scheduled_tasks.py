@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from unittest.mock import call
 
 import pytest
+from collections import namedtuple
 from freezegun import freeze_time
 from mock import mock
 
@@ -16,9 +17,10 @@ from app.celery.scheduled_tasks import (
     check_precompiled_letter_state,
     check_templated_letter_state,
     check_for_missing_rows_in_completed_jobs,
+    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
 )
-from app.config import QueueNames, TaskNames
+from app.config import QueueNames, TaskNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import get_provider_details_by_identifier
@@ -493,4 +495,65 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_
     check_for_missing_rows_in_completed_jobs()
     mock_process_row.assert_called_once_with(
         mock.ANY, mock.ANY, job, job.service, sender_id=fake_uuid
+    )
+
+
+MockServicesSendingToTVNumbers = namedtuple(
+    'ServicesSendingToTVNumbers',
+    [
+        'service_id',
+        'notification_count',
+    ]
+)
+MockServicesWithHighFailureRate = namedtuple(
+    'ServicesWithHighFailureRate',
+    [
+        'service_id',
+        'permanent_failure_rate',
+    ]
+)
+
+
+@pytest.mark.parametrize("failure_rates, sms_to_tv_numbers, expected_message", [
+    [
+        [MockServicesWithHighFailureRate("123", 0.3)],
+        [],
+        "1 service(s) have had high permanent-failure rates for sms messages in last "
+        "24 hours:\nservice: {} failure rate: 0.3,\n".format(
+            Config.ADMIN_BASE_URL + "/services/" + "123"
+        )
+    ],
+    [
+        [],
+        [MockServicesSendingToTVNumbers("123", 300)],
+        "1 service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n"
+        "service: {} count of sms to tv numbers: 300,\n".format(
+            Config.ADMIN_BASE_URL + "/services/" + "123"
+        )
+    ]
+])
+def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
+    mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_failure_rates = mocker.patch(
+        'app.celery.scheduled_tasks.dao_find_services_with_high_failure_rates', return_value=failure_rates
+    )
+    mock_sms_to_tv_numbers = mocker.patch(
+        'app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers', return_value=sms_to_tv_numbers
+    )
+
+    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\n"
+    "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+
+    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
+
+    assert mock_failure_rates.called
+    assert mock_sms_to_tv_numbers.called
+    mock_logger.assert_called_once_with(expected_message)
+    mock_create_ticket.assert_called_with(
+        message=expected_message + zendesk_actions,
+        subject="[test] High failure rates for sms spotted for services",
+        ticket_type='incident'
     )
