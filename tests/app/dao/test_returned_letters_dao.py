@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from freezegun import freeze_time
 
-from app.dao.returned_letters_dao import insert_or_update_returned_letters
+from app.dao.returned_letters_dao import insert_or_update_returned_letters, get_returned_letter_summary
 from app.models import ReturnedLetter
-from tests.app.db import create_notification, create_notification_history
+from tests.app.db import create_notification, create_notification_history, create_returned_letter
 
 
 def test_insert_or_update_returned_letters_inserts(sample_letter_template):
@@ -81,3 +81,34 @@ def test_insert_or_update_returned_letters_with_duplicates_in_reference_list(sam
     assert len(returned_letters) == 2
     for x in returned_letters:
         assert x.notification_id in [notification_1.id, notification_2.id]
+
+
+def test_get_returned_letter_summary(sample_service):
+    now = datetime.utcnow()
+    create_returned_letter(sample_service, reported_at=now)
+    create_returned_letter(sample_service, reported_at=now)
+
+    results = get_returned_letter_summary(sample_service.id)
+
+    assert len(results) == 1
+
+    assert results[0].returned_letter_count == 2
+    assert results[0].reported_at == now
+
+
+def test_get_returned_letter_summary_orders_by_reported_at(sample_service):
+    now = datetime.utcnow()
+    last_month = datetime.utcnow() - timedelta(days=30)
+    create_returned_letter(sample_service, reported_at=now)
+    create_returned_letter(sample_service, reported_at=now)
+    create_returned_letter(sample_service, reported_at=now)
+    create_returned_letter(sample_service, reported_at=last_month)
+    create_returned_letter(sample_service, reported_at=last_month)
+
+    results = get_returned_letter_summary(sample_service.id)
+
+    assert len(results) == 2
+    assert results[0].reported_at == now
+    assert results[0].returned_letter_count == 3
+    assert results[1].reported_at == last_month
+    assert results[1].returned_letter_count == 2
