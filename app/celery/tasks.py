@@ -43,6 +43,7 @@ from app.dao.notifications_dao import (
     dao_get_notification_history_by_reference,
 )
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
+from app.dao.returned_letters_dao import insert_or_update_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
@@ -618,6 +619,8 @@ def process_returned_letters_list(notification_references):
         notification_references,
         {"status": NOTIFICATION_RETURNED_LETTER}
     )
+
+    insert_or_update_returned_letters(notification_references)
 
     current_app.logger.info(
         "Updated {} letter notifications ({} history notifications, from {} references) to returned-letter".format(
