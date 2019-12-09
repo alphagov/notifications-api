@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
@@ -85,6 +85,47 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     # and releasing the for_update lock
     _update_provider_details_without_commit(reduced_provider)
     _update_provider_details_without_commit(increased_provider)
+
+
+@transactional
+def dao_adjust_provider_priority_back_to_resting_points():
+    """
+    Provided that neither SMS provider has been modified in the last hour, move both providers by 10 percentage points
+    each towards their defined resting points (set in SMS_PROVIDER_RESTING_POINTS in config.py).
+    """
+    amount_to_reduce_by = 10
+    time_threshold = timedelta(hours=1)
+
+    # get current priority of both providers
+    providers = ProviderDetails.query.filter(
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.active
+    ).with_for_update().all()
+
+    # if something updated recently, don't update again. If the updated_at is null, treat it as min time
+    if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in providers):
+        current_app.logger.info("Not adjusting providers, providers updated less than {} ago.".format(time_threshold))
+        return
+
+    # Automatic update so set as notify user
+    notify_user = get_user_by_id(current_app.config['NOTIFY_USER_ID'])
+    for provider in providers:
+        target = current_app.config['SMS_PROVIDER_RESTING_POINTS'][provider.identifier]
+        current = provider.priority
+
+        if current != target:
+            if current > target:
+                provider.priority = max(provider.priority - amount_to_reduce_by, target)
+            else:
+                provider.priority = min(provider.priority + amount_to_reduce_by, target)
+
+            provider.created_by_id = notify_user.id
+            _update_provider_details_without_commit(provider)
+            current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
+                provider.identifier,
+                current,
+                provider.priority,
+            ))
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):

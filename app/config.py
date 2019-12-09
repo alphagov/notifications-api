@@ -135,6 +135,12 @@ class Config(object):
 
     CHECK_PROXY_HEADER = False
 
+    # these should always add up to 100%
+    SMS_PROVIDER_RESTING_POINTS = {
+        'mmg': 60,
+        'firetext': 40
+    }
+
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
     NOTIFY_USER_ID = '6af522d0-2915-4e52-83a3-3690455a5fe6'
     INVITATION_EMAIL_TEMPLATE_ID = '4f46df42-f795-4cc4-83bb-65ca312f49cc'
@@ -196,6 +202,11 @@ class Config(object):
         'check-job-status': {
             'task': 'check-job-status',
             'schedule': crontab(),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
+        'tend-providers-back-to-middle': {
+            'task': 'tend-providers-back-to-middle',
+            'schedule': crontab(minute='*/5'),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'check-for-missing-rows-in-completed-jobs': {
