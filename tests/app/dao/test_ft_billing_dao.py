@@ -58,23 +58,6 @@ def set_up_yearly_data():
     return service
 
 
-def test_fetch_billing_data_for_today_includes_data_with_the_right_status(notify_db_session):
-    today = convert_utc_to_bst(datetime.utcnow())
-    service = create_service()
-    template = create_template(service=service, template_type="email")
-
-    for status in ['created', 'technical-failure']:
-        create_notification(template=template, status=status)
-    results = fetch_billing_data_for_day(today.date())
-    assert results == []
-
-    for status in ['delivered', 'sending', 'temporary-failure', 'pending']:
-        create_notification(template=template, status=status)
-    results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 1
-    assert results[0].notifications_sent == 4
-
-
 def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="email")
