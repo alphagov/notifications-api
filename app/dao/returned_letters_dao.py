@@ -8,7 +8,6 @@ from app.dao.dao_utils import transactional
 from app.models import Notification, NotificationHistory, ReturnedLetter
 
 
-
 def _get_notification_ids_for_references(references):
     notification_ids = db.session.query(Notification.id, Notification.service_id).filter(
         Notification.reference.in_(references)

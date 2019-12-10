@@ -942,7 +942,7 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
         )
 
 
-@service_blueprint.route('/returned-letter-summary')
+@service_blueprint.route('/<uuid:service_id>/returned-letter-summary', methods=['GET'])
 def returned_letter_summary(service_id):
     results = get_returned_letter_summary(service_id)
 

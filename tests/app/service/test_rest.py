@@ -47,7 +47,7 @@ from tests.app.db import (
     create_domain,
     create_email_branding,
     create_annual_billing,
-)
+    create_returned_letter)
 from tests.app.db import create_user
 
 
@@ -3372,3 +3372,12 @@ def test_get_monthly_notification_data_by_service(mocker, admin_request):
 
     dao_mock.assert_called_once_with(start_date, end_date)
     assert response == []
+
+
+def test_get_returned_letter_summary(admin_request, sample_service):
+    create_returned_letter(sample_service, reported_at=datetime.utcnow())
+    create_returned_letter(sample_service, reported_at=datetime.utcnow()-timedelta(days=3))
+
+    response = admin_request.get('service.returned_letter_summary', service_id=sample_service.id)
+
+    assert len(response) == 2

@@ -950,9 +950,9 @@ def create_returned_letter(service, reported_at=None):
     template = create_template(service=service, template_type=LETTER_TYPE)
     notification = create_notification(template=template, status=NOTIFICATION_RETURNED_LETTER)
     returned_letter = ReturnedLetter(
-        service_id= service.id,
-        reported_at= reported_at or datetime.utcnow(),
-        notification_id= notification.id
+        service_id=service.id,
+        reported_at=reported_at or datetime.utcnow(),
+        notification_id=notification.id
     )
 
     db.session.add(returned_letter)

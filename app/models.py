@@ -2080,4 +2080,3 @@ class ReturnedLetter(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
     service = db.relationship(Service, backref=db.backref('returned_letters'))
     notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
-
