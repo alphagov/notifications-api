@@ -505,7 +505,7 @@ def migrate_data_to_ft_notification_status(start_date, end_date, notification_ty
 
     start_date = start_date.date()
     end_date = end_date.date()
-    for day_diff in range((end_date - start_date).days):
+    for day_diff in range((end_date - start_date).days + 1):
         process_day = start_date + timedelta(days=day_diff)
         for notification_type in notification_types:
             print('create_nightly_notification_status_for_day triggered for {} and {}'.format(
