@@ -952,3 +952,12 @@ def returned_letter_summary(service_id):
                      } for x in results]
 
     return jsonify(json_results)
+
+
+@service_blueprint.route('/<uuid:service_id>/returned-letters', methods=['GET'])
+def get_returned_letters(service_id):
+    results = get_returned_letter_summary(service_id)
+
+    json_results = [{'returned_letter_count': x.returned_letter_count, 'reported_at': x.reported_at} for x in results]
+
+    return jsonify(json_results)

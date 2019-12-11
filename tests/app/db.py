@@ -685,7 +685,7 @@ def create_ft_billing(bst_date,
                       rate=0,
                       billable_unit=1,
                       notifications_sent=1,
-                      postage='none',
+                      postage='none'
                       ):
     data = FactBilling(bst_date=bst_date,
                        service_id=template.service_id,

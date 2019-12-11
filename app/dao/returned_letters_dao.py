@@ -54,3 +54,16 @@ def get_returned_letter_summary(service_id):
     ).order_by(
         desc(ReturnedLetter.reported_at)
     ).all()
+
+
+
+def fetch_returned_letters(service_id, report_date):
+    return db.session.query(
+        ReturnedLetter.notification_id,
+        ReturnedLetter.reported_at
+    ).filter(
+        ReturnedLetter.service_id == service_id,
+        func.date(ReturnedLetter.reported_at) == report_date
+    ).order_by(
+        desc(ReturnedLetter.reported_at)
+    ).all()

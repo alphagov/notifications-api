@@ -2,7 +2,10 @@ from datetime import datetime, timedelta, date
 
 from freezegun import freeze_time
 
-from app.dao.returned_letters_dao import insert_or_update_returned_letters, get_returned_letter_summary
+from app.dao.returned_letters_dao import (
+    insert_or_update_returned_letters, get_returned_letter_summary,
+    fetch_returned_letters
+)
 from app.models import ReturnedLetter
 from tests.app.db import create_notification, create_notification_history, create_returned_letter
 
@@ -116,3 +119,16 @@ def test_get_returned_letter_summary_orders_by_reported_at(sample_service):
     assert results[0].returned_letter_count == 3
     assert results[1].reported_at == last_month.date()
     assert results[1].returned_letter_count == 2
+
+
+def test_fetch_returned_letters(sample_service):
+    today = datetime.now()
+    last_month = datetime.now() - timedelta(days=30)
+
+    create_returned_letter(service=sample_service, reported_at=today)
+    create_returned_letter(service=sample_service, reported_at=today)
+    create_returned_letter(service=sample_service, reported_at=last_month)
+
+    results = fetch_returned_letters(service_id=sample_service.id, report_date=today.date())
+
+    assert len(results) == 2
