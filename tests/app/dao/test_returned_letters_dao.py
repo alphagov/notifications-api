@@ -50,7 +50,7 @@ def test_insert_or_update_returned_letters_updates(sample_letter_template):
             assert x.notification_id in [notification.id, history.id]
 
 
-def test_insert_or_update_returned_letters_when_no_notification(sample_letter_template):
+def test_insert_or_update_returned_letters_when_no_notification(notify_db_session):
     insert_or_update_returned_letters(['ref1'])
     assert ReturnedLetter.query.count() == 0
 
@@ -104,6 +104,7 @@ def test_get_returned_letter_summary_orders_by_reported_at(sample_service):
     create_returned_letter(sample_service, reported_at=now)
     create_returned_letter(sample_service, reported_at=last_month)
     create_returned_letter(sample_service, reported_at=last_month)
+    create_returned_letter()  # returned letter for a different service
 
     results = get_returned_letter_summary(sample_service.id)
 

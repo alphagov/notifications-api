@@ -12,6 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import DATE_FORMAT
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -946,6 +947,8 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
 def returned_letter_summary(service_id):
     results = get_returned_letter_summary(service_id)
 
-    json_results = [{'returned_letter_count': x.returned_letter_count, 'reported_at': x.reported_at} for x in results]
+    json_results = [{'returned_letter_count': x.returned_letter_count,
+                     'reported_at': x.reported_at.strftime(DATE_FORMAT)
+                     } for x in results]
 
     return jsonify(json_results)

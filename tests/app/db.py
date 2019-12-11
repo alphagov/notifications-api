@@ -944,7 +944,7 @@ def set_up_usage_data(start_date):
     return org, org_3, service, service_3, service_4, service_sms_only
 
 
-def create_returned_letter(service, reported_at=None):
+def create_returned_letter(service=None, reported_at=None):
     if not service:
         service = create_service(service_name='a - with sms and letter')
     template = create_template(service=service, template_type=LETTER_TYPE)
