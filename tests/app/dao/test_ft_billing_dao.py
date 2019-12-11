@@ -58,22 +58,6 @@ def set_up_yearly_data():
     return service
 
 
-def test_fetch_billing_data_for_today_includes_data_with_the_right_status(notify_db_session):
-    service = create_service()
-    template = create_template(service=service, template_type="email")
-    for status in ['created', 'technical-failure']:
-        create_notification(template=template, status=status)
-
-    today = convert_utc_to_bst(datetime.utcnow())
-    results = fetch_billing_data_for_day(today.date())
-    assert results == []
-    for status in ['delivered', 'sending', 'temporary-failure']:
-        create_notification(template=template, status=status)
-    results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 1
-    assert results[0].notifications_sent == 3
-
-
 def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="email")
@@ -299,8 +283,8 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
     sms_results = [x for x in results if x[2] == 'sms']
     email_results = [x for x in results if x[2] == 'email']
     letter_results = [x for x in results if x[2] == 'letter']
-    assert 7 == sms_results[0][7]
-    assert 7 == email_results[0][7]
+    assert 8 == sms_results[0][7]
+    assert 8 == email_results[0][7]
     assert 3 == letter_results[0][7]
 
 
