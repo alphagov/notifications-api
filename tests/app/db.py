@@ -952,7 +952,8 @@ def create_returned_letter(service=None, reported_at=None):
     returned_letter = ReturnedLetter(
         service_id=service.id,
         reported_at=reported_at or datetime.utcnow(),
-        notification_id=notification.id
+        notification_id=notification.id,
+        created_at=datetime.utcnow(),
     )
 
     db.session.add(returned_letter)

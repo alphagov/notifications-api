@@ -16,9 +16,11 @@ down_revision = '0309_add_uq_key_row_number'
 def upgrade():
     op.create_table('returned_letters',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('reported_at', sa.DateTime(), nullable=False),
+        sa.Column('reported_at', sa.Date(), nullable=False),
         sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('notification_id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.ForeignKeyConstraint(['service_id'], ['services.id'], ),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('notification_id')
