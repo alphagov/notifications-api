@@ -17,7 +17,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import (desc, func, asc, and_)
+from sqlalchemy import (desc, func, asc, and_, or_)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
@@ -569,7 +569,7 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term, notification_type=None, statuses=None):
+def dao_get_notifications_by_recipient_or_reference(service_id, search_term, notification_type=None, statuses=None):
     if notification_type is None:
         notification_type = guess_notification_type(search_term)
 
@@ -591,10 +591,14 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
     normalised = escape_special_characters(normalised)
+    search_term = escape_special_characters(search_term)
 
     filters = [
         Notification.service_id == service_id,
-        Notification.normalised_to.like("%{}%".format(normalised)),
+        or_(
+            Notification.normalised_to.like("%{}%".format(normalised)),
+            Notification.client_reference.ilike("%{}%".format(search_term)),
+        ),
         Notification.key_type != KEY_TYPE_TEST,
     ]
 
