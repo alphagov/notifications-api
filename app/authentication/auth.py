@@ -1,6 +1,8 @@
 from flask import request, _request_ctx_stack, current_app, g
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
-from notifications_python_client.errors import TokenDecodeError, TokenExpiredError, TokenIssuerError
+from notifications_python_client.errors import (
+    TokenDecodeError, TokenExpiredError, TokenIssuerError, TokenAlgorithmError
+)
 from notifications_utils import request_helper
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
@@ -83,13 +85,14 @@ def requires_auth():
     for api_key in service.api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
+        except TokenExpiredError:
+            err_msg = "Error: Your system clock must be accurate to within 30 seconds"
+            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+        except TokenAlgorithmError:
+            err_msg = "Invalid token: algorithm used is not HS256"
+            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
         except TokenDecodeError:
             continue
-        except TokenExpiredError:
-            err_msg = (
-                "Error: Your system clock must be accurate to within 30 seconds"
-            )
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)

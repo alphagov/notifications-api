@@ -83,6 +83,27 @@ def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
     assert exc.value.short_message == 'Invalid token: signature, api token not found'
 
 
+def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS512'
+    }
+
+    claims = {
+        'iss': iss,
+        'iat': int(time.time())
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: algorithm used is not HS256'
+
+
 def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
     iss = current_app.config['ADMIN_CLIENT_USER_NAME']
 
