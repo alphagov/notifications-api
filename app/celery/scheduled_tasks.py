@@ -33,7 +33,10 @@ from app.dao.notifications_dao import (
     letters_missing_from_sending_bucket,
     is_delivery_slow_for_providers,
 )
-from app.dao.provider_details_dao import dao_reduce_sms_provider_priority
+from app.dao.provider_details_dao import (
+    dao_reduce_sms_provider_priority,
+    dao_adjust_provider_priority_back_to_resting_points
+)
 from app.dao.users_dao import delete_codes_older_created_more_than_a_day_ago
 from app.dao.services_dao import dao_find_services_sending_to_tv_numbers, dao_find_services_with_high_failure_rates
 from app.models import (
@@ -124,6 +127,12 @@ def switch_current_sms_provider_on_slow_delivery():
             if is_slow:
                 current_app.logger.warning('Slow delivery notifications detected for provider {}'.format(provider_name))
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
+
+
+@notify_celery.task(name='tend-providers-back-to-middle')
+@statsd(namespace='tasks')
+def tend_providers_back_to_middle():
+    dao_adjust_provider_priority_back_to_resting_points()
 
 
 @notify_celery.task(name='check-job-status')

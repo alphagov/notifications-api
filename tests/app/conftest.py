@@ -6,7 +6,6 @@ import pytest
 import pytz
 import requests_mock
 from flask import current_app, url_for
-from sqlalchemy import asc
 from sqlalchemy.orm.session import make_transient
 
 from app import db
@@ -546,15 +545,6 @@ def sample_user_service_permission(notify_db_session):
 @pytest.fixture(scope='function')
 def fake_uuid():
     return "6ce466d0-fd6a-11e5-82f5-e0accb9d11a6"
-
-
-@pytest.fixture(scope='function')
-def current_sms_provider():
-    return ProviderDetails.query.filter_by(
-        notification_type='sms'
-    ).order_by(
-        asc(ProviderDetails.priority)
-    ).first()
 
 
 @pytest.fixture(scope='function')

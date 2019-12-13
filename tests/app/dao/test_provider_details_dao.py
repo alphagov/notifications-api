@@ -13,6 +13,9 @@ from app.dao.provider_details_dao import (
     dao_update_provider_details,
     dao_get_provider_stats,
     dao_reduce_sms_provider_priority,
+    dao_adjust_provider_priority_back_to_resting_points,
+    _adjust_provider_priority,
+    _get_sms_providers_for_update,
 )
 from tests.app.db import (
     create_ft_billing,
@@ -122,6 +125,71 @@ def test_get_alternative_sms_provider_fails_if_unrecognised():
         get_alternative_sms_provider('ses')
 
 
+@freeze_time('2016-01-01 00:30')
+def test_adjust_provider_priority_sets_priority(
+    restore_provider_details,
+    notify_user,
+    mmg_provider,
+):
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': datetime.min})
+
+    _adjust_provider_priority(mmg_provider, 50)
+
+    assert mmg_provider.updated_at == datetime.utcnow()
+    assert mmg_provider.created_by.id == notify_user.id
+    assert mmg_provider.priority == 50
+
+
+@freeze_time('2016-01-01 00:30')
+def test_adjust_provider_priority_adds_history(
+    restore_provider_details,
+    notify_user,
+    mmg_provider,
+):
+    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': datetime.min})
+
+    old_provider_history_rows = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == mmg_provider.id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).all()
+
+    _adjust_provider_priority(mmg_provider, 50)
+
+    updated_provider_history_rows = ProviderDetailsHistory.query.filter(
+        ProviderDetailsHistory.id == mmg_provider.id
+    ).order_by(
+        desc(ProviderDetailsHistory.version)
+    ).all()
+
+    assert len(updated_provider_history_rows) - len(old_provider_history_rows) == 1
+    assert updated_provider_history_rows[0].version - old_provider_history_rows[0].version == 1
+    assert updated_provider_history_rows[0].priority == 50
+
+
+@freeze_time('2016-01-01 01:00')
+def test_get_sms_providers_for_update_returns_providers(restore_provider_details):
+    sixty_one_minutes_ago = datetime(2015, 12, 31, 23, 59)
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': sixty_one_minutes_ago})
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'firetext').update({'updated_at': None})
+
+    resp = _get_sms_providers_for_update(timedelta(hours=1))
+
+    assert {p.identifier for p in resp} == {'mmg', 'firetext'}
+
+
+@freeze_time('2016-01-01 01:00')
+def test_get_sms_providers_for_update_returns_nothing_if_recent_updates(restore_provider_details):
+    fifty_nine_minutes_ago = datetime(2016, 1, 1, 0, 1)
+    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update({'updated_at': fifty_nine_minutes_ago})
+
+    resp = _get_sms_providers_for_update(timedelta(hours=1))
+
+    assert not resp
+
+
 @pytest.mark.parametrize(['starting_priorities', 'expected_priorities'], [
     ({'mmg': 50, 'firetext': 50}, {'mmg': 40, 'firetext': 60}),
     ({'mmg': 0, 'firetext': 20}, {'mmg': 0, 'firetext': 30}),  # lower bound respected
@@ -135,15 +203,15 @@ def test_get_alternative_sms_provider_fails_if_unrecognised():
     ({'mmg': -100, 'firetext': 50}, {'mmg': 0, 'firetext': 60}),
     ({'mmg': 50, 'firetext': -100}, {'mmg': 40, 'firetext': -90}),
 ])
-def test_reduce_sms_provider_priority_switches_provider(
-    notify_db_session,
+def test_reduce_sms_provider_priority_adjusts_provider_priorities(
     mocker,
     restore_provider_details,
-    sample_user,
+    notify_user,
     starting_priorities,
     expected_priorities,
 ):
-    mocker.patch('app.dao.provider_details_dao.get_user_by_id', return_value=sample_user)
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
+
     mmg = get_provider_details_by_identifier('mmg')
     firetext = get_provider_details_by_identifier('firetext')
 
@@ -155,56 +223,81 @@ def test_reduce_sms_provider_priority_switches_provider(
     # switch away from mmg. currently both 50/50
     dao_reduce_sms_provider_priority('mmg', time_threshold=timedelta(minutes=10))
 
-    assert firetext.priority == expected_priorities['firetext']
-    assert mmg.priority == expected_priorities['mmg']
-    assert mmg.created_by is sample_user
-    assert firetext.created_by is sample_user
-
-
-def test_reduce_sms_provider_priority_adds_rows_to_history_table(
-    mocker,
-    restore_provider_details,
-    sample_user
-):
-    mocker.patch('app.dao.provider_details_dao.get_user_by_id', return_value=sample_user)
-    mmg = get_provider_details_by_identifier('mmg')
-    # need to update these manually to avoid triggering the `onupdate` clause of the updated_at column
-    ProviderDetails.query.filter(ProviderDetails.notification_type == 'sms').update({'updated_at': datetime.min})
-
-    provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == mmg.id
-    ).order_by(
-        desc(ProviderDetailsHistory.version)
-    ).all()
-
-    dao_reduce_sms_provider_priority(mmg.identifier, time_threshold=timedelta(minutes=10))
-
-    updated_provider_history_rows = ProviderDetailsHistory.query.filter(
-        ProviderDetailsHistory.id == mmg.id
-    ).order_by(
-        desc(ProviderDetailsHistory.version)
-    ).all()
-
-    assert len(updated_provider_history_rows) - len(provider_history_rows) == 1
-    assert updated_provider_history_rows[0].version - provider_history_rows[0].version == 1
-    assert updated_provider_history_rows[0].priority == 90
+    mock_adjust.assert_any_call(firetext, expected_priorities['firetext'])
+    mock_adjust.assert_any_call(mmg, expected_priorities['mmg'])
 
 
 def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_changed(
     mocker,
     restore_provider_details,
 ):
-    mock_is_slow = mocker.patch('app.celery.scheduled_tasks.is_delivery_slow_for_providers')
-    mock_reduce = mocker.patch('app.celery.scheduled_tasks.dao_reduce_sms_provider_priority')
-    ProviderDetails.query.filter(ProviderDetails.identifier == 'firetext').update({'updated_at': datetime.min})
-    ProviderDetails.query.filter(ProviderDetails.identifier == 'mmg').update(
-        {'updated_at': datetime.utcnow() - timedelta(minutes=4, seconds=59)}
-    )
+    mock_get_providers = mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=None)
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
 
     dao_reduce_sms_provider_priority('firetext', time_threshold=timedelta(minutes=5))
 
-    assert mock_is_slow.called is False
-    assert mock_reduce.called is False
+    mock_get_providers.assert_called_once_with(timedelta(minutes=5))
+    assert mock_adjust.called is False
+
+
+@pytest.mark.parametrize('existing_mmg, existing_firetext, new_mmg, new_firetext', [
+    (50, 50, 60, 40),  # not just 50/50 - 60/40 specifically
+    (65, 35, 60, 40),  # doesn't overshoot if there's less than 10 difference
+    (0, 100, 10, 90),  # only adjusts by 10
+    (100, 100, 90, 90),  # it tries to fix weird data - it will reduce both if needs be
+])
+def test_adjust_provider_priority_back_to_resting_points_updates_all_providers(
+    restore_provider_details,
+    mocker,
+    existing_mmg,
+    existing_firetext,
+    new_mmg,
+    new_firetext
+):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.priority = existing_mmg
+    firetext.priority = existing_firetext
+
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
+    mock_get_providers = mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=[
+        mmg, firetext
+    ])
+
+    dao_adjust_provider_priority_back_to_resting_points()
+
+    mock_get_providers.assert_called_once_with(timedelta(hours=1))
+    mock_adjust.assert_any_call(mmg, new_mmg)
+    mock_adjust.assert_any_call(firetext, new_firetext)
+
+
+def test_adjust_provider_priority_back_to_resting_points_does_nothing_if_theyre_already_at_right_values(
+    restore_provider_details,
+    mocker,
+):
+    mmg = get_provider_details_by_identifier('mmg')
+    firetext = get_provider_details_by_identifier('firetext')
+    mmg.priority = 60
+    firetext.priority = 40
+
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
+    mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=[mmg, firetext])
+
+    dao_adjust_provider_priority_back_to_resting_points()
+
+    assert mock_adjust.called is False
+
+
+def test_adjust_provider_priority_back_to_resting_points_does_nothing_if_no_providers_to_update(
+    restore_provider_details,
+    mocker,
+):
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
+    mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=[])
+
+    dao_adjust_provider_priority_back_to_resting_points()
+
+    assert mock_adjust.called is False
 
 
 @freeze_time('2018-06-28 12:00')

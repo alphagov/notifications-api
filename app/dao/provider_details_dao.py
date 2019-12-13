@@ -1,11 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
 from flask import current_app
 
 from app.dao.dao_utils import transactional
-from app.dao.users_dao import get_user_by_id
 from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
 
@@ -34,6 +33,42 @@ def dao_get_provider_versions(provider_id):
     ).all()
 
 
+def _adjust_provider_priority(provider, new_priority):
+    current_app.logger.info(
+        f'Adjusting provider priority - {provider.identifier} going from {provider.priority} to {new_priority}'
+    )
+    provider.priority = new_priority
+
+    # Automatic update so set as notify user
+    provider.created_by_id = current_app.config['NOTIFY_USER_ID']
+
+    # update without commit so that both rows can be changed without ending the transaction
+    # and releasing the for_update lock
+    _update_provider_details_without_commit(provider)
+
+
+def _get_sms_providers_for_update(time_threshold):
+    """
+    Returns a list of providers, while holding a for_update lock on the provider details table, guaranteeing that those
+    providers won't change (but can still be read) until you've committed/rolled back your current transaction.
+
+    if any of the providers have been changed recently, it returns an empty list - it's still your responsiblity to
+    release the transaction in that case
+    """
+    # get current priority of both providers
+    q = ProviderDetails.query.filter(
+        ProviderDetails.notification_type == 'sms',
+        ProviderDetails.active
+    ).with_for_update().all()
+
+    # if something updated recently, don't update again. If the updated_at is null, treat it as min time
+    if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
+        current_app.logger.info(f"Not adjusting providers, providers updated less than {time_threshold} ago.")
+        return []
+
+    return q
+
+
 @transactional
 def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     """
@@ -41,50 +76,47 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     If either provider has been updated in the last `time_threshold`, then it won't take any action.
     """
     amount_to_reduce_by = 10
+    providers_list = _get_sms_providers_for_update(time_threshold)
 
-    # get current priority of both providers
-    q = ProviderDetails.query.filter(
-        ProviderDetails.notification_type == 'sms',
-        ProviderDetails.active
-    ).with_for_update().all()
-
-    providers = {provider.identifier: provider for provider in q}
-    other_identifier = get_alternative_sms_provider(identifier)
-
-    # if something updated recently, don't update again. If the updated_at is null, treat it as min time
-    if any((provider.updated_at or datetime.min) > datetime.utcnow() - time_threshold for provider in q):
-        current_app.logger.info("Not adjusting providers, providers updated less than {} ago.".format(time_threshold))
+    if not providers_list:
         return
+
+    providers = {provider.identifier: provider for provider in providers_list}
+    other_identifier = get_alternative_sms_provider(identifier)
 
     reduced_provider = providers[identifier]
     increased_provider = providers[other_identifier]
-    pre_reduction_priority = reduced_provider.priority
-    pre_increase_priority = increased_provider.priority
 
     # always keep values between 0 and 100
-    reduced_provider.priority = max(0, reduced_provider.priority - amount_to_reduce_by)
-    increased_provider.priority = min(100, increased_provider.priority + amount_to_reduce_by)
+    reduced_provider_priority = max(0, reduced_provider.priority - amount_to_reduce_by)
+    increased_provider_priority = min(100, increased_provider.priority + amount_to_reduce_by)
 
-    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
-        reduced_provider.identifier,
-        pre_reduction_priority,
-        reduced_provider.priority,
-    ))
-    current_app.logger.info('Adjusting provider priority - {} going from {} to {}'.format(
-        increased_provider.identifier,
-        pre_increase_priority,
-        increased_provider.priority,
-    ))
+    _adjust_provider_priority(reduced_provider, reduced_provider_priority)
+    _adjust_provider_priority(increased_provider, increased_provider_priority)
 
-    # Automatic update so set as notify user
-    notify_user = get_user_by_id(current_app.config['NOTIFY_USER_ID'])
-    reduced_provider.created_by_id = notify_user.id
-    increased_provider.created_by_id = notify_user.id
 
-    # update without commit so that both rows can be changed without ending the transaction
-    # and releasing the for_update lock
-    _update_provider_details_without_commit(reduced_provider)
-    _update_provider_details_without_commit(increased_provider)
+@transactional
+def dao_adjust_provider_priority_back_to_resting_points():
+    """
+    Provided that neither SMS provider has been modified in the last hour, move both providers by 10 percentage points
+    each towards their defined resting points (set in SMS_PROVIDER_RESTING_POINTS in config.py).
+    """
+    amount_to_reduce_by = 10
+    time_threshold = timedelta(hours=1)
+
+    providers = _get_sms_providers_for_update(time_threshold)
+
+    for provider in providers:
+        target = current_app.config['SMS_PROVIDER_RESTING_POINTS'][provider.identifier]
+        current = provider.priority
+
+        if current != target:
+            if current > target:
+                new_priority = max(target, provider.priority - amount_to_reduce_by)
+            else:
+                new_priority = min(target, provider.priority + amount_to_reduce_by)
+
+            _adjust_provider_priority(provider, new_priority)
 
 
 def get_provider_details_by_notification_type(notification_type, supports_international=False):
