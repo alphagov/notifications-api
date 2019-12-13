@@ -44,6 +44,7 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     LETTER_TYPE,
     SMS_TYPE,
+    ReturnedLetter
 )
 
 from tests.app import load_example_csv
@@ -1626,3 +1627,15 @@ def test_process_returned_letters_list_updates_history_if_notification_is_alread
 
     assert [n.status for n in notifications] == ['returned-letter', 'returned-letter']
     assert all(n.updated_at for n in notifications)
+
+
+def test_process_returned_letters_populates_returned_letters_table(
+        sample_letter_template
+):
+    create_notification_history(sample_letter_template, reference='ref1')
+    create_notification_history(sample_letter_template, reference='ref2')
+
+    process_returned_letters_list(['ref1', 'ref2', 'unknown-ref'])
+
+    returned_letters = ReturnedLetter.query.all()
+    assert len(returned_letters) == 2

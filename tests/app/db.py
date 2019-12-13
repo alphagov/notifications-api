@@ -59,7 +59,9 @@ from app.models import (
     TemplateFolder,
     LetterBranding,
     Domain,
-    NotificationHistory
+    NotificationHistory,
+    NOTIFICATION_RETURNED_LETTER,
+    ReturnedLetter
 )
 
 
@@ -940,3 +942,20 @@ def set_up_usage_data(start_date):
                       notifications_sent=15, billable_unit=4, rate=.55, postage='second')
 
     return org, org_3, service, service_3, service_4, service_sms_only
+
+
+def create_returned_letter(service=None, reported_at=None):
+    if not service:
+        service = create_service(service_name='a - with sms and letter')
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    notification = create_notification(template=template, status=NOTIFICATION_RETURNED_LETTER)
+    returned_letter = ReturnedLetter(
+        service_id=service.id,
+        reported_at=reported_at or datetime.utcnow(),
+        notification_id=notification.id,
+        created_at=datetime.utcnow(),
+    )
+
+    db.session.add(returned_letter)
+    db.session.commit()
+    return returned_letter

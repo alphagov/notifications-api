@@ -2019,8 +2019,7 @@ class Complaint(db.Model):
     __tablename__ = 'complaints'
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    notification_id = db.Column(UUID(as_uuid=True), db.ForeignKey('notification_history.id'),
-                                index=True, nullable=False)
+    notification_id = db.Column(UUID(as_uuid=True), index=True, nullable=False)
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
     service = db.relationship(Service, backref=db.backref('complaints'))
     ses_feedback_id = db.Column(db.Text, nullable=True)
@@ -2072,3 +2071,15 @@ class ServiceDataRetention(db.Model):
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
+
+
+class ReturnedLetter(db.Model):
+    __tablename__ = 'returned_letters'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    reported_at = db.Column(db.Date, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref('returned_letters'))
+    notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)

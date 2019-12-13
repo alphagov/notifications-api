@@ -12,6 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import DATE_FORMAT
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -29,6 +30,7 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.returned_letters_dao import get_returned_letter_summary
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -939,3 +941,14 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
         raise InvalidRequest(
             "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=400
         )
+
+
+@service_blueprint.route('/<uuid:service_id>/returned-letter-summary', methods=['GET'])
+def returned_letter_summary(service_id):
+    results = get_returned_letter_summary(service_id)
+
+    json_results = [{'returned_letter_count': x.returned_letter_count,
+                     'reported_at': x.reported_at.strftime(DATE_FORMAT)
+                     } for x in results]
+
+    return jsonify(json_results)
