@@ -1,5 +1,4 @@
 import functools
-import string
 from itertools import groupby
 from operator import attrgetter
 from datetime import (
@@ -570,8 +569,6 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 @statsd(namespace="dao")
 def dao_get_notifications_by_recipient_or_reference(service_id, search_term, notification_type=None, statuses=None):
-    if notification_type is None:
-        notification_type = guess_notification_type(search_term)
 
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
@@ -587,8 +584,11 @@ def dao_get_notifications_by_recipient_or_reference(service_id, search_term, not
         except InvalidEmailError:
             normalised = search_term.lower()
 
-    else:
+    elif notification_type == LETTER_TYPE:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
+
+    else:
+        normalised = search_term.lower()
 
     normalised = escape_special_characters(normalised)
     search_term = escape_special_characters(search_term)
@@ -763,13 +763,6 @@ def dao_precompiled_letters_still_pending_virus_check():
         Notification.created_at
     ).all()
     return notifications
-
-
-def guess_notification_type(search_term):
-    if set(search_term) & set(string.ascii_letters + '@'):
-        return EMAIL_TYPE
-    else:
-        return SMS_TYPE
 
 
 def _duplicate_update_warning(notification, status):

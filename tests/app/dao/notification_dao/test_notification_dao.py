@@ -1272,18 +1272,23 @@ def test_dao_get_notifications_by_recipient_searches_across_notification_types(
     email = create_notification(
         template=email_template, to_field='077@example.com', normalised_to='077@example.com'
     )
-    results = dao_get_notifications_by_recipient_or_reference(service.id, phone_search, notification_type='sms')
+
+    results = dao_get_notifications_by_recipient_or_reference(
+        service.id, phone_search, notification_type='sms'
+    )
     assert len(results) == 1
     assert results[0].id == sms.id
-    results = dao_get_notifications_by_recipient_or_reference(service.id, phone_search)  # should assume SMS
-    assert len(results) == 1
-    assert results[0].id == sms.id
-    results = dao_get_notifications_by_recipient_or_reference(service.id, '077', notification_type='email')
-    assert len(results) == 1
-    assert results[0].id == email.id
-    results = dao_get_notifications_by_recipient_or_reference(service.id, email_search)  # should assume email
+
+    results = dao_get_notifications_by_recipient_or_reference(
+        service.id, email_search, notification_type='email'
+    )
     assert len(results) == 1
     assert results[0].id == email.id
+
+    results = dao_get_notifications_by_recipient_or_reference(service.id, '77')
+    assert len(results) == 2
+    assert results[0].id == email.id
+    assert results[1].id == sms.id
 
 
 def test_dao_get_notifications_by_reference(
@@ -1307,10 +1312,11 @@ def test_dao_get_notifications_by_reference(
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77')
     assert len(results) == 2
-    assert results[0].id == sms.id
     assert results[0].id == email.id
+    assert results[1].id == sms.id
+
     # If notification_type isn’t specified then we can’t normalise the phone number
-    # to 4477… so this query will only find the email
+    # to 4477… so this query will only find the email sent to 077@example.com
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077')
     assert len(results) == 1
     assert results[0].id == email.id
@@ -1318,21 +1324,26 @@ def test_dao_get_notifications_by_reference(
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077', notification_type='sms')
     assert len(results) == 1
     assert results[0].id == sms.id
+
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='sms')
     assert len(results) == 1
     assert results[0].id == sms.id
+
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'Aa', notification_type='sms')
     assert len(results) == 1
     assert results[0].id == sms.id
+
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'bB', notification_type='sms')
     assert len(results) == 0
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='email')
     assert len(results) == 1
     assert results[0].id == email.id
+
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'Bb', notification_type='email')
     assert len(results) == 1
     assert results[0].id == email.id
+
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'aA', notification_type='email')
     assert len(results) == 0
 
