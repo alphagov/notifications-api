@@ -1898,6 +1898,18 @@ class InboundSms(db.Model):
         }
 
 
+class InboundSmsHistory(db.Model, HistoryModel):
+    __tablename__ = 'inbound_sms_history'
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    service = db.relationship('Service', backref='inbound_sms_history')  # what does this one do?
+    notify_number = db.Column(db.String, nullable=False)
+    provider_date = db.Column(db.DateTime)
+    provider_reference = db.Column(db.String)
+    provider = db.Column(db.String, nullable=False)
+
+
 class LetterRate(db.Model):
     __tablename__ = 'letter_rates'
 
