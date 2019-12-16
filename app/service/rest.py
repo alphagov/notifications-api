@@ -12,7 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import DATE_FORMAT
+from app import DATE_FORMAT, DATETIME_FORMAT
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -30,7 +30,7 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.returned_letters_dao import get_returned_letter_summary
+from app.dao.returned_letters_dao import get_returned_letter_summary, fetch_returned_letters
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -956,8 +956,19 @@ def returned_letter_summary(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/returned-letters', methods=['GET'])
 def get_returned_letters(service_id):
-    results = get_returned_letter_summary(service_id)
+    results = fetch_returned_letters(service_id=service_id, report_date=request.args.get('reported_at'))
 
-    json_results = [{'returned_letter_count': x.returned_letter_count, 'reported_at': x.reported_at} for x in results]
+    json_results = [
+        {'notification_id': x.notification_id,
+         'client_reference': x.client_reference,
+         'reported_at': x.reported_at.strftime(DATE_FORMAT),
+         'created_at': x.created_at.strftime(DATETIME_FORMAT),
+         'template_name': x.template_name,
+         'template_id': x.template_id,
+         'template_version': x.template_version,
+         'user_name': x.user_name,
+         'original_file_name': x.original_file_name,
+         'job_row_number': x.job_row_number
+         } for x in results]
 
-    return jsonify(json_results)
+    return jsonify(sorted(json_results, key=lambda i: i['created_at'], reverse=True))

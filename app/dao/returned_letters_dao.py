@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import Notification, NotificationHistory, ReturnedLetter
+from app.models import Notification, NotificationHistory, ReturnedLetter, Job, User, Template
 
 
 def _get_notification_ids_for_references(references):
@@ -56,14 +56,35 @@ def get_returned_letter_summary(service_id):
     ).all()
 
 
-
 def fetch_returned_letters(service_id, report_date):
-    return db.session.query(
-        ReturnedLetter.notification_id,
-        ReturnedLetter.reported_at
-    ).filter(
-        ReturnedLetter.service_id == service_id,
-        func.date(ReturnedLetter.reported_at) == report_date
-    ).order_by(
-        desc(ReturnedLetter.reported_at)
-    ).all()
+    results = []
+    for table in [Notification, NotificationHistory]:
+        query = db.session.query(
+            ReturnedLetter.notification_id,
+            ReturnedLetter.reported_at,
+            table.client_reference,
+            table.created_at,
+            Template.name.label('template_name'),
+            table.template_id,
+            table.template_version,
+            table.created_by_id,
+            User.name.label('user_name'),
+            Job.original_file_name,
+            table.job_row_number
+        ).outerjoin(
+            User, table.created_by_id == User.id
+        ).outerjoin(
+            Job, table.job_id == Job.id
+        ).filter(
+            ReturnedLetter.service_id == service_id,
+            ReturnedLetter.reported_at == report_date,
+            ReturnedLetter.notification_id == table.id,
+            table.template_id == Template.id
+        ).order_by(
+            desc(ReturnedLetter.reported_at), desc(table.created_at)
+        )
+        results = results + query.all()
+
+    results = sorted(results[:4], reverse=True)
+
+    return results
