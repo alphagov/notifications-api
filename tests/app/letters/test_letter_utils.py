@@ -12,6 +12,7 @@ from app.letters.utils import (
     get_letter_pdf_filename,
     get_letter_pdf_and_metadata,
     letter_print_day,
+    move_sanitised_letter_to_test_or_live_pdf_bucket,
     upload_letter_pdf,
     ScanErrorType, move_failed_pdf, get_folder_name
 )
@@ -336,6 +337,52 @@ def test_get_folder_name_in_british_summer_time(notify_api, freeze_date, expecte
 
 def test_get_folder_name_returns_empty_string_for_test_letter():
     assert '' == get_folder_name(datetime.utcnow(), dont_use_sending_date=True)
+
+
+@mock_s3
+def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
+    filename = 'my_letter.pdf'
+    source_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
+    target_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    source_bucket = conn.create_bucket(Bucket=source_bucket_name)
+    target_bucket = conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    move_sanitised_letter_to_test_or_live_pdf_bucket(
+        filename=filename,
+        is_test_letter=False,
+        created_at=datetime.utcnow()
+    )
+
+    assert not [x for x in source_bucket.objects.all()]
+    assert len([x for x in target_bucket.objects.all()]) == 1
+
+
+@mock_s3
+def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
+    filename = 'my_letter.pdf'
+    source_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
+    target_bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    source_bucket = conn.create_bucket(Bucket=source_bucket_name)
+    target_bucket = conn.create_bucket(Bucket=target_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    move_sanitised_letter_to_test_or_live_pdf_bucket(
+        filename=filename,
+        is_test_letter=True,
+        created_at=datetime.utcnow()
+    )
+
+    assert not [x for x in source_bucket.objects.all()]
+    assert len([x for x in target_bucket.objects.all()]) == 1
 
 
 @freeze_time('2017-07-07 20:00:00')

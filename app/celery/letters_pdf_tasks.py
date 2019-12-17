@@ -27,6 +27,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
 )
 from app.errors import VirusScanError
+from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
     copy_redaction_failed_pdf,
     get_billable_units_for_letter_page_count,
@@ -35,6 +36,7 @@ from app.letters.utils import (
     upload_letter_pdf,
     ScanErrorType,
     move_failed_pdf,
+    move_sanitised_letter_to_test_or_live_pdf_bucket,
     move_scan_to_invalid_pdf_bucket,
     move_error_pdf_to_scan_bucket,
     get_file_names_from_error_bucket,
@@ -43,6 +45,7 @@ from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
@@ -262,6 +265,100 @@ def process_virus_scan_passed(self, filename):
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
 
 
+@notify_celery.task(bind=True, name='sanitise-letter', max_retries=15, default_retry_delay=300)
+def sanitise_letter(self, filename):
+    try:
+        reference = get_reference_from_filename(filename)
+        notification = dao_get_notification_by_reference(reference)
+
+        current_app.logger.info('Notification ID {} Virus scan passed: {}'.format(notification.id, filename))
+
+        if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
+            current_app.logger.info('Sanitise letter called for notification {} which has is in {} state'.format(
+                notification.id, notification.status))
+            return
+
+        notify_celery.send_task(
+            name=TaskNames.SANITISE_LETTER,
+            kwargs={
+                'notification_id': str(notification.id),
+                'filename': filename,
+            },
+            queue=QueueNames.SANITISE_LETTERS,
+        )
+    except Exception:
+        try:
+            current_app.logger.exception(
+                "RETRY: calling sanitise_letter task for notification {} failed".format(notification.id)
+            )
+            self.retry(queue=QueueNames.RETRY)
+        except self.MaxRetriesExceededError:
+            message = "RETRY FAILED: Max retries reached. " \
+                      "The task sanitise_letter failed for notification {}. " \
+                      "Notification has been updated to technical-failure".format(notification.id)
+            update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise NotificationTechnicalFailureException(message)
+
+
+@notify_celery.task(name='process-sanitised-letter')
+def process_sanitised_letter(
+    page_count,
+    message,
+    invalid_pages,
+    validation_status,
+    filename,
+    notification_id,
+):
+    current_app.logger.info('Processing sanitised letter with id {}'.format(notification_id))
+    notification = get_notification_by_id(notification_id, _raise=True)
+
+    if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
+        current_app.logger.info(
+            'process-sanitised-letter task called for notification {} which has is in {} state'.format(
+                notification.id, notification.status)
+        )
+        return
+
+    try:
+        original_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
+
+        if validation_status == 'failed':
+            current_app.logger.info('Processing invalid precompiled pdf with id {} (file {})'.format(
+                notification_id, filename))
+
+            _move_invalid_letter_and_update_status(
+                notification=notification,
+                filename=filename,
+                scan_pdf_object=original_pdf_object,
+                message=message,
+                invalid_pages=invalid_pages,
+                page_count=page_count,
+            )
+            return
+
+        current_app.logger.info('Processing valid precompiled pdf with id {} (file {})'.format(
+            notification_id, filename))
+
+        billable_units = get_billable_units_for_letter_page_count(page_count)
+        is_test_key = notification.key_type == KEY_TYPE_TEST
+
+        move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_key, notification.created_at)
+        # We've moved the sanitised PDF from the sanitise bucket, but still need to delete the original file:
+        original_pdf_object.delete()
+        update_letter_pdf_status(
+            reference=notification.reference,
+            status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
+            billable_units=billable_units
+        )
+
+    except BotoClientError:
+        current_app.logger.exception(
+            "Boto error when processing sanitised letter for notification {}".format(filename, notification.id)
+        )
+        update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+        raise NotificationTechnicalFailureException
+
+
 def _move_invalid_letter_and_update_status(
     *, notification, filename, scan_pdf_object, message=None, invalid_pages=None, page_count=None
 ):
@@ -283,6 +380,7 @@ def _move_invalid_letter_and_update_status(
             "Error when moving letter with id {} to invalid PDF bucket".format(notification.id)
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+        raise NotificationTechnicalFailureException
 
 
 def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter, created_at):
