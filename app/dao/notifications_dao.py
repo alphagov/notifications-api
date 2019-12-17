@@ -1,5 +1,4 @@
 import functools
-import string
 from itertools import groupby
 from operator import attrgetter
 from datetime import (
@@ -17,7 +16,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import (desc, func, asc, and_)
+from sqlalchemy import (desc, func, asc, and_, or_)
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
@@ -569,9 +568,7 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_to_field(service_id, search_term, notification_type=None, statuses=None):
-    if notification_type is None:
-        notification_type = guess_notification_type(search_term)
+def dao_get_notifications_by_recipient_or_reference(service_id, search_term, notification_type=None, statuses=None):
 
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
@@ -587,14 +584,21 @@ def dao_get_notifications_by_to_field(service_id, search_term, notification_type
         except InvalidEmailError:
             normalised = search_term.lower()
 
-    else:
+    elif notification_type == LETTER_TYPE:
         raise InvalidRequest("Only email and SMS can use search by recipient", 400)
 
+    else:
+        normalised = search_term.lower()
+
     normalised = escape_special_characters(normalised)
+    search_term = escape_special_characters(search_term)
 
     filters = [
         Notification.service_id == service_id,
-        Notification.normalised_to.like("%{}%".format(normalised)),
+        or_(
+            Notification.normalised_to.like("%{}%".format(normalised)),
+            Notification.client_reference.ilike("%{}%".format(search_term)),
+        ),
         Notification.key_type != KEY_TYPE_TEST,
     ]
 
@@ -759,13 +763,6 @@ def dao_precompiled_letters_still_pending_virus_check():
         Notification.created_at
     ).all()
     return notifications
-
-
-def guess_notification_type(search_term):
-    if set(search_term) & set(string.ascii_letters + '@'):
-        return EMAIL_TYPE
-    else:
-        return SMS_TYPE
 
 
 def _duplicate_update_warning(notification, status):

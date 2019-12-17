@@ -457,7 +457,7 @@ def cancel_notification_for_service(service_id, notification_id):
 
 
 def search_for_notification_by_to_field(service_id, search_term, statuses, notification_type):
-    results = notifications_dao.dao_get_notifications_by_to_field(
+    results = notifications_dao.dao_get_notifications_by_recipient_or_reference(
         service_id=service_id,
         search_term=search_term,
         statuses=statuses,
