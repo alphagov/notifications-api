@@ -535,7 +535,7 @@ MockServicesWithHighFailureRate = namedtuple(
 def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
     mock_failure_rates = mocker.patch(
         'app.celery.scheduled_tasks.dao_find_services_with_high_failure_rates', return_value=failure_rates
@@ -544,8 +544,7 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         'app.celery.scheduled_tasks.dao_find_services_sending_to_tv_numbers', return_value=sms_to_tv_numbers
     )
 
-    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\n"
-    "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+    zendesk_actions = "\nYou can find instructions for this ticket in our manual:\nhttps://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
 
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers()
 

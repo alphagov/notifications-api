@@ -299,11 +299,11 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             )
 
     if services_with_failures or services_sending_to_tv_numbers:
-        current_app.logger.exception(message)
+        current_app.logger.warning(message)
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            message += "\nYou can find instructions for this ticket in our manual:\n"
-            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+            message += ("\nYou can find instructions for this ticket in our manual:\n"
+                        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers")  # noqa
             zendesk_client.create_ticket(
                 subject="[{}] High failure rates for sms spotted for services".format(
                     current_app.config['NOTIFY_ENVIRONMENT']
