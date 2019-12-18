@@ -3,7 +3,8 @@ from datetime import datetime, timedelta, date
 from freezegun import freeze_time
 
 from app.dao.returned_letters_dao import (
-    insert_or_update_returned_letters, get_returned_letter_summary,
+    insert_or_update_returned_letters,
+    fetch_returned_letter_summary,
     fetch_returned_letters
 )
 from app.models import ReturnedLetter, NOTIFICATION_RETURNED_LETTER
@@ -94,7 +95,7 @@ def test_get_returned_letter_summary(sample_service):
     create_returned_letter(sample_service, reported_at=now)
     create_returned_letter(sample_service, reported_at=now)
 
-    results = get_returned_letter_summary(sample_service.id)
+    results = fetch_returned_letter_summary(sample_service.id)
 
     assert len(results) == 1
 
@@ -112,7 +113,7 @@ def test_get_returned_letter_summary_orders_by_reported_at(sample_service):
     create_returned_letter(sample_service, reported_at=last_month)
     create_returned_letter()  # returned letter for a different service
 
-    results = get_returned_letter_summary(sample_service.id)
+    results = fetch_returned_letter_summary(sample_service.id)
 
     assert len(results) == 2
     assert results[0].reported_at == now.date()
@@ -163,7 +164,7 @@ def test_fetch_returned_letters_with_jobs(sample_letter_job):
     assert len(results) == 1
     assert results[0] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
                           sample_letter_job.template.name, letter_1.template_id, letter_1.template_version,
-                          letter_1.created_by_id, None, sample_letter_job.original_file_name, letter_1.job_row_number)
+                          letter_1.created_by_id, None, sample_letter_job.original_file_name, 21)
 
 
 def test_fetch_returned_letters_with_create_by_user(sample_letter_template):

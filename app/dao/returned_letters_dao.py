@@ -5,7 +5,14 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import Notification, NotificationHistory, ReturnedLetter, Job, User, Template
+from app.models import (
+    Job,
+    Notification,
+    NotificationHistory,
+    ReturnedLetter,
+    Template,
+    User,
+)
 
 
 def _get_notification_ids_for_references(references):
@@ -43,7 +50,7 @@ def insert_or_update_returned_letters(references):
         db.session.connection().execute(stmt)
 
 
-def get_returned_letter_summary(service_id):
+def fetch_returned_letter_summary(service_id):
     return db.session.query(
         func.count(ReturnedLetter.notification_id).label('returned_letter_count'),
         ReturnedLetter.reported_at
@@ -70,7 +77,7 @@ def fetch_returned_letters(service_id, report_date):
             table.created_by_id,
             User.name.label('user_name'),
             Job.original_file_name,
-            table.job_row_number
+            (table.job_row_number + 1).label('job_row_number')  # row numbers start at 0
         ).outerjoin(
             User, table.created_by_id == User.id
         ).outerjoin(
@@ -84,7 +91,5 @@ def fetch_returned_letters(service_id, report_date):
             desc(ReturnedLetter.reported_at), desc(table.created_at)
         )
         results = results + query.all()
-
-    results = sorted(results[:4], reverse=True)
-
+    results = sorted(results, key=lambda i: i.created_at, reverse=True)
     return results

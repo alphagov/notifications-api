@@ -48,7 +48,8 @@ from tests.app.db import (
     create_domain,
     create_email_branding,
     create_annual_billing,
-    create_returned_letter, create_notification_history,
+    create_returned_letter,
+    create_notification_history,
     create_job
 )
 from tests.app.db import create_user
@@ -3443,4 +3444,4 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[1]['template_version'] == sample_letter_template.version
     assert not response[1]['user_name']
     assert response[1]['original_file_name'] == job.original_file_name
-    assert response[1]['job_row_number'] == 2
+    assert response[1]['job_row_number'] == 3

@@ -30,7 +30,10 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
-from app.dao.returned_letters_dao import get_returned_letter_summary, fetch_returned_letters
+from app.dao.returned_letters_dao import (
+    fetch_returned_letter_summary,
+    fetch_returned_letters
+)
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -945,7 +948,7 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
 
 @service_blueprint.route('/<uuid:service_id>/returned-letter-summary', methods=['GET'])
 def returned_letter_summary(service_id):
-    results = get_returned_letter_summary(service_id)
+    results = fetch_returned_letter_summary(service_id)
 
     json_results = [{'returned_letter_count': x.returned_letter_count,
                      'reported_at': x.reported_at.strftime(DATE_FORMAT)
