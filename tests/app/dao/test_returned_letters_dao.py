@@ -145,10 +145,10 @@ def test_fetch_returned_letters_from_notifications_and_notification_history(samp
     assert len(results) == 2
     assert results[0] == (letter_2.id, returned_letter_2.reported_at, letter_2.client_reference, letter_2.created_at,
                           sample_letter_template.name, letter_2.template_id, letter_2.template_version,
-                          letter_2.created_by_id, None, None, None)
+                          None, None, None, None, None)
     assert results[1] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
                           sample_letter_template.name, letter_1.template_id, letter_1.template_version,
-                          letter_1.created_by_id, None, None, None)
+                          None, None, None, None, None)
 
 
 def test_fetch_returned_letters_with_jobs(sample_letter_job):
@@ -164,7 +164,7 @@ def test_fetch_returned_letters_with_jobs(sample_letter_job):
     assert len(results) == 1
     assert results[0] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
                           sample_letter_job.template.name, letter_1.template_id, letter_1.template_version,
-                          letter_1.created_by_id, None, sample_letter_job.original_file_name, 21)
+                          None, None, None, sample_letter_job.original_file_name, 21)
 
 
 def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
@@ -180,4 +180,5 @@ def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
     assert len(results) == 1
     assert results[0] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
                           sample_letter_template.name, letter_1.template_id, letter_1.template_version,
-                          letter_1.created_by_id, sample_letter_template.service.users[0].name, None, None)
+                          letter_1.created_by_id, sample_letter_template.service.users[0].name,
+                          sample_letter_template.service.users[0].email_address, None, None)

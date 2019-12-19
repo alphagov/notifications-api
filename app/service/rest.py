@@ -970,8 +970,10 @@ def get_returned_letters(service_id):
          'template_id': x.template_id,
          'template_version': x.template_version,
          'user_name': x.user_name,
+         'email_address': x.email_address,
          'original_file_name': x.original_file_name,
-         'job_row_number': x.job_row_number
+         'job_row_number': x.job_row_number,
+         'uploaded_letter': x.client_reference if x.user_name and not x.original_file_name else None
          } for x in results]
 
     return jsonify(sorted(json_results, key=lambda i: i['created_at'], reverse=True))

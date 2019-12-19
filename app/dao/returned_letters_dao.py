@@ -76,6 +76,7 @@ def fetch_returned_letters(service_id, report_date):
             table.template_version,
             table.created_by_id,
             User.name.label('user_name'),
+            User.email_address,
             Job.original_file_name,
             (table.job_row_number + 1).label('job_row_number')  # row numbers start at 0
         ).outerjoin(
