@@ -93,7 +93,7 @@ def test_count_inbound_sms_for_service_filters_messages_older_than_n_days(sample
 
 
 @freeze_time("2017-06-08 12:00:00")
-def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session, mocker):
+def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session):
     no_retention_service = create_service(service_name='no retention')
     short_retention_service = create_service(service_name='three days')
     long_retention_service = create_service(service_name='thirty days')
@@ -131,6 +131,36 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
     assert {
         x.created_at for x in dao_get_inbound_sms_for_service(long_retention_service.id)
     } == set(dates[:4])
+
+
+@freeze_time("2019-12-20 12:00:00")
+def test_insert_into_inbound_sms_history_when_deleting_inbound_sms(sample_service):
+    create_inbound_sms(
+        sample_service, created_at=datetime(2019, 12, 12, 20, 20),
+        notify_number='07700900100',
+        provider_date=datetime(2019, 12, 12, 20, 19),
+        provider_reference='from daisy pie',
+        provider='unicorn'
+    )
+    create_inbound_sms(sample_service, created_at=datetime(2019, 12, 19, 20, 19))
+
+    delete_inbound_sms_older_than_retention()
+    history = InboundSmsHistory.query.all()
+    assert len(history) == 1
+
+    for key_name in [
+        'provider', 'provider_date', 'service_id', 'created_at', 'provider_reference', 'notify_number', 'id'
+    ]:
+        assert key_name in vars(history[0])
+
+    for key_name in ['content', 'user_number']:
+        assert key_name not in vars(history[0])
+
+    assert history[0].notify_number == '07700900100'
+    assert history[0].provider_date == datetime(2019, 12, 12, 20, 19)
+    assert history[0].provider_reference == 'from daisy pie'
+    assert history[0].provider == 'unicorn'
+    assert history[0].created_at == datetime(2019, 12, 12, 20, 20)
 
 
 def test_get_inbound_sms_by_id_returns(sample_service):
