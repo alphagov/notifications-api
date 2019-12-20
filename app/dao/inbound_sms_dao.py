@@ -63,93 +63,11 @@ def dao_count_inbound_sms_for_service(service_id, limit_days):
     ).count()
 
 
-def _delete_inbound_sms(datetime_to_delete_from, query_filter):
-    query_limit = 10000
-
-    subquery = db.session.query(
-        InboundSms.id
-    ).filter(
-        InboundSms.created_at < datetime_to_delete_from,
-        *query_filter
-    ).limit(
-        query_limit
-    ).subquery()
-
-    deleted = 0
-    # set to nonzero just to enter the loop
-    number_deleted = 1
-    while number_deleted > 0:
-
-        offset = 0
-        inbound_sms_query = db.session.query(
-            *[x.name for x in InboundSmsHistory.__table__.c]
-        ).filter(InboundSms.id.in_(subquery))
-        inbound_sms_count = inbound_sms_query.count()
-
-        while offset < inbound_sms_count:
-            statement = insert(InboundSmsHistory).from_select(
-                InboundSmsHistory.__table__.c,
-                inbound_sms_query.limit(query_limit).offset(offset)
-            )
-
-            statement = statement.on_conflict_do_update(
-                constraint="inbound_sms_history_pkey",
-                set_={
-                    "created_at": statement.excluded.created_at,
-                    "service_id": statement.excluded.service_id,
-                    "notify_number": statement.excluded.notify_number,
-                    "provider_date": statement.excluded.provider_date,
-                    "provider_reference": statement.excluded.provider_reference,
-                    "provider": statement.excluded.provider
-                }
-            )
-            db.session.connection().execute(statement)
-
-            offset += query_limit
-        number_deleted = InboundSms.query.filter(InboundSms.id.in_(subquery)).delete(synchronize_session='fetch')
-        deleted += number_deleted
-
-    return deleted
-
-
-@statsd(namespace="dao")
-@transactional
-def delete_inbound_sms_older_than_retention():
-    current_app.logger.info('Deleting inbound sms for services with flexible data retention')
-
-    flexible_data_retention = ServiceDataRetention.query.join(
-        ServiceDataRetention.service,
-        Service.inbound_number
-    ).filter(
-        ServiceDataRetention.notification_type == SMS_TYPE
-    ).all()
-    deleted = 0
-
-    for f in flexible_data_retention:
-        n_days_ago = midnight_n_days_ago(f.days_of_retention)
-
-        current_app.logger.info("Deleting inbound sms for service id: {}".format(f.service_id))
-        deleted += _delete_inbound_sms(n_days_ago, query_filter=[InboundSms.service_id == f.service_id])
-
-    current_app.logger.info('Deleting inbound sms for services without flexible data retention')
-
-    seven_days_ago = midnight_n_days_ago(7)
-
-    deleted += _delete_inbound_sms(seven_days_ago, query_filter=[
-        InboundSms.service_id.notin_(x.service_id for x in flexible_data_retention),
-    ])
-    current_app.logger.info('Deleted {} inbound sms'.format(deleted))
-    return deleted
-
-
-def insert_update_inbound_sms_history(date_to_delete_from, service_id, query_limit=10000):
+def _insert_update_notification_history(subquery, query_limit=10000):
     offset = 0
     inbound_sms_query = db.session.query(
         *[x.name for x in InboundSmsHistory.__table__.c]
-    ).filter(
-        InboundSms.service_id == service_id,
-        InboundSms.created_at < date_to_delete_from,
-    )
+    ).filter(InboundSms.id.in_(subquery))
     inbound_sms_count = inbound_sms_query.count()
 
     while offset < inbound_sms_count:
@@ -172,6 +90,63 @@ def insert_update_inbound_sms_history(date_to_delete_from, service_id, query_lim
         db.session.connection().execute(statement)
 
         offset += query_limit
+
+
+def _delete_inbound_sms(datetime_to_delete_from, query_filter):
+    query_limit = 10000
+
+    subquery = db.session.query(
+        InboundSms.id
+    ).filter(
+        InboundSms.created_at < datetime_to_delete_from,
+        *query_filter
+    ).limit(
+        query_limit
+    ).subquery()
+
+    deleted = 0
+    # set to nonzero just to enter the loop
+    number_deleted = 1
+    while number_deleted > 0:
+        _insert_update_notification_history(subquery, query_limit=query_limit)
+
+        number_deleted = InboundSms.query.filter(InboundSms.id.in_(subquery)).delete(synchronize_session='fetch')
+        deleted += number_deleted
+
+    return deleted
+
+
+@statsd(namespace="dao")
+@transactional
+def delete_inbound_sms_older_than_retention():
+    current_app.logger.info('Deleting inbound sms for services with flexible data retention')
+
+    flexible_data_retention = ServiceDataRetention.query.join(
+        ServiceDataRetention.service,
+        Service.inbound_number
+    ).filter(
+        ServiceDataRetention.notification_type == SMS_TYPE
+    ).all()
+
+    deleted = 0
+
+    for f in flexible_data_retention:
+        n_days_ago = midnight_n_days_ago(f.days_of_retention)
+
+        current_app.logger.info("Deleting inbound sms for service id: {}".format(f.service_id))
+        deleted += _delete_inbound_sms(n_days_ago, query_filter=[InboundSms.service_id == f.service_id])
+
+    current_app.logger.info('Deleting inbound sms for services without flexible data retention')
+
+    seven_days_ago = midnight_n_days_ago(7)
+
+    deleted += _delete_inbound_sms(seven_days_ago, query_filter=[
+        InboundSms.service_id.notin_(x.service_id for x in flexible_data_retention),
+    ])
+
+    current_app.logger.info('Deleted {} inbound sms'.format(deleted))
+
+    return deleted
 
 
 def dao_get_inbound_sms_by_id(service_id, inbound_id):

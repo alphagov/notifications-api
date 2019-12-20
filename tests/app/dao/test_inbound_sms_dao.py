@@ -10,13 +10,9 @@ from app.dao.inbound_sms_dao import (
     dao_get_inbound_sms_by_id,
     dao_get_paginated_inbound_sms_for_service_for_public_api,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
-    db,
-    insert_update_inbound_sms_history
 )
 
 from app.models import InboundSmsHistory
-
-from app.utils import midnight_n_days_ago
 
 from tests.conftest import set_config
 from tests.app.db import create_inbound_sms, create_service, create_service_data_retention
@@ -281,65 +277,3 @@ def test_most_recent_inbound_sms_only_returns_values_within_7_days(sample_servic
 
     assert len(res.items) == 1
     assert res.items[0].content == 'new'
-
-
-def test_insert_update_inbound_sms_history_limits_by_query_by_date(sample_service):
-    # becoming history
-    inbound_1 = create_inbound_sms(
-        sample_service, user_number='1', content='old', created_at=datetime(2017, 4, 2, 22, 59, 59)
-    )
-    # not becoming history yet
-    create_inbound_sms(sample_service, user_number='2', content='new', created_at=datetime(2017, 4, 2, 23, 0, 0))
-
-    with freeze_time('Monday 10th April 2017 12:00:00'):
-        insert_update_inbound_sms_history(
-            date_to_delete_from=midnight_n_days_ago(7),
-            service_id=sample_service.id)
-    history = InboundSmsHistory.query.all()
-    assert len(history) == 1
-
-    assert history[0].id == inbound_1.id
-
-
-def test_insert_update_inbound_sms_history_above_query_limit(sample_service, mocker):
-    # becoming history
-    create_inbound_sms(
-        sample_service, user_number='1', content='old', created_at=datetime(2017, 4, 2, 22, 59, 59)
-    )
-    create_inbound_sms(
-        sample_service, user_number='1', content='old', created_at=datetime(2017, 4, 2, 20, 59, 59)
-    )
-    # not becoming history yet
-    create_inbound_sms(sample_service, user_number='2', content='new', created_at=datetime(2017, 4, 2, 23, 0, 0))
-
-    db_connection_spy = mocker.spy(db.session, 'connection')
-    db_commit_spy = mocker.spy(db.session, 'commit')
-
-    with freeze_time('Monday 10th April 2017 12:00:00'):
-        insert_update_inbound_sms_history(
-            date_to_delete_from=midnight_n_days_ago(7),
-            service_id=sample_service.id,
-            query_limit=1
-        )
-    history = InboundSmsHistory.query.all()
-    assert len(history) == 2
-
-    assert db_connection_spy.call_count == 2
-    assert db_commit_spy.call_count == 2
-
-
-def test_insert_update_inbound_sms_history_only_updates_given_service(sample_service):
-    inbound_1 = create_inbound_sms(
-        sample_service, user_number='1', content='old', created_at=datetime(2017, 4, 2, 22, 59, 59)
-    )
-    other_service = create_service(service_name='another service')
-    create_inbound_sms(other_service, user_number='2', content='new', created_at=datetime(2017, 4, 2, 22, 0, 0))
-
-    with freeze_time('Monday 10th April 2017 12:00:00'):
-        insert_update_inbound_sms_history(
-            date_to_delete_from=midnight_n_days_ago(7),
-            service_id=sample_service.id)
-    history = InboundSmsHistory.query.all()
-    assert len(history) == 1
-
-    assert history[0].id == inbound_1.id
