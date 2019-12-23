@@ -74,6 +74,8 @@ def fetch_returned_letters(service_id, report_date):
             Template.name.label('template_name'),
             table.template_id,
             table.template_version,
+            Template.hidden,
+            table.api_key_id,
             table.created_by_id,
             User.name.label('user_name'),
             User.email_address,

@@ -50,7 +50,8 @@ from tests.app.db import (
     create_annual_billing,
     create_returned_letter,
     create_notification_history,
-    create_job
+    create_job,
+    create_api_key
 )
 from tests.app.db import create_user
 
@@ -3401,19 +3402,43 @@ def test_get_returned_letter(admin_request, sample_letter_template):
                            notification_id=letter_1.id)
 
     job = create_job(template=sample_letter_template)
-    letter_2 = create_notification(template=sample_letter_template, client_reference='letter_2',
-                                   status=NOTIFICATION_RETURNED_LETTER,
-                                   job=job, job_row_number=2,
-                                   created_at=datetime.utcnow() - timedelta(days=5))
+    letter_from_job = create_notification(template=sample_letter_template, client_reference='letter_from_job',
+                                          status=NOTIFICATION_RETURNED_LETTER,
+                                          job=job, job_row_number=2,
+                                          created_at=datetime.utcnow() - timedelta(days=1),
+                                          created_by_id=sample_letter_template.service.users[0].id)
     create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
-                           notification_id=letter_2.id)
+                           notification_id=letter_from_job.id)
 
-    letter_3 = create_notification(template=sample_letter_template, client_reference='letter_3',
-                                   status=NOTIFICATION_RETURNED_LETTER,
-                                   created_at=datetime.utcnow() - timedelta(days=1),
-                                   created_by_id=sample_letter_template.service.users[0].id)
+    one_off_letter = create_notification(template=sample_letter_template,
+                                         status=NOTIFICATION_RETURNED_LETTER,
+                                         created_at=datetime.utcnow() - timedelta(days=2),
+                                         created_by_id=sample_letter_template.service.users[0].id)
     create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
-                           notification_id=letter_3.id)
+                           notification_id=one_off_letter.id)
+
+    api_key = create_api_key(service=sample_letter_template.service)
+    api_letter = create_notification(template=sample_letter_template, client_reference='api_letter',
+                                     status=NOTIFICATION_RETURNED_LETTER,
+                                     created_at=datetime.utcnow() - timedelta(days=3),
+                                     api_key=api_key)
+    create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
+                           notification_id=api_letter.id)
+
+    precompiled_template = create_template(service=sample_letter_template.service, template_type='letter', hidden=True,
+                                           template_name='hidden template')
+    precompiled_letter = create_notification_history(template=precompiled_template, api_key=api_key,
+                                                     client_reference='precompiled letter',
+                                                     created_at=datetime.utcnow() - timedelta(days=4))
+    create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
+                           notification_id=precompiled_letter.id)
+
+    uploaded_letter = create_notification_history(template=precompiled_template, client_reference='filename.pdf',
+                                                  created_at=datetime.utcnow() - timedelta(days=5),
+                                                  created_by_id=sample_letter_template.service.users[0].id)
+    create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
+                           notification_id=uploaded_letter.id)
+
     not_included_in_results = create_template(service=create_service(service_name='not included in results'),
                                               template_type='letter')
     letter_4 = create_notification_history(template=not_included_in_results,
@@ -3423,25 +3448,64 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     response = admin_request.get('service.get_returned_letters', service_id=sample_letter_template.service_id,
                                  reported_at='2019-12-11')
 
-    assert len(response) == 2
-    assert response[0]['notification_id'] == str(letter_3.id)
-    assert response[0]['client_reference'] == 'letter_3'
+    assert len(response) == 5
+    assert response[0]['notification_id'] == str(letter_from_job.id)
+    assert not response[0]['client_reference']
     assert response[0]['reported_at'] == '2019-12-11'
-    assert response[0]['created_at'] == '2019-12-10T13:30:00.000000Z'
+    assert response[0]['created_at'] == '2019-12-10 13:30:00'
     assert response[0]['template_name'] == sample_letter_template.name
     assert response[0]['template_id'] == str(sample_letter_template.id)
     assert response[0]['template_version'] == sample_letter_template.version
     assert response[0]['user_name'] == sample_letter_template.service.users[0].name
-    assert not response[0]['original_file_name']
-    assert not response[0]['job_row_number']
+    assert response[0]['original_file_name'] == job.original_file_name
+    assert response[0]['job_row_number'] == 3
+    assert not response[0]['uploaded_letter']
 
-    assert response[1]['notification_id'] == str(letter_2.id)
-    assert response[1]['client_reference'] == 'letter_2'
+    assert response[1]['notification_id'] == str(one_off_letter.id)
+    assert not response[1]['client_reference']
     assert response[1]['reported_at'] == '2019-12-11'
-    assert response[1]['created_at'] == '2019-12-06T13:30:00.000000Z'
+    assert response[1]['created_at'] == '2019-12-09 13:30:00'
     assert response[1]['template_name'] == sample_letter_template.name
     assert response[1]['template_id'] == str(sample_letter_template.id)
     assert response[1]['template_version'] == sample_letter_template.version
-    assert not response[1]['user_name']
-    assert response[1]['original_file_name'] == job.original_file_name
-    assert response[1]['job_row_number'] == 3
+    assert response[1]['user_name'] == sample_letter_template.service.users[0].name
+    assert not response[1]['original_file_name']
+    assert not response[1]['job_row_number']
+    assert not response[1]['uploaded_letter']
+
+    assert response[2]['notification_id'] == str(api_letter.id)
+    assert response[2]['client_reference'] == 'api_letter'
+    assert response[2]['reported_at'] == '2019-12-11'
+    assert response[2]['created_at'] == '2019-12-08 13:30:00'
+    assert response[2]['template_name'] == sample_letter_template.name
+    assert response[2]['template_id'] == str(sample_letter_template.id)
+    assert response[2]['template_version'] == sample_letter_template.version
+    assert response[2]['user_name'] == 'API'
+    assert not response[2]['original_file_name']
+    assert not response[2]['job_row_number']
+    assert not response[2]['uploaded_letter']
+
+    assert response[3]['notification_id'] == str(precompiled_letter.id)
+    assert response[3]['client_reference'] == 'precompiled letter'
+    assert response[3]['reported_at'] == '2019-12-11'
+    assert response[3]['created_at'] == '2019-12-07 13:30:00'
+    assert not response[3]['template_name']
+    assert not response[3]['template_id']
+    assert not response[3]['template_version']
+    assert response[3]['user_name'] == 'API'
+    assert not response[3]['original_file_name']
+    assert not response[3]['job_row_number']
+    assert not response[3]['uploaded_letter']
+
+    assert response[4]['notification_id'] == str(uploaded_letter.id)
+    assert not response[4]['client_reference']
+    assert response[4]['reported_at'] == '2019-12-11'
+    assert response[4]['created_at'] == '2019-12-06 13:30:00'
+    assert not response[4]['template_name']
+    assert not response[4]['template_id']
+    assert not response[4]['template_version']
+    assert response[4]['user_name'] == sample_letter_template.service.users[0].name
+    assert response[4]['email_address'] == sample_letter_template.service.users[0].email_address
+    assert not response[4]['original_file_name']
+    assert not response[4]['job_row_number']
+    assert response[4]['uploaded_letter'] == 'filename.pdf'

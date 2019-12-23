@@ -12,7 +12,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import DATE_FORMAT, DATETIME_FORMAT
+from app import DATE_FORMAT
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -963,17 +963,20 @@ def get_returned_letters(service_id):
 
     json_results = [
         {'notification_id': x.notification_id,
-         'client_reference': x.client_reference,
+         # client reference can only be added on API letters
+         'client_reference': x.client_reference if x.api_key_id else None,
          'reported_at': x.reported_at.strftime(DATE_FORMAT),
-         'created_at': x.created_at.strftime(DATETIME_FORMAT),
-         'template_name': x.template_name,
-         'template_id': x.template_id,
-         'template_version': x.template_version,
-         'user_name': x.user_name,
-         'email_address': x.email_address,
+         'created_at': x.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+         # it doesn't make sense to show hidden/precompiled templates
+         'template_name': x.template_name if not x.hidden else None,
+         'template_id': x.template_id if not x.hidden else None,
+         'template_version': x.template_version if not x.hidden else None,
+         'user_name': x.user_name or 'API',
+         'email_address': x.email_address or 'API',
          'original_file_name': x.original_file_name,
          'job_row_number': x.job_row_number,
-         'uploaded_letter': x.client_reference if x.user_name and not x.original_file_name else None
+         # the file name for a letter uploaded via the UI
+         'uploaded_letter': x.client_reference if x.hidden and not x.api_key_id else None
          } for x in results]
 
     return jsonify(sorted(json_results, key=lambda i: i['created_at'], reverse=True))
