@@ -5,7 +5,6 @@ pytest==5.2.4
 pytest-env==0.6.2
 pytest-mock==1.11.2
 pytest-cov==2.8.1
-coveralls==1.8.2
 pytest-xdist==1.30.0
 freezegun==0.3.12
 requests-mock==1.7.0
