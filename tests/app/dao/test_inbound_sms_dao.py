@@ -13,6 +13,7 @@ from app.dao.inbound_sms_dao import (
 )
 
 from app.models import InboundSmsHistory
+from app import db
 
 from tests.conftest import set_config
 from tests.app.db import create_inbound_sms, create_service, create_service_data_retention
@@ -156,6 +157,45 @@ def test_insert_into_inbound_sms_history_when_deleting_inbound_sms(sample_servic
     for key_name in ['content', 'user_number']:
         assert key_name not in vars(history[0])
 
+    assert history[0].notify_number == '07700900100'
+    assert history[0].provider_date == datetime(2019, 12, 12, 20, 19)
+    assert history[0].provider_reference == 'from daisy pie'
+    assert history[0].provider == 'unicorn'
+    assert history[0].created_at == datetime(2019, 12, 12, 20, 20)
+
+
+@freeze_time("2019-12-20 12:00:00")
+def test_delete_inbound_sms_older_than_retention_does_nothing_when_database_conflict_raised(sample_service):
+    inbound_sms = create_inbound_sms(
+        sample_service, created_at=datetime(2019, 12, 12, 20, 20),
+        notify_number='07700900100',
+        provider_date=datetime(2019, 12, 12, 20, 19),
+        provider_reference='from daisy pie',
+        provider='unicorn'
+    )
+    inbound_sms_id = inbound_sms.id
+
+    # Insert data directly in to inbound_sms_history to mimic if we had run `delete_inbound_sms_older_than_retention`
+    # before but for some reason the delete statement had failed
+    conflict_creating_row = InboundSmsHistory(
+        id=inbound_sms.id,
+        service_id=inbound_sms.service.id,
+        created_at=inbound_sms.created_at,
+        notify_number=inbound_sms.notify_number,
+        provider_date=inbound_sms.provider_date,
+        provider_reference=inbound_sms.provider_reference,
+        provider=inbound_sms.provider,
+    )
+    db.session.add(conflict_creating_row)
+    db.session.commit()
+    assert conflict_creating_row.id
+
+    delete_inbound_sms_older_than_retention()
+
+    history = InboundSmsHistory.query.all()
+    assert len(history) == 1
+
+    assert history[0].id == inbound_sms_id
     assert history[0].notify_number == '07700900100'
     assert history[0].provider_date == datetime(2019, 12, 12, 20, 19)
     assert history[0].provider_reference == 'from daisy pie'

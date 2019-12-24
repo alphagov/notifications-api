@@ -63,7 +63,7 @@ def dao_count_inbound_sms_for_service(service_id, limit_days):
     ).count()
 
 
-def _insert_update_inbound_sms_history(subquery, query_limit=10000):
+def _insert_inbound_sms_history(subquery, query_limit=10000):
     offset = 0
     inbound_sms_query = db.session.query(
         *[x.name for x in InboundSmsHistory.__table__.c]
@@ -76,15 +76,8 @@ def _insert_update_inbound_sms_history(subquery, query_limit=10000):
             inbound_sms_query.limit(query_limit).offset(offset)
         )
 
-        statement = statement.on_conflict_do_update(
-            constraint="inbound_sms_history_pkey",
-            set_={
-                "service_id": statement.excluded.service_id,
-                "notify_number": statement.excluded.notify_number,
-                "provider_date": statement.excluded.provider_date,
-                "provider_reference": statement.excluded.provider_reference,
-                "provider": statement.excluded.provider
-            }
+        statement = statement.on_conflict_do_nothing(
+            constraint="inbound_sms_history_pkey"
         )
         db.session.connection().execute(statement)
 
@@ -107,7 +100,7 @@ def _delete_inbound_sms(datetime_to_delete_from, query_filter):
     # set to nonzero just to enter the loop
     number_deleted = 1
     while number_deleted > 0:
-        _insert_update_inbound_sms_history(subquery, query_limit=query_limit)
+        _insert_inbound_sms_history(subquery, query_limit=query_limit)
 
         number_deleted = InboundSms.query.filter(InboundSms.id.in_(subquery)).delete(synchronize_session='fetch')
         deleted += number_deleted
