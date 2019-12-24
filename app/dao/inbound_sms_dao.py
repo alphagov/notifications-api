@@ -2,10 +2,11 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import desc, and_
 from sqlalchemy.orm import aliased
+from sqlalchemy.dialects.postgresql import insert
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import InboundSms, Service, ServiceDataRetention, SMS_TYPE
+from app.models import InboundSms, InboundSmsHistory, Service, ServiceDataRetention, SMS_TYPE
 from app.utils import midnight_n_days_ago
 
 
@@ -62,6 +63,27 @@ def dao_count_inbound_sms_for_service(service_id, limit_days):
     ).count()
 
 
+def _insert_inbound_sms_history(subquery, query_limit=10000):
+    offset = 0
+    inbound_sms_query = db.session.query(
+        *[x.name for x in InboundSmsHistory.__table__.c]
+    ).filter(InboundSms.id.in_(subquery))
+    inbound_sms_count = inbound_sms_query.count()
+
+    while offset < inbound_sms_count:
+        statement = insert(InboundSmsHistory).from_select(
+            InboundSmsHistory.__table__.c,
+            inbound_sms_query.limit(query_limit).offset(offset)
+        )
+
+        statement = statement.on_conflict_do_nothing(
+            constraint="inbound_sms_history_pkey"
+        )
+        db.session.connection().execute(statement)
+
+        offset += query_limit
+
+
 def _delete_inbound_sms(datetime_to_delete_from, query_filter):
     query_limit = 10000
 
@@ -78,6 +100,8 @@ def _delete_inbound_sms(datetime_to_delete_from, query_filter):
     # set to nonzero just to enter the loop
     number_deleted = 1
     while number_deleted > 0:
+        _insert_inbound_sms_history(subquery, query_limit=query_limit)
+
         number_deleted = InboundSms.query.filter(InboundSms.id.in_(subquery)).delete(synchronize_session='fetch')
         deleted += number_deleted
 
@@ -97,6 +121,7 @@ def delete_inbound_sms_older_than_retention():
     ).all()
 
     deleted = 0
+
     for f in flexible_data_retention:
         n_days_ago = midnight_n_days_ago(f.days_of_retention)
 

@@ -9,8 +9,12 @@ from app.dao.inbound_sms_dao import (
     delete_inbound_sms_older_than_retention,
     dao_get_inbound_sms_by_id,
     dao_get_paginated_inbound_sms_for_service_for_public_api,
-    dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service
+    dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
 )
+
+from app.models import InboundSmsHistory
+from app import db
+
 from tests.conftest import set_config
 from tests.app.db import create_inbound_sms, create_service, create_service_data_retention
 
@@ -99,7 +103,6 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
 
     create_service_data_retention(long_retention_service, notification_type='sms', days_of_retention=30)
     create_service_data_retention(short_retention_service, notification_type='sms', days_of_retention=3)
-    # email retention doesn't affect anything
     create_service_data_retention(short_retention_service, notification_type='email', days_of_retention=4)
 
     dates = [
@@ -115,6 +118,9 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
 
     deleted_count = delete_inbound_sms_older_than_retention()
 
+    history = InboundSmsHistory.query.all()
+    assert len(history) == 7
+
     # four deleted for the 3-day service, two for the default seven days one, one for the 30 day
     assert deleted_count == 7
     assert {
@@ -126,6 +132,75 @@ def test_should_delete_inbound_sms_according_to_data_retention(notify_db_session
     assert {
         x.created_at for x in dao_get_inbound_sms_for_service(long_retention_service.id)
     } == set(dates[:4])
+
+
+@freeze_time("2019-12-20 12:00:00")
+def test_insert_into_inbound_sms_history_when_deleting_inbound_sms(sample_service):
+    create_inbound_sms(
+        sample_service, created_at=datetime(2019, 12, 12, 20, 20),
+        notify_number='07700900100',
+        provider_date=datetime(2019, 12, 12, 20, 19),
+        provider_reference='from daisy pie',
+        provider='unicorn'
+    )
+    create_inbound_sms(sample_service, created_at=datetime(2019, 12, 19, 20, 19))
+
+    delete_inbound_sms_older_than_retention()
+    history = InboundSmsHistory.query.all()
+    assert len(history) == 1
+
+    for key_name in [
+        'provider', 'provider_date', 'service_id', 'created_at', 'provider_reference', 'notify_number', 'id'
+    ]:
+        assert key_name in vars(history[0])
+
+    for key_name in ['content', 'user_number']:
+        assert key_name not in vars(history[0])
+
+    assert history[0].notify_number == '07700900100'
+    assert history[0].provider_date == datetime(2019, 12, 12, 20, 19)
+    assert history[0].provider_reference == 'from daisy pie'
+    assert history[0].provider == 'unicorn'
+    assert history[0].created_at == datetime(2019, 12, 12, 20, 20)
+
+
+@freeze_time("2019-12-20 12:00:00")
+def test_delete_inbound_sms_older_than_retention_does_nothing_when_database_conflict_raised(sample_service):
+    inbound_sms = create_inbound_sms(
+        sample_service, created_at=datetime(2019, 12, 12, 20, 20),
+        notify_number='07700900100',
+        provider_date=datetime(2019, 12, 12, 20, 19),
+        provider_reference='from daisy pie',
+        provider='unicorn'
+    )
+    inbound_sms_id = inbound_sms.id
+
+    # Insert data directly in to inbound_sms_history to mimic if we had run `delete_inbound_sms_older_than_retention`
+    # before but for some reason the delete statement had failed
+    conflict_creating_row = InboundSmsHistory(
+        id=inbound_sms.id,
+        service_id=inbound_sms.service.id,
+        created_at=inbound_sms.created_at,
+        notify_number=inbound_sms.notify_number,
+        provider_date=inbound_sms.provider_date,
+        provider_reference=inbound_sms.provider_reference,
+        provider=inbound_sms.provider,
+    )
+    db.session.add(conflict_creating_row)
+    db.session.commit()
+    assert conflict_creating_row.id
+
+    delete_inbound_sms_older_than_retention()
+
+    history = InboundSmsHistory.query.all()
+    assert len(history) == 1
+
+    assert history[0].id == inbound_sms_id
+    assert history[0].notify_number == '07700900100'
+    assert history[0].provider_date == datetime(2019, 12, 12, 20, 19)
+    assert history[0].provider_reference == 'from daisy pie'
+    assert history[0].provider == 'unicorn'
+    assert history[0].created_at == datetime(2019, 12, 12, 20, 20)
 
 
 def test_get_inbound_sms_by_id_returns(sample_service):
