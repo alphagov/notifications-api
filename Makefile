@@ -89,9 +89,6 @@ test-requirements:
 	         echo "Run 'make freeze-requirements' to update."; exit 1; } \
 || { echo "requirements.txt is up to date"; exit 0; }
 
-.PHONY: coverage
-coverage: ; ## don't do anything
-
 .PHONY: prepare-docker-build-image
 prepare-docker-build-image: generate-version-file ## Prepare the Docker builder image
 	docker build -f docker/Dockerfile \
@@ -130,26 +127,6 @@ create-docker-test-db: ## Start the test database in a Docker container
 		-e POSTGRES_DB=test_notification_api \
 		postgres:9.5
 	sleep 3
-
-# FIXME: CIRCLECI=1 is an ugly hack because the coveralls-python library sends the PR link only this way
-.PHONY: coverage-with-docker
-coverage-with-docker: prepare-docker-build-image ## Generates coverage report inside a Docker container
-	@docker run -i${DOCKER_TTY} --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-coverage" \
-		-e COVERALLS_REPO_TOKEN=${COVERALLS_REPO_TOKEN} \
-		-e CIRCLECI=1 \
-		-e CI_NAME=${CI_NAME} \
-		-e CI_BUILD_NUMBER=${BUILD_NUMBER} \
-		-e CI_BUILD_URL=${BUILD_URL} \
-		-e CI_BRANCH=${GIT_BRANCH} \
-		-e CI_PULL_REQUEST=${CI_PULL_REQUEST} \
-		-e http_proxy="${HTTP_PROXY}" \
-		-e HTTP_PROXY="${HTTP_PROXY}" \
-		-e https_proxy="${HTTPS_PROXY}" \
-		-e HTTPS_PROXY="${HTTPS_PROXY}" \
-		-e NO_PROXY="${NO_PROXY}" \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		make coverage
 
 .PHONY: clean-docker-containers
 clean-docker-containers: ## Clean up any remaining docker containers
