@@ -976,7 +976,7 @@ def get_returned_letters(service_id):
          'original_file_name': x.original_file_name,
          'job_row_number': x.job_row_number,
          # the file name for a letter uploaded via the UI
-         'uploaded_letter': x.client_reference if x.hidden and not x.api_key_id else None
+         'uploaded_letter_file_name': x.client_reference if x.hidden and not x.api_key_id else None
          } for x in results]
 
     return jsonify(sorted(json_results, key=lambda i: i['created_at'], reverse=True))

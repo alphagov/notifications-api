@@ -3394,16 +3394,6 @@ def test_get_returned_letter_summary(admin_request, sample_service):
 
 @freeze_time('2019-12-11 13:30')
 def test_get_returned_letter(admin_request, sample_letter_template):
-    letter_from_previous_report = create_notification_history(
-        template=sample_letter_template,
-        client_reference='letter_from_previous_report',
-        status=NOTIFICATION_RETURNED_LETTER,
-        created_at=datetime.utcnow() - timedelta(minutes=1),
-        created_by_id=sample_letter_template.service.users[0].id
-    )
-    create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow() - timedelta(days=3),
-                           notification_id=letter_from_previous_report.id)
-
     job = create_job(template=sample_letter_template)
     letter_from_job = create_notification(template=sample_letter_template, client_reference='letter_from_job',
                                           status=NOTIFICATION_RETURNED_LETTER,
@@ -3462,7 +3452,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[0]['user_name'] == sample_letter_template.service.users[0].name
     assert response[0]['original_file_name'] == job.original_file_name
     assert response[0]['job_row_number'] == 3
-    assert not response[0]['uploaded_letter']
+    assert not response[0]['uploaded_letter_file_name']
 
     assert response[1]['notification_id'] == str(one_off_letter.id)
     assert not response[1]['client_reference']
@@ -3474,7 +3464,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[1]['user_name'] == sample_letter_template.service.users[0].name
     assert not response[1]['original_file_name']
     assert not response[1]['job_row_number']
-    assert not response[1]['uploaded_letter']
+    assert not response[1]['uploaded_letter_file_name']
 
     assert response[2]['notification_id'] == str(api_letter.id)
     assert response[2]['client_reference'] == 'api_letter'
@@ -3486,7 +3476,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[2]['user_name'] == 'API'
     assert not response[2]['original_file_name']
     assert not response[2]['job_row_number']
-    assert not response[2]['uploaded_letter']
+    assert not response[2]['uploaded_letter_file_name']
 
     assert response[3]['notification_id'] == str(precompiled_letter.id)
     assert response[3]['client_reference'] == 'precompiled letter'
@@ -3498,7 +3488,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[3]['user_name'] == 'API'
     assert not response[3]['original_file_name']
     assert not response[3]['job_row_number']
-    assert not response[3]['uploaded_letter']
+    assert not response[3]['uploaded_letter_file_name']
 
     assert response[4]['notification_id'] == str(uploaded_letter.id)
     assert not response[4]['client_reference']
@@ -3511,4 +3501,4 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]['email_address'] == sample_letter_template.service.users[0].email_address
     assert not response[4]['original_file_name']
     assert not response[4]['job_row_number']
-    assert response[4]['uploaded_letter'] == 'filename.pdf'
+    assert response[4]['uploaded_letter_file_name'] == 'filename.pdf'
