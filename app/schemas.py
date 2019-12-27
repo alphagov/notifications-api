@@ -22,7 +22,7 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
 
-from app import ma
+from app import ma, DATETIME_FORMAT_NO_TIMEZONE
 from app import models
 from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
@@ -84,8 +84,8 @@ class BaseSchema(ma.ModelSchema):
 class UserSchema(BaseSchema):
 
     permissions = fields.Method("user_permissions", dump_only=True)
-    password_changed_at = field_for(models.User, 'password_changed_at', format='%Y-%m-%d %H:%M:%S.%f')
-    created_at = field_for(models.User, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+    password_changed_at = field_for(models.User, 'password_changed_at', format=DATETIME_FORMAT_NO_TIMEZONE)
+    created_at = field_for(models.User, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     auth_type = field_for(models.User, 'auth_type')
 
     def user_permissions(self, usr):
@@ -210,7 +210,7 @@ class ServiceSchema(BaseSchema):
     organisation = field_for(models.Service, 'organisation')
     override_flag = False
     letter_contact_block = fields.Method(serialize="get_letter_contact")
-    go_live_at = field_for(models.Service, 'go_live_at', format='%Y-%m-%d %H:%M:%S.%f')
+    go_live_at = field_for(models.Service, 'go_live_at', format=DATETIME_FORMAT_NO_TIMEZONE)
 
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
@@ -345,7 +345,7 @@ class TemplateHistorySchema(BaseSchema):
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
 
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
-    created_at = field_for(models.Template, 'created_at', format='%Y-%m-%d %H:%M:%S.%f')
+    created_at = field_for(models.Template, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
 
     def get_reply_to(self, template):
         return template.reply_to

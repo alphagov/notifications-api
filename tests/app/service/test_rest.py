@@ -3394,12 +3394,15 @@ def test_get_returned_letter_summary(admin_request, sample_service):
 
 @freeze_time('2019-12-11 13:30')
 def test_get_returned_letter(admin_request, sample_letter_template):
-    letter_1 = create_notification_history(template=sample_letter_template, client_reference='letter_1',
-                                           status=NOTIFICATION_RETURNED_LETTER,
-                                           created_at=datetime.utcnow() - timedelta(minutes=1),
-                                           created_by_id=sample_letter_template.service.users[0].id)
+    letter_from_previous_report = create_notification_history(
+        template=sample_letter_template,
+        client_reference='letter_from_previous_report',
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_by_id=sample_letter_template.service.users[0].id
+    )
     create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow() - timedelta(days=3),
-                           notification_id=letter_1.id)
+                           notification_id=letter_from_previous_report.id)
 
     job = create_job(template=sample_letter_template)
     letter_from_job = create_notification(template=sample_letter_template, client_reference='letter_from_job',
@@ -3439,11 +3442,11 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     create_returned_letter(service=sample_letter_template.service, reported_at=datetime.utcnow(),
                            notification_id=uploaded_letter.id)
 
-    not_included_in_results = create_template(service=create_service(service_name='not included in results'),
-                                              template_type='letter')
-    letter_4 = create_notification_history(template=not_included_in_results,
+    not_included_in_results_template = create_template(service=create_service(service_name='not included in results'),
+                                                       template_type='letter')
+    letter_4 = create_notification_history(template=not_included_in_results_template,
                                            status=NOTIFICATION_RETURNED_LETTER)
-    create_returned_letter(service=not_included_in_results.service, reported_at=datetime.utcnow(),
+    create_returned_letter(service=not_included_in_results_template.service, reported_at=datetime.utcnow(),
                            notification_id=letter_4.id)
     response = admin_request.get('service.get_returned_letters', service_id=sample_letter_template.service_id,
                                  reported_at='2019-12-11')
@@ -3452,7 +3455,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[0]['notification_id'] == str(letter_from_job.id)
     assert not response[0]['client_reference']
     assert response[0]['reported_at'] == '2019-12-11'
-    assert response[0]['created_at'] == '2019-12-10 13:30:00'
+    assert response[0]['created_at'] == '2019-12-10 13:30:00.000000'
     assert response[0]['template_name'] == sample_letter_template.name
     assert response[0]['template_id'] == str(sample_letter_template.id)
     assert response[0]['template_version'] == sample_letter_template.version
@@ -3464,7 +3467,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[1]['notification_id'] == str(one_off_letter.id)
     assert not response[1]['client_reference']
     assert response[1]['reported_at'] == '2019-12-11'
-    assert response[1]['created_at'] == '2019-12-09 13:30:00'
+    assert response[1]['created_at'] == '2019-12-09 13:30:00.000000'
     assert response[1]['template_name'] == sample_letter_template.name
     assert response[1]['template_id'] == str(sample_letter_template.id)
     assert response[1]['template_version'] == sample_letter_template.version
@@ -3476,7 +3479,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[2]['notification_id'] == str(api_letter.id)
     assert response[2]['client_reference'] == 'api_letter'
     assert response[2]['reported_at'] == '2019-12-11'
-    assert response[2]['created_at'] == '2019-12-08 13:30:00'
+    assert response[2]['created_at'] == '2019-12-08 13:30:00.000000'
     assert response[2]['template_name'] == sample_letter_template.name
     assert response[2]['template_id'] == str(sample_letter_template.id)
     assert response[2]['template_version'] == sample_letter_template.version
@@ -3488,7 +3491,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[3]['notification_id'] == str(precompiled_letter.id)
     assert response[3]['client_reference'] == 'precompiled letter'
     assert response[3]['reported_at'] == '2019-12-11'
-    assert response[3]['created_at'] == '2019-12-07 13:30:00'
+    assert response[3]['created_at'] == '2019-12-07 13:30:00.000000'
     assert not response[3]['template_name']
     assert not response[3]['template_id']
     assert not response[3]['template_version']
@@ -3500,7 +3503,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]['notification_id'] == str(uploaded_letter.id)
     assert not response[4]['client_reference']
     assert response[4]['reported_at'] == '2019-12-11'
-    assert response[4]['created_at'] == '2019-12-06 13:30:00'
+    assert response[4]['created_at'] == '2019-12-06 13:30:00.000000'
     assert not response[4]['template_name']
     assert not response[4]['template_id']
     assert not response[4]['template_version']
