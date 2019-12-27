@@ -24,6 +24,7 @@ from app.clients.sms.mmg import MMGClient
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
 from app.encryption import Encryption
 
+DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 DATE_FORMAT = "%Y-%m-%d"
 

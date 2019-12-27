@@ -36,8 +36,8 @@ from app.encryption import (
 from app import (
     db,
     encryption,
-    DATETIME_FORMAT
-)
+    DATETIME_FORMAT,
+    DATETIME_FORMAT_NO_TIMEZONE)
 
 from app.history_meta import Versioned
 
@@ -166,7 +166,7 @@ class User(db.Model):
             'mobile_number': self.mobile_number,
             'organisations': [x.id for x in self.organisations if x.active],
             'password_changed_at': (
-                self.password_changed_at.strftime('%Y-%m-%d %H:%M:%S.%f')
+                self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE)
                 if self.password_changed_at
                 else None
             ),
