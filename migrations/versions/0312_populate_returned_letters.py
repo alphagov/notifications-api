@@ -1,14 +1,14 @@
 """
 
-Revision ID: 0311_populate_returned_letters
-Revises: 0310_returned_letters_table
+Revision ID: 0312_populate_returned_letters
+Revises: 0311_add_inbound_sms_history
 Create Date: 2019-12-09 12:13:49.432993
 
 """
 from alembic import op
 
-revision = '0311_populate_returned_letters'
-down_revision = '0310_returned_letters_table'
+revision = '0312_populate_returned_letters'
+down_revision = '0311_add_inbound_sms_history'
 
 
 def upgrade():
