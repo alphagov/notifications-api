@@ -622,6 +622,37 @@ def test_get_job_by_id_should_return_summed_statistics(admin_request, sample_job
     assert resp_json['data']['created_by']['name'] == 'Test User'
 
 
+def test_get_job_by_id_with_stats_for_old_job_where_notifications_have_been_purged(admin_request, sample_template):
+    old_job = create_job(sample_template, notification_count=10, created_at=datetime.utcnow() - timedelta(days=9),
+                         job_status='finished')
+
+    def __create_ft_status(job, status, count):
+        create_ft_notification_status(bst_date=job.created_at.date(),
+                                      notification_type='sms',
+                                      service=job.service,
+                                      job=job,
+                                      template=job.template,
+                                      key_type='normal',
+                                      notification_status=status,
+                                      count=count)
+
+    __create_ft_status(old_job, 'created', 3)
+    __create_ft_status(old_job, 'sending', 1)
+    __create_ft_status(old_job, 'failed', 3)
+    __create_ft_status(old_job, 'technical-failure', 1)
+    __create_ft_status(old_job, 'temporary-failure', 2)
+
+    resp_json = admin_request.get('job.get_job_by_service_and_job_id', service_id=old_job.service_id, job_id=old_job.id)
+
+    assert resp_json['data']['id'] == str(old_job.id)
+    assert {'status': 'created', 'count': 3} in resp_json['data']['statistics']
+    assert {'status': 'sending', 'count': 1} in resp_json['data']['statistics']
+    assert {'status': 'failed', 'count': 3} in resp_json['data']['statistics']
+    assert {'status': 'technical-failure', 'count': 1} in resp_json['data']['statistics']
+    assert {'status': 'temporary-failure', 'count': 2} in resp_json['data']['statistics']
+    assert resp_json['data']['created_by']['name'] == 'Test User'
+
+
 def test_get_jobs(admin_request, sample_template):
     _setup_jobs(sample_template)
 
