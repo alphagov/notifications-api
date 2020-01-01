@@ -440,6 +440,7 @@ def test_process_letter_task_check_virus_scan_passed(
             endpoint,
             json={
                 "file": base64.b64encode(b"new_pdf").decode("utf-8"),
+                "recipient_address": "Bugs Bunny",
                 "validation_passed": True,
                 "message": "",
                 "invalid_pages": [],
