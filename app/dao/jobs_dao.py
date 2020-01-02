@@ -27,21 +27,31 @@ from app.models import (
     ServiceDataRetention,
     NOTIFICATION_CREATED,
     NOTIFICATION_CANCELLED,
-    JOB_STATUS_CANCELLED
+    JOB_STATUS_CANCELLED,
+    FactNotificationStatus
 )
 
 
 @statsd(namespace="dao")
 def dao_get_notification_outcomes_for_job(service_id, job_id):
-    return db.session.query(
-        func.count(Notification.status).label('count'),
-        Notification.status
+    notification_statuses = db.session.query(
+        func.count(Notification.status).label('count'), Notification.status
     ).filter(
         Notification.service_id == service_id,
         Notification.job_id == job_id
     ).group_by(
         Notification.status
     ).all()
+
+    if not notification_statuses:
+        notification_statuses = db.session.query(
+            FactNotificationStatus.notification_count.label('count'),
+            FactNotificationStatus.notification_status.label('status')
+        ).filter(
+            FactNotificationStatus.service_id == service_id,
+            FactNotificationStatus.job_id == job_id
+        ).all()
+    return notification_statuses
 
 
 def dao_get_job_by_service_id_and_job_id(service_id, job_id):
