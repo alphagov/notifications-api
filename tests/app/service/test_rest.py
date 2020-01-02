@@ -2282,7 +2282,8 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
         'filename': 'valid.pdf',
         'created_by': str(user.id),
         'file_id': fake_uuid,
-        'postage': 'second'
+        'postage': 'second',
+        'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'
     })
 
     response = client.post(
@@ -2303,11 +2304,13 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
             {'error': 'ValidationError', 'message': 'postage is a required property'},
             {'error': 'ValidationError', 'message': 'filename is a required property'},
             {'error': 'ValidationError', 'message': 'created_by is a required property'},
-            {'error': 'ValidationError', 'message': 'file_id is a required property'}
+            {'error': 'ValidationError', 'message': 'file_id is a required property'},
+            {'error': 'ValidationError', 'message': 'recipient_address is a required property'}
         ]
     ),
     (
-        {"postage": "third", "filename": "string", "created_by": "string", "file_id": "string"},
+        {"postage": "third", "filename": "string", "created_by": "string", "file_id": "string",
+         "recipient_address": "Some Address"},
         [
             {'error': 'ValidationError', 'message': 'postage invalid. It must be either first or second.'}
         ]

@@ -309,7 +309,6 @@ def process_sanitised_letter(
     validation_status,
     filename,
     notification_id,
-    recipient_address=None
 ):
     current_app.logger.info('Processing sanitised letter with id {}'.format(notification_id))
     notification = get_notification_by_id(notification_id, _raise=True)

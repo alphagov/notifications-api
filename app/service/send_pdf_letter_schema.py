@@ -8,6 +8,7 @@ send_pdf_letter_request = {
         "filename": {"type": "string"},
         "created_by": {"type": "string"},
         "file_id": {"type": "string"},
+        "recipient_address": {"type": "string"}
     },
-    "required": ["postage", "filename", "created_by", "file_id"]
+    "required": ["postage", "filename", "created_by", "file_id", "recipient_address"]
 }
