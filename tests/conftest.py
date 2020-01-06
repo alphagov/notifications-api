@@ -130,14 +130,12 @@ def os_environ():
     """
     # for use whenever you expect code to edit environment variables
     old_env = os.environ.copy()
-
-    class EnvironDict(dict):
-        def __setitem__(self, key, value):
-            assert type(value) == str
-            super().__setitem__(key, value)
-
     os.environ.clear()
+
     yield
+
+    # clear afterwards in case anything extra was added to the environment during the test
+    os.environ.clear()
     for k, v in old_env.items():
         os.environ[k] = v
 
