@@ -21,7 +21,9 @@ def reload_config():
 
     yield
 
-    os.environ = old_env
+    for k, v in old_env.items():
+        os.environ[k] = v
+
     importlib.reload(config)
 
 

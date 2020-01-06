@@ -136,9 +136,10 @@ def os_environ():
             assert type(value) == str
             super().__setitem__(key, value)
 
-    os.environ = EnvironDict()
+    os.environ.clear()
     yield
-    os.environ = old_env
+    for k, v in old_env.items():
+        os.environ[k] = v
 
 
 def pytest_generate_tests(metafunc):
