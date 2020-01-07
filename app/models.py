@@ -1569,6 +1569,7 @@ class Notification(db.Model):
         serialized = {
             "row_number": '' if self.job_row_number is None else self.job_row_number + 1,
             "recipient": self.to,
+            "client_reference": self.client_reference or '',
             "template_name": self.template.name,
             "template_type": self.template.template_type,
             "job_name": self.job.original_file_name if self.job else '',
