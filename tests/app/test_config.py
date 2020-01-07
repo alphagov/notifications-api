@@ -21,14 +21,17 @@ def reload_config():
 
     yield
 
-    os.environ = old_env
+    os.environ.clear()
+    for k, v in old_env.items():
+        os.environ[k] = v
+
     importlib.reload(config)
 
 
-def test_load_cloudfoundry_config_if_available(monkeypatch, reload_config):
+def test_load_cloudfoundry_config_if_available(reload_config):
     os.environ['ADMIN_BASE_URL'] = 'env'
-    monkeypatch.setenv('VCAP_SERVICES', 'some json blob')
-    monkeypatch.setenv('VCAP_APPLICATION', 'some json blob')
+    os.environ['VCAP_SERVICES'] = 'some json blob'
+    os.environ['VCAP_APPLICATION'] = 'some json blob'
 
     with mock.patch('app.cloudfoundry_config.extract_cloudfoundry_config', side_effect=cf_conf) as cf_config:
         # reload config so that its module level code (ie: all of it) is re-instantiated
@@ -40,10 +43,9 @@ def test_load_cloudfoundry_config_if_available(monkeypatch, reload_config):
     assert config.Config.ADMIN_BASE_URL == 'cf'
 
 
-def test_load_config_if_cloudfoundry_not_available(monkeypatch, reload_config):
+def test_load_config_if_cloudfoundry_not_available(reload_config):
     os.environ['ADMIN_BASE_URL'] = 'env'
-
-    monkeypatch.delenv('VCAP_SERVICES', raising=False)
+    os.environ.pop('VCAP_SERVICES', None)
 
     with mock.patch('app.cloudfoundry_config.extract_cloudfoundry_config') as cf_config:
         # reload config so that its module level code (ie: all of it) is re-instantiated
