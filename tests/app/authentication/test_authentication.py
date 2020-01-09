@@ -22,7 +22,7 @@ def test_should_not_allow_request_with_no_token(client, auth_fn):
     request.headers = {}
     with pytest.raises(AuthError) as exc:
         auth_fn()
-    assert exc.value.short_message == 'Unauthorized, authentication token must be provided'
+    assert exc.value.short_message == 'Unauthorized: authentication token must be provided'
 
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
@@ -30,7 +30,7 @@ def test_should_not_allow_request_with_incorrect_header(client, auth_fn):
     request.headers = {'Authorization': 'Basic 1234'}
     with pytest.raises(AuthError) as exc:
         auth_fn()
-    assert exc.value.short_message == 'Unauthorized, authentication bearer scheme must be used'
+    assert exc.value.short_message == 'Unauthorized: authentication bearer scheme must be used'
 
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
@@ -38,7 +38,7 @@ def test_should_not_allow_request_with_incorrect_token(client, auth_fn):
     request.headers = {'Authorization': 'Bearer 1234'}
     with pytest.raises(AuthError) as exc:
         auth_fn()
-    assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
+    assert exc.value.short_message == 'Invalid token: API token is not valid'
 
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
@@ -80,28 +80,7 @@ def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_auth()
-    assert exc.value.short_message == 'Invalid token: signature, api token not found'
-
-
-def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
-    iss = str(sample_api_key.service_id)
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS512'
-    }
-
-    claims = {
-        'iss': iss,
-        'iat': int(time.time())
-    }
-
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
-
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
-    with pytest.raises(AuthError) as exc:
-        requires_auth()
-    assert exc.value.short_message == 'Invalid token: algorithm used is not HS256'
+    assert exc.value.short_message == 'Invalid token: API key not found'
 
 
 def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
@@ -123,7 +102,50 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key)
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_admin_auth()
-    assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
+    assert exc.value.short_message == 'Invalid token: API token is not valid'
+
+
+def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS512'
+    }
+
+    claims = {
+        'iss': iss,
+        'iat': int(time.time())
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert 'Invalid token: algorithm used is not HS256' in exc.value.short_message
+
+
+def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        'iss': iss,
+        'iat': int(time.time()),
+        'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
+    }
+
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: API key not found'
 
 
 def test_should_not_allow_invalid_secret(client, sample_api_key):
@@ -136,7 +158,7 @@ def test_should_not_allow_invalid_secret(client, sample_api_key):
     )
     assert response.status_code == 403
     data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: signature, api token not found']}
+    assert data['message'] == {"token": ['Invalid token: API key not found']}
 
 
 @pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
@@ -253,7 +275,7 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
             headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
+    assert error_message['message'] == {"token": ["Invalid token: API token is not valid"]}
 
 
 def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
@@ -268,7 +290,7 @@ def test_authentication_returns_error_when_admin_client_secret_is_invalid(client
         headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Invalid token: signature, api token is not valid"]}
+    assert error_message['message'] == {"token": ["Invalid token: API token is not valid"]}
     current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
 
 

@@ -36,12 +36,12 @@ class AuthError(Exception):
 def get_auth_token(req):
     auth_header = req.headers.get('Authorization', None)
     if not auth_header:
-        raise AuthError('Unauthorized, authentication token must be provided', 401)
+        raise AuthError('Unauthorized: authentication token must be provided', 401)
 
     auth_scheme = auth_header[:7].title()
 
     if auth_scheme != 'Bearer ':
-        raise AuthError('Unauthorized, authentication bearer scheme must be used', 401)
+        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
 
     return auth_header[7:]
 
@@ -60,7 +60,7 @@ def requires_admin_auth():
         g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
         return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
     else:
-        raise AuthError('Unauthorized, admin authentication token required', 401)
+        raise AuthError('Unauthorized: admin authentication token required', 401)
 
 
 def requires_auth():
@@ -108,7 +108,7 @@ def requires_auth():
         return
     else:
         # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: signature, api token not found", 403, service_id=service.id)
+        raise AuthError("Invalid token: API key not found", 403, service_id=service.id)
 
 
 def __get_token_issuer(auth_token):
@@ -117,7 +117,7 @@ def __get_token_issuer(auth_token):
     except TokenIssuerError:
         raise AuthError("Invalid token: iss field not provided", 403)
     except TokenDecodeError:
-        raise AuthError("Invalid token: signature, api token is not valid", 403)
+        raise AuthError("Invalid token: API token is not valid", 403)
     return client
 
 
@@ -127,4 +127,4 @@ def handle_admin_key(auth_token, secret):
     except TokenExpiredError:
         raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
     except TokenDecodeError:
-        raise AuthError("Invalid token: signature, api token is not valid", 403)
+        raise AuthError("Invalid token: API token is not valid", 403)
