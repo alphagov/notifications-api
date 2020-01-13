@@ -1,3 +1,5 @@
+import urllib
+
 from flask import current_app
 from notifications_utils.s3 import S3ObjectNotFound, s3download as utils_s3download
 from sqlalchemy.orm.exc import NoResultFound
@@ -141,7 +143,7 @@ def send_pdf_letter_notification(service_id, post_data):
     check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
     validate_created_by(service, post_data['created_by'])
     validate_and_format_recipient(
-        send_to=post_data['filename'],
+        send_to=post_data['recipient_address'],
         key_type=KEY_TYPE_NORMAL,
         service=service,
         notification_type=LETTER_TYPE,
@@ -172,7 +174,7 @@ def send_pdf_letter_notification(service_id, post_data):
         template_id=template.id,
         template_version=template.version,
         template_postage=template.postage,
-        recipient=post_data['filename'],
+        recipient=urllib.parse.unquote(post_data['recipient_address']),
         service=service,
         personalisation=personalisation,
         notification_type=LETTER_TYPE,

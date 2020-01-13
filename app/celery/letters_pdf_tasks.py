@@ -255,7 +255,8 @@ def process_virus_scan_passed(self, filename):
         update_letter_pdf_status(
             reference=reference,
             status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
-            billable_units=billable_units
+            billable_units=billable_units,
+            recipient_address=sanitise_response.get("recipient_address")
         )
         scan_pdf_object.delete()
     except BotoClientError:
@@ -474,14 +475,14 @@ def process_virus_scan_error(filename):
     raise error
 
 
-def update_letter_pdf_status(reference, status, billable_units):
+def update_letter_pdf_status(reference, status, billable_units, recipient_address=None):
+
+    update_dict = {'status': status, 'billable_units': billable_units, 'updated_at': datetime.utcnow()}
+    if recipient_address:
+        update_dict['to'] = recipient_address
     return dao_update_notifications_by_reference(
         references=[reference],
-        update_dict={
-            'status': status,
-            'billable_units': billable_units,
-            'updated_at': datetime.utcnow()
-        })[0]
+        update_dict=update_dict)[0]
 
 
 def replay_letters_in_error(filename=None):

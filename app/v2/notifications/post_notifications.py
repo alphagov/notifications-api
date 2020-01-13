@@ -75,8 +75,10 @@ def post_precompiled_letter_notification():
 
     template = get_precompiled_letter_template(authenticated_service.id)
 
+    # For precompiled letters the to field will be set to Provided as PDF until the validation passes,
+    # then the address of the letter will be set as the to field
     form['personalisation'] = {
-        'address_line_1': form['reference']
+        'address_line_1': 'Provided as PDF'
     }
 
     reply_to = get_reply_to_text(LETTER_TYPE, form, template)

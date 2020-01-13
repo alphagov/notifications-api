@@ -22,7 +22,8 @@ def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_perm
     permissions,
 ):
     service = create_service(service_permissions=permissions)
-    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first'}
+    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first',
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(service.id, post_data)
@@ -36,7 +37,8 @@ def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_mess
     mocker.patch(
         'app.service.send_notification.check_service_over_daily_message_limit',
         side_effect=TooManyRequestsError(10))
-    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first'}
+    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first',
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(TooManyRequestsError):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
@@ -45,7 +47,8 @@ def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_mess
 def test_send_pdf_letter_notification_validates_created_by(
     sample_service_full_permissions, fake_uuid, sample_user
 ):
-    post_data = {'filename': 'valid.pdf', 'created_by': sample_user.id, 'file_id': fake_uuid, 'postage': 'first'}
+    post_data = {'filename': 'valid.pdf', 'created_by': sample_user.id, 'file_id': fake_uuid, 'postage': 'first',
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
@@ -58,7 +61,8 @@ def test_send_pdf_letter_notification_raises_error_if_service_in_trial_mode(
 ):
     sample_service_full_permissions.restricted = True
     user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid}
+    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid,
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(BadRequestError) as e:
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
@@ -72,7 +76,8 @@ def test_send_pdf_letter_notification_raises_error_when_pdf_is_not_in_transient_
     notify_user,
 ):
     user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid, 'postage': 'first'}
+    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid, 'postage': 'first',
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
     mocker.patch('app.service.send_notification.utils_s3download', side_effect=S3ObjectNotFound({}, ''))
 
     with pytest.raises(S3ObjectNotFound):
@@ -88,7 +93,8 @@ def test_send_pdf_letter_notification_creates_notification_and_moves_letter(
     user = sample_service_full_permissions.users[0]
     filename = 'valid.pdf'
     file_id = uuid.uuid4()
-    post_data = {'filename': filename, 'created_by': user.id, 'file_id': file_id, 'postage': 'second'}
+    post_data = {'filename': filename, 'created_by': user.id, 'file_id': file_id, 'postage': 'second',
+                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     mocker.patch('app.service.send_notification.utils_s3download')
     mocker.patch('app.service.send_notification.get_page_count', return_value=1)
@@ -105,7 +111,8 @@ def test_send_pdf_letter_notification_creates_notification_and_moves_letter(
     assert notification.postage == 'second'
     assert notification.notification_type == LETTER_TYPE
     assert notification.billable_units == 1
-    assert notification.to == filename
+    assert notification.to == "Bugs Bunny\n123 Main Street\nLooney Town"
+
     assert notification.service_id == sample_service_full_permissions.id
 
     assert result == {'id': str(notification.id)}
