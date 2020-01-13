@@ -296,7 +296,7 @@ class Config(object):
         },
         'raise-alert-if-letter-notifications-still-sending': {
             'task': 'raise-alert-if-letter-notifications-still-sending',
-            'schedule': crontab(hour=16, minute=30),
+            'schedule': crontab(hour=15, minute=30),
             'options': {'queue': QueueNames.PERIODIC}
         },
         # The collate-letter-pdf does assume it is called in an hour that BST does not make a
