@@ -703,7 +703,7 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
 
 
 @pytest.mark.parametrize('status, expected_message', [
-    ('virus-scan-failed', 'Document did not pass the virus scan'),
+    ('virus-scan-failed', 'File did not pass the virus scan'),
     ('technical-failure', 'PDF not available for letters in status technical-failure'),
 ])
 def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
