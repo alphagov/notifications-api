@@ -525,7 +525,7 @@ def dao_fetch_active_users_for_service(service_id):
     return query.all()
 
 
-def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=100):
+def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500):
     return db.session.query(
         Notification.service_id.label('service_id'),
         func.count(Notification.id).label('notification_count')

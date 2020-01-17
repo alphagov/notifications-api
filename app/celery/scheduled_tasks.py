@@ -286,7 +286,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
             )
             message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
     elif services_sending_to_tv_numbers:
-        message += "{} service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n".format(
+        message += "{} service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n".format(
             len(services_sending_to_tv_numbers)
         )
         for service in services_sending_to_tv_numbers:

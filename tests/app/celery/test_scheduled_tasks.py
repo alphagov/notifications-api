@@ -526,7 +526,7 @@ MockServicesWithHighFailureRate = namedtuple(
     [
         [],
         [MockServicesSendingToTVNumbers("123", 300)],
-        "1 service(s) have sent over 100 sms messages to tv numbers in last 24 hours:\n"
+        "1 service(s) have sent over 500 sms messages to tv numbers in last 24 hours:\n"
         "service: {}/services/{} count of sms to tv numbers: 300,\n".format(
             Config.ADMIN_BASE_URL, "123"
         )
