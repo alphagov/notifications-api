@@ -1,4 +1,3 @@
-import requests
 import requests_mock
 import pytest
 
@@ -33,26 +32,27 @@ def test_upload_document(document_download):
     assert resp == 'https://document-download/services/service-id/documents/uploaded-url'
 
 
-def test_should_raise_for_status(document_download):
+def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post('https://document-download/services/service-id/documents', json={
-            'error': 'Invalid encoding'
-        }, status_code=403)
+            'error': 'Invalid mime type'
+        }, status_code=400)
 
         document_download.upload_document('service-id', 'abababab')
 
-    assert excinfo.value.message == 'Invalid encoding'
-    assert excinfo.value.status_code == 403
+    assert excinfo.value.message == 'Invalid mime type'
+    assert excinfo.value.status_code == 400
 
 
-def test_should_raise_for_connection_errors(document_download):
-    with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
+def test_should_raise_non_400_statuses_as_exceptions(document_download):
+    with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post(
             'https://document-download/services/service-id/documents',
-            exc=requests.exceptions.ConnectTimeout
+            json={'error': 'Auth Error Of Some Kind'},
+            status_code=403
         )
 
         document_download.upload_document('service-id', 'abababab')
 
-    assert excinfo.value.message == 'connection error'
-    assert excinfo.value.status_code == 503
+    assert type(excinfo.value) == Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
+    assert str(excinfo.value) == 'Unhandled document download error: {"error": "Auth Error Of Some Kind"}'
