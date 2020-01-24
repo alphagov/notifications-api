@@ -38,7 +38,7 @@ def test_should_not_allow_request_with_incorrect_token(client, auth_fn):
     request.headers = {'Authorization': 'Bearer 1234'}
     with pytest.raises(AuthError) as exc:
         auth_fn()
-    assert exc.value.short_message == 'Invalid token: API token is not valid'
+    assert 'Invalid token: API token is not valid. See our requirements' in exc.value.short_message
 
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
@@ -59,7 +59,7 @@ def test_should_not_allow_request_with_no_iss(client, auth_fn):
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         auth_fn()
-    assert exc.value.short_message == 'Invalid token: iss field not provided'
+    assert 'Invalid token: iss field not provided. See our requirements' in exc.value.short_message
 
 
 def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
@@ -80,6 +80,7 @@ def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_auth()
+    # TODO: This is not the correct error message to show here
     assert exc.value.short_message == 'Invalid token: API key not found'
 
 
@@ -123,7 +124,7 @@ def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_a
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_auth()
-    assert 'Invalid token: algorithm used is not HS256' in exc.value.short_message
+    assert 'Invalid token: algorithm used is not HS256. See our requirements' in exc.value.short_message
 
 
 def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
@@ -145,6 +146,7 @@ def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key)
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_auth()
+    # TODO: this is not the correct error message to show here
     assert exc.value.short_message == 'Invalid token: API key not found'
 
 

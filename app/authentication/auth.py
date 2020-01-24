@@ -9,6 +9,8 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
+TOKEN_ERROR_GUIDANCE = "See our requirements for JSON Web Tokens at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header"  # noqa
+
 
 class AuthError(Exception):
     def __init__(self, message, code, service_id=None, api_key_id=None):
@@ -88,7 +90,7 @@ def requires_auth():
         except TokenAlgorithmError:
             # During decoding and validation, it appears the token was created with an algorithm
             # we don't allow so it fails validation
-            err_msg = "Invalid token: algorithm used is not HS256"
+            err_msg = "Invalid token: algorithm used is not HS256. " + TOKEN_ERROR_GUIDANCE
             raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
         except TokenDecodeError:
             # Given the algorithm chosen was fine, we attempted to validate the token but it failed
@@ -120,9 +122,9 @@ def __get_token_issuer(auth_token):
     try:
         issuer = get_token_issuer(auth_token)
     except TokenIssuerError:
-        raise AuthError("Invalid token: iss field not provided", 403)
+        raise AuthError("Invalid token: iss field not provided. " + TOKEN_ERROR_GUIDANCE, 403)
     except TokenDecodeError:
-        raise AuthError("Invalid token: API token is not valid", 403)
+        raise AuthError("Invalid token: API token is not valid. " + TOKEN_ERROR_GUIDANCE, 403)
     return issuer
 
 
