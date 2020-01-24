@@ -15,7 +15,7 @@ from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
 
-from app import notify_celery
+from app import encryption, notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import (
@@ -302,14 +302,12 @@ def sanitise_letter(self, filename):
 
 
 @notify_celery.task(name='process-sanitised-letter')
-def process_sanitised_letter(
-    page_count,
-    message,
-    invalid_pages,
-    validation_status,
-    filename,
-    notification_id,
-):
+def process_sanitised_letter(sanitise_data):
+    letter_details = encryption.decrypt(sanitise_data)
+
+    filename = letter_details['filename']
+    notification_id = letter_details['notification_id']
+
     current_app.logger.info('Processing sanitised letter with id {}'.format(notification_id))
     notification = get_notification_by_id(notification_id, _raise=True)
 
@@ -323,7 +321,7 @@ def process_sanitised_letter(
     try:
         original_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
 
-        if validation_status == 'failed':
+        if letter_details['validation_status'] == 'failed':
             current_app.logger.info('Processing invalid precompiled pdf with id {} (file {})'.format(
                 notification_id, filename))
 
@@ -331,16 +329,16 @@ def process_sanitised_letter(
                 notification=notification,
                 filename=filename,
                 scan_pdf_object=original_pdf_object,
-                message=message,
-                invalid_pages=invalid_pages,
-                page_count=page_count,
+                message=letter_details['message'],
+                invalid_pages=letter_details['invalid_pages'],
+                page_count=letter_details['page_count'],
             )
             return
 
         current_app.logger.info('Processing valid precompiled pdf with id {} (file {})'.format(
             notification_id, filename))
 
-        billable_units = get_billable_units_for_letter_page_count(page_count)
+        billable_units = get_billable_units_for_letter_page_count(letter_details['page_count'])
         is_test_key = notification.key_type == KEY_TYPE_TEST
 
         move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_key, notification.created_at)
