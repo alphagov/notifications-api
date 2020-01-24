@@ -29,6 +29,7 @@ from app.models import EMAIL_AUTH_TYPE, User, VerifyCode
 from tests.app.db import create_permissions, create_service, create_template_folder, create_user
 
 
+@freeze_time('2020-01-28T12:00:00')
 @pytest.mark.parametrize('phone_number', [
     '+447700900986',
     '+1-800-555-5555',
@@ -42,12 +43,14 @@ def test_create_user(notify_db_session, phone_number):
         'mobile_number': phone_number
     }
     user = User(**data)
-    save_model_user(user)
+    save_model_user(user, password='password', validated_email_access=True)
     assert User.query.count() == 1
-    assert User.query.first().email_address == email
-    assert User.query.first().id == user.id
-    assert User.query.first().mobile_number == phone_number
-    assert not user.platform_admin
+    user_query = User.query.first()
+    assert user_query.email_address == email
+    assert user_query.id == user.id
+    assert user_query.mobile_number == phone_number
+    assert user_query.email_access_validated_at == datetime.utcnow()
+    assert not user_query.platform_admin
 
 
 def test_get_all_users(notify_db_session):
@@ -148,11 +151,20 @@ def test_update_user_attribute(client, sample_user, user_attribute, user_value):
     assert getattr(sample_user, user_attribute) == user_value
 
 
-def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user):
+@freeze_time('2020-01-24T12:00:00')
+@pytest.mark.parametrize('from_email', [True, False])
+def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user, from_email):
+    sample_user.password_changed_at = datetime.utcnow() - timedelta(days=1)
+    sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)
     password = 'newpassword'
     assert not sample_user.check_password(password)
-    update_user_password(sample_user, password)
+    update_user_password(sample_user, password, validated_email_access=from_email)
     assert sample_user.check_password(password)
+    assert sample_user.password_changed_at == datetime.utcnow()
+    if from_email:
+        assert sample_user.email_access_validated_at == datetime.utcnow()
+    else:
+        assert sample_user.email_access_validated_at == datetime.utcnow() - timedelta(days=1)
 
 
 def test_count_user_verify_codes(sample_user):

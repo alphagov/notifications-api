@@ -28,15 +28,17 @@ def save_user_attribute(usr, update_dict={}):
     db.session.commit()
 
 
-def save_model_user(usr, update_dict={}, pwd=None):
-    if pwd:
-        usr.password = pwd
-        usr.password_changed_at = datetime.utcnow()
+def save_model_user(user, update_dict={}, password=None, validated_email_access=False):
+    if password:
+        user.password = password
+        user.password_changed_at = datetime.utcnow()
+    if validated_email_access:
+        user.email_access_validated_at = datetime.utcnow()
     if update_dict:
         _remove_values_for_keys_if_present(update_dict, ['id', 'password_changed_at'])
-        db.session.query(User).filter_by(id=usr.id).update(update_dict)
+        db.session.query(User).filter_by(id=user.id).update(update_dict)
     else:
-        db.session.add(usr)
+        db.session.add(user)
     db.session.commit()
 
 
@@ -121,10 +123,12 @@ def reset_failed_login_count(user):
         db.session.commit()
 
 
-def update_user_password(user, password):
+def update_user_password(user, password, validated_email_access=False):
     # reset failed login count - they've just reset their password so should be fine
     user.password = password
     user.password_changed_at = datetime.utcnow()
+    if validated_email_access:
+        user.email_access_validated_at = datetime.utcnow()
     db.session.add(user)
     db.session.commit()
 

@@ -40,6 +40,7 @@ def test_user_verify_sms_code(client, sample_sms_code):
     assert resp.status_code == 204
     assert VerifyCode.query.first().code_used
     assert sample_sms_code.user.logged_in_at == datetime.utcnow()
+    assert sample_sms_code.user.email_access_validated_at != datetime.utcnow()
     assert sample_sms_code.user.current_session_id is not None
 
 
@@ -417,6 +418,9 @@ def test_send_email_code_returns_404_for_bad_input_data(admin_request):
 
 @freeze_time('2016-01-01T12:00:00')
 def test_user_verify_email_code(admin_request, sample_user):
+    sample_user.logged_in_at = datetime.utcnow() - timedelta(days=1)
+    sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)
+    sample_user.auth_type = "email_auth"
     magic_code = str(uuid.uuid4())
     verify_code = create_user_code(sample_user, magic_code, EMAIL_TYPE)
 
@@ -434,6 +438,7 @@ def test_user_verify_email_code(admin_request, sample_user):
 
     assert verify_code.code_used
     assert sample_user.logged_in_at == datetime.utcnow()
+    assert sample_user.email_access_validated_at == datetime.utcnow()
     assert sample_user.current_session_id is not None
 
 

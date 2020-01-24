@@ -1189,7 +1189,7 @@ def test_add_existing_user_to_another_service_with_all_permissions(
                 mobile_number='+4477123456'
             )
             # they must exist in db first
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             data = {
                 "permissions": [
@@ -1253,7 +1253,7 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
                 password='password',
                 mobile_number='+4477123456'
             )
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             data = {
                 "permissions": [
@@ -1301,7 +1301,7 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
                 password='password',
                 mobile_number='+4477123456'
             )
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             data = {
                 "permissions": [
@@ -1348,7 +1348,7 @@ def test_add_existing_user_to_another_service_with_folder_permissions(notify_api
                 password='password',
                 mobile_number='+4477123456'
             )
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             folder_1 = create_template_folder(sample_service)
             folder_2 = create_template_folder(sample_service)
@@ -1389,7 +1389,7 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
                 password='password',
                 mobile_number='+4477123456'
             )
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             data = {"permissions": [{"permission": "manage_api_keys"}]}
 
@@ -1428,7 +1428,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
                 password='password',
                 mobile_number='+4477123456'
             )
-            save_model_user(user_to_add)
+            save_model_user(user_to_add, validated_email_access=True)
 
             incorrect_id = uuid.uuid4()
 
