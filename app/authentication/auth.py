@@ -1,7 +1,7 @@
 from flask import request, _request_ctx_stack, current_app, g
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import (
-    TokenDecodeError, TokenExpiredError, TokenIssuerError, TokenAlgorithmError
+    TokenDecodeError, TokenExpiredError, TokenIssuerError, TokenAlgorithmError, TokenError
 )
 from notifications_utils import request_helper
 from sqlalchemy.exc import DataError
@@ -100,6 +100,10 @@ def requires_auth():
             # API key matches for this service but there was an error with the expiry of the token
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
             raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+        except TokenError:
+            err_msg = "Invalid token: API token is not valid. " + TOKEN_ERROR_GUIDANCE
+            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+
 
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
