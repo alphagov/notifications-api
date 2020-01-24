@@ -67,10 +67,10 @@ def requires_auth():
     request_helper.check_proxy_header_before_request()
 
     auth_token = get_auth_token(request)
-    client = __get_token_issuer(auth_token)
+    issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
     try:
-        service = dao_fetch_service_by_id_with_api_keys(client)
+        service = dao_fetch_service_by_id_with_api_keys(issuer)
     except DataError:
         raise AuthError("Invalid token: service id is not the right data type", 403)
     except NoResultFound:
@@ -85,14 +85,19 @@ def requires_auth():
     for api_key in service.api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
-        except TokenExpiredError:
-            err_msg = "Error: Your system clock must be accurate to within 30 seconds"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
         except TokenAlgorithmError:
+            # During decoding and validation, it appears the token was created with an algorithm
+            # we don't allow so it fails validation
             err_msg = "Invalid token: algorithm used is not HS256"
             raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
         except TokenDecodeError:
+            # Given the algorithm chosen was fine, we attempted to validate the token but it failed
+            # meaning it was not signed using this api key, let's try the next one
             continue
+        except TokenExpiredError:
+            # API key matches for this service but there was an error with the expiry of the token
+            err_msg = "Error: Your system clock must be accurate to within 30 seconds"
+            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
@@ -100,7 +105,7 @@ def requires_auth():
         g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
-        current_app.logger.info('API authorised for service {} with api key {}, using client {}'.format(
+        current_app.logger.info('API authorised for service {} with api key {}, using issuer {}'.format(
             service.id,
             api_key.id,
             request.headers.get('User-Agent')
@@ -113,12 +118,12 @@ def requires_auth():
 
 def __get_token_issuer(auth_token):
     try:
-        client = get_token_issuer(auth_token)
+        issuer = get_token_issuer(auth_token)
     except TokenIssuerError:
         raise AuthError("Invalid token: iss field not provided", 403)
     except TokenDecodeError:
         raise AuthError("Invalid token: API token is not valid", 403)
-    return client
+    return issuer
 
 
 def handle_admin_key(auth_token, secret):
