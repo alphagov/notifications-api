@@ -256,7 +256,7 @@ def test_post_notification_returns_401_and_well_formed_auth_error(client, sample
     error_resp = json.loads(response.get_data(as_text=True))
     assert error_resp['status_code'] == 401
     assert error_resp['errors'] == [{'error': "AuthError",
-                                     'message': 'Unauthorized, authentication token must be provided'}]
+                                     'message': 'Unauthorized: authentication token must be provided'}]
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
