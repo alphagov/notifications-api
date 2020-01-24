@@ -126,6 +126,29 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key)
     assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
 
 
+def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
+    iss = str(sample_api_key.service_id)
+    key = get_unsigned_secrets(sample_api_key.service_id)[0]
+
+    headers = {
+        "typ": 'JWT',
+        "alg": 'HS256'
+    }
+
+    claims = {
+        'iss': iss,
+        'iat': int(time.time()),
+        'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
+    }
+
+    token = jwt.encode(payload=claims, key=key, headers=headers).decode()
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: signature, api token is not valid'
+
+
 def test_should_not_allow_invalid_secret(client, sample_api_key):
     token = create_jwt_token(
         secret="not-so-secret",
