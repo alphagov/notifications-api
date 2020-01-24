@@ -347,7 +347,8 @@ def process_sanitised_letter(sanitise_data):
         update_letter_pdf_status(
             reference=notification.reference,
             status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
-            billable_units=billable_units
+            billable_units=billable_units,
+            recipient_address=letter_details['address']
         )
 
     except BotoClientError:
