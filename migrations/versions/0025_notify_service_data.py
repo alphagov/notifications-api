@@ -11,7 +11,7 @@ from datetime import datetime
 
 from alembic import op
 
-from app.encryption import hashpw
+from app.hashing import hashpw
 import uuid
 revision = '0025_notify_service_data'
 down_revision = '0024_add_research_mode_defaults'

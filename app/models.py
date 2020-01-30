@@ -29,7 +29,7 @@ from notifications_utils.template import (
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
-from app.encryption import (
+from app.hashing import (
     hashpw,
     check_hash
 )

@@ -11,6 +11,7 @@ from time import monotonic
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
+from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils import logging, request_helper
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
@@ -22,7 +23,6 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
-from app.encryption import Encryption
 
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"

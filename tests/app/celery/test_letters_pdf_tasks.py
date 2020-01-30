@@ -13,6 +13,7 @@ from celery.exceptions import MaxRetriesExceededError, Retry
 from requests import RequestException
 from sqlalchemy.orm.exc import NoResultFound
 
+from app import encryption
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.celery.letters_pdf_tasks import (
@@ -773,17 +774,20 @@ def test_process_sanitised_letter_with_valid_letter(
     sample_letter_notification.billable_units = 1
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
 
-    process_sanitised_letter(
-        page_count=2,
-        message=None,
-        invalid_pages=None,
-        validation_status='passed',
-        filename=filename,
-        notification_id=str(sample_letter_notification.id)
-    )
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': filename,
+        'notification_id': str(sample_letter_notification.id),
+        'address': 'A. User\nThe house on the corner'
+    })
+    process_sanitised_letter(encrypted_data)
 
     assert sample_letter_notification.status == expected_status
     assert sample_letter_notification.billable_units == 1
+    assert sample_letter_notification.to == 'A. User\nThe house on the corner'
 
     assert not [x for x in scan_bucket.objects.all()]
     assert not [x for x in template_preview_bucket.objects.all()]
@@ -815,14 +819,16 @@ def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification
     sample_letter_notification.billable_units = 1
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
 
-    process_sanitised_letter(
-        page_count=2,
-        message='content-outside-printable-area',
-        invalid_pages=[1],
-        validation_status='failed',
-        filename=filename,
-        notification_id=str(sample_letter_notification.id)
-    )
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': 'content-outside-printable-area',
+        'invalid_pages': [1],
+        'validation_status': 'failed',
+        'filename': filename,
+        'notification_id': str(sample_letter_notification.id),
+        'address': None,
+    })
+    process_sanitised_letter(encrypted_data)
 
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     assert sample_letter_notification.billable_units == 0
@@ -842,14 +848,16 @@ def test_process_sanitised_letter_when_letter_status_is_not_pending_virus_scan(
     mock_s3 = mocker.patch('app.celery.letters_pdf_tasks.s3')
     sample_letter_notification.status = NOTIFICATION_CREATED
 
-    process_sanitised_letter(
-        page_count=2,
-        message=None,
-        invalid_pages=None,
-        validation_status='passed',
-        filename='NOTIFY.{}'.format(sample_letter_notification.reference),
-        notification_id=str(sample_letter_notification.id)
-    )
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': 'NOTIFY.{}'.format(sample_letter_notification.reference),
+        'notification_id': str(sample_letter_notification.id),
+        'address': None
+    })
+    process_sanitised_letter(encrypted_data)
 
     assert not mock_s3.called
 
@@ -861,15 +869,18 @@ def test_process_sanitised_letter_puts_letter_into_tech_failure_for_boto_errors(
     mocker.patch('app.celery.letters_pdf_tasks.s3.get_s3_object', side_effect=ClientError({}, 'operation_name'))
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
 
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': 'NOTIFY.{}'.format(sample_letter_notification.reference),
+        'notification_id': str(sample_letter_notification.id),
+        'address': None
+    })
+
     with pytest.raises(NotificationTechnicalFailureException):
-        process_sanitised_letter(
-            page_count=2,
-            message=None,
-            invalid_pages=None,
-            validation_status='passed',
-            filename='NOTIFY.{}'.format(sample_letter_notification.reference),
-            notification_id=str(sample_letter_notification.id)
-        )
+        process_sanitised_letter(encrypted_data)
 
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
