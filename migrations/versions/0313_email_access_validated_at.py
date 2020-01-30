@@ -22,8 +22,6 @@ def upgrade():
             users
         SET
             email_access_validated_at = created_at
-        WHERE
-            auth_type = 'sms_auth'
     """)
     op.execute("""
         UPDATE
@@ -32,6 +30,8 @@ def upgrade():
             email_access_validated_at = logged_in_at
         WHERE
             auth_type = 'email_auth'
+        AND
+            email_access_validated_at IS NOT NULL
     """)
     op.alter_column('users', 'email_access_validated_at', nullable=False)
     # ### end Alembic commands ###
