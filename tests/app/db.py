@@ -82,7 +82,7 @@ def create_user(
     user = User.query.filter_by(email_address=email).first()
     if not user:
         user = User(**data)
-    save_model_user(user)
+    save_model_user(user, validated_email_access=True)
     return user
 
 

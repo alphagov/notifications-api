@@ -78,7 +78,7 @@ def create_user():
     if not req_json.get('password', None):
         errors.update({'password': ['Missing data for required field.']})
         raise InvalidRequest(errors, status_code=400)
-    save_model_user(user_to_create, pwd=req_json.get('password'))
+    save_model_user(user_to_create, password=req_json.get('password'), validated_email_access=True)
     result = user_to_create.serialize()
     return jsonify(data=result), 201
 
@@ -197,6 +197,8 @@ def verify_user_code(user_id):
 
     user_to_verify.current_session_id = str(uuid.uuid4())
     user_to_verify.logged_in_at = datetime.utcnow()
+    if user_to_verify.auth_type == 'email_auth':
+        user_to_verify.email_access_validated_at = datetime.utcnow()
     user_to_verify.failed_login_count = 0
     save_model_user(user_to_verify)
 
@@ -459,11 +461,12 @@ def send_user_reset_password():
 def update_password(user_id):
     user = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
-    pwd = req_json.get('_password')
+    password = req_json.get('_password')
+    validated_email_access = req_json.get('validated_email_access')
     update_dct, errors = user_update_password_schema_load_json.load(req_json)
     if errors:
         raise InvalidRequest(errors, status_code=400)
-    update_user_password(user, pwd)
+    update_user_password(user, password, validated_email_access=validated_email_access)
     return jsonify(data=user.serialize()), 200
 
 

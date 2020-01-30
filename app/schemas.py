@@ -101,6 +101,7 @@ class UserSchema(BaseSchema):
         model = models.User
         exclude = (
             "updated_at",
+            "email_access_validated_at",
             "created_at",
             "user_to_service",
             "user_to_organisation",

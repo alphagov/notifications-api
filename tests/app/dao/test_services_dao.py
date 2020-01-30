@@ -227,7 +227,7 @@ def test_should_add_user_to_service(notify_db_session):
         password='password',
         mobile_number='+447700900986'
     )
-    save_model_user(new_user)
+    save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service, new_user)
     assert new_user in Service.query.first().users
 
@@ -296,7 +296,7 @@ def test_should_remove_user_from_service(notify_db_session):
         password='password',
         mobile_number='+447700900986'
     )
-    save_model_user(new_user)
+    save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service, new_user)
     assert new_user in Service.query.first().users
     dao_remove_user_from_service(service, new_user)
@@ -397,7 +397,7 @@ def test_get_all_user_services_only_returns_services_user_has_access_to(notify_d
         password='password',
         mobile_number='+447700900986'
     )
-    save_model_user(new_user)
+    save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service_3, new_user)
     assert len(dao_fetch_all_services_by_user(user.id)) == 3
     assert dao_fetch_all_services_by_user(user.id)[0].name == 'service 1'
@@ -710,7 +710,7 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(not
         password='password',
         mobile_number='+447700900987'
     )
-    save_model_user(other_user)
+    save_model_user(other_user, validated_email_access=True)
     service_two = Service(name="service_two",
                           email_from="service_two",
                           message_limit=1000,
