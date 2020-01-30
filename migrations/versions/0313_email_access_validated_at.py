@@ -31,7 +31,7 @@ def upgrade():
         WHERE
             auth_type = 'email_auth'
         AND
-            email_access_validated_at IS NOT NULL
+            logged_in_at IS NOT NULL
     """)
     op.alter_column('users', 'email_access_validated_at', nullable=False)
     # ### end Alembic commands ###
