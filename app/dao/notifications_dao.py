@@ -30,6 +30,7 @@ from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
 from app.letters.utils import get_letter_pdf_filename
 from app.models import (
+    FactNotificationStatus,
     Notification,
     NotificationHistory,
     ProviderDetails,
@@ -68,6 +69,37 @@ def dao_get_last_template_usage(template_id, template_type, service_id):
     ).order_by(
         desc(Notification.created_at)
     ).first()
+
+
+@statsd(namespace="dao")
+def dao_get_last_date_template_was_used(template_id, template_type, service_id):
+    last_date = db.session.query(
+        functions.max(FactNotificationStatus.bst_date)
+    ).filter(
+        FactNotificationStatus.template_id == template_id,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST
+    ).scalar()
+
+    last_date_from_notifications = db.session.query(
+        functions.max(Notification.created_at)
+    ).filter(
+        Notification.service_id == service_id,
+        Notification.notification_type == template_type,
+        Notification.template_id == template_id,
+        Notification.key_type != KEY_TYPE_TEST
+    ).scalar()
+
+    if last_date and last_date_from_notifications:
+        if datetime.combine(last_date, datetime.utcnow().min.time()) >= last_date_from_notifications:
+            return last_date
+        else:
+            return last_date_from_notifications
+    elif not last_date:
+        return last_date_from_notifications
+    elif not last_date_from_notifications:
+        return last_date
+    else:
+        return None
 
 
 @statsd(namespace="dao")

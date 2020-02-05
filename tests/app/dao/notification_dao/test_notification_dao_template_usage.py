@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import pytest
-from app.dao.notifications_dao import dao_get_last_template_usage
-from tests.app.db import create_notification, create_template
+from app.dao.notifications_dao import dao_get_last_template_usage, dao_get_last_date_template_was_used
+from tests.app.db import create_notification, create_template, create_ft_notification_status
 
 
 def test_last_template_usage_should_get_right_data(sample_notification):
@@ -54,3 +54,56 @@ def test_last_template_usage_should_be_able_to_get_no_template_usage_history_if_
         sample_template):
     results = dao_get_last_template_usage(sample_template.id, 'sms', sample_template.service_id)
     assert not results
+
+
+@pytest.mark.parametrize('last_status_date, last_notification_date',
+                         [((datetime.utcnow() - timedelta(days=2)).date(), None),
+                          ((datetime.utcnow() - timedelta(days=2)).date(), datetime.utcnow() - timedelta(days=3))]
+                         )
+def test_dao_get_last_date_template_was_used_returns_bst_date_from_stats_table(
+        sample_template, last_status_date, last_notification_date
+):
+    create_ft_notification_status(bst_date=last_status_date,
+                                  template=sample_template)
+    if last_notification_date:
+        create_notification(template=sample_template, created_at=last_notification_date)
+    last_used_date = dao_get_last_date_template_was_used(template_id=sample_template.id,
+                                                         template_type='sms',
+                                                         service_id=sample_template.service_id)
+    assert last_used_date == last_status_date
+
+
+@pytest.mark.parametrize('last_notification_date, last_status_date',
+                         [(datetime.utcnow() - timedelta(hours=2), None),
+                          (datetime.utcnow() - timedelta(hours=2), (datetime.utcnow() - timedelta(days=2)).date())]
+                         )
+def test_dao_get_last_date_template_was_used_returns_created_at_from_notifications(
+        sample_template, last_status_date, last_notification_date
+):
+    create_notification(template=sample_template, created_at=last_notification_date)
+
+    if last_status_date:
+        create_ft_notification_status(bst_date=last_status_date, template=sample_template)
+    last_used_date = dao_get_last_date_template_was_used(template_id=sample_template.id,
+                                                         template_type='sms',
+                                                         service_id=sample_template.service_id)
+    assert last_used_date == last_notification_date
+
+
+def test_dao_get_last_date_template_was_used_returns_none_if_never_used(sample_template):
+    assert not dao_get_last_date_template_was_used(template_id=sample_template.id,
+                                                   template_type='sms',
+                                                   service_id=sample_template.service_id)
+
+
+def test_dao_get_last_date_template_was_used_correct_date(sample_template):
+    date_from_notification = datetime.utcnow() - timedelta(hours=2)
+    create_notification(template=sample_template, created_at=date_from_notification)
+    date_from_ft_status = (datetime.utcnow() - timedelta(days=2)).date()
+    create_ft_notification_status(bst_date=date_from_ft_status,
+                                  template=sample_template)
+
+    actual_result = dao_get_last_date_template_was_used(template_id=sample_template.id,
+                                                        template_type='sms',
+                                                        service_id=sample_template.service_id)
+    assert actual_result == date_from_notification
