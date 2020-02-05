@@ -221,7 +221,7 @@ def test_get_last_used_datetime_for_template_returns_400_if_service_does_not_exi
     )
 
 
-def test_get_last_used_datetime_for_template_returns_400_if_template_does_not_exist(
+def test_get_last_used_datetime_for_template_returns_404_if_template_does_not_exist(
     admin_request, sample_template
 ):
     admin_request.get(

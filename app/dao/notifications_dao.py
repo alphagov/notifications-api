@@ -72,7 +72,18 @@ def dao_get_last_template_usage(template_id, template_type, service_id):
 
 
 @statsd(namespace="dao")
-def dao_get_last_date_template_was_used(template_id, template_type, service_id):
+def dao_get_last_date_template_was_used(template_id, service_id):
+    last_date_from_notifications = db.session.query(
+        functions.max(Notification.created_at)
+    ).filter(
+        Notification.service_id == service_id,
+        Notification.template_id == template_id,
+        Notification.key_type != KEY_TYPE_TEST
+    ).scalar()
+
+    if last_date_from_notifications:
+        return last_date_from_notifications
+
     last_date = db.session.query(
         functions.max(FactNotificationStatus.bst_date)
     ).filter(
@@ -80,26 +91,7 @@ def dao_get_last_date_template_was_used(template_id, template_type, service_id):
         FactNotificationStatus.key_type != KEY_TYPE_TEST
     ).scalar()
 
-    last_date_from_notifications = db.session.query(
-        functions.max(Notification.created_at)
-    ).filter(
-        Notification.service_id == service_id,
-        Notification.notification_type == template_type,
-        Notification.template_id == template_id,
-        Notification.key_type != KEY_TYPE_TEST
-    ).scalar()
-
-    if last_date and last_date_from_notifications:
-        if datetime.combine(last_date, datetime.utcnow().min.time()) >= last_date_from_notifications:
-            return last_date
-        else:
-            return last_date_from_notifications
-    elif not last_date:
-        return last_date_from_notifications
-    elif not last_date_from_notifications:
-        return last_date
-    else:
-        return None
+    return last_date
 
 
 @statsd(namespace="dao")
