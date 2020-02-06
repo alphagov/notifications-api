@@ -210,6 +210,17 @@ def test_get_last_used_datetime_for_template(
     assert json_resp['last_date_used'] == date_from_notification.strftime(DATETIME_FORMAT)
 
 
+def test_get_last_used_datetime_for_template_returns_none_if_no_usage_of_template(
+    admin_request, sample_template
+):
+    json_resp = admin_request.get(
+        'template_statistics.get_last_used_datetime_for_template',
+        service_id=str(sample_template.service_id),
+        template_id=sample_template.id
+    )
+    assert json_resp['last_date_used'] is None
+
+
 def test_get_last_used_datetime_for_template_returns_400_if_service_does_not_exist(
     admin_request, sample_template
 ):
