@@ -97,13 +97,6 @@ def remove_s3_object(bucket_name, object_key):
     return obj.delete()
 
 
-def remove_transformed_dvla_file(job_id):
-    bucket_name = current_app.config['DVLA_BUCKETS']['job']
-    file_location = '{}-dvla-job.text'.format(job_id)
-    obj = get_s3_object(bucket_name, file_location)
-    return obj.delete()
-
-
 def get_list_of_files_by_suffix(bucket_name, subfolder='', suffix='', last_modified=None):
     s3_client = client('s3', current_app.config['AWS_REGION'])
     paginator = s3_client.get_paginator('list_objects_v2')

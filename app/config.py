@@ -263,11 +263,6 @@ class Config(object):
             'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'remove_transformed_dvla_files': {
-            'task': 'remove_transformed_dvla_files',
-            'schedule': crontab(hour=3, minute=40),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'remove_sms_email_jobs': {
             'task': 'remove_sms_email_jobs',
             'schedule': crontab(hour=4, minute=0),
@@ -275,7 +270,7 @@ class Config(object):
         },
         'remove_letter_jobs': {
             'task': 'remove_letter_jobs',
-            'schedule': crontab(hour=4, minute=20),  # this has to run AFTER remove_transformed_dvla_files
+            'schedule': crontab(hour=4, minute=20),
             # since we mark jobs as archived
             'options': {'queue': QueueNames.PERIODIC},
         },
@@ -329,11 +324,6 @@ class Config(object):
     )
 
     SIMULATED_SMS_NUMBERS = ('+447700900000', '+447700900111', '+447700900222')
-
-    DVLA_BUCKETS = {
-        'job': '{}-dvla-file-per-job'.format(os.getenv('NOTIFY_ENVIRONMENT')),
-        'notification': '{}-dvla-letter-api-files'.format(os.getenv('NOTIFY_ENVIRONMENT'))
-    }
 
     FREE_SMS_TIER_FRAGMENT_COUNT = 250000
 

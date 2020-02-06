@@ -214,16 +214,6 @@ def delete_inbound_sms():
         raise
 
 
-@notify_celery.task(name="remove_transformed_dvla_files")
-@cronitor("remove_transformed_dvla_files")
-@statsd(namespace="tasks")
-def remove_transformed_dvla_files():
-    jobs = dao_get_jobs_older_than_data_retention(notification_types=[LETTER_TYPE])
-    for job in jobs:
-        s3.remove_transformed_dvla_file(job.id)
-        current_app.logger.info("Transformed dvla file for job {} has been removed from s3.".format(job.id))
-
-
 # TODO: remove me, i'm not being run by anything
 @notify_celery.task(name="delete_dvla_response_files")
 @statsd(namespace="tasks")
