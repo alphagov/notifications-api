@@ -1,10 +1,12 @@
 import uuid
+from datetime import datetime, timedelta
 from unittest.mock import Mock
 
 import pytest
 from freezegun import freeze_time
 
-from tests.app.db import create_notification
+from app import DATETIME_FORMAT
+from tests.app.db import create_ft_notification_status, create_notification
 
 
 def set_up_get_all_from_hash(mock_redis, side_effect):
@@ -189,3 +191,42 @@ def test_get_template_statistics_for_template_returns_empty_for_old_notification
     )
 
     assert not json_resp['data']
+
+
+def test_get_last_used_datetime_for_template(
+    admin_request, sample_template
+):
+    date_from_notification = datetime.utcnow() - timedelta(hours=2)
+    create_notification(template=sample_template, created_at=date_from_notification)
+    date_from_ft_status = (datetime.utcnow() - timedelta(days=2)).date()
+    create_ft_notification_status(bst_date=date_from_ft_status,
+                                  template=sample_template)
+
+    json_resp = admin_request.get(
+        'template_statistics.get_last_used_datetime_for_template',
+        service_id=str(sample_template.service_id),
+        template_id=sample_template.id
+    )
+    assert json_resp['last_date_used'] == date_from_notification.strftime(DATETIME_FORMAT)
+
+
+def test_get_last_used_datetime_for_template_returns_400_if_service_does_not_exist(
+    admin_request, sample_template
+):
+    admin_request.get(
+        'template_statistics.get_last_used_datetime_for_template',
+        service_id=uuid.uuid4(),
+        template_id=sample_template.id,
+        _expected_status=404
+    )
+
+
+def test_get_last_used_datetime_for_template_returns_404_if_template_does_not_exist(
+    admin_request, sample_template
+):
+    admin_request.get(
+        'template_statistics.get_last_used_datetime_for_template',
+        service_id=sample_template.service_id,
+        template_id=uuid.uuid4(),
+        _expected_status=404
+    )
