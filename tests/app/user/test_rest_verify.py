@@ -344,6 +344,8 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
     assert resp.status_code == 404
 
 
+# we send sms_auth users email code to validate their email access
+@pytest.mark.parametrize('auth_type', ['email_auth', 'sms_auth'])
 @pytest.mark.parametrize('data, expected_auth_url', (
     (
         {},
@@ -365,8 +367,10 @@ def test_send_user_email_code(
     email_2fa_code_template,
     data,
     expected_auth_url,
+    auth_type
 ):
     deliver_email = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    sample_user.auth_type = auth_type
 
     admin_request.post(
         'user.send_user_2fa_code',
@@ -417,10 +421,12 @@ def test_send_email_code_returns_404_for_bad_input_data(admin_request):
 
 
 @freeze_time('2016-01-01T12:00:00')
-def test_user_verify_email_code(admin_request, sample_user):
+# we send sms_auth users email code to validate their email access
+@pytest.mark.parametrize('auth_type', ['email_auth', 'sms_auth'])
+def test_user_verify_email_code(admin_request, sample_user, auth_type):
     sample_user.logged_in_at = datetime.utcnow() - timedelta(days=1)
     sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)
-    sample_user.auth_type = "email_auth"
+    sample_user.auth_type = auth_type
     magic_code = str(uuid.uuid4())
     verify_code = create_user_code(sample_user, magic_code, EMAIL_TYPE)
 
