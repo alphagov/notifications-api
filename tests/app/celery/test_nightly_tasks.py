@@ -1,5 +1,4 @@
 from datetime import datetime, timedelta, date
-from functools import partial
 from unittest.mock import call, patch, PropertyMock
 
 import pytest
@@ -18,7 +17,6 @@ from app.celery.nightly_tasks import (
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
-    remove_transformed_dvla_files,
     s3,
     send_daily_performance_platform_stats,
     send_total_sent_notifications_to_performance_platform,
@@ -289,63 +287,6 @@ def test_should_call_delete_inbound_sms(notify_api, mocker):
     mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_older_than_retention')
     delete_inbound_sms()
     assert nightly_tasks.delete_inbound_sms_older_than_retention.call_count == 1
-
-
-@freeze_time('2017-01-01 10:00:00')
-def test_remove_dvla_transformed_files_removes_expected_files(mocker, sample_service):
-    mocker.patch('app.celery.nightly_tasks.s3.remove_transformed_dvla_file')
-
-    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
-
-    job = partial(create_job, template=letter_template)
-
-    seven_days_ago = datetime.utcnow() - timedelta(days=7)
-    just_under_seven_days = seven_days_ago + timedelta(seconds=1)
-    just_over_seven_days = seven_days_ago - timedelta(seconds=1)
-    eight_days_ago = seven_days_ago - timedelta(days=1)
-    nine_days_ago = eight_days_ago - timedelta(days=1)
-    ten_days_ago = nine_days_ago - timedelta(days=1)
-    just_under_nine_days = nine_days_ago + timedelta(seconds=1)
-    just_over_nine_days = nine_days_ago - timedelta(seconds=1)
-    just_over_ten_days = ten_days_ago - timedelta(seconds=1)
-
-    job(created_at=just_under_seven_days)
-    job(created_at=just_over_seven_days)
-    job_to_delete_1 = job(created_at=eight_days_ago)
-    job_to_delete_2 = job(created_at=nine_days_ago)
-    job_to_delete_3 = job(created_at=just_under_nine_days)
-    job_to_delete_4 = job(created_at=just_over_nine_days)
-    job(created_at=just_over_ten_days)
-    remove_transformed_dvla_files()
-
-    s3.remove_transformed_dvla_file.assert_has_calls([
-        call(job_to_delete_1.id),
-        call(job_to_delete_2.id),
-        call(job_to_delete_3.id),
-        call(job_to_delete_4.id),
-    ], any_order=True)
-
-
-def test_remove_dvla_transformed_files_does_not_remove_files(mocker, sample_service):
-    mocker.patch('app.celery.nightly_tasks.s3.remove_transformed_dvla_file')
-
-    letter_template = create_template(service=sample_service, template_type=LETTER_TYPE)
-
-    job = partial(create_job, template=letter_template)
-
-    yesterday = datetime.utcnow() - timedelta(days=1)
-    six_days_ago = datetime.utcnow() - timedelta(days=6)
-    seven_days_ago = six_days_ago - timedelta(days=1)
-    just_over_nine_days = seven_days_ago - timedelta(days=2, seconds=1)
-
-    job(created_at=yesterday)
-    job(created_at=six_days_ago)
-    job(created_at=seven_days_ago)
-    job(created_at=just_over_nine_days)
-
-    remove_transformed_dvla_files()
-
-    s3.remove_transformed_dvla_file.assert_has_calls([])
 
 
 @freeze_time("2016-01-01 11:00:00")
