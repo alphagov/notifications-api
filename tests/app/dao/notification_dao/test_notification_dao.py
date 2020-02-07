@@ -13,7 +13,6 @@ from app.dao.notifications_dao import (
     dao_created_scheduled_notification,
     dao_delete_notifications_by_id,
     dao_get_last_notification_added_for_job_id,
-    dao_get_last_template_usage,
     dao_get_notifications_by_recipient_or_reference,
     dao_get_notification_count_for_job_id,
     dao_get_scheduled_notifications,
@@ -62,7 +61,6 @@ from tests.app.db import (
 
 
 def test_should_have_decorated_notifications_dao_functions():
-    assert dao_get_last_template_usage.__wrapped__.__name__ == 'dao_get_last_template_usage'  # noqa
     assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
     assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
     assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
