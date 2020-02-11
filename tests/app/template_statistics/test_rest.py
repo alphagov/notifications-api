@@ -134,63 +134,7 @@ def test_get_template_statistics_for_service_by_day_returns_empty_list_if_no_tem
     assert len(json_resp['data']) == 0
 
 
-# get_template_statistics_for_template
-
-
-def test_get_template_statistics_for_template_returns_last_notification(admin_request, sample_template):
-    create_notification(sample_template)
-    create_notification(sample_template)
-    notification_3 = create_notification(sample_template)
-
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_template_id',
-        service_id=notification_3.service_id,
-        template_id=notification_3.template_id
-    )
-
-    assert json_resp['data']['id'] == str(notification_3.id)
-
-
-def test_get_template_statistics_for_template_returns_empty_if_no_statistics(
-    admin_request,
-    sample_template,
-):
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_template_id',
-        service_id=sample_template.service_id,
-        template_id=sample_template.id
-    )
-
-    assert not json_resp['data']
-
-
-def test_get_template_statistics_for_template_raises_error_for_nonexistent_template(
-    admin_request,
-    sample_service,
-    fake_uuid
-):
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_template_id',
-        service_id=sample_service.id,
-        template_id=fake_uuid,
-        _expected_status=404
-    )
-
-    assert json_resp['message'] == 'No result found'
-    assert json_resp['result'] == 'error'
-
-
-def test_get_template_statistics_for_template_returns_empty_for_old_notification(
-    admin_request,
-    sample_notification_history
-):
-    json_resp = admin_request.get(
-        'template_statistics.get_template_statistics_for_template_id',
-        service_id=sample_notification_history.service_id,
-        template_id=sample_notification_history.template_id
-    )
-
-    assert not json_resp['data']
+# get_last_used_datetime_for_template
 
 
 def test_get_last_used_datetime_for_template(

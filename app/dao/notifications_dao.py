@@ -57,21 +57,6 @@ from app.utils import midnight_n_days_ago, escape_special_characters
 
 
 @statsd(namespace="dao")
-def dao_get_last_template_usage(template_id, template_type, service_id):
-    # By adding the service_id to the filter the performance of the query is greatly improved.
-    # Using a max(Notification.created_at) is better than order by and limit one.
-    # But the effort to change the endpoint to return a datetime only is more than the gain.
-    return Notification.query.filter(
-        Notification.template_id == template_id,
-        Notification.key_type != KEY_TYPE_TEST,
-        Notification.notification_type == template_type,
-        Notification.service_id == service_id
-    ).order_by(
-        desc(Notification.created_at)
-    ).first()
-
-
-@statsd(namespace="dao")
 def dao_get_last_date_template_was_used(template_id, service_id):
     last_date_from_notifications = db.session.query(
         functions.max(Notification.created_at)
