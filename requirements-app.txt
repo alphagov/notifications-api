@@ -2,7 +2,7 @@
 # with package version changes made in requirements-app.txt
 
 cffi==1.13.1
-celery==3.1.26.post2 # pyup: <4
+celery[sqs]==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.10.1
@@ -30,5 +30,3 @@ awscli-cwlogs>=1.4,<1.5
 itsdangerous==0.24  # pyup: <1.0.0
 
 git+https://github.com/alphagov/notifications-utils.git@36.5.0#egg=notifications-utils==36.5.0
-
-git+https://github.com/alphagov/boto.git@2.43.0-patch3#egg=boto==2.43.0-patch3
