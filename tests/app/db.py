@@ -233,7 +233,8 @@ def create_notification(
         one_off=False,
         reply_to_text=None,
         created_by_id=None,
-        postage=None
+        postage=None,
+        document_download_count=None,
 ):
     assert job or template
     if job:
@@ -287,7 +288,8 @@ def create_notification(
         'normalised_to': normalised_to,
         'reply_to_text': reply_to_text,
         'created_by_id': created_by_id,
-        'postage': postage
+        'postage': postage,
+        'document_download_count': document_download_count,
     }
     notification = Notification(**data)
     dao_create_notification(notification)

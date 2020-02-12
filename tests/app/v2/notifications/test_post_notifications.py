@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
@@ -55,6 +56,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
     assert notifications[0].status == NOTIFICATION_CREATED
     notification_id = notifications[0].id
     assert notifications[0].postage is None
+    assert notifications[0].document_download_count is None
     assert resp_json['id'] == str(notification_id)
     assert resp_json['reference'] == reference
     assert resp_json['content']['body'] == sample_template_with_placeholders.content.replace("(( Name))", "Jo")
@@ -311,6 +313,7 @@ def test_post_email_notification_returns_201(client, sample_email_template_with_
     assert resp_json['reference'] == reference
     assert notification.reference is None
     assert notification.reply_to_text is None
+    assert notification.document_download_count is None
     assert resp_json['content']['body'] == sample_email_template_with_placeholders.content \
         .replace('((name))', 'Bob')
     assert resp_json['content']['subject'] == sample_email_template_with_placeholders.subject \
@@ -776,17 +779,20 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
     template = create_template(
         service=service,
         template_type='email',
-        content="Document: ((document))"
+        content="Document 1: ((first_link)). Document 2: ((second_link))"
     )
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
-    document_download_mock.upload_document.return_value = 'https://document-url/'
+    document_download_mock.upload_document.side_effect = lambda service_id, content: f'{content}-link'
 
     data = {
         "email_address": service.users[0].email_address,
         "template_id": template.id,
-        "personalisation": {"document": {"file": "abababab"}}
+        "personalisation": {
+            "first_link": {"file": "abababab"},
+            "second_link": {"file": "cdcdcdcd"}
+        }
     }
 
     auth_header = create_authorization_header(service_id=service.id)
@@ -799,11 +805,20 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_email_response) == resp_json
 
+    assert document_download_mock.upload_document.call_args_list == [
+        call(service.id, 'abababab'),
+        call(service.id, 'cdcdcdcd')
+    ]
+
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_CREATED
-    assert notification.personalisation == {'document': 'https://document-url/'}
+    assert notification.personalisation == {
+        'first_link': 'abababab-link',
+        'second_link': 'cdcdcdcd-link'
+    }
+    assert notification.document_download_count == 2
 
-    assert resp_json['content']['body'] == 'Document: https://document-url/'
+    assert resp_json['content']['body'] == 'Document 1: abababab-link. Document 2: cdcdcdcd-link'
 
 
 def test_post_notification_with_document_upload_simulated(client, notify_db_session, mocker):

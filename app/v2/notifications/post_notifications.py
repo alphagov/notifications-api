@@ -186,7 +186,11 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(send_to, notification_type)
 
-    personalisation = process_document_uploads(form.get('personalisation'), service, simulated=simulated)
+    personalisation, document_download_count = process_document_uploads(
+        form.get('personalisation'),
+        service,
+        simulated=simulated
+    )
 
     notification = persist_notification(
         template_id=template.id,
@@ -199,7 +203,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         key_type=api_key.key_type,
         client_reference=form.get('reference', None),
         simulated=simulated,
-        reply_to_text=reply_to_text
+        reply_to_text=reply_to_text,
+        document_download_count=document_download_count
     )
 
     scheduled_for = form.get("scheduled_for", None)
@@ -220,9 +225,13 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
 
 
 def process_document_uploads(personalisation_data, service, simulated=False):
+    """
+    Returns modified personalisation dict and a count of document uploads. If there are no document uploads, returns
+    a count of `None` rather than `0`.
+    """
     file_keys = [k for k, v in (personalisation_data or {}).items() if isinstance(v, dict) and 'file' in v]
     if not file_keys:
-        return personalisation_data
+        return personalisation_data, None
 
     personalisation_data = personalisation_data.copy()
 
@@ -239,7 +248,7 @@ def process_document_uploads(personalisation_data, service, simulated=False):
             except DocumentDownloadError as e:
                 raise BadRequestError(message=e.message, status_code=e.status_code)
 
-    return personalisation_data
+    return personalisation_data, len(file_keys)
 
 
 def process_letter_notification(*, letter_data, api_key, template, reply_to_text, precompiled=False):
