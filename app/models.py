@@ -1407,6 +1407,8 @@ class Notification(db.Model):
 
     reply_to_text = db.Column(db.String, nullable=True)
 
+    document_download_count = db.Column(db.Integer, nullable=True)
+
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN notification_type = 'letter' THEN
@@ -1682,6 +1684,8 @@ class NotificationHistory(db.Model, HistoryModel):
             postage is null
         END
     """)
+
+    document_download_count = db.Column(db.Integer, nullable=True)
 
     __table_args__ = (
         db.ForeignKeyConstraint(
