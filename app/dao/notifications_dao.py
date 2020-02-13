@@ -6,7 +6,7 @@ from datetime import (
     timedelta,
 )
 
-from boto.exception import BotoClientError
+from botocore.exceptions import ClientError
 from flask import current_app
 from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
 from notifications_utils.recipients import (
@@ -438,7 +438,7 @@ def _delete_letters_from_s3(
             for s3_object in s3_objects:
                 try:
                     remove_s3_object(bucket_name, s3_object['Key'])
-                except BotoClientError:
+                except ClientError:
                     current_app.logger.exception(
                         "Could not delete S3 object with filename: {}".format(s3_object['Key']))
 
