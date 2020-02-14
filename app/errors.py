@@ -88,12 +88,12 @@ def register_errors(blueprint):
 
     @blueprint.errorhandler(401)
     def unauthorized(e):
-        error_message = "Unauthorized, authentication token must be provided"
+        error_message = "Unauthorized: authentication token must be provided"
         return jsonify(result='error', message=error_message), 401, [('WWW-Authenticate', 'Bearer')]
 
     @blueprint.errorhandler(403)
     def forbidden(e):
-        error_message = "Forbidden, invalid authentication token provided"
+        error_message = "Forbidden: invalid authentication token provided"
         return jsonify(result='error', message=error_message), 403
 
     @blueprint.errorhandler(429)
