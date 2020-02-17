@@ -186,6 +186,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
 
 @statsd(namespace="dao")
 def fetch_billing_totals_for_year(service_id, year):
+    print("fetch_billing_totals_for_year", year)
     year_start_date, year_end_date = get_financial_year(year)
     """
       Billing for email: only record the total number of emails.
