@@ -18,7 +18,8 @@ from app.dao.fact_billing_dao import (
     get_rates_for_billing,
     fetch_sms_free_allowance_remainder,
     fetch_sms_billing_for_all_services,
-    fetch_letter_costs_for_all_services, fetch_letter_line_items_for_all_services)
+    fetch_letter_costs_for_all_services, fetch_letter_line_items_for_all_services, fetch_usage_year_for_organisation
+)
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import (
     FactBilling,
@@ -592,7 +593,8 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
-    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 5, 1))
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
 
     assert len(results) == 2
@@ -604,7 +606,8 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
-    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
@@ -615,7 +618,8 @@ def test_fetch_letter_costs_for_all_services(notify_db_session):
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
-    org_1, org_2, service_1, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
+    org_1, org_2, service_1, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
@@ -625,3 +629,12 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
     assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.65"), 'second', 20)
     assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.50"), 'first', 2)
     assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)
+
+
+def test_fetch_usage_year_for_organisation(notify_db_session):
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
+
+    results = fetch_usage_year_for_organisation(org.id, 2019)
+    results = fetch_usage_year_for_organisation(org_2.id, 2019)
+    results = fetch_usage_year_for_organisation(org_with_emails.id, 2019)

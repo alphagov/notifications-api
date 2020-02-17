@@ -125,6 +125,13 @@ def get_organisation_services(organisation_id):
     return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])
 
 
+@organisation_blueprint.route('/<uuid:organisation_id>/services-with-usage', methods=['GET'])
+def get_organisation_services_usage(organisation_id):
+    services = dao_get_organisation_services(organisation_id)
+    sorted_services = sorted(services, key=lambda s: (-s.active, s.name))
+    return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])
+
+
 @organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])
 def add_user_to_organisation(organisation_id, user_id):
     new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
