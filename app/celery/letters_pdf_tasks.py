@@ -1,6 +1,6 @@
 import math
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 from hashlib import sha512
 from base64 import urlsafe_b64encode
@@ -14,6 +14,8 @@ from requests import (
 from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
+from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import encryption, notify_celery
 from app.aws import s3
@@ -25,7 +27,9 @@ from app.dao.notifications_dao import (
     dao_get_notification_by_reference,
     dao_get_notifications_by_references,
     dao_update_notifications_by_reference,
+    dao_get_letters_to_be_printed,
 )
+from app.letters.utils import get_letter_pdf_filename
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
@@ -117,26 +121,31 @@ def get_letters_pdf(template, contact_block, filename, values):
 
 @notify_celery.task(name='collate-letter-pdfs-for-day')
 @cronitor("collate-letter-pdfs-for-day")
-def collate_letter_pdfs_for_day(date=None):
-    if not date:
-        # Using the truncated date is ok because UTC to BST does not make a difference to the date,
-        # since it is triggered mid afternoon.
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+def collate_letter_pdfs_for_day():
+    """
+    Finds all letters which are still waiting to be sent to DVLA for printing
 
-    letter_pdfs = sorted(
-        s3.get_s3_bucket_objects(
-            current_app.config['LETTERS_PDF_BUCKET_NAME'],
-            subfolder=date
-        ),
-        key=lambda letter: letter['Key']
-    )
-    for i, letters in enumerate(group_letters(letter_pdfs)):
+    This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
+    that have not yet been sent.
+    If run after midnight, it will collect up letters created before 5:30pm the day before.
+    """
+    date = convert_utc_to_bst(datetime.utcnow())
+    if date.time() < LETTER_PROCESSING_DEADLINE:
+        date = date - timedelta(days=1)
+
+    # Using the truncated date is ok because UTC to BST does not make a difference to the date,
+    # since it is triggered mid afternoon.
+    print_run_date = date.strftime("%Y-%m-%d")
+
+    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_date)
+
+    for i, letters in enumerate(group_letters(letters_to_print)):
         filenames = [letter['Key'] for letter in letters]
 
         hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
         # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
         dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
-            date=date,
+            date=print_run_date,
             num=i + 1,
             hash=hash
         )
@@ -157,6 +166,28 @@ def collate_letter_pdfs_for_day(date=None):
             queue=QueueNames.PROCESS_FTP,
             compression='zlib'
         )
+
+
+def get_key_and_size_of_letters_to_be_sent_to_print(print_run_date):
+    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_date)
+
+    letter_pdfs = []
+    for letter in letters_awaiting_sending:
+        letter_file_name = get_letter_pdf_filename(
+            reference=letter.reference,
+            crown=letter.service.crown,
+            sending_date=letter.created_at,
+            postage=letter.postage
+        )
+
+        current_app.logger.info(
+            f'Found notification {letter.id} to send to DVLA to print: {letter_file_name}'
+        )
+
+        letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
+        letter_pdfs.append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
+
+    return letter_pdfs
 
 
 def group_letters(letter_pdfs):

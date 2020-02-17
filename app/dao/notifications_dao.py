@@ -731,6 +731,24 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
+def dao_get_letters_to_be_printed(print_run_date):
+    """
+    Given a date for a print run, Return all letters created before 5:30pm that day that have not yet been sent
+    """
+    last_processing_deadline = datetime.strptime(print_run_date, "%Y-%m-%d").replace(
+        hour=17, minute=30, second=0, microsecond=0
+    )
+
+    notifications = Notification.query.filter(
+        Notification.created_at < convert_bst_to_utc(last_processing_deadline),
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED
+    ).order_by(
+        Notification.created_at
+    ).all()
+    return notifications
+
+
 def dao_old_letters_with_created_status():
     yesterday_bst = convert_utc_to_bst(datetime.utcnow()) - timedelta(days=1)
     last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)

@@ -2,7 +2,7 @@ from unittest.mock import Mock, call, ANY
 
 import base64
 import boto3
-from datetime import datetime
+from datetime import datetime, timedelta
 from moto import mock_s3
 from flask import current_app
 from freezegun import freeze_time
@@ -20,6 +20,7 @@ from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
     collate_letter_pdfs_for_day,
+    get_key_and_size_of_letters_to_be_sent_to_print,
     group_letters,
     letter_in_created_state,
     process_sanitised_letter,
@@ -242,27 +243,113 @@ def test_create_letters_gets_the_right_logo_when_service_has_letter_branding_log
     )
 
 
-def test_collate_letter_pdfs_for_day(notify_api, mocker):
-    mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects', return_value=[
-        {'Key': 'B.pDf', 'Size': 2},
-        {'Key': 'A.PDF', 'Size': 1},
-        {'Key': 'C.pdf', 'Size': 3}
+@freeze_time('2020-02-17 18:00:00')
+def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sample_letter_template):
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref0',
+        created_at=(datetime.now() - timedelta(hours=2)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref1',
+        created_at=(datetime.now() - timedelta(hours=3)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref2',
+        created_at=(datetime.now() - timedelta(days=2)).isoformat()
+    )
+
+    # notifications we don't expect to get sent to print as they are in the wrong status
+    for status in ['delivered', 'validation-failed', 'cancelled', 'sending']:
+        create_notification(
+            template=sample_letter_template,
+            status=status,
+            reference='ref3',
+            created_at=(datetime.now() - timedelta(days=2)).isoformat()
+        )
+
+    # notification we don't expect to get sent as instead will make into this evenings print run
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref4',
+        created_at=(datetime.now() - timedelta(minutes=1)).isoformat()
+    )
+
+    mock_s3 = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 2},
+        {'ContentLength': 1},
+        {'ContentLength': 3},
     ])
-    mock_group_letters = mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': 'A.PDF', 'Size': 1}, {'Key': 'B.pDf', 'Size': 2}],
-        [{'Key': 'C.pdf', 'Size': 3}]
+
+    results = get_key_and_size_of_letters_to_be_sent_to_print('2020-02-17')
+
+    assert mock_s3.call_count == 3
+    mock_s3.assert_has_calls(
+        [
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF'),
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'),
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'),
+        ]
+    )
+
+    assert len(results) == 3
+    assert results == [
+        {'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF', 'Size': 2},
+        {'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', 'Size': 1},
+        {'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF', 'Size': 3},
+    ]
+
+
+@freeze_time('2020-02-17 18:00:00')
+def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker):
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref0',
+        created_at=(datetime.now() - timedelta(hours=2)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref1',
+        created_at=(datetime.now() - timedelta(hours=3)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref2',
+        created_at=(datetime.now() - timedelta(days=2)).isoformat()
+    )
+
+    mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 2},
+        {'ContentLength': 1},
+        {'ContentLength': 3},
+    ])
+    mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
+        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.pDf', 'Size': 2}],
+        [{'Key': '2020-02-17/C.pdf', 'Size': 3}]
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
-    collate_letter_pdfs_for_day('2017-01-02')
+    collate_letter_pdfs_for_day()
 
-    mock_s3.assert_called_once_with('test-letters-pdf', subfolder='2017-01-02')
-    mock_group_letters.assert_called_once_with(sorted(mock_s3.return_value, key=lambda x: x['Key']))
+    assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['A.PDF', 'B.pDf'],
-            'upload_filename': 'NOTIFY.2017-01-02.001.oqdjIM2-NAUU9Sm5Slmi.ZIP'
+            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.pDf'],
+            'upload_filename': 'NOTIFY.2020-02-17.001.fGRjtoP1V9XUrng24Zzq.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -270,20 +357,70 @@ def test_collate_letter_pdfs_for_day(notify_api, mocker):
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['C.pdf'],
-            'upload_filename': 'NOTIFY.2017-01-02.002.tdr7hcdPieiqjkVoS4kU.ZIP'
+            'filenames_to_zip': ['2020-02-17/C.pdf'],
+            'upload_filename': 'NOTIFY.2020-02-17.002.Ay8mP80pe12NH46clM08.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
     )
 
 
-@freeze_time('2018-09-12 17:50:00')
-def test_collate_letter_pdfs_for_day_works_without_date_param(notify_api, mocker):
-    mock_s3 = mocker.patch('app.celery.tasks.s3.get_s3_bucket_objects')
+@freeze_time('2020-02-18 02:00:00')
+def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_letter_template, mocker):
+    # created_at times for notifications choosen to match times in above test test_collate_letter_pdfs_for_day
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref0',
+        created_at=(datetime.now() - timedelta(hours=10)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref1',
+        created_at=(datetime.now() - timedelta(hours=11)).isoformat()
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref2',
+        created_at=(datetime.now() - timedelta(days=2, hours=8)).isoformat()
+    )
+
+    mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 2},
+        {'ContentLength': 1},
+        {'ContentLength': 3},
+    ])
+    mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
+        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.pDf', 'Size': 2}],
+        [{'Key': '2020-02-17/C.pdf', 'Size': 3}]
+    ])
+    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+
     collate_letter_pdfs_for_day()
-    expected_date = '2018-09-12'
-    mock_s3.assert_called_once_with('test-letters-pdf', subfolder=expected_date)
+
+    assert len(mock_celery.call_args_list) == 2
+    assert mock_celery.call_args_list[0] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.pDf'],
+            'upload_filename': 'NOTIFY.2020-02-17.001.fGRjtoP1V9XUrng24Zzq.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[1] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': ['2020-02-17/C.pdf'],
+            'upload_filename': 'NOTIFY.2020-02-17.002.Ay8mP80pe12NH46clM08.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
 
 
 def test_group_letters_splits_on_file_size(notify_api, mocker):
