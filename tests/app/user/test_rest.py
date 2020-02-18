@@ -2,6 +2,7 @@ import json
 import pytest
 import mock
 from uuid import UUID
+from datetime import datetime
 
 from flask import url_for
 from freezegun import freeze_time
@@ -703,12 +704,22 @@ def test_send_user_confirm_new_email_returns_400_when_email_missing(client, samp
     mocked.assert_not_called()
 
 
-def test_update_user_password_saves_correctly(client, sample_service):
+@pytest.mark.parametrize('data,email_access_validated_at', [
+    ({'_password': '1234567890'}, datetime(2020, 2, 13, 12, 0)),
+    ({
+        '_password': '1234567890',
+        'validated_email_access': True,
+    }, datetime(2020, 2, 14, 12, 0)),
+    ({
+        '_password': '1234567890',
+        'validated_email_access': False,
+    }, datetime(2020, 2, 13, 12, 0))
+])
+@freeze_time('2020-02-14T12:00:00')
+def test_update_user_password_saves_correctly(client, sample_service, data, email_access_validated_at):
     sample_user = sample_service.users[0]
+    sample_user.email_access_validated_at = datetime(2020, 2, 13, 12, 0)
     new_password = '1234567890'
-    data = {
-        '_password': new_password
-    }
     auth_header = create_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
@@ -716,6 +727,7 @@ def test_update_user_password_saves_correctly(client, sample_service):
         data=json.dumps(data),
         headers=headers)
     assert resp.status_code == 200
+    assert sample_user.email_access_validated_at == email_access_validated_at
 
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['password_changed_at'] is not None

@@ -462,7 +462,7 @@ def update_password(user_id):
     user = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
     password = req_json.get('_password')
-    validated_email_access = req_json.get('validated_email_access')
+    validated_email_access = req_json.pop('validated_email_access', False)
     update_dct, errors = user_update_password_schema_load_json.load(req_json)
     if errors:
         raise InvalidRequest(errors, status_code=400)
