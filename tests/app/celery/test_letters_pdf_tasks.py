@@ -335,8 +335,8 @@ def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker)
         {'ContentLength': 3},
     ])
     mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.pDf', 'Size': 2}],
-        [{'Key': '2020-02-17/C.pdf', 'Size': 3}]
+        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.PDF', 'Size': 2}],
+        [{'Key': '2020-02-17/C.PDF', 'Size': 3}]
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
@@ -346,8 +346,8 @@ def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker)
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.pDf'],
-            'upload_filename': 'NOTIFY.2020-02-17.001.fGRjtoP1V9XUrng24Zzq.ZIP'
+            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.PDF'],
+            'upload_filename': 'NOTIFY.2020-02-17.001.pneY1OU2TUq7KfFSrJ2Q.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -355,8 +355,8 @@ def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker)
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/C.pdf'],
-            'upload_filename': 'NOTIFY.2020-02-17.002.Ay8mP80pe12NH46clM08.ZIP'
+            'filenames_to_zip': ['2020-02-17/C.PDF'],
+            'upload_filename': 'NOTIFY.2020-02-17.002.Wy0jBtrnVzWeGqLXhE_f.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -393,8 +393,8 @@ def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_
         {'ContentLength': 3},
     ])
     mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.pDf', 'Size': 2}],
-        [{'Key': '2020-02-17/C.pdf', 'Size': 3}]
+        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.PDF', 'Size': 2}],
+        [{'Key': '2020-02-17/C.PDF', 'Size': 3}]
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
@@ -404,8 +404,8 @@ def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.pDf'],
-            'upload_filename': 'NOTIFY.2020-02-17.001.fGRjtoP1V9XUrng24Zzq.ZIP'
+            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.PDF'],
+            'upload_filename': 'NOTIFY.2020-02-17.001.pneY1OU2TUq7KfFSrJ2Q.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -413,8 +413,8 @@ def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/C.pdf'],
-            'upload_filename': 'NOTIFY.2020-02-17.002.Ay8mP80pe12NH46clM08.ZIP'
+            'filenames_to_zip': ['2020-02-17/C.PDF'],
+            'upload_filename': 'NOTIFY.2020-02-17.002.Wy0jBtrnVzWeGqLXhE_f.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -504,12 +504,19 @@ def test_group_letters_splits_on_file_size_and_file_count(notify_api):
         assert next(x, None) is None
 
 
-def test_group_letters_ignores_non_pdfs(notify_api, mocker):
-    letters = [{'Key': 'A.zip'}]
+@pytest.mark.parametrize('key', ["A.ZIP", "B.zip"])
+def test_group_letters_ignores_non_pdfs(key):
+    letters = [{'Key': key, 'Size': 1}]
     assert list(group_letters(letters)) == []
 
 
-def test_group_letters_with_no_letters(notify_api, mocker):
+@pytest.mark.parametrize('key', ["A.PDF", "B.pdf", "C.PdF"])
+def test_group_letters_includes_pdf_files(key):
+    letters = [{'Key': key, 'Size': 1}]
+    assert list(group_letters(letters)) == [[{'Key': key, 'Size': 1}]]
+
+
+def test_group_letters_with_no_letters():
     assert list(group_letters([])) == []
 
 
