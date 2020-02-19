@@ -166,6 +166,7 @@ def test_create_nightly_billing_for_day_different_templates(
     multiplier = [0, 1]
     billable_units = [0, 1]
     rate = [0, Decimal(1.33)]
+
     for i, record in enumerate(records):
         assert record.bst_date == datetime.date(yesterday)
         assert record.rate == rate[i]

@@ -170,7 +170,7 @@ def test_fetch_billing_data_for_day_is_grouped_by_notification_type(notify_db_se
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today.date())
     assert len(results) == 3
-    notification_types = [x[2] for x in results if x[2] in ['email', 'sms', 'letter']]
+    notification_types = [x.notification_type for x in results]
     assert len(notification_types) == 3
 
 
@@ -280,13 +280,13 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(process_day=today.date(), service_id=service.id)
 
-    sms_results = [x for x in results if x[2] == 'sms']
-    email_results = [x for x in results if x[2] == 'email']
-    letter_results = [x for x in results if x[2] == 'letter']
-    assert 8 == sms_results[0][7]
-    assert 8 == email_results[0][7]
-    assert 3 == letter_results[0][7]
-
+    sms_results = [x for x in results if x.notification_type == 'sms']
+    email_results = [x for x in results if x.notification_type == 'email']
+    letter_results = [x for x in results if x.notification_type == 'letter']
+    # we expect as many rows as we check for notification types
+    assert 6 == sms_results[0].notifications_sent
+    assert 4 == email_results[0].notifications_sent
+    assert 3 == letter_results[0].notifications_sent
 
 def test_get_rates_for_billing(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=12, notification_type='email')
