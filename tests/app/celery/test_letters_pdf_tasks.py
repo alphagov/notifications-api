@@ -19,7 +19,7 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.celery.letters_pdf_tasks import (
     create_letters_pdf,
     get_letters_pdf,
-    collate_letter_pdfs_for_day,
+    collate_letter_pdfs_to_be_sent,
     get_key_and_size_of_letters_to_be_sent_to_print,
     group_letters,
     process_sanitised_letter,
@@ -52,7 +52,7 @@ from tests.conftest import set_config_values
 
 def test_should_have_decorated_tasks_functions():
     assert create_letters_pdf.__wrapped__.__name__ == 'create_letters_pdf'
-    assert collate_letter_pdfs_for_day.__wrapped__.__name__ == 'collate_letter_pdfs_for_day'
+    assert collate_letter_pdfs_to_be_sent.__wrapped__.__name__ == 'collate_letter_pdfs_to_be_sent'
     assert process_virus_scan_passed.__wrapped__.__name__ == 'process_virus_scan_passed'
     assert process_virus_scan_failed.__wrapped__.__name__ == 'process_virus_scan_failed'
     assert process_virus_scan_error.__wrapped__.__name__ == 'process_virus_scan_error'
@@ -316,7 +316,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
 
 
 @freeze_time('2020-02-17 18:00:00')
-def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker):
+def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mocker):
     create_notification(
         template=sample_letter_template,
         status='created',
@@ -349,7 +349,7 @@ def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker)
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
-    collate_letter_pdfs_for_day()
+    collate_letter_pdfs_to_be_sent()
 
     assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(
@@ -373,8 +373,8 @@ def test_collate_letter_pdfs_for_day(notify_api, sample_letter_template, mocker)
 
 
 @freeze_time('2020-02-18 02:00:00')
-def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_letter_template, mocker):
-    # created_at times for notifications choosen to match times in above test test_collate_letter_pdfs_for_day
+def test_collate_letter_pdfs_to_be_sent_when_run_after_midnight(notify_api, sample_letter_template, mocker):
+    # created_at times for notifications choosen to match times in above test test_collate_letter_pdfs_to_be_sent
     create_notification(
         template=sample_letter_template,
         status='created',
@@ -407,7 +407,7 @@ def test_collate_letter_pdfs_for_day_when_run_after_midnight(notify_api, sample_
     ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
-    collate_letter_pdfs_for_day()
+    collate_letter_pdfs_to_be_sent()
 
     assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(

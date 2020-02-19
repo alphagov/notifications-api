@@ -118,9 +118,9 @@ def get_letters_pdf(template, contact_block, filename, values):
     return resp.content, billable_units
 
 
-@notify_celery.task(name='collate-letter-pdfs-for-day')
-@cronitor("collate-letter-pdfs-for-day")
-def collate_letter_pdfs_for_day():
+@notify_celery.task(name='collate-letter-pdfs-to-be-sent')
+@cronitor("collate-letter-pdfs-to-be-sent")
+def collate_letter_pdfs_to_be_sent():
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
 
