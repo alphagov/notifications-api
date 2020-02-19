@@ -128,15 +128,17 @@ def collate_letter_pdfs_for_day():
     that have not yet been sent.
     If run after midnight, it will collect up letters created before 5:30pm the day before.
     """
-    date = convert_utc_to_bst(datetime.utcnow())
-    if date.time() < LETTER_PROCESSING_DEADLINE:
-        date = date - timedelta(days=1)
+    print_run_date = convert_utc_to_bst(datetime.utcnow())
+    if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
+        print_run_date = print_run_date - timedelta(days=1)
 
-    # Using the truncated date is ok because UTC to BST does not make a difference to the date,
-    # since it is triggered mid afternoon.
-    print_run_date = date.strftime("%Y-%m-%d")
+    # We can truncate the datetime to a date and add our own time (5:30pm) because UTC to BST does not
+    # make a difference to the date since it is triggered mid afternoon.
+    print_run_deadline = print_run_date.replace(
+        hour=17, minute=30, second=0, microsecond=0
+    )
 
-    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_date)
+    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline)
 
     for i, letters in enumerate(group_letters(letters_to_print)):
         filenames = [letter['Key'] for letter in letters]
@@ -144,7 +146,7 @@ def collate_letter_pdfs_for_day():
         hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
         # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
         dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
-            date=print_run_date,
+            date=print_run_deadline.strftime("%Y-%m-%d"),
             num=i + 1,
             hash=hash
         )
@@ -167,8 +169,8 @@ def collate_letter_pdfs_for_day():
         )
 
 
-def get_key_and_size_of_letters_to_be_sent_to_print(print_run_date):
-    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_date)
+def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
+    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline)
 
     letter_pdfs = []
     for letter in letters_awaiting_sending:
