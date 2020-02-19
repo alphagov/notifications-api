@@ -742,7 +742,8 @@ def dao_get_letters_to_be_printed(print_run_date):
     notifications = Notification.query.filter(
         Notification.created_at < convert_bst_to_utc(last_processing_deadline),
         Notification.notification_type == LETTER_TYPE,
-        Notification.status == NOTIFICATION_CREATED
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.key_type == KEY_TYPE_NORMAL
     ).order_by(
         Notification.created_at
     ).all()

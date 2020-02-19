@@ -281,6 +281,15 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         created_at=(datetime.now() - timedelta(minutes=1)).isoformat()
     )
 
+    # test notification we don't expect to get sent
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref4',
+        created_at=(datetime.now() - timedelta(days=1)).isoformat(),
+        key_type=KEY_TYPE_TEST
+    )
+
     mock_s3 = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
         {'ContentLength': 2},
         {'ContentLength': 1},
