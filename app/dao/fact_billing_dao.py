@@ -4,7 +4,7 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func, case, desc, Date, Integer, and_
+from sqlalchemy import func, desc, Date, Integer, and_
 from sqlalchemy.sql.expression import literal
 
 from app import db
@@ -310,7 +310,7 @@ def delete_billing_data_for_service_for_day(process_day, service_id):
 
 
 @statsd(namespace="dao")
-def fetch_billing_data_for_day(process_day, service_id=None):
+def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
@@ -322,17 +322,17 @@ def fetch_billing_data_for_day(process_day, service_id=None):
 
     for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-            table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
-
-            results = _query_for_billing_data(
-                table=table,
-                notification_type=notification_type,
-                start_date=start_date,
-                end_date=end_date,
-                service=service
-            )
-
-            transit_data += results
+            if (not check_permissions) or service.has_permission(notification_type):
+                table = get_notification_table_to_use(service, notification_type, process_day,
+                                                      has_delete_task_run=False)
+                results = _query_for_billing_data(
+                    table=table,
+                    notification_type=notification_type,
+                    start_date=start_date,
+                    end_date=end_date,
+                    service=service
+                )
+                transit_data += results
 
     return transit_data
 

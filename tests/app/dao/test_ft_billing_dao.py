@@ -70,6 +70,34 @@ def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(noti
     assert results[0].notifications_sent == 2
 
 
+@pytest.mark.parametrize("notification_type", ["email", "sms", "letter"])
+def test_fetch_billing_data_for_day_only_calls_query_for_permission_type(notify_db_session, notification_type):
+    service = create_service(service_permissions=[notification_type])
+    email_template = create_template(service=service, template_type="email")
+    sms_template = create_template(service=service, template_type="sms")
+    letter_template = create_template(service=service, template_type="letter")
+    create_notification(template=email_template, status='delivered')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=letter_template, status='delivered')
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(process_day=today.date(), check_permissions=True)
+    assert len(results) == 1
+
+
+@pytest.mark.parametrize("notification_type", ["email", "sms", "letter"])
+def test_fetch_billing_data_for_day_only_calls_query_for_all_channels(notify_db_session, notification_type):
+    service = create_service(service_permissions=[notification_type])
+    email_template = create_template(service=service, template_type="email")
+    sms_template = create_template(service=service, template_type="sms")
+    letter_template = create_template(service=service, template_type="letter")
+    create_notification(template=email_template, status='delivered')
+    create_notification(template=sms_template, status='delivered')
+    create_notification(template=letter_template, status='delivered')
+    today = convert_utc_to_bst(datetime.utcnow())
+    results = fetch_billing_data_for_day(process_day=today.date(), check_permissions=False)
+    assert len(results) == 3
+
+
 @freeze_time('2018-04-02 01:20:00')
 def test_fetch_billing_data_for_today_includes_data_with_the_right_date(notify_db_session):
     process_day = datetime(2018, 4, 1, 13, 30, 0)
@@ -287,6 +315,7 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
     assert 6 == sms_results[0].notifications_sent
     assert 4 == email_results[0].notifications_sent
     assert 3 == letter_results[0].notifications_sent
+
 
 def test_get_rates_for_billing(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=12, notification_type='email')
