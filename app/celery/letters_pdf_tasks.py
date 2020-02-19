@@ -25,7 +25,6 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     dao_update_notification,
     dao_get_notification_by_reference,
-    dao_get_notifications_by_references,
     dao_update_notifications_by_reference,
     dao_get_letters_to_be_printed,
 )
@@ -180,10 +179,6 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_date):
             postage=letter.postage
         )
 
-        current_app.logger.info(
-            f'Found notification {letter.id} to send to DVLA to print: {letter_file_name}'
-        )
-
         letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
         letter_pdfs.append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
 
@@ -199,7 +194,7 @@ def group_letters(letter_pdfs):
     running_filesize = 0
     list_of_files = []
     for letter in letter_pdfs:
-        if letter['Key'].lower().endswith('.pdf') and letter_in_created_state(letter['Key']):
+        if letter['Key'].lower().endswith('.pdf'):
             if (
                 running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE'] or
                 len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
@@ -213,22 +208,6 @@ def group_letters(letter_pdfs):
 
     if list_of_files:
         yield list_of_files
-
-
-def letter_in_created_state(filename):
-    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
-    subfolder = filename.split('/')[0]
-    ref = get_reference_from_filename(filename)
-    notifications = dao_get_notifications_by_references([ref])
-    if notifications:
-        if notifications[0].status == NOTIFICATION_CREATED:
-            return True
-        current_app.logger.info('Collating letters for {} but notification with reference {} already in {}'.format(
-            subfolder,
-            ref,
-            notifications[0].status
-        ))
-    return False
 
 
 @notify_celery.task(bind=True, name='process-virus-scan-passed', max_retries=15, default_retry_delay=300)
