@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, time
 
 from flask import current_app
+from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import case, func, Date
 from sqlalchemy.dialects.postgresql import insert
@@ -33,6 +34,7 @@ from app.utils import (
 )
 
 
+@statsd(namespace="dao")
 def fetch_notification_status_for_day(process_day, notification_type):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
@@ -58,6 +60,7 @@ def fetch_notification_status_for_day(process_day, notification_type):
     return all_data_for_process_day
 
 
+@statsd(namespace="dao")
 def query_for_fact_status_data(table, start_date, end_date, notification_type, service_id):
     query = db.session.query(
         table.template_id,
@@ -82,6 +85,7 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
     return query.all()
 
 
+@statsd(namespace="dao")
 @transactional
 def update_fact_notification_status(data, process_day, notification_type):
     table = FactNotificationStatus.__table__
@@ -104,6 +108,7 @@ def update_fact_notification_status(data, process_day, notification_type):
         db.session.connection().execute(stmt)
 
 
+@statsd(namespace="dao")
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
     return db.session.query(
         func.date_trunc('month', FactNotificationStatus.bst_date).label('month'),
@@ -122,6 +127,7 @@ def fetch_notification_status_for_service_by_month(start_date, end_date, service
     ).all()
 
 
+@statsd(namespace="dao")
 def fetch_notification_status_for_service_for_day(bst_day, service_id):
     return db.session.query(
         # return current month as a datetime so the data has the same shape as the ft_notification_status query
@@ -140,6 +146,7 @@ def fetch_notification_status_for_service_for_day(bst_day, service_id):
     ).all()
 
 
+@statsd(namespace="dao")
 def fetch_notification_status_for_service_for_today_and_7_previous_days(service_id, by_template=False, limit_days=7):
     start_date = midnight_n_days_ago(limit_days)
     now = datetime.utcnow()
@@ -192,6 +199,7 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     ).all()
 
 
+@statsd(namespace="dao")
 def fetch_notification_status_totals_for_all_services(start_date, end_date):
     stats = db.session.query(
         FactNotificationStatus.notification_type.label('notification_type'),
@@ -240,6 +248,7 @@ def fetch_notification_status_totals_for_all_services(start_date, end_date):
     return query.all()
 
 
+@statsd(namespace="dao")
 def fetch_notification_statuses_for_job(job_id):
     return db.session.query(
         FactNotificationStatus.notification_status.label('status'),
@@ -251,6 +260,7 @@ def fetch_notification_statuses_for_job(job_id):
     ).all()
 
 
+@statsd(namespace="dao")
 def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_from_test_key=True):
     stats = db.session.query(
         FactNotificationStatus.service_id.label('service_id'),
@@ -345,6 +355,7 @@ def fetch_stats_for_all_services_by_date_range(start_date, end_date, include_fro
     return query.all()
 
 
+@statsd(namespace="dao")
 def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
     # services_dao.replaces dao_fetch_monthly_historical_usage_by_template_for_service
     stats = db.session.query(
@@ -429,6 +440,7 @@ def fetch_monthly_template_usage_for_service(start_date, end_date, service_id):
     return query.all()
 
 
+@statsd(namespace="dao")
 def get_total_sent_notifications_for_day_and_type(day, notification_type):
     result = db.session.query(
         func.sum(FactNotificationStatus.notification_count).label('count')
@@ -441,6 +453,7 @@ def get_total_sent_notifications_for_day_and_type(day, notification_type):
     return result or 0
 
 
+@statsd(namespace="dao")
 def fetch_monthly_notification_statuses_per_service(start_date, end_date):
     return db.session.query(
         func.date_trunc('month', FactNotificationStatus.bst_date).cast(Date).label('date_created'),
