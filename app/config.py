@@ -65,7 +65,7 @@ class Config(object):
     API_HOST_NAME = os.getenv('API_HOST_NAME')
 
     # admin app api key
-    ADMIN_CLIENT_SECRET = os.getenv('ADMIN_CLIENT_SECRET')
+    ADMIN_CLIENT_SECRETS = [os.getenv('ADMIN_CLIENT_SECRET')] if os.getenv('ADMIN_CLIENT_SECRET') else []
 
     # encyption secret/salt
     SECRET_KEY = os.getenv('SECRET_KEY')
@@ -369,7 +369,7 @@ class Development(Config):
     TRANSIENT_UPLOADED_LETTERS = 'development-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'development-letters-sanitise'
 
-    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
+    ADMIN_CLIENT_SECRETS = ['dev-notify-secret-key']
     SECRET_KEY = 'dev-notify-secret-key'
     DANGEROUS_SALT = 'dev-notify-salt'
 

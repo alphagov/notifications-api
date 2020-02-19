@@ -188,7 +188,7 @@ def test_should_allow_valid_token_for_request_with_path_params_for_public_url(cl
 
 
 def test_should_allow_valid_token_for_request_with_path_params_for_admin_url(client):
-    token = create_jwt_token(current_app.config['ADMIN_CLIENT_SECRET'], current_app.config['ADMIN_CLIENT_USER_NAME'])
+    token = create_jwt_token(current_app.config['ADMIN_CLIENT_SECRETS'][0], current_app.config['ADMIN_CLIENT_USER_NAME'])
     response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 200
 
@@ -264,13 +264,13 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
 
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
-    api_secret = current_app.config.get('ADMIN_CLIENT_SECRET')
+    api_secret = current_app.config.get('ADMIN_CLIENT_SECRETS')[0]
     api_service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     token = create_jwt_token(
         secret=api_secret,
         client_id=api_service_id
     )
-    with set_config(client.application, 'ADMIN_CLIENT_SECRET', ''):
+    with set_config(client.application, 'ADMIN_CLIENT_SECRETS', []):
         response = client.get(
             '/service',
             headers={'Authorization': 'Bearer {}'.format(token)})
@@ -280,19 +280,19 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
 
 
 def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
-    api_secret = current_app.config.get('ADMIN_CLIENT_SECRET')
+    api_secret = current_app.config.get('ADMIN_CLIENT_SECRETS')[0]
     token = create_jwt_token(
         secret=api_secret,
         client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME')
     )
-    current_app.config['ADMIN_CLIENT_SECRET'] = 'something-wrong'
+    current_app.config['ADMIN_CLIENT_SECRETS'][0] = 'something-wrong'
     response = client.get(
         '/service',
         headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 403
     error_message = json.loads(response.get_data())
     assert error_message['message'] == {"token": ["Invalid token: could not decode your API token"]}
-    current_app.config['ADMIN_CLIENT_SECRET'] = api_secret
+    current_app.config['ADMIN_CLIENT_SECRETS'][0] = api_secret
 
 
 def test_authentication_returns_error_when_service_doesnt_exit(
@@ -397,7 +397,7 @@ def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_valu
     (False, 'wrong_key', 200),
 ])
 def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
-    token = create_jwt_token(current_app.config['ADMIN_CLIENT_SECRET'], current_app.config['ADMIN_CLIENT_USER_NAME'])
+    token = create_jwt_token(current_app.config['ADMIN_CLIENT_SECRETS'][0], current_app.config['ADMIN_CLIENT_USER_NAME'])
 
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',

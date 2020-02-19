@@ -61,7 +61,12 @@ def requires_admin_auth():
 
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
-        return handle_admin_key(auth_token, current_app.config.get('ADMIN_CLIENT_SECRET'))
+
+        secret = ""
+        if len(current_app.config.get('ADMIN_CLIENT_SECRETS')):
+            secret = current_app.config.get('ADMIN_CLIENT_SECRETS')[0]
+
+        return handle_admin_key(auth_token, secret)
     else:
         raise AuthError('Unauthorized: admin authentication token required', 401)
 
