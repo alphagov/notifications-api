@@ -64,8 +64,8 @@ class Config(object):
     # URL of api app (on AWS this is the internal api endpoint)
     API_HOST_NAME = os.getenv('API_HOST_NAME')
 
-    # admin app api key
-    ADMIN_CLIENT_SECRETS = [os.getenv('ADMIN_CLIENT_SECRET')] if os.getenv('ADMIN_CLIENT_SECRET') else []
+    # admin app api keys
+    ADMIN_CLIENT_SECRETS = json.loads(os.environ.get('ADMIN_CLIENT_SECRETS', '[]'))
 
     # encyption secret/salt
     SECRET_KEY = os.getenv('SECRET_KEY')

@@ -62,11 +62,21 @@ def requires_admin_auth():
     if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
         g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
 
-        secret = ""
         if len(current_app.config.get('ADMIN_CLIENT_SECRETS')):
-            secret = current_app.config.get('ADMIN_CLIENT_SECRETS')[0]
+            for secret in current_app.config.get('ADMIN_CLIENT_SECRETS'):
+                try:
+                    decode_jwt_token(auth_token, secret)
+                    return
+                except TokenExpiredError:
+                    raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
+                except TokenDecodeError:
+                    # TODO: Change this so it doesn't also catch `TokenIssuerError` or `TokenIssuedAtError` exceptions
+                    # (which are children of `TokenDecodeError`) as these should cause an auth error immediately rather
+                    # than continue on to check the next API key
+                    continue
 
-        return handle_admin_key(auth_token, secret)
+        # Either there are no admin client secrets or their token didn't match one of them so error
+        raise AuthError("Unauthorized: admin authentication token not found", 401)
     else:
         raise AuthError('Unauthorized: admin authentication token required', 401)
 
@@ -135,12 +145,3 @@ def __get_token_issuer(auth_token):
     except TokenDecodeError:
         raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403)
     return issuer
-
-
-def handle_admin_key(auth_token, secret):
-    try:
-        decode_jwt_token(auth_token, secret)
-    except TokenExpiredError:
-        raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
-    except TokenDecodeError:
-        raise AuthError("Invalid token: could not decode your API token", 403)
