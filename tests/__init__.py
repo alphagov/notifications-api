@@ -28,7 +28,7 @@ def create_authorization_header(service_id=None, key_type=KEY_TYPE_NORMAL):
 
     else:
         client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
-        secret = current_app.config['ADMIN_CLIENT_SECRETS'][0]
+        secret = current_app.config['API_INTERNAL_SECRETS'][0]
 
     token = create_jwt_token(secret=secret, client_id=client_id)
     return 'Authorization', 'Bearer {}'.format(token)
