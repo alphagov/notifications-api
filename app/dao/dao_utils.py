@@ -8,13 +8,11 @@ from app.history_meta import create_history
 def transactional(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
-        from flask import current_app
         try:
             res = func(*args, **kwargs)
             db.session.commit()
             return res
-        except Exception as e:
-            current_app.logger.error(e)
+        except Exception:
             db.session.rollback()
             raise
     return commit_or_rollback
