@@ -104,8 +104,9 @@ def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_a
     assert exc.value.short_message == 'Invalid token: algorithm used is not HS256'
 
 
-def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
+def test_admin_auth_should_not_allow_request_with_no_iat(client):
     iss = current_app.config['ADMIN_CLIENT_USER_NAME']
+    secret = current_app.config['ADMIN_CLIENT_SECRETS'][0]
 
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
@@ -118,7 +119,7 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client, sample_api_key)
         # 'iat': not provided
     }
 
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+    token = jwt.encode(payload=claims, key=secret, headers=headers).decode()
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
