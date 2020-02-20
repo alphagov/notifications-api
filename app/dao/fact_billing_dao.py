@@ -245,7 +245,7 @@ def fetch_monthly_billing_for_year(service_id, year):
     if year_end_date >= today:
         yesterday = today - timedelta(days=1)
         for day in [yesterday, today]:
-            data = fetch_billing_data_for_day(process_day=day, service_id=service_id)
+            data = fetch_billing_data_for_day(process_day=day, service_id=service_id, check_permissions=True)
             for d in data:
                 update_fact_billing(data=d, process_day=day)
 
