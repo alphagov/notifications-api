@@ -315,28 +315,32 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     ]
 
 
-@freeze_time('2020-02-17 18:00:00')
-def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mocker):
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref0',
-        created_at=(datetime.now() - timedelta(hours=2)).isoformat()
-    )
+@pytest.mark.parametrize('time_to_run_task', [
+    "2020-02-17 18:00:00",  # after 5:30pm
+    "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
+])
+def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mocker, time_to_run_task):
+    with freeze_time("2020-02-17 18:00:00"):
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='ref0',
+            created_at=(datetime.now() - timedelta(hours=2)).isoformat()
+        )
 
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref1',
-        created_at=(datetime.now() - timedelta(hours=3)).isoformat()
-    )
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='ref1',
+            created_at=(datetime.now() - timedelta(hours=3)).isoformat()
+        )
 
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref2',
-        created_at=(datetime.now() - timedelta(days=2)).isoformat()
-    )
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='ref2',
+            created_at=(datetime.now() - timedelta(days=2)).isoformat()
+        )
 
     mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
         {'ContentLength': 2},
@@ -347,67 +351,8 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
     with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 2}):
-        collate_letter_pdfs_to_be_sent()
-
-    assert len(mock_celery.call_args_list) == 2
-    assert mock_celery.call_args_list[0] == call(
-        name='zip-and-send-letter-pdfs',
-        kwargs={
-            'filenames_to_zip': [
-                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
-            ],
-            'upload_filename': 'NOTIFY.2020-02-17.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
-        },
-        queue='process-ftp-tasks',
-        compression='zlib'
-    )
-    assert mock_celery.call_args_list[1] == call(
-        name='zip-and-send-letter-pdfs',
-        kwargs={
-            'filenames_to_zip': [
-                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
-            ],
-            'upload_filename': 'NOTIFY.2020-02-17.002.J85cUw-FWlKuAIOcwdLS.ZIP'
-        },
-        queue='process-ftp-tasks',
-        compression='zlib'
-    )
-
-
-@freeze_time('2020-02-18 02:00:00')
-def test_collate_letter_pdfs_to_be_sent_when_run_after_midnight(notify_api, sample_letter_template, mocker):
-    # created_at times for notifications choosen to match times in above test test_collate_letter_pdfs_to_be_sent
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref0',
-        created_at=(datetime.now() - timedelta(hours=10)).isoformat()
-    )
-
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref1',
-        created_at=(datetime.now() - timedelta(hours=11)).isoformat()
-    )
-
-    create_notification(
-        template=sample_letter_template,
-        status='created',
-        reference='ref2',
-        created_at=(datetime.now() - timedelta(days=2, hours=8)).isoformat()
-    )
-
-    mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
-        {'ContentLength': 2},
-        {'ContentLength': 1},
-        {'ContentLength': 3},
-    ])
-    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
-
-    with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 2}):
-        collate_letter_pdfs_to_be_sent()
+        with freeze_time(time_to_run_task):
+            collate_letter_pdfs_to_be_sent()
 
     assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(
