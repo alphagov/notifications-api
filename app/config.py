@@ -64,8 +64,8 @@ class Config(object):
     # URL of api app (on AWS this is the internal api endpoint)
     API_HOST_NAME = os.getenv('API_HOST_NAME')
 
-    # admin app api key
-    ADMIN_CLIENT_SECRET = os.getenv('ADMIN_CLIENT_SECRET')
+    # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
+    API_INTERNAL_SECRETS = json.loads(os.environ.get('API_INTERNAL_SECRETS', '[]'))
 
     # encyption secret/salt
     SECRET_KEY = os.getenv('SECRET_KEY')
@@ -369,7 +369,7 @@ class Development(Config):
     TRANSIENT_UPLOADED_LETTERS = 'development-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'development-letters-sanitise'
 
-    ADMIN_CLIENT_SECRET = 'dev-notify-secret-key'
+    API_INTERNAL_SECRETS = ['dev-notify-secret-key']
     SECRET_KEY = 'dev-notify-secret-key'
     DANGEROUS_SALT = 'dev-notify-salt'
 
