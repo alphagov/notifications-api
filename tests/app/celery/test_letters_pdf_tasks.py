@@ -343,20 +343,21 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         {'ContentLength': 1},
         {'ContentLength': 3},
     ])
-    mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.PDF', 'Size': 2}],
-        [{'Key': '2020-02-17/C.PDF', 'Size': 3}]
-    ])
+
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
-    collate_letter_pdfs_to_be_sent()
+    with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 2}):
+        collate_letter_pdfs_to_be_sent()
 
     assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.PDF'],
-            'upload_filename': 'NOTIFY.2020-02-17.001.pneY1OU2TUq7KfFSrJ2Q.ZIP'
+            'filenames_to_zip': [
+                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -364,8 +365,10 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/C.PDF'],
-            'upload_filename': 'NOTIFY.2020-02-17.002.Wy0jBtrnVzWeGqLXhE_f.ZIP'
+            'filenames_to_zip': [
+                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.002.J85cUw-FWlKuAIOcwdLS.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -401,20 +404,20 @@ def test_collate_letter_pdfs_to_be_sent_when_run_after_midnight(notify_api, samp
         {'ContentLength': 1},
         {'ContentLength': 3},
     ])
-    mocker.patch('app.celery.letters_pdf_tasks.group_letters', return_value=[
-        [{'Key': '2020-02-16/A.PDF', 'Size': 1}, {'Key': '2020-02-17/B.PDF', 'Size': 2}],
-        [{'Key': '2020-02-17/C.PDF', 'Size': 3}]
-    ])
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
 
-    collate_letter_pdfs_to_be_sent()
+    with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 2}):
+        collate_letter_pdfs_to_be_sent()
 
     assert len(mock_celery.call_args_list) == 2
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-16/A.PDF', '2020-02-17/B.PDF'],
-            'upload_filename': 'NOTIFY.2020-02-17.001.pneY1OU2TUq7KfFSrJ2Q.ZIP'
+            'filenames_to_zip': [
+                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -422,8 +425,10 @@ def test_collate_letter_pdfs_to_be_sent_when_run_after_midnight(notify_api, samp
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/C.PDF'],
-            'upload_filename': 'NOTIFY.2020-02-17.002.Wy0jBtrnVzWeGqLXhE_f.ZIP'
+            'filenames_to_zip': [
+                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.002.J85cUw-FWlKuAIOcwdLS.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
