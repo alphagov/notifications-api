@@ -247,21 +247,21 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         template=sample_letter_template,
         status='created',
         reference='ref0',
-        created_at=(datetime.now() - timedelta(hours=2)).isoformat()
+        created_at=(datetime.now() - timedelta(hours=2))
     )
 
     create_notification(
         template=sample_letter_template,
         status='created',
         reference='ref1',
-        created_at=(datetime.now() - timedelta(hours=3)).isoformat()
+        created_at=(datetime.now() - timedelta(hours=3))
     )
 
     create_notification(
         template=sample_letter_template,
         status='created',
         reference='ref2',
-        created_at=(datetime.now() - timedelta(days=2)).isoformat()
+        created_at=(datetime.now() - timedelta(days=2))
     )
 
     # notifications we don't expect to get sent to print as they are in the wrong status
@@ -270,7 +270,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
             template=sample_letter_template,
             status=status,
             reference='ref3',
-            created_at=(datetime.now() - timedelta(days=2)).isoformat()
+            created_at=(datetime.now() - timedelta(days=2))
         )
 
     # notification we don't expect to get sent as instead will make into this evenings print run
@@ -278,7 +278,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         template=sample_letter_template,
         status='created',
         reference='ref4',
-        created_at=(datetime.now() - timedelta(minutes=1)).isoformat()
+        created_at=(datetime.now() - timedelta(minutes=1))
     )
 
     # test notification we don't expect to get sent
@@ -286,7 +286,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         template=sample_letter_template,
         status='created',
         reference='ref4',
-        created_at=(datetime.now() - timedelta(days=1)).isoformat(),
+        created_at=(datetime.now() - timedelta(days=1)),
         key_type=KEY_TYPE_TEST
     )
 
@@ -325,21 +325,21 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
             template=sample_letter_template,
             status='created',
             reference='ref0',
-            created_at=(datetime.now() - timedelta(hours=2)).isoformat()
+            created_at=(datetime.now() - timedelta(hours=2))
         )
 
         create_notification(
             template=sample_letter_template,
             status='created',
             reference='ref1',
-            created_at=(datetime.now() - timedelta(hours=3)).isoformat()
+            created_at=(datetime.now() - timedelta(hours=3))
         )
 
         create_notification(
             template=sample_letter_template,
             status='created',
             reference='ref2',
-            created_at=(datetime.now() - timedelta(days=2)).isoformat()
+            created_at=(datetime.now() - timedelta(days=2))
         )
 
     mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[

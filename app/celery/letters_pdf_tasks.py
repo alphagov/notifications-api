@@ -132,8 +132,6 @@ def collate_letter_pdfs_to_be_sent():
     if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
         print_run_date = print_run_date - timedelta(days=1)
 
-    # We can truncate the datetime to a date and add our own time (5:30pm) because UTC to BST does not
-    # make a difference to the date since it is triggered mid afternoon.
     print_run_deadline = print_run_date.replace(
         hour=17, minute=30, second=0, microsecond=0
     )
