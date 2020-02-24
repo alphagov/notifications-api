@@ -12,7 +12,7 @@ from app.dao.date_util import (
     get_financial_year,
     get_financial_year_for_datetime
 )
-from app.dao.organisation_dao import dao_get_organisation_services
+from app.dao.organisation_dao import dao_get_organisation_live_services
 
 from app.models import (
     FactBilling,
@@ -187,7 +187,6 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
 
 @statsd(namespace="dao")
 def fetch_billing_totals_for_year(service_id, year):
-    print("fetch_billing_totals_for_year", year)
     year_start_date, year_end_date = get_financial_year(year)
     """
       Billing for email: only record the total number of emails.
@@ -541,3 +540,154 @@ def create_billing_record(data, rate, process_day):
         postage=data.postage,
     )
     return billing_record
+
+
+def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
+    query = db.session.query(
+        Service.name.label("service_name"),
+        Service.id.label("service_id"),
+        func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
+    ).select_from(
+        Service
+    ).join(
+        FactBilling, FactBilling.service_id == Service.id,
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == LETTER_TYPE,
+        Service.organisation_id == organisation_id
+    ).group_by(
+        Service.id,
+        Service.name,
+    ).order_by(
+        Service.name
+    )
+
+    return query.all()
+
+
+def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
+    query = db.session.query(
+        Service.name.label("service_name"),
+        Service.id.label("service_id"),
+        func.sum(FactBilling.notifications_sent).label("emails_sent")
+    ).select_from(
+        Service
+    ).join(
+        FactBilling, FactBilling.service_id == Service.id,
+    ).filter(
+        FactBilling.service_id == Service.id,
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == EMAIL_TYPE,
+        Service.organisation_id == organisation_id
+    ).group_by(
+        Service.id,
+        Service.name,
+    ).order_by(
+        Service.name
+    )
+
+    return query.all()
+
+
+@statsd(namespace="dao")
+def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
+
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
+
+    sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+    sms_remainder = func.coalesce(
+        free_allowance_remainder.c.sms_remainder,
+        free_allowance_remainder.c.free_sms_fragment_limit
+    )
+    chargeable_sms = func.greatest(sms_billable_units - sms_remainder, 0)
+    sms_cost = chargeable_sms * FactBilling.rate
+
+    query = db.session.query(
+        Service.name.label("service_name"),
+        Service.id.label("service_id"),
+        free_allowance_remainder.c.free_sms_fragment_limit,
+        FactBilling.rate.label('sms_rate'),
+        sms_remainder.label("sms_remainder"),
+        sms_billable_units.label('sms_billable_units'),
+        chargeable_sms.label("chargeable_billable_sms"),
+        sms_cost.label('sms_cost'),
+    ).select_from(
+        Service
+    ).outerjoin(
+        free_allowance_remainder, Service.id == free_allowance_remainder.c.service_id
+    ).join(
+        FactBilling, FactBilling.service_id == Service.id,
+    ).filter(
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date,
+        FactBilling.notification_type == SMS_TYPE,
+        Service.organisation_id == organisation_id
+    ).group_by(
+        Service.id,
+        Service.name,
+        free_allowance_remainder.c.free_sms_fragment_limit,
+        free_allowance_remainder.c.sms_remainder,
+        FactBilling.rate,
+    ).order_by(
+        Service.name
+    )
+
+    return query.all()
+
+
+def fetch_usage_year_for_organisation(organisation_id, year):
+    year_start_datetime, year_end_datetime = get_financial_year(year)
+
+    year_start_date = convert_utc_to_bst(year_start_datetime).date()
+    year_end_date = convert_utc_to_bst(year_end_datetime).date()
+
+    today = convert_utc_to_bst(datetime.utcnow()).date()
+    services = dao_get_organisation_live_services(organisation_id)
+    # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
+    if year_end_date >= today:
+        yesterday = today - timedelta(days=1)
+        for service in services:
+            for day in [yesterday, today]:
+                data = fetch_billing_data_for_day(process_day=day, service_id=service.id)
+                for d in data:
+                    update_fact_billing(data=d, process_day=day)
+    service_with_usage = {}
+    # initialise results
+    for service in services:
+        service_with_usage[str(service.id)] = {
+            'service_id': service.id,
+            'service_name': service.name,
+            'free_sms_limit': 0,
+            'sms_remainder': 0,
+            'sms_billable_units': 0,
+            'chargeable_billable_sms': 0,
+            'sms_cost': 0,
+            'letter_cost': 0,
+            'emails_sent': 0
+        }
+    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start_date, year_end_date)
+    letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start_date, year_end_date)
+    email_usages = fetch_email_usage_for_organisation(organisation_id, year_start_date, year_end_date)
+
+    for usage in sms_usages:
+        service_with_usage[str(usage.service_id)] = {
+             'service_id': usage.service_id,
+             'service_name': usage.service_name,
+             'free_sms_limit': usage.free_sms_fragment_limit,
+             'sms_remainder': usage.sms_remainder,
+             'sms_billable_units': usage.sms_billable_units,
+             'chargeable_billable_sms': usage.chargeable_billable_sms,
+             'sms_cost': usage.sms_cost,
+             'letter_cost': 0,
+             'emails_sent': 0
+        }
+    for letter_usage in letter_usages:
+        service_with_usage[str(letter_usage.service_id)]['letter_cost'] = letter_usage.letter_cost
+    for email_usage in email_usages:
+        service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
+
+    return service_with_usage
