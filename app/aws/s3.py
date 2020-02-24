@@ -19,6 +19,12 @@ def get_s3_object(bucket_name, file_location):
     return s3.Object(bucket_name, file_location)
 
 
+def head_s3_object(bucket_name, file_location):
+    # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/s3.html#S3.Client.head_object
+    boto_client = client('s3', current_app.config['AWS_REGION'])
+    return boto_client.head_object(Bucket=bucket_name, Key=file_location)
+
+
 def file_exists(bucket_name, file_location):
     try:
         # try and access metadata of object
@@ -56,7 +62,7 @@ def remove_job_from_s3(service_id, job_id):
     return remove_s3_object(*get_job_location(service_id, job_id))
 
 
-def get_s3_bucket_objects(bucket_name, subfolder='', older_than=7, limit_days=2):
+def get_s3_bucket_objects(bucket_name, subfolder=''):
     boto_client = client('s3', current_app.config['AWS_REGION'])
     paginator = boto_client.get_paginator('list_objects_v2')
     page_iterator = paginator.paginate(

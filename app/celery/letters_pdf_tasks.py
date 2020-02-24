@@ -1,6 +1,6 @@
 import math
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 from hashlib import sha512
 from base64 import urlsafe_b64encode
@@ -14,6 +14,8 @@ from requests import (
 from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.s3 import s3upload
+from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app import encryption, notify_celery
 from app.aws import s3
@@ -23,9 +25,10 @@ from app.dao.notifications_dao import (
     update_notification_status_by_id,
     dao_update_notification,
     dao_get_notification_by_reference,
-    dao_get_notifications_by_references,
     dao_update_notifications_by_reference,
+    dao_get_letters_to_be_printed,
 )
+from app.letters.utils import get_letter_pdf_filename
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
@@ -115,28 +118,33 @@ def get_letters_pdf(template, contact_block, filename, values):
     return resp.content, billable_units
 
 
-@notify_celery.task(name='collate-letter-pdfs-for-day')
-@cronitor("collate-letter-pdfs-for-day")
-def collate_letter_pdfs_for_day(date=None):
-    if not date:
-        # Using the truncated date is ok because UTC to BST does not make a difference to the date,
-        # since it is triggered mid afternoon.
-        date = datetime.utcnow().strftime("%Y-%m-%d")
+@notify_celery.task(name='collate-letter-pdfs-to-be-sent')
+@cronitor("collate-letter-pdfs-to-be-sent")
+def collate_letter_pdfs_to_be_sent():
+    """
+    Finds all letters which are still waiting to be sent to DVLA for printing
 
-    letter_pdfs = sorted(
-        s3.get_s3_bucket_objects(
-            current_app.config['LETTERS_PDF_BUCKET_NAME'],
-            subfolder=date
-        ),
-        key=lambda letter: letter['Key']
+    This would usually be run at 5.50pm and collect up letters created between before 5:30pm today
+    that have not yet been sent.
+    If run after midnight, it will collect up letters created before 5:30pm the day before.
+    """
+    print_run_date = convert_utc_to_bst(datetime.utcnow())
+    if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
+        print_run_date = print_run_date - timedelta(days=1)
+
+    print_run_deadline = print_run_date.replace(
+        hour=17, minute=30, second=0, microsecond=0
     )
-    for i, letters in enumerate(group_letters(letter_pdfs)):
+
+    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline)
+
+    for i, letters in enumerate(group_letters(letters_to_print)):
         filenames = [letter['Key'] for letter in letters]
 
         hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
         # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
         dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
-            date=date,
+            date=print_run_deadline.strftime("%Y-%m-%d"),
             num=i + 1,
             hash=hash
         )
@@ -159,6 +167,24 @@ def collate_letter_pdfs_for_day(date=None):
         )
 
 
+def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
+    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline)
+
+    letter_pdfs = []
+    for letter in letters_awaiting_sending:
+        letter_file_name = get_letter_pdf_filename(
+            reference=letter.reference,
+            crown=letter.service.crown,
+            sending_date=letter.created_at,
+            postage=letter.postage
+        )
+
+        letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
+        letter_pdfs.append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
+
+    return letter_pdfs
+
+
 def group_letters(letter_pdfs):
     """
     Group letters in chunks of MAX_LETTER_PDF_ZIP_FILESIZE. Will add files to lists, never going over that size.
@@ -168,7 +194,7 @@ def group_letters(letter_pdfs):
     running_filesize = 0
     list_of_files = []
     for letter in letter_pdfs:
-        if letter['Key'].lower().endswith('.pdf') and letter_in_created_state(letter['Key']):
+        if letter['Key'].lower().endswith('.pdf'):
             if (
                 running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE'] or
                 len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
@@ -182,22 +208,6 @@ def group_letters(letter_pdfs):
 
     if list_of_files:
         yield list_of_files
-
-
-def letter_in_created_state(filename):
-    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
-    subfolder = filename.split('/')[0]
-    ref = get_reference_from_filename(filename)
-    notifications = dao_get_notifications_by_references([ref])
-    if notifications:
-        if notifications[0].status == NOTIFICATION_CREATED:
-            return True
-        current_app.logger.info('Collating letters for {} but notification with reference {} already in {}'.format(
-            subfolder,
-            ref,
-            notifications[0].status
-        ))
-    return False
 
 
 @notify_celery.task(bind=True, name='process-virus-scan-passed', max_retries=15, default_retry_delay=300)
