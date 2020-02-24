@@ -1,7 +1,10 @@
+from datetime import datetime
+
 from flask import abort, Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
+from app.dao.fact_billing_dao import fetch_usage_year_for_organisation
 from app.dao.organisation_dao import (
     dao_create_organisation,
     dao_get_organisations,
@@ -127,9 +130,9 @@ def get_organisation_services(organisation_id):
 
 @organisation_blueprint.route('/<uuid:organisation_id>/services-with-usage', methods=['GET'])
 def get_organisation_services_usage(organisation_id):
-    services = dao_get_organisation_services(organisation_id)
-    sorted_services = sorted(services, key=lambda s: (-s.active, s.name))
-    return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])
+    services = fetch_usage_year_for_organisation(organisation_id, datetime.utcnow().year)
+
+    return jsonify(services=services)
 
 
 @organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])

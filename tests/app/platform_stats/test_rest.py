@@ -122,7 +122,8 @@ def test_validate_date_is_within_a_financial_year_when_input_is_not_a_date(start
 
 
 def test_get_usage_for_all_services(notify_db_session, admin_request):
-    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 5, 1))
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
     response = admin_request.get("platform_stats.get_usage_for_all_services",
                                  start_date='2019-05-01',
                                  end_date='2019-06-30')

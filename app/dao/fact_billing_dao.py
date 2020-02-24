@@ -594,7 +594,6 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
 
 @statsd(namespace="dao")
 def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
-
     # ASSUMPTION: AnnualBilling has been populated for year.
     free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
 
@@ -675,15 +674,15 @@ def fetch_usage_year_for_organisation(organisation_id, year):
 
     for usage in sms_usages:
         service_with_usage[str(usage.service_id)] = {
-             'service_id': usage.service_id,
-             'service_name': usage.service_name,
-             'free_sms_limit': usage.free_sms_fragment_limit,
-             'sms_remainder': usage.sms_remainder,
-             'sms_billable_units': usage.sms_billable_units,
-             'chargeable_billable_sms': usage.chargeable_billable_sms,
-             'sms_cost': usage.sms_cost,
-             'letter_cost': 0,
-             'emails_sent': 0
+            'service_id': usage.service_id,
+            'service_name': usage.service_name,
+            'free_sms_limit': usage.free_sms_fragment_limit,
+            'sms_remainder': usage.sms_remainder,
+            'sms_billable_units': usage.sms_billable_units,
+            'chargeable_billable_sms': usage.chargeable_billable_sms,
+            'sms_cost': usage.sms_cost,
+            'letter_cost': 0,
+            'emails_sent': 0
         }
     for letter_usage in letter_usages:
         service_with_usage[str(letter_usage.service_id)]['letter_cost'] = letter_usage.letter_cost

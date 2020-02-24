@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import uuid
 
 import pytest
@@ -11,6 +13,8 @@ from tests.app.db import (
     create_organisation,
     create_service,
     create_user,
+    create_template,
+    create_ft_billing
 )
 
 
@@ -737,3 +741,16 @@ def test_is_organisation_name_unique_returns_400_when_name_does_not_exist(admin_
 
     assert response["message"][0]["org_id"] == ["Can't be empty"]
     assert response["message"][1]["name"] == ["Can't be empty"]
+
+
+def test_get_organisation_services_usage(admin_request, notify_db_session):
+    org = create_organisation(name='Organisation without live services')
+    service = create_service()
+    template = create_template(service=service)
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, notifications_sent=19)
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=org.id
+    )
+    assert len(response) == 1
