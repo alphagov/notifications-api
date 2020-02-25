@@ -534,8 +534,10 @@ def test_check_reply_to_letter_type(sample_service):
 def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service):
     with pytest.raises(BadRequestError) as e:
         check_if_service_can_send_files_by_email(sample_service.contact_link)
+
+    expected_message = "Send files by email is not set up yet. Go to your settings page to manage send files by email"
     assert e.value.status_code == 400
-    assert e.value.message == "Go to Service Settings to turn on sending files by email"
+    assert e.value.message == expected_message
 
 
 def test_check_if_service_can_send_files_by_email_passes_if_contact_link_set(sample_service):

@@ -91,7 +91,9 @@ def check_service_has_permission(notify_type, permissions):
 
 def check_if_service_can_send_files_by_email(service_contact_link):
     if not service_contact_link:
-        raise BadRequestError(message="Go to Service Settings to turn on sending files by email")
+        raise BadRequestError(
+            message="Send files by email is not set up yet. Go to your settings page to manage send files by email"
+        )
 
 
 def check_service_can_schedule_notification(permissions, scheduled_for):
