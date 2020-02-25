@@ -1,6 +1,7 @@
 import json
 import uuid
 from datetime import datetime, timedelta, date
+from unittest.mock import ANY
 
 from freezegun import freeze_time
 import pytest
@@ -653,6 +654,7 @@ def test_get_job_by_id_with_stats_for_old_job_where_notifications_have_been_purg
     assert resp_json['data']['created_by']['name'] == 'Test User'
 
 
+@freeze_time('2017-07-17 07:17')
 def test_get_jobs(admin_request, sample_template):
     _setup_jobs(sample_template)
 
@@ -660,6 +662,28 @@ def test_get_jobs(admin_request, sample_template):
 
     resp_json = admin_request.get('job.get_jobs_by_service', service_id=service_id)
     assert len(resp_json['data']) == 5
+    assert resp_json['data'][0] == {
+        'archived': False,
+        'created_at': '2017-07-17T07:17:00+00:00',
+        'created_by': {
+            'id': ANY,
+            'name': 'Test User',
+        },
+        'id': ANY,
+        'job_status': 'pending',
+        'notification_count': 1,
+        'original_file_name': 'some.csv',
+        'processing_finished': None,
+        'processing_started': None,
+        'scheduled_for': None,
+        'service': str(sample_template.service.id),
+        'service_name': {'name': sample_template.service.name},
+        'statistics': [],
+        'template': str(sample_template.id),
+        'template_type': 'sms',
+        'template_version': 1,
+        'updated_at': None,
+    }
 
 
 def test_get_jobs_with_limit_days(admin_request, sample_template):

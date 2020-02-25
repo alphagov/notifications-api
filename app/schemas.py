@@ -380,6 +380,11 @@ class JobSchema(BaseSchema):
     service_name = fields.Nested(
         ServiceSchema, attribute="service", dump_to="service_name", only=["name"], dump_only=True)
 
+    template_type = fields.Method('get_template_type', dump_only=True)
+
+    def get_template_type(self, job):
+        return job.template.template_type
+
     @validates('scheduled_for')
     def validate_scheduled_for(self, value):
         _validate_datetime_not_in_past(value)
