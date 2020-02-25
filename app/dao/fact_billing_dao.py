@@ -577,7 +577,6 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     ).join(
         FactBilling, FactBilling.service_id == Service.id,
     ).filter(
-        FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == EMAIL_TYPE,
@@ -588,7 +587,6 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     ).order_by(
         Service.name
     )
-
     return query.all()
 
 
@@ -671,7 +669,6 @@ def fetch_usage_year_for_organisation(organisation_id, year):
     sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start_date, year_end_date)
     letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start_date, year_end_date)
     email_usages = fetch_email_usage_for_organisation(organisation_id, year_start_date, year_end_date)
-
     for usage in sms_usages:
         service_with_usage[str(usage.service_id)] = {
             'service_id': usage.service_id,
@@ -679,13 +676,13 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'free_sms_limit': usage.free_sms_fragment_limit,
             'sms_remainder': usage.sms_remainder,
             'sms_billable_units': usage.sms_billable_units,
-            'chargeable_billable_sms': usage.chargeable_billable_sms,
-            'sms_cost': usage.sms_cost,
+            'chargeable_billable_sms': float(usage.chargeable_billable_sms),
+            'sms_cost': float(usage.sms_cost),
             'letter_cost': 0,
             'emails_sent': 0
         }
     for letter_usage in letter_usages:
-        service_with_usage[str(letter_usage.service_id)]['letter_cost'] = letter_usage.letter_cost
+        service_with_usage[str(letter_usage.service_id)]['letter_cost'] = float(letter_usage.letter_cost)
     for email_usage in email_usages:
         service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
 

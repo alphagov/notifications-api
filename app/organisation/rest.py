@@ -1,4 +1,3 @@
-from datetime import datetime
 
 from flask import abort, Blueprint, jsonify, request, current_app
 from sqlalchemy.exc import IntegrityError
@@ -130,9 +129,14 @@ def get_organisation_services(organisation_id):
 
 @organisation_blueprint.route('/<uuid:organisation_id>/services-with-usage', methods=['GET'])
 def get_organisation_services_usage(organisation_id):
-    services = fetch_usage_year_for_organisation(organisation_id, datetime.utcnow().year)
-
-    return jsonify(services=services)
+    try:
+        year = int(request.args.get('year'))
+    except ValueError:
+        return jsonify(result='error', message='No valid year provided'), 400
+    services = fetch_usage_year_for_organisation(organisation_id, year)
+    list_services = services.values()
+    sorted_services = sorted(list_services, key=lambda s: s['service_name'].lower())
+    return jsonify(services=sorted_services)
 
 
 @organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])

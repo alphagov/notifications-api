@@ -649,8 +649,8 @@ def test_fetch_usage_year_for_organisation(notify_db_session):
     assert first_row['free_sms_limit'] == 10
     assert first_row['sms_remainder'] == 10
     assert first_row['chargeable_billable_sms'] == 0
-    assert first_row['sms_cost'] == Decimal('0.0')
-    assert first_row['letter_cost'] == Decimal('3.40')
+    assert first_row['sms_cost'] == 0.0
+    assert first_row['letter_cost'] == 3.4
     assert first_row['emails_sent'] == 0
 
     second_row = results[str(service_with_emails_for_org.id)]

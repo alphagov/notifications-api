@@ -3,6 +3,7 @@ from datetime import datetime
 import uuid
 
 import pytest
+from freezegun import freeze_time
 
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
@@ -743,6 +744,7 @@ def test_is_organisation_name_unique_returns_400_when_name_does_not_exist(admin_
     assert response["message"][1]["name"] == ["Can't be empty"]
 
 
+@freeze_time('2020-02-24 13:30')
 def test_get_organisation_services_usage(admin_request, notify_db_session):
     org = create_organisation(name='Organisation without live services')
     service = create_service()
@@ -751,6 +753,20 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, notifications_sent=19)
     response = admin_request.get(
         'organisation.get_organisation_services_usage',
-        organisation_id=org.id
+        organisation_id=org.id,
+        **{"year": 2019}
     )
     assert len(response) == 1
+    assert len(response['services']) == 1
+    print(response)
+    assert response['services'][0]['service_id'] == str(service.id)
+
+
+def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_request):
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=uuid.uuid4(),
+        **{"year": 'year'},
+        _expected_status=400
+    )
+    assert response['message'] == 'No valid year provided'
