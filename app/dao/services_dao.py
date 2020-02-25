@@ -48,6 +48,7 @@ from app.models import (
     NOTIFICATION_PERMANENT_FAILURE,
     SMS_TYPE,
     LETTER_TYPE,
+    UPLOAD_LETTERS,
 )
 from app.utils import email_address_is_nhs, escape_special_characters, get_london_midnight_in_utc, midnight_n_days_ago
 
@@ -56,6 +57,7 @@ DEFAULT_SERVICE_PERMISSIONS = [
     EMAIL_TYPE,
     LETTER_TYPE,
     INTERNATIONAL_SMS_TYPE,
+    UPLOAD_LETTERS,
 ]
 
 
