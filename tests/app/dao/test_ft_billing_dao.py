@@ -18,7 +18,9 @@ from app.dao.fact_billing_dao import (
     get_rates_for_billing,
     fetch_sms_free_allowance_remainder,
     fetch_sms_billing_for_all_services,
-    fetch_letter_costs_for_all_services, fetch_letter_line_items_for_all_services, fetch_usage_year_for_organisation
+    fetch_letter_costs_for_all_services,
+    fetch_letter_line_items_for_all_services,
+    fetch_usage_year_for_organisation
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import (
@@ -583,8 +585,6 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
     assert len(results) == 3
-    # (organisation_name, organisation_id, service_name, free_sms_fragment_limit, sms_rate,
-    #  sms_remainder, sms_billable_units, chargeable_billable_sms, sms_cost)
     assert results[0] == (org.name, org.id, service.name, service.id, 10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
     assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, 10, Decimal('0.11'), 0, 3, 3,
                           Decimal('0.33'))

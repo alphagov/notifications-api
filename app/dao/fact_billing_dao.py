@@ -542,6 +542,7 @@ def create_billing_record(data, rate, process_day):
     return billing_record
 
 
+@statsd(namespace="dao")
 def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
@@ -552,7 +553,6 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     ).join(
         FactBilling, FactBilling.service_id == Service.id,
     ).filter(
-        FactBilling.service_id == Service.id,
         FactBilling.bst_date >= start_date,
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == LETTER_TYPE,
@@ -567,6 +567,7 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
+@statsd(namespace="dao")
 def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
@@ -636,6 +637,7 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
+@statsd(namespace="dao")
 def fetch_usage_year_for_organisation(organisation_id, year):
     year_start_datetime, year_end_datetime = get_financial_year(year)
 
@@ -662,8 +664,8 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'sms_remainder': 0,
             'sms_billable_units': 0,
             'chargeable_billable_sms': 0,
-            'sms_cost': 0,
-            'letter_cost': 0,
+            'sms_cost': 0.0,
+            'letter_cost': 0.0,
             'emails_sent': 0
         }
     sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start_date, year_end_date)
@@ -676,9 +678,9 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'free_sms_limit': usage.free_sms_fragment_limit,
             'sms_remainder': usage.sms_remainder,
             'sms_billable_units': usage.sms_billable_units,
-            'chargeable_billable_sms': float(usage.chargeable_billable_sms),
+            'chargeable_billable_sms': usage.chargeable_billable_sms,
             'sms_cost': float(usage.sms_cost),
-            'letter_cost': 0,
+            'letter_cost': 0.0,
             'emails_sent': 0
         }
     for letter_usage in letter_usages:
