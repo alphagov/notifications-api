@@ -11,7 +11,6 @@ from app.models import (
     NOTIFICATION_CREATED,
     SCHEDULE_NOTIFICATIONS,
     SMS_TYPE,
-    UPLOAD_DOCUMENT,
     INTERNATIONAL_SMS_TYPE
 )
 from flask import json, current_app
@@ -775,7 +774,8 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(client, s
 
 
 def test_post_notification_with_document_upload(client, notify_db_session, mocker):
-    service = create_service(service_permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    service = create_service(service_permissions=[EMAIL_TYPE])
+    service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
         template_type='email',
@@ -822,7 +822,8 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
 
 
 def test_post_notification_with_document_upload_simulated(client, notify_db_session, mocker):
-    service = create_service(service_permissions=[EMAIL_TYPE, UPLOAD_DOCUMENT])
+    service = create_service(service_permissions=[EMAIL_TYPE])
+    service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
         template_type='email',

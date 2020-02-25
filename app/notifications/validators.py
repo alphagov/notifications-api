@@ -85,7 +85,13 @@ def service_has_permission(notify_type, permissions):
 def check_service_has_permission(notify_type, permissions):
     if not service_has_permission(notify_type, permissions):
         raise BadRequestError(message="Service is not allowed to send {}".format(
-            get_public_notify_type_text(notify_type, plural=True)))
+            get_public_notify_type_text(notify_type, plural=True)
+        ))
+
+
+def check_if_service_can_send_files_by_email(service_contact_link):
+    if not service_contact_link:
+        raise BadRequestError(message="Go to Service Settings to turn on sending files by email")
 
 
 def check_service_can_schedule_notification(permissions, scheduled_for):

@@ -8,6 +8,7 @@ from app.dao import templates_dao
 from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
 from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import (
+    check_if_service_can_send_files_by_email,
     check_notification_content_is_not_empty,
     check_service_over_daily_message_limit,
     check_template_is_for_notification_type,
@@ -528,3 +529,15 @@ def test_check_reply_to_sms_type(sample_service):
 def test_check_reply_to_letter_type(sample_service):
     letter_contact = create_letter_contact(service=sample_service, contact_block='123456')
     assert check_reply_to(sample_service.id, letter_contact.id, LETTER_TYPE) == '123456'
+
+
+def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service):
+    with pytest.raises(BadRequestError) as e:
+        check_if_service_can_send_files_by_email(sample_service.contact_link)
+    assert e.value.status_code == 400
+    assert e.value.message == "Go to Service Settings to turn on sending files by email"
+
+
+def test_check_if_service_can_send_files_by_email_passes_if_contact_link_set(sample_service):
+    sample_service.contact_link = 'contact.me@gov.uk'
+    check_if_service_can_send_files_by_email(sample_service.contact_link)
