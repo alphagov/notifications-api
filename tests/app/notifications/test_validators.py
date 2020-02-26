@@ -535,9 +535,9 @@ def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(
     with pytest.raises(BadRequestError) as e:
         check_if_service_can_send_files_by_email(sample_service.contact_link)
 
-    expected_message = "Send files by email is not set up yet. Go to your settings page to manage send files by email"
+    message = "Send files by email has not been set up. Go to your Settings page to manage Send files by email."
     assert e.value.status_code == 400
-    assert e.value.message == expected_message
+    assert e.value.message == message
 
 
 def test_check_if_service_can_send_files_by_email_passes_if_contact_link_set(sample_service):
