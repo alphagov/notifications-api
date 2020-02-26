@@ -777,7 +777,16 @@ def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_re
     response = admin_request.get(
         'organisation.get_organisation_services_usage',
         organisation_id=uuid.uuid4(),
-        **{"year": 'year'},
+        **{"year": 'not-a-valid-year'},
+        _expected_status=400
+    )
+    assert response['message'] == 'No valid year provided'
+
+
+def test_get_organisation_services_usage_returns_400_if_year_is_empty(admin_request):
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=uuid.uuid4(),
         _expected_status=400
     )
     assert response['message'] == 'No valid year provided'

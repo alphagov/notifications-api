@@ -130,7 +130,7 @@ def get_organisation_services(organisation_id):
 @organisation_blueprint.route('/<uuid:organisation_id>/services-with-usage', methods=['GET'])
 def get_organisation_services_usage(organisation_id):
     try:
-        year = int(request.args.get('year'))
+        year = int(request.args.get('year', 'none'))
     except ValueError:
         return jsonify(result='error', message='No valid year provided'), 400
     services = fetch_usage_year_for_organisation(organisation_id, year)

@@ -631,6 +631,7 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
     assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)
 
 
+@freeze_time('2019-06-01 13:30')
 def test_fetch_usage_year_for_organisation(notify_db_session):
     org, org_2, service, service_2, service_3, service_sms_only, \
         org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))

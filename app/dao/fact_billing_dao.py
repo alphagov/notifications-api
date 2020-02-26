@@ -244,11 +244,9 @@ def fetch_monthly_billing_for_year(service_id, year):
     today = convert_utc_to_bst(datetime.utcnow()).date()
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end_date >= today:
-        yesterday = today - timedelta(days=1)
-        for day in [yesterday, today]:
-            data = fetch_billing_data_for_day(process_day=day, service_id=service_id, check_permissions=True)
-            for d in data:
-                update_fact_billing(data=d, process_day=day)
+        data = fetch_billing_data_for_day(process_day=today, service_id=service_id, check_permissions=True)
+        for d in data:
+            update_fact_billing(data=d, process_day=today)
 
     email_and_letters = db.session.query(
         func.date_trunc('month', FactBilling.bst_date).cast(Date).label("month"),
@@ -648,12 +646,10 @@ def fetch_usage_year_for_organisation(organisation_id, year):
     services = dao_get_organisation_live_services(organisation_id)
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end_date >= today:
-        yesterday = today - timedelta(days=1)
         for service in services:
-            for day in [yesterday, today]:
-                data = fetch_billing_data_for_day(process_day=day, service_id=service.id)
-                for d in data:
-                    update_fact_billing(data=d, process_day=day)
+            data = fetch_billing_data_for_day(process_day=today, service_id=service.id)
+            for d in data:
+                update_fact_billing(data=d, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:

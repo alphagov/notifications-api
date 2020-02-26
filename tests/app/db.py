@@ -908,7 +908,7 @@ def set_up_usage_data(start_date):
 
     service_2 = create_service(service_name='b - emails')
     email_template = create_template(service=service_2, template_type='email')
-    org_2 = create_organisation(name='Org for {}'.format(service_2))
+    org_2 = create_organisation(name='Org for {}'.format(service_2.name))
     dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
 
     service_3 = create_service(service_name='c - letters only')
