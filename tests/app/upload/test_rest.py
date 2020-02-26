@@ -56,12 +56,14 @@ def test_get_uploads(admin_request, sample_template):
     assert data[0] == {'id': str(upload_5.id),
                        'original_file_name': 'some.csv',
                        'notification_count': 10,
+                       'template_type': 'sms',
                        'created_at': upload_5.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                        'statistics': [],
                        'upload_type': 'job'}
     assert data[1] == {'id': str(upload_4.id),
                        'original_file_name': 'some.csv',
                        'notification_count': 1,
+                       'template_type': 'sms',
                        'created_at': upload_4.created_at.strftime(
                            "%Y-%m-%d %H:%M:%S"),
                        'statistics': [],
@@ -69,12 +71,14 @@ def test_get_uploads(admin_request, sample_template):
     assert data[2] == {'id': str(upload_3.id),
                        'original_file_name': "file-name",
                        'notification_count': 1,
+                       'template_type': None,
                        'created_at': upload_3.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                        'statistics': [{'count': 1, 'status': 'delivered'}],
                        'upload_type': 'letter'}
     assert data[3] == {'id': str(upload_2.id),
                        'original_file_name': "some.csv",
                        'notification_count': 1,
+                       'template_type': 'sms',
                        'created_at': upload_2.created_at.strftime(
                            "%Y-%m-%d %H:%M:%S"),
                        'statistics': [],
@@ -82,6 +86,7 @@ def test_get_uploads(admin_request, sample_template):
     assert data[4] == {'id': str(upload_1.id),
                        'original_file_name': "file-name",
                        'notification_count': 1,
+                       'template_type': None,
                        'created_at': upload_1.created_at.strftime("%Y-%m-%d %H:%M:%S"),
                        'statistics': [{'count': 1, 'status': 'delivered'}],
                        'upload_type': 'letter'}
