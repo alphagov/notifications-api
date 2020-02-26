@@ -307,7 +307,7 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_create_scheduled_job_more_then_96_hours_hence(client, sample_template, mocker, fake_uuid):
+def test_should_not_create_scheduled_job_more_then_96_hours_in_the_future(client, sample_template, mocker, fake_uuid):
     scheduled_date = (datetime.utcnow() + timedelta(hours=96, minutes=1)).isoformat()
     mocker.patch('app.celery.tasks.process_job.apply_async')
     mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
