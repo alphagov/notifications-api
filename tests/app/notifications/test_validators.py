@@ -533,13 +533,20 @@ def test_check_reply_to_letter_type(sample_service):
 
 def test_check_if_service_can_send_files_by_email_raises_if_no_contact_link_set(sample_service):
     with pytest.raises(BadRequestError) as e:
-        check_if_service_can_send_files_by_email(sample_service.contact_link)
+        check_if_service_can_send_files_by_email(
+            service_contact_link=sample_service.contact_link,
+            service_id=sample_service.id
+        )
 
-    message = "Send files by email has not been set up. Go to your Settings page to manage Send files by email."
+    message = f"Send files by email has not been set up - add contact details for your service at " \
+              f"http://localhost:6012/services/{sample_service.id}/service-settings/send-files-by-email"
     assert e.value.status_code == 400
     assert e.value.message == message
 
 
 def test_check_if_service_can_send_files_by_email_passes_if_contact_link_set(sample_service):
     sample_service.contact_link = 'contact.me@gov.uk'
-    check_if_service_can_send_files_by_email(sample_service.contact_link)
+    check_if_service_can_send_files_by_email(
+        service_contact_link=sample_service.contact_link,
+        service_id=sample_service.id
+    )

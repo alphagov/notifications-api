@@ -89,10 +89,12 @@ def check_service_has_permission(notify_type, permissions):
         ))
 
 
-def check_if_service_can_send_files_by_email(service_contact_link):
+def check_if_service_can_send_files_by_email(service_contact_link, service_id):
     if not service_contact_link:
+
         raise BadRequestError(
-            message="Send files by email has not been set up. Go to your Settings page to manage Send files by email."
+            message=f"Send files by email has not been set up - add contact details for your service at "
+                    f"{current_app.config['ADMIN_BASE_URL']}/services/{service_id}/service-settings/send-files-by-email"
         )
 
 

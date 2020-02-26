@@ -235,7 +235,10 @@ def process_document_uploads(personalisation_data, service, simulated=False):
 
     personalisation_data = personalisation_data.copy()
 
-    check_if_service_can_send_files_by_email(authenticated_service.contact_link)
+    check_if_service_can_send_files_by_email(
+        service_contact_link=authenticated_service.contact_link,
+        service_id=authenticated_service.id
+    )
 
     for key in file_keys:
         if simulated:
