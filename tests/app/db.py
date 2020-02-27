@@ -906,6 +906,11 @@ def set_up_usage_data(start_date):
     org = create_organisation(name="Org for {}".format(service.name))
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
 
+    service_2 = create_service(service_name='b - emails')
+    email_template = create_template(service=service_2, template_type='email')
+    org_2 = create_organisation(name='Org for {}'.format(service_2.name))
+    dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
+
     service_3 = create_service(service_name='c - letters only')
     letter_template_3 = create_template(service=service_3, template_type='letter')
     org_3 = create_organisation(name="Org for {}".format(service_3.name))
@@ -942,7 +947,9 @@ def set_up_usage_data(start_date):
     create_ft_billing(bst_date=two_days_later, template=letter_template_4,
                       notifications_sent=15, billable_unit=4, rate=.55, postage='second')
 
-    return org, org_3, service, service_3, service_4, service_sms_only
+    create_ft_billing(bst_date=start_date, template=email_template, notifications_sent=10)
+
+    return org, org_3, service, service_3, service_4, service_sms_only, org_2, service_2
 
 
 def create_returned_letter(service=None, reported_at=None, notification_id=None):

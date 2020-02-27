@@ -18,7 +18,10 @@ from app.dao.fact_billing_dao import (
     get_rates_for_billing,
     fetch_sms_free_allowance_remainder,
     fetch_sms_billing_for_all_services,
-    fetch_letter_costs_for_all_services, fetch_letter_line_items_for_all_services)
+    fetch_letter_costs_for_all_services,
+    fetch_letter_line_items_for_all_services,
+    fetch_usage_year_for_organisation
+)
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import (
     FactBilling,
@@ -582,8 +585,6 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
     assert len(results) == 3
-    # (organisation_name, organisation_id, service_name, free_sms_fragment_limit, sms_rate,
-    #  sms_remainder, sms_billable_units, chargeable_billable_sms, sms_cost)
     assert results[0] == (org.name, org.id, service.name, service.id, 10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
     assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, 10, Decimal('0.11'), 0, 3, 3,
                           Decimal('0.33'))
@@ -592,7 +593,8 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
-    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 5, 1))
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
 
     assert len(results) == 2
@@ -604,7 +606,8 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
-    org, org_2, service, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
@@ -615,7 +618,8 @@ def test_fetch_letter_costs_for_all_services(notify_db_session):
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
-    org_1, org_2, service_1, service_2, service_3, service_sms_only = set_up_usage_data(datetime(2019, 6, 1))
+    org_1, org_2, service_1, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
@@ -625,3 +629,68 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
     assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.65"), 'second', 20)
     assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.50"), 'first', 2)
     assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)
+
+
+@freeze_time('2019-06-01 13:30')
+def test_fetch_usage_year_for_organisation(notify_db_session):
+    org, org_2, service, service_2, service_3, service_sms_only, \
+        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
+    service_with_emails_for_org = create_service(service_name='Service with emails for org')
+    dao_add_service_to_organisation(service=service_with_emails_for_org, organisation_id=org.id)
+    template = create_template(service=service_with_emails_for_org, template_type='email')
+    create_ft_billing(bst_date=datetime(2019, 5, 1),
+                      template=template,
+                      notifications_sent=1100)
+    results = fetch_usage_year_for_organisation(org.id, 2019)
+
+    assert len(results) == 2
+    first_row = results[str(service.id)]
+    assert first_row['service_id'] == service.id
+    assert first_row['service_name'] == service.name
+    assert first_row['free_sms_limit'] == 10
+    assert first_row['sms_remainder'] == 10
+    assert first_row['chargeable_billable_sms'] == 0
+    assert first_row['sms_cost'] == 0.0
+    assert first_row['letter_cost'] == 3.4
+    assert first_row['emails_sent'] == 0
+
+    second_row = results[str(service_with_emails_for_org.id)]
+    assert second_row['service_id'] == service_with_emails_for_org.id
+    assert second_row['service_name'] == service_with_emails_for_org.name
+    assert second_row['free_sms_limit'] == 0
+    assert second_row['sms_remainder'] == 0
+    assert second_row['chargeable_billable_sms'] == 0
+    assert second_row['sms_cost'] == 0
+    assert second_row['letter_cost'] == 0
+    assert second_row['emails_sent'] == 1100
+
+
+def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify_db_session):
+    create_letter_rate(start_date=datetime.utcnow() - timedelta(days=1))
+    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.65, notification_type='sms')
+    new_org = create_organisation(name='New organisation')
+    service = create_service()
+    template = create_template(service=service)
+    dao_add_service_to_organisation(service=service, organisation_id=new_org.id)
+    current_year = datetime.utcnow().year
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=current_year)
+
+    assert FactBilling.query.count() == 0
+
+    create_notification(template=template, status='delivered')
+
+    results = fetch_usage_year_for_organisation(organisation_id=new_org.id, year=current_year)
+    assert len(results) == 1
+    assert FactBilling.query.count() == 1
+
+
+def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(notify_db_session):
+    org = create_organisation(name='Organisation without live services')
+    service = create_service(restricted=True)
+    template = create_template(service=service)
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, notifications_sent=19)
+
+    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=datetime.utcnow().year)
+
+    assert len(results) == 0

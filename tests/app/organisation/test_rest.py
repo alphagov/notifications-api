@@ -1,6 +1,9 @@
+from datetime import datetime
+
 import uuid
 
 import pytest
+from freezegun import freeze_time
 
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
@@ -11,6 +14,9 @@ from tests.app.db import (
     create_organisation,
     create_service,
     create_user,
+    create_template,
+    create_ft_billing,
+    create_annual_billing
 )
 
 
@@ -737,3 +743,50 @@ def test_is_organisation_name_unique_returns_400_when_name_does_not_exist(admin_
 
     assert response["message"][0]["org_id"] == ["Can't be empty"]
     assert response["message"][1]["name"] == ["Can't be empty"]
+
+
+@freeze_time('2020-02-24 13:30')
+def test_get_organisation_services_usage(admin_request, notify_db_session):
+    org = create_organisation(name='Organisation without live services')
+    service = create_service()
+    template = create_template(service=service)
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060,
+                      notifications_sent=19)
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=org.id,
+        **{"year": 2019}
+    )
+    assert len(response) == 1
+    assert len(response['services']) == 1
+    service_usage = response['services'][0]
+    assert service_usage['service_id'] == str(service.id)
+    assert service_usage['service_name'] == service.name
+    assert service_usage['chargeable_billable_sms'] == 9.0
+    assert service_usage['emails_sent'] == 0
+    assert service_usage['free_sms_limit'] == 10
+    assert service_usage['letter_cost'] == 0
+    assert service_usage['sms_billable_units'] == 19
+    assert service_usage['sms_remainder'] == 10
+    assert service_usage['sms_cost'] == 0.54
+
+
+def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_request):
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=uuid.uuid4(),
+        **{"year": 'not-a-valid-year'},
+        _expected_status=400
+    )
+    assert response['message'] == 'No valid year provided'
+
+
+def test_get_organisation_services_usage_returns_400_if_year_is_empty(admin_request):
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=uuid.uuid4(),
+        _expected_status=400
+    )
+    assert response['message'] == 'No valid year provided'

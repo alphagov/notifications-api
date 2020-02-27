@@ -17,7 +17,7 @@ def dao_get_organisations():
     ).all()
 
 
-def dao_count_organsations_with_live_services():
+def dao_count_organisations_with_live_services():
     return db.session.query(Organisation.id).join(Organisation.services).filter(
         Service.active.is_(True),
         Service.restricted.is_(False),
@@ -29,6 +29,13 @@ def dao_get_organisation_services(organisation_id):
     return Organisation.query.filter_by(
         id=organisation_id
     ).one().services
+
+
+def dao_get_organisation_live_services(organisation_id):
+    return Service.query.filter_by(
+        organisation_id=organisation_id,
+        restricted=False
+    ).all()
 
 
 def dao_get_organisation_by_id(organisation_id):
