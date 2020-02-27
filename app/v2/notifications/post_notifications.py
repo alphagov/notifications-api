@@ -16,7 +16,6 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
-    UPLOAD_DOCUMENT,
     PRIORITY,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -35,13 +34,14 @@ from app.notifications.process_notifications import (
     simulated_recipient
 )
 from app.notifications.validators import (
-    validate_and_format_recipient,
+    check_if_service_can_send_files_by_email,
     check_rate_limiting,
     check_service_can_schedule_notification,
-    check_service_has_permission,
-    validate_template,
     check_service_email_reply_to_id,
-    check_service_sms_sender_id
+    check_service_has_permission,
+    check_service_sms_sender_id,
+    validate_and_format_recipient,
+    validate_template,
 )
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
@@ -235,7 +235,10 @@ def process_document_uploads(personalisation_data, service, simulated=False):
 
     personalisation_data = personalisation_data.copy()
 
-    check_service_has_permission(UPLOAD_DOCUMENT, authenticated_service.permissions)
+    check_if_service_can_send_files_by_email(
+        service_contact_link=authenticated_service.contact_link,
+        service_id=authenticated_service.id
+    )
 
     for key in file_keys:
         if simulated:
