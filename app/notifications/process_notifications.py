@@ -71,7 +71,7 @@ def persist_notification(
     billable_units=None,
     postage=None,
     template_postage=None,
-    document_download_count=None,
+    document_download_count=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
