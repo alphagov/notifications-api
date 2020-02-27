@@ -10,7 +10,7 @@ from tests.conftest import set_config
 def create_uploaded_letter(letter_template, service, status='created', created_at=None):
     return create_notification(
         template=letter_template,
-        to_field="file-name",
+        to_field="742 Evergreen Terrace",
         status=status,
         reference="dvla-reference",
         client_reference="file-name",
@@ -55,6 +55,7 @@ def test_get_uploads(admin_request, sample_template):
     assert len(data) == 5
     assert data[0] == {'id': str(upload_5.id),
                        'original_file_name': 'some.csv',
+                       'recipient': None,
                        'notification_count': 10,
                        'template_type': 'sms',
                        'created_at': upload_5.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -62,6 +63,7 @@ def test_get_uploads(admin_request, sample_template):
                        'upload_type': 'job'}
     assert data[1] == {'id': str(upload_4.id),
                        'original_file_name': 'some.csv',
+                       'recipient': None,
                        'notification_count': 1,
                        'template_type': 'sms',
                        'created_at': upload_4.created_at.strftime(
@@ -70,6 +72,7 @@ def test_get_uploads(admin_request, sample_template):
                        'upload_type': 'job'}
     assert data[2] == {'id': str(upload_3.id),
                        'original_file_name': "file-name",
+                       'recipient': '742 Evergreen Terrace',
                        'notification_count': 1,
                        'template_type': None,
                        'created_at': upload_3.created_at.strftime("%Y-%m-%d %H:%M:%S"),
@@ -77,6 +80,7 @@ def test_get_uploads(admin_request, sample_template):
                        'upload_type': 'letter'}
     assert data[3] == {'id': str(upload_2.id),
                        'original_file_name': "some.csv",
+                       'recipient': None,
                        'notification_count': 1,
                        'template_type': 'sms',
                        'created_at': upload_2.created_at.strftime(
@@ -85,6 +89,7 @@ def test_get_uploads(admin_request, sample_template):
                        'upload_type': 'job'}
     assert data[4] == {'id': str(upload_1.id),
                        'original_file_name': "file-name",
+                       'recipient': '742 Evergreen Terrace',
                        'notification_count': 1,
                        'template_type': None,
                        'created_at': upload_1.created_at.strftime("%Y-%m-%d %H:%M:%S"),

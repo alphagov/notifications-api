@@ -45,6 +45,7 @@ def get_paginated_uploads(service_id, limit_days, page):
                 "%Y-%m-%d %H:%M:%S") if upload.scheduled_for else upload.created_at.strftime("%Y-%m-%d %H:%M:%S"),
             'upload_type': upload.upload_type,
             'template_type': None,
+            'recipient': upload.recipient,
         }
         if upload.upload_type == 'job':
             start = upload.processing_started
