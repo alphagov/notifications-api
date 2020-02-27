@@ -15,7 +15,8 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_get_invited_organisation_user,
     dao_get_users_for_organisation,
-    dao_add_user_to_organisation
+    dao_add_user_to_organisation,
+    dao_get_organisation_live_services
 )
 from app.models import Organisation, Service
 
@@ -356,3 +357,22 @@ def test_get_organisation_by_email_address_ignores_gsi_gov_uk(notify_db_session)
 
     found_org = dao_get_organisation_by_email_address('test_gsi_address@example.gsi.gov.uk')
     assert org == found_org
+
+
+def test_dao_get_organisation_live_services(notify_db_session):
+    org = create_organisation()
+    live_service = create_service(service_name='live service', restricted=False, count_as_live=True)
+    do_not_count_as_live_service = create_service(
+        service_name='do_not_count_as_live_service', restricted=False, count_as_live=False
+    )
+    archived_service_but_count_as_live = create_service(
+        service_name='archived but count as live', restricted=False, active=False, count_as_live=True
+    )
+    dao_add_service_to_organisation(service=live_service, organisation_id=org.id)
+    dao_add_service_to_organisation(service=do_not_count_as_live_service, organisation_id=org.id)
+    dao_add_service_to_organisation(service=archived_service_but_count_as_live, organisation_id=org.id)
+
+    results = dao_get_organisation_live_services(organisation_id=org.id)
+    assert len(results) == 2
+    assert results[0] == archived_service_but_count_as_live
+    assert results[1] == live_service

@@ -555,7 +555,8 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == LETTER_TYPE,
         Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
+        Service.restricted.is_(False),
+        Service.count_as_live.is_(True)
     ).group_by(
         Service.id,
         Service.name,
@@ -581,7 +582,8 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == EMAIL_TYPE,
         Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
+        Service.restricted.is_(False),
+        Service.count_as_live.is_(True)
     ).group_by(
         Service.id,
         Service.name,
@@ -624,7 +626,8 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
         FactBilling.bst_date <= end_date,
         FactBilling.notification_type == SMS_TYPE,
         Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
+        Service.restricted.is_(False),
+        Service.count_as_live.is_(True)
     ).group_by(
         Service.id,
         Service.name,

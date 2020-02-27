@@ -34,8 +34,9 @@ def dao_get_organisation_services(organisation_id):
 def dao_get_organisation_live_services(organisation_id):
     return Service.query.filter_by(
         organisation_id=organisation_id,
-        restricted=False
-    ).all()
+        restricted=False,
+        count_as_live=True
+    ).order_by(Service.name).all()
 
 
 def dao_get_organisation_by_id(organisation_id):
