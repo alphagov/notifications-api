@@ -684,13 +684,28 @@ def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify
     assert FactBilling.query.count() == 1
 
 
+@freeze_time('2020-02-27 13:30')
 def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(notify_db_session):
     org = create_organisation(name='Organisation without live services')
-    service = create_service(restricted=True)
-    template = create_template(service=service)
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, notifications_sent=19)
+    live_service = create_service(restricted=False)
+    sms_template = create_template(service=live_service)
+    trial_service = create_service(restricted=True, service_name='trial_service')
+    email_template = create_template(service=trial_service, template_type='email')
+    trial_sms_template = create_template(service=trial_service, template_type='sms')
+    trial_letter_template = create_template(service=trial_service, template_type='letter')
+    dao_add_service_to_organisation(service=live_service, organisation_id=org.id)
+    dao_add_service_to_organisation(service=trial_service, organisation_id=org.id)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=sms_template, rate=0.0158,
+                      billable_unit=19, notifications_sent=19)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=email_template, billable_unit=0,
+                      notifications_sent=100)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=trial_sms_template, billable_unit=200, rate=0.0158,
+                      notifications_sent=100)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=trial_letter_template, billable_unit=40, rate=0.30,
+                      notifications_sent=20)
 
-    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=datetime.utcnow().year)
+    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=2019)
 
-    assert len(results) == 0
+    assert len(results) == 1
+    assert results[str(live_service.id)]['sms_billable_units'] == 19
+    assert results[str(live_service.id)]['emails_sent'] == 0
