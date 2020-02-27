@@ -3,11 +3,11 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
-cffi==1.13.2
+cffi==1.14.0
 celery[sqs]==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
-flask-marshmallow==0.10.1
+flask-marshmallow==0.11.0
 Flask-Migrate==2.5.2
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.1.1
@@ -17,8 +17,8 @@ gunicorn==20.0.4
 iso8601==0.1.12
 itsdangerous==1.1.0
 jsonschema==3.2.0
-marshmallow-sqlalchemy==0.21.0
-marshmallow==2.20.2 # pyup: <3 # v3 throws errors
+marshmallow-sqlalchemy==0.22.2
+marshmallow==2.20.5 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.8.4
 PyJWT==1.7.1
 SQLAlchemy==1.3.13
@@ -36,13 +36,13 @@ alembic==1.4.0
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.3.0
-awscli==1.18.6
+awscli==1.18.7
 bcrypt==3.1.7
 billiard==3.3.0.23
 bleach==3.1.1
 boto==2.49.0
 boto3==1.10.38
-botocore==1.15.6
+botocore==1.15.7
 certifi==2019.11.28
 chardet==3.0.4
 Click==7.0
