@@ -56,6 +56,7 @@ def test_get_uploads_for_service(sample_template):
         letter.created_at,
         letter.status,
         "letter",
+        "file-name",
     )
     assert uploads_from_db[1] == (
         job.id,
@@ -67,6 +68,7 @@ def test_get_uploads_for_service(sample_template):
         job.processing_started,
         job.job_status,
         "job",
+        None,
     )
 
     assert len(other_uploads_from_db) == 2
@@ -78,7 +80,8 @@ def test_get_uploads_for_service(sample_template):
                                         None,
                                         other_letter.created_at,
                                         other_letter.status,
-                                        "letter")
+                                        "letter",
+                                        "file-name")
     assert other_uploads_from_db[1] == (other_job.id,
                                         other_job.original_file_name,
                                         other_job.notification_count,
@@ -86,7 +89,9 @@ def test_get_uploads_for_service(sample_template):
                                         other_job.created_at,
                                         other_job.scheduled_for,
                                         other_job.processing_started,
-                                        other_job.job_status, "job")
+                                        other_job.job_status,
+                                        "job",
+                                        None)
 
     assert uploads_from_db[0] != other_uploads_from_db[0]
     assert uploads_from_db[1] != other_uploads_from_db[1]

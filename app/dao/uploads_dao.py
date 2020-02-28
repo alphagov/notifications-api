@@ -30,7 +30,8 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         Job.scheduled_for.label("scheduled_for"),
         Job.processing_started.label('processing_started'),
         Job.job_status.label("status"),
-        literal('job').label('upload_type')
+        literal('job').label('upload_type'),
+        literal(None).label('recipient'),
     ).join(
         Template, Job.template_id == Template.id
     ).filter(
@@ -58,7 +59,8 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         # letters don't have a processing_started date but we want created_at to be used for sorting
         Notification.created_at.label('processing_started'),
         Notification.status,
-        literal('letter').label('upload_type')
+        literal('letter').label('upload_type'),
+        Notification.to.label('recipient'),
     ).join(
         Template, Notification.template_id == Template.id
     ).filter(
