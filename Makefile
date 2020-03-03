@@ -8,7 +8,6 @@ GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detach
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
 DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:master
-DOCKER_TTY ?= $(if ${JENKINS_HOME},,t)
 
 BUILD_TAG ?= notifications-api-manual
 BUILD_NUMBER ?= 0
@@ -103,7 +102,7 @@ build-with-docker: ; ## don't do anything
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
-	@docker run -i${DOCKER_TTY} --rm \
+	@docker run -it --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
 		-e SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@postgres/test_notification_api \
