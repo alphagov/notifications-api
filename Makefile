@@ -53,18 +53,6 @@ production: ## Set environment to production
 generate-version-file: ## Generates the app version file
 	@echo -e "__travis_commit__ = \"${GIT_COMMIT}\"\n__time__ = \"${DATE}\"\n__travis_job_number__ = \"${BUILD_NUMBER}\"\n__travis_job_url__ = \"${BUILD_URL}\"" > ${APP_VERSION_FILE}
 
-.PHONY: build-paas-artifact
-build-paas-artifact:  ## Build the deploy artifact for PaaS
-	rm -rf target
-	mkdir -p target
-	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
-
-.PHONY: upload-paas-artifact
-upload-paas-artifact: ## Upload the deploy artifact for PaaS
-	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
-	$(if ${JENKINS_S3_BUCKET},,$(error Must specify JENKINS_S3_BUCKET))
-	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${JENKINS_S3_BUCKET}/build/notifications-api/${DEPLOY_BUILD_NUMBER}.zip
-
 .PHONY: test
 test: generate-version-file ## Run tests
 	./scripts/run_tests.sh
@@ -96,9 +84,6 @@ prepare-docker-build-image: generate-version-file ## Prepare the Docker builder 
 		--build-arg NO_PROXY="${NO_PROXY}" \
 		-t ${DOCKER_BUILDER_IMAGE_NAME} \
 		.
-
-.PHONY: build-with-docker
-build-with-docker: ; ## don't do anything
 
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
@@ -185,12 +170,6 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf v3-cancel-zdt-push ${CF_APP}
-
-.PHONY: cf-push
-cf-push:
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	cf push ${CF_APP} -f <(make -s generate-manifest)
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
