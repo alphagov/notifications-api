@@ -3383,6 +3383,20 @@ def test_get_monthly_notification_data_by_service(mocker, admin_request):
 
 
 @freeze_time('2019-12-11 13:30')
+def test_get_returned_letter_statistics(admin_request, sample_service):
+    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=3))
+    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=2))
+    create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=1))
+
+    response = admin_request.get('service.returned_letter_statistics', service_id=sample_service.id)
+
+    assert response == {
+        'returned_letter_count': 3,
+        'most_recent_report': '2019-12-10 00:00:00.000000'
+    }
+
+
+@freeze_time('2019-12-11 13:30')
 def test_get_returned_letter_summary(admin_request, sample_service):
     create_returned_letter(sample_service, reported_at=datetime.utcnow() - timedelta(days=3))
     create_returned_letter(sample_service, reported_at=datetime.utcnow())

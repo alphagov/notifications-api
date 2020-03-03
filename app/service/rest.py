@@ -31,8 +31,10 @@ from app.dao.fact_notification_status_dao import (
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.returned_letters_dao import (
+    fetch_most_recent_returned_letter,
+    fetch_returned_letter_count,
     fetch_returned_letter_summary,
-    fetch_returned_letters
+    fetch_returned_letters,
 )
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
@@ -944,6 +946,25 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
         raise InvalidRequest(
             "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=400
         )
+
+
+@service_blueprint.route('/<uuid:service_id>/returned-letter-statistics', methods=['GET'])
+def returned_letter_statistics(service_id):
+
+    most_recent = fetch_most_recent_returned_letter(service_id)
+
+    if not most_recent:
+        return jsonify({
+            'returned_letter_count': 0,
+            'most_recent_report': None,
+        })
+
+    count = fetch_returned_letter_count(service_id)
+
+    return jsonify({
+        'returned_letter_count': count.returned_letter_count,
+        'most_recent_report': most_recent.reported_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
+    })
 
 
 @service_blueprint.route('/<uuid:service_id>/returned-letter-summary', methods=['GET'])
