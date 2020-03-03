@@ -13,7 +13,6 @@ from tests.app.db import create_service
 
 @pytest.mark.parametrize('permissions', [
     [EMAIL_TYPE],
-    [LETTER_TYPE],
     [UPLOAD_LETTERS],
 ])
 def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_permission(

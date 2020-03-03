@@ -26,7 +26,6 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     NOTIFICATION_DELIVERED,
-    UPLOAD_LETTERS,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id, get_precompiled_letter_template
@@ -139,7 +138,6 @@ def send_pdf_letter_notification(service_id, post_data):
     service = dao_fetch_service_by_id(service_id)
 
     check_service_has_permission(LETTER_TYPE, service.permissions)
-    check_service_has_permission(UPLOAD_LETTERS, service.permissions)
     check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
     validate_created_by(service, post_data['created_by'])
     validate_and_format_recipient(
