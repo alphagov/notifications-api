@@ -26,28 +26,12 @@ CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP}))
 
 NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
+
+## DEVELOPMENT
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-
-.PHONY: check-env-vars
-check-env-vars: ## Check mandatory environment variables
-	$(if ${DEPLOY_ENV},,$(error Must specify DEPLOY_ENV))
-
-.PHONY: preview
-preview: ## Set environment to preview
-	$(eval export DEPLOY_ENV=preview)
-	@true
-
-.PHONY: staging
-staging: ## Set environment to staging
-	$(eval export DEPLOY_ENV=staging)
-	@true
-
-.PHONY: production
-production: ## Set environment to production
-	$(eval export DEPLOY_ENV=production)
-	@true
 
 .PHONY: generate-version-file
 generate-version-file: ## Generates the app version file
@@ -119,6 +103,24 @@ clean-docker-containers: ## Clean up any remaining docker containers
 .PHONY: clean
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache
+
+
+## DEPLOYMENT
+
+.PHONY: preview
+preview: ## Set environment to preview
+	$(eval export DEPLOY_ENV=preview)
+	@true
+
+.PHONY: staging
+staging: ## Set environment to staging
+	$(eval export DEPLOY_ENV=staging)
+	@true
+
+.PHONY: production
+production: ## Set environment to production
+	$(eval export DEPLOY_ENV=production)
+	@true
 
 .PHONY: cf-login
 cf-login: ## Log in to Cloud Foundry
