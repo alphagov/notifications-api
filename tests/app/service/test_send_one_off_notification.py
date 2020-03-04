@@ -294,8 +294,8 @@ def test_send_one_off_notification_raises_if_message_too_long(persist_mock, noti
     with pytest.raises(BadRequestError) as e:
         send_one_off_notification(service.id, post_data)
 
-    assert e.value.message == 'Content for template has a character count greater than the limit of {}'.format(
-        SMS_CHAR_COUNT_LIMIT)
+    assert e.value.message == f'Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. ' \
+                              f'Your message is {729} characters'
 
 
 def test_send_one_off_notification_fails_if_created_by_other_service(sample_template):

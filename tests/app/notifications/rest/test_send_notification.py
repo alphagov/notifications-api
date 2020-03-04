@@ -99,8 +99,8 @@ def test_send_notification_invalid_template_id(notify_api, sample_template, mock
 
             json_resp = json.loads(response.get_data(as_text=True))
             mocked.assert_not_called()
-            assert response.status_code == 404
-            test_string = 'No result found'
+            assert response.status_code == 400
+            test_string = 'Template not found'
             assert test_string in json_resp['message']
 
 
@@ -315,8 +315,8 @@ def test_should_not_allow_template_from_another_service(notify_api,
 
             json_resp = json.loads(response.get_data(as_text=True))
             mocked.assert_not_called()
-            assert response.status_code == 404
-            test_string = 'No result found'
+            assert response.status_code == 400
+            test_string = 'Template not found'
             assert test_string in json_resp['message']
 
 
