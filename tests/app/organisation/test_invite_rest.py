@@ -5,6 +5,10 @@ from app.models import Notification, INVITE_PENDING
 from tests.app.db import create_invited_org_user
 
 
+@pytest.mark.parametrize('platform_admin, expected_invited_by', (
+    (True, 'The GOV.UK Notify team'),
+    (False, 'Test User')
+))
 @pytest.mark.parametrize('extra_args, expected_start_of_invite_url', [
     (
         {},
@@ -23,9 +27,12 @@ def test_create_invited_org_user(
     org_invite_email_template,
     extra_args,
     expected_start_of_invite_url,
+    platform_admin,
+    expected_invited_by,
 ):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     email_address = 'invited_user@example.com'
+    sample_user.platform_admin = platform_admin
 
     data = dict(
         organisation=str(sample_organisation.id),
@@ -53,7 +60,7 @@ def test_create_invited_org_user(
 
     assert len(notification.personalisation.keys()) == 3
     assert notification.personalisation['organisation_name'] == 'sample organisation'
-    assert notification.personalisation['user_name'] == 'Test User'
+    assert notification.personalisation['user_name'] == expected_invited_by
     assert notification.personalisation['url'].startswith(expected_start_of_invite_url)
     assert len(notification.personalisation['url']) > len(expected_start_of_invite_url)
 
