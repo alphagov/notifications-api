@@ -80,9 +80,6 @@ class Config(object):
     # Firetext API Key
     FIRETEXT_API_KEY = os.getenv("FIRETEXT_API_KEY")
 
-    # Hosted graphite statsd prefix
-    STATSD_PREFIX = os.getenv('STATSD_PREFIX')
-
     # Prefix to identify queues in SQS
     NOTIFICATION_QUEUE_PREFIX = os.getenv('NOTIFICATION_QUEUE_PREFIX')
 
