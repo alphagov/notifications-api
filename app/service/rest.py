@@ -32,7 +32,7 @@ from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
-    fetch_returned_letter_count,
+    fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
     fetch_returned_letters,
 )
@@ -969,7 +969,7 @@ def returned_letter_statistics(service_id):
             'most_recent_report': most_recent.reported_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
         })
 
-    count = fetch_returned_letter_count(service_id)
+    count = fetch_recent_returned_letter_count(service_id)
 
     return jsonify({
         'returned_letter_count': count.returned_letter_count,

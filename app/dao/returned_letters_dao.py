@@ -51,7 +51,7 @@ def insert_or_update_returned_letters(references):
         db.session.connection().execute(stmt)
 
 
-def fetch_returned_letter_count(service_id):
+def fetch_recent_returned_letter_count(service_id):
     return db.session.query(
         func.count(ReturnedLetter.notification_id).label('returned_letter_count'),
     ).filter(

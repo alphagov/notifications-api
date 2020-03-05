@@ -6,7 +6,7 @@ from freezegun import freeze_time
 from app.dao.returned_letters_dao import (
     insert_or_update_returned_letters,
     fetch_most_recent_returned_letter,
-    fetch_returned_letter_count,
+    fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
     fetch_returned_letters
 )
@@ -128,7 +128,7 @@ def test_get_returned_letter_count(sample_service):
     )
 
     with freeze_time('2010-11-08 10:10'):
-        result = fetch_returned_letter_count(sample_service.id)
+        result = fetch_recent_returned_letter_count(sample_service.id)
 
     assert result.returned_letter_count == 3
 
