@@ -122,7 +122,7 @@ from app.schemas import (
     email_data_request_schema
 )
 from app.user.users_schema import post_set_permissions_schema
-from app.utils import pagination_links
+from app.utils import midnight_n_days_ago, pagination_links
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -957,6 +957,16 @@ def returned_letter_statistics(service_id):
         return jsonify({
             'returned_letter_count': 0,
             'most_recent_report': None,
+        })
+
+    most_recent_reported_at = datetime.combine(
+        most_recent.reported_at, datetime.min.time()
+    )
+
+    if most_recent_reported_at < midnight_n_days_ago(7):
+        return jsonify({
+            'returned_letter_count': 0,
+            'most_recent_report': most_recent.reported_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
         })
 
     count = fetch_returned_letter_count(service_id)
