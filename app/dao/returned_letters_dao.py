@@ -13,6 +13,7 @@ from app.models import (
     Template,
     User,
 )
+from app.utils import midnight_n_days_ago
 
 
 def _get_notification_ids_for_references(references):
@@ -48,6 +49,25 @@ def insert_or_update_returned_letters(references):
             }
         )
         db.session.connection().execute(stmt)
+
+
+def fetch_recent_returned_letter_count(service_id):
+    return db.session.query(
+        func.count(ReturnedLetter.notification_id).label('returned_letter_count'),
+    ).filter(
+        ReturnedLetter.service_id == service_id,
+        ReturnedLetter.reported_at > midnight_n_days_ago(7),
+    ).one()
+
+
+def fetch_most_recent_returned_letter(service_id):
+    return db.session.query(
+        ReturnedLetter.reported_at,
+    ).filter(
+        ReturnedLetter.service_id == service_id,
+    ).order_by(
+        desc(ReturnedLetter.reported_at)
+    ).first()
 
 
 def fetch_returned_letter_summary(service_id):

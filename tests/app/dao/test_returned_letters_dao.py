@@ -1,14 +1,22 @@
+import uuid
 from datetime import datetime, timedelta, date
 
 from freezegun import freeze_time
 
 from app.dao.returned_letters_dao import (
     insert_or_update_returned_letters,
+    fetch_most_recent_returned_letter,
+    fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
     fetch_returned_letters
 )
 from app.models import ReturnedLetter, NOTIFICATION_RETURNED_LETTER
-from tests.app.db import create_notification, create_notification_history, create_returned_letter
+from tests.app.db import (
+    create_notification,
+    create_notification_history,
+    create_returned_letter,
+    create_service,
+)
 
 
 def test_insert_or_update_returned_letters_inserts(sample_letter_template):
@@ -88,6 +96,62 @@ def test_insert_or_update_returned_letters_with_duplicates_in_reference_list(sam
     assert len(returned_letters) == 2
     for x in returned_letters:
         assert x.notification_id in [notification_1.id, notification_2.id]
+
+
+def test_get_returned_letter_count(sample_service):
+    # Before 7 days – don’t count
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2001, 1, 1)
+    )
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2010, 11, 1, 23, 59, 59),
+    )
+    # In the last 7 days – count
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2010, 11, 2, 0, 0, 0),
+    )
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2010, 11, 8, 10, 0),
+    )
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2010, 11, 8, 10, 0),
+    )
+    # Different service – don’t count
+    create_returned_letter(
+        create_service(service_id=uuid.uuid4(), service_name='Other service'),
+        reported_at=datetime(2010, 11, 8, 10, 0),
+    )
+
+    with freeze_time('2010-11-08 10:10'):
+        result = fetch_recent_returned_letter_count(sample_service.id)
+
+    assert result.returned_letter_count == 3
+
+
+def test_fetch_most_recent_returned_letter_for_service(sample_service):
+    # Older
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2009, 9, 9, 9, 9),
+    )
+    # Newer
+    create_returned_letter(
+        sample_service,
+        reported_at=datetime(2010, 10, 10, 10, 10),
+    )
+    # Newest, but different service
+    create_returned_letter(
+        create_service(service_id=uuid.uuid4(), service_name='Other service'),
+        reported_at=datetime(2011, 11, 11, 11, 11),
+    )
+    result = fetch_most_recent_returned_letter(sample_service.id)
+
+    assert str(result.reported_at) == '2010-10-10'
 
 
 def test_get_returned_letter_summary(sample_service):
