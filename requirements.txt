@@ -17,7 +17,7 @@ gunicorn==20.0.4
 iso8601==0.1.12
 itsdangerous==1.1.0
 jsonschema==3.2.0
-marshmallow-sqlalchemy==0.22.2
+marshmallow-sqlalchemy==0.22.3
 marshmallow==2.20.5 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.8.4
 PyJWT==1.7.1
@@ -32,20 +32,20 @@ awscli-cwlogs>=1.4,<1.5
 git+https://github.com/alphagov/notifications-utils.git@36.6.1#egg=notifications-utils==36.6.1
 
 ## The following requirements were added by pip freeze:
-alembic==1.4.0
+alembic==1.4.1
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.3.0
-awscli==1.18.7
+awscli==1.18.16
 bcrypt==3.1.7
 billiard==3.3.0.23
 bleach==3.1.1
 boto==2.49.0
 boto3==1.10.38
-botocore==1.15.7
+botocore==1.15.16
 certifi==2019.11.28
 chardet==3.0.4
-Click==7.0
+click==7.1
 colorama==0.4.3
 dnspython==1.16.0
 docutils==0.15.2
@@ -57,14 +57,14 @@ importlib-metadata==1.5.0
 Jinja2==2.11.1
 jmespath==0.9.5
 kombu==3.0.37
-Mako==1.1.1
+Mako==1.1.2
 MarkupSafe==1.1.1
 mistune==0.8.4
 monotonic==1.5
 orderedset==2.0.1
 phonenumbers==8.11.2
 pyasn1==0.4.8
-pycparser==2.19
+pycparser==2.20
 PyPDF2==1.26.0
 pyrsistent==0.15.7
 python-dateutil==2.8.1
@@ -82,4 +82,4 @@ statsd==3.3.0
 urllib3==1.25.8
 webencodings==0.5.1
 Werkzeug==1.0.0
-zipp==3.0.0
+zipp==3.1.0
