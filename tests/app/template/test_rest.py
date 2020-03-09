@@ -1143,11 +1143,13 @@ def test_preview_letter_template_precompiled_s3_error(
 
 
 @pytest.mark.parametrize(
-    "filetype, post_url, message",
+    "filetype, post_url, message, requested_page", 
     [
-        ('png', 'precompiled-preview.png', ""),
-        ('png', 'precompiled/overlay.png?page_number=1', "content-outside-printable-area"),
-        ('pdf', 'precompiled/overlay.pdf', "content-outside-printable-area")
+        ('png', 'precompiled-preview.png', "", ""),
+        ('png', 'precompiled/overlay.png?page_number=1', "content-outside-printable-area", "1"),
+        ('png', 'precompiled/overlay.png?page_number=2', "content-outside-printable-area", "2"),
+        ('png', 'precompiled/overlay.png?page_number=3', "content-outside-printable-area", "3"),
+        ('pdf', 'precompiled/overlay.pdf', "content-outside-printable-area", "")
     ]
 )
 def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
@@ -1158,7 +1160,8 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
         mocker,
         filetype,
         post_url,
-        message
+        message,
+        requested_page,
 ):
 
     template = create_template(sample_service,
@@ -1180,8 +1183,8 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
 
             metadata = {
                 "message": message,
-                "invalid_pages": "[1]",
-                "page_count": "1"
+                "invalid_pages": "[1,3]",
+                "page_count": "4"
             }
 
             mock_get_letter_pdf = mocker.patch(
@@ -1194,12 +1197,13 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
             mock_post = request_mock.post(
                 'http://localhost/notifications-template-preview/{}'.format(post_url),
                 content=expected_returned_content,
-                headers={'X-pdf-page-count': '1'},
+                headers={'X-pdf-page-count': '4'},
                 status_code=200
             )
 
             response = admin_request.get(
                 'template.preview_letter_template_by_notification_id',
+                page=requested_page,
                 service_id=notification.service_id,
                 notification_id=notification.id,
                 file_type=filetype,
