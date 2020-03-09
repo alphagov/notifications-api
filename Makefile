@@ -8,7 +8,6 @@ GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detach
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
 DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:master
-DOCKER_TTY ?= $(if ${JENKINS_HOME},,t)
 
 BUILD_TAG ?= notifications-api-manual
 BUILD_NUMBER ?= 0
@@ -27,44 +26,16 @@ CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP}))
 
 NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
+
+## DEVELOPMENT
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: check-env-vars
-check-env-vars: ## Check mandatory environment variables
-	$(if ${DEPLOY_ENV},,$(error Must specify DEPLOY_ENV))
-
-.PHONY: preview
-preview: ## Set environment to preview
-	$(eval export DEPLOY_ENV=preview)
-	@true
-
-.PHONY: staging
-staging: ## Set environment to staging
-	$(eval export DEPLOY_ENV=staging)
-	@true
-
-.PHONY: production
-production: ## Set environment to production
-	$(eval export DEPLOY_ENV=production)
-	@true
-
 .PHONY: generate-version-file
 generate-version-file: ## Generates the app version file
 	@echo -e "__travis_commit__ = \"${GIT_COMMIT}\"\n__time__ = \"${DATE}\"\n__travis_job_number__ = \"${BUILD_NUMBER}\"\n__travis_job_url__ = \"${BUILD_URL}\"" > ${APP_VERSION_FILE}
-
-.PHONY: build-paas-artifact
-build-paas-artifact:  ## Build the deploy artifact for PaaS
-	rm -rf target
-	mkdir -p target
-	zip -y -q -r -x@deploy-exclude.lst target/notifications-api.zip ./
-
-.PHONY: upload-paas-artifact
-upload-paas-artifact: ## Upload the deploy artifact for PaaS
-	$(if ${DEPLOY_BUILD_NUMBER},,$(error Must specify DEPLOY_BUILD_NUMBER))
-	$(if ${JENKINS_S3_BUCKET},,$(error Must specify JENKINS_S3_BUCKET))
-	aws s3 cp --region eu-west-1 --sse AES256 target/notifications-api.zip s3://${JENKINS_S3_BUCKET}/build/notifications-api/${DEPLOY_BUILD_NUMBER}.zip
 
 .PHONY: test
 test: generate-version-file ## Run tests
@@ -98,12 +69,9 @@ prepare-docker-build-image: generate-version-file ## Prepare the Docker builder 
 		-t ${DOCKER_BUILDER_IMAGE_NAME} \
 		.
 
-.PHONY: build-with-docker
-build-with-docker: ; ## don't do anything
-
 .PHONY: test-with-docker
 test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
-	@docker run -i${DOCKER_TTY} --rm \
+	@docker run -it --rm \
 		--name "${DOCKER_CONTAINER_PREFIX}-test" \
 		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
 		-e SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@postgres/test_notification_api \
@@ -135,6 +103,24 @@ clean-docker-containers: ## Clean up any remaining docker containers
 .PHONY: clean
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache
+
+
+## DEPLOYMENT
+
+.PHONY: preview
+preview: ## Set environment to preview
+	$(eval export DEPLOY_ENV=preview)
+	@true
+
+.PHONY: staging
+staging: ## Set environment to staging
+	$(eval export DEPLOY_ENV=staging)
+	@true
+
+.PHONY: production
+production: ## Set environment to production
+	$(eval export DEPLOY_ENV=production)
+	@true
 
 .PHONY: cf-login
 cf-login: ## Log in to Cloud Foundry
@@ -186,12 +172,6 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
 	cf v3-cancel-zdt-push ${CF_APP}
-
-.PHONY: cf-push
-cf-push:
-	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	cf push ${CF_APP} -f <(make -s generate-manifest)
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
