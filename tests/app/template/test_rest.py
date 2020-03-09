@@ -1143,13 +1143,13 @@ def test_preview_letter_template_precompiled_s3_error(
 
 
 @pytest.mark.parametrize(
-    "filetype, post_url, message, requested_page", 
+    "requested_page, filetype, message, expected_post_url",
     [
-        ('png', 'precompiled-preview.png', "", ""),
-        ('png', 'precompiled/overlay.png?page_number=1', "content-outside-printable-area", "1"),
-        ('png', 'precompiled/overlay.png?page_number=2', "content-outside-printable-area", "2"),
-        ('png', 'precompiled/overlay.png?page_number=3', "content-outside-printable-area", "3"),
-        ('pdf', 'precompiled/overlay.pdf', "content-outside-printable-area", "")
+        ("", 'png', "", 'precompiled-preview.png'),
+        ("1", 'png', "content-outside-printable-area", 'precompiled/overlay.png?page_number=1'),
+        ("2", 'png', "content-outside-printable-area", 'precompiled/overlay.png?page_number=2'),
+        ("3", 'png', "content-outside-printable-area", 'precompiled/overlay.png?page_number=3'),
+        ("", 'pdf', "content-outside-printable-area", 'precompiled/overlay.pdf')
     ]
 )
 def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
@@ -1158,10 +1158,10 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
         admin_request,
         sample_service,
         mocker,
-        filetype,
-        post_url,
-        message,
         requested_page,
+        filetype,
+        message,
+        expected_post_url,
 ):
 
     template = create_template(sample_service,
@@ -1195,7 +1195,7 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
             mock_post = request_mock.post(
-                'http://localhost/notifications-template-preview/{}'.format(post_url),
+                'http://localhost/notifications-template-preview/{}'.format(expected_post_url),
                 content=expected_returned_content,
                 headers={'X-pdf-page-count': '4'},
                 status_code=200
