@@ -248,12 +248,9 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         page_number = page if page else "1"
         content = base64.b64encode(pdf_file).decode('utf-8')
         content_outside_printable_area = metadata.get("message") == "content-outside-printable-area"
+        page_is_in_invalid_pages = page_number in metadata.get('invalid_pages', '[]')
 
-        show_overlay_for_page = False
-        if content_outside_printable_area and page_number in metadata.get('invalid_pages', '[]'):
-            show_overlay_for_page = True
-
-        if show_overlay_for_page or (content_outside_printable_area and file_type == "pdf"):
+        if content_outside_printable_area and (file_type == "pdf" or page_is_in_invalid_pages):
             path = '/precompiled/overlay.{}'.format(file_type)
             query_string = '?page_number={}'.format(page_number) if file_type == 'png' else ''
             content = pdf_file
@@ -266,7 +263,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         if file_type == 'png':
             try:
                 pdf_page = extract_page_from_pdf(BytesIO(pdf_file), int(page_number) - 1)
-                content = pdf_page if show_overlay_for_page else base64.b64encode(pdf_page).decode('utf-8')
+                content = pdf_page if page_is_in_invalid_pages else base64.b64encode(pdf_page).decode('utf-8')
             except PdfReadError as e:
                 raise InvalidRequest(
                     'Error extracting requested page from PDF file for notification_id {} type {} {}'.format(
