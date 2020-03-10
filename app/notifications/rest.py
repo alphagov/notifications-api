@@ -8,7 +8,6 @@ from flask import (
 from app import api_user, authenticated_service
 from app.config import QueueNames
 from app.dao import (
-    templates_dao,
     notifications_dao
 )
 from app.errors import (
@@ -25,10 +24,9 @@ from app.notifications.process_notifications import (
     simulated_recipient
 )
 from app.notifications.validators import (
-    check_template_is_for_notification_type,
-    check_template_is_active,
     check_rate_limiting,
     service_has_permission,
+    validate_template
 )
 from app.schemas import (
     email_notification_schema,
@@ -102,14 +100,12 @@ def send_notification(notification_type):
 
     check_rate_limiting(authenticated_service, api_user)
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template, template_with_content = validate_template(
         template_id=notification_form['template'],
-        service_id=authenticated_service.id)
-
-    check_template_is_for_notification_type(notification_type, template.template_type)
-    check_template_is_active(template)
-
-    template_object = create_template_object_for_notification(template, notification_form.get('personalisation', {}))
+        personalisation=notification_form.get('personalisation', {}),
+        service=authenticated_service,
+        notification_type=notification_type
+    )
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
     if not service_has_permission(notification_type, authenticated_service.permissions):
@@ -147,7 +143,7 @@ def send_notification(notification_type):
         data=get_notification_return_data(
             notification_model.id,
             notification_form,
-            template_object)
+            template_with_content)
     ), 201
 
 

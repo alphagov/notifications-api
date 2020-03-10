@@ -125,10 +125,12 @@ def requires_auth():
         g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
-        current_app.logger.info('API authorised for service {} with api key {}, using issuer {}'.format(
+
+        current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
             service.id,
             api_key.id,
-            request.headers.get('User-Agent')
+            request.headers.get('User-Agent'),
+            request.base_url
         ))
         return
     else:

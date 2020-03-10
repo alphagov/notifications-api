@@ -124,9 +124,10 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
         return validate_and_format_email_address(email_address=send_to)
 
 
-def check_sms_content_char_count(content_count):
-    if content_count > SMS_CHAR_COUNT_LIMIT:
-        message = 'Content for template has a character count greater than the limit of {}'.format(SMS_CHAR_COUNT_LIMIT)
+def check_content_char_count(template_with_content):
+    if template_with_content.is_message_too_long():
+        message = f"Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. " \
+                  f"Your message is {template_with_content.content_count_without_prefix} characters"
         raise BadRequestError(message=message)
 
 
@@ -151,9 +152,10 @@ def validate_template(template_id, personalisation, service, notification_type):
     check_template_is_active(template)
 
     template_with_content = create_content_for_notification(template, personalisation)
+
     check_notification_content_is_not_empty(template_with_content)
-    if template.template_type == SMS_TYPE:
-        check_sms_content_char_count(template_with_content.content_count)
+
+    check_content_char_count(template_with_content)
 
     return template, template_with_content
 
