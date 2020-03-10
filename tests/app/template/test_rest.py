@@ -1143,22 +1143,29 @@ def test_preview_letter_template_precompiled_s3_error(
 
 
 @pytest.mark.parametrize(
-    "filetype, post_url, message",
+    "requested_page, message, expected_post_url",
     [
-        ('png', 'precompiled-preview.png', ""),
-        ('png', 'precompiled/overlay.png?page_number=1', "content-outside-printable-area"),
-        ('pdf', 'precompiled/overlay.pdf', "content-outside-printable-area")
+        # page defaults to 1, page is valid, no overlay shown
+        ("", "", 'precompiled-preview.png'),
+        # page is valid, no overlay shown
+        ("1", "", 'precompiled-preview.png'),
+        # page is invalid, overlay shown
+        ("1", "content-outside-printable-area", 'precompiled/overlay.png?page_number=1'),
+        # page is valid, no overlay shown
+        ("2", "content-outside-printable-area", 'precompiled-preview.png'),
+        # page is invalid, overlay shown
+        ("3", "content-outside-printable-area", 'precompiled/overlay.png?page_number=3'),
     ]
 )
-def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
+def test_preview_letter_template_precompiled_for_png_file_shows_overlay_where_appropriate(
         notify_api,
         client,
         admin_request,
         sample_service,
         mocker,
-        filetype,
-        post_url,
-        message
+        requested_page,
+        message,
+        expected_post_url,
 ):
 
     template = create_template(sample_service,
@@ -1180,8 +1187,8 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
 
             metadata = {
                 "message": message,
-                "invalid_pages": "[1]",
-                "page_count": "1"
+                "invalid_pages": "[1,3]",
+                "page_count": "4"
             }
 
             mock_get_letter_pdf = mocker.patch(
@@ -1192,9 +1199,77 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
             mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
 
             mock_post = request_mock.post(
-                'http://localhost/notifications-template-preview/{}'.format(post_url),
+                'http://localhost/notifications-template-preview/{}'.format(expected_post_url),
                 content=expected_returned_content,
-                headers={'X-pdf-page-count': '1'},
+                headers={'X-pdf-page-count': '4'},
+                status_code=200
+            )
+
+            response = admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                page=requested_page,
+                service_id=notification.service_id,
+                notification_id=notification.id,
+                file_type="png",
+            )
+
+            with pytest.raises(ValueError):
+                mock_post.last_request.json()
+            assert mock_get_letter_pdf.called_once_with(notification)
+            assert base64.b64decode(response['content']) == expected_returned_content
+            assert response["metadata"] == metadata
+
+
+@pytest.mark.parametrize(
+    "invalid_pages",
+    [
+        "[1,3]",
+        "[2,4]",  # it shouldn't make a difference if the error was on the first page or not
+    ]
+)
+def test_preview_letter_template_precompiled_for_pdf_file_shows_overlay_if_content_outside_printable_area(
+        notify_api,
+        client,
+        admin_request,
+        sample_service,
+        mocker,
+        invalid_pages,
+):
+
+    template = create_template(sample_service,
+                               template_type='letter',
+                               template_name='Pre-compiled PDF',
+                               subject='Pre-compiled PDF',
+                               hidden=True)
+
+    notification = create_notification(template)
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+
+            pdf_content = b'\x00\x01'
+            expected_returned_content = b'\x00\x02'
+
+            metadata = {
+                "message": "content-outside-printable-area",
+                "invalid_pages": invalid_pages,
+                "page_count": "4"
+            }
+
+            mock_get_letter_pdf = mocker.patch(
+                'app.template.rest.get_letter_pdf_and_metadata',
+                return_value=(pdf_content, metadata)
+            )
+
+            mocker.patch('app.template.rest.extract_page_from_pdf', return_value=pdf_content)
+
+            mock_post = request_mock.post(
+                'http://localhost/notifications-template-preview/precompiled/overlay.pdf',
+                content=expected_returned_content,
+                headers={'X-pdf-page-count': '4'},
                 status_code=200
             )
 
@@ -1202,7 +1277,7 @@ def test_preview_letter_template_precompiled_png_file_type_or_pdf_with_overlay(
                 'template.preview_letter_template_by_notification_id',
                 service_id=notification.service_id,
                 notification_id=notification.id,
-                file_type=filetype,
+                file_type="pdf",
             )
 
             with pytest.raises(ValueError):
