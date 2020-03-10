@@ -1,7 +1,5 @@
 import math
-import base64
 from datetime import datetime, timedelta
-from uuid import UUID
 from hashlib import sha512
 from base64 import urlsafe_b64encode
 
@@ -13,7 +11,6 @@ from requests import (
 )
 from celery.exceptions import MaxRetriesExceededError
 from notifications_utils.statsd_decorators import statsd
-from notifications_utils.s3 import s3upload
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.timezones import convert_utc_to_bst
 
@@ -32,10 +29,8 @@ from app.letters.utils import get_letter_pdf_filename
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
-    copy_redaction_failed_pdf,
     get_billable_units_for_letter_page_count,
     get_reference_from_filename,
-    get_folder_name,
     upload_letter_pdf,
     ScanErrorType,
     move_failed_pdf,
@@ -213,72 +208,6 @@ def group_letters(letter_pdfs):
         yield list_of_files
 
 
-@notify_celery.task(bind=True, name='process-virus-scan-passed', max_retries=15, default_retry_delay=300)
-def process_virus_scan_passed(self, filename):
-    reference = get_reference_from_filename(filename)
-    notification = dao_get_notification_by_reference(reference)
-    current_app.logger.info('notification id {} Virus scan passed: {}'.format(notification.id, filename))
-
-    is_test_key = notification.key_type == KEY_TYPE_TEST
-
-    scan_pdf_object = s3.get_s3_object(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename)
-    old_pdf = scan_pdf_object.get()['Body'].read()
-
-    sanitise_response, result = _sanitise_precompiled_pdf(self, notification, old_pdf)
-    new_pdf = None
-    if result == 'validation_passed':
-        new_pdf = base64.b64decode(sanitise_response["file"].encode())
-
-        redaction_failed_message = sanitise_response.get("redaction_failed_message")
-        if redaction_failed_message and not is_test_key:
-            current_app.logger.info('{} for notification id {} ({})'.format(
-                redaction_failed_message, notification.id, filename)
-            )
-            copy_redaction_failed_pdf(filename)
-
-    billable_units = get_billable_units_for_letter_page_count(sanitise_response.get("page_count"))
-
-    # TODO: Remove this once CYSP update their template to not cross over the margins
-    if notification.service_id == UUID('fe44178f-3b45-4625-9f85-2264a36dd9ec'):  # CYSP
-        # Check your state pension submit letters with good addresses and notify tags, so just use their supplied pdf
-        new_pdf = old_pdf
-
-    if result == 'validation_failed' and not new_pdf:
-        current_app.logger.info('Invalid precompiled pdf received {} ({})'.format(notification.id, filename))
-        _move_invalid_letter_and_update_status(
-            notification=notification,
-            filename=filename,
-            scan_pdf_object=scan_pdf_object,
-            message=sanitise_response["message"],
-            invalid_pages=sanitise_response.get("invalid_pages"),
-            page_count=sanitise_response.get("page_count")
-        )
-        return
-
-    current_app.logger.info('notification id {} ({}) sanitised and ready to send'.format(notification.id, filename))
-
-    try:
-        _upload_pdf_to_test_or_live_pdf_bucket(
-            new_pdf,
-            filename,
-            is_test_letter=is_test_key,
-            created_at=notification.created_at
-        )
-
-        update_letter_pdf_status(
-            reference=reference,
-            status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
-            billable_units=billable_units,
-            recipient_address=sanitise_response.get("recipient_address")
-        )
-        scan_pdf_object.delete()
-    except BotoClientError:
-        current_app.logger.exception(
-            "Error uploading letter to live pdf bucket for notification: {}".format(notification.id)
-        )
-        update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
-
-
 @notify_celery.task(bind=True, name='sanitise-letter', max_retries=15, default_retry_delay=300)
 def sanitise_letter(self, filename):
     try:
@@ -412,60 +341,6 @@ def _move_invalid_letter_and_update_status(
         raise NotificationTechnicalFailureException
 
 
-def _upload_pdf_to_test_or_live_pdf_bucket(pdf_data, filename, is_test_letter, created_at):
-    target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
-    target_bucket_name = current_app.config[target_bucket_config]
-    target_filename = get_folder_name(created_at, dont_use_sending_date=is_test_letter) + filename
-
-    s3upload(
-        filedata=pdf_data,
-        region=current_app.config['AWS_REGION'],
-        bucket_name=target_bucket_name,
-        file_location=target_filename
-    )
-
-
-def _sanitise_precompiled_pdf(self, notification, precompiled_pdf):
-    try:
-        response = requests_post(
-            '{}/precompiled/sanitise'.format(
-                current_app.config['TEMPLATE_PREVIEW_API_HOST']
-            ),
-            data=precompiled_pdf,
-            headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY']),
-                     'Service-ID': str(notification.service_id),
-                     'Notification-ID': str(notification.id)}
-        )
-        response.raise_for_status()
-        return response.json(), "validation_passed"
-    except RequestException as ex:
-        if ex.response is not None and ex.response.status_code == 400:
-            message = "sanitise_precompiled_pdf validation error for notification: {}. ".format(notification.id)
-            if response.json().get("message"):
-                message += response.json()["message"]
-                if response.json().get("invalid_pages"):
-                    message += (" on pages: " + ", ".join(map(str, response.json()["invalid_pages"])))
-
-            current_app.logger.info(
-                message
-            )
-            return response.json(), "validation_failed"
-
-        try:
-            current_app.logger.exception(
-                "sanitise_precompiled_pdf failed for notification: {}".format(notification.id)
-            )
-            self.retry(queue=QueueNames.RETRY)
-        except MaxRetriesExceededError:
-            current_app.logger.error(
-                "RETRY FAILED: sanitise_precompiled_pdf failed for notification {}".format(notification.id),
-            )
-
-            notification.status = NOTIFICATION_TECHNICAL_FAILURE
-            dao_update_notification(notification)
-            raise
-
-
 @notify_celery.task(name='process-virus-scan-failed')
 def process_virus_scan_failed(filename):
     move_failed_pdf(filename, ScanErrorType.FAILURE)
@@ -529,9 +404,9 @@ def replay_letters_in_error(filename=None):
             )
         else:
             # stub out antivirus in dev
-            process_virus_scan_passed.apply_async(
-                kwargs={'filename': filename},
-                queue=QueueNames.LETTERS,
+            sanitise_letter.apply_async(
+                [filename],
+                queue=QueueNames.LETTERS
             )
     else:
         error_files = get_file_names_from_error_bucket()
@@ -548,7 +423,7 @@ def replay_letters_in_error(filename=None):
                 )
             else:
                 # stub out antivirus in dev
-                process_virus_scan_passed.apply_async(
-                    kwargs={'filename': moved_file_name},
-                    queue=QueueNames.LETTERS,
+                sanitise_letter.apply_async(
+                    [filename],
+                    queue=QueueNames.LETTERS
                 )
