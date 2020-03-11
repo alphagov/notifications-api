@@ -1149,6 +1149,8 @@ def test_preview_letter_template_precompiled_s3_error(
         ("", "", 'precompiled-preview.png'),
         # page is valid, no overlay shown
         ("1", "", 'precompiled-preview.png'),
+        # page is invalid but not because content is outside printable area so no overlay
+        ("1", "letter-not-a4-portrait-oriented", 'precompiled-preview.png'),
         # page is invalid, overlay shown
         ("1", "content-outside-printable-area", 'precompiled/overlay.png?page_number=1'),
         # page is valid, no overlay shown
@@ -1157,7 +1159,7 @@ def test_preview_letter_template_precompiled_s3_error(
         ("3", "content-outside-printable-area", 'precompiled/overlay.png?page_number=3'),
     ]
 )
-def test_preview_letter_template_precompiled_for_png_file_shows_overlay_where_appropriate(
+def test_preview_letter_template_precompiled_for_png_shows_overlay_on_pages_with_content_outside_printable_area(
         notify_api,
         client,
         admin_request,
@@ -1227,7 +1229,7 @@ def test_preview_letter_template_precompiled_for_png_file_shows_overlay_where_ap
         "[2,4]",  # it shouldn't make a difference if the error was on the first page or not
     ]
 )
-def test_preview_letter_template_precompiled_for_pdf_file_shows_overlay_if_content_outside_printable_area(
+def test_preview_letter_template_precompiled_for_pdf_shows_overlay_on_all_pages_if_content_outside_printable_area(
         notify_api,
         client,
         admin_request,
