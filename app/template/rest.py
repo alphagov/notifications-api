@@ -263,7 +263,10 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
         if file_type == 'png':
             try:
                 pdf_page = extract_page_from_pdf(BytesIO(pdf_file), int(page_number) - 1)
-                content = pdf_page if page_is_in_invalid_pages else base64.b64encode(pdf_page).decode('utf-8')
+                if content_outside_printable_area and page_is_in_invalid_pages:
+                    content = pdf_page
+                else:
+                    content = base64.b64encode(pdf_page).decode('utf-8')
             except PdfReadError as e:
                 raise InvalidRequest(
                     'Error extracting requested page from PDF file for notification_id {} type {} {}'.format(
