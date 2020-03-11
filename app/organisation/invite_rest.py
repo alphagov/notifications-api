@@ -48,7 +48,11 @@ def invite_user_to_org(organisation_id):
         recipient=invited_org_user.email_address,
         service=template.service,
         personalisation={
-            'user_name': invited_org_user.invited_by.name,
+            'user_name': (
+                'The GOV.UK Notify team'
+                if invited_org_user.invited_by.platform_admin
+                else invited_org_user.invited_by.name
+            ),
             'organisation_name': invited_org_user.organisation.name,
             'url': invited_org_user_url(
                 invited_org_user.id,
