@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 from app.dao.uploads_dao import dao_get_uploads_by_service_id
 from app.models import LETTER_TYPE, JOB_STATUS_IN_PROGRESS
-from tests.app.db import create_job, create_service, create_template, create_notification
+from tests.app.db import create_job, create_service, create_service_data_retention, create_template, create_notification
 
 
 def create_uploaded_letter(letter_template, service, status='created', created_at=None):
@@ -31,6 +31,7 @@ def create_uploaded_template(service):
 
 
 def test_get_uploads_for_service(sample_template):
+    create_service_data_retention(sample_template.service, 'sms', days_of_retention=9)
     job = create_job(sample_template, processing_started=datetime.utcnow())
     letter_template = create_uploaded_template(sample_template.service)
     letter = create_uploaded_letter(letter_template, sample_template.service)
@@ -51,6 +52,7 @@ def test_get_uploads_for_service(sample_template):
         letter.client_reference,
         1,
         None,
+        7,
         letter.created_at,
         None,
         letter.created_at,
@@ -63,6 +65,7 @@ def test_get_uploads_for_service(sample_template):
         job.original_file_name,
         job.notification_count,
         'sms',
+        9,
         job.created_at,
         job.scheduled_for,
         job.processing_started,
@@ -76,6 +79,7 @@ def test_get_uploads_for_service(sample_template):
                                         other_letter.client_reference,
                                         1,
                                         None,
+                                        7,
                                         other_letter.created_at,
                                         None,
                                         other_letter.created_at,
@@ -86,6 +90,7 @@ def test_get_uploads_for_service(sample_template):
                                         other_job.original_file_name,
                                         other_job.notification_count,
                                         other_job.template.template_type,
+                                        7,
                                         other_job.created_at,
                                         other_job.scheduled_for,
                                         other_job.processing_started,
@@ -152,6 +157,44 @@ def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_tem
                           job_status=JOB_STATUS_IN_PROGRESS)
     upload_4 = create_uploaded_letter(letter_template, service=letter_template.service,
                                       created_at=datetime.utcnow() - timedelta(days=3))
+
+    results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
+
+    assert len(results) == 4
+    assert results[0].id == upload_1.id
+    assert results[1].id == upload_2.id
+    assert results[2].id == upload_3.id
+    assert results[3].id == upload_4.id
+
+
+def test_get_uploads_only_gets_uploads_within_service_retention_period(sample_template):
+    letter_template = create_uploaded_template(sample_template.service)
+    create_service_data_retention(sample_template.service, 'sms', days_of_retention=3)
+
+    days_ago = datetime.utcnow() - timedelta(days=4)
+    upload_1 = create_uploaded_letter(letter_template, service=letter_template.service)
+    upload_2 = create_job(
+        sample_template, processing_started=datetime.utcnow() - timedelta(days=1), created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS
+    )
+    # older than custom retention for sms:
+    create_job(
+        sample_template, processing_started=datetime.utcnow() - timedelta(days=5), created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS
+    )
+    upload_3 = create_uploaded_letter(
+        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=3)
+    )
+
+    # older than retention for sms but within letter retention:
+    upload_4 = create_uploaded_letter(
+        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=6)
+    )
+
+    # older than default retention for letters:
+    create_uploaded_letter(
+        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=8)
+    )
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
 
