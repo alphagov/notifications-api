@@ -4,6 +4,7 @@ from collections import namedtuple, defaultdict
 
 from flask import current_app
 from notifications_utils.recipients import (
+    format_postcode_for_printing,
     RecipientCSV
 )
 from notifications_utils.statsd_decorators import statsd
@@ -304,6 +305,10 @@ def save_letter(
 
     # we store the recipient as just the first item of the person's address
     recipient = notification['personalisation']['addressline1']
+
+    notification['personalisation']['postcode'] = format_postcode_for_printing(
+        notification['personalisation']['postcode']
+    )
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
