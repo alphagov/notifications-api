@@ -118,6 +118,56 @@ def test_post_letter_notification_sets_postage(
     assert notification.postage == "first"
 
 
+def test_post_letter_notification_formats_postcode(
+    client, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type="letter")
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': '  Sw1  1aa   ',
+            'name': 'Lizzie'
+        }
+    }
+
+    resp_json = letter_request(client, data, service_id=service.id)
+
+    assert validate(resp_json, post_letter_response) == resp_json
+    notification = Notification.query.one()
+    assert notification.personalisation["postcode"] == "SW1 1AA"
+
+
+def test_post_letter_notification_throws_error_for_bad_postcode(
+    client, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service, template_type="letter", postage="first")
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'not a real postcode',
+            'name': 'Lizzie'
+        }
+    }
+
+    error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
+
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [{
+        'error': 'ValidationError',
+        'message': 'A real UK postcode is required.'
+    }]
+
+
 @pytest.mark.parametrize('env', [
     'staging',
     'live',
@@ -366,7 +416,7 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
 
     data = {
         "template_id": sample_trial_letter_template.id,
-        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
     }
 
     letter_request(client, data=data, service_id=sample_trial_letter_template.service_id, key_type=KEY_TYPE_TEST)
@@ -411,7 +461,7 @@ def test_post_letter_notification_persists_notification_reply_to_text(
     template = create_template(service=service, template_type='letter', reply_to=letter_contact.id)
     data = {
         "template_id": template.id,
-        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
+        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
     }
     letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_NORMAL)
 
