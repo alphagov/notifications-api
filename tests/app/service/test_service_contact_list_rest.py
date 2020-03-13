@@ -79,3 +79,37 @@ def test_get_contact_list_returns_for_service(admin_request, notify_db_session):
     assert len(response) == 2
     assert response[0] == expected_list_2.serialize()
     assert response[1] == expected_list_1.serialize()
+
+
+def test_dao_get_contact_list_by_id(admin_request, sample_service):
+    service_1 = create_service(service_name='Service under test')
+
+    expected_list_1 = create_service_contact_list(service=service_1)
+    create_service_contact_list(service=service_1)
+
+    response = admin_request.get(
+        'service.get_contact_list_by_id',
+        service_id=service_1.id,
+        contact_list_id=expected_list_1.id
+    )
+
+    assert response == expected_list_1.serialize()
+
+
+def test_dao_get_contact_list_by_id_does_not_return_if_contact_list_id_for_another_service(
+    admin_request, sample_service
+):
+    service_1 = create_service(service_name='Service requesting list')
+    service_2 = create_service(service_name='Service that owns the list')
+
+    create_service_contact_list(service=service_1)
+    list_2 = create_service_contact_list(service=service_2)
+
+    response = admin_request.get(
+        'service.get_contact_list_by_id',
+        service_id=service_1.id,
+        contact_list_id=list_2.id,
+        _expected_status=404
+    )
+
+    assert response['message'] == "No result found"
