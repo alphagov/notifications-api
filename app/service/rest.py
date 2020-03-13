@@ -36,6 +36,7 @@ from app.dao.returned_letters_dao import (
     fetch_returned_letter_summary,
     fetch_returned_letters,
 )
+from app.dao.service_contact_list_dao import dao_get_contact_lists, save_service_contact_list
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -95,12 +96,14 @@ from app.errors import (
 from app.letters.utils import letter_print_day
 from app.models import (
     KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service,
-    EmailBranding, LetterBranding
+    EmailBranding, LetterBranding,
+    ServiceContactList
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
 from app.service import statistics
 from app.service.send_pdf_letter_schema import send_pdf_letter_request
+from app.service.service_contact_list_schema import create_service_contact_list_schema
 from app.service.service_data_retention_schema import (
     add_service_data_retention_request,
     update_service_data_retention_request
@@ -1011,3 +1014,23 @@ def get_returned_letters(service_id):
          } for x in results]
 
     return jsonify(sorted(json_results, key=lambda i: i['created_at'], reverse=True))
+
+
+@service_blueprint.route('/<uuid:service_id>/contact-list', methods=['GET'])
+def get_contact_list(service_id):
+    contact_lists = dao_get_contact_lists(service_id)
+
+    return jsonify([x.serialize() for x in contact_lists])
+
+
+@service_blueprint.route('/<uuid:service_id>/contact-list', methods=['POST'])
+def create_contact_list(service_id):
+    service_contact_list = validate(request.get_json(), create_service_contact_list_schema)
+    service_contact_list['created_by_id'] = service_contact_list.pop('created_by')
+    service_contact_list['created_at'] = datetime.utcnow()
+    service_contact_list['service_id'] = str(service_id)
+    list_to_save = ServiceContactList(**service_contact_list)
+
+    save_service_contact_list(list_to_save)
+
+    return jsonify(list_to_save.serialize()), 201

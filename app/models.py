@@ -1214,6 +1214,7 @@ class Job(db.Model):
         db.String(255), db.ForeignKey('job_status.name'), index=True, nullable=False, default='pending'
     )
     archived = db.Column(db.Boolean, nullable=False, default=False)
+    contact_list_id = db.Column(UUID(as_uuid=True), db.ForeignKey('service_contact_list.id'), nullable=True)
 
 
 VERIFY_CODE_TYPES = [EMAIL_TYPE, SMS_TYPE]
@@ -2119,3 +2120,31 @@ class ReturnedLetter(db.Model):
     notification_id = db.Column(UUID(as_uuid=True), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
+class ServiceContactList(db.Model):
+    __tablename__ = 'service_contact_list'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    original_file_name = db.Column(db.String, nullable=False)
+    row_count = db.Column(db.Integer, nullable=False)
+    template_type = db.Column(template_types, nullable=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False, index=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref('contact_list'))
+    created_by = db.relationship('User')
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        created_at_in_bst = convert_utc_to_bst(self.created_at)
+        contact_list = {
+            "id": str(self.id),
+            "original_file_name": self.original_file_name,
+            "row_count": self.row_count,
+            "template_type": self.template_type,
+            "service_id": str(self.service_id),
+            "created_by": self.created_by.name,
+            "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
+        }
+        return contact_list

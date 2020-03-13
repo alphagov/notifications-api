@@ -60,7 +60,8 @@ from app.models import (
     LetterBranding,
     Domain,
     NotificationHistory,
-    ReturnedLetter
+    ReturnedLetter,
+    ServiceContactList
 )
 
 
@@ -965,3 +966,26 @@ def create_returned_letter(service=None, reported_at=None, notification_id=None)
     db.session.add(returned_letter)
     db.session.commit()
     return returned_letter
+
+
+def create_service_contact_list(
+    service=None,
+    original_file_name='EmergencyContactList.xls',
+    row_count=100,
+    template_type='email',
+    created_by_id=None
+):
+    if not service:
+        service = create_service(service_name='service for contact list', user=create_user())
+
+    contact_list = ServiceContactList(
+        service_id=service.id,
+        original_file_name=original_file_name,
+        row_count=row_count,
+        template_type=template_type,
+        created_by_id=created_by_id or service.users[0].id,
+        created_at=datetime.utcnow(),
+    )
+    db.session.add(contact_list)
+    db.session.commit()
+    return contact_list
