@@ -114,14 +114,6 @@ def test_process_sms_updates_billable_units_if_zero(sample_notification):
     assert sample_notification.billable_units == 1
 
 
-def test_process_sms_does_not_update_sent_by_if_already_set(mocker, sample_notification):
-    mock_update = mocker.patch('app.notifications.process_client_response.set_notification_sent_by')
-    sample_notification.sent_by = 'MMG'
-    process_sms_client_response(
-        status='3', provider_reference=str(sample_notification.id), client_name='MMG')
-    assert not mock_update.called
-
-
 def test_process_sms_response_returns_error_bad_reference(mocker):
     success, error = process_sms_client_response(
         status='000', provider_reference='something-bad', client_name='sms-client')

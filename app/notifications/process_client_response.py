@@ -117,8 +117,3 @@ def _process_for_status(notification_status, client_name, provider_reference):
 
     success = "{} callback succeeded. reference {} updated".format(client_name, provider_reference)
     return success
-
-
-def set_notification_sent_by(notification, client_name):
-    notification.sent_by = client_name
-    dao_update_notification(notification)
