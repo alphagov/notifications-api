@@ -36,7 +36,8 @@ from app.dao.returned_letters_dao import (
     fetch_returned_letter_summary,
     fetch_returned_letters,
 )
-from app.dao.service_contact_list_dao import dao_get_contact_lists, save_service_contact_list
+from app.dao.service_contact_list_dao import dao_get_contact_lists, save_service_contact_list, \
+    dao_get_contact_list_by_id
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -1021,6 +1022,16 @@ def get_contact_list(service_id):
     contact_lists = dao_get_contact_lists(service_id)
 
     return jsonify([x.serialize() for x in contact_lists])
+
+
+@service_blueprint.route('/<uuid:service_id>/contact-list/<uuid:contact_list_id>', methods=['GET'])
+def get_contact_list_by_id(service_id, contact_list_id):
+    contact_list = dao_get_contact_list_by_id(
+        service_id=service_id,
+        contact_list_id=contact_list_id
+    )
+
+    return jsonify(contact_list.serialize())
 
 
 @service_blueprint.route('/<uuid:service_id>/contact-list', methods=['POST'])
