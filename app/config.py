@@ -28,6 +28,7 @@ class QueueNames(object):
     CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
     CALLBACKS = 'service-callbacks'
     LETTERS = 'letter-tasks'
+    SMS_CALLBACKS = 'sms-callbacks'
     ANTIVIRUS = 'antivirus-tasks'
     SANITISE_LETTERS = 'sanitise-letter-tasks'
 
@@ -47,6 +48,7 @@ class QueueNames(object):
             QueueNames.CREATE_LETTERS_PDF,
             QueueNames.CALLBACKS,
             QueueNames.LETTERS,
+            QueueNames.SMS_CALLBACKS,
         ]
 
 
