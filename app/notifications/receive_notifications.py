@@ -149,7 +149,7 @@ def fetch_potential_service(inbound_number, provider_name):
     service = dao_fetch_service_by_inbound_number(inbound_number)
 
     if not service:
-        current_app.logger.error('Inbound number "{}" from {} not associated with a service'.format(
+        current_app.logger.warning('Inbound number "{}" from {} not associated with a service'.format(
             inbound_number, provider_name
         ))
         statsd_client.incr('inbound.{}.failed'.format(provider_name))
