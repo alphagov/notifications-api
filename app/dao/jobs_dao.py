@@ -126,6 +126,7 @@ def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
 def dao_create_job(job):
     if not job.id:
         job.id = uuid.uuid4()
+
     db.session.add(job)
     db.session.commit()
 
