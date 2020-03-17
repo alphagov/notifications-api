@@ -50,7 +50,8 @@ def check_service_over_daily_message_limit(key_type, service):
 
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key)
-    check_service_over_daily_message_limit(api_key.key_type, service)
+    # Reduce queries to the notifications table
+    # check_service_over_daily_message_limit(api_key.key_type, service)
 
 
 def check_template_is_for_notification_type(notification_type, template_type):
