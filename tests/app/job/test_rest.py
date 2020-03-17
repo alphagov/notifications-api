@@ -9,11 +9,16 @@ import pytz
 
 import app.celery.tasks
 from app.dao.templates_dao import dao_update_template
-from app.models import JOB_STATUS_TYPES, JOB_STATUS_PENDING
+from app.models import JOB_STATUS_TYPES, JOB_STATUS_PENDING, Job
 
 from tests import create_authorization_header
 from tests.conftest import set_config
-from tests.app.db import create_ft_notification_status, create_job, create_notification
+from tests.app.db import (
+    create_ft_notification_status,
+    create_job,
+    create_notification,
+    create_service_contact_list
+)
 
 
 def test_get_job_with_invalid_service_id_returns404(client, sample_service):
@@ -231,6 +236,30 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json['data']['template'] == str(sample_template.id)
     assert resp_json['data']['original_file_name'] == 'thisisatest.csv'
     assert resp_json['data']['notification_count'] == 1
+
+
+def test_create_job_with_contact_list_id(client, mocker, sample_template, fake_uuid):
+    mocker.patch('app.celery.tasks.process_job.apply_async')
+    mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
+        'template_id': str(sample_template.id)
+    })
+    contact_list = create_service_contact_list()
+    data = {
+        'id': fake_uuid,
+        'valid': 'True',
+        'original_file_name': contact_list.original_file_name,
+        'created_by': str(sample_template.service.users[0].id),
+        'notification_count': 100,
+        'contact_list_id': str(contact_list.id),
+    }
+    response = client.post(
+        f'/service/{sample_template.service_id}/job',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+    resp_json = response.get_json()
+    assert response.status_code == 201
+    assert resp_json['data']['contact_list_id'] == str(contact_list.id)
+    assert resp_json['data']['original_file_name'] == 'EmergencyContactList.xls'
 
 
 def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
@@ -683,6 +712,7 @@ def test_get_jobs(admin_request, sample_template):
         'template_type': 'sms',
         'template_version': 1,
         'updated_at': None,
+        'contact_list_id': None
     }
 
 
