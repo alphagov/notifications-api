@@ -18,7 +18,7 @@ from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
 from app.errors import InvalidRequest
 from app.models import Template
-from app.v2.errors import RateLimitError, TooManyRequestsError
+from app.v2.errors import RateLimitError
 
 from tests import create_authorization_header
 from tests.app.db import (
@@ -402,69 +402,6 @@ def test_should_allow_valid_email_notification(notify_api, sample_email_template
             assert response_data['subject'] == 'Email Subject'
             assert response_data['body'] == sample_email_template.content
             assert response_data['template_version'] == sample_email_template.version
-
-
-@freeze_time("2016-01-01 12:00:00.061258")
-def test_should_block_api_call_if_over_day_limit_for_live_service(
-        notify_db_session,
-        notify_api,
-        mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch(
-                'app.notifications.validators.check_service_over_daily_message_limit',
-                side_effect=TooManyRequestsError(1)
-            )
-            mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-            service = create_service(message_limit=1)
-            email_template = create_template(service, template_type=EMAIL_TYPE)
-            create_notification(template=email_template)
-
-            data = {
-                'to': 'ok@ok.com',
-                'template': str(email_template.id)
-            }
-
-            auth_header = create_authorization_header(service_id=service.id)
-
-            response = client.post(
-                path='/notifications/email',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            json.loads(response.get_data(as_text=True))
-            assert response.status_code == 429
-
-
-@freeze_time("2016-01-01 12:00:00.061258")
-def test_should_block_api_call_if_over_day_limit_for_restricted_service(
-        notify_db_session,
-        notify_api,
-        mocker):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-            mocker.patch(
-                'app.notifications.validators.check_service_over_daily_message_limit',
-                side_effect=TooManyRequestsError(1)
-            )
-            service = create_service(restricted=True, message_limit=1)
-            email_template = create_template(service, template_type=EMAIL_TYPE)
-            create_notification(template=email_template)
-
-            data = {
-                'to': 'ok@ok.com',
-                'template': str(email_template.id)
-            }
-
-            auth_header = create_authorization_header(service_id=service.id)
-
-            response = client.post(
-                path='/notifications/email',
-                data=json.dumps(data),
-                headers=[('Content-Type', 'application/json'), auth_header])
-            json.loads(response.get_data(as_text=True))
-
-            assert response.status_code == 429
 
 
 @pytest.mark.parametrize('restricted', [True, False])
