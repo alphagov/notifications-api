@@ -1,79 +1,66 @@
 import uuid
+from datetime import datetime
 
 import pytest
+from freezegun import freeze_time
 
+from app import statsd_client
 from app.clients import ClientException
-from app.notifications.process_client_response import (
-    validate_callback_data,
-    process_sms_client_response
-)
+from app.celery.process_sms_client_response_tasks import process_sms_client_response
 from app.celery.service_callback_tasks import create_delivery_status_callback_data
+from app.models import NOTIFICATION_TECHNICAL_FAILURE
 from tests.app.db import create_service_callback_api
 
 
-def test_validate_callback_data_returns_none_when_valid():
-    form = {'status': 'good',
-            'reference': 'send-sms-code'}
-    fields = ['status', 'reference']
-    client_name = 'sms client'
-
-    assert validate_callback_data(form, fields, client_name) is None
+def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
+    with pytest.raises(ValueError):
+        process_sms_client_response(
+            status='000', provider_reference='something-bad', client_name='sms-client')
 
 
-def test_validate_callback_data_return_errors_when_fields_are_empty():
-    form = {'monkey': 'good'}
-    fields = ['status', 'cid']
-    client_name = 'sms client'
+@pytest.mark.parametrize('client_name', ('Firetext', 'MMG'))
+def test_process_sms_response_raises_client_exception_for_unknown_status(
+    sample_notification,
+    mocker,
+    client_name,
+):
+    with pytest.raises(ClientException) as e:
+        process_sms_client_response(
+            status='000',
+            provider_reference=str(sample_notification.id),
+            client_name=client_name,
+        )
 
-    errors = validate_callback_data(form, fields, client_name)
-    assert len(errors) == 2
-    assert "{} callback failed: {} missing".format(client_name, 'status') in errors
-    assert "{} callback failed: {} missing".format(client_name, 'cid') in errors
-
-
-def test_validate_callback_data_can_handle_integers():
-    form = {'status': 00, 'cid': 'fsdfadfsdfas'}
-    fields = ['status', 'cid']
-    client_name = 'sms client'
-
-    result = validate_callback_data(form, fields, client_name)
-    assert result is None
+    assert f"{client_name} callback failed: status {'000'} not found." in str(e.value)
+    assert sample_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-def test_validate_callback_data_returns_error_for_empty_string():
-    form = {'status': '', 'cid': 'fsdfadfsdfas'}
-    fields = ['status', 'cid']
-    client_name = 'sms client'
+@pytest.mark.parametrize('status, sms_provider, expected_notification_status', [
+    ('0', 'Firetext', 'delivered'),
+    ('1', 'Firetext', 'permanent-failure'),
+    ('2', 'Firetext', 'pending'),
+    ('2', 'MMG', 'permanent-failure'),
+    ('3', 'MMG', 'delivered'),
+    ('4', 'MMG', 'temporary-failure'),
+    ('5', 'MMG', 'permanent-failure'),
+])
+def test_process_sms_client_response_updates_notification_status(
+    sample_notification,
+    mocker,
+    status,
+    sms_provider,
+    expected_notification_status,
+):
+    sample_notification.status = 'sending'
+    process_sms_client_response(status, str(sample_notification.id), sms_provider)
 
-    result = validate_callback_data(form, fields, client_name)
-    assert result is not None
-    assert "{} callback failed: {} missing".format(client_name, 'status') in result
+    assert sample_notification.status == expected_notification_status
 
 
-def test_outcome_statistics_called_for_successful_callback(sample_notification, mocker):
+def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sample_service, mocker):
     mocker.patch(
-        'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
-        return_value=sample_notification
-    )
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    callback_api = create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
-    reference = str(uuid.uuid4())
-
-    success, error = process_sms_client_response(status='3', provider_reference=reference, client_name='MMG')
-    assert success == "MMG callback succeeded. reference {} updated".format(str(reference))
-    assert error is None
-    encrypted_data = create_delivery_status_callback_data(sample_notification, callback_api)
-    send_mock.assert_called_once_with([str(sample_notification.id), encrypted_data],
-                                      queue="service-callbacks")
-
-
-def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notification, mocker):
-    mocker.patch(
-        'app.notifications.process_client_response.notifications_dao.update_notification_status_by_id',
-        return_value=sample_notification
-    )
+        'app.celery.process_sms_client_response_tasks.get_service_delivery_status_callback_api_for_service',
+        return_value='mock-delivery-callback-for-service')
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
@@ -82,55 +69,54 @@ def test_sms_resonse_does_not_call_send_callback_if_no_db_entry(sample_notificat
     send_mock.assert_not_called()
 
 
-def test_process_sms_response_return_success_for_send_sms_code_reference(mocker):
-    success, error = process_sms_client_response(
-        status='000', provider_reference='send-sms-code', client_name='sms-client')
-    assert success == "{} callback succeeded: send-sms-code".format('sms-client')
-    assert error is None
+@freeze_time('2001-01-01T12:00:00')
+def test_process_sms_client_response_records_statsd_metrics(sample_notification, client, mocker):
+    mocker.patch('app.statsd_client.incr')
+    mocker.patch('app.statsd_client.timing_with_dates')
 
+    sample_notification.status = 'sending'
+    sample_notification.sent_at = datetime.utcnow()
 
-def test_process_sms_response_does_not_send_status_update_for_pending(sample_notification, mocker):
-    send_mock = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
-    process_sms_client_response(
-        status='2', provider_reference=str(sample_notification.id), client_name='firetext')
-    send_mock.assert_not_called()
+    process_sms_client_response('0', str(sample_notification.id), 'Firetext')
 
-
-def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):
-    sample_notification.sent_by = None
-    success, error = process_sms_client_response(
-        status='3', provider_reference=str(sample_notification.id), client_name='MMG')
-    assert error is None
-    assert success == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert sample_notification.sent_by == 'mmg'
+    statsd_client.incr.assert_any_call("callback.firetext.delivered")
+    statsd_client.timing_with_dates.assert_any_call(
+        "callback.firetext.elapsed-time", datetime.utcnow(), sample_notification.sent_at
+    )
 
 
 def test_process_sms_updates_billable_units_if_zero(sample_notification):
     sample_notification.billable_units = 0
-    success, error = process_sms_client_response(
-        status='3', provider_reference=str(sample_notification.id), client_name='MMG')
-    assert error is None
-    assert success == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
+    process_sms_client_response('3', str(sample_notification.id), 'MMG')
+
     assert sample_notification.billable_units == 1
 
 
-def test_process_sms_response_returns_error_bad_reference(mocker):
-    success, error = process_sms_client_response(
-        status='000', provider_reference='something-bad', client_name='sms-client')
-    assert success is None
-    assert error == "{} callback with invalid reference {}".format('sms-client', 'something-bad')
+def test_process_sms_response_does_not_send_service_callback_for_pending_notifications(sample_notification, mocker):
+    mocker.patch(
+        'app.celery.process_sms_client_response_tasks.get_service_delivery_status_callback_api_for_service',
+        return_value='fake-callback')
+    send_mock = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+    send_mock.assert_not_called()
 
 
-def test_process_sms_response_raises_client_exception_for_unknown_sms_client(mocker):
-    success, error = process_sms_client_response(
-        status='000', provider_reference=str(uuid.uuid4()), client_name='sms-client')
+def test_outcome_statistics_called_for_successful_callback(sample_notification, mocker):
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+    callback_api = create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
+    reference = str(sample_notification.id)
 
-    assert success is None
-    assert error == 'unknown sms client: {}'.format('sms-client')
+    process_sms_client_response('3', reference, 'MMG')
+
+    encrypted_data = create_delivery_status_callback_data(sample_notification, callback_api)
+    send_mock.assert_called_once_with([reference, encrypted_data],
+                                      queue="service-callbacks")
 
 
-def test_process_sms_response_raises_client_exception_for_unknown_status(mocker):
-    with pytest.raises(ClientException) as e:
-        process_sms_client_response(status='000', provider_reference=str(uuid.uuid4()), client_name='Firetext')
+def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):
+    sample_notification.sent_by = None
+    process_sms_client_response('3', str(sample_notification.id), 'MMG')
 
-    assert "{} callback failed: status {} not found.".format('Firetext', '000') in str(e.value)
+    assert sample_notification.sent_by == 'mmg'

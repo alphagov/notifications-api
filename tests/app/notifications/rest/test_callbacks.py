@@ -1,17 +1,7 @@
-import uuid
-
-from datetime import datetime
-
 import pytest
 from flask import json
-from freezegun import freeze_time
 
-import app.celery.tasks
-from app.clients import ClientException
-from app.dao.notifications_dao import (
-    get_notification_by_id
-)
-from tests.app.db import create_notification, create_service_callback_api
+from app.notifications.notifications_sms_callback import validate_callback_data
 
 
 def firetext_post(client, data):
@@ -111,15 +101,14 @@ def test_dvla_ack_calls_does_not_call_letter_notifications_task(client, mocker):
 
 
 def test_firetext_callback_should_not_need_auth(client, mocker):
-    mocker.patch('app.statsd_client.incr')
-    data = 'mobile=441234123123&status=0&reference=send-sms-code&time=2016-03-10 14:17:00'
+    mocker.patch('app.notifications.notifications_sms_callback.process_sms_client_response')
+    data = 'mobile=441234123123&status=0&reference=notification_id&time=2016-03-10 14:17:00'
 
     response = firetext_post(client, data)
     assert response.status_code == 200
 
 
 def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
-    mocker.patch('app.statsd_client.incr')
     data = 'mobile=441234123123&status=0&reference=&time=2016-03-10 14:17:00'
     response = firetext_post(client, data)
 
@@ -130,7 +119,6 @@ def test_firetext_callback_should_return_400_if_empty_reference(client, mocker):
 
 
 def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
-    mocker.patch('app.statsd_client.incr')
     data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00'
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
@@ -139,19 +127,8 @@ def test_firetext_callback_should_return_400_if_no_reference(client, mocker):
     assert json_resp['message'] == ['Firetext callback failed: reference missing']
 
 
-def test_firetext_callback_should_return_200_if_send_sms_reference(client, mocker):
-    mocker.patch('app.statsd_client.incr')
-    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=send-sms-code'
-    response = firetext_post(client, data)
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'Firetext callback succeeded: send-sms-code'
-
-
 def test_firetext_callback_should_return_400_if_no_status(client, mocker):
-    mocker.patch('app.statsd_client.incr')
-    data = 'mobile=441234123123&time=2016-03-10 14:17:00&reference=send-sms-code'
+    data = 'mobile=441234123123&time=2016-03-10 14:17:00&reference=notification_id'
     response = firetext_post(client, data)
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 400
@@ -159,136 +136,24 @@ def test_firetext_callback_should_return_400_if_no_status(client, mocker):
     assert json_resp['message'] == ['Firetext callback failed: status missing']
 
 
-def test_firetext_callback_should_set_status_technical_failure_if_status_unknown(
-        client, mocker, sample_notification):
-    sample_notification.status = 'sending'
-    # mocker.patch('app.statsd_client.incr')
-    data = 'mobile=441234123123&status=99&time=2016-03-10 14:17:00&reference={}'.format(sample_notification.id)
-    with pytest.raises(ClientException) as e:
-        firetext_post(client, data)
-    assert get_notification_by_id(sample_notification.id).status == 'technical-failure'
-    assert 'Firetext callback failed: status 99 not found.' in str(e.value)
+def test_firetext_callback_should_return_200_and_call_task_with_valid_data(client, mocker):
+    mock_celery = mocker.patch(
+        'app.notifications.notifications_sms_callback.process_sms_client_response.apply_async')
 
-
-def test_firetext_callback_returns_200_when_notification_id_is_not_a_valid_uuid(client, mocker):
-    mocker.patch('app.statsd_client.incr')
-    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=1234'
+    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference=notification_id'
     response = firetext_post(client, data)
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['result'] == 'error'
-    assert json_resp['message'] == 'Firetext callback with invalid reference 1234'
-
-
-def test_callback_should_return_200_if_cannot_find_notification_id(
-    notify_db,
-    notify_db_session,
-    client,
-    mocker
-):
-    mocker.patch('app.statsd_client.incr')
-    missing_notification_id = uuid.uuid4()
-    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-        missing_notification_id)
-    response = firetext_post(client, data)
-
     json_resp = json.loads(response.get_data(as_text=True))
     assert response.status_code == 200
     assert json_resp['result'] == 'success'
 
-
-def test_firetext_callback_should_update_notification_status(
-        client, mocker, sample_notification
-):
-    mocker.patch('app.statsd_client.incr')
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    mock_celery.assert_called_once_with(
+        ['0', 'notification_id', 'Firetext'],
+        queue='sms-callbacks',
     )
-    sample_notification.status = 'sending'
-
-    original = get_notification_by_id(sample_notification.id)
-    assert original.status == 'sending'
-    data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&reference={}'.format(
-        sample_notification.id)
-    response = firetext_post(client, data)
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
-        sample_notification.id
-    )
-    updated = get_notification_by_id(sample_notification.id)
-    assert updated.status == 'delivered'
-    assert get_notification_by_id(sample_notification.id).status == 'delivered'
-    assert send_mock.called_once_with([sample_notification.id], queue="notify-internal-tasks")
 
 
-def test_firetext_callback_should_update_notification_status_failed(
-        client, mocker, sample_template
-):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    notification = create_notification(template=sample_template, status='sending')
-
-    original = get_notification_by_id(notification.id)
-    assert original.status == 'sending'
-
-    data = 'mobile=441234123123&status=1&time=2016-03-10 14:17:00&reference={}'.format(
-        notification.id)
-    response = firetext_post(client, data)
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
-        notification.id
-    )
-    assert get_notification_by_id(notification.id).status == 'permanent-failure'
-
-
-def test_firetext_callback_should_update_notification_status_pending(client, sample_template, mocker):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    notification = create_notification(template=sample_template, status='sending')
-
-    original = get_notification_by_id(notification.id)
-    assert original.status == 'sending'
-    data = 'mobile=441234123123&status=2&time=2016-03-10 14:17:00&reference={}'.format(
-        notification.id)
-    response = firetext_post(client, data)
-
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
-    assert json_resp['result'] == 'success'
-    assert json_resp['message'] == 'Firetext callback succeeded. reference {} updated'.format(
-        notification.id
-    )
-    assert get_notification_by_id(notification.id).status == 'pending'
-
-
-def test_process_mmg_response_return_200_when_cid_is_send_sms_code(client):
-    data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
-        "deliverytime": "2016-04-05 16:01:07"}'
-
-    response = mmg_post(client, data)
-    assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-    assert json_data['message'] == 'MMG callback succeeded: send-sms-code'
-
-
-def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
-        sample_notification, client, mocker
-):
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    sample_notification.status = 'sending'
+def test_mmg_callback_should_not_need_auth(client, mocker, sample_notification):
+    mocker.patch('app.notifications.notifications_sms_callback.process_sms_client_response')
     data = json.dumps({"reference": "mmg_reference",
                        "CID": str(sample_notification.id),
                        "MSISDN": "447777349060",
@@ -296,93 +161,7 @@ def test_process_mmg_response_returns_200_when_cid_is_valid_notification_id(
                        "deliverytime": "2016-04-05 16:01:07"})
 
     response = mmg_post(client, data)
-
     assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-    assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert get_notification_by_id(sample_notification.id).status == 'delivered'
-
-
-def test_process_mmg_response_status_5_updates_notification_with_permanently_failed(
-    sample_notification, client, mocker
-):
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    sample_notification.status = 'sending'
-
-    data = json.dumps({"reference": "mmg_reference",
-                       "CID": str(sample_notification.id),
-                       "MSISDN": "447777349060",
-                       "status": 5})
-
-    response = mmg_post(client, data)
-    assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-    assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
-
-
-def test_process_mmg_response_status_2_updates_notification_with_permanently_failed(
-    sample_notification, client, mocker
-):
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    sample_notification.status = 'sending'
-    data = json.dumps({"reference": "mmg_reference",
-                       "CID": str(sample_notification.id),
-                       "MSISDN": "447777349060",
-                       "status": 2})
-
-    response = mmg_post(client, data)
-    assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-    assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert get_notification_by_id(sample_notification.id).status == 'permanent-failure'
-
-
-def test_process_mmg_response_status_4_updates_notification_with_temporary_failed(
-        sample_notification, client, mocker
-):
-    mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    sample_notification.status = 'sending'
-
-    data = json.dumps({"reference": "mmg_reference",
-                       "CID": str(sample_notification.id),
-                       "MSISDN": "447777349060",
-                       "status": 4})
-
-    response = mmg_post(client, data)
-    assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-    assert json_data['message'] == 'MMG callback succeeded. reference {} updated'.format(sample_notification.id)
-    assert get_notification_by_id(sample_notification.id).status == 'temporary-failure'
-
-
-def test_process_mmg_response_unknown_status_updates_notification_with_technical_failure(
-        sample_notification, client, mocker
-):
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    sample_notification.status = 'sending'
-    data = json.dumps({"reference": "mmg_reference",
-                       "CID": str(sample_notification.id),
-                       "MSISDN": "447777349060",
-                       "status": 10})
-    create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
-    with pytest.raises(ClientException) as e:
-        mmg_post(client, data)
-    assert 'MMG callback failed: status 10 not found.' in str(e.value)
-    assert get_notification_by_id(sample_notification.id).status == 'technical-failure'
-    assert send_mock.called
 
 
 def test_process_mmg_response_returns_400_for_malformed_data(client):
@@ -401,68 +180,64 @@ def test_process_mmg_response_returns_400_for_malformed_data(client):
     assert "{} callback failed: {} missing".format('MMG', 'CID') in json_data['message']
 
 
-def test_mmg_callback_returns_200_when_notification_id_not_found_or_already_updated(client):
-    data = '{"reference": "10100164", "CID": "send-sms-code", "MSISDN": "447775349060", "status": "3", \
-             "deliverytime": "2016-04-05 16:01:07"}'
+def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mocker):
+    mock_celery = mocker.patch(
+        'app.notifications.notifications_sms_callback.process_sms_client_response.apply_async')
+    data = json.dumps({"reference": "mmg_reference",
+                       "CID": "notification_id",
+                       "MSISDN": "447777349060",
+                       "status": "3",
+                       "deliverytime": "2016-04-05 16:01:07"})
 
     response = mmg_post(client, data)
+
     assert response.status_code == 200
+    json_data = json.loads(response.data)
+    assert json_data['result'] == 'success'
+
+    mock_celery.assert_called_once_with(
+        ['3', 'notification_id', 'MMG'],
+        queue='sms-callbacks',
+    )
 
 
-def test_mmg_callback_returns_400_when_notification_id_is_not_a_valid_uuid(client):
-    data = '{"reference": "10100164", "CID": "1234", "MSISDN": "447775349060", "status": "3", \
-             "deliverytime": "2016-04-05 16:01:07"}'
+def test_validate_callback_data_returns_none_when_valid():
+    form = {'status': 'good',
+            'reference': 'send-sms-code'}
+    fields = ['status', 'reference']
+    client_name = 'sms client'
 
-    response = mmg_post(client, data)
-    json_resp = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 400
-    assert json_resp['message'] == 'MMG callback with invalid reference 1234'
-
-
-def test_process_mmg_response_records_statsd(sample_notification, client, mocker):
-    with freeze_time('2001-01-01T12:00:00'):
-
-        mocker.patch('app.statsd_client.incr')
-        mocker.patch('app.statsd_client.timing_with_dates')
-        mocker.patch(
-            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-        )
-        sample_notification.status = 'sending'
-        sample_notification.sent_at = datetime.now()
-
-        data = json.dumps({"reference": "mmg_reference",
-                           "CID": str(sample_notification.id),
-                           "MSISDN": "447777349060",
-                           "status": "3",
-                           "deliverytime": "2016-04-05 16:01:07"})
-
-        mmg_post(client, data)
-
-        app.statsd_client.incr.assert_any_call("callback.mmg.delivered")
-        app.statsd_client.timing_with_dates.assert_any_call(
-            "callback.mmg.elapsed-time", datetime.utcnow(), sample_notification.sent_at
-        )
+    assert validate_callback_data(form, fields, client_name) is None
 
 
-def test_firetext_callback_should_record_statsd(client, sample_notification, mocker):
-    with freeze_time('2001-01-01T12:00:00'):
+def test_validate_callback_data_return_errors_when_fields_are_empty():
+    form = {'monkey': 'good'}
+    fields = ['status', 'cid']
+    client_name = 'sms client'
 
-        mocker.patch('app.statsd_client.incr')
-        mocker.patch('app.statsd_client.timing_with_dates')
-        mocker.patch(
-            'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-        )
-        sample_notification.status = 'sending'
-        sample_notification.sent_at = datetime.now()
+    errors = validate_callback_data(form, fields, client_name)
+    assert len(errors) == 2
+    assert "{} callback failed: {} missing".format(client_name, 'status') in errors
+    assert "{} callback failed: {} missing".format(client_name, 'cid') in errors
 
-        data = 'mobile=441234123123&status=0&time=2016-03-10 14:17:00&code=101&reference={}'.format(
-            sample_notification.id)
-        firetext_post(client, data)
 
-        app.statsd_client.timing_with_dates.assert_any_call(
-            "callback.firetext.elapsed-time", datetime.utcnow(), sample_notification.sent_at
-        )
-        app.statsd_client.incr.assert_any_call("callback.firetext.delivered")
+def test_validate_callback_data_can_handle_integers():
+    form = {'status': 00, 'cid': 'fsdfadfsdfas'}
+    fields = ['status', 'cid']
+    client_name = 'sms client'
+
+    result = validate_callback_data(form, fields, client_name)
+    assert result is None
+
+
+def test_validate_callback_data_returns_error_for_empty_string():
+    form = {'status': '', 'cid': 'fsdfadfsdfas'}
+    fields = ['status', 'cid']
+    client_name = 'sms client'
+
+    result = validate_callback_data(form, fields, client_name)
+    assert result is not None
+    assert "{} callback failed: {} missing".format(client_name, 'status') in result
 
 
 def _sample_sns_s3_callback(filename):
