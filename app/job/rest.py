@@ -141,7 +141,6 @@ def create_job(service_id):
         raise InvalidRequest("Create job is not allowed: service is inactive ", 403)
 
     data = request.get_json()
-
     data.update({
         "service": service_id
     })
