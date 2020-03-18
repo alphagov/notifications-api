@@ -23,3 +23,8 @@ def dao_get_contact_lists(service_id):
 def save_service_contact_list(service_contact_list):
     db.session.add(service_contact_list)
     db.session.commit()
+
+
+def dao_delete_contact_list(service_contact_list):
+    db.session.delete(service_contact_list)
+    db.session.commit()

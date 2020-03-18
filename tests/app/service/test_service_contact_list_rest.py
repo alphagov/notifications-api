@@ -1,7 +1,12 @@
 import uuid
 
 from app.models import ServiceContactList
-from tests.app.db import create_service_contact_list, create_service
+from tests.app.db import (
+    create_job,
+    create_service_contact_list,
+    create_service,
+    create_template,
+)
 
 
 def test_create_service_contact_list(sample_service, admin_request):
@@ -113,3 +118,56 @@ def test_dao_get_contact_list_by_id_does_not_return_if_contact_list_id_for_anoth
     )
 
     assert response['message'] == "No result found"
+
+
+def test_dao_delete_contact_list_by_id(admin_request, sample_service):
+    service_1 = create_service(service_name='Service under test')
+    template_1 = create_template(service=service_1)
+    expected_list = create_service_contact_list(service=service_1)
+    other_list = create_service_contact_list(service=service_1)
+
+    job_1 = create_job(template=template_1, contact_list_id=expected_list.id)
+    job_2 = create_job(template=template_1, contact_list_id=other_list.id)
+    job_3 = create_job(template=template_1)
+
+    admin_request.delete(
+        'service.delete_contact_list_by_id',
+        service_id=service_1.id,
+        contact_list_id=expected_list.id,
+    )
+
+    assert job_1.contact_list_id is None
+    assert job_2.contact_list_id == other_list.id
+    assert job_3.contact_list_id is None
+
+
+def test_dao_delete_contact_list_when_unused(admin_request, sample_service):
+    service = create_service(service_name='Service under test')
+    expected_list = create_service_contact_list(service=service)
+
+    assert ServiceContactList.query.count() == 1
+
+    admin_request.delete(
+        'service.delete_contact_list_by_id',
+        service_id=service.id,
+        contact_list_id=expected_list.id
+    )
+
+    assert ServiceContactList.query.count() == 0
+
+
+def test_dao_delete_contact_list_by_id_for_different_service(admin_request, sample_service):
+    service_1 = create_service(service_name='Service under test')
+    service_2 = create_service(service_name='Other service')
+
+    contact_list = create_service_contact_list(service=service_1)
+    assert ServiceContactList.query.count() == 1
+
+    admin_request.delete(
+        'service.delete_contact_list_by_id',
+        service_id=service_2.id,
+        contact_list_id=contact_list.id,
+        _expected_status=404,
+    )
+
+    assert ServiceContactList.query.count() == 1
