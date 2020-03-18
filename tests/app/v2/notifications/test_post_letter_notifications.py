@@ -164,7 +164,7 @@ def test_post_letter_notification_throws_error_for_bad_postcode(
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
         'error': 'ValidationError',
-        'message': 'A real UK postcode is required.'
+        'message': 'Must be a real UK postcode'
     }]
 
 

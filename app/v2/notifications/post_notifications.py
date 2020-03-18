@@ -271,7 +271,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     postcode = letter_data['personalisation']['postcode']
     if not is_a_real_uk_postcode(postcode):
-        raise ValidationError(message='A real UK postcode is required.')
+        raise ValidationError(message='Must be a real UK postcode')
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 
