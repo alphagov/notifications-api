@@ -344,39 +344,22 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
 def _delete_notifications(notification_type, date_to_delete_from, service_id, query_limit):
     subquery = db.session.query(
         Notification.id
-    ).join(NotificationHistory, NotificationHistory.id == Notification.id).filter(
-        Notification.notification_type == notification_type,
-        Notification.service_id == service_id,
-        Notification.created_at < date_to_delete_from,
-    ).limit(query_limit).subquery()
-
-    deleted = _delete_for_query(subquery)
-
-    subquery_for_test_keys = db.session.query(
-        Notification.id
     ).filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
-        Notification.created_at < date_to_delete_from,
-        Notification.key_type == KEY_TYPE_TEST
+        Notification.created_at < date_to_delete_from
     ).limit(query_limit).subquery()
-
-    deleted += _delete_for_query(subquery_for_test_keys)
-
-    return deleted
-
-
-def _delete_for_query(subquery):
-    number_deleted = db.session.query(Notification).filter(
+    number_deleted = 0
+    deleted = db.session.query(Notification).filter(
         Notification.id.in_(subquery)).delete(synchronize_session='fetch')
-    deleted = number_deleted
+    number_deleted += deleted
     db.session.commit()
-    while number_deleted > 0:
-        number_deleted = db.session.query(Notification).filter(
+    while deleted > 0:
+        deleted = db.session.query(Notification).filter(
             Notification.id.in_(subquery)).delete(synchronize_session='fetch')
-        deleted += number_deleted
         db.session.commit()
-    return deleted
+        number_deleted += deleted
+    return number_deleted
 
 
 def insert_update_notification_history(notification_type, date_to_delete_from, service_id, query_limit=10000):
