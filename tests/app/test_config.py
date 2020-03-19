@@ -65,7 +65,7 @@ def test_cloudfoundry_config_has_different_defaults():
 def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
-    assert len(queues) == 13
+    assert len(queues) == 14
     assert set([
         QueueNames.PRIORITY,
         QueueNames.PERIODIC,
@@ -80,4 +80,5 @@ def test_queue_names_all_queues_correct():
         QueueNames.CREATE_LETTERS_PDF,
         QueueNames.CALLBACKS,
         QueueNames.LETTERS,
+        QueueNames.SMS_CALLBACKS,
     ]) == set(queues)
