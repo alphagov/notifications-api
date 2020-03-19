@@ -315,6 +315,48 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     ]
 
 
+@freeze_time('2020-02-17 18:00:00')
+def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
+    notify_api, mocker, sample_letter_template
+):
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref0',
+        created_at=(datetime.now() - timedelta(hours=2))
+    )
+
+    create_notification(
+        template=sample_letter_template,
+        status='created',
+        reference='ref1',
+        created_at=(datetime.now() - timedelta(hours=3))
+    )
+    error_response = {
+        'Error': {
+            'Code': 'FileNotFound',
+            'Message': 'some error message from amazon',
+            'Type': 'Sender'
+        }
+    }
+    mock_head_s3_object = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 2},
+        ClientError(error_response, "File not found")
+    ])
+
+    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30))
+
+    assert mock_head_s3_object.call_count == 2
+    mock_head_s3_object.assert_has_calls(
+        [
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'),
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'),
+        ]
+    )
+
+    assert results == [{'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', 'Size': 2}]
+
+
 @pytest.mark.parametrize('time_to_run_task', [
     "2020-02-17 18:00:00",  # after 5:30pm
     "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
