@@ -6,6 +6,7 @@ from collections import namedtuple
 from freezegun import freeze_time
 from mock import mock
 
+from app import db
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     check_job_status,
@@ -19,7 +20,7 @@ from app.celery.scheduled_tasks import (
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
-)
+    purge_high_volume_notifications)
 from app.config import QueueNames, TaskNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import dao_get_scheduled_notifications
@@ -30,7 +31,7 @@ from app.models import (
     JOB_STATUS_FINISHED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-)
+    HighVolumeService, Notification, FactBilling, FactNotificationStatus)
 from app.v2.errors import JobIncompleteError
 from tests.app import load_example_csv
 
@@ -314,7 +315,7 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
 
 
 def test_replay_created_notifications_create_letters_pdf_tasks_for_letters_not_ready_to_send(
-        sample_letter_template, mocker
+    sample_letter_template, mocker
 ):
     mock_task = mocker.patch('app.celery.scheduled_tasks.create_letters_pdf.apply_async')
     create_notification(template=sample_letter_template, billable_units=0,
@@ -556,3 +557,56 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         subject="[test] High failure rates for sms spotted for services",
         ticket_type='incident'
     )
+
+
+@freeze_time('2020-03-19 13:30')
+def test_purge_high_volume_notifications(sample_email_template, notify_db_session):
+    # should be deleted
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(days=4), status='delivered')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=2), status='permanent-failure')
+
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1, minutes=1), status='temporary-failure')
+    # should NOT be deleted
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(minutes=59), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1), status='delivered')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1), status='created')
+
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(days=1), status='sending')
+
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(days=1), status='technical-failure')
+
+    high_volume_service = HighVolumeService(service_id=sample_email_template.service_id)
+    db.session.add(high_volume_service)
+    db.session.commit()
+    purge_high_volume_notifications()
+
+    notifications = Notification.query.all()
+    assert len(notifications) == 6
+
+    ft_billing = FactBilling.query.all()
+    assert len(ft_billing) == 1
+    assert ft_billing[0].service_id == sample_email_template.service_id
+    assert ft_billing[0].notifications_sent == 3
+    assert str(ft_billing[0].bst_date) == '2020-03-19'
+
+    ft_status = FactNotificationStatus.query.order_by(FactNotificationStatus.notification_status).all()
+    assert len(ft_status) == 3
+    assert str(ft_status[0].bst_date) == '2020-03-19'
+    assert ft_status[0].notification_status == 'delivered'
+    assert ft_status[0].notification_count == 1
+    assert str(ft_status[1].bst_date) == '2020-03-19'
+    assert ft_status[1].notification_status == 'permanent-failure'
+    assert ft_status[1].notification_count == 1
+    assert str(ft_status[2].bst_date) == '2020-03-19'
+    assert ft_status[2].notification_status == 'temporary-failure'
+    assert ft_status[2].notification_count == 1

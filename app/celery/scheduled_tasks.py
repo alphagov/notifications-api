@@ -5,10 +5,11 @@ from datetime import (
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, zendesk_client
+from app import notify_celery, zendesk_client, db
 from app.celery.tasks import (
     process_job,
     get_recipient_csv_and_template_and_sender_id,
@@ -45,7 +46,7 @@ from app.models import (
     JOB_STATUS_ERROR,
     SMS_TYPE,
     EMAIL_TYPE,
-)
+    HighVolumeService, Template, Notification, KEY_TYPE_NORMAL, FactBilling, FactNotificationStatus)
 from app.notifications.process_notifications import send_notification_to_queue
 from app.v2.errors import JobIncompleteError
 
@@ -311,3 +312,112 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 message=message,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+
+
+def purge_high_volume_notifications():
+    # Not sure what time to use here.....
+    hour_ago = datetime.utcnow() - timedelta(hours=1)
+
+    # We could also store the id in config... however this does give us a bit of control,
+    # as in we can stop this process from happening by deleting the row.
+    # The other part of it is to potentially take this tactic for other services...
+    # perhaps hour_ago is actually the timedelta from the table.
+    services = HighVolumeService.query.all()
+
+    for service in services:
+        templates = Template.query.filter_by(
+            service_id=service.service_id,
+            # going to assume we are only dealing with emails because I don't want to deal with rates at this time.
+            template_type=EMAIL_TYPE
+        ).all()
+        for status in ['delivered', 'temporary-failure', 'permanent-failure']:
+            for template in templates:
+                del_count = Notification.query.filter(
+                    Notification.service_id == service.service_id,
+                    Notification.template_id == template.id,
+                    Notification.notification_type == template.template_type,
+                    Notification.status == status,
+                    Notification.key_type == KEY_TYPE_NORMAL,
+                    Notification.created_at < hour_ago,
+                ).delete()
+
+                bst_date = convert_utc_to_bst(hour_ago).date()
+                # upsert stat data
+                upsert_ft_billing(bst_date, del_count, service.service_id, template)
+                upsert_ft_notification_status(bst_date, del_count, service.service_id, status, template)
+
+
+def upsert_ft_notification_status(bst_date, del_count, service_id, status, template):
+    ft_status_row = FactNotificationStatus.query.filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.template_id == template.id,
+        FactNotificationStatus.bst_date == bst_date,
+        FactNotificationStatus.notification_type == template.template_type,
+        FactNotificationStatus.notification_status == status,
+        FactNotificationStatus.key_type == KEY_TYPE_NORMAL
+    ).first()
+    if ft_status_row:
+        # How do we deal with rows in ft_status where there are.... this isn't going to work.
+        # The current process take the days total from Notifications,
+        # deletes the row for status then inserts,
+        # this means that any rows with a created status should eventually go away.
+        # Do we stop processing the HighVolumes services in the reporting tasks?
+        # If yes, then we need to thing about the migration plan, take a snapshot of data first, etc.
+        FactNotificationStatus.query.filter(
+            FactNotificationStatus.service_id == service_id,
+            FactNotificationStatus.template_id == template.id,
+            FactNotificationStatus.bst_date == bst_date,
+            FactNotificationStatus.notification_type == template.template_type,
+            FactNotificationStatus.notification_status == status,
+            FactNotificationStatus.key_type == KEY_TYPE_NORMAL
+        ).update({"notification_count": ft_status_row.notification_count + del_count})
+    else:
+        ft_status = FactNotificationStatus(
+            bst_date=bst_date,
+            template_id=template.id,
+            service_id=service_id,
+            job_id='00000000-0000-0000-0000-000000000000',
+            notification_type=template.template_type,
+            key_type=KEY_TYPE_NORMAL,
+            notification_status=status,
+            notification_count=del_count,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(ft_status)
+        db.session.commit()
+
+
+def upsert_ft_billing(bst_date, del_count, service_id, template):
+    ft_billing_row = FactBilling.query.filter(
+        FactBilling.service_id == service_id,
+        FactBilling.template_id == template.id,
+        FactBilling.bst_date == bst_date,
+        FactBilling.notification_type == template.template_type
+    ).first()
+    if not ft_billing_row:
+        # insert new row
+        ft_billing = FactBilling(
+            bst_date=bst_date,
+            service_id=service_id,
+            template_id=template.id,
+            notification_type=template.template_type,
+            provider='SES',
+            rate_multiplier=0,
+            international=False,
+            rate=0,
+            billable_units=0,
+            notifications_sent=del_count,
+            created_at=datetime.utcnow(),
+            postage='none'
+        )
+        db.session.add(ft_billing)
+        db.session.commit()
+
+    else:
+        FactBilling.query.filter(
+            FactBilling.service_id == service_id,
+            FactBilling.template_id == template.id,
+            FactBilling.bst_date == bst_date,
+            FactBilling.notification_type == template.template_type
+        ).update({'notifications_sent': ft_billing_row.notifications_sent + del_count})
+        db.session.commit()

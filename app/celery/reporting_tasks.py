@@ -42,6 +42,8 @@ def create_nightly_billing(day_start=None):
 @notify_celery.task(name="create-nightly-billing-for-day")
 @statsd(namespace="tasks")
 def create_nightly_billing_for_day(process_day):
+    # When app.celery.scheduled_tasks.purge_high_volume_notifications starts
+    # we need to exclude HighVolumeServices from the list.
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
     start = datetime.utcnow()
@@ -62,6 +64,8 @@ def create_nightly_billing_for_day(process_day):
 @cronitor("create-nightly-notification-status")
 @statsd(namespace="tasks")
 def create_nightly_notification_status():
+    # When app.celery.scheduled_tasks.purge_high_volume_notifications starts
+    # we need to exclude HighVolumeServices from the list.
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
     # email and sms
@@ -84,6 +88,8 @@ def create_nightly_notification_status():
 @notify_celery.task(name="create-nightly-notification-status-for-day")
 @statsd(namespace="tasks")
 def create_nightly_notification_status_for_day(process_day, notification_type):
+    # When app.celery.scheduled_tasks.purge_high_volume_notifications starts
+    # we need to exclude HighVolumeServices from the list.
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
     start = datetime.utcnow()

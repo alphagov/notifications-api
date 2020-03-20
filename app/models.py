@@ -2148,3 +2148,10 @@ class ServiceContactList(db.Model):
             "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
         }
         return contact_list
+
+
+class HighVolumeService(db.Model):
+    # Service that we want to purge data for hourly
+    __tablename__ = 'high_volume_service'
+
+    service_id = db.Column(UUID(as_uuid=True), primary_key=True, unique=True, index=True, nullable=False)
