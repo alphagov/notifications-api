@@ -307,19 +307,14 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     ).all()
     deleted = 0
     for f in flexible_data_retention:
-        days_of_retention = get_london_midnight_in_utc(
-            convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=f.days_of_retention)
-
-        if notification_type == LETTER_TYPE:
-            _delete_letters_from_s3(
-                notification_type, f.service_id, days_of_retention, qry_limit
-            )
-
-        insert_update_notification_history(notification_type, days_of_retention, f.service_id)
-
         current_app.logger.info(
             "Deleting {} notifications for service id: {}".format(notification_type, f.service_id))
-        deleted += _delete_notifications(notification_type, days_of_retention, f.service_id, qry_limit)
+
+        day_to_delete_backwards_from = get_london_midnight_in_utc(
+            convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=f.days_of_retention)
+
+        deleted += _move_notifications_to_notification_history(
+            notification_type, f.service_id, day_to_delete_backwards_from, qry_limit)
 
     current_app.logger.info(
         'Deleting {} notifications for services without flexible data retention'.format(notification_type))
@@ -329,31 +324,66 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     service_ids_to_purge = db.session.query(Service.id).filter(Service.id.notin_(services_with_data_retention)).all()
 
     for service_id in service_ids_to_purge:
-        if notification_type == LETTER_TYPE:
-            _delete_letters_from_s3(
-                notification_type, service_id, seven_days_ago, qry_limit
-            )
-        insert_update_notification_history(notification_type, seven_days_ago, service_id)
-        deleted += _delete_notifications(notification_type, seven_days_ago, service_id, qry_limit)
+        deleted += _move_notifications_to_notification_history(
+            notification_type, service_id, seven_days_ago, qry_limit)
 
     current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
 
     return deleted
 
 
-def _delete_notifications(notification_type, date_to_delete_from, service_id, query_limit):
+def _move_notifications_to_notification_history(notification_type, service_id, day_to_delete_backwards_from, qry_limit):
+    deleted = 0
+    if notification_type == LETTER_TYPE:
+        _delete_letters_from_s3(
+            notification_type, service_id, day_to_delete_backwards_from, qry_limit
+        )
+
+    stop = -1  # exclusive, we want to include 0
+    step = -1
+    for hour_delta in range(23, stop, step):
+        # We find the timestamp we want to delete all notifications backwards from
+        # We then start 23 hours ago, and do an insert notification history before deleting all notifications older
+        # We then look 22 hours ago, do an insert notifications history before deleting all notifications older
+        # We continue this until we reach the original timestamp we wanted to delete notifications backwardsfrom
+        # This enables us to break this into smaller database queries
+        timestamp_to_delete_backwards_from = day_to_delete_backwards_from - timedelta(hours=hour_delta)
+
+        if service_id == '539d63a1-701d-400d-ab11-f3ee2319d4d4':
+            current_app.logger.info(
+                "Beginning insert_update_notification_history for GOV.UK Email from {} backwards".format(
+                    timestamp_to_delete_backwards_from
+                )
+            )
+
+        insert_update_notification_history(notification_type, timestamp_to_delete_backwards_from, service_id)
+
+        if service_id == '539d63a1-701d-400d-ab11-f3ee2319d4d4':
+            current_app.logger.info(
+                "Beginning _delete_notifications for GOV.UK Email {} backwards".format(
+                    timestamp_to_delete_backwards_from
+                )
+            )
+
+        deleted += _delete_notifications(
+            notification_type, timestamp_to_delete_backwards_from, service_id
+        )
+
+    return deleted
+
+
+def _delete_notifications(notification_type, date_to_delete_from, service_id):
     deleted = Notification.query.filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
         Notification.created_at < date_to_delete_from,
     ).delete()
+    db.session.commit()
 
     return deleted
 
 
-def insert_update_notification_history(notification_type, date_to_delete_from, service_id, query_limit=10000):
-    offset = 0
-
+def insert_update_notification_history(notification_type, date_to_delete_from, service_id):
     notification_query = db.session.query(
         *[x.name for x in NotificationHistory.__table__.c]
     ).filter(
@@ -362,29 +392,25 @@ def insert_update_notification_history(notification_type, date_to_delete_from, s
         Notification.created_at < date_to_delete_from,
         Notification.key_type != KEY_TYPE_TEST
     )
-    notifications_count = notification_query.count()
 
-    while offset < notifications_count:
-        stmt = insert(NotificationHistory).from_select(
-            NotificationHistory.__table__.c,
-            notification_query.limit(query_limit).offset(offset)
-        )
+    stmt = insert(NotificationHistory).from_select(
+        NotificationHistory.__table__.c,
+        notification_query
+    )
 
-        stmt = stmt.on_conflict_do_update(
-            constraint="notification_history_pkey",
-            set_={
-                "notification_status": stmt.excluded.status,
-                "reference": stmt.excluded.reference,
-                "billable_units": stmt.excluded.billable_units,
-                "updated_at": stmt.excluded.updated_at,
-                "sent_at": stmt.excluded.sent_at,
-                "sent_by": stmt.excluded.sent_by
-            }
-        )
-        db.session.connection().execute(stmt)
-        db.session.commit()
-
-        offset += query_limit
+    stmt = stmt.on_conflict_do_update(
+        constraint="notification_history_pkey",
+        set_={
+            "notification_status": stmt.excluded.status,
+            "reference": stmt.excluded.reference,
+            "billable_units": stmt.excluded.billable_units,
+            "updated_at": stmt.excluded.updated_at,
+            "sent_at": stmt.excluded.sent_at,
+            "sent_by": stmt.excluded.sent_by
+        }
+    )
+    db.session.connection().execute(stmt)
+    db.session.commit()
 
 
 def _delete_letters_from_s3(

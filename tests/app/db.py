@@ -324,7 +324,8 @@ def create_notification_history(
         international=False,
         phone_prefix=None,
         created_by_id=None,
-        postage=None
+        postage=None,
+        id=None
 ):
     assert job or template
     if job:
@@ -341,7 +342,7 @@ def create_notification_history(
         postage = 'second'
 
     data = {
-        'id': uuid.uuid4(),
+        'id': id or uuid.uuid4(),
         'job_id': job and job.id,
         'job': job,
         'service_id': template.service.id,
