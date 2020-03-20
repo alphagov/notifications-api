@@ -420,6 +420,8 @@ def insert_update_notification_history(notification_type, date_to_delete_from, s
         Notification.service_id == service_id,
         Notification.created_at < date_to_delete_from,
         Notification.key_type != KEY_TYPE_TEST
+    ).order_by(
+        Notification.created_at
     )
     notifications_count = notification_query.count()
 
