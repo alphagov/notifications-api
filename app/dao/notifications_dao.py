@@ -377,7 +377,7 @@ def _delete_notifications(notification_type, date_to_delete_from, service_id):
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
         Notification.created_at < date_to_delete_from,
-    ).delete()
+    ).delete(synchronize_session=False)
     db.session.commit()
 
     return deleted
