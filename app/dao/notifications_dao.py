@@ -332,6 +332,63 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     return deleted
 
 
+@statsd(namespace="dao")
+@transactional
+def insert_notification_history_delete_notifications(
+    notification_type, service_id, start_time, end_time, qry_limit=10000
+):
+    drop_table_if_exists = """
+        DROP TABLE if exists NOTIFICATION_ARCHIVE
+        """
+    select_into_temp_table = """
+         CREATE TEMP TABLE NOTIFICATION_ARCHIVE AS
+         SELECT id
+          FROM notifications
+        WHERE service_id = :service_id
+          AND notification_type = :notification_type
+          AND created_at >= :start_time
+          AND created_at <= :end_time
+          AND key_type = 'normal'
+          AND notification_status in ('delivered', 'permanent-failure', 'temporary-failure')
+        limit :qry_limit
+        """
+    insert_query = """
+        insert into notification_history
+         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
+             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
+             client_reference, international, phone_prefix, rate_multiplier, notification_status,
+              created_by_id, postage, document_download_count
+           FROM notifications
+          WHERE id in (select id from NOTIFICATION_ARCHIVE)
+    """
+    delete_query = """
+        DELETE FROM notifications
+        where id in (select id from NOTIFICATION_ARCHIVE)
+    """
+    input_params = {
+        "service_id": service_id,
+        "notification_type": notification_type,
+        "start_time": start_time,
+        "end_time": end_time,
+        "qry_limit": qry_limit
+    }
+    current_app.logger.info(f"Start insert_notification_history_delete_notifications for input params {input_params}")
+    db.session.execute(drop_table_if_exists)
+    current_app.logger.info('Start executing select into temp table')
+    db.session.execute(select_into_temp_table, input_params)
+
+    result = db.session.execute("select * from NOTIFICATION_ARCHIVE")
+
+    current_app.logger.info('Start executing insert into history')
+    db.session.execute(insert_query)
+
+    current_app.logger.info('Start deleting notifications')
+    db.session.execute(delete_query)
+
+    db.session.execute("DROP TABLE NOTIFICATION_ARCHIVE")
+    return result.rowcount
+
+
 def _move_notifications_to_notification_history(notification_type, service_id, day_to_delete_backwards_from, qry_limit):
     deleted = 0
     if notification_type == LETTER_TYPE:
