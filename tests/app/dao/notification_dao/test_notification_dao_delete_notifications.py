@@ -10,8 +10,8 @@ from freezegun import freeze_time
 from app.dao.notifications_dao import (
     delete_notifications_older_than_retention_by_type,
     db,
-    insert_update_notification_history
-)
+    insert_update_notification_history,
+    insert_notification_history_delete_notifications)
 from app.models import Notification, NotificationHistory
 from tests.app.db import (
     create_template,
@@ -346,3 +346,40 @@ def test_insert_update_notification_history_updates_history_with_new_status(samp
     history = NotificationHistory.query.get(notification_2.id)
     assert history.status == 'delivered'
     assert not NotificationHistory.query.get(notification_1.id)
+
+
+@freeze_time('2020-03-20 14:00')
+def test_insert_notification_history_delete_notifications(sample_email_template):
+    # should be deleted
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=4), status='delivered')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=20), status='permanent-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=30), status='temporary-failure')
+
+    # should NOT be deleted
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(minutes=59), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(hours=1, seconds=1), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1), status='delivered')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=20), status='created')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(days=1), status='sending')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(days=1), status='technical-failure')
+
+    del_count = insert_notification_history_delete_notifications(
+        notification_type=sample_email_template.template_type,
+        service_id=sample_email_template.service_id,
+        start_time=datetime.utcnow(),
+        end_time=datetime.utcnow() + timedelta(hours=1))
+
+    assert del_count == 3
+    notifications = Notification.query.all()
+    history_rows = NotificationHistory.query.all()
+    assert len(history_rows) == 3
+    assert len(notifications) == 6
