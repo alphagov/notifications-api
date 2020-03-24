@@ -222,10 +222,14 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
     mock_get_s3.assert_not_called()
 
 
+@freeze_time('2020-03-25 00:01')
 def test_delete_notifications_calls_subquery_multiple_times(sample_template):
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=7, minutes=3),
+                        status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=7, minutes=3),
+                        status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=7, minutes=3),
+                        status='delivered')
 
     assert Notification.query.count() == 3
     delete_notifications_older_than_retention_by_type('sms', qry_limit=1)
