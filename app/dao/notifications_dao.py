@@ -297,7 +297,7 @@ def _filter_query(query, filter_dict=None):
 
 
 @statsd(namespace="dao")
-def delete_notifications_older_than_retention_by_type(notification_type, qry_limit=10000):
+def delete_notifications_older_than_retention_by_type(notification_type, qry_limit=50000):
     current_app.logger.info(
         'Deleting {} notifications for services with flexible data retention'.format(notification_type))
 
