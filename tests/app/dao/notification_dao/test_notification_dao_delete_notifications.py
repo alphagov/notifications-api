@@ -156,7 +156,7 @@ def test_delete_notifications_inserts_notification_history(sample_service):
     assert NotificationHistory.query.count() == 2
 
 
-def test_delete_notifications_does_nothing_if_notification_history_if_row_already_exists(
+def test_delete_notifications_does_nothing_if_notification_history_row_already_exists(
     sample_email_template, mocker
 ):
     mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
@@ -256,10 +256,10 @@ def test_insert_notification_history_delete_notifications(sample_email_template)
                         created_at=datetime.utcnow() + timedelta(minutes=30), status='temporary-failure')
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() + timedelta(minutes=59), status='temporary-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(hours=1), status='delivered')
 
     # should NOT be deleted
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(hours=1), status='delivered')
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() + timedelta(minutes=61), status='temporary-failure')
     create_notification(template=sample_email_template,
@@ -279,11 +279,11 @@ def test_insert_notification_history_delete_notifications(sample_email_template)
         service_id=sample_email_template.service_id,
         timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1))
 
-    assert del_count == 5
+    assert del_count == 4
     notifications = Notification.query.all()
     history_rows = NotificationHistory.query.all()
-    assert len(history_rows) == 5
-    assert len(notifications) == 6
+    assert len(history_rows) == 4
+    assert len(notifications) == 7
 
 
 def test_insert_notification_history_delete_notifications_more_notifications_than_query_limit(sample_template):

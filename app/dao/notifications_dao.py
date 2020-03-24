@@ -311,9 +311,11 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
 
         day_to_delete_backwards_from = get_london_midnight_in_utc(
             convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=f.days_of_retention)
-
-        deleted += _move_notifications_to_notification_history(
-            notification_type, f.service_id, day_to_delete_backwards_from, qry_limit)
+        delete_count_per_call = 1
+        while delete_count_per_call > 0:
+            delete_count_per_call = _move_notifications_to_notification_history(
+                notification_type, f.service_id, day_to_delete_backwards_from, qry_limit)
+            deleted += delete_count_per_call
 
     current_app.logger.info(
         'Deleting {} notifications for services without flexible data retention'.format(notification_type))
@@ -350,7 +352,7 @@ def insert_notification_history_delete_notifications(
           FROM notifications
         WHERE service_id = :service_id
           AND notification_type = :notification_type
-          AND created_at <= :timestamp_to_delete_backwards_from
+          AND created_at < :timestamp_to_delete_backwards_from
           AND key_type = 'normal'
           AND notification_status in ('delivered', 'permanent-failure', 'temporary-failure')
         limit :qry_limit
@@ -415,6 +417,7 @@ def _move_notifications_to_notification_history(notification_type, service_id, d
             qry_limit=qry_limit
         )
 
+    # Deleting test Notifications, test notifications are not persisted to NotificationHistory
     Notification.query.filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
