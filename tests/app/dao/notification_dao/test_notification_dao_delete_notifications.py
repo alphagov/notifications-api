@@ -9,16 +9,15 @@ from freezegun import freeze_time
 
 from app.dao.notifications_dao import (
     delete_notifications_older_than_retention_by_type,
-    db,
-    insert_update_notification_history,
-    insert_notification_history_delete_notifications)
+    insert_notification_history_delete_notifications
+)
 from app.models import Notification, NotificationHistory
 from tests.app.db import (
     create_template,
     create_notification,
     create_service_data_retention,
-    create_service
-)
+    create_service,
+    create_notification_history)
 
 
 def create_test_data(notification_type, sample_service, days_of_retention=3):
@@ -157,17 +156,17 @@ def test_delete_notifications_inserts_notification_history(sample_service):
     assert NotificationHistory.query.count() == 2
 
 
-def test_delete_notifications_updates_notification_history(sample_email_template, mocker):
+def test_delete_notifications_does_nothing_if_notification_history_if_row_already_exists(
+    sample_email_template, mocker
+):
     mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
-    notification = create_notification(template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=8))
-    Notification.query.filter_by(id=notification.id).update(
-        {"status": "delivered",
-         "reference": "ses_reference",
-         "billable_units": 1,  # I know we don't update this for emails but this is a unit test
-         "updated_at": datetime.utcnow(),
-         "sent_at": datetime.utcnow(),
-         "sent_by": "ses"
-         }
+    notification = create_notification(
+        template=sample_email_template, created_at=datetime.utcnow() - timedelta(days=8),
+        status='temporary-failure'
+    )
+    create_notification_history(
+        id=notification.id, template=sample_email_template,
+        created_at=datetime.utcnow() - timedelta(days=8), status='delivered'
     )
 
     delete_notifications_older_than_retention_by_type("email")
@@ -175,10 +174,6 @@ def test_delete_notifications_updates_notification_history(sample_email_template
     history = NotificationHistory.query.all()
     assert len(history) == 1
     assert history[0].status == 'delivered'
-    assert history[0].reference == 'ses_reference'
-    assert history[0].billable_units == 1
-    assert history[0].updated_at
-    assert history[0].sent_by == 'ses'
 
 
 def test_delete_notifications_keep_data_for_days_of_retention_is_longer(sample_service):
@@ -227,25 +222,10 @@ def test_delete_notifications_does_try_to_delete_from_s3_when_letter_has_not_bee
     mock_get_s3.assert_not_called()
 
 
-@freeze_time("2016-01-10 12:00:00.000000")
-def test_should_not_delete_notification_if_history_does_not_exist(sample_service, mocker):
-    mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
-    mocker.patch("app.dao.notifications_dao.insert_update_notification_history")
-    with freeze_time('2016-01-01 12:00'):
-        email_template, letter_template, sms_template = _create_templates(sample_service)
-        create_notification(template=email_template, status='permanent-failure')
-        create_notification(template=sms_template, status='delivered')
-        create_notification(template=letter_template, status='temporary-failure')
-    assert Notification.query.count() == 3
-    delete_notifications_older_than_retention_by_type('sms')
-    assert Notification.query.count() == 3
-    assert NotificationHistory.query.count() == 0
-
-
 def test_delete_notifications_calls_subquery_multiple_times(sample_template):
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
 
     assert Notification.query.count() == 3
     delete_notifications_older_than_retention_by_type('sms', qry_limit=1)
@@ -253,99 +233,16 @@ def test_delete_notifications_calls_subquery_multiple_times(sample_template):
 
 
 def test_delete_notifications_returns_sum_correctly(sample_template):
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
-    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8))
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
+    create_notification(template=sample_template, created_at=datetime.now() - timedelta(days=8), status='delivered')
 
     s2 = create_service(service_name='s2')
     t2 = create_template(s2, template_type='sms')
-    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8))
-    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8))
+    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8), status='delivered')
+    create_notification(template=t2, created_at=datetime.now() - timedelta(days=8), status='delivered')
 
     ret = delete_notifications_older_than_retention_by_type('sms', qry_limit=1)
     assert ret == 4
-
-
-def test_insert_update_notification_history(sample_service):
-    template = create_template(sample_service, template_type='sms')
-    notification_1 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=3))
-    notification_2 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=8))
-    notification_3 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=9))
-    other_types = ['email', 'letter']
-    for template_type in other_types:
-        t = create_template(service=sample_service, template_type=template_type)
-        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=3))
-        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=8))
-
-    insert_update_notification_history(
-        notification_type='sms', date_to_delete_from=datetime.utcnow() - timedelta(days=7),
-        service_id=sample_service.id)
-    history = NotificationHistory.query.all()
-    assert len(history) == 2
-
-    history_ids = [x.id for x in history]
-    assert notification_1.id not in history_ids
-    assert notification_2.id in history_ids
-    assert notification_3.id in history_ids
-
-
-def test_insert_update_notification_history_with_more_notifications_than_query_limit(mocker, sample_service):
-    template = create_template(sample_service, template_type='sms')
-    notification_1 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=3))
-    notification_2 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=8))
-    notification_3 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=9))
-    other_types = ['email', 'letter']
-    for template_type in other_types:
-        t = create_template(service=sample_service, template_type=template_type)
-        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=3))
-        create_notification(template=t, created_at=datetime.utcnow() - timedelta(days=8))
-
-    db_connection_spy = mocker.spy(db.session, 'connection')
-    db_commit_spy = mocker.spy(db.session, 'commit')
-
-    insert_update_notification_history(
-        notification_type='sms', date_to_delete_from=datetime.utcnow() - timedelta(days=7),
-        service_id=sample_service.id, query_limit=1)
-    history = NotificationHistory.query.all()
-    assert len(history) == 2
-
-    history_ids = [x.id for x in history]
-    assert notification_1.id not in history_ids
-    assert notification_2.id in history_ids
-    assert notification_3.id in history_ids
-
-    assert db_connection_spy.call_count == 2
-    assert db_commit_spy.call_count == 2
-
-
-def test_insert_update_notification_history_only_insert_update_given_service(sample_service):
-    other_service = create_service(service_name='another service')
-    other_template = create_template(service=other_service)
-    template = create_template(service=sample_service)
-    notification_1 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=3))
-    notification_2 = create_notification(template=template, created_at=datetime.utcnow() - timedelta(days=8))
-    notification_3 = create_notification(template=other_template, created_at=datetime.utcnow() - timedelta(days=3))
-    notification_4 = create_notification(template=other_template, created_at=datetime.utcnow() - timedelta(days=8))
-
-    insert_update_notification_history('sms', datetime.utcnow() - timedelta(days=7), sample_service.id)
-    history = NotificationHistory.query.all()
-    assert len(history) == 1
-
-    history_ids = [x.id for x in history]
-    assert notification_1.id not in history_ids
-    assert notification_2.id in history_ids
-    assert notification_3.id not in history_ids
-    assert notification_4.id not in history_ids
-
-
-def test_insert_update_notification_history_updates_history_with_new_status(sample_template):
-    notification_1 = create_notification(template=sample_template, created_at=datetime.utcnow() - timedelta(days=3))
-    notification_2 = create_notification(template=sample_template, created_at=datetime.utcnow() - timedelta(days=8),
-                                         status='delivered')
-    insert_update_notification_history(
-        'sms', datetime.utcnow() - timedelta(days=7), sample_template.service_id)
-    history = NotificationHistory.query.get(notification_2.id)
-    assert history.status == 'delivered'
-    assert not NotificationHistory.query.get(notification_1.id)
 
 
 @freeze_time('2020-03-20 14:00')
@@ -357,29 +254,78 @@ def test_insert_notification_history_delete_notifications(sample_email_template)
                         created_at=datetime.utcnow() + timedelta(minutes=20), status='permanent-failure')
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() + timedelta(minutes=30), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=59), status='temporary-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() + timedelta(hours=1), status='delivered')
 
     # should NOT be deleted
     create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() - timedelta(minutes=59), status='temporary-failure')
+                        created_at=datetime.utcnow() + timedelta(minutes=61), status='temporary-failure')
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() + timedelta(hours=1, seconds=1), status='temporary-failure')
     create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() - timedelta(hours=1), status='delivered')
-    create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() + timedelta(minutes=20), status='created')
+    # should NOT be deleted - wrong status
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() - timedelta(days=1), status='sending')
     create_notification(template=sample_email_template,
                         created_at=datetime.utcnow() - timedelta(days=1), status='technical-failure')
+    create_notification(template=sample_email_template,
+                        created_at=datetime.utcnow() - timedelta(hours=1), status='created')
 
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_email_template.template_type,
         service_id=sample_email_template.service_id,
-        start_time=datetime.utcnow(),
-        end_time=datetime.utcnow() + timedelta(hours=1))
+        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1))
 
-    assert del_count == 3
+    assert del_count == 5
     notifications = Notification.query.all()
     history_rows = NotificationHistory.query.all()
-    assert len(history_rows) == 3
+    assert len(history_rows) == 5
     assert len(notifications) == 6
+
+
+def test_insert_notification_history_delete_notifications_more_notifications_than_query_limit(sample_template):
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=4), status='delivered')
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=20), status='permanent-failure')
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow() + timedelta(minutes=30), status='temporary-failure')
+
+    del_count = insert_notification_history_delete_notifications(
+        notification_type=sample_template.template_type,
+        service_id=sample_template.service_id,
+        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1),
+        qry_limit=1
+    )
+
+    assert del_count == 1
+    notifications = Notification.query.all()
+    history_rows = NotificationHistory.query.all()
+    assert len(history_rows) == 1
+    assert len(notifications) == 2
+
+
+def test_insert_notification_history_delete_notifications_only_insert_delete_for_given_service(sample_email_template):
+    notification_to_move = create_notification(template=sample_email_template,
+                                               created_at=datetime.utcnow() + timedelta(minutes=4), status='delivered')
+    another_service = create_service(service_name='Another service')
+    another_template = create_template(service=another_service, template_type='email')
+    notification_to_stay = create_notification(template=another_template,
+                                               created_at=datetime.utcnow() + timedelta(minutes=4), status='delivered')
+
+    del_count = insert_notification_history_delete_notifications(
+        notification_type=sample_email_template.template_type,
+        service_id=sample_email_template.service_id,
+        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1)
+    )
+
+    assert del_count == 1
+    notifications = Notification.query.all()
+    history_rows = NotificationHistory.query.all()
+    assert len(notifications) == 1
+    assert len(history_rows) == 1
+    assert notifications[0].id == notification_to_stay.id
+    assert history_rows[0], id == notification_to_move.id
