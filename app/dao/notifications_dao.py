@@ -372,19 +372,14 @@ def insert_notification_history_delete_notifications(
         "timestamp_to_delete_backwards_from": timestamp_to_delete_backwards_from,
         "qry_limit": qry_limit
     }
-    current_app.logger.info(
-        f"Start executing insert_notification_history_delete_notifications for input params {input_params}"
-    )
+
     db.session.execute(drop_table_if_exists)
-    current_app.logger.info('Start executing select into temp table')
     db.session.execute(select_into_temp_table, input_params)
 
     result = db.session.execute("select * from NOTIFICATION_ARCHIVE")
 
-    current_app.logger.info('Start executing insert into history')
     db.session.execute(insert_query)
 
-    current_app.logger.info('Start executing deleting notifications')
     db.session.execute(delete_query)
 
     db.session.execute("DROP TABLE NOTIFICATION_ARCHIVE")
