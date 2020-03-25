@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import DATE_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.aws import s3
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -1047,6 +1048,7 @@ def delete_contact_list_by_id(service_id, contact_list_id):
     )
     dao_unlink_jobs_from_contact_list_id(contact_list.id)
     dao_delete_contact_list(contact_list)
+    s3.remove_contact_list_from_s3(service_id, contact_list_id)
 
     return '', 204
 

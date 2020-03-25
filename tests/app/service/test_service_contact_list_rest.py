@@ -120,7 +120,8 @@ def test_dao_get_contact_list_by_id_does_not_return_if_contact_list_id_for_anoth
     assert response['message'] == "No result found"
 
 
-def test_dao_delete_contact_list_by_id(admin_request, sample_service):
+def test_dao_delete_contact_list_by_id(mocker, admin_request, sample_service):
+    mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
     service_1 = create_service(service_name='Service under test')
     template_1 = create_template(service=service_1)
     expected_list = create_service_contact_list(service=service_1)
@@ -140,8 +141,14 @@ def test_dao_delete_contact_list_by_id(admin_request, sample_service):
     assert job_2.contact_list_id == other_list.id
     assert job_3.contact_list_id is None
 
+    mock_s3.assert_called_once_with(
+        expected_list.service.id,
+        expected_list.id,
+    )
 
-def test_dao_delete_contact_list_when_unused(admin_request, sample_service):
+
+def test_dao_delete_contact_list_when_unused(mocker, admin_request, sample_service):
+    mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
     service = create_service(service_name='Service under test')
     expected_list = create_service_contact_list(service=service)
 
@@ -155,8 +162,16 @@ def test_dao_delete_contact_list_when_unused(admin_request, sample_service):
 
     assert ServiceContactList.query.count() == 0
 
+    mock_s3.assert_called_once_with(
+        expected_list.service.id,
+        expected_list.id,
+    )
 
-def test_dao_delete_contact_list_by_id_for_different_service(admin_request, sample_service):
+
+def test_dao_delete_contact_list_by_id_for_different_service(mocker, admin_request, sample_service):
+
+    mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
+
     service_1 = create_service(service_name='Service under test')
     service_2 = create_service(service_name='Other service')
 
@@ -171,3 +186,4 @@ def test_dao_delete_contact_list_by_id_for_different_service(admin_request, samp
     )
 
     assert ServiceContactList.query.count() == 1
+    assert mock_s3.called is False
