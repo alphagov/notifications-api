@@ -203,7 +203,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         simulated=simulated
     )
 
-    if str(service.id) == '539d63a1-701d-400d-ab11-f3ee2319d4d4' and api_key.key_type == KEY_TYPE_NORMAL:
+    if str(service.id) == '539d63a1-701d-400d-ab11-f3ee2319d4d4' and api_key.key_type == KEY_TYPE_NORMAL \
+       and notification_type == EMAIL_TYPE:
         # Put GOV.UK Email notifications onto a queue
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
         # the task will then save the notification, then call send_notification_to_queue.

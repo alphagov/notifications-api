@@ -18,7 +18,7 @@ from requests import (
     request,
     RequestException
 )
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app import (
     create_uuid,
@@ -301,12 +301,11 @@ def save_api_email(self,
 
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(notification['service_id'])
-    print(notification)
 
     try:
         current_app.logger.info(f"Persisting notification {notification['id']}")
 
-        saved_notification = persist_notification(
+        persist_notification(
             notification_id=notification["id"],
             template_id=notification['template_id'],
             template_version=notification['template_version'],
@@ -324,14 +323,16 @@ def save_api_email(self,
         )
 
         q = QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
-        print(q)
         provider_tasks.deliver_email.apply_async(
             [notification['id']],
             queue=q
         )
+        current_app.logger.info(f"Email {notification['id']} has been persisted.")
+    except IntegrityError:
+        current_app.logger.info(f"Email {notification['id']} already exists.")
 
-        current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
+
         try:
             self.retry(queue=QueueNames.RETRY, exc=e)
         except self.MaxRetriesExceededError:
