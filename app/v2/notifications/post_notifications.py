@@ -1,12 +1,22 @@
 import base64
 import functools
+import uuid
+from datetime import datetime
 
 from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import api_user, authenticated_service, notify_celery, document_download_client
+from app import (
+    api_user,
+    authenticated_service,
+    notify_celery,
+    document_download_client,
+    encryption,
+    DATETIME_FORMAT
+)
 from app.celery.letters_pdf_tasks import create_letters_pdf, process_virus_scan_passed
 from app.celery.research_mode_tasks import create_fake_letter_response_file
+from app.celery.tasks import save_api_email
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import update_notification_status_by_reference
@@ -17,13 +27,14 @@ from app.models import (
     EMAIL_TYPE,
     LETTER_TYPE,
     PRIORITY,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
     NOTIFICATION_CREATED,
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-)
+    Notification)
 from app.notifications.process_letter_notifications import (
     create_letter_notification
 )
@@ -192,6 +203,23 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         simulated=simulated
     )
 
+    if str(service.id) == '539d63a1-701d-400d-ab11-f3ee2319d4d4' and api_key.key_type == KEY_TYPE_NORMAL:
+        # Put GOV.UK Email notifications onto a queue
+        # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
+        # the task will then save the notification, then call send_notification_to_queue.
+        # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
+        notification = save_email_to_queue(
+            form=form,
+            notification_type=notification_type,
+            api_key=api_key,
+            template=template,
+            service_id=service.id,
+            personalisation=personalisation,
+            document_download_count=document_download_count,
+            reply_to_text=reply_to_text
+        )
+        return notification
+
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
@@ -222,6 +250,41 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
             current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
 
     return notification
+
+
+def save_email_to_queue(
+    *,
+    form,
+    notification_type,
+    api_key,
+    template,
+    service_id,
+    personalisation,
+    document_download_count,
+    reply_to_text=None
+):
+    data = {
+        "id": str(uuid.uuid4()),
+        "template_id": str(template.id),
+        "template_version": template.version,
+        "to": form['email_address'],
+        "service_id": str(service_id),
+        "personalisation": personalisation,
+        "notification_type": notification_type,
+        "api_key_id": str(api_key.id),
+        "key_type": api_key.key_type,
+        "client_reference": form.get('reference', None),
+        "reply_to_text": reply_to_text,
+        "document_download_count": document_download_count,
+        "status": NOTIFICATION_CREATED,
+        "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+    }
+    encrypted = encryption.encrypt(
+        data
+    )
+
+    save_api_email.apply_async([encrypted], queue=QueueNames.SAVE_API_EMAIL)
+    return Notification(**data)
 
 
 def process_document_uploads(personalisation_data, service, simulated=False):

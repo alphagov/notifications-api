@@ -30,7 +30,7 @@ from app.celery.tasks import (
     s3,
     send_inbound_sms_to_service,
     process_returned_letters_list,
-)
+    save_api_email)
 from app.config import QueueNames
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import (
@@ -44,8 +44,8 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     LETTER_TYPE,
     SMS_TYPE,
-    ReturnedLetter
-)
+    ReturnedLetter,
+    NOTIFICATION_CREATED)
 
 from tests.app import load_example_csv
 
@@ -60,8 +60,8 @@ from tests.app.db import (
     create_user,
     create_reply_to_email,
     create_service_with_defined_sms_sender,
-    create_notification_history
-)
+    create_notification_history,
+    create_api_key)
 from tests.conftest import set_config_values
 
 
@@ -1664,3 +1664,37 @@ def test_process_returned_letters_populates_returned_letters_table(
 
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
+
+
+@freeze_time('2020-03-25 14:30')
+def test_save_api_email(sample_email_template, mocker):
+    mock_send_email_to_provider = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    api_key = create_api_key(service=sample_email_template.service)
+    data = {
+        "id": str(uuid.uuid4()),
+        "template_id": str(sample_email_template.id),
+        "template_version": sample_email_template.version,
+        "to": "jane.citizen@example.com",
+        "service_id": str(sample_email_template.service_id),
+        "personalisation": None,
+        "notification_type": sample_email_template.template_type,
+        "api_key_id": str(api_key.id),
+        "key_type": api_key.key_type,
+        "client_reference": 'our email',
+        "reply_to_text": "our.email@gov.uk",
+        "document_download_count": 0,
+        "status": NOTIFICATION_CREATED,
+        "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+    }
+
+    encrypted = encryption.encrypt(
+        data
+    )
+
+    assert len(Notification.query.all()) == 0
+    save_api_email(encrypted)
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert str(notifications[0].id) == data['id']
+    assert notifications[0].created_at == datetime(2020, 3, 25, 14, 30)
+    mock_send_email_to_provider.assert_called_once_with([data['id']], queue=QueueNames.SEND_EMAIL)

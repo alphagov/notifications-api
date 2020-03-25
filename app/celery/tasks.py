@@ -293,6 +293,51 @@ def save_email(self,
         handle_exception(self, notification, notification_id, e)
 
 
+@notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def save_api_email(self,
+                   encrypted_notification,
+                   ):
+
+    notification = encryption.decrypt(encrypted_notification)
+    service = dao_fetch_service_by_id(notification['service_id'])
+    print(notification)
+
+    try:
+        current_app.logger.info(f"Persisting notification {notification['id']}")
+
+        saved_notification = persist_notification(
+            notification_id=notification["id"],
+            template_id=notification['template_id'],
+            template_version=notification['template_version'],
+            recipient=notification['to'],
+            service=service,
+            personalisation=notification.get('personalisation'),
+            notification_type=EMAIL_TYPE,
+            client_reference=notification['client_reference'],
+            api_key_id=notification.get('api_key_id'),
+            key_type=KEY_TYPE_NORMAL,
+            created_at=notification['created_at'],
+            reply_to_text=notification['reply_to_text'],
+            status=notification['status'],
+            document_download_count=notification['document_download_count']
+        )
+
+        q = QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
+        print(q)
+        provider_tasks.deliver_email.apply_async(
+            [notification['id']],
+            queue=q
+        )
+
+        current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
+    except SQLAlchemyError as e:
+        try:
+            self.retry(queue=QueueNames.RETRY, exc=e)
+        except self.MaxRetriesExceededError:
+            current_app.logger.error('Max retry failed' + f"Failed to persist notification {notification['id']}")
+
+
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
 def save_letter(

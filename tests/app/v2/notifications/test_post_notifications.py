@@ -1,4 +1,5 @@
 import uuid
+from unittest import mock
 from unittest.mock import call
 
 import pytest
@@ -951,3 +952,28 @@ def test_post_email_notification_when_data_is_empty_returns_400(
         assert error_msg == 'phone_number is a required property'
     else:
         assert error_msg == 'email_address is a required property'
+
+
+def test_post_notifications_saves_email_to_queue(client, notify_db_session, mocker):
+    save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
+
+    service = create_service(service_id='539d63a1-701d-400d-ab11-f3ee2319d4d4', service_name='high volume service')
+    template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
+    data = {
+        "email_address": "joe.citizen@example.com",
+        "template_id": template.id,
+        "personalisation": {"message": "Dear citizen, have a nice day"}
+    }
+    response = client.post(
+        path='/v2/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service.id)]
+    )
+
+    json_resp = response.get_json()
+
+    assert response.status_code == 201
+    assert json_resp['id']
+    assert json_resp['content']['body'] == "Dear citizen, have a nice day"
+    assert json_resp['template']['id'] == str(template.id)
+    save_email_task.assert_called_once_with([mock.ANY], queue='save-api-email')

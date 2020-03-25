@@ -49,6 +49,10 @@ case $NOTIFY_APP_NAME in
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
     -Q service-callbacks 2> /dev/null
     ;;
+  delivery-worker-save-api-notifications)
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    -Q save-api-email 2> /dev/null
+    ;;
   delivery-celery-beat)
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery beat --loglevel=INFO
     ;;
