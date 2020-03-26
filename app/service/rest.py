@@ -30,7 +30,6 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.jobs_dao import dao_unlink_jobs_from_contact_list_id
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
@@ -39,10 +38,10 @@ from app.dao.returned_letters_dao import (
     fetch_returned_letters,
 )
 from app.dao.service_contact_list_dao import (
+    dao_archive_contact_list,
     dao_get_contact_lists,
-    save_service_contact_list,
     dao_get_contact_list_by_id,
-    dao_delete_contact_list,
+    save_service_contact_list,
 )
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
@@ -1046,8 +1045,7 @@ def delete_contact_list_by_id(service_id, contact_list_id):
         service_id=service_id,
         contact_list_id=contact_list_id,
     )
-    dao_unlink_jobs_from_contact_list_id(contact_list.id)
-    dao_delete_contact_list(contact_list)
+    dao_archive_contact_list(contact_list)
     s3.remove_contact_list_from_s3(service_id, contact_list_id)
 
     return '', 204

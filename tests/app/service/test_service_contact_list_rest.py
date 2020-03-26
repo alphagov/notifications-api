@@ -75,6 +75,7 @@ def test_get_contact_list_returns_for_service(admin_request, notify_db_session):
     expected_list_2 = create_service_contact_list(service=service_1)
     # not included in results
     create_service_contact_list(service=service_2)
+    create_service_contact_list(service=service_1, archived=True)
 
     response = admin_request.get(
         'service.get_contact_list',
@@ -101,6 +102,16 @@ def test_dao_get_contact_list_by_id(admin_request, sample_service):
     assert response == expected_list_1.serialize()
 
 
+def test_dao_get_archived_contact_list_by_id(admin_request):
+    contact_list = create_service_contact_list(archived=True)
+    admin_request.get(
+        'service.get_contact_list_by_id',
+        service_id=contact_list.service.id,
+        contact_list_id=contact_list.id,
+        _expected_status=404,
+    )
+
+
 def test_dao_get_contact_list_by_id_does_not_return_if_contact_list_id_for_another_service(
     admin_request, sample_service
 ):
@@ -120,7 +131,7 @@ def test_dao_get_contact_list_by_id_does_not_return_if_contact_list_id_for_anoth
     assert response['message'] == "No result found"
 
 
-def test_dao_delete_contact_list_by_id(mocker, admin_request, sample_service):
+def test_archive_contact_list_by_id(mocker, admin_request, sample_service):
     mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
     service_1 = create_service(service_name='Service under test')
     template_1 = create_template(service=service_1)
@@ -137,8 +148,12 @@ def test_dao_delete_contact_list_by_id(mocker, admin_request, sample_service):
         contact_list_id=expected_list.id,
     )
 
-    assert job_1.contact_list_id is None
+    assert job_1.contact_list_id == expected_list.id
+    assert expected_list.archived is True
+
     assert job_2.contact_list_id == other_list.id
+    assert other_list.archived is False
+
     assert job_3.contact_list_id is None
 
     mock_s3.assert_called_once_with(
@@ -147,7 +162,7 @@ def test_dao_delete_contact_list_by_id(mocker, admin_request, sample_service):
     )
 
 
-def test_dao_delete_contact_list_when_unused(mocker, admin_request, sample_service):
+def test_archive_contact_list_when_unused(mocker, admin_request, sample_service):
     mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
     service = create_service(service_name='Service under test')
     expected_list = create_service_contact_list(service=service)
@@ -160,7 +175,8 @@ def test_dao_delete_contact_list_when_unused(mocker, admin_request, sample_servi
         contact_list_id=expected_list.id
     )
 
-    assert ServiceContactList.query.count() == 0
+    assert ServiceContactList.query.count() == 1
+    assert expected_list.archived is True
 
     mock_s3.assert_called_once_with(
         expected_list.service.id,
@@ -168,7 +184,7 @@ def test_dao_delete_contact_list_when_unused(mocker, admin_request, sample_servi
     )
 
 
-def test_dao_delete_contact_list_by_id_for_different_service(mocker, admin_request, sample_service):
+def test_archive_contact_list_by_id_for_different_service(mocker, admin_request, sample_service):
 
     mock_s3 = mocker.patch('app.service.rest.s3.remove_contact_list_from_s3')
 

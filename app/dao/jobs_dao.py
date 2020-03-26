@@ -135,14 +135,6 @@ def dao_update_job(job):
     db.session.commit()
 
 
-def dao_unlink_jobs_from_contact_list_id(contact_list_id):
-    Job.query.filter(
-        Job.contact_list_id == contact_list_id,
-    ).update({
-        'contact_list_id': None,
-    })
-
-
 def dao_get_jobs_older_than_data_retention(notification_types):
     flexible_data_retention = ServiceDataRetention.query.filter(
         ServiceDataRetention.notification_type.in_(notification_types)

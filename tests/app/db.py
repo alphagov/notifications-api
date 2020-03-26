@@ -976,7 +976,8 @@ def create_service_contact_list(
     original_file_name='EmergencyContactList.xls',
     row_count=100,
     template_type='email',
-    created_by_id=None
+    created_by_id=None,
+    archived=False,
 ):
     if not service:
         service = create_service(service_name='service for contact list', user=create_user())
@@ -988,6 +989,7 @@ def create_service_contact_list(
         template_type=template_type,
         created_by_id=created_by_id or service.users[0].id,
         created_at=datetime.utcnow(),
+        archived=archived,
     )
     db.session.add(contact_list)
     db.session.commit()

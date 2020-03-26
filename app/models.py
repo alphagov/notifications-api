@@ -2135,6 +2135,7 @@ class ServiceContactList(db.Model):
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), index=True, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    archived = db.Column(db.Boolean, nullable=False, default=False)
 
     def serialize(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
