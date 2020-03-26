@@ -1,4 +1,5 @@
 import uuid
+from unittest import mock
 from unittest.mock import call
 
 import pytest
@@ -936,8 +937,7 @@ def test_post_notification_returns_201_when_content_type_is_missing_but_payload_
 
 
 @pytest.mark.parametrize('notification_type', ['email', 'sms'])
-def test_post_email_notification_when_data_is_empty_returns_400(
-        client, sample_service, notification_type):
+def test_post_email_notification_when_data_is_empty_returns_400(client, sample_service, notification_type):
     auth_header = create_authorization_header(service_id=sample_service.id)
     data = None
     response = client.post(
@@ -951,3 +951,86 @@ def test_post_email_notification_when_data_is_empty_returns_400(
         assert error_msg == 'phone_number is a required property'
     else:
         assert error_msg == 'email_address is a required property'
+
+
+def test_post_notifications_saves_email_to_queue(client, notify_db_session, mocker):
+    save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
+
+    service = create_service(service_id='539d63a1-701d-400d-ab11-f3ee2319d4d4', service_name='high volume service')
+    template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
+    data = {
+        "email_address": "joe.citizen@example.com",
+        "template_id": template.id,
+        "personalisation": {"message": "Dear citizen, have a nice day"}
+    }
+    response = client.post(
+        path='/v2/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service.id)]
+    )
+
+    json_resp = response.get_json()
+
+    assert response.status_code == 201
+    assert json_resp['id']
+    assert json_resp['content']['body'] == "Dear citizen, have a nice day"
+    assert json_resp['template']['id'] == str(template.id)
+    save_email_task.assert_called_once_with([mock.ANY], queue='save-api-email-tasks')
+    assert len(Notification.query.all()) == 0
+
+
+def test_post_notifications_doesnt_save_email_to_queue_for_test_emails(client, notify_db_session, mocker):
+    save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
+    mocked_send_task = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    service = create_service(service_id='539d63a1-701d-400d-ab11-f3ee2319d4d4', service_name='high volume service')
+    # create_api_key(service=service, key_type='test')
+    template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
+    data = {
+        "email_address": "joe.citizen@example.com",
+        "template_id": template.id,
+        "personalisation": {"message": "Dear citizen, have a nice day"}
+    }
+    response = client.post(
+        path='/v2/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'),
+                 create_authorization_header(service_id=service.id, key_type='test')]
+    )
+
+    json_resp = response.get_json()
+
+    assert response.status_code == 201
+    assert json_resp['id']
+    assert json_resp['content']['body'] == "Dear citizen, have a nice day"
+    assert json_resp['template']['id'] == str(template.id)
+    assert mocked_send_task.called
+    assert not save_email_task.called
+    assert len(Notification.query.all()) == 1
+
+
+def test_post_notifications_doesnt_save_email_to_queue_for_sms(client, notify_db_session, mocker):
+    save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
+    mocked_send_task = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    service = create_service(service_id='539d63a1-701d-400d-ab11-f3ee2319d4d4', service_name='high volume service')
+    template = create_template(service=service, content='((message))', template_type=SMS_TYPE)
+    data = {
+        "phone_number": '+447700900855',
+        "template_id": template.id,
+        "personalisation": {"message": "Dear citizen, have a nice day"}
+    }
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service.id)]
+    )
+
+    json_resp = response.get_json()
+
+    assert response.status_code == 201
+    assert json_resp['id']
+    assert mocked_send_task.called
+    assert not save_email_task.called
+
+    assert len(Notification.query.all()) == 1

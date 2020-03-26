@@ -31,6 +31,7 @@ class QueueNames(object):
     SMS_CALLBACKS = 'sms-callbacks'
     ANTIVIRUS = 'antivirus-tasks'
     SANITISE_LETTERS = 'sanitise-letter-tasks'
+    SAVE_API_EMAIL = 'save-api-email-tasks'
 
     @staticmethod
     def all_queues():
@@ -49,6 +50,7 @@ class QueueNames(object):
             QueueNames.CALLBACKS,
             QueueNames.LETTERS,
             QueueNames.SMS_CALLBACKS,
+            QueueNames.SAVE_API_EMAIL
         ]
 
 
@@ -160,6 +162,8 @@ class Config(object):
     MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID = 'c20206d5-bf03-4002-9a90-37d5032d9e84'
     MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID = '522b6657-5ca5-4368-a294-6b527703bd0b'
     MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID = 'd0e66c4c-0c50-43f0-94f5-f85b613202d4'
+
+    HIGH_VOLUME_SERVICE = '539d63a1-701d-400d-ab11-f3ee2319d4d4'
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {

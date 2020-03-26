@@ -492,11 +492,6 @@ def sample_notification_history(notify_db, notify_db_session, sample_template):
 
 
 @pytest.fixture(scope='function')
-def mock_encryption(mocker):
-    return mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
-
-
-@pytest.fixture(scope='function')
 def sample_invited_user(notify_db_session):
     service = create_service(check_if_service_exists=True)
     to_email_address = 'invited_user@digital.gov.uk'
