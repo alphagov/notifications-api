@@ -331,10 +331,10 @@ def save_api_email(self,
     except IntegrityError:
         current_app.logger.info(f"Email {notification['id']} already exists.")
 
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
 
         try:
-            self.retry(queue=QueueNames.RETRY, exc=e)
+            self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
             current_app.logger.error('Max retry failed' + f"Failed to persist notification {notification['id']}")
 
