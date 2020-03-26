@@ -937,8 +937,7 @@ def test_post_notification_returns_201_when_content_type_is_missing_but_payload_
 
 
 @pytest.mark.parametrize('notification_type', ['email', 'sms'])
-def test_post_email_notification_when_data_is_empty_returns_400(
-        client, sample_service, notification_type):
+def test_post_email_notification_when_data_is_empty_returns_400(client, sample_service, notification_type):
     auth_header = create_authorization_header(service_id=sample_service.id)
     data = None
     response = client.post(
@@ -977,6 +976,7 @@ def test_post_notifications_saves_email_to_queue(client, notify_db_session, mock
     assert json_resp['content']['body'] == "Dear citizen, have a nice day"
     assert json_resp['template']['id'] == str(template.id)
     save_email_task.assert_called_once_with([mock.ANY], queue='save-api-email-tasks')
+    assert len(Notification.query.all()) == 0
 
 
 def test_post_notifications_doesnt_save_email_to_queue_for_test_emails(client, notify_db_session, mocker):
@@ -1006,6 +1006,7 @@ def test_post_notifications_doesnt_save_email_to_queue_for_test_emails(client, n
     assert json_resp['template']['id'] == str(template.id)
     assert mocked_send_task.called
     assert not save_email_task.called
+    assert len(Notification.query.all()) == 1
 
 
 def test_post_notifications_doesnt_save_email_to_queue_for_sms(client, notify_db_session, mocker):
@@ -1031,3 +1032,5 @@ def test_post_notifications_doesnt_save_email_to_queue_for_sms(client, notify_db
     assert json_resp['id']
     assert mocked_send_task.called
     assert not save_email_task.called
+
+    assert len(Notification.query.all()) == 1
