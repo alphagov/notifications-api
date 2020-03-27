@@ -303,7 +303,6 @@ def save_api_email(self,
     service = dao_fetch_service_by_id(notification['service_id'])
 
     try:
-        current_app.logger.info(f"Persisting notification {notification['id']}")
 
         persist_notification(
             notification_id=notification["id"],
@@ -327,7 +326,7 @@ def save_api_email(self,
             [notification['id']],
             queue=q
         )
-        current_app.logger.info(f"Email {notification['id']} has been persisted.")
+        current_app.logger.info(f"Email {notification['id']} has been persisted and sent to delivery queue.")
     except IntegrityError:
         current_app.logger.info(f"Email {notification['id']} already exists.")
 

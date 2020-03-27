@@ -1567,7 +1567,9 @@ def test_dao_update_notifications_by_reference_set_returned_letter_status(sample
 
     assert updated_count == 1
     assert updated_history_count == 0
-    assert Notification.query.get(notification.id).status == 'returned-letter'
+    updated_notification = Notification.query.get(notification.id)
+    assert updated_notification.status == 'returned-letter'
+    assert updated_notification.updated_at <= datetime.utcnow()
 
 
 def test_dao_update_notifications_by_reference_updates_history_when_one_of_two_notifications_exists(
