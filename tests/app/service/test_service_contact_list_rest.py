@@ -138,7 +138,9 @@ def test_archive_contact_list_by_id(mocker, admin_request, sample_service):
     expected_list = create_service_contact_list(service=service_1)
     other_list = create_service_contact_list(service=service_1)
 
+    # Job linked to the contact list we’re deleting
     job_1 = create_job(template=template_1, contact_list_id=expected_list.id)
+    # Other jobs and lists shouldn’t be affected
     job_2 = create_job(template=template_1, contact_list_id=other_list.id)
     job_3 = create_job(template=template_1)
 
