@@ -39,7 +39,7 @@ def process_ses_results(self, response):
         reference = ses_message['mail']['messageId']
 
         try:
-            notification = notifications_dao.dao_get_notification_by_reference(reference)
+            notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
@@ -50,22 +50,17 @@ def process_ses_results(self, response):
                 )
             return
 
-        if notification.status not in {NOTIFICATION_SENDING, NOTIFICATION_PENDING}:
-            notifications_dao._duplicate_update_warning(notification, notification_status)
-            return
-
-        notifications_dao._update_notification_status(notification=notification, status=notification_status)
-
-        if not aws_response_dict['success']:
-            current_app.logger.info(
-                "SES delivery failed: notification id {} and reference {} has error found. Status {}".format(
-                    notification.id, reference, aws_response_dict['message']
-                )
+        if notification.status not in [NOTIFICATION_SENDING, NOTIFICATION_PENDING]:
+            notifications_dao._duplicate_update_warning(
+                notification=notification,
+                status=notification_status
             )
+            return
         else:
-            current_app.logger.info('SES callback return status of {} for notification: {}'.format(
-                notification_status, notification.id
-            ))
+            notifications_dao.dao_update_notifications_by_reference(
+                references=[reference],
+                update_dict={'status': notification_status}
+            )
 
         statsd_client.incr('callback.ses.{}'.format(notification_status))
 

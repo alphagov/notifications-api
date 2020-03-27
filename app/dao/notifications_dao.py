@@ -352,7 +352,6 @@ def insert_notification_history_delete_notifications(
           AND notification_type = :notification_type
           AND created_at < :timestamp_to_delete_backwards_from
           AND key_type = 'normal'
-          AND notification_status in ('delivered', 'permanent-failure', 'temporary-failure')
         limit :qry_limit
         """
     # Insert into NotificationHistory if the row already exists do nothing.
@@ -632,7 +631,7 @@ def dao_get_notification_by_reference(reference):
 
 
 @statsd(namespace="dao")
-def dao_get_notification_history_by_reference(reference):
+def dao_get_notification_or_history_by_reference(reference):
     try:
         # This try except is necessary because in test keys and research mode does not create notification history.
         # Otherwise we could just search for the NotificationHistory object

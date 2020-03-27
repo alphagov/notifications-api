@@ -1,17 +1,23 @@
 import json
 from datetime import datetime
 
-
 from freezegun import freeze_time
 
 
 from app import statsd_client, encryption
 from app.celery.process_ses_receipts_tasks import process_ses_results
-from app.celery.research_mode_tasks import ses_hard_bounce_callback, ses_soft_bounce_callback, ses_notification_callback
+from app.celery.research_mode_tasks import (
+    ses_hard_bounce_callback,
+    ses_soft_bounce_callback,
+    ses_notification_callback
+)
 from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Complaint, Notification
-from app.notifications.notifications_ses_callback import remove_emails_from_complaint, remove_emails_from_bounce
+from app.notifications.notifications_ses_callback import (
+    remove_emails_from_complaint,
+    remove_emails_from_bounce
+)
 
 from tests.app.db import (
     create_notification,
@@ -29,7 +35,7 @@ def test_process_ses_results(sample_email_template):
 def test_process_ses_results_retry_called(sample_email_template, notify_db, mocker):
     create_notification(sample_email_template, reference='ref1', sent_at=datetime.utcnow(), status='sending')
 
-    mocker.patch("app.dao.notifications_dao._update_notification_status", side_effect=Exception("EXPECTED"))
+    mocker.patch("app.dao.notifications_dao.dao_update_notifications_by_reference", side_effect=Exception("EXPECTED"))
     mocked = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     process_ses_results(response=ses_notification_callback(reference='ref1'))
     assert mocked.call_count != 0
@@ -90,13 +96,15 @@ def test_ses_callback_should_update_notification_status(
 
 def test_ses_callback_should_not_update_notification_status_if_already_delivered(sample_email_template, mocker):
     mock_dup = mocker.patch('app.celery.process_ses_receipts_tasks.notifications_dao._duplicate_update_warning')
-    mock_upd = mocker.patch('app.celery.process_ses_receipts_tasks.notifications_dao._update_notification_status')
+    mock_upd = mocker.patch(
+        'app.celery.process_ses_receipts_tasks.notifications_dao.dao_update_notifications_by_reference'
+    )
     notification = create_notification(template=sample_email_template, reference='ref', status='delivered')
 
     assert process_ses_results(ses_notification_callback(reference='ref')) is None
     assert get_notification_by_id(notification.id).status == 'delivered'
 
-    mock_dup.assert_called_once_with(notification, 'delivered')
+    mock_dup.assert_called_once_with(notification=notification, status='delivered')
     assert mock_upd.call_count == 0
 
 

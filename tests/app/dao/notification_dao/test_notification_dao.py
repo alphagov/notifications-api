@@ -31,7 +31,7 @@ from app.dao.notifications_dao import (
     update_notification_status_by_reference,
     dao_get_notification_by_reference,
     dao_get_notifications_by_references,
-    dao_get_notification_history_by_reference,
+    dao_get_notification_or_history_by_reference,
     notifications_not_yet_sent,
 )
 from app.models import (
@@ -1567,7 +1567,9 @@ def test_dao_update_notifications_by_reference_set_returned_letter_status(sample
 
     assert updated_count == 1
     assert updated_history_count == 0
-    assert Notification.query.get(notification.id).status == 'returned-letter'
+    updated_notification = Notification.query.get(notification.id)
+    assert updated_notification.status == 'returned-letter'
+    assert updated_notification.updated_at <= datetime.utcnow()
 
 
 def test_dao_update_notifications_by_reference_updates_history_when_one_of_two_notifications_exists(
@@ -1618,28 +1620,28 @@ def test_dao_get_notifications_by_references(sample_template):
     assert notifications[1].id in [notification_1.id, notification_2.id]
 
 
-def test_dao_get_notification_history_by_reference_with_one_match_returns_notification(
+def test_dao_get_notification_or_history_by_reference_with_one_match_returns_notification(
         sample_letter_template
 ):
     create_notification(template=sample_letter_template, reference='REF1')
-    notification = dao_get_notification_history_by_reference('REF1')
+    notification = dao_get_notification_or_history_by_reference('REF1')
 
     assert notification.reference == 'REF1'
 
 
-def test_dao_get_notification_history_by_reference_with_multiple_matches_raises_error(
+def test_dao_get_notification_or_history_by_reference_with_multiple_matches_raises_error(
         sample_letter_template
 ):
     create_notification(template=sample_letter_template, reference='REF1')
     create_notification(template=sample_letter_template, reference='REF1')
 
     with pytest.raises(SQLAlchemyError):
-        dao_get_notification_history_by_reference('REF1')
+        dao_get_notification_or_history_by_reference('REF1')
 
 
-def test_dao_get_notification_history_by_reference_with_no_matches_raises_error(notify_db):
+def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_error(notify_db):
     with pytest.raises(SQLAlchemyError):
-        dao_get_notification_history_by_reference('REF1')
+        dao_get_notification_or_history_by_reference('REF1')
 
 
 @pytest.mark.parametrize("notification_type",

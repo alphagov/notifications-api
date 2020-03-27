@@ -1,7 +1,7 @@
 from flask import current_app
 
 from app.dao.complaint_dao import save_complaint
-from app.dao.notifications_dao import dao_get_notification_history_by_reference
+from app.dao.notifications_dao import dao_get_notification_or_history_by_reference
 from app.dao.service_callback_api_dao import (
     get_service_delivery_status_callback_api_for_service, get_service_complaint_callback_api_for_service
 )
@@ -33,7 +33,7 @@ def handle_complaint(ses_message):
     except KeyError as e:
         current_app.logger.exception("Complaint from SES failed to get reference from message", e)
         return
-    notification = dao_get_notification_history_by_reference(reference)
+    notification = dao_get_notification_or_history_by_reference(reference)
     ses_complaint = ses_message.get('complaint', None)
 
     complaint = Complaint(

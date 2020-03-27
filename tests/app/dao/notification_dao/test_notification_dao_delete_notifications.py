@@ -252,42 +252,44 @@ def test_delete_notifications_returns_sum_correctly(sample_template):
 @freeze_time('2020-03-20 14:00')
 def test_insert_notification_history_delete_notifications(sample_email_template):
     # should be deleted
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=4), status='delivered')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=20), status='permanent-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=30), status='temporary-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=59), status='temporary-failure')
-
-    # should NOT be deleted
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(hours=1), status='delivered')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=61), status='temporary-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(hours=1, seconds=1), status='temporary-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() + timedelta(minutes=20), status='created')
+    n1 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=4), status='delivered')
+    n2 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=20), status='permanent-failure')
+    n3 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=30), status='temporary-failure')
+    n4 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=59), status='temporary-failure')
+    n5 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, hours=1), status='sending')
+    n6 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=61), status='pending')
+    n7 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, hours=1, seconds=1),
+                             status='validation-failed')
+    n8 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(days=1, minutes=20), status='created')
     # should NOT be deleted - wrong status
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() - timedelta(days=1), status='sending')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() - timedelta(days=1), status='technical-failure')
-    create_notification(template=sample_email_template,
-                        created_at=datetime.utcnow() - timedelta(hours=1), status='created')
+    n9 = create_notification(template=sample_email_template,
+                             created_at=datetime.utcnow() - timedelta(hours=1), status='delivered')
+    n10 = create_notification(template=sample_email_template,
+                              created_at=datetime.utcnow() - timedelta(hours=1), status='technical-failure')
+    n11 = create_notification(template=sample_email_template,
+                              created_at=datetime.utcnow() - timedelta(hours=23, minutes=59), status='created')
 
+    ids_to_move = sorted([n1.id, n2.id, n3.id, n4.id, n5.id, n6.id, n7.id, n8.id])
+    ids_to_keep = sorted([n9.id, n10.id, n11.id])
     del_count = insert_notification_history_delete_notifications(
         notification_type=sample_email_template.template_type,
         service_id=sample_email_template.service_id,
-        timestamp_to_delete_backwards_from=datetime.utcnow() + timedelta(hours=1))
-
-    assert del_count == 4
+        timestamp_to_delete_backwards_from=datetime.utcnow() - timedelta(days=1))
+    assert del_count == 8
     notifications = Notification.query.all()
     history_rows = NotificationHistory.query.all()
-    assert len(history_rows) == 4
-    assert len(notifications) == 7
+    assert len(history_rows) == 8
+    assert ids_to_move == sorted([x.id for x in history_rows])
+    assert len(notifications) == 3
+    assert ids_to_keep == sorted([x.id for x in notifications])
 
 
 def test_insert_notification_history_delete_notifications_more_notifications_than_query_limit(sample_template):
