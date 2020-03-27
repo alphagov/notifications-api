@@ -238,12 +238,21 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
     assert resp_json['data']['notification_count'] == 1
 
 
-def test_create_job_with_contact_list_id(client, mocker, sample_template, fake_uuid):
+@pytest.mark.parametrize('contact_list_archived', (
+    True, False,
+))
+def test_create_job_with_contact_list_id(
+    client,
+    mocker,
+    sample_template,
+    fake_uuid,
+    contact_list_archived,
+):
     mocker.patch('app.celery.tasks.process_job.apply_async')
     mocker.patch('app.job.rest.get_job_metadata_from_s3', return_value={
         'template_id': str(sample_template.id)
     })
-    contact_list = create_service_contact_list()
+    contact_list = create_service_contact_list(archived=contact_list_archived)
     data = {
         'id': fake_uuid,
         'valid': 'True',

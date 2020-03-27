@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import DATE_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
+from app.aws import s3
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
 from app.dao.dao_utils import dao_rollback
@@ -36,8 +37,12 @@ from app.dao.returned_letters_dao import (
     fetch_returned_letter_summary,
     fetch_returned_letters,
 )
-from app.dao.service_contact_list_dao import dao_get_contact_lists, save_service_contact_list, \
-    dao_get_contact_list_by_id
+from app.dao.service_contact_list_dao import (
+    dao_archive_contact_list,
+    dao_get_contact_lists,
+    dao_get_contact_list_by_id,
+    save_service_contact_list,
+)
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -1032,6 +1037,18 @@ def get_contact_list_by_id(service_id, contact_list_id):
     )
 
     return jsonify(contact_list.serialize())
+
+
+@service_blueprint.route('/<uuid:service_id>/contact-list/<uuid:contact_list_id>', methods=['DELETE'])
+def delete_contact_list_by_id(service_id, contact_list_id):
+    contact_list = dao_get_contact_list_by_id(
+        service_id=service_id,
+        contact_list_id=contact_list_id,
+    )
+    dao_archive_contact_list(contact_list)
+    s3.remove_contact_list_from_s3(service_id, contact_list_id)
+
+    return '', 204
 
 
 @service_blueprint.route('/<uuid:service_id>/contact-list', methods=['POST'])

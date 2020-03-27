@@ -384,7 +384,8 @@ def create_job(
         processing_started=None,
         processing_finished=None,
         original_file_name='some.csv',
-        archived=False
+        archived=False,
+        contact_list_id=None,
 ):
     data = {
         'id': uuid.uuid4(),
@@ -400,7 +401,8 @@ def create_job(
         'scheduled_for': scheduled_for,
         'processing_started': processing_started,
         'processing_finished': processing_finished,
-        'archived': archived
+        'archived': archived,
+        'contact_list_id': contact_list_id,
     }
     job = Job(**data)
     dao_create_job(job)
@@ -974,7 +976,8 @@ def create_service_contact_list(
     original_file_name='EmergencyContactList.xls',
     row_count=100,
     template_type='email',
-    created_by_id=None
+    created_by_id=None,
+    archived=False,
 ):
     if not service:
         service = create_service(service_name='service for contact list', user=create_user())
@@ -986,6 +989,7 @@ def create_service_contact_list(
         template_type=template_type,
         created_by_id=created_by_id or service.users[0].id,
         created_at=datetime.utcnow(),
+        archived=archived,
     )
     db.session.add(contact_list)
     db.session.commit()

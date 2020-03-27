@@ -363,6 +363,7 @@ class Development(Config):
     SQLALCHEMY_ECHO = False
 
     CSV_UPLOAD_BUCKET_NAME = 'development-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'development-contact-list'
     TEST_LETTERS_BUCKET_NAME = 'development-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.tools-ftp'
     LETTERS_PDF_BUCKET_NAME = 'development-letters-pdf'
@@ -406,6 +407,7 @@ class Test(Development):
     HIGH_VOLUME_SERVICE = ['941b6f9a-50d7-4742-8d50-f365ca74bf27']
 
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'test-contact-list'
     TEST_LETTERS_BUCKET_NAME = 'test-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'test.notify.com-ftp'
     LETTERS_PDF_BUCKET_NAME = 'test-letters-pdf'
@@ -441,6 +443,7 @@ class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'preview'
     CSV_UPLOAD_BUCKET_NAME = 'preview-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'preview-contact-list'
     TEST_LETTERS_BUCKET_NAME = 'preview-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'preview-letters-pdf'
@@ -457,6 +460,7 @@ class Staging(Config):
     NOTIFY_EMAIL_DOMAIN = 'staging-notify.works'
     NOTIFY_ENVIRONMENT = 'staging'
     CSV_UPLOAD_BUCKET_NAME = 'staging-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'staging-contact-list'
     TEST_LETTERS_BUCKET_NAME = 'staging-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'staging-notify.works-ftp'
     LETTERS_PDF_BUCKET_NAME = 'staging-letters-pdf'
@@ -474,6 +478,7 @@ class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
     NOTIFY_ENVIRONMENT = 'live'
     CSV_UPLOAD_BUCKET_NAME = 'live-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'production-contact-list'
     TEST_LETTERS_BUCKET_NAME = 'production-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notifications.service.gov.uk-ftp'
     LETTERS_PDF_BUCKET_NAME = 'production-letters-pdf'
@@ -498,6 +503,7 @@ class Sandbox(CloudFoundryConfig):
     NOTIFY_EMAIL_DOMAIN = 'notify.works'
     NOTIFY_ENVIRONMENT = 'sandbox'
     CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
+    CONTACT_LIST_BUCKET_NAME = 'cf-sandbox-contact-list'
     LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
     TEST_LETTERS_BUCKET_NAME = 'cf-sandbox-test-letters'
     DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
