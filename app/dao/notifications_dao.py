@@ -352,7 +352,6 @@ def insert_notification_history_delete_notifications(
           AND notification_type = :notification_type
           AND created_at < :timestamp_to_delete_backwards_from
           AND key_type = 'normal'
-          AND notification_status in ('delivered', 'permanent-failure', 'temporary-failure')
         limit :qry_limit
         """
     # Insert into NotificationHistory if the row already exists do nothing.
