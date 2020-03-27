@@ -39,7 +39,7 @@ def process_ses_results(self, response):
         reference = ses_message['mail']['messageId']
 
         try:
-            notification = notifications_dao.dao_get_notification_history_by_reference(reference=reference)
+            notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):

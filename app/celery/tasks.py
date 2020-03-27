@@ -41,7 +41,7 @@ from app.dao.notifications_dao import (
     dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
     update_notification_status_by_reference,
-    dao_get_notification_history_by_reference,
+    dao_get_notification_or_history_by_reference,
 )
 from app.dao.provider_details_dao import get_provider_details_by_notification_type
 from app.dao.returned_letters_dao import insert_or_update_returned_letters
@@ -556,7 +556,7 @@ def update_letter_notification(filename, temporary_failures, update):
 
 
 def check_billable_units(notification_update):
-    notification = dao_get_notification_history_by_reference(notification_update.reference)
+    notification = dao_get_notification_or_history_by_reference(notification_update.reference)
 
     if int(notification_update.page_count) != notification.billable_units:
         msg = 'Notification with id {} has {} billable_units but DVLA says page count is {}'.format(
