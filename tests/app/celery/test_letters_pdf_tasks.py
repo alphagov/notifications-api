@@ -996,6 +996,53 @@ def test_process_sanitised_letter_puts_letter_into_tech_failure_for_boto_errors(
     assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
+def test_process_sanitised_letter_retries_if_there_is_an_exception(
+    mocker,
+    sample_letter_notification,
+):
+    mocker.patch('app.celery.letters_pdf_tasks.update_letter_pdf_status', side_effect=Exception())
+    mock_celery_retry = mocker.patch('app.celery.letters_pdf_tasks.process_sanitised_letter.retry')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': 'NOTIFY.{}'.format(sample_letter_notification.reference),
+        'notification_id': str(sample_letter_notification.id),
+        'address': None
+    })
+
+    process_sanitised_letter(encrypted_data)
+
+    mock_celery_retry.assert_called_once_with(queue='retry-tasks')
+
+
+def test_process_sanitised_letter_puts_letter_into_technical_failure_if_max_retries_exceeded(
+    mocker,
+    sample_letter_notification,
+):
+    mocker.patch('app.celery.letters_pdf_tasks.update_letter_pdf_status', side_effect=Exception())
+    mocker.patch('app.celery.letters_pdf_tasks.process_sanitised_letter.retry', side_effect=MaxRetriesExceededError())
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': 'NOTIFY.{}'.format(sample_letter_notification.reference),
+        'notification_id': str(sample_letter_notification.id),
+        'address': None
+    })
+
+    with pytest.raises(NotificationTechnicalFailureException):
+        process_sanitised_letter(encrypted_data)
+
+    assert sample_letter_notification.status == NOTIFICATION_TECHNICAL_FAILURE
+
+
 def test_process_letter_task_check_virus_scan_failed(sample_letter_notification, mocker):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
