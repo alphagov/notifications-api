@@ -163,8 +163,6 @@ class Config(object):
     MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID = '522b6657-5ca5-4368-a294-6b527703bd0b'
     MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID = 'd0e66c4c-0c50-43f0-94f5-f85b613202d4'
 
-    HIGH_VOLUME_SERVICE = '539d63a1-701d-400d-ab11-f3ee2319d4d4'
-
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
         'region': AWS_REGION,
@@ -334,9 +332,10 @@ class Config(object):
     FIRETEXT_INBOUND_SMS_AUTH = json.loads(os.environ.get('FIRETEXT_INBOUND_SMS_AUTH', '[]'))
     MMG_INBOUND_SMS_AUTH = json.loads(os.environ.get('MMG_INBOUND_SMS_AUTH', '[]'))
     MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get('MMG_INBOUND_SMS_USERNAME', '[]'))
-
     ROUTE_SECRET_KEY_1 = os.environ.get('ROUTE_SECRET_KEY_1', '')
     ROUTE_SECRET_KEY_2 = os.environ.get('ROUTE_SECRET_KEY_2', '')
+
+    HIGH_VOLUME_SERVICE = json.loads(os.environ.get('HIGH_VOLUME_SERVICE', '[]'))
 
     # Format is as follows:
     # {"dataset_1": "token_1", ...}
@@ -403,6 +402,8 @@ class Test(Development):
     FROM_NUMBER = 'testing'
     NOTIFY_ENVIRONMENT = 'test'
     TESTING = True
+
+    HIGH_VOLUME_SERVICE = ['941b6f9a-50d7-4742-8d50-f365ca74bf27']
 
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     TEST_LETTERS_BUCKET_NAME = 'test-test-letters'
