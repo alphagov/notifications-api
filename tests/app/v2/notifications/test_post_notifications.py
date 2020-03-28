@@ -4,6 +4,7 @@ from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
+from boto.exception import SQSError
 
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
@@ -979,6 +980,38 @@ def test_post_notifications_saves_email_to_queue(client, notify_db_session, mock
     save_email_task.assert_called_once_with([mock.ANY], queue='save-api-email-tasks')
     assert not mock_send_task.called
     assert len(Notification.query.all()) == 0
+
+
+def test_post_notifications_saves_email_normally_if_save_email_to_queue_fails(client, notify_db_session, mocker):
+    save_email_task = mocker.patch(
+        "app.celery.tasks.save_api_email.apply_async",
+        side_effect=SQSError({'some': 'json'}, 'some opname')
+    )
+    mock_send_task = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    service = create_service(service_id='941b6f9a-50d7-4742-8d50-f365ca74bf27', service_name='high volume service')
+    template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
+    data = {
+        "email_address": "joe.citizen@example.com",
+        "template_id": template.id,
+        "personalisation": {"message": "Dear citizen, have a nice day"}
+    }
+    response = client.post(
+        path='/v2/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service.id)]
+    )
+
+    json_resp = response.get_json()
+
+    assert response.status_code == 201
+    assert json_resp['id']
+    assert json_resp['content']['body'] == "Dear citizen, have a nice day"
+    assert json_resp['template']['id'] == str(template.id)
+    # save email
+    save_email_task.assert_called_once_with([mock.ANY], queue='save-api-email-tasks')
+    mock_send_task.assert_called_once_with([json_resp['id']], queue='send-email-tasks')
+    assert Notification.query.count() == 1
 
 
 def test_post_notifications_doesnt_save_email_to_queue_for_test_emails(client, notify_db_session, mocker):
