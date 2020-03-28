@@ -3,6 +3,7 @@ import functools
 import uuid
 from datetime import datetime
 
+from boto.exception import SQSError
 from flask import request, jsonify, current_app, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
@@ -187,6 +188,7 @@ def post_notification(notification_type):
 
 
 def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
+    notification_id = None
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
@@ -209,19 +211,29 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
         # the task will then save the notification, then call send_notification_to_queue.
         # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
-        notification = save_email_to_queue(
-            form=form,
-            notification_type=notification_type,
-            api_key=api_key,
-            template=template,
-            service_id=service.id,
-            personalisation=personalisation,
-            document_download_count=document_download_count,
-            reply_to_text=reply_to_text
-        )
-        return notification
+        try:
+            notification_id = uuid.uuid4()
+            notification = save_email_to_queue(
+                form=form,
+                notification_id=str(notification_id),
+                notification_type=notification_type,
+                api_key=api_key,
+                template=template,
+                service_id=service.id,
+                personalisation=personalisation,
+                document_download_count=document_download_count,
+                reply_to_text=reply_to_text
+            )
+            return notification
+        except SQSError:
+            # if SQS cannot put the task on the queue, it's probably because the notification body was too long and it
+            # went over SQS's 256kb message limit. If so, we
+            current_app.logger.info(
+                f'Notification {notification_id} failed to save to high volume queue. Using normal flow instead'
+            )
 
     notification = persist_notification(
+        notification_id=notification_id,
         template_id=template.id,
         template_version=template.version,
         recipient=form_send_to,
@@ -255,6 +267,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
 
 def save_email_to_queue(
     *,
+    notification_id,
     form,
     notification_type,
     api_key,
@@ -265,7 +278,7 @@ def save_email_to_queue(
     reply_to_text=None
 ):
     data = {
-        "id": str(uuid.uuid4()),
+        "id": notification_id,
         "template_id": str(template.id),
         "template_version": template.version,
         "to": form['email_address'],
