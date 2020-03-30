@@ -953,7 +953,7 @@ def check_if_reply_to_address_already_in_use(service_id, email_address):
     existing_reply_to_addresses = dao_get_reply_to_by_service_id(service_id)
     if email_address in [i.email_address for i in existing_reply_to_addresses]:
         raise InvalidRequest(
-            "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=400
+            "Your service already uses ‘{}’ as an email reply-to address.".format(email_address), status_code=409
         )
 
 
