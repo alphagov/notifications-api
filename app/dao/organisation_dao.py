@@ -127,8 +127,12 @@ def dao_get_invited_organisation_user(user_id):
 
 
 def dao_get_users_for_organisation(organisation_id):
-    return User.query.filter(
-        User.organisations.any(id=organisation_id),
+    return db.session.query(
+        User
+    ).join(
+        User.organisations
+    ).filter(
+        Organisation.id == organisation_id,
         User.state == 'active'
     ).order_by(User.created_at).all()
 
