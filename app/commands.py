@@ -106,7 +106,7 @@ def purge_functional_test_data(user_email_prefix):
     """
     Remove non-seeded functional test data
 
-    users, services, etc. Give an email prefix. Probably "notify-test-preview".
+    users, services, etc. Give an email prefix. Probably "notify-tests-preview".
     """
     users = User.query.filter(User.email_address.like("{}%".format(user_email_prefix))).all()
     for usr in users:
