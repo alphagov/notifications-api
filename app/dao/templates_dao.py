@@ -1,10 +1,12 @@
 from datetime import datetime
+from functools import lru_cache
 import uuid
 
 from flask import current_app
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, func
+from sqlalchemy.orm.exc import NoResultFound
 
-from app import db
+from app import db, redis_store
 from app.models import (
     LETTER_TYPE,
     SECOND_CLASS,
@@ -18,6 +20,9 @@ from app.dao.dao_utils import (
     VersionOptions,
 )
 from app.dao.users_dao import get_user_by_id
+
+
+SEVEN_DAYS_IN_SECONDS = 604_800
 
 
 @transactional
@@ -49,7 +54,7 @@ def dao_create_template(template):
 def dao_update_template(template):
     if template.archived:
         template.folder = None
-
+    redis_store.delete(f'template-{template.id}-version')
     db.session.add(template)
 
 
@@ -90,6 +95,33 @@ def dao_redact_template(template, user_id):
     template.template_redacted.updated_at = datetime.utcnow()
     template.template_redacted.updated_by_id = user_id
     db.session.add(template.template_redacted)
+
+
+def dao_get_template_version(template_id):
+
+    cache_key = f'template-{template_id}-version'
+    version = redis_store.get(cache_key)
+
+    if not version:
+
+        version = db.session.query(
+            func.max(TemplateHistory.version)
+        ).filter_by(
+            id=template_id,
+            hidden=False,
+        ).scalar()
+
+        if not version:
+            raise NoResultFound
+
+        redis_store.set(cache_key, version, ex=SEVEN_DAYS_IN_SECONDS)
+
+    return version
+
+
+@lru_cache(maxsize=1024)
+def dao_get_template_by_id_and_service_id_and_version(*, template_id, service_id, version):
+    return dao_get_template_by_id_and_service_id(template_id, service_id, version)
 
 
 def dao_get_template_by_id_and_service_id(template_id, service_id, version=None):

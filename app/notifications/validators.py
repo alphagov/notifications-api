@@ -140,9 +140,10 @@ def check_notification_content_is_not_empty(template_with_content):
 
 def validate_template(template_id, personalisation, service, notification_type):
     try:
-        template = templates_dao.dao_get_template_by_id_and_service_id(
+        template = templates_dao.dao_get_template_by_id_and_service_id_and_version(
             template_id=template_id,
-            service_id=service.id
+            service_id=service.id,
+            version=templates_dao.dao_get_template_version(template_id),
         )
     except NoResultFound:
         message = 'Template not found'
