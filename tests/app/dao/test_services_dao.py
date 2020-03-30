@@ -663,13 +663,15 @@ def test_create_service_and_history_is_transactional(notify_db_session):
 
 def test_delete_service_and_associated_objects(notify_db_session):
     user = create_user()
-    service = create_service(user=user, service_permissions=None)
+    organisation = create_organisation()
+    service = create_service(user=user, service_permissions=None, organisation=organisation)
     create_user_code(user=user, code='somecode', code_type='email')
     create_user_code(user=user, code='somecode', code_type='sms')
     template = create_template(service=service)
     api_key = create_api_key(service=service)
     create_notification(template=template, api_key=api_key)
     create_invited_user(service=service)
+    user.organisations = [organisation]
 
     assert ServicePermission.query.count() == len((
         SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS,
@@ -689,6 +691,8 @@ def test_delete_service_and_associated_objects(notify_db_session):
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
     assert ServicePermission.query.count() == 0
+    # the organisation hasn't been deleted
+    assert Organisation.query.count() == 1
 
 
 def test_add_existing_user_to_another_service_doesnot_change_old_permissions(notify_db_session):

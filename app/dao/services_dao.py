@@ -34,6 +34,9 @@ from app.models import (
     Service,
     ServicePermission,
     ServiceSmsSender,
+    ServiceEmailReplyTo,
+    ServiceContactList,
+    ServiceLetterContact,
     Template,
     TemplateHistory,
     TemplateRedacted,
@@ -377,6 +380,9 @@ def delete_service_and_all_associated_db_objects(service):
     _delete_commit(TemplateRedacted.query.filter(TemplateRedacted.template_id.in_(subq)))
 
     _delete_commit(ServiceSmsSender.query.filter_by(service=service))
+    _delete_commit(ServiceEmailReplyTo.query.filter_by(service=service))
+    _delete_commit(ServiceLetterContact.query.filter_by(service=service))
+    _delete_commit(ServiceContactList.query.filter_by(service=service))
     _delete_commit(InvitedUser.query.filter_by(service=service))
     _delete_commit(Permission.query.filter_by(service=service))
     _delete_commit(NotificationHistory.query.filter_by(service=service))
@@ -393,12 +399,14 @@ def delete_service_and_all_associated_db_objects(service):
     list(map(db.session.delete, verify_codes))
     db.session.commit()
     users = [x for x in service.users]
-    map(service.users.remove, users)
-    [service.users.remove(x) for x in users]
+    for user in users:
+        user.organisations = []
+        service.users.remove(user)
     _delete_commit(Service.get_history_model().query.filter_by(id=service.id))
     db.session.delete(service)
     db.session.commit()
-    list(map(db.session.delete, users))
+    for user in users:
+        db.session.delete(user)
     db.session.commit()
 
 
