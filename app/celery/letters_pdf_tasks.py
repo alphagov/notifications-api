@@ -288,7 +288,7 @@ def sanitise_letter(self, filename):
         current_app.logger.info('Notification ID {} Virus scan passed: {}'.format(notification.id, filename))
 
         if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
-            current_app.logger.info('Sanitise letter called for notification {} which has is in {} state'.format(
+            current_app.logger.info('Sanitise letter called for notification {} which is in {} state'.format(
                 notification.id, notification.status))
             return
 
@@ -314,8 +314,8 @@ def sanitise_letter(self, filename):
             raise NotificationTechnicalFailureException(message)
 
 
-@notify_celery.task(name='process-sanitised-letter')
-def process_sanitised_letter(sanitise_data):
+@notify_celery.task(bind=True, name='process-sanitised-letter', max_retries=15, default_retry_delay=300)
+def process_sanitised_letter(self, sanitise_data):
     letter_details = encryption.decrypt(sanitise_data)
 
     filename = letter_details['filename']
@@ -326,7 +326,7 @@ def process_sanitised_letter(sanitise_data):
 
     if notification.status != NOTIFICATION_PENDING_VIRUS_CHECK:
         current_app.logger.info(
-            'process-sanitised-letter task called for notification {} which has is in {} state'.format(
+            'process-sanitised-letter task called for notification {} which is in {} state'.format(
                 notification.id, notification.status)
         )
         return
@@ -354,22 +354,38 @@ def process_sanitised_letter(sanitise_data):
         billable_units = get_billable_units_for_letter_page_count(letter_details['page_count'])
         is_test_key = notification.key_type == KEY_TYPE_TEST
 
-        move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_key, notification.created_at)
-        # We've moved the sanitised PDF from the sanitise bucket, but still need to delete the original file:
-        original_pdf_object.delete()
+        # Updating the notification needs to happen before the file is moved. This is so that if updating the
+        # notification fails, the task can retry because the file is in the same place.
         update_letter_pdf_status(
             reference=notification.reference,
             status=NOTIFICATION_DELIVERED if is_test_key else NOTIFICATION_CREATED,
             billable_units=billable_units,
             recipient_address=letter_details['address']
         )
+        move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_key, notification.created_at)
+        # We've moved the sanitised PDF from the sanitise bucket, but still need to delete the original file:
+        original_pdf_object.delete()
 
     except BotoClientError:
+        # Boto exceptions are likely to be caused by the file(s) being in the wrong place, so retrying won't help -
+        # we'll need to manually investigate
         current_app.logger.exception(
-            "Boto error when processing sanitised letter for notification {}".format(filename, notification.id)
+            f"Boto error when processing sanitised letter for notification {notification.id} (file {filename})"
         )
         update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException
+    except Exception:
+        try:
+            current_app.logger.exception(
+                "RETRY: calling process_sanitised_letter task for notification {} failed".format(notification.id)
+            )
+            self.retry(queue=QueueNames.RETRY)
+        except self.MaxRetriesExceededError:
+            message = "RETRY FAILED: Max retries reached. " \
+                      "The task process_sanitised_letter failed for notification {}. " \
+                      "Notification has been updated to technical-failure".format(notification.id)
+            update_notification_status_by_id(notification.id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise NotificationTechnicalFailureException(message)
 
 
 def _move_invalid_letter_and_update_status(
