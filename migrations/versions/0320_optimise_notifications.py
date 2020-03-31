@@ -39,14 +39,6 @@ def upgrade():
         """
         op.execute(ix_notifications_notification_type_composite)
         # DROP and CREATE all other indexes
-        op.execute('DROP INDEX IF EXISTS ix_notifications_service_id_created_at')
-        op.execute(
-            'CREATE INDEX ix_notifications_service_id_created_at ON NOTIFICATIONS (service_id, created_at)'
-        )
-
-        op.execute('DROP INDEX IF EXISTS ix_notifications_client_reference')
-        op.execute('CREATE INDEX ix_notifications_client_reference on notifications (client_reference)')
-
         op.execute('DROP INDEX IF EXISTS ix_notifications_client_reference')
         op.execute('CREATE INDEX ix_notifications_client_reference ON notifications (client_reference)')
 
