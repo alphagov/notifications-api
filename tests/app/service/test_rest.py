@@ -2622,7 +2622,7 @@ def test_verify_reply_to_email_address_doesnt_allow_duplicates(admin_request, no
         'service.verify_reply_to_email_address',
         service_id=service.id,
         _data=data,
-        _expected_status=400
+        _expected_status=409
     )
     assert response["message"] == "Your service already uses ‘reply-here@example.gov.uk’ as an email reply-to address."
 
@@ -2651,7 +2651,7 @@ def test_add_service_reply_to_email_address_doesnt_allow_duplicates(
         'service.add_service_reply_to_email_address',
         service_id=service.id,
         _data=data,
-        _expected_status=400
+        _expected_status=409
     )
     assert response["message"] == "Your service already uses ‘reply-here@example.gov.uk’ as an email reply-to address."
 
