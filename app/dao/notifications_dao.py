@@ -351,7 +351,7 @@ def insert_notification_history_delete_notifications(
         WHERE service_id = :service_id
           AND notification_type = :notification_type
           AND created_at < :timestamp_to_delete_backwards_from
-          AND key_type = 'normal'
+          AND key_type in ('normal', 'team')
         limit :qry_limit
         """
     # Insert into NotificationHistory if the row already exists do nothing.

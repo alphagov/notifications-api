@@ -335,3 +335,31 @@ def test_insert_notification_history_delete_notifications_only_insert_delete_for
     assert len(history_rows) == 1
     assert notifications[0].id == notification_to_stay.id
     assert history_rows[0], id == notification_to_move.id
+
+
+def test_insert_notification_history_delete_notifications_insert_for_key_type(sample_template):
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow() - timedelta(hours=4),
+                        status='delivered',
+                        key_type='normal')
+    create_notification(template=sample_template,
+                        created_at=datetime.utcnow() - timedelta(hours=4),
+                        status='delivered',
+                        key_type='team')
+    with_test_key = create_notification(template=sample_template,
+                                        created_at=datetime.utcnow() - timedelta(hours=4),
+                                        status='delivered',
+                                        key_type='test')
+
+    del_count = insert_notification_history_delete_notifications(
+        notification_type=sample_template.template_type,
+        service_id=sample_template.service_id,
+        timestamp_to_delete_backwards_from=datetime.utcnow()
+    )
+
+    assert del_count == 2
+    notifications = Notification.query.all()
+    history_rows = NotificationHistory.query.all()
+    assert len(notifications) == 1
+    assert with_test_key.id == notifications[0].id
+    assert len(history_rows) == 2
