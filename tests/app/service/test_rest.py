@@ -168,6 +168,7 @@ def test_find_services_by_name_handles_no_service_name(notify_db, admin_request,
     mock_get_services_by_partial_name.assert_not_called()
 
 
+@freeze_time('2019-05-02')
 def test_get_live_services_data(sample_user, admin_request):
     org = create_organisation()
 
