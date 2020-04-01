@@ -12,7 +12,6 @@ from app.celery.scheduled_tasks import (
     delete_invitations,
     delete_verify_codes,
     run_scheduled_jobs,
-    send_scheduled_notifications,
     replay_created_notifications,
     check_precompiled_letter_state,
     check_templated_letter_state,
@@ -22,7 +21,6 @@ from app.celery.scheduled_tasks import (
 )
 from app.config import QueueNames, TaskNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
-from app.dao.notifications_dao import dao_get_scheduled_notifications
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import (
     JOB_STATUS_IN_PROGRESS,
@@ -141,24 +139,6 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
     switch_current_sms_provider_on_slow_delivery()
 
     assert mock_reduce.called is False
-
-
-@freeze_time("2017-05-01 14:00:00")
-def test_should_send_all_scheduled_notifications_to_deliver_queue(sample_template, mocker):
-    mocked = mocker.patch('app.celery.provider_tasks.deliver_sms')
-    message_to_deliver = create_notification(template=sample_template, scheduled_for="2017-05-01 13:15")
-    create_notification(template=sample_template, scheduled_for="2017-05-01 10:15", status='delivered')
-    create_notification(template=sample_template)
-    create_notification(template=sample_template, scheduled_for="2017-05-01 14:15")
-
-    scheduled_notifications = dao_get_scheduled_notifications()
-    assert len(scheduled_notifications) == 1
-
-    send_scheduled_notifications()
-
-    mocked.apply_async.assert_called_once_with([str(message_to_deliver.id)], queue='send-sms-tasks')
-    scheduled_notifications = dao_get_scheduled_notifications()
-    assert not scheduled_notifications
 
 
 def test_check_job_status_task_raises_job_incomplete_error(mocker, sample_template):

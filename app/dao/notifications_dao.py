@@ -33,7 +33,6 @@ from app.models import (
     Notification,
     NotificationHistory,
     ProviderDetails,
-    ScheduledNotification,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -649,26 +648,6 @@ def dao_get_notifications_by_references(references):
 @statsd(namespace="dao")
 def dao_created_scheduled_notification(scheduled_notification):
     db.session.add(scheduled_notification)
-    db.session.commit()
-
-
-@statsd(namespace="dao")
-def dao_get_scheduled_notifications():
-    notifications = Notification.query.join(
-        ScheduledNotification
-    ).filter(
-        ScheduledNotification.scheduled_for < datetime.utcnow(),
-        ScheduledNotification.pending).all()
-
-    return notifications
-
-
-def set_scheduled_notification_to_processed(notification_id):
-    db.session.query(ScheduledNotification).filter(
-        ScheduledNotification.notification_id == notification_id
-    ).update(
-        {'pending': False}
-    )
     db.session.commit()
 
 

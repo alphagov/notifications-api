@@ -25,8 +25,6 @@ from app.dao.jobs_dao import (
 )
 from app.dao.jobs_dao import dao_update_job
 from app.dao.notifications_dao import (
-    dao_get_scheduled_notifications,
-    set_scheduled_notification_to_processed,
     notifications_not_yet_sent,
     dao_precompiled_letters_still_pending_virus_check,
     dao_old_letters_with_created_status,
@@ -59,21 +57,6 @@ def run_scheduled_jobs():
             current_app.logger.info("Job ID {} added to process job queue".format(job.id))
     except SQLAlchemyError:
         current_app.logger.exception("Failed to run scheduled jobs")
-        raise
-
-
-@notify_celery.task(name='send-scheduled-notifications')
-@statsd(namespace="tasks")
-def send_scheduled_notifications():
-    try:
-        scheduled_notifications = dao_get_scheduled_notifications()
-        for notification in scheduled_notifications:
-            send_notification_to_queue(notification, notification.service.research_mode)
-            set_scheduled_notification_to_processed(notification.id)
-        current_app.logger.info(
-            "Sent {} scheduled notifications to the provider queue".format(len(scheduled_notifications)))
-    except SQLAlchemyError:
-        current_app.logger.exception("Failed to send scheduled notifications")
         raise
 
 
