@@ -223,8 +223,8 @@ class Config(object):
             'options': {'queue': QueueNames.PERIODIC}
         },
         # app/celery/nightly_tasks.py
-        'timeout-sending-notifications': {
-            'task': 'timeout-sending-notifications',
+        'clean-notifications-table-and-create-stats': {
+            'task': 'clean-notifications-table-and-create-stats',
             'schedule': crontab(hour=0, minute=5),
             'options': {'queue': QueueNames.PERIODIC}
         },
@@ -233,32 +233,11 @@ class Config(object):
             'schedule': crontab(hour=0, minute=15),
             'options': {'queue': QueueNames.REPORTING}
         },
-        'create-nightly-notification-status': {
-            'task': 'create-nightly-notification-status',
-            'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
-            'options': {'queue': QueueNames.REPORTING}
-        },
-        'delete-sms-notifications': {
-            'task': 'delete-sms-notifications',
-            'schedule': crontab(hour=4, minute=15),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-email-notifications': {
-            'task': 'delete-email-notifications',
-            'schedule': crontab(hour=4, minute=30),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-letter-notifications': {
-            'task': 'delete-letter-notifications',
-            'schedule': crontab(hour=4, minute=45),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'delete-inbound-sms': {
             'task': 'delete-inbound-sms',
             'schedule': crontab(hour=1, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
-
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
             'schedule': crontab(hour=2, minute=0),

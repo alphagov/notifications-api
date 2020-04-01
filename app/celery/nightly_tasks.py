@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import notify_celery, performance_platform_client, zendesk_client
 from app.aws import s3
+from app.celery.reporting_tasks import create_nightly_notification_status
 from app.celery.service_callback_tasks import (
     send_delivery_status_to_service,
     create_delivery_status_callback_data,
@@ -120,6 +121,24 @@ def delete_letter_notifications_older_than_retention():
     except SQLAlchemyError:
         current_app.logger.exception("Failed to delete letter notifications")
         raise
+
+
+@notify_celery.task(name="clean-notifications-table-and-create-stats")
+@statsd(namespace="tasks")
+def clean_notifications_table_and_create_stats():
+    """
+    A group of functions to run sequentially as their order matters
+
+    We timeout any notifications that are still in 'sending'. When that is done we can then create
+    the rows in the notification_status table using the data from the notifications table.
+    Then we have finished interpreting the notifications table and can move notifications into the
+    notification_history table and delete the originals from `notifications`.
+    """
+    timeout_notifications()
+    create_nightly_notification_status()
+    delete_email_notifications_older_than_retention()
+    delete_sms_notifications_older_than_retention()
+    delete_letter_notifications_older_than_retention()
 
 
 @notify_celery.task(name='timeout-sending-notifications')
