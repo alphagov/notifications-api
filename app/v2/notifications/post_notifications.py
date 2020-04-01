@@ -5,7 +5,9 @@ from datetime import datetime
 
 from boto.exception import SQSError
 from flask import request, jsonify, current_app, abort
-from notifications_utils.recipients import try_validate_and_format_phone_number
+from notifications_utils.recipients import (
+    format_postcode_for_printing, is_a_real_uk_postcode, try_validate_and_format_phone_number
+)
 
 from app import (
     api_user,
@@ -56,7 +58,7 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, ValidationError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
     create_post_sms_response_from_notification,
@@ -344,11 +346,17 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
+    postcode = letter_data['personalisation']['postcode']
+    if not is_a_real_uk_postcode(postcode):
+        raise ValidationError(message='Must be a real UK postcode')
+
     test_key = api_key.key_type == KEY_TYPE_TEST
 
     # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
     status = NOTIFICATION_CREATED if not test_key else NOTIFICATION_SENDING
     queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
+
+    letter_data['personalisation']['postcode'] = format_postcode_for_printing(postcode)
 
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,

@@ -1,7 +1,7 @@
 import json
 
 from flask import jsonify, current_app, request
-from jsonschema import ValidationError
+from jsonschema import ValidationError as JsonSchemaValidationError
 from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
@@ -57,6 +57,15 @@ class BadRequestError(InvalidRequest):
         self.message = message if message else self.message
 
 
+class ValidationError(InvalidRequest):
+    message = "Your notification has failed validation"
+
+    def __init__(self, fields=[], message=None, status_code=400):
+        self.status_code = status_code
+        self.fields = fields
+        self.message = message if message else self.message
+
+
 class PDFNotReadyError(BadRequestError):
     def __init__(self):
         super().__init__(message='PDF not available yet, try again later', status_code=400)
@@ -77,7 +86,7 @@ def register_errors(blueprint):
         response = jsonify(error.to_dict_v2()), error.status_code
         return response
 
-    @blueprint.errorhandler(ValidationError)
+    @blueprint.errorhandler(JsonSchemaValidationError)
     def validation_error(error):
         current_app.logger.info(error)
         return jsonify(json.loads(error.message)), 400
