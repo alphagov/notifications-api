@@ -245,38 +245,16 @@ def delete_dvla_response_files_older_than_seven_days():
 @cronitor("raise-alert-if-letter-notifications-still-sending")
 @statsd(namespace="tasks")
 def raise_alert_if_letter_notifications_still_sending():
-    today = datetime.utcnow().date()
+    still_sending_count, sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
 
-    # Do nothing on the weekend
-    if today.isoweekday() in {6, 7}:  # sat, sun
-        return
-
-    if today.isoweekday() in {1, 2}:  # mon, tues. look for files from before the weekend
-        offset_days = 4
-    else:
-        offset_days = 2
-
-    q = Notification.query.filter(
-        Notification.notification_type == LETTER_TYPE,
-        Notification.status == NOTIFICATION_SENDING,
-        Notification.key_type == KEY_TYPE_NORMAL,
-        func.date(Notification.sent_at) <= today - timedelta(days=offset_days)
-    )
-
-    if today.isoweekday() in {2, 4}:  # on tue, thu, we only care about first class letters
-        q = q.filter(
-            Notification.postage == 'first'
-        )
-
-    still_sending = q.count()
-
-    if still_sending:
+    if still_sending_count:
         message = "There are {} letters in the 'sending' state from {}".format(
-            still_sending,
-            (today - timedelta(days=offset_days)).strftime('%A %d %B')
+            still_sending_count,
+            sent_date.strftime('%A %d %B')
         )
         # Only send alerts in production
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
             zendesk_client.create_ticket(
                 subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
                 message=message,
@@ -284,6 +262,35 @@ def raise_alert_if_letter_notifications_still_sending():
             )
         else:
             current_app.logger.info(message)
+
+
+def get_letter_notifications_still_sending_when_they_shouldnt_be():
+    today = datetime.utcnow().date()
+
+    # Do nothing on the weekend
+    if today.isoweekday() in {6, 7}:  # sat, sun
+        return 0, None
+
+    if today.isoweekday() in {1, 2}:  # mon, tues. look for files from before the weekend
+        offset_days = 4
+    else:
+        offset_days = 2
+
+    expected_sent_date = today - timedelta(days=offset_days)
+
+    q = Notification.query.filter(
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_SENDING,
+        Notification.key_type == KEY_TYPE_NORMAL,
+        func.date(Notification.sent_at) <= expected_sent_date
+    )
+
+    if today.isoweekday() in {2, 4}:  # on tue, thu, we only care about first class letters
+        q = q.filter(
+            Notification.postage == 'first'
+        )
+
+    return q.count(), expected_sent_date
 
 
 @notify_celery.task(name='raise-alert-if-no-letter-ack-file')
