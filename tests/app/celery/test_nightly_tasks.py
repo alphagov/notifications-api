@@ -14,6 +14,7 @@ from app.celery.nightly_tasks import (
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
     delete_sms_notifications_older_than_retention,
+    get_letter_notifications_still_sending_when_they_shouldnt_be,
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
@@ -335,11 +336,12 @@ def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(
     remove_s3_mock.assert_not_called()
 
 
-@freeze_time("Thursday 17th January 2018 17:00")
-def test_alert_if_letter_notifications_still_sending(sample_letter_template, mocker):
-    two_days_ago = datetime(2018, 1, 15, 13, 30)
-    create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
+def test_create_ticket_if_letter_notifications_still_sending(mocker):
+    mock_get_letters = mocker.patch(
+        "app.celery.nightly_tasks.get_letter_notifications_still_sending_when_they_shouldnt_be"
+    )
 
+    mock_get_letters.return_value = 1, date(2018, 1, 15)
     mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
 
     raise_alert_if_letter_notifications_still_sending()
@@ -351,83 +353,86 @@ def test_alert_if_letter_notifications_still_sending(sample_letter_template, moc
     )
 
 
-def test_alert_if_letter_notifications_still_sending_a_day_ago_no_alert(sample_letter_template, mocker):
+def test_dont_create_ticket_if_letter_notifications_not_still_sending(mocker):
+    mock_get_letters = mocker.patch(
+        "app.celery.nightly_tasks.get_letter_notifications_still_sending_when_they_shouldnt_be"
+    )
+
+    mock_get_letters.return_value = 0, None
+    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
+
+    raise_alert_if_letter_notifications_still_sending()
+
+    mock_create_ticket.assert_not_called()
+
+
+@freeze_time("Thursday 17th January 2018 17:00")
+def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_no_letters_if_sent_a_day_ago(
+    sample_letter_template
+):
     today = datetime.utcnow()
     one_day_ago = today - timedelta(days=1)
     create_notification(template=sample_letter_template, status='sending', sent_at=one_day_ago)
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-    assert not mock_create_ticket.called
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 0
 
 
 @freeze_time("Thursday 17th January 2018 17:00")
-def test_alert_if_letter_notifications_still_sending_only_alerts_sending(sample_letter_template, mocker):
+def test_get_letter_notifications_still_sending_when_they_shouldnt_only_finds_letters_still_in_sending_status(
+    sample_letter_template
+):
     two_days_ago = datetime(2018, 1, 15, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=two_days_ago)
     create_notification(template=sample_letter_template, status='delivered', sent_at=two_days_ago)
     create_notification(template=sample_letter_template, status='failed', sent_at=two_days_ago)
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    mock_create_ticket.assert_called_once_with(
-        subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Monday 15 January",
-        ticket_type='incident'
-    )
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 1
+    assert expected_sent_date == date(2018, 1, 15)
 
 
 @freeze_time("Thursday 17th January 2018 17:00")
-def test_alert_if_letter_notifications_still_sending_alerts_for_older_than_offset(sample_letter_template, mocker):
+def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_letters_older_than_offset(
+    sample_letter_template
+):
     three_days_ago = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=three_days_ago)
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    mock_create_ticket.assert_called_once_with(
-        subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Monday 15 January",
-        ticket_type='incident'
-    )
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 1
+    assert expected_sent_date == date(2018, 1, 15)
 
 
 @freeze_time("Sunday 14th January 2018 17:00")
-def test_alert_if_letter_notifications_still_sending_does_nothing_on_the_weekend(sample_letter_template, mocker):
+def test_get_letter_notifications_still_sending_when_they_shouldnt_be_finds_no_letters_on_weekend(
+    sample_letter_template
+):
     yesterday = datetime(2018, 1, 13, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday)
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    assert not mock_create_ticket.called
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 0
 
 
 @freeze_time("Monday 15th January 2018 17:00")
-def test_monday_alert_if_letter_notifications_still_sending_reports_thursday_letters(sample_letter_template, mocker):
+def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_thursday_letters_when_run_on_monday(
+    sample_letter_template
+):
     thursday = datetime(2018, 1, 11, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=thursday, postage='second')
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='second')
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    mock_create_ticket.assert_called_once_with(
-        subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Thursday 11 January",
-        ticket_type='incident'
-    )
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 1
+    assert expected_sent_date == date(2018, 1, 11)
 
 
 @freeze_time("Tuesday 16th January 2018 17:00")
-def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_letters(sample_letter_template, mocker):
+def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_friday_letters_when_run_on_tuesday(
+    sample_letter_template
+):
     friday = datetime(2018, 1, 12, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='first')
@@ -435,15 +440,9 @@ def test_tuesday_alert_if_letter_notifications_still_sending_reports_friday_lett
     # doesn't get reported because it's second class, and it's tuesday today
     create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='second')
 
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    mock_create_ticket.assert_called_once_with(
-        subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Friday 12 January",
-        ticket_type='incident'
-    )
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 1
+    assert expected_sent_date == date(2018, 1, 12)
 
 
 @freeze_time('2018-01-11T23:00:00')
