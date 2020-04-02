@@ -348,7 +348,7 @@ def test_create_ticket_if_letter_notifications_still_sending(mocker):
 
     mock_create_ticket.assert_called_once_with(
         subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Monday 15 January",
+        message="There are 1 letters in the 'sending' state from Monday 15 January. Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending",  # noqa
         ticket_type=ZendeskClient.TYPE_INCIDENT
     )
 

@@ -254,6 +254,7 @@ def raise_alert_if_letter_notifications_still_sending():
         )
         # Only send alerts in production
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+            message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
             zendesk_client.create_ticket(
                 subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
                 message=message,
