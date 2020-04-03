@@ -4,7 +4,7 @@ from app.models import (
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     TEMPLATE_TYPES
 )
-from app.schema_validation.definitions import (uuid, personalisation, letter_personalisation)
+from app.schema_validation.definitions import (uuid, personalisation)
 
 
 template = {
@@ -226,7 +226,7 @@ post_letter_request = {
     "properties": {
         "reference": {"type": "string"},
         "template_id": uuid,
-        "personalisation": letter_personalisation
+        "personalisation": personalisation
     },
     "required": ["template_id", "personalisation"],
     "additionalProperties": False

@@ -348,8 +348,22 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    if not PostalAddress.from_personalisation(letter_data['personalisation']).postcode:
-        raise ValidationError(message='Must be a real UK postcode')
+    address = PostalAddress.from_personalisation(letter_data['personalisation'])
+
+    if not address.has_enough_lines:
+        raise ValidationError(
+            message=f'Address must be at least {PostalAddress.MIN_LINES} lines'
+        )
+
+    if address.has_too_many_lines:
+        raise ValidationError(
+            message=f'Address must be no more than {PostalAddress.MAX_LINES} lines'
+        )
+
+    if not address.postcode:
+        raise ValidationError(
+            message='Must be a real UK postcode'
+        )
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 

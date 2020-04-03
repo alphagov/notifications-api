@@ -270,9 +270,7 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
     assert error_json['status_code'] == 400
     assert all([e['error'] == 'ValidationError' for e in error_json['errors']])
     assert set([e['message'] for e in error_json['errors']]) == {
-        'personalisation address_line_1 is required',
-        'personalisation address_line_2 is required',
-        'personalisation postcode is required'
+        'Address must be at least 3 lines',
     }
 
 
@@ -344,15 +342,12 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
     error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
 
     assert error_json['status_code'] == 400
-    assert len(error_json['errors']) == 2
-    assert {
-        'error': 'ValidationError',
-        'message': 'personalisation address_line_1 is a required property'
-    } in error_json['errors']
-    assert {
-        'error': 'ValidationError',
-        'message': 'personalisation address_line_2 is a required property'
-    } in error_json['errors']
+    assert error_json['errors'] == [
+        {
+            'error': 'ValidationError',
+            'message': 'Address must be at least 3 lines'
+        }
+    ]
 
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
