@@ -8,7 +8,6 @@ from freezegun import freeze_time
 from app.aws.s3 import (
     get_s3_bucket_objects,
     get_s3_file,
-    filter_s3_bucket_objects_within_date_range,
     get_list_of_files_by_suffix,
 )
 from tests.app.conftest import datetime_in_past
@@ -63,70 +62,6 @@ def test_get_s3_bucket_objects_builds_objects_list_from_paginator(notify_api, mo
 
     assert len(bucket_objects) == 2
     assert set(bucket_objects[0].keys()) == set(['ETag', 'Key', 'LastModified'])
-
-
-@freeze_time("2016-01-01 11:00:00")
-def test_get_s3_bucket_objects_removes_redundant_root_object(notify_api, mocker):
-    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
-    s3_objects_stub = [
-        single_s3_object_stub('bar/', AFTER_SEVEN_DAYS),
-        single_s3_object_stub('bar/foo.txt', AFTER_SEVEN_DAYS),
-    ]
-
-    filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
-
-    assert len(filtered_items) == 1
-
-    assert filtered_items[0]["Key"] == 'bar/foo.txt'
-    assert filtered_items[0]["LastModified"] == datetime_in_past(days=8)
-
-
-@freeze_time("2016-01-01 11:00:00")
-def test_filter_s3_bucket_objects_within_date_range_filters_by_date_range(notify_api, mocker):
-    START_DATE = datetime_in_past(days=9)
-    JUST_BEFORE_START_DATE = START_DATE - timedelta(seconds=1)
-    JUST_AFTER_START_DATE = START_DATE + timedelta(seconds=1)
-    END_DATE = datetime_in_past(days=7)
-    JUST_BEFORE_END_DATE = END_DATE - timedelta(seconds=1)
-    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
-
-    s3_objects_stub = [
-        single_s3_object_stub('bar/', JUST_BEFORE_START_DATE),
-        single_s3_object_stub('bar/foo.txt', START_DATE),
-        single_s3_object_stub('bar/foo2.txt', JUST_AFTER_START_DATE),
-        single_s3_object_stub('bar/foo3.txt', JUST_BEFORE_END_DATE),
-        single_s3_object_stub('bar/foo4.txt', END_DATE),
-        single_s3_object_stub('bar/foo5.txt', JUST_AFTER_END_DATE),
-    ]
-
-    filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
-
-    assert len(filtered_items) == 2
-
-    assert filtered_items[0]["Key"] == 'bar/foo2.txt'
-    assert filtered_items[0]["LastModified"] == JUST_AFTER_START_DATE
-
-    assert filtered_items[1]["Key"] == 'bar/foo3.txt'
-    assert filtered_items[1]["LastModified"] == JUST_BEFORE_END_DATE
-
-
-@freeze_time("2016-01-01 11:00:00")
-def test_get_s3_bucket_objects_does_not_return_outside_of_date_range(notify_api, mocker):
-    START_DATE = datetime_in_past(days=9)
-    JUST_BEFORE_START_DATE = START_DATE - timedelta(seconds=1)
-    END_DATE = datetime_in_past(days=7)
-    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
-
-    s3_objects_stub = [
-        single_s3_object_stub('bar/', JUST_BEFORE_START_DATE),
-        single_s3_object_stub('bar/foo1.txt', START_DATE),
-        single_s3_object_stub('bar/foo2.txt', END_DATE),
-        single_s3_object_stub('bar/foo3.txt', JUST_AFTER_END_DATE)
-    ]
-
-    filtered_items = filter_s3_bucket_objects_within_date_range(s3_objects_stub)
-
-    assert len(filtered_items) == 0
 
 
 @freeze_time("2018-01-11 00:00:00")

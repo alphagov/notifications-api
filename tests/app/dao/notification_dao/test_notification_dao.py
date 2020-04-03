@@ -15,7 +15,6 @@ from app.dao.notifications_dao import (
     dao_get_last_notification_added_for_job_id,
     dao_get_notifications_by_recipient_or_reference,
     dao_get_notification_count_for_job_id,
-    dao_get_scheduled_notifications,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
@@ -26,7 +25,6 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     is_delivery_slow_for_providers,
-    set_scheduled_notification_to_processed,
     update_notification_status_by_id,
     update_notification_status_by_reference,
     dao_get_notification_by_reference,
@@ -1356,30 +1354,6 @@ def test_dao_created_scheduled_notification(sample_notification):
     assert len(saved_notification) == 1
     assert saved_notification[0].notification_id == sample_notification.id
     assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14, 15)
-
-
-def test_dao_get_scheduled_notifications(sample_template):
-    notification_1 = create_notification(template=sample_template, scheduled_for='2017-05-05 14:15',
-                                         status='created')
-    create_notification(template=sample_template, scheduled_for='2017-05-04 14:15', status='delivered')
-    create_notification(template=sample_template, status='created')
-    scheduled_notifications = dao_get_scheduled_notifications()
-    assert len(scheduled_notifications) == 1
-    assert scheduled_notifications[0].id == notification_1.id
-    assert scheduled_notifications[0].scheduled_notification.pending
-
-
-def test_set_scheduled_notification_to_processed(sample_template):
-    notification_1 = create_notification(template=sample_template, scheduled_for='2017-05-05 14:15',
-                                         status='created')
-    scheduled_notifications = dao_get_scheduled_notifications()
-    assert len(scheduled_notifications) == 1
-    assert scheduled_notifications[0].id == notification_1.id
-    assert scheduled_notifications[0].scheduled_notification.pending
-
-    set_scheduled_notification_to_processed(notification_1.id)
-    scheduled_notifications = dao_get_scheduled_notifications()
-    assert not scheduled_notifications
 
 
 def test_dao_get_notifications_by_to_field_filters_status(sample_template):

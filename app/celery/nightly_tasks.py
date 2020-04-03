@@ -214,33 +214,6 @@ def delete_inbound_sms():
         raise
 
 
-# TODO: remove me, i'm not being run by anything
-@notify_celery.task(name="delete_dvla_response_files")
-@statsd(namespace="tasks")
-def delete_dvla_response_files_older_than_seven_days():
-    try:
-        start = datetime.utcnow()
-        bucket_objects = s3.get_s3_bucket_objects(
-            current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
-            'root/dispatch'
-        )
-        older_than_seven_days = s3.filter_s3_bucket_objects_within_date_range(bucket_objects)
-
-        for f in older_than_seven_days:
-            s3.remove_s3_object(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], f['Key'])
-
-        current_app.logger.info(
-            "Delete dvla response files started {} finished {} deleted {} files".format(
-                start,
-                datetime.utcnow(),
-                len(older_than_seven_days)
-            )
-        )
-    except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete dvla response files")
-        raise
-
-
 @notify_celery.task(name="raise-alert-if-letter-notifications-still-sending")
 @cronitor("raise-alert-if-letter-notifications-still-sending")
 @statsd(namespace="tasks")

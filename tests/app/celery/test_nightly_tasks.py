@@ -9,7 +9,6 @@ from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
-    delete_dvla_response_files_older_than_seven_days,
     delete_email_notifications_older_than_retention,
     delete_inbound_sms,
     delete_letter_notifications_older_than_retention,
@@ -33,7 +32,6 @@ from app.models import (
     SMS_TYPE,
     EMAIL_TYPE
 )
-from tests.app.aws.test_s3 import single_s3_object_stub
 from tests.app.db import (
     create_notification,
     create_service,
@@ -43,8 +41,6 @@ from tests.app.db import (
     create_service_data_retention,
     create_ft_notification_status
 )
-
-from tests.app.conftest import datetime_in_past
 
 
 def mock_s3_get_list_match(bucket_name, subfolder='', suffix='', last_modified=None):
@@ -288,52 +284,6 @@ def test_should_call_delete_inbound_sms(notify_api, mocker):
     mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_older_than_retention')
     delete_inbound_sms()
     assert nightly_tasks.delete_inbound_sms_older_than_retention.call_count == 1
-
-
-@freeze_time("2016-01-01 11:00:00")
-def test_delete_dvla_response_files_older_than_seven_days_removes_old_files(notify_api, mocker):
-    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
-    single_page_s3_objects = [{
-        "Contents": [
-            single_s3_object_stub('bar/foo1.txt', AFTER_SEVEN_DAYS),
-            single_s3_object_stub('bar/foo2.txt', AFTER_SEVEN_DAYS),
-        ]
-    }]
-    mocker.patch(
-        'app.celery.nightly_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
-    )
-    remove_s3_mock = mocker.patch('app.celery.nightly_tasks.s3.remove_s3_object')
-
-    delete_dvla_response_files_older_than_seven_days()
-
-    remove_s3_mock.assert_has_calls([
-        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][0]["Key"]),
-        call(current_app.config['DVLA_RESPONSE_BUCKET_NAME'], single_page_s3_objects[0]["Contents"][1]["Key"])
-    ])
-
-
-@freeze_time("2016-01-01 11:00:00")
-def test_delete_dvla_response_files_older_than_seven_days_does_not_remove_files(notify_api, mocker):
-    START_DATE = datetime_in_past(days=9)
-    JUST_BEFORE_START_DATE = datetime_in_past(days=9, seconds=1)
-    END_DATE = datetime_in_past(days=7)
-    JUST_AFTER_END_DATE = END_DATE + timedelta(seconds=1)
-
-    single_page_s3_objects = [{
-        "Contents": [
-            single_s3_object_stub('bar/foo1.txt', JUST_BEFORE_START_DATE),
-            single_s3_object_stub('bar/foo2.txt', START_DATE),
-            single_s3_object_stub('bar/foo3.txt', END_DATE),
-            single_s3_object_stub('bar/foo4.txt', JUST_AFTER_END_DATE),
-        ]
-    }]
-    mocker.patch(
-        'app.celery.nightly_tasks.s3.get_s3_bucket_objects', return_value=single_page_s3_objects[0]["Contents"]
-    )
-    remove_s3_mock = mocker.patch('app.celery.nightly_tasks.s3.remove_s3_object')
-    delete_dvla_response_files_older_than_seven_days()
-
-    remove_s3_mock.assert_not_called()
 
 
 def test_create_ticket_if_letter_notifications_still_sending(mocker):
