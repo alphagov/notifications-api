@@ -7,7 +7,6 @@ from freezegun import freeze_time
 from moto import mock_s3
 
 from app.letters.utils import (
-    copy_redaction_failed_pdf,
     get_bucket_name_and_prefix_for_notification,
     get_letter_pdf_filename,
     get_letter_pdf_and_metadata,
@@ -292,24 +291,6 @@ def test_move_failed_pdf_scan_failed(notify_api):
 
     assert 'FAILURE/' + filename in [o.key for o in bucket.objects.all()]
     assert filename not in [o.key for o in bucket.objects.all()]
-
-
-@mock_s3
-@freeze_time(FROZEN_DATE_TIME)
-def test_copy_redaction_failed_pdf(notify_api):
-    filename = 'test.pdf'
-    bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
-
-    conn = boto3.resource('s3', region_name='eu-west-1')
-    bucket = conn.create_bucket(Bucket=bucket_name)
-
-    s3 = boto3.client('s3', region_name='eu-west-1')
-    s3.put_object(Bucket=bucket_name, Key=filename, Body=b'pdf_content')
-
-    copy_redaction_failed_pdf(filename)
-
-    assert 'REDACTION_FAILURE/' + filename in [o.key for o in bucket.objects.all()]
-    assert filename in [o.key for o in bucket.objects.all()]
 
 
 @pytest.mark.parametrize("freeze_date, expected_folder_name",
