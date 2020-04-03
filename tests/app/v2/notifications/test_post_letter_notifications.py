@@ -139,7 +139,9 @@ def test_post_letter_notification_formats_postcode(
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
-    assert notification.personalisation["postcode"] == "SW1 1AA"
+    # We store what the client gives us, and only reformat it when
+    # generating the PDF
+    assert notification.personalisation["postcode"] == '  Sw1  1aa   '
 
 
 def test_post_letter_notification_throws_error_for_bad_postcode(

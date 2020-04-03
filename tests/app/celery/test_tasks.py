@@ -1048,7 +1048,7 @@ def test_save_letter_saves_letter_to_database_with_formatted_postcode(mocker, no
 
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
-    assert notification_db.personalisation["postcode"] == "SE16 4SA"
+    assert notification_db.personalisation["postcode"] == "se1 64sa"
 
 
 def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_session):
