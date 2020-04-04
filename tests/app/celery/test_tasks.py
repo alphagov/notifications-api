@@ -950,7 +950,26 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert not retry.called
 
 
-def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
+@pytest.mark.parametrize('personalisation', (
+    {
+        'addressline1': 'Foo',
+        'addressline2': 'Bar',
+        'addressline3': 'Baz',
+        'addressline4': 'Wibble',
+        'addressline5': 'Wobble',
+        'addressline6': 'Wubble',
+        'postcode': 'SE1 2SA',
+    },
+    {
+        # The address isn’t normalised when we store it in the
+        # `personalisation` column, but the first line is normalised for
+        # Storing in the `to` column
+        'addressline2': '    Foo    ',
+        'addressline4': 'Bar',
+        'addressline6': 'se12sa',
+    },
+))
+def test_save_letter_saves_letter_to_database(mocker, notify_db_session, personalisation):
     service = create_service()
     contact_block = create_letter_contact(service=service, contact_block="Address contact", is_default=True)
     template = create_template(service=service, template_type=LETTER_TYPE, reply_to=contact_block.id)
@@ -959,18 +978,9 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session):
     mocker.patch('app.celery.tasks.create_random_identifier', return_value="this-is-random-in-real-life")
     mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
 
-    personalisation = {
-        'addressline1': 'Foo',
-        'addressline2': 'Bar',
-        'addressline3': 'Baz',
-        'addressline4': 'Wibble',
-        'addressline5': 'Wobble',
-        'addressline6': 'Wubble',
-        'postcode': 'SE1 2SA',
-    }
     notification_json = _notification_json(
         template=job.template,
-        to='Foo',
+        to='This is ignored for letters',
         personalisation=personalisation,
         job_id=job.id,
         row_number=1
