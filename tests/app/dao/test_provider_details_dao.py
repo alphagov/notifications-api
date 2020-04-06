@@ -22,6 +22,13 @@ from tests.app.db import (
     create_service,
     create_template,
 )
+from tests.conftest import set_config
+
+
+@pytest.fixture(autouse=True)
+def set_provider_resting_points(notify_api):
+    with set_config(notify_api, 'SMS_PROVIDER_RESTING_POINTS', {'mmg': 60, 'firetext': 40}):
+        yield
 
 
 def set_primary_sms_provider(identifier):
