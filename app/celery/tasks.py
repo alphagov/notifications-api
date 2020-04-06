@@ -8,10 +8,6 @@ from notifications_utils.recipients import (
     RecipientCSV
 )
 from notifications_utils.statsd_decorators import statsd
-from notifications_utils.template import (
-    SMSMessageTemplate,
-    WithSubjectTemplate,
-)
 from notifications_utils.timezones import convert_utc_to_bst
 from requests import (
     HTTPError,
@@ -128,9 +124,8 @@ def job_complete(job, resumed=False, start=None):
 
 def get_recipient_csv_and_template_and_sender_id(job):
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
+    template = db_template._as_utils_template()
 
-    TemplateClass = get_template_class(db_template.template_type)
-    template = TemplateClass(db_template.__dict__)
     contents, meta_data = s3.get_job_and_metadata_from_s3(service_id=str(job.service_id), job_id=str(job.id))
     recipient_csv = RecipientCSV(file_data=contents,
                                  template_type=template.template_type,
@@ -452,15 +447,6 @@ def handle_exception(task, notification, notification_id, exc):
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
             current_app.logger.error('Max retry failed' + retry_msg)
-
-
-def get_template_class(template_type):
-    if template_type == SMS_TYPE:
-        return SMSMessageTemplate
-    elif template_type in (EMAIL_TYPE, LETTER_TYPE):
-        # since we don't need rendering capabilities (we only need to extract placeholders) both email and letter can
-        # use the same base template
-        return WithSubjectTemplate
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-statuses')
