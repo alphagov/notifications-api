@@ -137,39 +137,44 @@ def collate_letter_pdfs_to_be_sent():
 
     letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline)
 
-    for i, letters in enumerate(group_letters(letters_to_print)):
-        filenames = [letter['Key'] for letter in letters]
+    i = 0
+    for zip_folder, letters_list in letters_to_print.items():
+        for letters in group_letters(letters_list):
+            i += 1
+            filenames = [letter['Key'] for letter in letters]
 
-        hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
-        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-        dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
-            date=print_run_deadline.strftime("%Y-%m-%d"),
-            num=i + 1,
-            hash=hash
-        )
-
-        current_app.logger.info(
-            'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
-                len(filenames),
-                dvla_filename,
-                sum(letter['Size'] for letter in letters)
+            hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
+            # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
+            dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
+                date=print_run_deadline.strftime("%Y-%m-%d"),
+                num=i,
+                hash=hash
             )
-        )
-        notify_celery.send_task(
-            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-            kwargs={
-                'filenames_to_zip': filenames,
-                'upload_filename': dvla_filename
-            },
-            queue=QueueNames.PROCESS_FTP,
-            compression='zlib'
-        )
+
+            current_app.logger.info(
+                'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
+                    len(filenames),
+                    dvla_filename,
+                    sum(letter['Size'] for letter in letters)
+                )
+            )
+            notify_celery.send_task(
+                name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
+                kwargs={
+                    'filenames_to_zip': filenames,
+                    'upload_filename': dvla_filename
+                },
+                queue=QueueNames.PROCESS_FTP,
+                compression='zlib'
+            )
 
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
     letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline)
-
-    letter_pdfs = []
+    zip_folders_by_postage = {
+        "first": "first", "second": "second", "europe": "international", "rest-of-world": "international"
+    }
+    letter_pdfs = {"first": [], "second": [], "international": []}
     for letter in letters_awaiting_sending:
         try:
             letter_file_name = get_letter_pdf_filename(
@@ -179,7 +184,9 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
                 postage=letter.postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
-            letter_pdfs.append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
+            letter_pdfs[
+                zip_folders_by_postage[letter.postage]
+            ].append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
         except BotoClientError as e:
             current_app.logger.exception(
                 f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}", e)
