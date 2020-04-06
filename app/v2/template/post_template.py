@@ -3,7 +3,6 @@ from flask import jsonify, request
 from app import authenticated_service
 from app.dao import templates_dao
 from app.schema_validation import validate
-from app.utils import get_template_instance
 from app.v2.errors import BadRequestError
 from app.v2.template import v2_template_blueprint
 from app.v2.template.template_schemas import (
@@ -29,8 +28,9 @@ def post_template_preview(template_id):
     template = templates_dao.dao_get_template_by_id_and_service_id(
         template_id, authenticated_service.id)
 
-    template_object = get_template_instance(
-        template.__dict__, values=data.get('personalisation'))
+    template_object = template._as_utils_template_with_personalisation(
+        data.get('personalisation')
+    )
 
     check_placeholders(template_object)
 

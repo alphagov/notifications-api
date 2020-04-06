@@ -29,7 +29,7 @@ from tests.app.db import create_service, create_template
 def test_create_content_for_notification_passes(sample_email_template):
     template = Template.query.get(sample_email_template.id)
     content = create_content_for_notification(template, None)
-    assert str(content) == template.content
+    assert str(content) == template.content + '\n'
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):

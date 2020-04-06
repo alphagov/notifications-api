@@ -983,8 +983,13 @@ class TemplateBase(db.Model):
         if self.template_type == LETTER_TYPE:
             return LetterPrintTemplate(
                 self.__dict__,
-                contact_block=self.service.get_default_letter_contact(),
+                contact_block=self.get_reply_to_text(),
             )
+
+    def _as_utils_template_with_personalisation(self, values):
+        template = self._as_utils_template()
+        template.values = values
+        return template
 
     def serialize(self):
         serialized = {

@@ -32,11 +32,10 @@ from app.dao.notifications_dao import (
 )
 
 from app.v2.errors import BadRequestError
-from app.utils import get_template_instance
 
 
 def create_content_for_notification(template, personalisation):
-    template_object = get_template_instance(template.__dict__, personalisation)
+    template_object = template._as_utils_template_with_personalisation(personalisation)
     check_placeholders(template_object)
 
     return template_object
