@@ -10,7 +10,7 @@ from flask import (
     request)
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
-from notifications_utils.template import SMSMessageTemplate
+from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -38,7 +38,7 @@ from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
 from app.schemas import (template_schema, template_history_schema)
 from app.template.template_schemas import post_create_template_schema
-from app.utils import get_template_instance, get_public_notify_type_text
+from app.utils import get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')
 
@@ -166,7 +166,9 @@ def get_template_by_id_and_service_id(service_id, template_id):
 def preview_template_by_id_and_service_id(service_id, template_id):
     fetched_template = dao_get_template_by_id_and_service_id(template_id=template_id, service_id=service_id)
     data = template_schema.dump(fetched_template).data
-    template_object = get_template_instance(data, values=request.args.to_dict())
+    template_object = fetched_template._as_utils_template_with_personalisation(
+        request.args.to_dict()
+    )
 
     if template_object.missing_data:
         raise InvalidRequest(
@@ -175,7 +177,11 @@ def preview_template_by_id_and_service_id(service_id, template_id):
             ]}, status_code=400
         )
 
-    data['subject'], data['content'] = template_object.subject, str(template_object)
+    data['subject'] = template_object.subject
+    if template_object.template_type == SMS_TYPE:
+        data['content'] = str(template_object)
+    else:
+        data['content'] = WithSubjectTemplate.__str__(template_object)
 
     return jsonify(data)
 

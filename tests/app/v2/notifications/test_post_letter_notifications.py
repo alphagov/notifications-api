@@ -274,6 +274,41 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
     }
 
 
+def test_post_notification_returns_400_for_missing_letter_contact_block_personalisation(
+    client,
+    sample_service,
+):
+    letter_contact_block = create_letter_contact(
+        service=sample_service, contact_block='((contact block))', is_default=True
+    )
+    template = create_template(
+        service=sample_service,
+        template_type='letter',
+        reply_to=letter_contact_block.id,
+    )
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {
+            'address_line_1': 'Line 1',
+            'address_line_2': 'Line 2',
+            'postcode': 'SW1A 1AA',
+        },
+    }
+
+    error_json = letter_request(
+        client,
+        data,
+        service_id=sample_service.id,
+        _expected_status=400,
+    )
+
+    assert error_json['status_code'] == 400
+    assert error_json['errors'] == [{
+        'error': 'BadRequestError',
+        'message': 'Missing personalisation: contact block'
+    }]
+
+
 def test_notification_returns_400_for_missing_template_field(
     client,
     sample_service_full_permissions
@@ -450,15 +485,14 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
     s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
 
-def test_post_letter_notification_persists_notification_reply_to_text(
+def test_post_letter_notification_ignores_reply_to_text_for_service(
     client, notify_db_session, mocker
 ):
     mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
 
     service = create_service(service_permissions=[LETTER_TYPE])
-    service_address = "12 Main Street, London"
-    letter_contact = create_letter_contact(service=service, contact_block=service_address, is_default=True)
-    template = create_template(service=service, template_type='letter', reply_to=letter_contact.id)
+    create_letter_contact(service=service, contact_block='ignored', is_default=True)
+    template = create_template(service=service, template_type='letter')
     data = {
         "template_id": template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
@@ -467,7 +501,27 @@ def test_post_letter_notification_persists_notification_reply_to_text(
 
     notifications = Notification.query.all()
     assert len(notifications) == 1
-    assert notifications[0].reply_to_text == service_address
+    assert notifications[0].reply_to_text is None
+
+
+def test_post_letter_notification_persists_notification_reply_to_text_for_template(
+    client, notify_db_session, mocker
+):
+    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+
+    service = create_service(service_permissions=[LETTER_TYPE])
+    create_letter_contact(service=service, contact_block='the default', is_default=True)
+    template_letter_contact = create_letter_contact(service=service, contact_block='not the default', is_default=False)
+    template = create_template(service=service, template_type='letter', reply_to=template_letter_contact.id)
+    data = {
+        "template_id": template.id,
+        "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
+    }
+    letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_NORMAL)
+
+    notifications = Notification.query.all()
+    assert len(notifications) == 1
+    assert notifications[0].reply_to_text == 'not the default'
 
 
 def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):

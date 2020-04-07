@@ -17,7 +17,7 @@ from notifications_utils.statsd_decorators import statsd
 
 from app import db, DATETIME_FORMAT, encryption
 from app.aws import s3
-from app.celery.tasks import record_daily_sorted_counts, get_template_class, process_row
+from app.celery.tasks import record_daily_sorted_counts, process_row
 from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
 from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import create_letters_pdf
@@ -889,8 +889,7 @@ def process_row_from_job(job_id, job_row_number):
     job = dao_get_job_by_id(job_id)
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
 
-    TemplateClass = get_template_class(db_template.template_type)
-    template = TemplateClass(db_template.__dict__)
+    template = db_template._as_utils_template()
 
     for row in RecipientCSV(
             s3.get_job_from_s3(str(job.service_id), str(job.id)),

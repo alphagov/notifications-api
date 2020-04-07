@@ -4,6 +4,7 @@ from flask import (
     request,
     current_app
 )
+from notifications_utils.template import WithSubjectTemplate
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
@@ -35,7 +36,7 @@ from app.schemas import (
     notifications_filter_schema
 )
 from app.service.utils import service_allowed_to_send_to
-from app.utils import pagination_links, get_template_instance, get_public_notify_type_text
+from app.utils import pagination_links, get_public_notify_type_text
 
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.recipients import get_international_phone_info
@@ -149,13 +150,15 @@ def send_notification(notification_type):
 
 def get_notification_return_data(notification_id, notification, template):
     output = {
-        'body': str(template),
         'template_version': notification['template_version'],
         'notification': {'id': notification_id}
     }
 
-    if template.template_type == 'email':
-        output.update({'subject': template.subject})
+    if template.template_type == SMS_TYPE:
+        output['body'] = str(template)
+    else:
+        output['body'] = WithSubjectTemplate.__str__(template)
+        output['subject'] = template.subject
 
     return output
 
@@ -187,7 +190,7 @@ def _service_allowed_to_send_to(notification, service):
 
 
 def create_template_object_for_notification(template, personalisation):
-    template_object = get_template_instance(template.__dict__, personalisation)
+    template_object = template._as_utils_template_with_personalisation(personalisation)
 
     if template_object.missing_data:
         message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))

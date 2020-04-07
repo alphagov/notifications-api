@@ -9,7 +9,11 @@ from freezegun import freeze_time
 from requests import RequestException
 from sqlalchemy.exc import SQLAlchemyError
 from celery.exceptions import Retry
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.template import (
+    LetterPrintTemplate,
+    PlainTextEmailTemplate,
+    SMSMessageTemplate,
+)
 from notifications_utils.columns import Row
 
 from app import (
@@ -26,11 +30,12 @@ from app.celery.tasks import (
     save_letter,
     process_incomplete_job,
     process_incomplete_jobs,
-    get_template_class,
     s3,
     send_inbound_sms_to_service,
     process_returned_letters_list,
-    save_api_email)
+    save_api_email,
+    get_recipient_csv_and_template_and_sender_id,
+)
 from app.config import QueueNames
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import (
@@ -1298,13 +1303,81 @@ def test_should_cancel_job_if_service_is_inactive(sample_service,
     tasks.process_row.assert_not_called()
 
 
-@pytest.mark.parametrize('template_type, expected_class', [
-    (SMS_TYPE, SMSMessageTemplate),
-    (EMAIL_TYPE, WithSubjectTemplate),
-    (LETTER_TYPE, WithSubjectTemplate),
-])
-def test_get_template_class(template_type, expected_class):
-    assert get_template_class(template_type) == expected_class
+def test_get_email_template_instance(mocker, sample_email_template, sample_job):
+    mocker.patch(
+        'app.celery.tasks.s3.get_job_and_metadata_from_s3',
+        return_value=('', {}),
+    )
+    sample_job.template_id = sample_email_template.id
+    (
+        recipient_csv,
+        template,
+        _sender_id,
+    ) = get_recipient_csv_and_template_and_sender_id(sample_job)
+
+    assert isinstance(template, PlainTextEmailTemplate)
+    assert recipient_csv.placeholders == [
+        'email address'
+    ]
+
+
+def test_get_sms_template_instance(mocker, sample_template, sample_job):
+    mocker.patch(
+        'app.celery.tasks.s3.get_job_and_metadata_from_s3',
+        return_value=('', {}),
+    )
+    sample_job.template = sample_template
+    (
+        recipient_csv,
+        template,
+        _sender_id,
+    ) = get_recipient_csv_and_template_and_sender_id(sample_job)
+
+    assert isinstance(template, SMSMessageTemplate)
+    assert recipient_csv.placeholders == [
+        'phone number'
+    ]
+
+
+def test_get_letter_template_instance(mocker, sample_job):
+    mocker.patch(
+        'app.celery.tasks.s3.get_job_and_metadata_from_s3',
+        return_value=('', {}),
+    )
+    sample_contact_block = create_letter_contact(
+        service=sample_job.service,
+        contact_block='((reference number))'
+    )
+    sample_template = create_template(
+        service=sample_job.service,
+        template_type=LETTER_TYPE,
+        reply_to=sample_contact_block.id,
+    )
+    sample_job.template_id = sample_template.id
+
+    (
+        recipient_csv,
+        template,
+        _sender_id,
+    ) = get_recipient_csv_and_template_and_sender_id(sample_job)
+
+    assert isinstance(template, LetterPrintTemplate)
+    assert template.contact_block == (
+        '((reference number))'
+    )
+    assert template.placeholders == {
+        'reference number'
+    }
+    assert recipient_csv.placeholders == [
+        'reference number',
+        'address line 1',
+        'address line 2',
+        'address line 3',
+        'address line 4',
+        'address line 5',
+        'address line 6',
+        'postcode',
+    ]
 
 
 def test_send_inbound_sms_to_service_post_https_request_to_service(notify_api, sample_service):
