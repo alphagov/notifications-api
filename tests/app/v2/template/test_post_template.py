@@ -2,7 +2,7 @@ import pytest
 
 from flask import json
 
-from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 
@@ -106,6 +106,41 @@ def test_valid_post_template_returns_200(
         assert resp_json['html'] is None
 
     assert expected_content in resp_json['body']
+
+
+@pytest.mark.parametrize("template_type", (EMAIL_TYPE, LETTER_TYPE))
+def test_email_and_letter_templates_not_rendered_into_content(
+    client,
+    sample_service,
+    template_type,
+):
+    template = create_template(
+        sample_service,
+        template_type=template_type,
+        subject='Test',
+        content=(
+            'Hello\n'
+            '\r\n'
+            '\r\n'
+            '\n'
+            '# This is a heading\n'
+            '\n'
+            'Paragraph'
+        ),
+    )
+
+    auth_header = create_authorization_header(service_id=sample_service.id)
+
+    response = client.post(
+        path='/v2/template/{}/preview'.format(template.id),
+        data=json.dumps(None),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 200
+
+    resp_json = json.loads(response.get_data(as_text=True))
+
+    assert resp_json['body'] == template.content
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
