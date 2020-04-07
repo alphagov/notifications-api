@@ -62,6 +62,14 @@ def _remove_csv_files(job_types):
         current_app.logger.info("Job ID {} has been removed from s3.".format(job.id))
 
 
+@notify_celery.task(name="delete-notifications-older-than-retention")
+@statsd(namespace="tasks")
+def delete_notifications_older_than_retention():
+    delete_email_notifications_older_than_retention()
+    delete_sms_notifications_older_than_retention()
+    delete_letter_notifications_older_than_retention()
+
+
 @notify_celery.task(name="delete-sms-notifications")
 @cronitor("delete-sms-notifications")
 @statsd(namespace="tasks")
