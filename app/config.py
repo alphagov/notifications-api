@@ -240,7 +240,7 @@ class Config(object):
         },
         'delete-notifications-older-than-retention': {
             'task': 'delete-notifications-older-than-retention',
-            'schedule': crontab(hour=4, minute=15),  # after 'create-nightly-notification-status'
+            'schedule': crontab(hour=3, minute=0),  # after 'create-nightly-notification-status'
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-inbound-sms': {
