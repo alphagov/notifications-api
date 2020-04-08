@@ -903,7 +903,7 @@ class TemplateBase(db.Model):
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN template_type = 'letter' THEN
-            postage is not null and postage in ('first', 'second', 'europe', 'rest-of-world')
+            postage is not null and postage in ('first', 'second')
         ELSE
             postage is null
         END
@@ -1353,13 +1353,10 @@ DVLA_RESPONSE_STATUS_SENT = 'Sent'
 
 FIRST_CLASS = 'first'
 SECOND_CLASS = 'second'
-EUROPE = 'europe'
-REST_OF_WORLD = 'rest-of-world'
+POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS]
 RESOLVE_POSTAGE_FOR_FILE_NAME = {
     FIRST_CLASS: 1,
-    SECOND_CLASS: 2,
-    EUROPE: 'E',
-    REST_OF_WORLD: 'N',
+    SECOND_CLASS: 2
 }
 
 
@@ -1436,7 +1433,7 @@ class Notification(db.Model):
     postage = db.Column(db.String, nullable=True)
     CheckConstraint("""
         CASE WHEN notification_type = 'letter' THEN
-            postage is not null and postage in ('first', 'second', 'europe', 'rest-of-world')
+            postage is not null and postage in ('first', 'second')
         ELSE
             postage is null
         END
@@ -1701,6 +1698,13 @@ class NotificationHistory(db.Model, HistoryModel):
     created_by_id = db.Column(UUID(as_uuid=True), nullable=True)
 
     postage = db.Column(db.String, nullable=True)
+    CheckConstraint("""
+        CASE WHEN notification_type = 'letter' THEN
+            postage is not null and postage in ('first', 'second')
+        ELSE
+            postage is null
+        END
+    """)
 
     document_download_count = db.Column(db.Integer, nullable=True)
 
