@@ -7,7 +7,7 @@ from notifications_utils.template import SMSMessageTemplate
 
 from app import notify_celery, statsd_client
 from app.clients import ClientException
-from app.clients.sms.firetext import get_firetext_responses
+from app.clients.sms.firetext import get_firetext_responses, get_message_status_from_firetext_code
 from app.clients.sms.mmg import get_mmg_responses
 from app.celery.service_callback_tasks import send_delivery_status_to_service, create_delivery_status_callback_data
 from app.config import QueueNames
@@ -24,7 +24,7 @@ sms_response_mapper = {
 
 @notify_celery.task(bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
-def process_sms_client_response(self, status, provider_reference, client_name):
+def process_sms_client_response(self, status, provider_reference, client_name, code=None):
     # validate reference
     try:
         uuid.UUID(provider_reference, version=4)
