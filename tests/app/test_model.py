@@ -172,8 +172,10 @@ def test_notification_personalisation_setter_always_sets_empty_dict(input_value)
     assert noti._personalisation == encryption.encrypt({})
 
 
-def test_notification_subject_is_none_for_sms():
-    assert Notification(notification_type=SMS_TYPE).subject is None
+def test_notification_subject_is_none_for_sms(sample_service):
+    template = create_template(service=sample_service, template_type=SMS_TYPE)
+    notification = create_notification(template=template)
+    assert notification.subject is None
 
 
 @pytest.mark.parametrize('template_type', ['email', 'letter'])

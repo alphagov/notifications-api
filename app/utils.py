@@ -4,7 +4,8 @@ import pytz
 from flask import url_for
 from sqlalchemy import func
 from notifications_utils.timezones import convert_utc_to_bst
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate, get_html_email_body
+from notifications_utils.template import SMSMessageTemplate, HTMLEmailTemplate, LetterPrintTemplate
+
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -31,20 +32,8 @@ def url_with_token(data, url, config, base_url=None):
 def get_template_instance(template, values):
     from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
     return {
-        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: WithSubjectTemplate, LETTER_TYPE: WithSubjectTemplate
+        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: HTMLEmailTemplate, LETTER_TYPE: LetterPrintTemplate
     }[template['template_type']](template, values)
-
-
-def get_html_email_body_from_template(template_instance):
-    from app.models import EMAIL_TYPE
-
-    if template_instance.template_type != EMAIL_TYPE:
-        return None
-
-    return get_html_email_body(
-        template_instance.content,
-        template_instance.values,
-    )
 
 
 def get_london_midnight_in_utc(date):

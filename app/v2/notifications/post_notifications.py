@@ -7,7 +7,6 @@ from boto.exception import SQSError
 from flask import request, jsonify, current_app, abort
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.recipients import try_validate_and_format_phone_number
-from notifications_utils.template import WithSubjectTemplate
 
 from app import (
     api_user,
@@ -167,26 +166,24 @@ def post_notification(notification_type):
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
             from_number=reply_to,
-            content=str(template_with_content),
         )
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(
             create_post_email_response_from_notification,
             subject=template_with_content.subject,
             email_from='{}@{}'.format(authenticated_service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
-            content=WithSubjectTemplate.__str__(template_with_content),
         )
     elif notification_type == LETTER_TYPE:
         create_resp_partial = functools.partial(
             create_post_letter_response_from_notification,
             subject=template_with_content.subject,
-            content=WithSubjectTemplate.__str__(template_with_content),
         )
 
     resp = create_resp_partial(
         notification=notification,
         url_root=request.url_root,
-        scheduled_for=scheduled_for
+        scheduled_for=scheduled_for,
+        content=template_with_content.content_with_placeholders_filled_in,
     )
     return jsonify(resp), 201
 

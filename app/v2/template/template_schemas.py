@@ -1,8 +1,5 @@
-from notifications_utils.template import WithSubjectTemplate
-
-from app.models import SMS_TYPE, TEMPLATE_TYPES
+from app.models import TEMPLATE_TYPES
 from app.schema_validation.definitions import uuid, personalisation
-from app.utils import get_html_email_body_from_template
 
 
 get_template_by_id_request = {
@@ -77,19 +74,12 @@ post_template_preview_response = {
 
 
 def create_post_template_preview_response(template, template_object):
-    if template.template_type == SMS_TYPE:
-        subject = None
-        body = str(template_object)
-    else:
-        subject = template_object.subject
-        body = WithSubjectTemplate.__str__(template_object)
-
     return {
         "id": template.id,
         "type": template.template_type,
         "version": template.version,
-        "body": body,
-        "html": get_html_email_body_from_template(template_object),
-        "subject": subject,
+        "body": template_object.content_with_placeholders_filled_in,
+        "html": getattr(template_object, 'html_body', None),
+        "subject": getattr(template_object, 'subject', None),
         "postage": template.postage
     }
