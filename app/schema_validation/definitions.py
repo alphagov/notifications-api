@@ -27,29 +27,6 @@ personalisation = {
 }
 
 
-letter_personalisation = dict(
-    personalisation,
-    properties={
-        "address_line_1": {
-            "type": "string",
-            "minLength": 1,
-            "validationMessage": "address_line_1 is required"
-        },
-        "address_line_2": {
-            "type": "string",
-            "minLength": 1,
-            "validationMessage": "address_line_2 is required"
-        },
-        "postcode": {
-            "type": "string",
-            "minLength": 1,
-            "validationMessage": "postcode is required"
-        },
-    },
-    required=["address_line_1", "address_line_2", "postcode"],
-)
-
-
 https_url = {
     "type": "string",
     "format": "uri",

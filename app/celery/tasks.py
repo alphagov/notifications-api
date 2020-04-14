@@ -3,10 +3,9 @@ from datetime import datetime
 from collections import namedtuple, defaultdict
 
 from flask import current_app
-from notifications_utils.recipients import (
-    format_postcode_for_printing,
-    RecipientCSV
-)
+from notifications_utils.columns import Columns
+from notifications_utils.postal_address import PostalAddress
+from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
 from requests import (
@@ -344,11 +343,9 @@ def save_letter(
     notification = encryption.decrypt(encrypted_notification)
 
     # we store the recipient as just the first item of the person's address
-    recipient = notification['personalisation']['addressline1']
-
-    notification['personalisation']['postcode'] = format_postcode_for_printing(
-        notification['personalisation']['postcode']
-    )
+    recipient = PostalAddress.from_personalisation(
+        Columns(notification['personalisation'])
+    ).normalised_lines[0]
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
