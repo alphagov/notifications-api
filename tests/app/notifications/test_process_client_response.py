@@ -57,6 +57,23 @@ def test_process_sms_client_response_updates_notification_status(
     assert sample_notification.status == expected_notification_status
 
 
+@pytest.mark.parametrize('code, expected_notification_status', [
+    ('101', 'permanent-failure'),
+    ('102', 'temporary-failure'),
+])
+def test_process_sms_client_response_updates_notification_status_when_called_second_time(
+    sample_notification,
+    mocker,
+    code,
+    expected_notification_status,
+):
+    sample_notification.status = 'sending'
+    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+    process_sms_client_response('1', str(sample_notification.id), 'Firetext', code)
+
+    assert sample_notification.status == expected_notification_status
+
+
 def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sample_service, mocker):
     mocker.patch(
         'app.celery.process_sms_client_response_tasks.get_service_delivery_status_callback_api_for_service',

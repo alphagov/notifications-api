@@ -52,6 +52,7 @@ from app.models import (
 )
 from app.utils import get_london_midnight_in_utc
 from app.utils import midnight_n_days_ago, escape_special_characters
+from app.clients.sms.firetext import get_message_status_from_firetext_code
 
 
 @statsd(namespace="dao")
@@ -89,11 +90,15 @@ def dao_create_notification(notification):
     db.session.add(notification)
 
 
-def _decide_permanent_temporary_failure(current_status, status):
+def _decide_permanent_temporary_failure(current_status, status, code=None):
     # Firetext will send pending, then send either succes or fail.
-    # If we go from pending to delivered we need to set failure type as temporary-failure
+    # If we go from pending to failure we need to set failure type as temporary-failure
+    # if we get a detailed code from firetext, we should use that code to set status instead
     if current_status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
-        status = NOTIFICATION_TEMPORARY_FAILURE
+        if code:
+            status = get_message_status_from_firetext_code(code)
+        else:
+            status = NOTIFICATION_TEMPORARY_FAILURE
     return status
 
 
@@ -102,8 +107,8 @@ def country_records_delivery(phone_prefix):
     return dlr and dlr.lower() == 'yes'
 
 
-def _update_notification_status(notification, status):
-    status = _decide_permanent_temporary_failure(current_status=notification.status, status=status)
+def _update_notification_status(notification, status, code=None):
+    status = _decide_permanent_temporary_failure(current_status=notification.status, status=status, code=code)
     notification.status = status
     dao_update_notification(notification)
     return notification
@@ -111,7 +116,7 @@ def _update_notification_status(notification, status):
 
 @statsd(namespace="dao")
 @transactional
-def update_notification_status_by_id(notification_id, status, sent_by=None):
+def update_notification_status_by_id(notification_id, status, sent_by=None, code=None):
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
     if not notification:
@@ -137,7 +142,8 @@ def update_notification_status_by_id(notification_id, status, sent_by=None):
         notification.sent_by = sent_by
     return _update_notification_status(
         notification=notification,
-        status=status
+        status=status,
+        code=code
     )
 
 

@@ -7,7 +7,7 @@ from notifications_utils.template import SMSMessageTemplate
 
 from app import notify_celery, statsd_client
 from app.clients import ClientException
-from app.clients.sms.firetext import get_firetext_responses, get_message_status_from_firetext_code
+from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
 from app.celery.service_callback_tasks import send_delivery_status_to_service, create_delivery_status_callback_data
 from app.config import QueueNames
@@ -51,16 +51,18 @@ def process_sms_client_response(self, status, provider_reference, client_name, c
     _process_for_status(
         notification_status=notification_status,
         client_name=client_name,
-        provider_reference=provider_reference
+        provider_reference=provider_reference,
+        code=code
     )
 
 
-def _process_for_status(notification_status, client_name, provider_reference):
+def _process_for_status(notification_status, client_name, provider_reference, code=None):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(
         notification_id=provider_reference,
         status=notification_status,
-        sent_by=client_name.lower()
+        sent_by=client_name.lower(),
+        code=code
     )
     if not notification:
         return

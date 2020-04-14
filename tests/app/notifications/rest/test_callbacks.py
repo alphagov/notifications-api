@@ -147,7 +147,7 @@ def test_firetext_callback_should_return_200_and_call_task_with_valid_data(clien
     assert json_resp['result'] == 'success'
 
     mock_celery.assert_called_once_with(
-        ['0', 'notification_id', 'Firetext'],
+        ['0', 'notification_id', 'Firetext', None],
         queue='sms-callbacks',
     )
 
