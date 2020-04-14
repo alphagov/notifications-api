@@ -3350,12 +3350,18 @@ def test_cancel_notification_for_service_raises_error_if_its_too_late_to_cancel(
     assert response['result'] == 'error'
 
 
+@pytest.mark.parametrize('created_at', [
+    datetime(2018, 7, 6, 22, 30),  # yesterday evening
+    datetime(2018, 7, 6, 23, 30),  # this morning early hours (in bst)
+    datetime(2018, 7, 7, 10, 0),  # this morning normal hours
+])
 @freeze_time('2018-7-7 16:00:00')
 def test_cancel_notification_for_service_updates_letter_if_still_time_to_cancel(
     admin_request,
     sample_letter_notification,
+    created_at,
 ):
-    sample_letter_notification.created_at = datetime(2018, 7, 7, 10, 0)
+    sample_letter_notification.created_at = created_at
 
     response = admin_request.post(
         'service.cancel_notification_for_service',
