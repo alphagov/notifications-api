@@ -238,19 +238,9 @@ class Config(object):
             'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
             'options': {'queue': QueueNames.REPORTING}
         },
-        'delete-sms-notifications': {
-            'task': 'delete-sms-notifications',
-            'schedule': crontab(hour=4, minute=15),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-email-notifications': {
-            'task': 'delete-email-notifications',
-            'schedule': crontab(hour=4, minute=30),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-letter-notifications': {
-            'task': 'delete-letter-notifications',
-            'schedule': crontab(hour=4, minute=45),  # after 'create-nightly-notification-status'
+        'delete-notifications-older-than-retention': {
+            'task': 'delete-notifications-older-than-retention',
+            'schedule': crontab(hour=3, minute=0),  # after 'create-nightly-notification-status'
             'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-inbound-sms': {
@@ -258,7 +248,6 @@ class Config(object):
             'schedule': crontab(hour=1, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
-
         'send-daily-performance-platform-stats': {
             'task': 'send-daily-performance-platform-stats',
             'schedule': crontab(hour=2, minute=0),
