@@ -92,8 +92,8 @@ def dao_create_notification(notification):
 
 def _decide_permanent_temporary_failure(current_status, status, code=None):
     # Firetext will send pending, then send either succes or fail.
-    # If we go from pending to failure we need to set failure type as temporary-failure
-    # if we get a detailed code from firetext, we should use that code to set status instead
+    # If we go from pending to failure we need to set failure type as temporary-failure,
+    # unless we get a detailed code from firetext. Then we should use that code to set status instead.
     if current_status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
         if code:
             status = get_message_status_from_firetext_code(code)
