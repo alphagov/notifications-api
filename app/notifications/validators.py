@@ -158,9 +158,6 @@ def validate_template(template_id, personalisation, service, notification_type):
         raise BadRequestError(message=message,
                               fields=[{'template': message}])
 
-    check_template_is_for_notification_type(notification_type, template.template_type)
-    check_template_is_active(template)
-
     template_with_content = create_content_for_notification(template, personalisation)
 
     check_notification_content_is_not_empty(template_with_content)

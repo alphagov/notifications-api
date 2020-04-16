@@ -976,15 +976,10 @@ class TemplateBase(db.Model):
         pass
 
     def _as_utils_template(self):
-        if self.template_type == EMAIL_TYPE:
-            return PlainTextEmailTemplate(self.__dict__)
-        if self.template_type == SMS_TYPE:
-            return SMSMessageTemplate(self.__dict__)
-        if self.template_type == LETTER_TYPE:
-            return LetterPrintTemplate(
-                self.__dict__,
-                contact_block=self.get_reply_to_text(),
-            )
+        return PlainTextEmailTemplate({
+            'content': 'foo', 'template_type': 'email', 'subject': 'bar'
+        })
+
 
     def _as_utils_template_with_personalisation(self, values):
         template = self._as_utils_template()

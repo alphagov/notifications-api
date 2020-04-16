@@ -143,7 +143,7 @@ def post_notification(notification_type):
             form=form,
             notification_type=notification_type,
             api_key=api_user,
-            template=template,
+            template_id=form['template_id'],
             service=authenticated_service,
             reply_to_text=reply_to
         )
@@ -170,7 +170,7 @@ def post_notification(notification_type):
     return jsonify(resp), 201
 
 
-def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
+def process_sms_or_email_notification(*, form, notification_type, api_key, template_id, service, reply_to_text=None):
     notification_id = None
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
@@ -217,8 +217,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
 
     notification = persist_notification(
         notification_id=notification_id,
-        template_id=template.id,
-        template_version=template.version,
+        template_id=template_id,
+        template_version=1,
         recipient=form_send_to,
         service=service,
         personalisation=personalisation,
@@ -236,11 +236,10 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:
         if not True:
-            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
             send_notification_to_queue(
                 notification=notification,
                 research_mode=service.research_mode,
-                queue=queue_name
+                queue=None
             )
         else:
             current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
