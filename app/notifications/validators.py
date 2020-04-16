@@ -1,3 +1,4 @@
+from functools import lru_cache
 from sqlalchemy.orm.exc import NoResultFound
 from flask import current_app
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
@@ -138,9 +139,17 @@ def check_notification_content_is_not_empty(template_with_content):
         raise BadRequestError(message=message)
 
 
+@lru_cache(maxsize=None)
+def get_template(template_id, service_id):
+    return templates_dao.dao_get_template_by_id_and_service_id(
+        template_id=template_id,
+        service_id=service_id
+    )
+
+
 def validate_template(template_id, personalisation, service, notification_type):
     try:
-        template = templates_dao.dao_get_template_by_id_and_service_id(
+        template = get_template(
             template_id=template_id,
             service_id=service.id
         )

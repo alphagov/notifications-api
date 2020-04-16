@@ -1,3 +1,4 @@
+from functools import lru_cache
 from flask import request, _request_ctx_stack, current_app, g
 from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
 from notifications_python_client.errors import (
@@ -80,62 +81,24 @@ def requires_admin_auth():
         raise AuthError('Unauthorized: admin authentication token required', 401)
 
 
+@lru_cache(maxsize=None)
+def get_service(issuer):
+    return dao_fetch_service_by_id_with_api_keys(issuer)
+
+
 def requires_auth():
     request_helper.check_proxy_header_before_request()
 
     auth_token = get_auth_token(request)
     issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
-    try:
-        service = dao_fetch_service_by_id_with_api_keys(issuer)
-    except DataError:
-        raise AuthError("Invalid token: service id is not the right data type", 403)
-    except NoResultFound:
-        raise AuthError("Invalid token: service not found", 403)
+    service = get_service(issuer)
 
-    if not service.api_keys:
-        raise AuthError("Invalid token: service has no API keys", 403, service_id=service.id)
+    g.service_id = issuer
+    _request_ctx_stack.top.authenticated_service = service
+    _request_ctx_stack.top.api_user = None
 
-    if not service.active:
-        raise AuthError("Invalid token: service is archived", 403, service_id=service.id)
-
-    for api_key in service.api_keys:
-        try:
-            decode_jwt_token(auth_token, api_key.secret)
-        except TokenExpiredError:
-            err_msg = "Error: Your system clock must be accurate to within 30 seconds"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
-        except TokenAlgorithmError:
-            err_msg = "Invalid token: algorithm used is not HS256"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
-        except TokenDecodeError:
-            # we attempted to validate the token but it failed meaning it was not signed using this api key.
-            # Let's try the next one
-            # TODO: Change this so it doesn't also catch `TokenIssuerError` or `TokenIssuedAtError` exceptions (which
-            # are children of `TokenDecodeError`) as these should cause an auth error immediately rather than
-            # continue on to check the next API key
-            continue
-        except TokenError:
-            # General error when trying to decode and validate the token
-            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service.id, api_key_id=api_key.id)
-
-        if api_key.expiry_date:
-            raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
-
-        g.service_id = api_key.service_id
-        _request_ctx_stack.top.authenticated_service = service
-        _request_ctx_stack.top.api_user = api_key
-
-        current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-            service.id,
-            api_key.id,
-            request.headers.get('User-Agent'),
-            request.base_url
-        ))
-        return
-    else:
-        # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: API key not found", 403, service_id=service.id)
+    return
 
 
 def __get_token_issuer(auth_token):

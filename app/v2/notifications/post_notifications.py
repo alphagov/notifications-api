@@ -121,19 +121,11 @@ def post_notification(notification_type):
     if notification_type == EMAIL_TYPE:
         form = validate(request_json, post_email_request)
     elif notification_type == SMS_TYPE:
-        form = validate(request_json, post_sms_request)
+        abort(400)
     elif notification_type == LETTER_TYPE:
-        form = validate(request_json, post_letter_request)
+        abort(400)
     else:
         abort(404)
-
-    check_service_has_permission(notification_type, authenticated_service.permissions)
-
-    scheduled_for = form.get("scheduled_for", None)
-
-    check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
-
-    check_rate_limiting(authenticated_service, api_user)
 
     template, template_with_content = validate_template(
         form['template_id'],
@@ -142,15 +134,10 @@ def post_notification(notification_type):
         notification_type,
     )
 
-    reply_to = get_reply_to_text(notification_type, form, template)
+    reply_to = 'test@example.com'
 
     if notification_type == LETTER_TYPE:
-        notification = process_letter_notification(
-            letter_data=form,
-            api_key=api_user,
-            template=template,
-            reply_to_text=reply_to
-        )
+        abort(400)
     else:
         notification = process_sms_or_email_notification(
             form=form,
@@ -164,11 +151,7 @@ def post_notification(notification_type):
         template_with_content.values = notification.personalisation
 
     if notification_type == SMS_TYPE:
-        create_resp_partial = functools.partial(
-            create_post_sms_response_from_notification,
-            from_number=reply_to,
-            content=str(template_with_content),
-        )
+        abort(400)
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(
             create_post_email_response_from_notification,
@@ -177,16 +160,12 @@ def post_notification(notification_type):
             content=WithSubjectTemplate.__str__(template_with_content),
         )
     elif notification_type == LETTER_TYPE:
-        create_resp_partial = functools.partial(
-            create_post_letter_response_from_notification,
-            subject=template_with_content.subject,
-            content=WithSubjectTemplate.__str__(template_with_content),
-        )
+        abort(400)
 
     resp = create_resp_partial(
         notification=notification,
         url_root=request.url_root,
-        scheduled_for=scheduled_for
+        scheduled_for=None
     )
     return jsonify(resp), 201
 
@@ -196,7 +175,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
-                                            key_type=api_key.key_type,
+                                            key_type='test',
                                             service=service,
                                             notification_type=notification_type)
 
@@ -244,8 +223,8 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         service=service,
         personalisation=personalisation,
         notification_type=notification_type,
-        api_key_id=api_key.id,
-        key_type=api_key.key_type,
+        api_key_id=None,
+        key_type='test',
         client_reference=form.get('reference', None),
         simulated=simulated,
         reply_to_text=reply_to_text,
