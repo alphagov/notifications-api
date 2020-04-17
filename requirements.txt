@@ -28,20 +28,20 @@ notifications-python-client==5.5.1
 # PaaS
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@37.0.0#egg=notifications-utils==37.0.0
+git+https://github.com/alphagov/notifications-utils.git@37.0.1#egg=notifications-utils==37.0.1
 
 ## The following requirements were added by pip freeze:
 alembic==1.4.2
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.3.0
-awscli==1.18.39
+awscli==1.18.40
 bcrypt==3.1.7
 billiard==3.3.0.23
 bleach==3.1.4
 boto==2.49.0
 boto3==1.10.38
-botocore==1.15.39
+botocore==1.15.40
 certifi==2020.4.5.1
 chardet==3.0.4
 click==7.1.1
@@ -78,7 +78,7 @@ s3transfer==0.3.3
 six==1.14.0
 smartypants==2.0.1
 statsd==3.3.0
-urllib3==1.25.8
+urllib3==1.25.9
 webencodings==0.5.1
 Werkzeug==1.0.1
 zipp==3.1.0
