@@ -1513,16 +1513,16 @@ class Notification(db.Model):
 
     @property
     def content(self):
-        from app.utils import get_template_instance
-        template_object = get_template_instance(self.template.__dict__, self.personalisation)
-        return str(template_object)
+        return self.template._as_utils_template_with_personalisation(
+            self.personalisation
+        ).content_with_placeholders_filled_in
 
     @property
     def subject(self):
-        from app.utils import get_template_instance
-        if self.notification_type != SMS_TYPE:
-            template_object = get_template_instance(self.template.__dict__, self.personalisation)
-            return template_object.subject
+        template_object = self.template._as_utils_template_with_personalisation(
+            self.personalisation
+        )
+        return getattr(template_object, 'subject', None)
 
     @property
     def formatted_status(self):

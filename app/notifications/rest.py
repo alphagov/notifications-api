@@ -4,7 +4,6 @@ from flask import (
     request,
     current_app
 )
-from notifications_utils.template import WithSubjectTemplate
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
@@ -151,13 +150,11 @@ def send_notification(notification_type):
 def get_notification_return_data(notification_id, notification, template):
     output = {
         'template_version': notification['template_version'],
-        'notification': {'id': notification_id}
+        'notification': {'id': notification_id},
+        'body': template.content_with_placeholders_filled_in,
     }
 
-    if template.template_type == SMS_TYPE:
-        output['body'] = str(template)
-    else:
-        output['body'] = WithSubjectTemplate.__str__(template)
+    if hasattr(template, 'subject'):
         output['subject'] = template.subject
 
     return output

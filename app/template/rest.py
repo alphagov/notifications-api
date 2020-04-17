@@ -10,7 +10,7 @@ from flask import (
     request)
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
-from notifications_utils.template import SMSMessageTemplate, WithSubjectTemplate
+from notifications_utils.template import SMSMessageTemplate
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -178,10 +178,7 @@ def preview_template_by_id_and_service_id(service_id, template_id):
         )
 
     data['subject'] = template_object.subject
-    if template_object.template_type == SMS_TYPE:
-        data['content'] = str(template_object)
-    else:
-        data['content'] = WithSubjectTemplate.__str__(template_object)
+    data['content'] = template_object.content_with_placeholders_filled_in
 
     return jsonify(data)
 
