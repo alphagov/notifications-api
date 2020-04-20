@@ -65,6 +65,9 @@ applications:
     services:
       - notify-db
       - logit-ssl-syslog-drain
+      {% if CF_APP == 'notify-api' %}
+      - notify-prometheus
+      {% endif %}
 
     env:
       NOTIFY_APP_NAME: {{ app.get('NOTIFY_APP_NAME', CF_APP.replace('notify-', '')) }}

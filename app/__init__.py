@@ -7,6 +7,7 @@ from flask import _request_ctx_stack, request, g, jsonify, make_response
 from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
+from gds_metrics import GDSMetrics
 from time import monotonic
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
@@ -54,6 +55,7 @@ statsd_client = StatsdClient()
 redis_store = RedisClient()
 performance_platform_client = PerformancePlatformClient()
 document_download_client = DocumentDownloadClient()
+metrics = GDSMetrics()
 
 clients = Clients()
 
@@ -86,6 +88,7 @@ def create_app(application):
     performance_platform_client.init_app(application)
     document_download_client.init_app(application)
     clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=[aws_ses_client])
+    metrics.init_app(application)
 
     register_blueprint(application)
     register_v2_blueprints(application)
