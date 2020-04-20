@@ -57,21 +57,43 @@ def test_process_sms_client_response_updates_notification_status(
     assert sample_notification.status == expected_notification_status
 
 
-@pytest.mark.parametrize('code, expected_notification_status', [
-    ('101', 'permanent-failure'),
-    ('102', 'temporary-failure'),
+@pytest.mark.parametrize('code, expected_notification_status, reason', [
+    ('101', 'permanent-failure', 'Unknown Subscriber'),
+    ('102', 'temporary-failure', 'Absent Subscriber'),
+    (None, 'temporary-failure', None),
 ])
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
     sample_notification,
     mocker,
     code,
     expected_notification_status,
+    reason
 ):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
     sample_notification.status = 'sending'
     process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+
     process_sms_client_response('1', str(sample_notification.id), 'Firetext', code)
 
+    if code:
+        message = f'Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}'  # noqa
+        mock_logger.assert_called_with(message)
+
     assert sample_notification.status == expected_notification_status
+
+
+def test_process_sms_client_response_updates_notification_status_when_code_unknown(
+    sample_notification,
+    mocker,
+):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+    sample_notification.status = 'sending'
+    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+
+    process_sms_client_response('1', str(sample_notification.id), 'Firetext', '789')
+
+    mock_logger.assert_called_once_with('Failure code 789 from Firetext not recognised')
+    assert sample_notification.status == 'temporary-failure'
 
 
 def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sample_service, mocker):

@@ -52,7 +52,7 @@ from app.models import (
 )
 from app.utils import get_london_midnight_in_utc
 from app.utils import midnight_n_days_ago, escape_special_characters
-from app.clients.sms.firetext import get_message_status_from_firetext_code
+from app.clients.sms.firetext import get_message_status_and_reason_from_firetext_code
 
 
 @statsd(namespace="dao")
@@ -90,15 +90,19 @@ def dao_create_notification(notification):
     db.session.add(notification)
 
 
-def _decide_permanent_temporary_failure(current_status, status, code=None):
+def _decide_permanent_temporary_failure(status, notification, code=None):
     # Firetext will send pending, then send either succes or fail.
     # If we go from pending to failure we need to set failure type as temporary-failure,
     # unless we get a detailed code from firetext. Then we should use that code to set status instead.
-    if current_status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
-        if code:
-            status = get_message_status_from_firetext_code(code)
-        else:
-            status = NOTIFICATION_TEMPORARY_FAILURE
+    if code:
+        try:
+            status, reason = get_message_status_and_reason_from_firetext_code(code)
+            current_app.logger.info(f'Updating notification id {notification.id} to status {status}, reason: {reason}')
+            return status
+        except KeyError:
+            current_app.logger.error(f'Failure code {code} from Firetext not recognised')
+    if notification.status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
+        status = NOTIFICATION_TEMPORARY_FAILURE
     return status
 
 
@@ -108,7 +112,7 @@ def country_records_delivery(phone_prefix):
 
 
 def _update_notification_status(notification, status, code=None):
-    status = _decide_permanent_temporary_failure(current_status=notification.status, status=status, code=code)
+    status = _decide_permanent_temporary_failure(status=status, notification=notification, code=code)
     notification.status = status
     dao_update_notification(notification)
     return notification
