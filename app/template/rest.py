@@ -288,7 +288,8 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
             "id": str(notification.template_id),
             "subject": template.subject,
             "content": template.content,
-            "version": str(template.version)
+            "version": str(template.version),
+            "template_type": template.template_type
         }
 
         service = dao_fetch_service_by_id(service_id)

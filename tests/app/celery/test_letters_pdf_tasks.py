@@ -82,7 +82,8 @@ def test_get_letters_pdf_calls_notifications_template_preview_service_correctly(
         'filename': filename,
         'template': {
             'subject': sample_letter_template.subject,
-            'content': sample_letter_template.content
+            'content': sample_letter_template.content,
+            'template_type': sample_letter_template.template_type
         }
     }
 
