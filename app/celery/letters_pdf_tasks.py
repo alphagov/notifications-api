@@ -89,7 +89,8 @@ def create_letters_pdf(self, notification_id):
 def get_letters_pdf(template, contact_block, filename, values):
     template_for_letter_print = {
         "subject": template.subject,
-        "content": template.content
+        "content": template.content,
+        "template_type": template.template_type
     }
 
     data = {
