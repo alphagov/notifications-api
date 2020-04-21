@@ -61,6 +61,7 @@ def test_process_sms_client_response_updates_notification_status(
     ('101', 'permanent-failure', 'Unknown Subscriber'),
     ('102', 'temporary-failure', 'Absent Subscriber'),
     (None, 'temporary-failure', None),
+    ('000', 'temporary-failure', None)
 ])
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
     sample_notification,
@@ -75,7 +76,7 @@ def test_process_sms_client_response_updates_notification_status_when_called_sec
 
     process_sms_client_response('1', str(sample_notification.id), 'Firetext', code)
 
-    if code:
+    if code and code != '000':
         message = f'Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}'  # noqa
         mock_logger.assert_called_with(message)
 
@@ -86,7 +87,7 @@ def test_process_sms_client_response_updates_notification_status_when_code_unkno
     sample_notification,
     mocker,
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     sample_notification.status = 'sending'
     process_sms_client_response('2', str(sample_notification.id), 'Firetext')
 

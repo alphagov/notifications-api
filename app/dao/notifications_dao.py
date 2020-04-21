@@ -94,13 +94,13 @@ def _decide_permanent_temporary_failure(status, notification, code=None):
     # Firetext will send pending, then send either succes or fail.
     # If we go from pending to failure we need to set failure type as temporary-failure,
     # unless we get a detailed code from firetext. Then we should use that code to set status instead.
-    if code:
+    if code and code != '000':
         try:
             status, reason = get_message_status_and_reason_from_firetext_code(code)
             current_app.logger.info(f'Updating notification id {notification.id} to status {status}, reason: {reason}')
             return status
         except KeyError:
-            current_app.logger.error(f'Failure code {code} from Firetext not recognised')
+            current_app.logger.warning(f'Failure code {code} from Firetext not recognised')
     if notification.status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
         status = NOTIFICATION_TEMPORARY_FAILURE
     return status
