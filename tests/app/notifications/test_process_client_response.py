@@ -83,6 +83,19 @@ def test_process_sms_client_response_updates_notification_status_when_called_sec
     assert sample_notification.status == expected_notification_status
 
 
+@pytest.mark.parametrize('code', ['102', None, '000'])
+def test_process_sms_client_response_updates_notification_status_to_pending_with_and_without_failire_code_present(
+    sample_notification,
+    mocker,
+    code
+):
+    sample_notification.status = 'sending'
+
+    process_sms_client_response('2', str(sample_notification.id), 'Firetext', code)
+
+    assert sample_notification.status == 'pending'
+
+
 def test_process_sms_client_response_updates_notification_status_when_code_unknown(
     sample_notification,
     mocker,

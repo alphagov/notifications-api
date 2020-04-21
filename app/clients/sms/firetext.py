@@ -20,6 +20,7 @@ firetext_responses = {
 }
 
 firetext_codes = {
+    # code '000' means 'No errors reported'
     '101': {'status': 'permanent-failure', 'reason': 'Unknown Subscriber'},
     '102': {'status': 'temporary-failure', 'reason': 'Absent Subscriber'},
     '103': {'status': 'temporary-failure', 'reason': 'Subscriber Busy'},
