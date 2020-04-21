@@ -27,3 +27,5 @@ notifications-python-client==5.5.1
 awscli-cwlogs>=1.4,<1.5
 
 git+https://github.com/alphagov/notifications-utils.git@37.0.1#egg=notifications-utils==37.0.1
+
+gds-metrics==0.2.0

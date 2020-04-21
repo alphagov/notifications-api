@@ -3,6 +3,8 @@ import sys
 import traceback
 import gunicorn
 
+from gds_metrics.gunicorn import child_exit  # noqa
+
 workers = 4
 worker_class = "eventlet"
 worker_connections = 256
