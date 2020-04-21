@@ -19,9 +19,25 @@ firetext_responses = {
     '2': 'pending'
 }
 
+firetext_codes = {
+    '101': {'status': 'permanent-failure', 'reason': 'Unknown Subscriber'},
+    '102': {'status': 'temporary-failure', 'reason': 'Absent Subscriber'},
+    '103': {'status': 'temporary-failure', 'reason': 'Subscriber Busy'},
+    '104': {'status': 'temporary-failure', 'reason': 'No Subscriber Memory'},
+    '201': {'status': 'permanent-failure', 'reason': 'Invalid Number'},
+    '301': {'status': 'permanent-failure', 'reason': 'SMS Not Supported'},
+    '302': {'status': 'temporary-failure', 'reason': 'SMS Not Supported'},
+    '401': {'status': 'permanent-failure', 'reason': 'Message Rejected'},
+    '900': {'status': 'temporary-failure', 'reason': 'Routing Error'},
+}
+
 
 def get_firetext_responses(status):
     return firetext_responses[status]
+
+
+def get_message_status_and_reason_from_firetext_code(code):
+    return firetext_codes[code]['status'], firetext_codes[code]['reason']
 
 
 class FiretextClientResponseException(SmsClientResponseException):

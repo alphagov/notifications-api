@@ -24,7 +24,7 @@ sms_response_mapper = {
 
 @notify_celery.task(bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
-def process_sms_client_response(self, status, provider_reference, client_name):
+def process_sms_client_response(self, status, provider_reference, client_name, code=None):
     # validate reference
     try:
         uuid.UUID(provider_reference, version=4)
@@ -51,16 +51,18 @@ def process_sms_client_response(self, status, provider_reference, client_name):
     _process_for_status(
         notification_status=notification_status,
         client_name=client_name,
-        provider_reference=provider_reference
+        provider_reference=provider_reference,
+        code=code
     )
 
 
-def _process_for_status(notification_status, client_name, provider_reference):
+def _process_for_status(notification_status, client_name, provider_reference, code=None):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(
         notification_id=provider_reference,
         status=notification_status,
-        sent_by=client_name.lower()
+        sent_by=client_name.lower(),
+        code=code
     )
     if not notification:
         return

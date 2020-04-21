@@ -147,7 +147,23 @@ def test_firetext_callback_should_return_200_and_call_task_with_valid_data(clien
     assert json_resp['result'] == 'success'
 
     mock_celery.assert_called_once_with(
-        ['0', 'notification_id', 'Firetext'],
+        ['0', 'notification_id', 'Firetext', None],
+        queue='sms-callbacks',
+    )
+
+
+def test_firetext_callback_including_a_code_should_return_200_and_call_task_with_valid_data(client, mocker):
+    mock_celery = mocker.patch(
+        'app.notifications.notifications_sms_callback.process_sms_client_response.apply_async')
+
+    data = 'mobile=441234123123&status=1&code=101&time=2016-03-10 14:17:00&reference=notification_id'
+    response = firetext_post(client, data)
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert response.status_code == 200
+    assert json_resp['result'] == 'success'
+
+    mock_celery.assert_called_once_with(
+        ['1', 'notification_id', 'Firetext', '101'],
         queue='sms-callbacks',
     )
 
