@@ -309,8 +309,8 @@ def test_replay_created_notifications_create_letters_pdf_tasks_for_letters_not_r
 
     replay_created_notifications()
 
-    calls = [call([str(notification_1.id)], queue=QueueNames.LETTERS),
-             call([str(notification_2.id)], queue=QueueNames.LETTERS),
+    calls = [call([str(notification_1.id)], queue=QueueNames.CREATE_LETTERS_PDF),
+             call([str(notification_2.id)], queue=QueueNames.CREATE_LETTERS_PDF),
              ]
     mock_task.assert_has_calls(calls, any_order=True)
 
