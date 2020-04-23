@@ -599,8 +599,19 @@ def dao_get_notifications_by_recipient_or_reference(service_id, search_term, not
         except InvalidEmailError:
             normalised = search_term.lower()
 
-    else:
+    elif notification_type in {LETTER_TYPE, None}:
+        # For letters, we store the address without spaces, so we need
+        # to removes spaces from the search term to match. We also do
+        # this when a notification type isn’t provided (this will
+        # happen if a user doesn’t have permission to see the dashboard)
+        # because email addresses and phone numbers will never be stored
+        # with spaces either.
         normalised = ''.join(search_term.split()).lower()
+
+    else:
+        raise TypeError(
+            f'Notification type must be {EMAIL_TYPE}, {SMS_TYPE}, {LETTER_TYPE} or None'
+        )
 
     normalised = escape_special_characters(normalised)
     search_term = escape_special_characters(search_term)
