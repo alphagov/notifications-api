@@ -342,7 +342,6 @@ def save_letter(
 ):
     notification = encryption.decrypt(encrypted_notification)
 
-    # we store the recipient as just the first item of the person's address
     recipient = PostalAddress.from_personalisation(
         Columns(notification['personalisation'])
     ).normalised
