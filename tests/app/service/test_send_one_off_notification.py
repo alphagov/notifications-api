@@ -287,7 +287,7 @@ def test_send_one_off_notification_raises_if_message_too_long(persist_mock, noti
     post_data = {
         'template_id': str(template.id),
         'to': '07700 900 001',
-        'personalisation': {'name': '🚫' * 700},
+        'personalisation': {'name': '🚫' * 1000},
         'created_by': str(service.created_by_id)
     }
 
@@ -295,7 +295,7 @@ def test_send_one_off_notification_raises_if_message_too_long(persist_mock, noti
         send_one_off_notification(service.id, post_data)
 
     assert e.value.message == f'Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. ' \
-                              f'Your message is {729} characters'
+                              f'Your message is {1029} characters'
 
 
 def test_send_one_off_notification_fails_if_created_by_other_service(sample_template):
