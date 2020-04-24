@@ -277,7 +277,7 @@ def test_service_can_send_to_recipient_fails_when_mobile_number_is_not_on_team(s
     assert e.value.fields == []
 
 
-@pytest.mark.parametrize('char_count', [612, 0, 494, 200])
+@pytest.mark.parametrize('char_count', [612, 0, 494, 200, 918])
 @pytest.mark.parametrize('show_prefix', [True, False])
 @pytest.mark.parametrize('template_type', ['sms', 'email', 'letter'])
 def test_check_content_char_count_passes(notify_db_session, show_prefix, char_count, template_type):
@@ -288,7 +288,7 @@ def test_check_content_char_count_passes(notify_db_session, show_prefix, char_co
     assert check_content_char_count(template_with_content) is None
 
 
-@pytest.mark.parametrize('char_count', [613, 700, 6000])
+@pytest.mark.parametrize('char_count', [919, 6000])
 @pytest.mark.parametrize('show_prefix', [True, False])
 def test_check_content_char_count_fails(notify_db_session, show_prefix, char_count):
     with pytest.raises(BadRequestError) as e:
