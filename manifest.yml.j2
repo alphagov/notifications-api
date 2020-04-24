@@ -30,7 +30,7 @@
   'notify-delivery-worker-research': {},
   'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '3G'},
   'notify-delivery-worker-periodic': {},
-  'notify-delivery-worker-reporting': {},
+  'notify-delivery-worker-reporting': {'additional_env_vars': {'CELERYD_MAX_TASKS_PER_CHILD': 1}},
   'notify-delivery-worker-priority': {},
   'notify-delivery-worker-letters': {},
   'notify-delivery-worker-retry-tasks': {},
@@ -112,3 +112,7 @@ applications:
 
       TEMPLATE_PREVIEW_API_HOST: '{{ TEMPLATE_PREVIEW_API_HOST }}'
       TEMPLATE_PREVIEW_API_KEY: '{{ TEMPLATE_PREVIEW_API_KEY }}'
+
+      {% for key, value in app.get('additional_env_vars', {}).items() %}
+      {{key}}: '{{value}}'
+      {% endfor %}
