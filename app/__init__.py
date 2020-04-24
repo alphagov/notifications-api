@@ -4,7 +4,8 @@ import random
 import string
 import uuid
 
-from flask import _request_ctx_stack, request, g, jsonify, make_response
+from celery import current_task
+from flask import _request_ctx_stack, request, g, jsonify, make_response, current_app, has_request_context
 from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
@@ -367,12 +368,33 @@ def setup_sqlalchemy_events(app):
             # this will overwrite any previous checkout_at timestamp
             connection_record.info['checkout_at'] = time.monotonic()
 
-            # checkin runs after the request is already torn down so we'll need to capture request info earlier
-            connection_record.info['request_data'] = {
-                'method': request.method,
-                'host': request.host,
-                'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
-            }
+            # checkin runs after the request is already torn down so we'll need to capture request info earlier.
+            # checkout runs when the connection is first used, ie: when we first make a query, so within the request or
+            # task
+
+            # web requests
+            if has_request_context():
+                connection_record.info['request_data'] = {
+                    'method': request.method,
+                    'host': request.host,
+                    'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
+                }
+            # celery apps
+            elif current_task:
+                print(current_task)
+                connection_record.info['request_data'] = {
+                    'method': 'celery',
+                    'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
+                    'url_rule': current_task.name,  # task name
+                }
+            # anything else. migrations possibly.
+            else:
+                current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
+                connection_record.info['request_data'] = {
+                    'method': 'unknown',
+                    'host': 'unknown',
+                    'url_rule': 'unknown',
+                }
 
         @event.listens_for(db.engine, 'checkin')
         def checkin(dbapi_connection, connection_record):

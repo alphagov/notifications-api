@@ -20,8 +20,8 @@ def log_on_worker_shutdown(sender, signal, pid, exitcode, **kwargs):
 
 
 def make_task(app):
-    SQS_APPLY_ASYNC_DURATION = Histogram(
-        'sqs_apply_async_duration',
+    SQS_APPLY_ASYNC_DURATION_SECONDS = Histogram(
+        'sqs_apply_async_duration_seconds',
         'Time taken to put task on queue',
         ['task_name']
     )
@@ -59,7 +59,7 @@ def make_task(app):
             if has_request_context() and hasattr(request, 'request_id'):
                 kwargs['request_id'] = request.request_id
 
-            with SQS_APPLY_ASYNC_DURATION.labels(self.name).time():
+            with SQS_APPLY_ASYNC_DURATION_SECONDS.labels(self.name).time():
                 return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
 
     return NotifyTask
