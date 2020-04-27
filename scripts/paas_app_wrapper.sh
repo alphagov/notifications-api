@@ -29,7 +29,7 @@ case $NOTIFY_APP_NAME in
     -Q periodic-tasks 2> /dev/null
     ;;
   delivery-worker-reporting)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 -Ofair \
     -Q reporting-tasks 2> /dev/null
     ;;
   delivery-worker-priority)
