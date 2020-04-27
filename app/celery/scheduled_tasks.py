@@ -188,7 +188,7 @@ def replay_created_notifications():
 
         current_app.logger.info(msg)
         for letter in letters:
-            create_letters_pdf.apply_async([str(letter.id)], queue=QueueNames.LETTERS)
+            create_letters_pdf.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 @notify_celery.task(name='check-precompiled-letter-state')
