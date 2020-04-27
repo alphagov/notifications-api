@@ -368,9 +368,9 @@ def setup_sqlalchemy_events(app):
             # this will overwrite any previous checkout_at timestamp
             connection_record.info['checkout_at'] = time.monotonic()
 
-            # checkin runs after the request is already torn down so we'll need to capture request info earlier.
-            # checkout runs when the connection is first used, ie: when we first make a query, so within the request or
-            # task
+            # checkin runs after the request is already torn down, therefore we add the request_data onto the
+            # connection_record as otherwise it won't have that information when checkin actually runs.
+            # Note: this is not a problem for checkouts as the checkout always happens within a web request or task
 
             # web requests
             if has_request_context():
