@@ -2,13 +2,20 @@ import time
 
 from celery import Celery, Task
 from celery.signals import worker_process_shutdown
-from flask import current_app, g, request
+from flask import g, request
 from flask.ctx import has_request_context
 
 
 @worker_process_shutdown.connect
-def worker_process_shutdown(sender, signal, pid, exitcode, **kwargs):
-    current_app.logger.info('worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
+def log_on_worker_shutdown(sender, signal, pid, exitcode, **kwargs):
+    # imported here to avoid circular imports
+    from app import notify_celery
+
+    # if the worker has already restarted at least once, then we no longer have app context and current_app won't work
+    # to create a new one. Instead we have to create a new app context from the original flask app and use that instead.
+    with notify_celery._app.app_context():
+        # if the worker has restarted
+        notify_celery._app.logger.info('worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
 def make_task(app):
@@ -60,3 +67,4 @@ class NotifyCelery(Celery):
         )
 
         self.conf.update(app.config)
+        self._app = app

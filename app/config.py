@@ -174,6 +174,8 @@ class Config(object):
     CELERY_TIMEZONE = 'Europe/London'
     CELERY_ACCEPT_CONTENT = ['json']
     CELERY_TASK_SERIALIZER = 'json'
+    # on reporting worker, restart workers after each task is executed to help prevent memory leaks
+    CELERYD_MAX_TASKS_PER_CHILD = os.getenv('CELERYD_MAX_TASKS_PER_CHILD')
     CELERY_IMPORTS = (
         'app.celery.tasks',
         'app.celery.scheduled_tasks',
