@@ -1,3 +1,5 @@
+from notifications_utils.postal_address import PostalAddress
+
 from app import create_random_identifier
 from app.models import LETTER_TYPE
 from app.notifications.process_notifications import persist_notification
@@ -9,7 +11,7 @@ def create_letter_notification(letter_data, template, api_key, status, reply_to_
         template_version=template.version,
         template_postage=template.postage,
         # we only accept addresses_with_underscores from the API (from CSV we also accept dashes, spaces etc)
-        recipient=letter_data['personalisation']['address_line_1'],
+        recipient=PostalAddress.from_personalisation(letter_data['personalisation']).normalised,
         service=template.service,
         personalisation=letter_data['personalisation'],
         notification_type=LETTER_TYPE,

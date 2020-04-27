@@ -342,10 +342,9 @@ def save_letter(
 ):
     notification = encryption.decrypt(encrypted_notification)
 
-    # we store the recipient as just the first item of the person's address
     recipient = PostalAddress.from_personalisation(
         Columns(notification['personalisation'])
-    ).normalised_lines[0]
+    ).normalised
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])

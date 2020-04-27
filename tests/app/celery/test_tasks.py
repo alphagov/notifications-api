@@ -950,8 +950,8 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
     assert not retry.called
 
 
-@pytest.mark.parametrize('personalisation', (
-    {
+@pytest.mark.parametrize('personalisation, expected_to, expected_normalised', (
+    ({
         'addressline1': 'Foo',
         'addressline2': 'Bar',
         'addressline3': 'Baz',
@@ -959,17 +959,39 @@ def test_save_sms_does_not_send_duplicate_and_does_not_put_in_retry_queue(sample
         'addressline5': 'Wobble',
         'addressline6': 'Wubble',
         'postcode': 'SE1 2SA',
-    },
-    {
+    }, (
+        'Foo\n'
+        'Bar\n'
+        'Baz\n'
+        'Wibble\n'
+        'Wobble\n'
+        'Wubble\n'
+        'SE1 2SA'
+    ), (
+        'foobarbazwibblewobblewubblese12sa'
+    )),
+    ({
         # The address isn’t normalised when we store it in the
-        # `personalisation` column, but the first line is normalised for
-        # Storing in the `to` column
+        # `personalisation` column, but is normalised for storing in the
+        # `to` column
         'addressline2': '    Foo    ',
         'addressline4': 'Bar',
         'addressline6': 'se12sa',
-    },
+    }, (
+        'Foo\n'
+        'Bar\n'
+        'SE1 2SA'
+    ), (
+        'foobarse12sa'
+    )),
 ))
-def test_save_letter_saves_letter_to_database(mocker, notify_db_session, personalisation):
+def test_save_letter_saves_letter_to_database(
+    mocker,
+    notify_db_session,
+    personalisation,
+    expected_to,
+    expected_normalised,
+):
     service = create_service()
     contact_block = create_letter_contact(service=service, contact_block="Address contact", is_default=True)
     template = create_template(service=service, template_type=LETTER_TYPE, reply_to=contact_block.id)
@@ -996,7 +1018,8 @@ def test_save_letter_saves_letter_to_database(mocker, notify_db_session, persona
 
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
-    assert notification_db.to == 'Foo'
+    assert notification_db.to == expected_to
+    assert notification_db.normalised_to == expected_normalised
     assert notification_db.job_id == job.id
     assert notification_db.template_id == job.template.id
     assert notification_db.template_version == job.template.version
@@ -1097,7 +1120,15 @@ def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_s
 
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
-    assert notification_db.to == 'Foo'
+    assert notification_db.to == (
+        'Foo\n'
+        'Bar\n'
+        'Baz\n'
+        'Wibble\n'
+        'Wobble\n'
+        'Wubble\n'
+        'SE1 3WS'
+    )
     assert notification_db.job_id == job.id
     assert notification_db.template_id == job.template.id
     assert notification_db.template_version == job.template.version

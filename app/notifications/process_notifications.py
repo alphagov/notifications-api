@@ -109,6 +109,7 @@ def persist_notification(
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
         notification.postage = postage or template_postage
+        notification.normalised_to = ''.join(notification.to.split()).lower()
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
