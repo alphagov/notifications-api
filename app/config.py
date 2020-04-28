@@ -176,6 +176,9 @@ class Config(object):
     CELERY_TASK_SERIALIZER = 'json'
     # on reporting worker, restart workers after each task is executed to help prevent memory leaks
     CELERYD_MAX_TASKS_PER_CHILD = os.getenv('CELERYD_MAX_TASKS_PER_CHILD')
+    # we can set celeryd_prefetch_multiplier to be 1 for celery apps which handle only long running tasks
+    if os.getenv('CELERYD_PREFETCH_MULTIPLIER'):
+        CELERYD_PREFETCH_MULTIPLIER = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
     CELERY_IMPORTS = (
         'app.celery.tasks',
         'app.celery.scheduled_tasks',
