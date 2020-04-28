@@ -1057,6 +1057,24 @@ def test_dao_get_notifications_by_recipient(sample_template):
     assert notification1.id == results[0].id
 
 
+def test_dao_get_notifications_by_recipient_is_limited_to_50_results(sample_template):
+
+    for _ in range(100):
+        create_notification(
+            template=sample_template,
+            to_field='+447700900855',
+            normalised_to='447700900855',
+        )
+
+    results = dao_get_notifications_by_recipient_or_reference(
+        sample_template.service_id,
+        '447700900855',
+        notification_type='sms'
+    )
+
+    assert len(results) == 50
+
+
 @pytest.mark.parametrize("search_term",
                          ["JACK", "JACK@gmail.com", "jack@gmail.com"])
 def test_dao_get_notifications_by_recipient_is_not_case_sensitive(sample_email_template, search_term):

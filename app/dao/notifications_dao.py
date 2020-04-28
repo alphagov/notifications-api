@@ -633,7 +633,11 @@ def dao_get_notifications_by_recipient_or_reference(service_id, search_term, not
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
 
-    results = db.session.query(Notification).filter(*filters).order_by(desc(Notification.created_at)).all()
+    results = db.session.query(Notification)\
+        .filter(*filters)\
+        .order_by(desc(Notification.created_at))\
+        .limit(current_app.config['PAGE_SIZE'])\
+        .all()
     return results
 
 
