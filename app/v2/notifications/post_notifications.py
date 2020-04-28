@@ -36,6 +36,7 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
+    INTERNATIONAL_LETTERS,
     Notification)
 from app.notifications.process_letter_notifications import (
     create_letter_notification
@@ -345,7 +346,10 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    address = PostalAddress.from_personalisation(letter_data['personalisation'])
+    address = PostalAddress.from_personalisation(
+        letter_data['personalisation'],
+        allow_international_letters=api_key.service.has_permission(INTERNATIONAL_LETTERS),
+    )
 
     if not address.has_enough_lines:
         raise ValidationError(
@@ -357,7 +361,11 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
             message=f'Address must be no more than {PostalAddress.MAX_LINES} lines'
         )
 
-    if not address.postcode:
+    if not address.has_valid_last_line:
+        if address.allow_international_letters:
+            raise ValidationError(
+                message=f'Last line of address must be a real UK postcode or another country'
+            )
         raise ValidationError(
             message='Must be a real UK postcode'
         )

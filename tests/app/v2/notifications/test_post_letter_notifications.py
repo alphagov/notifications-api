@@ -18,7 +18,8 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    SMS_TYPE
+    SMS_TYPE,
+    INTERNATIONAL_LETTERS,
 )
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
@@ -144,8 +145,49 @@ def test_post_letter_notification_formats_postcode(
     assert notification.personalisation["postcode"] == '  Sw1  1aa   '
 
 
-def test_post_letter_notification_throws_error_for_bad_postcode(
+def test_post_letter_notification_stores_country(
     client, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
+    template = create_template(service, template_type="letter")
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {
+            'address_line_1': 'Kaiser Wilhelm II',
+            'address_line_2': 'Kronprinzenpalais',
+            'address_line_5': '   deutschland   ',
+        }
+    }
+
+    resp_json = letter_request(client, data, service_id=service.id)
+
+    assert validate(resp_json, post_letter_response) == resp_json
+    notification = Notification.query.one()
+    # In the personalisation we store what the client gives us
+    assert notification.personalisation["address_line_1"] == 'Kaiser Wilhelm II'
+    assert notification.personalisation["address_line_2"] == 'Kronprinzenpalais'
+    assert notification.personalisation["address_line_5"] == '   deutschland   '
+    # In the to field we store the whole address with the canonical country
+    assert notification.to == (
+        'Kaiser Wilhelm II\n'
+        'Kronprinzenpalais\n'
+        'Germany'
+    )
+
+
+@pytest.mark.parametrize('permissions, expected_error', (
+    (
+        [LETTER_TYPE],
+        'Must be a real UK postcode',
+    ),
+    (
+        [LETTER_TYPE, INTERNATIONAL_LETTERS],
+        'Last line of address must be a real UK postcode or another country',
+    ),
+))
+def test_post_letter_notification_throws_error_for_bad_postcode(
+    client, notify_db_session, mocker, permissions, expected_error
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
