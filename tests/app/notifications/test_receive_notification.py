@@ -210,7 +210,7 @@ def test_unescape_string(raw, expected):
 
 @pytest.mark.parametrize('provider_date, expected_output', [
     ('2017-01-21+11%3A56%3A11', datetime(2017, 1, 21, 11, 56, 11)),
-    ('2017-05-21+11%3A56%3A11', datetime(2017, 5, 21, 10, 56, 11))
+    ('2017-05-21+11%3A56%3A11', datetime(2017, 5, 21, 11, 56, 11))
 ])
 def test_format_mmg_datetime(provider_date, expected_output):
     assert format_mmg_datetime(provider_date) == expected_output
