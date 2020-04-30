@@ -1,15 +1,10 @@
-import math
 from datetime import datetime, timedelta
 from hashlib import sha512
 from base64 import urlsafe_b64encode
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
-from requests import (
-    post as requests_post,
-    RequestException
-)
-from celery.exceptions import MaxRetriesExceededError
+
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.timezones import convert_utc_to_bst
@@ -31,7 +26,6 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
     get_billable_units_for_letter_page_count,
     get_reference_from_filename,
-    upload_letter_pdf,
     ScanErrorType,
     move_failed_pdf,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
@@ -57,62 +51,63 @@ from app.cronitor import cronitor
 def create_letters_pdf(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
-        pdf_data, billable_units = get_letters_pdf(
-            notification.template,
-            contact_block=notification.reply_to_text,
-            filename=notification.service.letter_branding and notification.service.letter_branding.filename,
-            values=notification.personalisation
+
+        letter_filename = get_letter_pdf_filename(
+            reference=notification.reference,
+            crown=notification.service.crown,
+            sending_date=notification.created_at,
+            dont_use_sending_date=notification.key_type == KEY_TYPE_TEST,
+            postage=notification.postage
         )
+        letter_data = {
+            'letter_contact_block': notification.reply_to_text,
+            'template': {
+                "subject": notification.template.subject,
+                "content": notification.template.content,
+                "template_type": notification.template.template_type
+            },
+            'values': notification.personalisation,
+            'logo_filename': notification.service.letter_branding and notification.service.letter_branding.filename,
+            'letter_filename': letter_filename,
+            "notification_id": str(notification_id),
+            'key_type': notification.key_type
+        }
 
-        upload_letter_pdf(notification, pdf_data)
+        encrypted_data = encryption.encrypt(letter_data)
 
-        if notification.key_type != KEY_TYPE_TEST:
-            notification.billable_units = billable_units
-            dao_update_notification(notification)
-
-        current_app.logger.info(
-            'Letter notification reference {reference}: billable units set to {billable_units}'.format(
-                reference=str(notification.reference), billable_units=billable_units))
-
-    except (RequestException, BotoClientError):
+        notify_celery.send_task(
+            name=TaskNames.CREATE_LETTER_PDF,
+            args=(encrypted_data,),
+            queue=QueueNames.SANITISE_LETTERS
+        )
+    except Exception:
         try:
             current_app.logger.exception(
-                "Letters PDF notification creation for id: {} failed".format(notification_id)
+                "RETRY: calling create-letter-pdf task for notification {} failed".format(notification_id)
             )
             self.retry(queue=QueueNames.RETRY)
-        except MaxRetriesExceededError:
-            current_app.logger.error(
-                "RETRY FAILED: task create_letters_pdf failed for notification {}".format(notification_id),
-            )
-            update_notification_status_by_id(notification_id, 'technical-failure')
+        except self.MaxRetriesExceededError:
+            message = "RETRY FAILED: Max retries reached. " \
+                      "The task create-letter-pdf failed for notification {}. " \
+                      "Notification has been updated to technical-failure".format(notification_id)
+            update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise NotificationTechnicalFailureException(message)
 
 
-def get_letters_pdf(template, contact_block, filename, values):
-    template_for_letter_print = {
-        "subject": template.subject,
-        "content": template.content,
-        "template_type": template.template_type
-    }
+@notify_celery.task(bind=True, name="update-billable-units-for-letter", max_retries=15, default_retry_delay=300)
+@statsd(namespace="tasks")
+def update_billable_units_for_letter(self, notification_id, page_count):
+    notification = get_notification_by_id(notification_id, _raise=True)
 
-    data = {
-        'letter_contact_block': contact_block,
-        'template': template_for_letter_print,
-        'values': values,
-        'filename': filename,
-    }
-    resp = requests_post(
-        '{}/print.pdf'.format(
-            current_app.config['TEMPLATE_PREVIEW_API_HOST']
-        ),
-        json=data,
-        headers={'Authorization': 'Token {}'.format(current_app.config['TEMPLATE_PREVIEW_API_KEY'])}
-    )
-    resp.raise_for_status()
+    billable_units = get_billable_units_for_letter_page_count(page_count)
 
-    pages_per_sheet = 2
-    billable_units = math.ceil(int(resp.headers.get("X-pdf-page-count", 0)) / pages_per_sheet)
+    if notification.key_type != KEY_TYPE_TEST:
+        notification.billable_units = billable_units
+        dao_update_notification(notification)
 
-    return resp.content, billable_units
+    current_app.logger.info(
+        'Letter notification reference {reference}: billable units set to {billable_units}'.format(
+            reference=str(notification.reference), billable_units=billable_units))
 
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')
