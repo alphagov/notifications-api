@@ -17,6 +17,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
+    NOTIFICATION_PENDING,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_TECHNICAL_FAILURE,
@@ -462,7 +463,7 @@ def fetch_monthly_notification_statuses_per_service(start_date, end_date):
         FactNotificationStatus.notification_type,
         func.sum(case(
             [
-                (FactNotificationStatus.notification_status == NOTIFICATION_SENDING,
+                (FactNotificationStatus.notification_status.in_([NOTIFICATION_SENDING, NOTIFICATION_PENDING]),
                  FactNotificationStatus.notification_count)
             ],
             else_=0)).label('count_sending'),
