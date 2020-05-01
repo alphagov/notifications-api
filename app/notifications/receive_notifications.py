@@ -3,7 +3,6 @@ from urllib.parse import unquote
 import iso8601
 from flask import jsonify, Blueprint, current_app, request, abort
 from notifications_utils.recipients import try_validate_and_format_phone_number
-from notifications_utils.timezones import convert_bst_to_utc
 
 from app import statsd_client
 from app.celery import tasks
@@ -114,11 +113,11 @@ def unescape_string(string):
 def format_mmg_datetime(date):
     """
     We expect datetimes in format 2017-05-21+11%3A56%3A11 - ie, spaces replaced with pluses, and URI encoded
-    (the same as UTC)
+    and in UTC
     """
     orig_date = format_mmg_message(date)
     parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
-    return convert_bst_to_utc(parsed_datetime)
+    return parsed_datetime
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):
