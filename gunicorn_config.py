@@ -12,6 +12,7 @@ errorlog = "/home/vcap/logs/gunicorn_error.log"
 bind = "0.0.0.0:{}".format(os.getenv("PORT"))
 statsd_host = "{}:8125".format(os.getenv("STATSD_HOST"))
 gunicorn.SERVER_SOFTWARE = 'None'
+preload_app = True
 
 
 def on_starting(server):
