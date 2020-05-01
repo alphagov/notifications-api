@@ -40,6 +40,7 @@ from app.letters.utils import (
     get_file_names_from_error_bucket,
 )
 from app.models import (
+    INTERNATIONAL_LETTERS,
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -227,6 +228,9 @@ def sanitise_letter(self, filename):
             kwargs={
                 'notification_id': str(notification.id),
                 'filename': filename,
+                'allow_international_letters': notification.service.has_permission(
+                    INTERNATIONAL_LETTERS
+                ),
             },
             queue=QueueNames.SANITISE_LETTERS,
         )

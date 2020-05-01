@@ -31,8 +31,10 @@ from app.celery.letters_pdf_tasks import (
 from app.config import QueueNames, TaskNames
 from app.letters.utils import ScanErrorType
 from app.models import (
+    INTERNATIONAL_LETTERS,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
+    LETTER_TYPE,
     Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -42,7 +44,7 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 
-from tests.app.db import create_notification, create_letter_branding
+from tests.app.db import create_notification, create_letter_branding, create_service
 
 from tests.conftest import set_config_values
 
@@ -546,16 +548,32 @@ def test_move_invalid_letter_and_update_status_logs_error_and_sets_tech_failure_
     )
 
 
-def test_sanitise_letter_calls_template_preview_sanitise_task(mocker, sample_letter_notification):
+@pytest.mark.parametrize('permissions, expected_international_letters_allowed', (
+    ([LETTER_TYPE], False),
+    ([LETTER_TYPE, INTERNATIONAL_LETTERS], True),
+))
+def test_sanitise_letter_calls_template_preview_sanitise_task(
+    mocker,
+    sample_letter_notification,
+    permissions,
+    expected_international_letters_allowed,
+):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    sample_letter_notification.service = create_service(
+        service_permissions=permissions
+    )
     sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
 
     sanitise_letter(filename)
 
     mock_celery.assert_called_once_with(
         name=TaskNames.SANITISE_LETTER,
-        kwargs={'notification_id': str(sample_letter_notification.id), 'filename': filename},
+        kwargs={
+            'notification_id': str(sample_letter_notification.id),
+            'filename': filename,
+            'allow_international_letters': expected_international_letters_allowed,
+        },
         queue=QueueNames.SANITISE_LETTERS,
     )
 
