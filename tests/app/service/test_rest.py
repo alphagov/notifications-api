@@ -2103,6 +2103,24 @@ def test_search_for_notification_by_to_field_return_multiple_matches(client, sam
     assert str(notification4.id) not in notification_ids
 
 
+def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(
+    client, sample_template
+):
+    for i in range(51):
+        create_notification(sample_template, to_field='+447700900855', normalised_to='447700900855')
+
+    response = client.get(
+        '/service/{}/notifications?to={}&template_type={}'.format(sample_template.service_id, '+447700900855', 'sms'),
+        headers=[create_authorization_header()]
+    )
+    assert response.status_code == 200
+    response_json = json.loads(response.get_data(as_text=True))
+
+    assert len(response_json['notifications']) == 50
+    assert 'prev' not in response_json['links']
+    assert 'page=2' in response_json['links']['next']
+
+
 def test_search_for_notification_by_to_field_for_letter(
     client,
     notify_db,

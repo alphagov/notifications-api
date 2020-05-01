@@ -1053,8 +1053,8 @@ def test_dao_get_notifications_by_recipient(sample_template):
         notification_type='sms'
     )
 
-    assert len(results) == 1
-    assert notification1.id == results[0].id
+    assert len(results.items) == 1
+    assert notification1.id == results.items[0].id
 
 
 def test_dao_get_notifications_by_recipient_is_limited_to_50_results(sample_template):
@@ -1069,10 +1069,12 @@ def test_dao_get_notifications_by_recipient_is_limited_to_50_results(sample_temp
     results = dao_get_notifications_by_recipient_or_reference(
         sample_template.service_id,
         '447700900855',
-        notification_type='sms'
+        notification_type='sms',
+        page_size=50,
     )
 
-    assert len(results) == 50
+    assert len(results.items) == 50
+    assert results.has_next is True
 
 
 @pytest.mark.parametrize("search_term",
@@ -1084,9 +1086,9 @@ def test_dao_get_notifications_by_recipient_is_not_case_sensitive(sample_email_t
     results = dao_get_notifications_by_recipient_or_reference(
         notification.service_id, search_term, notification_type='email'
     )
-    notification_ids = [notification.id for notification in results]
+    notification_ids = [notification.id for notification in results.items]
 
-    assert len(results) == 1
+    assert len(results.items) == 1
     assert notification.id in notification_ids
 
 
@@ -1100,9 +1102,9 @@ def test_dao_get_notifications_by_recipient_matches_partial_emails(sample_email_
     results = dao_get_notifications_by_recipient_or_reference(
         notification_1.service_id, 'ack', notification_type='email'
     )
-    notification_ids = [notification.id for notification in results]
+    notification_ids = [notification.id for notification in results.items]
 
-    assert len(results) == 1
+    assert len(results.items) == 1
     assert notification_1.id in notification_ids
     assert notification_2.id not in notification_ids
 
@@ -1146,7 +1148,7 @@ def test_dao_get_notifications_by_recipient_escapes(
         sample_email_template.service_id,
         search_term,
         notification_type='email',
-    )) == expected_result_count
+    ).items) == expected_result_count
 
 
 @pytest.mark.parametrize('search_term, expected_result_count', [
@@ -1189,7 +1191,7 @@ def test_dao_get_notifications_by_reference_escapes_special_character(
         sample_email_template.service_id,
         search_term,
         notification_type='email',
-    )) == expected_result_count
+    ).items) == expected_result_count
 
 
 @pytest.mark.parametrize('search_term', [
@@ -1222,9 +1224,9 @@ def test_dao_get_notifications_by_recipient_matches_partial_phone_numbers(
     results = dao_get_notifications_by_recipient_or_reference(
         notification_1.service_id, search_term, notification_type='sms'
     )
-    notification_ids = [notification.id for notification in results]
+    notification_ids = [notification.id for notification in results.items]
 
-    assert len(results) == 1
+    assert len(results.items) == 1
     assert notification_1.id in notification_ids
     assert notification_2.id not in notification_ids
 
@@ -1240,7 +1242,7 @@ def test_dao_get_notifications_by_recipient_accepts_invalid_phone_numbers_and_em
         template=sample_template, to_field='test@example.com', normalised_to='test@example.com'
     )
     results = dao_get_notifications_by_recipient_or_reference(notification.service_id, to, notification_type='email')
-    assert len(results) == 0
+    assert len(results.items) == 0
 
 
 def test_dao_get_notifications_by_recipient_ignores_spaces(sample_template):
@@ -1260,9 +1262,9 @@ def test_dao_get_notifications_by_recipient_ignores_spaces(sample_template):
     results = dao_get_notifications_by_recipient_or_reference(
         notification1.service_id, '+447700900855', notification_type='sms'
     )
-    notification_ids = [notification.id for notification in results]
+    notification_ids = [notification.id for notification in results.items]
 
-    assert len(results) == 3
+    assert len(results.items) == 3
     assert notification1.id in notification_ids
     assert notification2.id in notification_ids
     assert notification3.id in notification_ids
@@ -1290,19 +1292,19 @@ def test_dao_get_notifications_by_recipient_searches_across_notification_types(
     results = dao_get_notifications_by_recipient_or_reference(
         service.id, phone_search, notification_type='sms'
     )
-    assert len(results) == 1
-    assert results[0].id == sms.id
+    assert len(results.items) == 1
+    assert results.items[0].id == sms.id
 
     results = dao_get_notifications_by_recipient_or_reference(
         service.id, email_search, notification_type='email'
     )
-    assert len(results) == 1
-    assert results[0].id == email.id
+    assert len(results.items) == 1
+    assert results.items[0].id == email.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77')
-    assert len(results) == 2
-    assert results[0].id == email.id
-    assert results[1].id == sms.id
+    assert len(results.items) == 2
+    assert results.items[0].id == email.id
+    assert results.items[1].id == sms.id
 
 
 def test_dao_get_notifications_by_reference(
@@ -1332,62 +1334,62 @@ def test_dao_get_notifications_by_reference(
     )
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77')
-    assert len(results) == 3
-    assert results[0].id == letter.id
-    assert results[1].id == email.id
-    assert results[2].id == sms.id
+    assert len(results.items) == 3
+    assert results.items[0].id == letter.id
+    assert results.items[1].id == email.id
+    assert results.items[2].id == sms.id
 
     # If notification_type isn’t specified then we can’t normalise the
     # phone number to 4477… so this query will only find the email sent
     # to 077@example.com
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077')
-    assert len(results) == 1
-    assert results[0].id == email.id
+    assert len(results.items) == 1
+    assert results.items[0].id == email.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077@')
-    assert len(results) == 1
-    assert results[0].id == email.id
+    assert len(results.items) == 1
+    assert results.items[0].id == email.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077', notification_type='sms')
-    assert len(results) == 1
-    assert results[0].id == sms.id
+    assert len(results.items) == 1
+    assert results.items[0].id == sms.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='sms')
-    assert len(results) == 1
-    assert results[0].id == sms.id
+    assert len(results.items) == 1
+    assert results.items[0].id == sms.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'Aa', notification_type='sms')
-    assert len(results) == 1
-    assert results[0].id == sms.id
+    assert len(results.items) == 1
+    assert results.items[0].id == sms.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'bB', notification_type='sms')
-    assert len(results) == 0
+    assert len(results.items) == 0
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='email')
-    assert len(results) == 1
-    assert results[0].id == email.id
+    assert len(results.items) == 1
+    assert results.items[0].id == email.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'Bb', notification_type='email')
-    assert len(results) == 1
-    assert results[0].id == email.id
+    assert len(results.items) == 1
+    assert results.items[0].id == email.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'aA', notification_type='email')
-    assert len(results) == 0
+    assert len(results.items) == 0
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'aA', notification_type='letter')
-    assert len(results) == 0
+    assert len(results.items) == 0
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '123')
-    assert len(results) == 1
-    assert results[0].id == letter.id
+    assert len(results.items) == 1
+    assert results.items[0].id == letter.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, 'xX 1x1  Xx')
-    assert len(results) == 1
-    assert results[0].id == letter.id
+    assert len(results.items) == 1
+    assert results.items[0].id == letter.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='letter')
-    assert len(results) == 1
-    assert results[0].id == letter.id
+    assert len(results.items) == 1
+    assert results.items[0].id == letter.id
 
 
 def test_dao_created_scheduled_notification(sample_notification):
@@ -1419,8 +1421,8 @@ def test_dao_get_notifications_by_to_field_filters_status(sample_template):
         notification_type='sms',
     )
 
-    assert len(notifications) == 1
-    assert notification.id == notifications[0].id
+    assert len(notifications.items) == 1
+    assert notification.id == notifications.items[0].id
 
 
 def test_dao_get_notifications_by_to_field_filters_multiple_statuses(sample_template):
@@ -1436,9 +1438,9 @@ def test_dao_get_notifications_by_to_field_filters_multiple_statuses(sample_temp
     notifications = dao_get_notifications_by_recipient_or_reference(
         notification1.service_id, "+447700900855", statuses=['delivered', 'sending'], notification_type='sms'
     )
-    notification_ids = [notification.id for notification in notifications]
+    notification_ids = [notification.id for notification in notifications.items]
 
-    assert len(notifications) == 2
+    assert len(notifications.items) == 2
     assert notification1.id in notification_ids
     assert notification2.id in notification_ids
 
@@ -1456,9 +1458,9 @@ def test_dao_get_notifications_by_to_field_returns_all_if_no_status_filter(sampl
     notifications = dao_get_notifications_by_recipient_or_reference(
         notification1.service_id, "+447700900855", notification_type='sms'
     )
-    notification_ids = [notification.id for notification in notifications]
+    notification_ids = [notification.id for notification in notifications.items]
 
-    assert len(notifications) == 2
+    assert len(notifications.items) == 2
     assert notification1.id in notification_ids
     assert notification2.id in notification_ids
 
@@ -1479,9 +1481,9 @@ def test_dao_get_notifications_by_to_field_orders_by_created_at_desc(sample_temp
         sample_template.service_id, '+447700900855', notification_type='sms'
     )
 
-    assert len(notifications) == 2
-    assert notifications[0].id == notification.id
-    assert notifications[1].id == notification_a_minute_ago.id
+    assert len(notifications.items) == 2
+    assert notifications.items[0].id == notification.id
+    assert notifications.items[1].id == notification_a_minute_ago.id
 
 
 def test_dao_get_last_notification_added_for_job_id_valid_job_id(sample_template):
