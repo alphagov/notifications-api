@@ -190,7 +190,8 @@ def verify_user_code(user_id):
         # only relevant from sms
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code not found", status_code=404)
-    if datetime.utcnow() > code.expiry_datetime or code.code_used:
+    # TODO: Fix email flow so that clicking link doesn't expire emails
+    if datetime.utcnow() > code.expiry_datetime or (code.code_used and data['code_type'] != 'email'):
         # sms and email
         increment_failed_login_count(user_to_verify)
         raise InvalidRequest("Code has expired", status_code=400)
