@@ -74,25 +74,29 @@ def test_user_verify_code_bad_code_and_increments_failed_login_count(client,
     assert User.query.get(sample_sms_code.user.id).failed_login_count == 1
 
 
-def test_user_verify_code_expired_code_and_increments_failed_login_count(
-        client,
-        sample_sms_code):
-    assert not VerifyCode.query.first().code_used
-    sample_sms_code.expiry_datetime = (
-        datetime.utcnow() - timedelta(hours=1))
-    db.session.add(sample_sms_code)
-    db.session.commit()
-    data = json.dumps({
-        'code_type': sample_sms_code.code_type,
-        'code': sample_sms_code.txt_code})
-    auth_header = create_authorization_header()
-    resp = client.post(
-        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
-        data=data,
-        headers=[('Content-Type', 'application/json'), auth_header])
-    assert resp.status_code == 400
-    assert not VerifyCode.query.first().code_used
-    assert User.query.get(sample_sms_code.user.id).failed_login_count == 1
+@freeze_time('2020-04-01 12:00')
+@pytest.mark.parametrize('code_type', [EMAIL_TYPE, SMS_TYPE])
+def test_user_verify_code_expired_code_and_increments_failed_login_count(code_type, admin_request, sample_user):
+    magic_code = str(uuid.uuid4())
+    verify_code = create_user_code(sample_user, magic_code, code_type)
+    verify_code.expiry_datetime = datetime(2020, 4, 1, 11, 59)
+
+    data = {
+        'code_type': code_type,
+        'code': magic_code
+    }
+
+    admin_request.post(
+        'user.verify_user_code',
+        user_id=sample_user.id,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert verify_code.code_used is False
+    assert sample_user.logged_in_at is None
+    assert sample_user.current_session_id is None
+    assert sample_user.failed_login_count == 1
 
 
 @freeze_time("2016-01-01 10:00:00.000000")
@@ -448,7 +452,13 @@ def test_user_verify_email_code(admin_request, sample_user, auth_type):
     assert sample_user.current_session_id is not None
 
 
-@pytest.mark.parametrize('code_type', [EMAIL_TYPE, SMS_TYPE])
+@pytest.mark.parametrize('code_type', [
+    pytest.param(
+        EMAIL_TYPE,
+        marks=pytest.mark.xfail(raises=AssertionError, reason='Email code expiry disabled'),
+    ),
+    SMS_TYPE
+])
 @freeze_time('2016-01-01T12:00:00')
 def test_user_verify_email_code_fails_if_code_already_used(admin_request, sample_user, code_type):
     magic_code = str(uuid.uuid4())
