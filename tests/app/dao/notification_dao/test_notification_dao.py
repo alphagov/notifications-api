@@ -1319,13 +1319,12 @@ def test_dao_get_notifications_by_reference(
     assert results[1].id == email.id
     assert results[2].id == sms.id
 
-    # If notification_type isn’t specified then we can’t normalise the phone number
-    # to 4477… but this query will still find the 077… variant in the `to` field,
-    # as well as the email
+    # If notification_type isn’t specified then we can’t normalise the
+    # phone number to 4477… so this query will only find the email sent
+    # to 077@example.com
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077')
-    assert len(results) == 2
+    assert len(results) == 1
     assert results[0].id == email.id
-    assert results[1].id == sms.id
 
     results = dao_get_notifications_by_recipient_or_reference(service.id, '077@')
     assert len(results) == 1

@@ -622,7 +622,6 @@ def dao_get_notifications_by_recipient_or_reference(service_id, search_term, not
     filters = [
         Notification.service_id == service_id,
         or_(
-            Notification.to.ilike("%{}%".format(search_term)),
             Notification.normalised_to.like("%{}%".format(normalised)),
             Notification.client_reference.ilike("%{}%".format(search_term)),
         ),
