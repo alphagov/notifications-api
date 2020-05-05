@@ -28,7 +28,7 @@ notifications-python-client==5.5.1
 # PaaS
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@37.3.0#egg=notifications-utils==37.3.0
+git+https://github.com/alphagov/notifications-utils.git@39.0.0#egg=notifications-utils==39.0.0
 
 gds-metrics==0.2.0
 
@@ -37,17 +37,17 @@ alembic==1.4.2
 amqp==1.4.9
 anyjson==0.3.3
 attrs==19.3.0
-awscli==1.18.45
+awscli==1.18.48
 bcrypt==3.1.7
 billiard==3.3.0.23
 bleach==3.1.4
 blinker==1.4
 boto==2.49.0
 boto3==1.10.38
-botocore==1.15.45
+botocore==1.15.48
 certifi==2020.4.5.1
 chardet==3.0.4
-click==7.1.1
+click==7.1.2
 colorama==0.4.3
 dnspython==1.16.0
 docutils==0.15.2
@@ -74,7 +74,7 @@ pyrsistent==0.16.0
 python-dateutil==2.8.1
 python-editor==1.0.4
 python-json-logger==0.1.11
-pytz==2019.3
+pytz==2020.1
 PyYAML==5.3.1
 redis==3.4.1
 requests==2.23.0

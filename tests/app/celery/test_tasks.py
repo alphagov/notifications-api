@@ -340,7 +340,7 @@ def test_should_process_letter_job(sample_letter_job, mocker):
 
     row_call = process_row_mock.mock_calls[0][1]
     assert row_call[0].index == 0
-    assert row_call[0].recipient == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST']
+    assert row_call[0].recipient == ['A1', 'A2', 'A3', 'A4', None, None, 'A_POST', None]
     assert row_call[0].personalisation == {
         'addressline1': 'A1',
         'addressline2': 'A2',
@@ -407,6 +407,7 @@ def test_process_row_sends_letter_task(template_type, research_mode, expected_fu
             recipient_column_headers=['to'],
             placeholders={'foo'},
             template=template,
+            allow_international_letters=True,
         ),
         template,
         job,
@@ -449,6 +450,7 @@ def test_process_row_when_sender_id_is_provided(mocker, fake_uuid):
             recipient_column_headers=['to'],
             placeholders={'foo'},
             template=template,
+            allow_international_letters=True,
         ),
         template,
         job,
@@ -1418,6 +1420,7 @@ def test_get_letter_template_instance(mocker, sample_job):
         'address line 5',
         'address line 6',
         'postcode',
+        'address line 7',
     ]
 
 

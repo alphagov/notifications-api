@@ -126,9 +126,7 @@ def get_recipient_csv_and_template_and_sender_id(job):
     template = db_template._as_utils_template()
 
     contents, meta_data = s3.get_job_and_metadata_from_s3(service_id=str(job.service_id), job_id=str(job.id))
-    recipient_csv = RecipientCSV(file_data=contents,
-                                 template_type=template.template_type,
-                                 placeholders=template.placeholders)
+    recipient_csv = RecipientCSV(contents, template=template)
 
     return recipient_csv, template, meta_data.get("sender_id")
 
