@@ -453,10 +453,7 @@ def test_user_verify_email_code(admin_request, sample_user, auth_type):
 
 
 @pytest.mark.parametrize('code_type', [
-    pytest.param(
-        EMAIL_TYPE,
-        marks=pytest.mark.xfail(raises=AssertionError, reason='Email code expiry disabled'),
-    ),
+    EMAIL_TYPE,
     SMS_TYPE
 ])
 @freeze_time('2016-01-01T12:00:00')
