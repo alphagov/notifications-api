@@ -56,7 +56,7 @@ def test_should_have_decorated_tasks_functions():
     assert process_sanitised_letter.__wrapped__.__name__ == 'process_sanitised_letter'
 
 
-def test_create_letters_pdf(mocker, sample_letter_notification):
+def test_create_letters_pdf_happy_path(mocker, sample_letter_notification):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
     create_letters_pdf(sample_letter_notification.id)
@@ -148,10 +148,31 @@ def test_create_letters_gets_the_right_logo_when_service_has_letter_branding_log
     )
 
 
-def test_update_billable_units_for_letter(mocker, sample_letter_notification):
+@pytest.mark.parametrize('number_of_pages, expected_billable_units', [(2, 1), (3, 2), (10, 5)])
+def test_update_billable_units_for_letter(mocker, sample_letter_notification, number_of_pages, expected_billable_units):
+    sample_letter_notification.billable_units = 0
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
+
+    update_billable_units_for_letter(sample_letter_notification.id, number_of_pages)
+
+    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
+    assert notification.billable_units == expected_billable_units
+    mock_logger.assert_called_once_with(
+        f"Letter notification id: {sample_letter_notification.id} reference {sample_letter_notification.reference}:"
+        f" billable units set to {expected_billable_units}"
+    )
+
+
+def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mocker, sample_letter_notification):
+    sample_letter_notification.billable_units = 0
+    sample_letter_notification.key_type = KEY_TYPE_TEST
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
+
     update_billable_units_for_letter(sample_letter_notification.id, 2)
-    noti = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
-    assert noti.billable_units == 1
+
+    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
+    assert notification.billable_units == 0
+    mock_logger.assert_not_called()
 
 
 @freeze_time('2020-02-17 18:00:00')

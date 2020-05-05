@@ -76,7 +76,7 @@ def create_letters_pdf(self, notification_id):
         encrypted_data = encryption.encrypt(letter_data)
 
         notify_celery.send_task(
-            name=TaskNames.CREATE_LETTER_PDF,
+            name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER,
             args=(encrypted_data,),
             queue=QueueNames.SANITISE_LETTERS
         )
@@ -105,9 +105,10 @@ def update_billable_units_for_letter(self, notification_id, page_count):
         notification.billable_units = billable_units
         dao_update_notification(notification)
 
-    current_app.logger.info(
-        'Letter notification reference {reference}: billable units set to {billable_units}'.format(
-            reference=str(notification.reference), billable_units=billable_units))
+        current_app.logger.info(
+            f"Letter notification id: {notification_id} reference {notification.reference}: "
+            f"billable units set to {billable_units}"
+        )
 
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')
