@@ -1,5 +1,3 @@
-import base64
-
 import requests
 
 from flask import current_app
@@ -26,15 +24,16 @@ class DocumentDownloadClient:
     def get_upload_url(self, service_id):
         return "{}/services/{}/documents".format(self.api_host, service_id)
 
-    def upload_document(self, service_id, file_contents):
+    def upload_document(self, service_id, file_contents, is_csv=None):
         try:
             response = requests.post(
                 self.get_upload_url(service_id),
                 headers={
                     'Authorization': "Bearer {}".format(self.auth_token),
                 },
-                files={
-                    'document': base64.b64decode(file_contents)
+                json={
+                    'document': file_contents,
+                    'is_csv': is_csv or False,
                 }
             )
 

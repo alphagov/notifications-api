@@ -775,7 +775,16 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(client, s
     assert 'BadRequestError' in resp_json['errors'][0]['error']
 
 
-def test_post_notification_with_document_upload(client, notify_db_session, mocker):
+@pytest.mark.parametrize(
+    'csv_param',
+    (
+        {'is_csv': None},
+        {'is_csv': False},
+        {'is_csv': True},
+        {},
+    )
+)
+def test_post_notification_with_document_upload(client, notify_db_session, mocker, csv_param):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = 'contact.me@gov.uk'
     template = create_template(
@@ -786,14 +795,14 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
-    document_download_mock.upload_document.side_effect = lambda service_id, content: f'{content}-link'
+    document_download_mock.upload_document.side_effect = lambda service_id, content, is_csv: f'{content}-link'
 
     data = {
         "email_address": service.users[0].email_address,
         "template_id": template.id,
         "personalisation": {
-            "first_link": {"file": "abababab"},
-            "second_link": {"file": "cdcdcdcd"}
+            "first_link": {"file": "abababab", **csv_param},
+            "second_link": {"file": "cdcdcdcd", **csv_param}
         }
     }
 
@@ -808,8 +817,8 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
     assert validate(resp_json, post_email_response) == resp_json
 
     assert document_download_mock.upload_document.call_args_list == [
-        call(service.id, 'abababab'),
-        call(service.id, 'cdcdcdcd')
+        call(service.id, 'abababab', csv_param.get('is_csv')),
+        call(service.id, 'cdcdcdcd', csv_param.get('is_csv'))
     ]
 
     notification = Notification.query.one()
