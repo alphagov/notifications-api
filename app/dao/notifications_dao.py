@@ -586,7 +586,14 @@ def dao_update_notifications_by_reference(references, update_dict):
 
 
 @statsd(namespace="dao")
-def dao_get_notifications_by_recipient_or_reference(service_id, search_term, notification_type=None, statuses=None):
+def dao_get_notifications_by_recipient_or_reference(
+    service_id,
+    search_term,
+    notification_type=None,
+    statuses=None,
+    page=1,
+    page_size=None,
+):
 
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
@@ -633,7 +640,10 @@ def dao_get_notifications_by_recipient_or_reference(service_id, search_term, not
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
 
-    results = db.session.query(Notification).filter(*filters).order_by(desc(Notification.created_at)).all()
+    results = db.session.query(Notification)\
+        .filter(*filters)\
+        .order_by(desc(Notification.created_at))\
+        .paginate(page=page, per_page=page_size)
     return results
 
 

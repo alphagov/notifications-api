@@ -475,10 +475,19 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
         service_id=service_id,
         search_term=search_term,
         statuses=statuses,
-        notification_type=notification_type
+        notification_type=notification_type,
+        page=1,
+        page_size=current_app.config['PAGE_SIZE'],
     )
     return jsonify(
-        notifications=notification_with_template_schema.dump(results, many=True).data
+        notifications=notification_with_template_schema.dump(results.items, many=True).data,
+        links=pagination_links(
+            results,
+            '.get_all_notifications_for_service',
+            statuses=statuses,
+            notification_type=notification_type,
+            service_id=service_id,
+        ),
     ), 200
 
 
