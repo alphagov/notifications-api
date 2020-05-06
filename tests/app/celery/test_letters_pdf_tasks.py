@@ -56,7 +56,11 @@ def test_should_have_decorated_tasks_functions():
     assert process_sanitised_letter.__wrapped__.__name__ == 'process_sanitised_letter'
 
 
-def test_create_letters_pdf_happy_path(mocker, sample_letter_notification):
+@pytest.mark.parametrize('branding_name,logo_filename', [(None, None), ['Test Brand', 'test-brand']])
+def test_create_letters_pdf_happy_path(mocker, sample_letter_notification, branding_name, logo_filename):
+    if branding_name:
+        letter_branding = create_letter_branding(name=branding_name, filename=logo_filename)
+        sample_letter_notification.service.letter_branding = letter_branding
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
     create_letters_pdf(sample_letter_notification.id)
@@ -69,7 +73,7 @@ def test_create_letters_pdf_happy_path(mocker, sample_letter_notification):
             "template_type": sample_letter_notification.template.template_type
         },
         'values': sample_letter_notification.personalisation,
-        'logo_filename': None,  # no logo
+        'logo_filename': logo_filename,
         'letter_filename': 'LETTER.PDF',
         "notification_id": str(sample_letter_notification.id),
         'key_type': sample_letter_notification.key_type
@@ -78,7 +82,7 @@ def test_create_letters_pdf_happy_path(mocker, sample_letter_notification):
     encrypted_data = encryption.encrypt(letter_data)
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.CREATE_LETTER_PDF,
+        name=TaskNames.CREATE_PDF_FOR_TEMPLATED_LETTER,
         args=(encrypted_data,),
         queue=QueueNames.SANITISE_LETTERS
     )
@@ -113,39 +117,6 @@ def test_create_letters_pdf_sets_technical_failure_max_retries(mocker, sample_le
     assert mock_celery.called
     assert mock_retry.called
     mock_update_noti.assert_called_once_with(sample_letter_notification.id, 'technical-failure')
-
-
-# We only need this while we are migrating to the new letter_branding model
-def test_create_letters_gets_the_right_logo_when_service_has_letter_branding_logo(
-        notify_api, mocker, sample_letter_notification
-):
-    letter_branding = create_letter_branding(name='test brand', filename='test-brand')
-    sample_letter_notification.service.letter_branding = letter_branding
-    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
-    mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
-    create_letters_pdf(sample_letter_notification.id)
-
-    letter_data = {
-        'letter_contact_block': sample_letter_notification.reply_to_text,
-        'template': {
-            "subject": sample_letter_notification.template.subject,
-            "content": sample_letter_notification.template.content,
-            "template_type": sample_letter_notification.template.template_type
-        },
-        'values': sample_letter_notification.personalisation,
-        'logo_filename': sample_letter_notification.service.letter_branding.filename,
-        'letter_filename': 'LETTER.PDF',
-        "notification_id": str(sample_letter_notification.id),
-        'key_type': sample_letter_notification.key_type
-    }
-
-    encrypted_data = encryption.encrypt(letter_data)
-
-    mock_celery.assert_called_once_with(
-        name=TaskNames.CREATE_LETTER_PDF,
-        args=(encrypted_data,),
-        queue=QueueNames.SANITISE_LETTERS
-    )
 
 
 @pytest.mark.parametrize('number_of_pages, expected_billable_units', [(2, 1), (3, 2), (10, 5)])
