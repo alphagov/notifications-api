@@ -16,7 +16,7 @@ from app import (
     encryption,
     DATETIME_FORMAT
 )
-from app.celery.letters_pdf_tasks import create_letters_pdf, sanitise_letter
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter, sanitise_letter
 from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import save_api_email
 from app.clients.document_download import DocumentDownloadError
@@ -382,7 +382,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
                                               status=status,
                                               reply_to_text=reply_to_text)
 
-    create_letters_pdf.apply_async(
+    get_pdf_for_templated_letter.apply_async(
         [str(notification.id)],
         queue=queue
     )

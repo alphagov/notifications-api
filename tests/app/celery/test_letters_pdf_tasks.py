@@ -14,9 +14,9 @@ from app import encryption
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.celery.letters_pdf_tasks import (
-    create_letters_pdf,
     collate_letter_pdfs_to_be_sent,
     get_key_and_size_of_letters_to_be_sent_to_print,
+    get_pdf_for_templated_letter,
     group_letters,
     process_sanitised_letter,
     process_virus_scan_failed,
@@ -48,7 +48,7 @@ from tests.conftest import set_config_values
 
 
 def test_should_have_decorated_tasks_functions():
-    assert create_letters_pdf.__wrapped__.__name__ == 'create_letters_pdf'
+    assert get_pdf_for_templated_letter.__wrapped__.__name__ == 'get_pdf_for_templated_letter'
     assert collate_letter_pdfs_to_be_sent.__wrapped__.__name__ == 'collate_letter_pdfs_to_be_sent'
     assert process_virus_scan_failed.__wrapped__.__name__ == 'process_virus_scan_failed'
     assert process_virus_scan_error.__wrapped__.__name__ == 'process_virus_scan_error'
@@ -57,13 +57,13 @@ def test_should_have_decorated_tasks_functions():
 
 
 @pytest.mark.parametrize('branding_name,logo_filename', [(None, None), ['Test Brand', 'test-brand']])
-def test_create_letters_pdf_happy_path(mocker, sample_letter_notification, branding_name, logo_filename):
+def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notification, branding_name, logo_filename):
     if branding_name:
         letter_branding = create_letter_branding(name=branding_name, filename=logo_filename)
         sample_letter_notification.service.letter_branding = letter_branding
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
-    create_letters_pdf(sample_letter_notification.id)
+    get_pdf_for_templated_letter(sample_letter_notification.id)
 
     letter_data = {
         'letter_contact_block': sample_letter_notification.reply_to_text,
@@ -88,18 +88,18 @@ def test_create_letters_pdf_happy_path(mocker, sample_letter_notification, brand
     )
 
 
-def test_create_letters_pdf_non_existent_notification(notify_api, mocker, fake_uuid):
+def test_get_pdf_for_templated_letter_non_existent_notification(notify_api, mocker, fake_uuid):
     with pytest.raises(expected_exception=NoResultFound):
-        create_letters_pdf(fake_uuid)
+        get_pdf_for_templated_letter(fake_uuid)
 
 
-def test_create_letters_pdf_retries_upon_error(mocker, sample_letter_notification):
+def test_get_pdf_for_templated_letter_retries_upon_error(mocker, sample_letter_notification):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
     mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
-    mock_retry = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.retry')
+    mock_retry = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.retry')
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
 
-    create_letters_pdf(sample_letter_notification.id)
+    get_pdf_for_templated_letter(sample_letter_notification.id)
 
     assert mock_celery.called
     assert mock_retry.called
@@ -108,15 +108,15 @@ def test_create_letters_pdf_retries_upon_error(mocker, sample_letter_notificatio
     )
 
 
-def test_create_letters_pdf_sets_technical_failure_max_retries(mocker, sample_letter_notification):
+def test_get_pdf_for_templated_letter_sets_technical_failure_max_retries(mocker, sample_letter_notification):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
     mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
     mock_retry = mocker.patch(
-        'app.celery.letters_pdf_tasks.create_letters_pdf.retry', side_effect=MaxRetriesExceededError)
+        'app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.retry', side_effect=MaxRetriesExceededError)
     mock_update_noti = mocker.patch('app.celery.letters_pdf_tasks.update_notification_status_by_id')
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
-        create_letters_pdf(sample_letter_notification.id)
+        get_pdf_for_templated_letter(sample_letter_notification.id)
 
     assert e.value.args[0] == f"RETRY FAILED: Max retries reached. " \
         f"The task create-letter-pdf failed for notification id {sample_letter_notification.id}. " \

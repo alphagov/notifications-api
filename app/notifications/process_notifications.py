@@ -13,7 +13,7 @@ from notifications_utils.timezones import convert_bst_to_utc
 
 from app import redis_store
 from app.celery import provider_tasks
-from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.config import QueueNames
 
 from app.models import (
@@ -139,7 +139,7 @@ def send_notification_to_queue(notification, research_mode, queue=None):
     if notification.notification_type == LETTER_TYPE:
         if not queue:
             queue = QueueNames.CREATE_LETTERS_PDF
-        deliver_task = create_letters_pdf
+        deliver_task = get_pdf_for_templated_letter
 
     try:
         deliver_task.apply_async([str(notification.id)], queue=queue)

@@ -14,7 +14,7 @@ from app.celery.tasks import (
     get_recipient_csv_and_template_and_sender_id,
     process_row
 )
-from app.celery.letters_pdf_tasks import create_letters_pdf
+from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -188,7 +188,7 @@ def replay_created_notifications():
 
         current_app.logger.info(msg)
         for letter in letters:
-            create_letters_pdf.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
+            get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
 @notify_celery.task(name='check-precompiled-letter-state')

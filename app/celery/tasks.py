@@ -371,7 +371,7 @@ def save_letter(
         )
 
         if not service.research_mode:
-            letters_pdf_tasks.create_letters_pdf.apply_async(
+            letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
                 [str(saved_notification.id)],
                 queue=QueueNames.CREATE_LETTERS_PDF
             )
