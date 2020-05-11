@@ -171,3 +171,79 @@ def test_get_uploads_should_retrieve_from_ft_notification_status_for_old_jobs(ad
     assert resp_json[1]['statistics'] == [{'status': 'created', 'count': 1}]
     assert resp_json[2]['id'] == str(job_1.id)
     assert resp_json[2]['statistics'] == [{'status': 'delivered', 'count': 6}]
+
+
+@freeze_time('2020-02-02 14:00')
+def test_get_uploaded_letters_by_print_date(admin_request, sample_template):
+    letter_template = create_precompiled_template(sample_template.service)
+
+    letter_1 = create_uploaded_letter(
+        letter_template, sample_template.service, status='delivered',
+        created_at=datetime.utcnow() - timedelta(minutes=1)
+    )
+    letter_2 = create_uploaded_letter(
+        letter_template, sample_template.service, status='delivered',
+        created_at=datetime.utcnow() - timedelta(minutes=2)
+    )
+
+    service_id = sample_template.service.id
+
+    resp_json = admin_request.get(
+        'upload.get_uploaded_letter_by_service_and_print_day',
+        service_id=service_id,
+        letter_print_date='2020-02-02',
+    )
+    assert resp_json['total'] == 2
+    assert resp_json['page_size'] == 50
+    assert len(resp_json['notifications']) == 2
+
+    assert resp_json['notifications'][0]['id'] == str(letter_1.id)
+    assert resp_json['notifications'][0]['created_at'] == letter_1.created_at.strftime(
+        '%Y-%m-%dT%H:%M:%S+00:00'
+    )
+
+    assert resp_json['notifications'][1]['id'] == str(letter_2.id)
+    assert resp_json['notifications'][1]['created_at'] == letter_2.created_at.strftime(
+        '%Y-%m-%dT%H:%M:%S+00:00'
+    )
+
+
+@freeze_time('2020-02-02 14:00')
+def test_get_uploaded_letters_by_print_date_paginates(admin_request, sample_template):
+    letter_template = create_precompiled_template(sample_template.service)
+
+    for i in range(101):
+        create_uploaded_letter(
+            letter_template, sample_template.service, status='delivered',
+            created_at=datetime.utcnow() - timedelta(minutes=1)
+        )
+
+    service_id = sample_template.service.id
+
+    resp_json = admin_request.get(
+        'upload.get_uploaded_letter_by_service_and_print_day',
+        service_id=service_id,
+        letter_print_date='2020-02-02',
+        page=2,
+    )
+    assert resp_json['total'] == 101
+    assert resp_json['page_size'] == 50
+    assert len(resp_json['notifications']) == 50
+    assert resp_json['links']['prev'] == (
+        f'/service/{service_id}/upload/uploaded-letters/2020-02-02?page=1'
+    )
+    assert resp_json['links']['next'] == (
+        f'/service/{service_id}/upload/uploaded-letters/2020-02-02?page=3'
+    )
+
+
+def test_get_uploaded_letters_by_print_date_404s_for_bad_date(
+    admin_request,
+    sample_service,
+):
+    admin_request.get(
+        'upload.get_uploaded_letter_by_service_and_print_day',
+        service_id=sample_service.id,
+        letter_print_date='foo',
+        _expected_status=404,
+    )

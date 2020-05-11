@@ -117,3 +117,23 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
     ).order_by(
         desc("processing_started"), desc("created_at")
     ).paginate(page=page, per_page=page_size)
+
+
+def dao_get_uploaded_letters_by_print_date(service_id, letter_print_date, page=1, page_size=50):
+    return db.session.query(
+        Notification,
+    ).join(
+        Template, Notification.template_id == Template.id
+    ).filter(
+        Notification.service_id == service_id,
+        Notification.notification_type == LETTER_TYPE,
+        Notification.api_key_id.is_(None),
+        Notification.status != NOTIFICATION_CANCELLED,
+        Template.hidden.is_(True),
+        _get_printing_day(Notification.created_at) == letter_print_date.date(),
+    ).order_by(
+        desc(Notification.created_at)
+    ).paginate(
+        page=page,
+        per_page=page_size,
+    )
