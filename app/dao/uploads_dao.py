@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask import current_app
-from sqlalchemy import and_, desc, func, literal, String
+from sqlalchemy import and_, desc, func, literal, text, String
 
 from app import db
 from app.models import (
@@ -8,6 +8,25 @@ from app.models import (
     NOTIFICATION_CANCELLED, ServiceDataRetention
 )
 from app.utils import midnight_n_days_ago
+
+
+def _get_printing_day(created_at):
+    return func.date_trunc(
+        'day',
+        func.timezone('Europe/London', func.timezone('UTC', created_at)) + text(
+            "interval '6 hours 30 minutes'"
+        )
+    )
+
+
+def _get_printing_datetime(created_at):
+    return _get_printing_day(created_at) + text(
+        "interval '17 hours 30 minutes'"
+    )
+
+
+def _naive_gmt_to_utc(column):
+    return func.timezone('UTC', func.timezone('Europe/London', column))
 
 
 def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size=50):
@@ -56,24 +75,13 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         Notification.status != NOTIFICATION_CANCELLED,
         Template.hidden == True,
         Notification.created_at >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7)
-
     ]
     if limit_days is not None:
         letters_query_filter.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
-    letters_query = db.session.query(
-        Notification.id,
-        Notification.client_reference.label('original_file_name'),
-        literal('1').label('notification_count'),
-        literal(None).label('template_type'),
-        func.coalesce(ServiceDataRetention.days_of_retention, 7).label('days_of_retention'),
-        Notification.created_at.label("created_at"),
-        literal(None).label('scheduled_for'),
-        # letters don't have a processing_started date but we want created_at to be used for sorting
-        Notification.created_at.label('processing_started'),
-        Notification.status,
-        literal('letter').label('upload_type'),
-        Notification.to.label('recipient'),
+    letters_subquery = db.session.query(
+        func.count().label('notification_count'),
+        _naive_gmt_to_utc(_get_printing_datetime(Notification.created_at)).label('printing_at'),
     ).join(
         Template, Notification.template_id == Template.id
     ).outerjoin(
@@ -83,6 +91,25 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         )
     ).filter(
         *letters_query_filter
+    ).group_by(
+        'printing_at'
+    ).subquery()
+
+    letters_query = db.session.query(
+        literal(None).label('id'),
+        literal('Uploaded letters').label('original_file_name'),
+        letters_subquery.c.notification_count.label('notification_count'),
+        literal('letter').label('template_type'),
+        literal(None).label('days_of_retention'),
+        letters_subquery.c.printing_at.label('created_at'),
+        literal(None).label('scheduled_for'),
+        letters_subquery.c.printing_at.label('processing_started'),
+        literal(None).label('status'),
+        literal('letter_day').label('upload_type'),
+        literal(None).label('recipient'),
+    ).group_by(
+        letters_subquery.c.notification_count,
+        letters_subquery.c.printing_at,
     )
 
     return jobs_query.union_all(

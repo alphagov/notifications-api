@@ -61,7 +61,7 @@ def get_paginated_uploads(service_id, limit_days, page):
             upload_dict['statistics'] = [{'status': statistic.status, 'count': statistic.count} for statistic in
                                          statistics]
         else:
-            upload_dict['statistics'] = [{'status': upload.status, 'count': 1}]
+            upload_dict['statistics'] = []
         data.append(upload_dict)
 
     return {
