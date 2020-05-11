@@ -293,10 +293,10 @@ def test_replay_created_notifications(notify_db_session, sample_service, mocker)
                                                queue="send-sms-tasks")
 
 
-def test_replay_created_notifications_create_letters_pdf_tasks_for_letters_not_ready_to_send(
+def test_replay_created_notifications_get_pdf_for_templated_letter_tasks_for_letters_not_ready_to_send(
         sample_letter_template, mocker
 ):
-    mock_task = mocker.patch('app.celery.scheduled_tasks.create_letters_pdf.apply_async')
+    mock_task = mocker.patch('app.celery.scheduled_tasks.get_pdf_for_templated_letter.apply_async')
     create_notification(template=sample_letter_template, billable_units=0,
                         created_at=datetime.utcnow() - timedelta(hours=4))
 

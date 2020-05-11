@@ -59,6 +59,7 @@ class TaskNames(object):
     ZIP_AND_SEND_LETTER_PDFS = 'zip-and-send-letter-pdfs'
     SCAN_FILE = 'scan-file'
     SANITISE_LETTER = 'sanitise-and-upload-letter'
+    CREATE_PDF_FOR_TEMPLATED_LETTER = 'create-pdf-for-templated-letter'
 
 
 class Config(object):

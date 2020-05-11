@@ -56,7 +56,7 @@ def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected
 
 @pytest.mark.parametrize('reference', [None, 'reference_from_client'])
 def test_post_letter_notification_returns_201(client, sample_letter_template, mocker, reference):
-    mock = mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mock = mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {
@@ -100,7 +100,7 @@ def test_post_letter_notification_sets_postage(
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
-    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(template.id),
         'personalisation': {
@@ -124,7 +124,7 @@ def test_post_letter_notification_formats_postcode(
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter")
-    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(template.id),
         'personalisation': {
@@ -150,7 +150,7 @@ def test_post_letter_notification_stores_country(
 ):
     service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
     template = create_template(service, template_type="letter")
-    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(template.id),
         'personalisation': {
@@ -191,7 +191,7 @@ def test_post_letter_notification_throws_error_for_bad_postcode(
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
-    mocker.patch('app.celery.tasks.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(template.id),
         'personalisation': {
@@ -231,7 +231,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
         'reference': 'foo'
     }
 
-    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
 
@@ -266,7 +266,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
         'reference': 'foo'
     }
 
-    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
 
@@ -444,7 +444,7 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
 
 
 def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template, mocker):
-    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -463,7 +463,7 @@ def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_t
 
 
 def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template, mocker):
-    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_trial_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
@@ -486,7 +486,7 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
     sample_trial_letter_template,
     mocker
 ):
-    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
 
     data = {
         "template_id": sample_trial_letter_template.id,
@@ -527,7 +527,7 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
 def test_post_letter_notification_ignores_reply_to_text_for_service(
     client, notify_db_session, mocker
 ):
-    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
 
     service = create_service(service_permissions=[LETTER_TYPE])
     create_letter_contact(service=service, contact_block='ignored', is_default=True)
@@ -546,7 +546,7 @@ def test_post_letter_notification_ignores_reply_to_text_for_service(
 def test_post_letter_notification_persists_notification_reply_to_text_for_template(
     client, notify_db_session, mocker
 ):
-    mocker.patch('app.celery.letters_pdf_tasks.create_letters_pdf.apply_async')
+    mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
 
     service = create_service(service_permissions=[LETTER_TYPE])
     create_letter_contact(service=service, contact_block='the default', is_default=True)
