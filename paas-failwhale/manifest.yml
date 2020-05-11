@@ -1,0 +1,8 @@
+---
+
+applications:
+  - name: notify-api-failwhale
+    buildpacks:
+      - nginx_buildpack
+    memory: 256M
+    no-route: true
