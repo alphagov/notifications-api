@@ -1,9 +1,13 @@
+import pytest
 import uuid
+
+from datetime import datetime, timedelta
 
 from app.models import ServiceContactList
 from tests.app.db import (
     create_job,
     create_service_contact_list,
+    create_service_data_retention,
     create_service,
     create_template,
 )
@@ -65,6 +69,48 @@ def test_get_contact_list(admin_request, notify_db_session):
 
     assert len(response) == 1
     assert response[0] == contact_list.serialize()
+    assert response[0]['job_count'] == 0
+
+
+@pytest.mark.parametrize('days_of_email_retention, expected_job_count', (
+    (None, 8),
+    (7, 8),
+    (3, 4),
+))
+def test_get_contact_list_counts_jobs(
+    sample_template,
+    admin_request,
+    days_of_email_retention,
+    expected_job_count,
+):
+    if days_of_email_retention:
+        create_service_data_retention(sample_template.service, 'email', days_of_email_retention)
+
+    # This should be ignored because it’s another template type
+    create_service_data_retention(sample_template.service, 'sms', 1)
+
+    contact_list_1 = create_service_contact_list(service=sample_template.service)
+    contact_list_2 = create_service_contact_list(service=sample_template.service)
+
+    for i in range(10):
+        create_job(
+            template=sample_template,
+            contact_list_id=contact_list_2.id,
+            created_at=datetime.utcnow() - timedelta(days=i)
+        )
+
+    response = admin_request.get(
+        'service.get_contact_list',
+        service_id=contact_list_1.service_id
+    )
+
+    assert len(response) == 2
+
+    assert response[0]['id'] == str(contact_list_2.id)
+    assert response[0]['job_count'] == expected_job_count
+
+    assert response[1]['id'] == str(contact_list_1.id)
+    assert response[1]['job_count'] == 0
 
 
 def test_get_contact_list_returns_for_service(admin_request, notify_db_session):
