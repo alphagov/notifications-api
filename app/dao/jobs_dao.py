@@ -65,6 +65,7 @@ def dao_get_jobs_by_service_id(
     page=1,
     page_size=50,
     statuses=None,
+    contact_list_id=None,
 ):
     query_filter = [
         Job.service_id == service_id,
@@ -77,6 +78,8 @@ def dao_get_jobs_by_service_id(
         query_filter.append(
             Job.job_status.in_(statuses)
         )
+    if contact_list_id is not None:
+        query_filter.append(Job.contact_list_id == contact_list_id)
     return Job.query \
         .filter(*query_filter) \
         .order_by(Job.processing_started.desc(), Job.created_at.desc()) \

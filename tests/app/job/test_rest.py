@@ -740,6 +740,20 @@ def test_get_jobs_with_limit_days(admin_request, sample_template):
     assert len(resp_json['data']) == 2
 
 
+def test_get_jobs_by_contact_list(admin_request, sample_template):
+    contact_list = create_service_contact_list()
+    create_job(template=sample_template)
+    create_job(template=sample_template, contact_list_id=contact_list.id)
+
+    resp_json = admin_request.get(
+        'job.get_jobs_by_service',
+        service_id=sample_template.service_id,
+        contact_list_id=contact_list.id,
+    )
+
+    assert len(resp_json['data']) == 1
+
+
 def test_get_jobs_should_return_statistics(admin_request, sample_template):
     now = datetime.utcnow()
     earlier = datetime.utcnow() - timedelta(days=1)

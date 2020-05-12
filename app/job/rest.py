@@ -133,6 +133,7 @@ def get_jobs_by_service(service_id):
         limit_days=limit_days,
         statuses=[x.strip() for x in request.args.get('statuses', '').split(',')],
         page=int(request.args.get('page', 1)),
+        contact_list_id=request.args.get('contact_list_id'),
     ))
 
 
@@ -193,13 +194,15 @@ def get_paginated_jobs(
     limit_days,
     statuses,
     page,
+    contact_list_id,
 ):
     pagination = dao_get_jobs_by_service_id(
         service_id,
         limit_days=limit_days,
         page=page,
         page_size=current_app.config['PAGE_SIZE'],
-        statuses=statuses
+        statuses=statuses,
+        contact_list_id=contact_list_id,
     )
     data = job_schema.dump(pagination.items, many=True).data
     for job_data in data:
