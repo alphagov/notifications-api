@@ -718,6 +718,7 @@ def test_get_jobs(admin_request, sample_template):
         'service_name': {'name': sample_template.service.name},
         'statistics': [],
         'template': str(sample_template.id),
+        'template_name': sample_template.name,
         'template_type': 'sms',
         'template_version': 1,
         'updated_at': None,

@@ -380,8 +380,12 @@ class JobSchema(BaseSchema):
     service_name = fields.Nested(
         ServiceSchema, attribute="service", dump_to="service_name", only=["name"], dump_only=True)
 
+    template_name = fields.Method('get_template_name', dump_only=True)
     template_type = fields.Method('get_template_type', dump_only=True)
     contact_list_id = field_for(models.Job, 'contact_list_id')
+
+    def get_template_name(self, job):
+        return job.template.name
 
     def get_template_type(self, job):
         return job.template.template_type
