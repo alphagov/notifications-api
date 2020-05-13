@@ -1,3 +1,4 @@
+from datetime import datetime
 from urllib.parse import unquote
 
 import iso8601
@@ -115,9 +116,12 @@ def format_mmg_datetime(date):
     We expect datetimes in format 2017-05-21+11%3A56%3A11 - ie, spaces replaced with pluses, and URI encoded
     and in UTC
     """
-    orig_date = format_mmg_message(date)
-    parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
-    return parsed_datetime
+    try:
+        orig_date = format_mmg_message(date)
+        parsed_datetime = iso8601.parse_date(orig_date).replace(tzinfo=None)
+        return parsed_datetime
+    except iso8601.ParseError:
+        return datetime.utcnow()
 
 
 def create_inbound_sms_object(service, content, from_number, provider_ref, date_received, provider_name):

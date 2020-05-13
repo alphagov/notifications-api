@@ -4,6 +4,7 @@ from unittest.mock import call
 
 import pytest
 from flask import json
+from freezegun import freeze_time
 
 from app.notifications.receive_notifications import (
     format_mmg_message,
@@ -214,6 +215,11 @@ def test_unescape_string(raw, expected):
 ])
 def test_format_mmg_datetime(provider_date, expected_output):
     assert format_mmg_datetime(provider_date) == expected_output
+
+
+@freeze_time('2020-05-14 14:30:00')
+def test_format_mmg_datetime_returns_now_if_cannot_parse_date():
+    assert format_mmg_datetime('13-05-2020 08%3A37%3A43') == datetime.utcnow()
 
 
 def test_create_inbound_mmg_sms_object(sample_service_full_permissions):
