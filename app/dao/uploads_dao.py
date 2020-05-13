@@ -14,6 +14,8 @@ def _get_printing_day(created_at):
     return func.date_trunc(
         'day',
         func.timezone('Europe/London', func.timezone('UTC', created_at)) + text(
+            # We add 6 hours 30 minutes to the local created_at time so that
+            # any letters created after 5:30pm get shifted into the next day
             "interval '6 hours 30 minutes'"
         )
     )
@@ -21,6 +23,7 @@ def _get_printing_day(created_at):
 
 def _get_printing_datetime(created_at):
     return _get_printing_day(created_at) + text(
+        # Letters are printed from 5:30pm each day
         "interval '17 hours 30 minutes'"
     )
 
