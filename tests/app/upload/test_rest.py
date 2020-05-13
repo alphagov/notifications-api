@@ -245,5 +245,5 @@ def test_get_uploaded_letters_by_print_date_404s_for_bad_date(
         'upload.get_uploaded_letter_by_service_and_print_day',
         service_id=sample_service.id,
         letter_print_date='foo',
-        _expected_status=404,
+        _expected_status=400,
     )

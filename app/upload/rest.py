@@ -87,7 +87,7 @@ def get_uploaded_letter_by_service_and_print_day(service_id, letter_print_date):
     try:
         letter_print_datetime = datetime.strptime(letter_print_date, '%Y-%m-%d')
     except ValueError:
-        abort(404)
+        abort(400)
     pagination = dao_get_uploaded_letters_by_print_date(
         service_id,
         letter_print_date=letter_print_datetime,
