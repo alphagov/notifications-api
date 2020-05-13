@@ -34,6 +34,15 @@ from app.dao.notifications_dao import (
 from app.v2.errors import BadRequestError
 
 
+from gds_metrics import Histogram
+
+
+REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
+    'redis_get_and_incr_daily_limit_duration_seconds',
+    'Time taken to get and possibly incremement the daily limit cache key',
+)
+
+
 def create_content_for_notification(template, personalisation):
     template_object = template._as_utils_template_with_personalisation(personalisation)
     check_placeholders(template_object)
@@ -115,8 +124,9 @@ def persist_notification(
     if not simulated:
         dao_create_notification(notification)
         if key_type != KEY_TYPE_TEST:
-            if redis_store.get(redis.daily_limit_cache_key(service.id)):
-                redis_store.incr(redis.daily_limit_cache_key(service.id))
+            with REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS.time():
+                if redis_store.get(redis.daily_limit_cache_key(service.id)):
+                    redis_store.incr(redis.daily_limit_cache_key(service.id))
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
