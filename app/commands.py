@@ -119,9 +119,11 @@ def purge_functional_test_data(user_email_prefix):
         else:
             services = dao_fetch_all_services_by_user(usr.id)
             if services:
+                print(f"Deleting user {usr.id} which has related services")
                 for service in services:
                     delete_service_and_all_associated_db_objects(service)
             else:
+                print(f"Deleting user {usr.id} which does not have related services")
                 delete_user_verify_codes(usr)
                 delete_model_user(usr)
 
