@@ -325,7 +325,7 @@ def process_document_uploads(personalisation_data, service, simulated=False):
         else:
             try:
                 personalisation_data[key] = document_download_client.upload_document(
-                    service.id, personalisation_data[key]['file']
+                    service.id, personalisation_data[key]['file'], personalisation_data[key].get('is_csv')
                 )
             except DocumentDownloadError as e:
                 raise BadRequestError(message=e.message, status_code=e.status_code)
