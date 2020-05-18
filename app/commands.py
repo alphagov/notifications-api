@@ -38,6 +38,7 @@ from app.dao.service_callback_api_dao import get_service_delivery_status_callbac
 from app.dao.services_dao import (
     delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user,
+    dao_fetch_all_services_created_by_user,
     dao_fetch_service_by_id,
     dao_update_service
 )
@@ -119,11 +120,20 @@ def purge_functional_test_data(user_email_prefix):
         else:
             services = dao_fetch_all_services_by_user(usr.id)
             if services:
-                print(f"Deleting user {usr.id} which has related services")
+                print(f"Deleting user {usr.id} which is part of services")
                 for service in services:
                     delete_service_and_all_associated_db_objects(service)
             else:
-                print(f"Deleting user {usr.id} which does not have related services")
+                services_created_by_this_user = dao_fetch_all_services_created_by_user(usr.id)
+                if services_created_by_this_user:
+                    # user is not part of any services but may still have been the one to create the service
+                    # sometimes things get in this state if the tests fail half way through
+                    # Remove the service they created (but are not a part of) so we can then remove the user
+                    print(f"Deleting services created by {usr.id}")
+                    for service in services_created_by_this_user:
+                        delete_service_and_all_associated_db_objects(service)
+
+                print(f"Deleting user {usr.id} which is not part of any services")
                 delete_user_verify_codes(usr)
                 delete_model_user(usr)
 

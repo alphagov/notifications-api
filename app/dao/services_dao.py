@@ -234,6 +234,16 @@ def dao_fetch_all_services_by_user(user_id, only_active=False):
     return query.all()
 
 
+def dao_fetch_all_services_created_by_user(user_id):
+    query = Service.query.filter_by(
+        created_by_id=user_id
+    ).order_by(
+        asc(Service.created_at)
+    )
+
+    return query.all()
+
+
 @transactional
 @version_class(
     VersionOptions(ApiKey, must_write_history=False),
