@@ -31,13 +31,12 @@ def create_nightly_billing(day_start=None):
     else:
         # When calling the task its a string in the format of "YYYY-MM-DD"
         day_start = datetime.strptime(day_start, "%Y-%m-%d").date()
+
     for i in range(0, 4):
         process_day = (day_start - timedelta(days=i)).isoformat()
+        kwargs = {'process_day': process_day}
 
-        create_nightly_billing_for_day.apply_async(
-            kwargs={'process_day': process_day},
-            queue=QueueNames.REPORTING
-        )
+        create_nightly_billing_for_day.apply_async(kwargs=kwargs, queue=QueueNames.REPORTING)
         current_app.logger.info(
             f"create-nightly-billing task: create-nightly-billing-for-day task created for {process_day}"
         )
@@ -75,27 +74,24 @@ def create_nightly_notification_status():
     current_app.logger.info("create-nightly-notification-status task: started")
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
+    tasks_to_run = []
+
     # email and sms
     for i in range(4):
         process_day = yesterday - timedelta(days=i)
         for notification_type in [SMS_TYPE, EMAIL_TYPE]:
-            create_nightly_notification_status_for_day.apply_async(
-                kwargs={'process_day': process_day.isoformat(), 'notification_type': notification_type},
-                queue=QueueNames.REPORTING
-            )
-            current_app.logger.info(
-                f"create-nightly-notification-status task: create-nightly-notification-status-for-day task created "
-                f"for type {notification_type} for {process_day}"
-            )
+            tasks_to_run.append({'process_day': process_day.isoformat(), 'notification_type': notification_type})
+
     # letters get modified for a longer time period than sms and email, so we need to reprocess for more days
     for i in range(10):
         process_day = yesterday - timedelta(days=i)
-        create_nightly_notification_status_for_day.apply_async(
-            kwargs={'process_day': process_day.isoformat(), 'notification_type': LETTER_TYPE},
-            queue=QueueNames.REPORTING
-        )
+        tasks_to_run.append({'process_day': process_day.isoformat(), 'notification_type': LETTER_TYPE})
+
+    child_task_name = create_nightly_billing_for_day.name
+    for kwargs in tasks_to_run:
+        create_nightly_notification_status_for_day.apply_async(kwargs=kwargs, queue=QueueNames.REPORTING)
         current_app.logger.info(
-            f"create-nightly-notification-status task: create-nightly-notification-status-for-day task created "
+            f"create-nightly-notification-status task: {child_task_name} task created "
             f"for type letter for {process_day}"
         )
 
