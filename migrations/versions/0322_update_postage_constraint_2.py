@@ -38,6 +38,7 @@ def upgrade():
         )
         NOT VALID
     """)
+    op.execute('COMMIT')
 
 
 def downgrade():
