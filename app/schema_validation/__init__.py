@@ -34,8 +34,8 @@ def validate_schema_email_address(instance):
 @format_checker.checks('postage', raises=ValidationError)
 def validate_schema_postage(instance):
     if isinstance(instance, str):
-        if instance not in ["first", "second", "europe", "rest-of-world"]:
-            raise ValidationError("invalid. It must be first, second, europe or rest-of-world.")
+        if instance not in ["first", "second"]:
+            raise ValidationError("invalid. It must be either first or second.")
     return True
 
 

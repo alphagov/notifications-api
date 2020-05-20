@@ -2343,8 +2343,7 @@ def test_create_pdf_letter(mocker, sample_service_full_permissions, client, fake
         {"postage": "third", "filename": "string", "created_by": "string", "file_id": "string",
          "recipient_address": "Some Address"},
         [
-            {'error': 'ValidationError',
-             'message': 'postage invalid. It must be first, second, europe or rest-of-world.'}
+            {'error': 'ValidationError', 'message': 'postage invalid. It must be either first or second.'}
         ]
     )
 ])
