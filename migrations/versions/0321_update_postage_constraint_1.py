@@ -30,6 +30,7 @@ def upgrade():
     """)
     if environment not in ["live", "production"]:
         op.execute('ALTER TABLE notification_history DROP CONSTRAINT IF EXISTS chk_notification_history_postage_null')
+    op.execute('COMMIT')
 
 
 def downgrade():
