@@ -718,6 +718,7 @@ def test_get_jobs(admin_request, sample_template):
         'service_name': {'name': sample_template.service.name},
         'statistics': [],
         'template': str(sample_template.id),
+        'template_name': sample_template.name,
         'template_type': 'sms',
         'template_version': 1,
         'updated_at': None,
@@ -738,6 +739,20 @@ def test_get_jobs_with_limit_days(admin_request, sample_template):
         resp_json = admin_request.get('job.get_jobs_by_service', service_id=sample_template.service_id, limit_days=7)
 
     assert len(resp_json['data']) == 2
+
+
+def test_get_jobs_by_contact_list(admin_request, sample_template):
+    contact_list = create_service_contact_list()
+    create_job(template=sample_template)
+    create_job(template=sample_template, contact_list_id=contact_list.id)
+
+    resp_json = admin_request.get(
+        'job.get_jobs_by_service',
+        service_id=sample_template.service_id,
+        contact_list_id=contact_list.id,
+    )
+
+    assert len(resp_json['data']) == 1
 
 
 def test_get_jobs_should_return_statistics(admin_request, sample_template):

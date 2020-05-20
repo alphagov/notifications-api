@@ -58,7 +58,15 @@ def dao_get_job_by_service_id_and_job_id(service_id, job_id):
     return Job.query.filter_by(service_id=service_id, id=job_id).one()
 
 
-def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50, statuses=None):
+def dao_get_jobs_by_service_id(
+    service_id,
+    *,
+    limit_days=None,
+    page=1,
+    page_size=50,
+    statuses=None,
+    contact_list_id=None,
+):
     query_filter = [
         Job.service_id == service_id,
         Job.original_file_name != current_app.config['TEST_MESSAGE_FILENAME'],
@@ -70,6 +78,8 @@ def dao_get_jobs_by_service_id(service_id, limit_days=None, page=1, page_size=50
         query_filter.append(
             Job.job_status.in_(statuses)
         )
+    if contact_list_id is not None:
+        query_filter.append(Job.contact_list_id == contact_list_id)
     return Job.query \
         .filter(*query_filter) \
         .order_by(Job.processing_started.desc(), Job.created_at.desc()) \

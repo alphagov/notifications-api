@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import (
     JSONB,
 )
 from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy import UniqueConstraint, CheckConstraint, Index
+from sqlalchemy import UniqueConstraint, CheckConstraint, Index, String, and_, func
 from notifications_utils.columns import Columns
 from notifications_utils.recipients import (
     validate_email_address,
@@ -2138,12 +2138,27 @@ class ServiceContactList(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     archived = db.Column(db.Boolean, nullable=False, default=False)
 
+    def get_job_count(self):
+        today = datetime.datetime.utcnow().date()
+        return Job.query.filter(
+            Job.contact_list_id == self.id,
+            func.coalesce(
+                Job.processing_started, Job.created_at
+            ) >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7)
+        ).outerjoin(
+            ServiceDataRetention, and_(
+                self.service_id == ServiceDataRetention.service_id,
+                func.cast(self.template_type, String) == func.cast(ServiceDataRetention.notification_type, String)
+            )
+        ).count()
+
     def serialize(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         contact_list = {
             "id": str(self.id),
             "original_file_name": self.original_file_name,
             "row_count": self.row_count,
+            "job_count": self.get_job_count(),
             "template_type": self.template_type,
             "service_id": str(self.service_id),
             "created_by": self.created_by.name,
