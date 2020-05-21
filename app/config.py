@@ -91,8 +91,6 @@ class Config(object):
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
     REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
-    EXPIRE_CACHE_TEN_MINUTES = 600
-    EXPIRE_CACHE_EIGHT_DAYS = 8 * 24 * 60 * 60
 
     # Performance platform
     PERFORMANCE_PLATFORM_ENABLED = False
@@ -228,12 +226,7 @@ class Config(object):
             'schedule': crontab(minute='0, 15, 30, 45'),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        # app/celery/nightly_tasks.py
-        'timeout-sending-notifications': {
-            'task': 'timeout-sending-notifications',
-            'schedule': crontab(hour=0, minute=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
+        # app/celery/reporting_tasks.py
         'create-nightly-billing': {
             'task': 'create-nightly-billing',
             'schedule': crontab(hour=0, minute=15),
@@ -243,6 +236,17 @@ class Config(object):
             'task': 'create-nightly-notification-status',
             'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
             'options': {'queue': QueueNames.REPORTING}
+        },
+        'rerun-failed-nightly-tasks': {
+            'task': 'rerun-failed-nightly-tasks',
+            'schedule': crontab(hour=6, minute=0),
+            'options': {'queue': QueueNames.REPORTING}
+        },
+        # app/celery/nightly_tasks.py
+        'timeout-sending-notifications': {
+            'task': 'timeout-sending-notifications',
+            'schedule': crontab(hour=0, minute=5),
+            'options': {'queue': QueueNames.PERIODIC}
         },
         'delete-notifications-older-than-retention': {
             'task': 'delete-notifications-older-than-retention',

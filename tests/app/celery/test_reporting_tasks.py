@@ -1,6 +1,7 @@
 import itertools
 from datetime import datetime, timedelta, date
 from decimal import Decimal
+from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
@@ -11,6 +12,9 @@ from app.celery.reporting_tasks import (
     create_nightly_notification_status,
     create_nightly_billing_for_day,
     create_nightly_notification_status_for_day,
+    _get_nightly_task_redis_key,
+    _task_has_run_today,
+    rerun_failed_nightly_tasks
 )
 from app.dao.fact_billing_dao import get_rate
 from app.models import (
@@ -21,6 +25,7 @@ from app.models import (
     SMS_TYPE, FactNotificationStatus
 )
 
+from tests.conftest import set_config
 from tests.app.db import create_service, create_template, create_notification, create_rate, create_letter_rate
 
 
@@ -506,3 +511,157 @@ def test_create_nightly_notification_status_for_day_respects_bst(sample_template
 
     assert noti_status[0].bst_date == date(2019, 4, 1)
     assert noti_status[0].notification_status == 'created'
+
+
+@freeze_time('2019-04-03T06:00')
+def test_create_nightly_notification_status_for_day_sets_task_run_in_redis(notify_db, notify_api, mocker):
+    mock_redis_set = mocker.patch('app.celery.reporting_tasks.redis_store.set')
+
+    task_name = 'create-nightly-notification-status-for-day'
+    process_day = '2019-04-01'
+    noti_type = 'sms'
+
+    with set_config(notify_api, 'REDIS_ENABLED', True):
+        create_nightly_notification_status_for_day(process_day, noti_type)
+
+    expected_key = f'task_last_run_timestamp_{task_name}_notification_type_{noti_type}_process_day_{process_day}'
+    mock_redis_set.assert_called_once_with(expected_key, '2019-04-03T06:00:00', ex=4 * 24 * 60 * 60)
+
+
+@freeze_time('2019-04-03T06:00')
+def test_create_nightly_billing_for_day_sets_task_run_in_redis(notify_db, notify_api, mocker):
+    mock_redis_set = mocker.patch('app.celery.reporting_tasks.redis_store.set')
+
+    with set_config(notify_api, 'REDIS_ENABLED', True):
+        create_nightly_billing_for_day('2019-04-01')
+
+    expected_key = 'task_last_run_timestamp_create-nightly-billing-for-day_process_day_2019-04-01'
+    mock_redis_set.assert_called_once_with(expected_key, '2019-04-03T06:00:00', ex=4 * 24 * 60 * 60)
+
+
+@pytest.mark.parametrize('task_name, task_kwargs, expected', [
+    ('foo', {'bar': 'a', 'baz': 'b'}, 'task_last_run_timestamp_foo_bar_a_baz_b'),
+    ('foo', {'some_date': date(2019, 4, 1)}, 'task_last_run_timestamp_foo_some_date_2019-04-01'),
+])
+def test_get_nightly_task_redis_key(task_name, task_kwargs, expected):
+    assert _get_nightly_task_redis_key(task_name, task_kwargs) == expected
+
+
+def test_task_has_run_today_returns_true_if_redis_disabled(notify_api):
+    with set_config(notify_api, 'REDIS_ENABLED', False):
+        assert _task_has_run_today('foo', {}) is True
+
+
+@freeze_time('2019-06-01 06:00')
+@pytest.mark.parametrize('val_in_redis, expected_response', [
+    ('2019-05-31T22:59:00', False),
+    ('2019-05-31T23:01:00', True),
+    (None, False)  # assume task hasn't run if there's nothing in redis
+])
+def test_task_has_run_today_gets_timestamp_from_redis(
+    notify_api,
+    mocker,
+    val_in_redis,
+    expected_response
+):
+    task_name = 'foo'
+    task_kwargs = {'bar': 'baz'}
+    mock_redis_get = mocker.patch('app.celery.reporting_tasks.redis_store.get', return_value=val_in_redis)
+
+    with set_config(notify_api, 'REDIS_ENABLED', True):
+        assert _task_has_run_today(task_name, task_kwargs) == expected_response
+
+    mock_redis_get.assert_called_once_with('task_last_run_timestamp_foo_bar_baz')
+
+
+@freeze_time('2020-06-05 05:00')
+def test_rerun_failed_nightly_tasks_calls_nightly_task_functions_with_only_run_missing_flag(notify_api, mocker):
+    mock_status = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status')
+    mock_billing = mocker.patch('app.celery.reporting_tasks.create_nightly_billing')
+
+    rerun_failed_nightly_tasks()
+
+    mock_status.assert_called_once_with(only_run_missing_days=True)
+    mock_billing.assert_called_once_with(only_run_missing_days=True)
+
+
+@freeze_time('2020-06-05 05:00')
+def test_create_nightly_billing_only_run_missing_days_flag(notify_api, mocker):
+    mock_task_has_run_today = mocker.patch(
+        'app.celery.reporting_tasks._task_has_run_today',
+        side_effect=[True, False, False, True]
+    )
+    mock_day_task = mocker.patch('app.celery.reporting_tasks.create_nightly_billing_for_day.apply_async')
+
+    create_nightly_billing(only_run_missing_days=True)
+
+    assert mock_task_has_run_today.call_args_list == [
+        call('create-nightly-billing-for-day', {'process_day': '2020-06-04'}),
+        call('create-nightly-billing-for-day', {'process_day': '2020-06-03'}),
+        call('create-nightly-billing-for-day', {'process_day': '2020-06-02'}),
+        call('create-nightly-billing-for-day', {'process_day': '2020-06-01'}),
+    ]
+
+    assert mock_day_task.call_args_list == [
+        call(kwargs={'process_day': '2020-06-03'}, queue='reporting-tasks'),
+        call(kwargs={'process_day': '2020-06-02'}, queue='reporting-tasks'),
+    ]
+
+
+@freeze_time('2020-06-15 05:00')
+def test_create_nightly_notification_status_only_run_missing_days_flag(notify_api, mocker):
+    def fake_has_run_today(task_name, kwargs):
+        assert task_name == 'create-nightly-notification-status-for-day'
+        assert list(kwargs.keys()) == ['process_day', 'notification_type']
+        # only re-run a few tasks:
+        if kwargs in [
+            {'process_day': '2020-06-06', 'notification_type': 'letter'},
+            {'process_day': '2020-06-13', 'notification_type': 'sms'},
+            {'process_day': '2020-06-13', 'notification_type': 'email'},
+            {'process_day': '2020-06-14', 'notification_type': 'sms'},
+        ]:
+            return False
+        return True
+
+    mock_task_has_run_today = mocker.patch(
+        'app.celery.reporting_tasks._task_has_run_today',
+        side_effect=fake_has_run_today
+    )
+    mock_day_task = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_day.apply_async')
+
+    create_nightly_notification_status(only_run_missing_days=True)
+
+    task_name = 'create-nightly-notification-status-for-day'
+    assert len(mock_task_has_run_today.call_args_list) == 4 + 4 + 10
+    # here's some of the times it was called
+    for valid_call in [
+        # most recent
+        call(task_name, {'process_day': '2020-06-14', 'notification_type': 'sms'}),
+        call(task_name, {'process_day': '2020-06-14', 'notification_type': 'email'}),
+        call(task_name, {'process_day': '2020-06-14', 'notification_type': 'letter'}),
+        # oldest
+        call(task_name, {'process_day': '2020-06-11', 'notification_type': 'sms'}),
+        call(task_name, {'process_day': '2020-06-11', 'notification_type': 'email'}),
+        call(task_name, {'process_day': '2020-06-05', 'notification_type': 'letter'}),
+    ]:
+        assert valid_call in mock_task_has_run_today.call_args_list
+
+    # here's some times it wasn't called, as we never try to process these days anyway
+    for invalid_call in [
+        # too new
+        call(task_name, {'process_day': '2020-06-15', 'notification_type': 'sms'}),
+        call(task_name, {'process_day': '2020-06-15', 'notification_type': 'email'}),
+        call(task_name, {'process_day': '2020-06-15', 'notification_type': 'email'}),
+        # too old
+        call(task_name, {'process_day': '2020-06-10', 'notification_type': 'sms'}),
+        call(task_name, {'process_day': '2020-06-10', 'notification_type': 'email'}),
+        call(task_name, {'process_day': '2020-06-04', 'notification_type': 'email'}),
+    ]:
+        assert invalid_call not in mock_task_has_run_today.call_args_list
+
+    assert mock_day_task.call_args_list == [
+        call(kwargs={'process_day': '2020-06-14', 'notification_type': 'sms'}, queue='reporting-tasks'),
+        call(kwargs={'process_day': '2020-06-13', 'notification_type': 'sms'}, queue='reporting-tasks'),
+        call(kwargs={'process_day': '2020-06-13', 'notification_type': 'email'}, queue='reporting-tasks'),
+        call(kwargs={'process_day': '2020-06-06', 'notification_type': 'letter'}, queue='reporting-tasks'),
+    ]
