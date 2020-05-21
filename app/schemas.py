@@ -12,7 +12,7 @@ from marshmallow import (
     pre_dump,
     post_dump
 )
-from marshmallow_sqlalchemy import field_for
+from marshmallow_sqlalchemy import auto_field
 
 from notifications_utils.recipients import (
     validate_email_address,
@@ -58,7 +58,7 @@ def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
         raise ValidationError(msg)
 
 
-class BaseSchema(ma.ModelSchema):
+class BaseSchema(ma.SQLAlchemyAutoSchema):
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
@@ -75,13 +75,17 @@ class BaseSchema(ma.ModelSchema):
             return data
         return super(BaseSchema, self).make_instance(data)
 
+    class Meta:
+        include_relationships = True
+        load_instance = True
+
 
 class UserSchema(BaseSchema):
 
     permissions = fields.Method("user_permissions", dump_only=True)
-    password_changed_at = field_for(models.User, 'password_changed_at', format=DATETIME_FORMAT_NO_TIMEZONE)
-    created_at = field_for(models.User, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
-    auth_type = field_for(models.User, 'auth_type')
+    password_changed_at = auto_field(format=DATETIME_FORMAT_NO_TIMEZONE)
+    created_at = auto_field(format=DATETIME_FORMAT_NO_TIMEZONE)
+    auth_type = auto_field()
 
     def user_permissions(self, usr):
         retval = {}
@@ -92,7 +96,7 @@ class UserSchema(BaseSchema):
             retval[service_id].append(x.permission)
         return retval
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
             "updated_at",
@@ -127,9 +131,9 @@ class UserSchema(BaseSchema):
 
 
 class UserUpdateAttributeSchema(BaseSchema):
-    auth_type = field_for(models.User, 'auth_type')
+    auth_type = auto_field()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
             'id', 'updated_at', 'created_at', 'user_to_service',
@@ -166,7 +170,7 @@ class UserUpdateAttributeSchema(BaseSchema):
 
 class UserUpdatePasswordSchema(BaseSchema):
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         only = ('password')
         strict = True
@@ -181,7 +185,7 @@ class UserUpdatePasswordSchema(BaseSchema):
 class ProviderDetailsSchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
         exclude = ("provider_rates", "provider_stats")
         strict = True
@@ -190,7 +194,7 @@ class ProviderDetailsSchema(BaseSchema):
 class ProviderDetailsHistorySchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
         exclude = ("provider_rates", "provider_stats")
         strict = True
@@ -198,15 +202,15 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
 class ServiceSchema(BaseSchema):
 
-    created_by = field_for(models.Service, 'created_by', required=True)
-    organisation_type = field_for(models.Service, 'organisation_type')
+    created_by = auto_field(required=True)
+    organisation_type = auto_field()
     letter_logo_filename = fields.Method(dump_only=True, serialize='get_letter_logo_filename')
     permissions = fields.Method("service_permissions")
-    email_branding = field_for(models.Service, 'email_branding')
-    organisation = field_for(models.Service, 'organisation')
+    email_branding = auto_field()
+    organisation = auto_field()
     override_flag = False
     letter_contact_block = fields.Method(serialize="get_letter_contact")
-    go_live_at = field_for(models.Service, 'go_live_at', format=DATETIME_FORMAT_NO_TIMEZONE)
+    go_live_at = auto_field(format=DATETIME_FORMAT_NO_TIMEZONE)
 
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
@@ -217,7 +221,7 @@ class ServiceSchema(BaseSchema):
     def get_letter_contact(self, service):
         return service.get_default_letter_contact()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Service
         dump_only = ['letter_contact_block']
         exclude = (
@@ -263,9 +267,9 @@ class ServiceSchema(BaseSchema):
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
-    organisation_type = field_for(models.Service, 'organisation_type')
+    organisation_type = auto_field()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
             'api_keys',
@@ -294,7 +298,7 @@ class DetailedServiceSchema(BaseSchema):
 
 
 class NotificationModelSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
         exclude = ('_personalisation', 'job', 'service', 'template', 'api_key',)
@@ -312,7 +316,7 @@ class BaseTemplateSchema(BaseSchema):
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Template
         exclude = ("service_id", "jobs", "service_letter_contact_id")
         strict = True
@@ -320,8 +324,8 @@ class BaseTemplateSchema(BaseSchema):
 
 class TemplateSchema(BaseTemplateSchema):
 
-    created_by = field_for(models.Template, 'created_by', required=True)
-    process_type = field_for(models.Template, 'process_type')
+    created_by = auto_field(required=True)
+    process_type = auto_field()
     redact_personalisation = fields.Method("redact")
 
     def redact(self, template):
@@ -341,7 +345,7 @@ class TemplateHistorySchema(BaseSchema):
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
 
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
-    created_at = field_for(models.Template, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
+    created_at = auto_field(format=DATETIME_FORMAT_NO_TIMEZONE)
 
     def get_reply_to(self, template):
         return template.reply_to
@@ -349,16 +353,16 @@ class TemplateHistorySchema(BaseSchema):
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
 
 
 class ApiKeySchema(BaseSchema):
 
-    created_by = field_for(models.ApiKey, 'created_by', required=True)
-    key_type = field_for(models.ApiKey, 'key_type', required=True)
+    created_by = auto_field(required=True)
+    key_type = auto_field(required=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ApiKey
         exclude = ("service", "_secret")
         strict = True
@@ -367,9 +371,9 @@ class ApiKeySchema(BaseSchema):
 class JobSchema(BaseSchema):
     created_by_user = fields.Nested(UserSchema, attribute="created_by",
                                     dump_to="created_by", only=["id", "name"], dump_only=True)
-    created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
+    created_by = auto_field(required=True, load_only=True)
 
-    job_status = field_for(models.JobStatus, 'name', required=False)
+    job_status = auto_field("name", model=models.JobStatus, required=False)
 
     scheduled_for = fields.DateTime()
     service_name = fields.Nested(
@@ -377,7 +381,7 @@ class JobSchema(BaseSchema):
 
     template_name = fields.Method('get_template_name', dump_only=True)
     template_type = fields.Method('get_template_type', dump_only=True)
-    contact_list_id = field_for(models.Job, 'contact_list_id')
+    contact_list_id = auto_field()
 
     def get_template_name(self, job):
         return job.template.name
@@ -390,7 +394,7 @@ class JobSchema(BaseSchema):
         _validate_datetime_not_in_past(value)
         _validate_datetime_not_more_than_96_hours_in_future(value)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Job
         exclude = (
             'notifications',
@@ -402,7 +406,7 @@ class JobSchema(BaseSchema):
 
 class NotificationSchema(ma.Schema):
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         strict = True
 
     status = fields.String(required=False)
@@ -443,7 +447,7 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
 
 
 class NotificationWithTemplateSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
         exclude = ('_personalisation', 'scheduled_notification')
@@ -466,7 +470,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
-    key_type = field_for(models.Notification, 'key_type', required=True)
+    key_type = auto_field(required=True)
     key_name = fields.String()
 
     @pre_dump
@@ -520,9 +524,9 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
 
 class InvitedUserSchema(BaseSchema):
-    auth_type = field_for(models.InvitedUser, 'auth_type')
+    auth_type = auto_field()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.InvitedUser
         strict = True
 
@@ -536,7 +540,7 @@ class InvitedUserSchema(BaseSchema):
 
 class EmailDataSchema(ma.Schema):
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         strict = True
 
     email = fields.Str(required=True)
@@ -557,7 +561,7 @@ class EmailDataSchema(ma.Schema):
 
 class NotificationsFilterSchema(ma.Schema):
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         strict = True
 
     template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
@@ -625,7 +629,7 @@ class ApiKeyHistorySchema(ma.Schema):
 
 
 class EventSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Event
         strict = True
 
