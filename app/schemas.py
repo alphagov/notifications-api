@@ -43,11 +43,6 @@ def _validate_datetime_not_more_than_96_hours_in_future(dte, msg="Date cannot be
         raise ValidationError(msg)
 
 
-def _validate_not_in_future(dte, msg="Date cannot be in the future"):
-    if dte > date.today():
-        raise ValidationError(msg)
-
-
 def _validate_not_in_past(dte, msg="Date cannot be in the past"):
     if dte < date.today():
         raise ValidationError(msg)
@@ -447,20 +442,6 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
     job = fields.String()
 
 
-class JobSmsTemplateNotificationSchema(SmsNotificationSchema):
-    template = fields.Str(required=True)
-    job = fields.String(required=True)
-
-
-class JobEmailTemplateNotificationSchema(EmailNotificationSchema):
-    template = fields.Str(required=True)
-    job = fields.String(required=True)
-
-
-class SmsAdminNotificationSchema(SmsNotificationSchema):
-    content = fields.Str(required=True)
-
-
 class NotificationWithTemplateSchema(BaseSchema):
     class Meta:
         model = models.Notification
@@ -649,18 +630,6 @@ class EventSchema(BaseSchema):
         strict = True
 
 
-class DaySchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
-    day = fields.Date(required=True)
-
-    @validates('day')
-    def validate_day(self, value):
-        _validate_not_in_future(value)
-
-
 class UnarchivedTemplateSchema(BaseSchema):
     archived = fields.Boolean(required=True)
 
@@ -679,11 +648,8 @@ detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
 api_key_schema = ApiKeySchema()
 job_schema = JobSchema()
-sms_admin_notification_schema = SmsAdminNotificationSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
-job_sms_template_notification_schema = JobSmsTemplateNotificationSchema()
 email_notification_schema = EmailNotificationSchema()
-job_email_template_notification_schema = JobEmailTemplateNotificationSchema()
 notification_schema = NotificationModelSchema()
 notification_with_template_schema = NotificationWithTemplateSchema()
 notification_with_personalisation_schema = NotificationWithPersonalisationSchema()
@@ -697,5 +663,4 @@ template_history_schema = TemplateHistorySchema()
 event_schema = EventSchema()
 provider_details_schema = ProviderDetailsSchema()
 provider_details_history_schema = ProviderDetailsHistorySchema()
-day_schema = DaySchema()
 unarchived_template_schema = UnarchivedTemplateSchema()
