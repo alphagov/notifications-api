@@ -6,7 +6,7 @@ from freezegun import freeze_time
 
 from app import db
 from app.models import Service
-from app.dao.services_dao import dao_archive_service
+from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
 from app.dao.api_key_dao import expire_api_key
 from app.dao.templates_dao import dao_update_template
 
@@ -50,9 +50,15 @@ def archived_service(client, notify_db, sample_service):
     return sample_service
 
 
-def test_deactivating_service_changes_name_and_email(archived_service):
-    assert archived_service.name == '_archived_Sample service'
-    assert archived_service.email_from == '_archived_sample.service'
+@freeze_time('2018-07-07 12:00:00')
+def test_deactivating_service_changes_name_and_email(client, sample_service):
+    auth_header = create_authorization_header()
+    client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
+
+    archived_service = dao_fetch_service_by_id(sample_service.id)
+
+    assert archived_service.name == '_archived_2018-07-07_Sample service'
+    assert archived_service.email_from == '_archived_2018-07-07_sample.service'
 
 
 def test_deactivating_service_revokes_api_keys(archived_service):

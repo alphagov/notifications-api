@@ -53,7 +53,13 @@ from app.models import (
     LETTER_TYPE,
     UPLOAD_LETTERS,
 )
-from app.utils import email_address_is_nhs, escape_special_characters, get_london_midnight_in_utc, midnight_n_days_ago
+from app.utils import (
+    email_address_is_nhs,
+    escape_special_characters,
+    get_archived_db_column_value,
+    get_london_midnight_in_utc,
+    midnight_n_days_ago,
+)
 
 DEFAULT_SERVICE_PERMISSIONS = [
     SMS_TYPE,
@@ -260,8 +266,8 @@ def dao_archive_service(service_id):
     ).filter(Service.id == service_id).one()
 
     service.active = False
-    service.name = '_archived_' + service.name
-    service.email_from = '_archived_' + service.email_from
+    service.name = get_archived_db_column_value(service.name)
+    service.email_from = get_archived_db_column_value(service.email_from)
 
     for template in service.templates:
         if not template.archived:
