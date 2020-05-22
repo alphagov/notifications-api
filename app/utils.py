@@ -126,3 +126,8 @@ def get_notification_table_to_use(service, notification_type, process_day, has_d
         days_of_retention += 1
 
     return Notification if days_ago <= timedelta(days=days_of_retention) else NotificationHistory
+
+
+def get_archived_db_column_value(column):
+    date = datetime.utcnow().strftime("%Y-%m-%d")
+    return f'_archived_{date}_{column}'

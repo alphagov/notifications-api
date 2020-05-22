@@ -11,7 +11,7 @@ from app.dao.service_user_dao import dao_get_service_users_by_user_id
 from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
 from app.models import (EMAIL_AUTH_TYPE, User, VerifyCode)
-from app.utils import escape_special_characters
+from app.utils import escape_special_characters, get_archived_db_column_value
 
 
 def _remove_values_for_keys_if_present(dict, keys):
@@ -161,7 +161,7 @@ def dao_archive_user(user):
     user.organisations = []
 
     user.auth_type = EMAIL_AUTH_TYPE
-    user.email_address = get_archived_email_address(user.email_address)
+    user.email_address = get_archived_db_column_value(user.email_address)
     user.mobile_number = None
     user.password = str(uuid.uuid4())
     # Changing the current_session_id signs the user out
@@ -185,8 +185,3 @@ def user_can_be_archived(user):
             return False
 
     return True
-
-
-def get_archived_email_address(email_address):
-    date = datetime.utcnow().strftime("%Y-%m-%d")
-    return '_archived_{}_{}'.format(date, email_address)
