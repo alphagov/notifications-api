@@ -36,9 +36,10 @@ def process_sms_client_response(self, status, provider_reference, client_name, c
 
     # validate status
     try:
-        notification_status = response_parser(status)
+        notification_status, detailed_status = response_parser(status, code)
         current_app.logger.info(
-            f'{client_name} callback returned status of {status} for reference: {provider_reference}'
+            f'{client_name} callback returned '
+            f'status of {notification_status}: {detailed_status} for reference: {provider_reference}'
         )
     except KeyError:
         _process_for_status(

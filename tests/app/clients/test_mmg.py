@@ -9,20 +9,31 @@ from app.clients.sms import SmsClientResponseException
 from app.clients.sms.mmg import get_mmg_responses, MMGClientResponseException
 
 
-def test_should_return_correct_details_for_delivery():
-    get_mmg_responses('3') == 'delivered'
+@pytest.mark.parametrize('substatus, result', [
+    (None, ('delivered', None)), ('5', ('delivered', 'Delivered to handset'))
+])
+def test_get_mmg_responses_should_return_correct_details_for_delivery(substatus, result):
+    assert get_mmg_responses('3', substatus) == result
 
 
-def test_should_return_correct_details_for_temporary_failure():
-    get_mmg_responses('4') == 'temporary-failure'
+@pytest.mark.parametrize('substatus, result', [
+    (None, ('temporary-failure', None)), ('15', ('temporary-failure', 'Expired'))
+])
+def test_get_mmg_responses_should_return_correct_details_for_temporary_failure(substatus, result):
+    assert get_mmg_responses('4', substatus) == result
 
 
-@pytest.mark.parametrize('status', ['5', '2'])
-def test_should_return_correct_details_for_bounced(status):
-    get_mmg_responses(status) == 'permanent-failure'
+@pytest.mark.parametrize('status, substatus, result', [
+    ('2', None, ('permanent-failure', None)),
+    ('2', '12', ('permanent-failure', "Illegal equipment")),
+    ('5', None, ('permanent-failure', None)),
+    ('5', '20', ('permanent-failure', 'Rejected by anti-flooding mechanism'))
+])
+def test_get_mmg_responses_should_return_correct_details_for_bounced(status, substatus, result):
+    assert get_mmg_responses(status, substatus) == result
 
 
-def test_should_be_raise_if_unrecognised_status_code():
+def test_get_mmg_responses_should_be_raise_if_unrecognised_status_code():
     with pytest.raises(KeyError) as e:
         get_mmg_responses('99')
     assert '99' in str(e.value)

@@ -4,15 +4,49 @@ from requests import (request, RequestException)
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
 mmg_response_map = {
-    '2': 'permanent-failure',
-    '3': 'delivered',
-    '4': 'temporary-failure',
-    '5': 'permanent-failure'
+    '2': {'status': 'permanent-failure', 'substatus': {
+        "1": "Number does not exist",
+        "4": "Rejected by operator",
+        "5": "Unidentified Subscriber",
+        "9": "Undelivered",
+        "11": "Service for Subscriber suspended",
+        "12": "Illegal equipment",
+        "2049": "Subscriber IMSI blacklisted",
+        "2050": "Number blacklisted in do-not-disturb blacklist",
+        "2052": "Destination number blacklisted",
+        "2053": "Source address blacklisted"
+    }},
+    '3': {'status': 'delivered', 'substatus': {"2": "Delivered to operator", "5": "Delivered to handset"}},
+    '4': {'status': 'temporary-failure', 'substatus': {
+        "6": "Absent Subscriber",
+        "8": "Roaming not allowed",
+        "13": "SMS Not Supported",
+        "15": "Expired",
+        "27": "Absent Subscriber",
+        "29": "Invalid delivery report",
+        "32": "Delivery Failure",
+    }},
+    '5': {'status': 'permanent-failure', 'substatus': {
+        "6": "Network out of coverage",
+        "8": "Incorrect number prefix",
+        "10": "Number on do-not-disturb service",
+        "11": "Sender id not registered",
+        "13": "Sender id blacklisted",
+        "14": "Destination number blacklisted",
+        "19": "Routing unavailable",
+        "20": "Rejected by anti-flooding mechanism",
+        "21": "System error",  # it says to retry those messages or contact support
+        "23": "Duplicate message id",
+        "24": "Message formatted incorrectly",
+        "25": "Message too long",
+        "51": "Missing recipient value",
+        "52": "Invalid destination",
+    }},
 }
 
 
-def get_mmg_responses(status):
-    return mmg_response_map[status]
+def get_mmg_responses(status, substatus=None):
+    return (mmg_response_map[status]["status"], mmg_response_map[status]["substatus"].get(substatus, None))
 
 
 class MMGClientResponseException(SmsClientResponseException):

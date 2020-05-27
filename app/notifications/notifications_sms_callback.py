@@ -22,10 +22,12 @@ def process_mmg_response():
         raise InvalidRequest(errors, status_code=400)
 
     status = str(data.get('status'))
+    substatus = str(data.get('substatus'))
+
     provider_reference = data.get('CID')
 
     process_sms_client_response.apply_async(
-        [status, provider_reference, client_name],
+        [status, provider_reference, client_name, substatus],
         queue=QueueNames.SMS_CALLBACKS,
     )
 
