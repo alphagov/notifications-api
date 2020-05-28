@@ -69,7 +69,7 @@ def test_get_contact_list(admin_request, notify_db_session):
 
     assert len(response) == 1
     assert response[0] == contact_list.serialize()
-    assert response[0]['job_count'] == 0
+    assert response[0]['recent_job_count'] == 0
 
 
 @pytest.mark.parametrize('days_of_email_retention, expected_job_count', (
@@ -107,10 +107,12 @@ def test_get_contact_list_counts_jobs(
     assert len(response) == 2
 
     assert response[0]['id'] == str(contact_list_2.id)
-    assert response[0]['job_count'] == expected_job_count
+    assert response[0]['recent_job_count'] == expected_job_count
+    assert response[0]['has_jobs'] is True
 
     assert response[1]['id'] == str(contact_list_1.id)
-    assert response[1]['job_count'] == 0
+    assert response[1]['recent_job_count'] == 0
+    assert response[1]['has_jobs'] is False
 
 
 def test_get_contact_list_returns_for_service(admin_request, notify_db_session):

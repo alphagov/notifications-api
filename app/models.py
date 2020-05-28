@@ -2136,13 +2136,19 @@ class ServiceContactList(db.Model):
             )
         ).count()
 
+    def get_has_jobs(self):
+        return bool(Job.query.filter(
+            Job.contact_list_id == self.id,
+        ).first())
+
     def serialize(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         contact_list = {
             "id": str(self.id),
             "original_file_name": self.original_file_name,
             "row_count": self.row_count,
-            "job_count": self.get_job_count(),
+            "recent_job_count": self.get_job_count(),
+            "has_jobs": self.get_has_jobs(),
             "template_type": self.template_type,
             "service_id": str(self.service_id),
             "created_by": self.created_by.name,
