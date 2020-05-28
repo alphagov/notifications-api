@@ -110,16 +110,19 @@ clean:
 .PHONY: preview
 preview: ## Set environment to preview
 	$(eval export DEPLOY_ENV=preview)
+	$(eval export DNS_NAME="notify.works")
 	@true
 
 .PHONY: staging
 staging: ## Set environment to staging
 	$(eval export DEPLOY_ENV=staging)
+	$(eval export DNS_NAME="staging-notify.works")
 	@true
 
 .PHONY: production
 production: ## Set environment to production
 	$(eval export DEPLOY_ENV=production)
+	$(eval export DNS_NAME="notifications.service.gov.uk")
 	@true
 
 .PHONY: cf-login
@@ -176,3 +179,27 @@ cf-rollback: ## Rollbacks the app to the previous release
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
 	@echo $(shell python3 scripts/check_if_new_migration.py)
+
+.PHONY: cf-deploy-failwhale
+cf-deploy-failwhale:  #
+	$(if ${CF_SPACE},,$(error Must target space, eg `make preview cf-deploy-failwhale`))
+	cd ./paas-failwhale; cf push notify-api-failwhale -f manifest.yml
+
+.PHONY: enable-failwhale
+enable-failwhale: ## Enable the failwhale app and disable api
+	$(if ${DNS_NAME},,$(error Must target space, eg `make preview enable-failwhale`))
+	# make sure failwhale is running first
+	cf start notify-api-failwhale
+
+	cf map-route notify-api-failwhale ${DNS_NAME} --hostname api
+	cf unmap-route notify-api ${DNS_NAME} --hostname api
+	@echo "Failwhale is enabled"
+
+.PHONY: disable-failwhale
+disable-failwhale: ## Disable the failwhale app and enable api
+	$(if ${DNS_NAME},,$(error Must target space, eg `make preview disable-failwhale`))
+
+	cf map-route notify-api ${DNS_NAME} --hostname api
+	cf unmap-route notify-api-failwhale ${DNS_NAME} --hostname api
+	cf stop notify-api-failwhale
+	@echo "Failwhale is disabled"
