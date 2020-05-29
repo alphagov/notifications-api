@@ -97,6 +97,7 @@ class FiretextClient(SmsClient):
             "reference": reference
         }
 
+        response = None
         start_time = monotonic()
         try:
             response = request(
@@ -121,4 +122,6 @@ class FiretextClient(SmsClient):
             elapsed_time = monotonic() - start_time
             self.current_app.logger.info("Firetext request for {} finished in {}".format(reference, elapsed_time))
             self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
+            if response and hasattr(response, 'elapsed'):
+                self.statsd_client.timing("clients.firetext.raw-request-time", response.elapsed.total_seconds())
         return response
