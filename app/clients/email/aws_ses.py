@@ -54,6 +54,22 @@ class AwsSesClient(EmailClient):
         self.name = 'ses'
         self.statsd_client = statsd_client
 
+        # events are generally undocumented, but some that might be of interest are:
+        # before-call, after-call, after-call-error, request-created, response-received
+        self._client.meta.events.register(f'request-created.ses.SendEmail', self.ses_request_created_hook)
+        self._client.meta.events.register(f'response-received.ses.SendEmail', self.ses_response_received_hook)
+
+    def ses_request_created_hook(self, **kwargs):
+        # request created may be called multiple times if the request auto-retries. We want to count all these as the
+        # same request for timing purposes, so only reset the start time if it was cleared completely
+        if self.ses_start_time == 0:
+            self.ses_start_time = monotonic()
+
+    def ses_response_received_hook(self, **kwargs):
+        # response received may be called multiple times if the request auto-retries, however, we want to count the last
+        # time it triggers for timing purposes, so always reset the elapsed time
+        self.ses_elapsed_time = monotonic() - self.ses_start_time
+
     def get_name(self):
         return self.name
 
@@ -64,6 +80,8 @@ class AwsSesClient(EmailClient):
                    body,
                    html_body='',
                    reply_to_address=None):
+        self.ses_elapsed_time = 0
+        self.ses_start_time = 0
         try:
             if isinstance(to_addresses, str):
                 to_addresses = [to_addresses]
@@ -114,6 +132,8 @@ class AwsSesClient(EmailClient):
             elapsed_time = monotonic() - start_time
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)
+            if self.ses_elapsed_time != 0:
+                self.statsd_client.timing("clients.ses.raw-request-time", self.ses_elapsed_time)
             self.statsd_client.incr("clients.ses.success")
             return response['MessageId']
 
