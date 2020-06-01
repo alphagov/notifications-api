@@ -24,7 +24,7 @@ sms_response_mapper = {
 
 @notify_celery.task(bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
-def process_sms_client_response(self, status, provider_reference, client_name, code=None):
+def process_sms_client_response(self, status, provider_reference, client_name, detailed_status_code=None):
     # validate reference
     try:
         uuid.UUID(provider_reference, version=4)
@@ -36,9 +36,10 @@ def process_sms_client_response(self, status, provider_reference, client_name, c
 
     # validate status
     try:
-        notification_status = response_parser(status)
+        notification_status, detailed_status = response_parser(status, detailed_status_code)
         current_app.logger.info(
-            f'{client_name} callback returned status of {status} for reference: {provider_reference}'
+            f'{client_name} callback returned '
+            f'status of {notification_status}: {detailed_status} for reference: {provider_reference}'
         )
     except KeyError:
         _process_for_status(
@@ -52,17 +53,17 @@ def process_sms_client_response(self, status, provider_reference, client_name, c
         notification_status=notification_status,
         client_name=client_name,
         provider_reference=provider_reference,
-        code=code
+        detailed_status_code=detailed_status_code
     )
 
 
-def _process_for_status(notification_status, client_name, provider_reference, code=None):
+def _process_for_status(notification_status, client_name, provider_reference, detailed_status_code=None):
     # record stats
     notification = notifications_dao.update_notification_status_by_id(
         notification_id=provider_reference,
         status=notification_status,
         sent_by=client_name.lower(),
-        code=code
+        detailed_status_code=detailed_status_code
     )
     if not notification:
         return

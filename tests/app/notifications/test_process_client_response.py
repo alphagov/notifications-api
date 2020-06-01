@@ -35,29 +35,35 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
     assert sample_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-@pytest.mark.parametrize('status, sms_provider, expected_notification_status', [
-    ('0', 'Firetext', 'delivered'),
-    ('1', 'Firetext', 'permanent-failure'),
-    ('2', 'Firetext', 'pending'),
-    ('2', 'MMG', 'permanent-failure'),
-    ('3', 'MMG', 'delivered'),
-    ('4', 'MMG', 'temporary-failure'),
-    ('5', 'MMG', 'permanent-failure'),
+@pytest.mark.parametrize('status, detailed_status_code, sms_provider, expected_notification_status, reason', [
+    ('0', None, 'Firetext', 'delivered', None),
+    ('1', '101', 'Firetext', 'permanent-failure', 'Unknown Subscriber'),
+    ('2', '102', 'Firetext', 'pending', 'Absent Subscriber'),
+    ('2', '1', 'MMG', 'permanent-failure', "Number does not exist"),
+    ('3', '2', 'MMG', 'delivered', "Delivered to operator"),
+    ('4', '27', 'MMG', 'temporary-failure', "Absent Subscriber"),
+    ('5', '13', 'MMG', 'permanent-failure', "Sender id blacklisted"),
 ])
 def test_process_sms_client_response_updates_notification_status(
     sample_notification,
     mocker,
     status,
+    detailed_status_code,
     sms_provider,
     expected_notification_status,
+    reason
 ):
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
     sample_notification.status = 'sending'
-    process_sms_client_response(status, str(sample_notification.id), sms_provider)
 
+    process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
+
+    message = f"{sms_provider} callback returned status of {expected_notification_status}: {reason} for reference: {sample_notification.id}"  # noqa
+    mock_logger.assert_any_call(message)
     assert sample_notification.status == expected_notification_status
 
 
-@pytest.mark.parametrize('code, expected_notification_status, reason', [
+@pytest.mark.parametrize('detailed_status_code, expected_notification_status, reason', [
     ('101', 'permanent-failure', 'Unknown Subscriber'),
     ('102', 'temporary-failure', 'Absent Subscriber'),
     (None, 'temporary-failure', None),
@@ -66,7 +72,7 @@ def test_process_sms_client_response_updates_notification_status(
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
     sample_notification,
     mocker,
-    code,
+    detailed_status_code,
     expected_notification_status,
     reason
 ):
@@ -74,29 +80,29 @@ def test_process_sms_client_response_updates_notification_status_when_called_sec
     sample_notification.status = 'sending'
     process_sms_client_response('2', str(sample_notification.id), 'Firetext')
 
-    process_sms_client_response('1', str(sample_notification.id), 'Firetext', code)
+    process_sms_client_response('1', str(sample_notification.id), 'Firetext', detailed_status_code)
 
-    if code and code != '000':
+    if detailed_status_code and detailed_status_code != '000':
         message = f'Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}'  # noqa
         mock_logger.assert_called_with(message)
 
     assert sample_notification.status == expected_notification_status
 
 
-@pytest.mark.parametrize('code', ['102', None, '000'])
-def test_process_sms_client_response_updates_notification_status_to_pending_with_and_without_failire_code_present(
+@pytest.mark.parametrize('detailed_status_code', ['102', None, '000'])
+def test_process_sms_client_response_updates_notification_status_to_pending_with_and_without_failure_code_present(
     sample_notification,
     mocker,
-    code
+    detailed_status_code
 ):
     sample_notification.status = 'sending'
 
-    process_sms_client_response('2', str(sample_notification.id), 'Firetext', code)
+    process_sms_client_response('2', str(sample_notification.id), 'Firetext', detailed_status_code)
 
     assert sample_notification.status == 'pending'
 
 
-def test_process_sms_client_response_updates_notification_status_when_code_unknown(
+def test_process_sms_client_response_updates_notification_status_when_detailed_status_code_not_recognised(
     sample_notification,
     mocker,
 ):

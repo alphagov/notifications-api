@@ -203,6 +203,7 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
                        "CID": "notification_id",
                        "MSISDN": "447777349060",
                        "status": "3",
+                       "substatus": "5",
                        "deliverytime": "2016-04-05 16:01:07"})
 
     response = mmg_post(client, data)
@@ -212,7 +213,7 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
     assert json_data['result'] == 'success'
 
     mock_celery.assert_called_once_with(
-        ['3', 'notification_id', 'MMG'],
+        ['3', 'notification_id', 'MMG', '5'],
         queue='sms-callbacks',
     )
 

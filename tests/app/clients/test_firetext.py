@@ -8,19 +8,25 @@ import requests_mock
 from app.clients.sms.firetext import get_firetext_responses, SmsClientResponseException, FiretextClientResponseException
 
 
-def test_should_return_correct_details_for_delivery():
-    get_firetext_responses('0') == 'delivered'
+@pytest.mark.parametrize('detailed_status_code, result', [
+    (None, ('delivered', None)), ('000', ('delivered', None))
+])
+def test_get_firetext_responses_should_return_correct_details_for_delivery(detailed_status_code, result):
+    assert get_firetext_responses('0', detailed_status_code) == result
 
 
-def test_should_return_correct_details_for_bounced():
-    get_firetext_responses('1') == 'permanent-failure'
+@pytest.mark.parametrize('detailed_status_code, result', [
+    (None, ('permanent-failure', None)), ('401', ('permanent-failure', 'Message Rejected'))
+])
+def test_get_firetext_responses_should_return_correct_details_for_bounced(detailed_status_code, result):
+    assert get_firetext_responses('1', detailed_status_code) == result
 
 
-def test_should_return_correct_details_for_complaint():
-    get_firetext_responses('2') == 'pending'
+def test_get_firetext_responses_should_return_correct_details_for_complaint():
+    assert get_firetext_responses('2') == ('pending', None)
 
 
-def test_should_be_none_if_unrecognised_status_code():
+def test_get_firetext_responses_raises_KeyError_if_unrecognised_status_code():
     with pytest.raises(KeyError) as e:
         get_firetext_responses('99')
     assert '99' in str(e.value)

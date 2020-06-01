@@ -33,12 +33,15 @@ firetext_codes = {
 }
 
 
-def get_firetext_responses(status):
-    return firetext_responses[status]
+def get_firetext_responses(status, detailed_status_code=None):
+    detailed_status = firetext_codes[detailed_status_code]['reason'] if firetext_codes.get(
+        detailed_status_code, None
+    ) else None
+    return (firetext_responses[status], detailed_status)
 
 
-def get_message_status_and_reason_from_firetext_code(code):
-    return firetext_codes[code]['status'], firetext_codes[code]['reason']
+def get_message_status_and_reason_from_firetext_code(detailed_status_code):
+    return firetext_codes[detailed_status_code]['status'], firetext_codes[detailed_status_code]['reason']
 
 
 class FiretextClientResponseException(SmsClientResponseException):

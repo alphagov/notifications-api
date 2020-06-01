@@ -22,10 +22,12 @@ def process_mmg_response():
         raise InvalidRequest(errors, status_code=400)
 
     status = str(data.get('status'))
+    detailed_status_code = str(data.get('substatus'))
+
     provider_reference = data.get('CID')
 
     process_sms_client_response.apply_async(
-        [status, provider_reference, client_name],
+        [status, provider_reference, client_name, detailed_status_code],
         queue=QueueNames.SMS_CALLBACKS,
     )
 
@@ -48,7 +50,7 @@ def process_firetext_response():
         raise InvalidRequest(errors, status_code=400)
 
     status = request.form.get('status')
-    code = request.form.get('code')
+    detailed_status_code = request.form.get('code')
     provider_reference = request.form.get('reference')
 
     safe_to_log = dict(request.form).copy()
@@ -58,7 +60,7 @@ def process_firetext_response():
     )
 
     process_sms_client_response.apply_async(
-        [status, provider_reference, client_name, code],
+        [status, provider_reference, client_name, detailed_status_code],
         queue=QueueNames.SMS_CALLBACKS,
     )
 
