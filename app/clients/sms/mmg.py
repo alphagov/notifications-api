@@ -45,8 +45,8 @@ mmg_response_map = {
 }
 
 
-def get_mmg_responses(status, substatus=None):
-    return (mmg_response_map[status]["status"], mmg_response_map[status]["substatus"].get(substatus, None))
+def get_mmg_responses(status, detailed_status_code=None):
+    return (mmg_response_map[status]["status"], mmg_response_map[status]["substatus"].get(detailed_status_code, None))
 
 
 class MMGClientResponseException(SmsClientResponseException):

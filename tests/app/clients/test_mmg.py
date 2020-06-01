@@ -9,31 +9,31 @@ from app.clients.sms import SmsClientResponseException
 from app.clients.sms.mmg import get_mmg_responses, MMGClientResponseException
 
 
-@pytest.mark.parametrize('substatus, result', [
+@pytest.mark.parametrize('detailed_status_code, result', [
     (None, ('delivered', None)), ('5', ('delivered', 'Delivered to handset'))
 ])
-def test_get_mmg_responses_should_return_correct_details_for_delivery(substatus, result):
-    assert get_mmg_responses('3', substatus) == result
+def test_get_mmg_responses_should_return_correct_details_for_delivery(detailed_status_code, result):
+    assert get_mmg_responses('3', detailed_status_code) == result
 
 
-@pytest.mark.parametrize('substatus, result', [
+@pytest.mark.parametrize('detailed_status_code, result', [
     (None, ('temporary-failure', None)), ('15', ('temporary-failure', 'Expired'))
 ])
-def test_get_mmg_responses_should_return_correct_details_for_temporary_failure(substatus, result):
-    assert get_mmg_responses('4', substatus) == result
+def test_get_mmg_responses_should_return_correct_details_for_temporary_failure(detailed_status_code, result):
+    assert get_mmg_responses('4', detailed_status_code) == result
 
 
-@pytest.mark.parametrize('status, substatus, result', [
+@pytest.mark.parametrize('status, detailed_status_code, result', [
     ('2', None, ('permanent-failure', None)),
     ('2', '12', ('permanent-failure', "Illegal equipment")),
     ('5', None, ('permanent-failure', None)),
     ('5', '20', ('permanent-failure', 'Rejected by anti-flooding mechanism'))
 ])
-def test_get_mmg_responses_should_return_correct_details_for_bounced(status, substatus, result):
-    assert get_mmg_responses(status, substatus) == result
+def test_get_mmg_responses_should_return_correct_details_for_bounced(status, detailed_status_code, result):
+    assert get_mmg_responses(status, detailed_status_code) == result
 
 
-def test_get_mmg_responses_should_be_raise_if_unrecognised_status_code():
+def test_get_mmg_responses_raises_KeyError_if_unrecognised_status_code():
     with pytest.raises(KeyError) as e:
         get_mmg_responses('99')
     assert '99' in str(e.value)
