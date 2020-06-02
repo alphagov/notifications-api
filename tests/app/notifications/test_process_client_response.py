@@ -58,7 +58,7 @@ def test_process_sms_client_response_updates_notification_status(
 
     process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
 
-    message = f"{sms_provider} callback returned status of {expected_notification_status}: {reason} for reference: {sample_notification.id}"  # noqa
+    message = f"{sms_provider} callback returned status of {expected_notification_status}({status}): {reason}({detailed_status_code}) for reference: {sample_notification.id}"  # noqa
     mock_logger.assert_any_call(message)
     assert sample_notification.status == expected_notification_status
 
