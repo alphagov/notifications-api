@@ -88,10 +88,10 @@ def create_app(application):
     aws_ses_stub_client.init_app(
         application.config['AWS_REGION'],
         statsd_client=statsd_client,
-        stub_url=os.environ.get('SES_STUB_URL')
+        stub_url=application.config['SES_STUB_URL']
     )
     # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
-    email_clients = [aws_ses_client] if not os.environ.get('SES_STUB_URL') else [aws_ses_stub_client]
+    email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
     clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
     notify_celery.init_app(application)

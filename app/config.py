@@ -486,6 +486,7 @@ class Live(Config):
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    SES_STUB_URL = None
 
     CRONITOR_ENABLED = True
 
