@@ -43,10 +43,14 @@ def process_ses_results(self, response):
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
+                current_app.logger.info(
+                    f"notification not found for reference: {reference} (update to {notification_status}). "
+                    f"Callback may have arrived before notification was persisted to the DB. Adding task to retry queue"
+                )
                 self.retry(queue=QueueNames.RETRY)
             else:
                 current_app.logger.warning(
-                    "notification not found for reference: {} (update to {})".format(reference, notification_status)
+                    f"notification not found for reference: {reference} (update to {notification_status})"
                 )
             return
 
