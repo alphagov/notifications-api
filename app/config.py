@@ -345,6 +345,7 @@ class Config(object):
     # these environment vars aren't defined in the manifest so to set them on paas use `cf set-env`
     MMG_URL = os.environ.get("MMG_URL", "https://api.mmg.co.uk/jsonv2a/api.php")
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
+    SES_STUB_URL = os.environ.get("SES_STUB_URL")
 
     AWS_REGION = 'eu-west-1'
 
@@ -485,6 +486,7 @@ class Live(Config):
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    SES_STUB_URL = None
 
     CRONITOR_ENABLED = True
 

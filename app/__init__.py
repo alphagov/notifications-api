@@ -21,6 +21,7 @@ from app.celery.celery import NotifyCelery
 from app.clients import Clients
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
+from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
@@ -49,6 +50,7 @@ notify_celery = NotifyCelery()
 firetext_client = FiretextClient()
 mmg_client = MMGClient()
 aws_ses_client = AwsSesClient()
+aws_ses_stub_client = AwsSesStubClient()
 encryption = Encryption()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
@@ -81,13 +83,22 @@ def create_app(application):
     logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
+
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
+    aws_ses_stub_client.init_app(
+        application.config['AWS_REGION'],
+        statsd_client=statsd_client,
+        stub_url=application.config['SES_STUB_URL']
+    )
+    # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
+    email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
+    clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
+
     notify_celery.init_app(application)
     encryption.init_app(application)
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
     document_download_client.init_app(application)
-    clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=[aws_ses_client])
     metrics.init_app(application)
 
     register_blueprint(application)
