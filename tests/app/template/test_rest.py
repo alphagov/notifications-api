@@ -884,6 +884,19 @@ def test_update_template_reply_to_set_to_blank(client, notify_db_session):
     assert th.service_letter_contact_id is None
 
 
+def test_update_template_validates_postage(admin_request, sample_service_full_permissions):
+    template = create_template(service=sample_service_full_permissions, template_type='letter')
+
+    response = admin_request.post(
+        'template.update_template',
+        service_id=sample_service_full_permissions.id,
+        template_id=template.id,
+        _data={"postage": "third"},
+        _expected_status=400
+    )
+    assert 'postage invalid' in response['errors'][0]['message']
+
+
 def test_update_template_with_foreign_service_reply_to(client, sample_letter_template):
     auth_header = create_authorization_header()
 
