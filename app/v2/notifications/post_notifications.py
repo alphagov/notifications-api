@@ -43,14 +43,12 @@ from app.notifications.process_letter_notifications import (
 )
 from app.notifications.process_notifications import (
     persist_notification,
-    persist_scheduled_notification,
     send_notification_to_queue,
     simulated_recipient
 )
 from app.notifications.validators import (
     check_if_service_can_send_files_by_email,
     check_rate_limiting,
-    check_service_can_schedule_notification,
     check_service_email_reply_to_id,
     check_service_has_permission,
     check_service_sms_sender_id,
@@ -129,10 +127,6 @@ def post_notification(notification_type):
 
     check_service_has_permission(notification_type, authenticated_service.permissions)
 
-    scheduled_for = form.get("scheduled_for", None)
-
-    check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
-
     check_rate_limiting(authenticated_service, api_user)
 
     template, template_with_content = validate_template(
@@ -183,7 +177,7 @@ def post_notification(notification_type):
     resp = create_resp_partial(
         notification=notification,
         url_root=request.url_root,
-        scheduled_for=scheduled_for,
+        scheduled_for=None,
         content=template_with_content.content_with_placeholders_filled_in,
     )
     return jsonify(resp), 201
@@ -250,19 +244,15 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         document_download_count=document_download_count
     )
 
-    scheduled_for = form.get("scheduled_for", None)
-    if scheduled_for:
-        persist_scheduled_notification(notification.id, form["scheduled_for"])
+    if not simulated:
+        queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
+        send_notification_to_queue(
+            notification=notification,
+            research_mode=service.research_mode,
+            queue=queue_name
+        )
     else:
-        if not simulated:
-            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-            send_notification_to_queue(
-                notification=notification,
-                research_mode=service.research_mode,
-                queue=queue_name
-            )
-        else:
-            current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
+        current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
 
     return notification
 

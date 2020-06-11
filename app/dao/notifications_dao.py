@@ -677,12 +677,6 @@ def dao_get_notifications_by_references(references):
     ).all()
 
 
-@statsd(namespace="dao")
-def dao_created_scheduled_notification(scheduled_notification):
-    db.session.add(scheduled_notification)
-    db.session.commit()
-
-
 def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date, end_date):
     """
     SELECT

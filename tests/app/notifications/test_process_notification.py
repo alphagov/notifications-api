@@ -10,14 +10,12 @@ from collections import namedtuple
 from app.models import (
     Notification,
     NotificationHistory,
-    ScheduledNotification,
     Template,
     LETTER_TYPE
 )
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
-    persist_scheduled_notification,
     send_notification_to_queue,
     simulated_recipient
 )
@@ -383,14 +381,6 @@ def test_persist_notification_with_international_info_does_not_store_for_email(
     assert persisted_notification.international is False
     assert persisted_notification.phone_prefix is None
     assert persisted_notification.rate_multiplier is None
-
-
-def test_persist_scheduled_notification(sample_notification):
-    persist_scheduled_notification(sample_notification.id, '2017-05-12 14:15')
-    scheduled_notification = ScheduledNotification.query.all()
-    assert len(scheduled_notification) == 1
-    assert scheduled_notification[0].notification_id == sample_notification.id
-    assert scheduled_notification[0].scheduled_for == datetime.datetime(2017, 5, 12, 13, 15)
 
 
 @pytest.mark.parametrize('recipient, expected_recipient_normalised', [

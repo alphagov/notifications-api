@@ -12,7 +12,7 @@ from app.dao import services_dao, templates_dao
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
-    KEY_TYPE_TEST, KEY_TYPE_TEAM, SCHEDULE_NOTIFICATIONS
+    KEY_TYPE_TEST, KEY_TYPE_TEAM
 )
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
@@ -96,12 +96,6 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
             message=f"Send files by email has not been set up - add contact details for your service at "
                     f"{current_app.config['ADMIN_BASE_URL']}/services/{service_id}/service-settings/send-files-by-email"
         )
-
-
-def check_service_can_schedule_notification(permissions, scheduled_for):
-    if scheduled_for:
-        if not service_has_permission(SCHEDULE_NOTIFICATIONS, permissions):
-            raise BadRequestError(message="Cannot schedule notifications (this feature is invite-only)")
 
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_whitelisted_recipients=True):

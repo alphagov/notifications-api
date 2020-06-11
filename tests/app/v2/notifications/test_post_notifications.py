@@ -3,15 +3,12 @@ from unittest import mock
 from unittest.mock import call
 
 import pytest
-from freezegun import freeze_time
 from boto.exception import SQSError
 
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
-    ScheduledNotification,
     EMAIL_TYPE,
     NOTIFICATION_CREATED,
-    SCHEDULE_NOTIFICATIONS,
     SMS_TYPE,
     INTERNATIONAL_SMS_TYPE
 )
@@ -607,56 +604,6 @@ def test_post_sms_should_persist_supplied_sms_number(client, sample_template_wit
     assert '+(44) 77009-00855' == notifications[0].to
     assert resp_json['id'] == str(notification_id)
     assert mocked.called
-
-
-@pytest.mark.parametrize("notification_type, key_send_to, send_to",
-                         [("sms", "phone_number", "07700 900 855"),
-                          ("email", "email_address", "sample@email.com")])
-@freeze_time("2017-05-14 14:00:00")
-def test_post_notification_with_scheduled_for(
-        client, notify_db_session, notification_type, key_send_to, send_to
-):
-    service = create_service(service_name=str(uuid.uuid4()),
-                             service_permissions=[EMAIL_TYPE, SMS_TYPE, SCHEDULE_NOTIFICATIONS])
-    template = create_template(service=service, template_type=notification_type)
-    data = {
-        key_send_to: send_to,
-        'template_id': str(template.id) if notification_type == EMAIL_TYPE else str(template.id),
-        'scheduled_for': '2017-05-14 14:15'
-    }
-    auth_header = create_authorization_header(service_id=service.id)
-
-    response = client.post('/v2/notifications/{}'.format(notification_type),
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json'), auth_header])
-    assert response.status_code == 201
-    resp_json = json.loads(response.get_data(as_text=True))
-    scheduled_notification = ScheduledNotification.query.filter_by(notification_id=resp_json["id"]).all()
-    assert len(scheduled_notification) == 1
-    assert resp_json["id"] == str(scheduled_notification[0].notification_id)
-    assert resp_json["scheduled_for"] == '2017-05-14 14:15'
-
-
-@pytest.mark.parametrize("notification_type, key_send_to, send_to",
-                         [("sms", "phone_number", "07700 900 855"),
-                          ("email", "email_address", "sample@email.com")])
-@freeze_time("2017-05-14 14:00:00")
-def test_post_notification_raises_bad_request_if_service_not_invited_to_schedule(
-        client, sample_template, sample_email_template, notification_type, key_send_to, send_to):
-    data = {
-        key_send_to: send_to,
-        'template_id': str(sample_email_template.id) if notification_type == EMAIL_TYPE else str(sample_template.id),
-        'scheduled_for': '2017-05-14 14:15'
-    }
-    auth_header = create_authorization_header(service_id=sample_template.service_id)
-
-    response = client.post('/v2/notifications/{}'.format(notification_type),
-                           data=json.dumps(data),
-                           headers=[('Content-Type', 'application/json'), auth_header])
-    assert response.status_code == 400
-    error_json = json.loads(response.get_data(as_text=True))
-    assert error_json['errors'] == [
-        {"error": "BadRequestError", "message": 'Cannot schedule notifications (this feature is invite-only)'}]
 
 
 def test_post_notification_raises_bad_request_if_not_valid_notification_type(client, sample_service):
