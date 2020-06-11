@@ -72,8 +72,8 @@ def send_sms_to_provider(notification):
                 notification.billable_units = template.fragment_count
                 update_notification_to_sending(notification, provider)
 
-        delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
-        statsd_client.timing("sms.total-time", delta_milliseconds)
+        delta_seconds = (datetime.utcnow() - notification.created_at).total_seconds()
+        statsd_client.timing("sms.total-time", delta_seconds)
 
 
 def send_email_to_provider(notification):
@@ -118,8 +118,8 @@ def send_email_to_provider(notification):
             notification.reference = reference
             update_notification_to_sending(notification, provider)
 
-        delta_milliseconds = (datetime.utcnow() - notification.created_at).total_seconds() * 1000
-        statsd_client.timing("email.total-time", delta_milliseconds)
+        delta_seconds = (datetime.utcnow() - notification.created_at).total_seconds()
+        statsd_client.timing("email.total-time", delta_seconds)
 
 
 def update_notification_to_sending(notification, provider):
