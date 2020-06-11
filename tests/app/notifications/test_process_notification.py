@@ -21,6 +21,7 @@ from app.notifications.process_notifications import (
     send_notification_to_queue,
     simulated_recipient
 )
+from app.notifications.validators import get_template_dict
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
 from tests.app.db import create_service, create_template
@@ -28,26 +29,30 @@ from tests.app.db import create_service, create_template
 
 def test_create_content_for_notification_passes(sample_email_template):
     template = Template.query.get(sample_email_template.id)
-    content = create_content_for_notification(template, None)
+    template_dict = get_template_dict(template.id, template.service_id)
+    content = create_content_for_notification(template_dict, None)
     assert str(content) == template.content + '\n'
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
-    content = create_content_for_notification(template, {'name': 'Bobby'})
+    template_dict = get_template_dict(template.id, template.service_id)
+    content = create_content_for_notification(template_dict, {'name': 'Bobby'})
     assert content.content == template.content
     assert 'Bobby' in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
+    template_dict = get_template_dict(template.id, template.service_id)
     with pytest.raises(BadRequestError):
-        create_content_for_notification(template, None)
+        create_content_for_notification(template_dict, None)
 
 
 def test_create_content_for_notification_allows_additional_personalisation(sample_template_with_placeholders):
     template = Template.query.get(sample_template_with_placeholders.id)
-    create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})
+    template_dict = get_template_dict(template.id, template.service_id)
+    create_content_for_notification(template_dict, {'name': 'Bobby', 'Additional placeholder': 'Data'})
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

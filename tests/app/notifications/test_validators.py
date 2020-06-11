@@ -19,6 +19,7 @@ from app.notifications.validators import (
     check_service_sms_sender_id,
     check_service_letter_contact_id,
     check_reply_to,
+    get_template_dict,
     service_can_send_to_recipient,
     validate_and_format_recipient,
     validate_template,
@@ -175,15 +176,17 @@ def test_check_template_is_for_notification_type_fails_when_template_type_does_n
 
 
 def test_check_template_is_active_passes(sample_template):
-    assert check_template_is_active(sample_template) is None
+    template_dict = get_template_dict(sample_template.id, sample_template.service_id)
+    assert check_template_is_active(template_dict) is None
 
 
 def test_check_template_is_active_fails(sample_template):
     sample_template.archived = True
     from app.dao.templates_dao import dao_update_template
     dao_update_template(sample_template)
+    template_dict = get_template_dict(sample_template.id, sample_template.service_id)
     with pytest.raises(BadRequestError) as e:
-        check_template_is_active(sample_template)
+        check_template_is_active(template_dict)
     assert e.value.status_code == 400
     assert e.value.message == 'Template has been deleted'
     assert e.value.fields == [{'template': 'Template has been deleted'}]
@@ -314,11 +317,11 @@ def test_check_content_char_count_passes_for_long_email_or_letter(sample_service
 
 def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
     template_id = create_template(sample_service, content="Content is not empty").id
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template_dict = get_template_dict(
         template_id=template_id,
         service_id=sample_service.id
     )
-    template_with_content = create_content_for_notification(template, {})
+    template_with_content = create_content_for_notification(template_dict, {})
     assert check_notification_content_is_not_empty(template_with_content) is None
 
 
@@ -330,11 +333,11 @@ def test_check_notification_content_is_not_empty_fails(
     notify_api, mocker, sample_service, template_content, notification_values
 ):
     template_id = create_template(sample_service, content=template_content).id
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template_dict = get_template_dict(
         template_id=template_id,
         service_id=sample_service.id
     )
-    template_with_content = create_content_for_notification(template, notification_values)
+    template_with_content = create_content_for_notification(template_dict, notification_values)
     with pytest.raises(BadRequestError) as e:
         check_notification_content_is_not_empty(template_with_content)
     assert e.value.status_code == 400
@@ -349,6 +352,10 @@ def test_validate_template(sample_service):
 
 def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_service):
     template = create_template(sample_service, template_type="email")
+    template_dict = get_template_dict(
+        template_id=template.id,
+        service_id=sample_service.id
+    )
     mock_check_type = mocker.patch('app.notifications.validators.check_template_is_for_notification_type')
     mock_check_if_active = mocker.patch('app.notifications.validators.check_template_is_active')
     mock_create_conent = mocker.patch(
@@ -359,8 +366,8 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
     validate_template(template.id, {}, sample_service, "email")
 
     mock_check_type.assert_called_once_with("email", "email")
-    mock_check_if_active.assert_called_once_with(template)
-    mock_create_conent.assert_called_once_with(template, {})
+    mock_check_if_active.assert_called_once_with(template_dict)
+    mock_create_conent.assert_called_once_with(template_dict, {})
     mock_check_not_empty.assert_called_once_with("content")
     mock_check_message_is_too_long.assert_called_once_with("content")
 

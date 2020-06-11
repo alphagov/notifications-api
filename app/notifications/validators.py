@@ -71,7 +71,7 @@ def check_template_is_for_notification_type(notification_type, template_type):
 
 
 def check_template_is_active(template):
-    if template.archived:
+    if template['archived']:
         raise BadRequestError(fields=[{'template': 'Template has been deleted'}],
                               message="Template has been deleted")
 
@@ -147,18 +147,25 @@ def check_notification_content_is_not_empty(template_with_content):
         raise BadRequestError(message=message)
 
 
-def validate_template(template_id, personalisation, service, notification_type):
+def get_template_dict(template_id, service_id):
+    from app.schemas import template_schema
     try:
-        template = templates_dao.dao_get_template_by_id_and_service_id(
+        fetched_template = templates_dao.dao_get_template_by_id_and_service_id(
             template_id=template_id,
-            service_id=service.id
+            service_id=service_id
         )
     except NoResultFound:
         message = 'Template not found'
         raise BadRequestError(message=message,
                               fields=[{'template': message}])
 
-    check_template_is_for_notification_type(notification_type, template.template_type)
+    return template_schema.dump(fetched_template).data
+
+
+def validate_template(template_id, personalisation, service, notification_type):
+    template = get_template_dict(template_id, service.id)
+
+    check_template_is_for_notification_type(notification_type, template['template_type'])
     check_template_is_active(template)
 
     template_with_content = create_content_for_notification(template, personalisation)
@@ -167,7 +174,7 @@ def validate_template(template_id, personalisation, service, notification_type):
 
     check_content_char_count(template_with_content)
 
-    return template, template_with_content
+    return template_with_content
 
 
 def check_reply_to(service_id, reply_to_id, type_):

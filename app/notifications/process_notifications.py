@@ -9,6 +9,11 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number,
     format_email_address
 )
+from notifications_utils.template import (
+    PlainTextEmailTemplate,
+    SMSMessageTemplate,
+    LetterPrintTemplate,
+)
 from notifications_utils.timezones import convert_bst_to_utc
 
 from app import redis_store
@@ -43,8 +48,18 @@ REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
 )
 
 
-def create_content_for_notification(template, personalisation):
-    template_object = template._as_utils_template_with_personalisation(personalisation)
+def create_content_for_notification(template_dict, personalisation):
+    if template_dict['template_type'] == EMAIL_TYPE:
+        template_object = PlainTextEmailTemplate(template_dict, personalisation)
+    if template_dict['template_type'] == SMS_TYPE:
+        template_object = SMSMessageTemplate(template_dict, personalisation)
+    if template_dict['template_type'] == LETTER_TYPE:
+        template_object = LetterPrintTemplate(
+            template_dict,
+            personalisation,
+            contact_block=template_dict['reply_to_text'],
+        )
+
     check_placeholders(template_object)
 
     return template_object

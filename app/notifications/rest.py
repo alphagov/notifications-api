@@ -100,12 +100,13 @@ def send_notification(notification_type):
 
     check_rate_limiting(authenticated_service, api_user)
 
-    template, template_with_content = validate_template(
+    template_with_content = validate_template(
         template_id=notification_form['template'],
         personalisation=notification_form.get('personalisation', {}),
         service=authenticated_service,
         notification_type=notification_type
     )
+    template_dict = template_with_content._template
 
     _service_allowed_to_send_to(notification_form, authenticated_service)
     if not service_has_permission(notification_type, authenticated_service.permissions):
@@ -118,9 +119,9 @@ def send_notification(notification_type):
         _service_can_send_internationally(authenticated_service, notification_form['to'])
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
-    notification_model = persist_notification(template_id=template.id,
-                                              template_version=template.version,
-                                              template_postage=template.postage,
+    notification_model = persist_notification(template_id=template_dict['id'],
+                                              template_version=template_dict['version'],
+                                              template_postage=template_dict['postage'],
                                               recipient=request.get_json()['to'],
                                               service=authenticated_service,
                                               personalisation=notification_form.get('personalisation', None),
@@ -128,16 +129,16 @@ def send_notification(notification_type):
                                               api_key_id=api_user.id,
                                               key_type=api_user.key_type,
                                               simulated=simulated,
-                                              reply_to_text=template.get_reply_to_text()
+                                              reply_to_text=template_dict['reply_to_text']
                                               )
     if not simulated:
-        queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
+        queue_name = QueueNames.PRIORITY if template_dict['process_type'] == PRIORITY else None
         send_notification_to_queue(notification=notification_model,
                                    research_mode=authenticated_service.research_mode,
                                    queue=queue_name)
     else:
         current_app.logger.debug("POST simulated notification for id: {}".format(notification_model.id))
-    notification_form.update({"template_version": template.version})
+    notification_form.update({"template_version": template_dict['version']})
 
     return jsonify(
         data=get_notification_return_data(
