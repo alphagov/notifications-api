@@ -42,6 +42,7 @@ from app.notifications.process_letter_notifications import (
     create_letter_notification
 )
 from app.notifications.process_notifications import (
+    create_content_for_notification,
     persist_notification,
     persist_scheduled_notification,
     send_notification_to_queue,
@@ -76,6 +77,7 @@ from app.v2.utils import get_valid_json
 
 @v2_notification_blueprint.route('/{}'.format(LETTER_TYPE), methods=['POST'])
 def post_precompiled_letter_notification():
+    from app.schemas import template_schema
     request_json = get_valid_json()
     if 'content' not in (request_json or {}):
         return post_notification(LETTER_TYPE)
@@ -88,6 +90,9 @@ def post_precompiled_letter_notification():
     check_rate_limiting(authenticated_service, api_user)
 
     template = get_precompiled_letter_template(authenticated_service.id)
+    template = create_content_for_notification(
+        template_schema.dump(template).data, {}
+    )
 
     # For precompiled letters the to field will be set to Provided as PDF until the validation passes,
     # then the address of the letter will be set as the to field
@@ -95,13 +100,12 @@ def post_precompiled_letter_notification():
         'address_line_1': 'Provided as PDF'
     }
 
-    reply_to = get_reply_to_text(LETTER_TYPE, form, template)
-
     notification = process_letter_notification(
         letter_data=form,
         api_key=api_user,
         template=template,
-        reply_to_text=reply_to,
+        service=authenticated_service,
+        reply_to_text=template._template['reply_to_text'],
         precompiled=True
     )
 
@@ -135,20 +139,21 @@ def post_notification(notification_type):
 
     check_rate_limiting(authenticated_service, api_user)
 
-    template, template_with_content = validate_template(
+    template_with_content = validate_template(
         form['template_id'],
         form.get('personalisation', {}),
         authenticated_service,
         notification_type,
     )
 
-    reply_to = get_reply_to_text(notification_type, form, template)
+    reply_to = get_reply_to_text(notification_type, form, template_with_content)
 
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
             letter_data=form,
             api_key=api_user,
-            template=template,
+            template=template_with_content,
+            service=authenticated_service,
             reply_to_text=reply_to
         )
     else:
@@ -156,11 +161,12 @@ def post_notification(notification_type):
             form=form,
             notification_type=notification_type,
             api_key=api_user,
-            template=template,
+            template=template_with_content,
             service=authenticated_service,
             reply_to_text=reply_to
         )
 
+        # Think this is redundant
         template_with_content.values = notification.personalisation
 
     if notification_type == SMS_TYPE:
@@ -237,7 +243,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
     notification = persist_notification(
         notification_id=notification_id,
         template_id=template.id,
-        template_version=template.version,
+        template_version=template._template['version'],
         recipient=form_send_to,
         service=service,
         personalisation=personalisation,
@@ -255,7 +261,7 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         persist_scheduled_notification(notification.id, form["scheduled_for"])
     else:
         if not simulated:
-            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
+            queue_name = QueueNames.PRIORITY if template._template['process_type'] == PRIORITY else None
             send_notification_to_queue(
                 notification=notification,
                 research_mode=service.research_mode,
@@ -282,7 +288,7 @@ def save_email_to_queue(
     data = {
         "id": notification_id,
         "template_id": str(template.id),
-        "template_version": template.version,
+        "template_version": template._template['version'],
         "to": form['email_address'],
         "service_id": str(service_id),
         "personalisation": personalisation,
@@ -333,7 +339,7 @@ def process_document_uploads(personalisation_data, service, simulated=False):
     return personalisation_data, len(file_keys)
 
 
-def process_letter_notification(*, letter_data, api_key, template, reply_to_text, precompiled=False):
+def process_letter_notification(*, letter_data, api_key, template, service, reply_to_text, precompiled=False):
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
@@ -344,6 +350,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
         return process_precompiled_letter_notifications(letter_data=letter_data,
                                                         api_key=api_key,
                                                         template=template,
+                                                        service=service,
                                                         reply_to_text=reply_to_text)
 
     address = PostalAddress.from_personalisation(
@@ -378,6 +385,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
 
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
+                                              service=service,
                                               api_key=api_key,
                                               status=status,
                                               reply_to_text=reply_to_text)
@@ -399,7 +407,7 @@ def process_letter_notification(*, letter_data, api_key, template, reply_to_text
     return notification
 
 
-def process_precompiled_letter_notifications(*, letter_data, api_key, template, reply_to_text):
+def process_precompiled_letter_notifications(*, letter_data, api_key, template, service, reply_to_text):
     try:
         status = NOTIFICATION_PENDING_VIRUS_CHECK
         letter_content = base64.b64decode(letter_data['content'])
@@ -408,6 +416,7 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, template, 
 
     notification = create_letter_notification(letter_data=letter_data,
                                               template=template,
+                                              service=service,
                                               api_key=api_key,
                                               status=status,
                                               reply_to_text=reply_to_text)
@@ -439,7 +448,7 @@ def get_reply_to_text(notification_type, form, template):
         service_email_reply_to_id = form.get("email_reply_to_id", None)
         reply_to = check_service_email_reply_to_id(
             str(authenticated_service.id), service_email_reply_to_id, notification_type
-        ) or template.get_reply_to_text()
+        ) or template._template['reply_to_text']
 
     elif notification_type == SMS_TYPE:
         service_sms_sender_id = form.get("sms_sender_id", None)
@@ -449,9 +458,9 @@ def get_reply_to_text(notification_type, form, template):
         if sms_sender_id:
             reply_to = try_validate_and_format_phone_number(sms_sender_id)
         else:
-            reply_to = template.get_reply_to_text()
+            reply_to = template._template['reply_to_text']
 
     elif notification_type == LETTER_TYPE:
-        reply_to = template.get_reply_to_text()
+        reply_to = template._template['reply_to_text']
 
     return reply_to
