@@ -8,6 +8,10 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from gds_metrics import Histogram
 
+from app.cache import (
+    api_keys_for_service_cache,
+    service_is_active_cache
+)
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
 
@@ -86,35 +90,56 @@ def requires_admin_auth():
         raise AuthError('Unauthorized: admin authentication token required', 401)
 
 
-def requires_auth():
+def requires_auth(): # noqa (C901 too complex)
     request_helper.check_proxy_header_before_request()
 
     auth_token = get_auth_token(request)
     issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
+    service_id = issuer
 
-    try:
-        with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
-            service = dao_fetch_service_by_id_with_api_keys(issuer)
-    except DataError:
-        raise AuthError("Invalid token: service id is not the right data type", 403)
-    except NoResultFound:
-        raise AuthError("Invalid token: service not found", 403)
+    def memoize_service(service_id, scope):
+        def callee():
+            if 'service' not in scope:
+                with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
+                    service = dao_fetch_service_by_id_with_api_keys(service_id)
+                    scope['service'] = service
+            return scope['service']
 
-    if not service.api_keys:
-        raise AuthError("Invalid token: service has no API keys", 403, service_id=service.id)
+        return callee
 
-    if not service.active:
-        raise AuthError("Invalid token: service is archived", 403, service_id=service.id)
+    scope = {}
+    service = memoize_service(service_id, scope)
 
-    for api_key in service.api_keys:
+    api_keys = api_keys_for_service_cache.get(service_id)
+    if api_keys is None:
+        try:
+            api_keys = service().api_keys
+            api_keys_for_service_cache.put(service_id, api_keys)
+        except DataError:
+            raise AuthError("Invalid token: service id is not the right data type", 403)
+        except NoResultFound:
+            raise AuthError("Invalid token: service not found", 403)
+
+    if not api_keys:
+        raise AuthError("Invalid token: service has no API keys", 403, service_id=service_id)
+
+    service_is_active = service_is_active_cache.get(service_id)
+    if service_is_active is None:
+        service_is_active = service().active
+        service_is_active_cache.put(service_id, service_is_active)
+
+    if not service_is_active:
+        raise AuthError("Invalid token: service is archived", 403, service_id=service_id)
+
+    for api_key in api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
         except TokenExpiredError:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenAlgorithmError:
             err_msg = "Invalid token: algorithm used is not HS256"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenDecodeError:
             # we attempted to validate the token but it failed meaning it was not signed using this api key.
             # Let's try the next one
@@ -124,17 +149,18 @@ def requires_auth():
             continue
         except TokenError:
             # General error when trying to decode and validate the token
-            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service_id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError("Invalid token: API key revoked", 403, service_id=service_id, api_key_id=api_key.id)
 
         g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
+        _request_ctx_stack.top.authenticated_service_id = service_id
         _request_ctx_stack.top.api_user = api_key
 
         current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-            service.id,
+            service_id,
             api_key.id,
             request.headers.get('User-Agent'),
             request.base_url
@@ -142,7 +168,7 @@ def requires_auth():
         return
     else:
         # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: API key not found", 403, service_id=service.id)
+        raise AuthError("Invalid token: API key not found", 403, service_id=service_id)
 
 
 def __get_token_issuer(auth_token):

@@ -66,7 +66,17 @@ metrics = GDSMetrics()
 clients = Clients()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
-authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
+
+
+def lazy_authenticated_service():
+    svc = _request_ctx_stack.top.authenticated_service
+    if callable(svc):
+        return svc()
+    return svc
+
+
+authenticated_service = LocalProxy(lazy_authenticated_service)
+authenticated_service_id = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service_id)
 
 CONCURRENT_REQUESTS = Gauge(
     'concurrent_web_request_count',
