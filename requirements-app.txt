@@ -1,6 +1,7 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
+cachetools==4.1.0
 cffi==1.14.0
 celery[sqs]==3.1.26.post2 # pyup: <4
 docopt==0.6.2
