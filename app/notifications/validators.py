@@ -22,15 +22,24 @@ from app.utils import get_public_notify_type_text
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
 
+from gds_metrics.metrics import Histogram
+
+
+REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
+    'redis_exceeded_rate_limit_duration_seconds',
+    'Time taken to check rate limit',
+)
+
 
 def check_service_over_api_rate_limit(service, api_key):
     if current_app.config['API_RATE_LIMIT_ENABLED'] and current_app.config['REDIS_ENABLED']:
         cache_key = rate_limit_cache_key(service.id, api_key.key_type)
         rate_limit = service.rate_limit
         interval = 60
-        if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
-            current_app.logger.info("service {} has been rate limited for throughput".format(service.id))
-            raise RateLimitError(rate_limit, interval, api_key.key_type)
+        with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
+            if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
+                current_app.logger.info("service {} has been rate limited for throughput".format(service.id))
+                raise RateLimitError(rate_limit, interval, api_key.key_type)
 
 
 def check_service_over_daily_message_limit(key_type, service):

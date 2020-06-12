@@ -4,7 +4,7 @@ from sqlalchemy.exc import DataError
 
 
 @pytest.fixture(scope='function')
-def app_for_test(mocker):
+def app_for_test():
     import flask
     from flask import Blueprint
     from app.authentication.auth import AuthError

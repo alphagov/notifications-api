@@ -1,19 +1,23 @@
+import time
 import os
 import random
 import string
 import uuid
 
-from flask import _request_ctx_stack, request, g, jsonify, make_response
+from celery import current_task
+from flask import _request_ctx_stack, request, g, jsonify, make_response, current_app, has_request_context
 from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from gds_metrics import GDSMetrics
+from gds_metrics.metrics import Gauge, Histogram
 from time import monotonic
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils import logging, request_helper
+from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
@@ -64,6 +68,11 @@ clients = Clients()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
 
+CONCURRENT_REQUESTS = Gauge(
+    'concurrent_web_request_count',
+    'How many concurrent requests are currently being served',
+)
+
 
 def create_app(application):
     from app.config import configs
@@ -107,6 +116,9 @@ def create_app(application):
     # avoid circular imports by importing this file later
     from app.commands import setup_commands
     setup_commands(application)
+
+    # set up sqlalchemy events
+    setup_sqlalchemy_events(application)
 
     return application
 
@@ -255,17 +267,22 @@ def register_v2_blueprints(application):
 
 
 def init_app(app):
+
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
 
     @app.before_request
     def record_request_details():
+        CONCURRENT_REQUESTS.inc()
+
         g.start = monotonic()
         g.endpoint = request.endpoint
 
     @app.after_request
     def after_request(response):
+        CONCURRENT_REQUESTS.dec()
+
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
@@ -311,3 +328,83 @@ def process_user_agent(user_agent_string):
         return "non-notify-user-agent"
     else:
         return "unknown"
+
+
+def setup_sqlalchemy_events(app):
+
+    TOTAL_DB_CONNECTIONS = Gauge(
+        'db_connection_total_connected',
+        'How many db connections are currently held (potentially idle) by the server',
+    )
+
+    TOTAL_CHECKED_OUT_DB_CONNECTIONS = Gauge(
+        'db_connection_total_checked_out',
+        'How many db connections are currently checked out by web requests',
+    )
+
+    DB_CONNECTION_OPEN_DURATION_SECONDS = Histogram(
+        'db_connection_open_duration_seconds',
+        'How long db connections are held open for in seconds',
+        ['method', 'host', 'path']
+    )
+
+    # need this or db.engine isn't accessible
+    with app.app_context():
+        @event.listens_for(db.engine, 'connect')
+        def connect(dbapi_connection, connection_record):
+            # connection first opened with db
+            TOTAL_DB_CONNECTIONS.inc()
+
+        @event.listens_for(db.engine, 'close')
+        def close(dbapi_connection, connection_record):
+            # connection closed (probably only happens with overflow connections)
+            TOTAL_DB_CONNECTIONS.dec()
+
+        @event.listens_for(db.engine, 'checkout')
+        def checkout(dbapi_connection, connection_record, connection_proxy):
+            # connection given to a web worker
+            TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
+
+            # this will overwrite any previous checkout_at timestamp
+            connection_record.info['checkout_at'] = time.monotonic()
+
+            # checkin runs after the request is already torn down, therefore we add the request_data onto the
+            # connection_record as otherwise it won't have that information when checkin actually runs.
+            # Note: this is not a problem for checkouts as the checkout always happens within a web request or task
+
+            # web requests
+            if has_request_context():
+                connection_record.info['request_data'] = {
+                    'method': request.method,
+                    'host': request.host,
+                    'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
+                }
+            # celery apps
+            elif current_task:
+                connection_record.info['request_data'] = {
+                    'method': 'celery',
+                    'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
+                    'url_rule': current_task.name,  # task name
+                }
+            # anything else. migrations possibly.
+            else:
+                current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
+                connection_record.info['request_data'] = {
+                    'method': 'unknown',
+                    'host': 'unknown',
+                    'url_rule': 'unknown',
+                }
+
+        @event.listens_for(db.engine, 'checkin')
+        def checkin(dbapi_connection, connection_record):
+            # connection returned by a web worker
+            TOTAL_CHECKED_OUT_DB_CONNECTIONS.dec()
+
+            # duration that connection was held by a single web request
+            duration = time.monotonic() - connection_record.info['checkout_at']
+
+            DB_CONNECTION_OPEN_DURATION_SECONDS.labels(
+                connection_record.info['request_data']['method'],
+                connection_record.info['request_data']['host'],
+                connection_record.info['request_data']['url_rule']
+            ).observe(duration)
