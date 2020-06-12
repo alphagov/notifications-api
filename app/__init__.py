@@ -11,6 +11,7 @@ from gds_metrics import GDSMetrics
 from time import monotonic
 from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
+from notifications_utils.clients.redis import RequestCache
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils import logging, request_helper
@@ -55,6 +56,7 @@ encryption = Encryption()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
+request_cache = RequestCache(redis_store)
 performance_platform_client = PerformancePlatformClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()

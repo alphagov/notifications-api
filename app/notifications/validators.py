@@ -16,7 +16,7 @@ from app.models import (
 )
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
-from app import redis_store
+from app import redis_store, request_cache
 from app.notifications.process_notifications import create_content_for_notification
 from app.utils import get_public_notify_type_text
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
@@ -138,6 +138,7 @@ def check_notification_content_is_not_empty(template_with_content):
         raise BadRequestError(message=message)
 
 
+@request_cache.set('template-{template_id}-version-None')
 def get_template_dict(template_id, service_id):
     from app.schemas import template_schema
     try:
