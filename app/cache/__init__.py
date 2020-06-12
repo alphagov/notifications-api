@@ -1,0 +1,8 @@
+from app.cache.api_keys_for_service_cache import ApiKeysForServiceCache
+from app.cache.permissions_for_service_cache import PermissionsForServiceCache
+from app.cache.service_is_active_cache import ServiceIsActiveCache
+
+
+api_keys_for_service_cache = ApiKeysForServiceCache()
+permissions_for_service_cache = PermissionsForServiceCache()
+service_is_active_cache = ServiceIsActiveCache()
