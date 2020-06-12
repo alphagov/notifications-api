@@ -68,6 +68,11 @@ clients = Clients()
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
 
+CONCURRENT_REQUESTS = Gauge(
+    'concurrent_web_request_count',
+    'How many concurrent requests are currently being served',
+)
+
 
 def create_app(application):
     from app.config import configs
@@ -263,11 +268,6 @@ def register_v2_blueprints(application):
 
 def init_app(app):
 
-    CONCURRENT_REQUESTS = Gauge(
-        'concurrent_web_request_count',
-        'How many concurrent requests are currently being served',
-    )
-
     @app.before_request
     def record_user_agent():
         statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
@@ -334,7 +334,7 @@ def setup_sqlalchemy_events(app):
 
     TOTAL_DB_CONNECTIONS = Gauge(
         'db_connection_total_connected',
-        'How many db connections are currently held (potentially idel) by the server',
+        'How many db connections are currently held (potentially idle) by the server',
     )
 
     TOTAL_CHECKED_OUT_DB_CONNECTIONS = Gauge(
@@ -381,7 +381,6 @@ def setup_sqlalchemy_events(app):
                 }
             # celery apps
             elif current_task:
-                print(current_task)
                 connection_record.info['request_data'] = {
                     'method': 'celery',
                     'host': current_app.config['NOTIFY_APP_NAME'],  # worker name

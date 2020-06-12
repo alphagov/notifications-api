@@ -25,23 +25,6 @@
     },
   },
 
-  'notify-api-loadtesting': {
-    'comments': 'DELETE ME LATER',
-    'NOTIFY_APP_NAME': 'api',
-    'disk_quota': '2G',
-    'sqlalchemy_pool_size': 30,
-    'routes': {
-      'staging': [],
-    },
-    'health-check-type': 'port',
-    'health-check-invocation-timeout': 3,
-    'instances': {
-      'preview': None,
-      'staging': 4,
-      'production': None
-    },
-  },
-
   'notify-delivery-celery-beat': {'memory': '128M'},
   'notify-delivery-worker-jobs': {},
   'notify-delivery-worker-research': {},
@@ -87,7 +70,7 @@ applications:
     services:
       - notify-db
       - logit-ssl-syslog-drain
-      {% if CF_APP in ('notify-api', 'notify-api-loadtesting') %}
+      {% if CF_APP == 'notify-api' %}
       - notify-prometheus
       {% endif %}
 

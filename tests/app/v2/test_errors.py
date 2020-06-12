@@ -3,7 +3,7 @@ from flask import url_for
 from sqlalchemy.exc import DataError
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope='function')
 def app_for_test():
     import flask
     from flask import Blueprint
