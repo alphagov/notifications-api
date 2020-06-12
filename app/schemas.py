@@ -2,6 +2,7 @@ from datetime import (
     datetime,
     date,
     timedelta)
+from uuid import UUID
 from flask_marshmallow.fields import fields
 from marshmallow import (
     post_load,
@@ -333,6 +334,16 @@ class TemplateSchema(BaseTemplateSchema):
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
+
+    @post_dump()
+    def __post_dump(self, data):
+        for field in (
+            'service',
+            'created_by',
+            'template_redacted',
+        ):
+            if isinstance(data[field], UUID):
+                data[field] = str(data[field])
 
 
 class TemplateHistorySchema(BaseSchema):
