@@ -58,6 +58,7 @@ from app.notifications.validators import (
     validate_template,
 )
 from app.schema_validation import validate
+from app.tracing import span, trace_request
 from app.v2.errors import BadRequestError, ValidationError
 from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
@@ -115,53 +116,60 @@ def post_precompiled_letter_notification():
 
 
 @v2_notification_blueprint.route('/<notification_type>', methods=['POST'])
+@trace_request
 def post_notification(notification_type):
-    request_json = get_valid_json()
+    with span('validate-json'):
+        request_json = get_valid_json()
 
-    if notification_type == EMAIL_TYPE:
-        form = validate(request_json, post_email_request)
-    elif notification_type == SMS_TYPE:
-        form = validate(request_json, post_sms_request)
-    elif notification_type == LETTER_TYPE:
-        form = validate(request_json, post_letter_request)
-    else:
-        abort(404)
+        if notification_type == EMAIL_TYPE:
+            form = validate(request_json, post_email_request)
+        elif notification_type == SMS_TYPE:
+            form = validate(request_json, post_sms_request)
+        elif notification_type == LETTER_TYPE:
+            form = validate(request_json, post_letter_request)
+        else:
+            abort(404)
 
-    check_service_has_permission(notification_type, authenticated_service.permissions)
+    with span('check-permissions'):
+        check_service_has_permission(notification_type, authenticated_service.permissions)
 
     scheduled_for = form.get("scheduled_for", None)
 
     check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
 
-    check_rate_limiting(authenticated_service, api_user)
+    with span('check-rate-limiting'):
+        check_rate_limiting(authenticated_service, api_user)
 
-    template, template_with_content = validate_template(
-        form['template_id'],
-        form.get('personalisation', {}),
-        authenticated_service,
-        notification_type,
-    )
-
-    reply_to = get_reply_to_text(notification_type, form, template)
-
-    if notification_type == LETTER_TYPE:
-        notification = process_letter_notification(
-            letter_data=form,
-            api_key=api_user,
-            template=template,
-            reply_to_text=reply_to
-        )
-    else:
-        notification = process_sms_or_email_notification(
-            form=form,
-            notification_type=notification_type,
-            api_key=api_user,
-            template=template,
-            service=authenticated_service,
-            reply_to_text=reply_to
+    with span('validate-template'):
+        template, template_with_content = validate_template(
+            form['template_id'],
+            form.get('personalisation', {}),
+            authenticated_service,
+            notification_type,
         )
 
-        template_with_content.values = notification.personalisation
+    with span('get-reply-to-text'):
+        reply_to = get_reply_to_text(notification_type, form, template)
+
+    with span('process-notification'):
+        if notification_type == LETTER_TYPE:
+            notification = process_letter_notification(
+                letter_data=form,
+                api_key=api_user,
+                template=template,
+                reply_to_text=reply_to
+            )
+        else:
+            notification = process_sms_or_email_notification(
+                form=form,
+                notification_type=notification_type,
+                api_key=api_user,
+                template=template,
+                service=authenticated_service,
+                reply_to_text=reply_to
+            )
+
+            template_with_content.values = notification.personalisation
 
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
@@ -180,13 +188,14 @@ def post_notification(notification_type):
             subject=template_with_content.subject,
         )
 
-    resp = create_resp_partial(
-        notification=notification,
-        url_root=request.url_root,
-        scheduled_for=scheduled_for,
-        content=template_with_content.content_with_placeholders_filled_in,
-    )
-    return jsonify(resp), 201
+    with span('create-respone'):
+        resp = create_resp_partial(
+            notification=notification,
+            url_root=request.url_root,
+            scheduled_for=scheduled_for,
+            content=template_with_content.content_with_placeholders_filled_in,
+        )
+        return jsonify(resp), 201
 
 
 def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
