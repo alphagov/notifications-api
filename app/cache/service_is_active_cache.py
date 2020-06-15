@@ -7,7 +7,7 @@ from cachetools import cachedmethod, TTLCache
 class ServiceIsActiveCache(object):
     def __init__(self):
         self.lock = RLock()
-        self.cache = TTLCache(ttl=2, maxsize=1024)
+        self.cache = TTLCache(ttl=30, maxsize=1024)
         self.active_services = {}
 
     def get(self, service_id):

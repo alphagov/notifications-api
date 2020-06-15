@@ -11,7 +11,7 @@ Permission = namedtuple('Permission', ['permission'])
 class PermissionsForServiceCache(object):
     def __init__(self):
         self.lock = RLock()
-        self.cache = TTLCache(ttl=2, maxsize=1024)
+        self.cache = TTLCache(ttl=30, maxsize=1024)
         self.permissions_for_service = {}
 
     @cachedmethod(operator.attrgetter('cache'), lock=RLock)
