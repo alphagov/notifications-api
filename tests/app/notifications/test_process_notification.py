@@ -11,7 +11,6 @@ from app.models import (
     Notification,
     NotificationHistory,
     ScheduledNotification,
-    Template,
     LETTER_TYPE
 )
 from app.notifications.process_notifications import (
@@ -21,38 +20,40 @@ from app.notifications.process_notifications import (
     send_notification_to_queue,
     simulated_recipient
 )
-from app.notifications.validators import get_template_dict
+from app.notifications.validators import get_template_model
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
 from tests.app.db import create_service, create_template
 
 
 def test_create_content_for_notification_passes(sample_email_template):
-    template = Template.query.get(sample_email_template.id)
-    template_dict = get_template_dict(template.id, template.service_id)
-    content = create_content_for_notification(template_dict, None)
-    assert str(content) == template.content + '\n'
+    template = get_template_model(sample_email_template.id, sample_email_template.service_id)
+    content = create_content_for_notification(template, None)
+    assert str(content) == template._dict['content'] + '\n'
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
-    template = Template.query.get(sample_template_with_placeholders.id)
-    template_dict = get_template_dict(template.id, template.service_id)
-    content = create_content_for_notification(template_dict, {'name': 'Bobby'})
-    assert content.content == template.content
+    template = get_template_model(
+        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+    )
+    content = create_content_for_notification(template, {'name': 'Bobby'})
+    assert content.content == template._dict['content']
     assert 'Bobby' in str(content)
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(sample_template_with_placeholders):
-    template = Template.query.get(sample_template_with_placeholders.id)
-    template_dict = get_template_dict(template.id, template.service_id)
+    template = get_template_model(
+        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+    )
     with pytest.raises(BadRequestError):
-        create_content_for_notification(template_dict, None)
+        create_content_for_notification(template, None)
 
 
 def test_create_content_for_notification_allows_additional_personalisation(sample_template_with_placeholders):
-    template = Template.query.get(sample_template_with_placeholders.id)
-    template_dict = get_template_dict(template.id, template.service_id)
-    create_content_for_notification(template_dict, {'name': 'Bobby', 'Additional placeholder': 'Data'})
+    template = get_template_model(
+        sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
+    )
+    create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})
 
 
 @freeze_time("2016-01-01 11:09:00.061258")

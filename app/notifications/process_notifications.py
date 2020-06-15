@@ -48,16 +48,16 @@ REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
 )
 
 
-def create_content_for_notification(template_dict, personalisation):
-    if template_dict['template_type'] == EMAIL_TYPE:
-        template_object = PlainTextEmailTemplate(template_dict, personalisation)
-    if template_dict['template_type'] == SMS_TYPE:
-        template_object = SMSMessageTemplate(template_dict, personalisation)
-    if template_dict['template_type'] == LETTER_TYPE:
+def create_content_for_notification(template, personalisation):
+    if template.template_type == EMAIL_TYPE:
+        template_object = PlainTextEmailTemplate(template._dict, personalisation)
+    if template.template_type == SMS_TYPE:
+        template_object = SMSMessageTemplate(template._dict, personalisation)
+    if template.template_type == LETTER_TYPE:
         template_object = LetterPrintTemplate(
-            template_dict,
+            template._dict,
             personalisation,
-            contact_block=template_dict['reply_to_text'],
+            contact_block=template.reply_to_text,
         )
 
     check_placeholders(template_object)

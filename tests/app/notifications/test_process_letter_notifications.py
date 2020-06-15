@@ -2,8 +2,8 @@ from app.models import LETTER_TYPE
 from app.models import Notification
 from app.models import NOTIFICATION_CREATED
 from app.notifications.process_letter_notifications import create_letter_notification
-from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import get_template_dict
+from app.json_models import TemplateJSONModel
 
 
 def test_create_letter_notification_creates_notification(sample_letter_template, sample_api_key):
@@ -15,9 +15,9 @@ def test_create_letter_notification_creates_notification(sample_letter_template,
         }
     }
 
-    template = create_content_for_notification(get_template_dict(
+    template = TemplateJSONModel(get_template_dict(
         sample_letter_template.id, sample_letter_template.service_id
-    ), {})
+    ))
 
     notification = create_letter_notification(
         data,
@@ -50,9 +50,9 @@ def test_create_letter_notification_sets_reference(sample_letter_template, sampl
         'reference': 'foo'
     }
 
-    template = create_content_for_notification(get_template_dict(
+    template = TemplateJSONModel(get_template_dict(
         sample_letter_template.id, sample_letter_template.service_id
-    ), {})
+    ))
 
     notification = create_letter_notification(
         data,
@@ -74,9 +74,9 @@ def test_create_letter_notification_sets_billable_units(sample_letter_template, 
         },
     }
 
-    template = create_content_for_notification(get_template_dict(
+    template = TemplateJSONModel(get_template_dict(
         sample_letter_template.id, sample_letter_template.service_id
-    ), {})
+    ))
 
     notification = create_letter_notification(
         data,

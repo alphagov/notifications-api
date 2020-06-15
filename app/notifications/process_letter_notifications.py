@@ -16,8 +16,8 @@ def create_letter_notification(
 ):
     notification = persist_notification(
         template_id=template.id,
-        template_version=template._template['version'],
-        template_postage=template._template['postage'],
+        template_version=template.version,
+        template_postage=template.postage,
         # we only accept addresses_with_underscores from the API (from CSV we also accept dashes, spaces etc)
         recipient=PostalAddress.from_personalisation(letter_data['personalisation']).normalised,
         service=service,

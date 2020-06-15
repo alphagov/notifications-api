@@ -21,6 +21,7 @@ from app.notifications.process_notifications import create_content_for_notificat
 from app.utils import get_public_notify_type_text
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
+from app.json_models import TemplateJSONModel
 
 from gds_metrics.metrics import Histogram
 
@@ -71,7 +72,7 @@ def check_template_is_for_notification_type(notification_type, template_type):
 
 
 def check_template_is_active(template):
-    if template['archived']:
+    if template.archived:
         raise BadRequestError(fields=[{'template': 'Template has been deleted'}],
                               message="Template has been deleted")
 
@@ -162,10 +163,14 @@ def get_template_dict(template_id, service_id):
     return template_schema.dump(fetched_template).data
 
 
-def validate_template(template_id, personalisation, service, notification_type):
-    template = get_template_dict(template_id, service.id)
+def get_template_model(template_id, service_id):
+    return TemplateJSONModel(get_template_dict(template_id, service_id))
 
-    check_template_is_for_notification_type(notification_type, template['template_type'])
+
+def validate_template(template_id, personalisation, service, notification_type):
+    template = get_template_model(template_id, service.id)
+
+    check_template_is_for_notification_type(notification_type, template.template_type)
     check_template_is_active(template)
 
     template_with_content = create_content_for_notification(template, personalisation)
@@ -174,7 +179,7 @@ def validate_template(template_id, personalisation, service, notification_type):
 
     check_content_char_count(template_with_content)
 
-    return template_with_content
+    return template, template_with_content
 
 
 def check_reply_to(service_id, reply_to_id, type_):
