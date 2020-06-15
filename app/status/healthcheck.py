@@ -7,12 +7,14 @@ from flask import (
 from app import db, version
 from app.dao.services_dao import dao_count_live_services
 from app.dao.organisation_dao import dao_count_organisations_with_live_services
+from app.tracing import trace_request
 
 status = Blueprint('status', __name__)
 
 
 @status.route('/', methods=['GET'])
 @status.route('/_status', methods=['GET', 'POST'])
+@trace_request
 def show_status():
     if request.args.get('simple', None):
         return jsonify(status="ok"), 200

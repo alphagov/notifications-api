@@ -31,3 +31,8 @@ git+https://github.com/alphagov/notifications-utils.git@39.4.4#egg=notifications
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.7.1
 gds-metrics==0.2.0
+
+# tracing
+opentelemetry-api==0.9b0
+opentelemetry-ext-jaeger==0.9b0
+opentelemetry-sdk==0.9b0
