@@ -6,11 +6,17 @@ from notifications_python_client.errors import (
 from notifications_utils import request_helper
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
+from gds_metrics import Histogram
 
 from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
 
 GENERAL_TOKEN_ERROR_MESSAGE = 'Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header'  # noqa
+
+AUTH_DB_CONNECTION_DURATION_SECONDS = Histogram(
+    'auth_db_connection_duration_seconds',
+    'Time taken to get DB connection and fetch service from database',
+)
 
 
 class AuthError(Exception):
@@ -87,7 +93,8 @@ def requires_auth():
     issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
     try:
-        service = dao_fetch_service_by_id_with_api_keys(issuer)
+        with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
+            service = dao_fetch_service_by_id_with_api_keys(issuer)
     except DataError:
         raise AuthError("Invalid token: service id is not the right data type", 403)
     except NoResultFound:
