@@ -120,13 +120,18 @@ def persist_notification(
         notification.postage = postage or template_postage
         notification.normalised_to = ''.join(notification.to.split()).lower()
 
+    # Get service attributes before the commit
+    service_in_trial_mode = service.restricted
+    service_id = service.id
+
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        if key_type != KEY_TYPE_TEST:
-            with REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS.time():
-                if redis_store.get(redis.daily_limit_cache_key(service.id)):
-                    redis_store.incr(redis.daily_limit_cache_key(service.id))
+        print("****** COMMIT *******")
+        # Only keep track of the daily limit for trial mode services.
+        if service_in_trial_mode and key_type != KEY_TYPE_TEST:
+            if redis_store.get(redis.daily_limit_cache_key(service_id)):
+                redis_store.incr(redis.daily_limit_cache_key(service_id))
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
@@ -134,33 +139,41 @@ def persist_notification(
     return notification
 
 
-def send_notification_to_queue(notification, research_mode, queue=None):
-    if research_mode or notification.key_type == KEY_TYPE_TEST:
+def send_notification_to_queue_detached(
+    key_type, notification_type, notification_id, research_mode, queue=None
+):
+    if research_mode or key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
 
-    if notification.notification_type == SMS_TYPE:
+    if notification_type == SMS_TYPE:
         if not queue:
             queue = QueueNames.SEND_SMS
         deliver_task = provider_tasks.deliver_sms
-    if notification.notification_type == EMAIL_TYPE:
+    if notification_type == EMAIL_TYPE:
         if not queue:
             queue = QueueNames.SEND_EMAIL
         deliver_task = provider_tasks.deliver_email
-    if notification.notification_type == LETTER_TYPE:
+    if notification_type == LETTER_TYPE:
         if not queue:
             queue = QueueNames.CREATE_LETTERS_PDF
         deliver_task = get_pdf_for_templated_letter
 
     try:
-        deliver_task.apply_async([str(notification.id)], queue=queue)
+        deliver_task.apply_async([str(notification_id)], queue=queue)
     except Exception:
-        dao_delete_notifications_by_id(notification.id)
+        dao_delete_notifications_by_id(notification_id)
         raise
 
     current_app.logger.debug(
-        "{} {} sent to the {} queue for delivery".format(notification.notification_type,
-                                                         notification.id,
+        "{} {} sent to the {} queue for delivery".format(notification_type,
+                                                         notification_id,
                                                          queue))
+    
+    
+def send_notification_to_queue(notification, research_mode, queue=None):
+    send_notification_to_queue_detached(
+        notification.key_type, notification.notification_type, notification.id, research_mode, queue
+    )
 
 
 def simulated_recipient(to_address, notification_type):

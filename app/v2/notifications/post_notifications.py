@@ -46,8 +46,8 @@ from app.notifications.process_notifications import (
     persist_notification,
     persist_scheduled_notification,
     send_notification_to_queue,
-    simulated_recipient
-)
+    simulated_recipient,
+    send_notification_to_queue_detached)
 from app.notifications.validators import (
     check_if_service_can_send_files_by_email,
     check_rate_limiting,
@@ -64,8 +64,9 @@ from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
     create_post_sms_response_from_notification,
     create_post_email_response_from_notification,
-    create_post_letter_response_from_notification
-)
+    create_post_letter_response_from_notification,
+    create_post_sms_response_from_notification_detached, create_post_email_response_from_notification_detached,
+    create_post_letter_response_from_notification_detached)
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     post_email_request,
@@ -151,7 +152,7 @@ def post_notification(notification_type):
     )
 
     reply_to = get_reply_to_text(notification_type, form, template)
-
+    
     if notification_type == LETTER_TYPE:
         notification = process_letter_notification(
             letter_data=form,
@@ -164,41 +165,47 @@ def post_notification(notification_type):
             form=form,
             notification_type=notification_type,
             api_key=api_user,
-            template=template,
+            template=template_with_content,
+            template_process_type=template.process_type,
             service=authenticated_service,
             reply_to_text=reply_to
         )
 
-        template_with_content.values = notification.personalisation
+    return jsonify(notification), 201
 
+
+def create_response_for_post_notification(notification_id, client_reference, template_id, template_version, service_id,
+                                          notification_type, reply_to, scheduled_for,
+                                          template_with_content):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
-            create_post_sms_response_from_notification,
+            create_post_sms_response_from_notification_detached,
             from_number=reply_to,
         )
     elif notification_type == EMAIL_TYPE:
         create_resp_partial = functools.partial(
-            create_post_email_response_from_notification,
+            create_post_email_response_from_notification_detached,
             subject=template_with_content.subject,
             email_from='{}@{}'.format(authenticated_service.email_from, current_app.config['NOTIFY_EMAIL_DOMAIN']),
         )
     elif notification_type == LETTER_TYPE:
         create_resp_partial = functools.partial(
-            create_post_letter_response_from_notification,
+            create_post_letter_response_from_notification_detached,
             subject=template_with_content.subject,
         )
-
     resp = create_resp_partial(
-        notification=notification,
+        notification_id, client_reference, template_id, template_version, service_id, 
         url_root=request.url_root,
         scheduled_for=scheduled_for,
         content=template_with_content.content_with_placeholders_filled_in,
     )
-    return jsonify(resp), 201
+    return resp
 
 
-def process_sms_or_email_notification(*, form, notification_type, api_key, template, service, reply_to_text=None):
-    notification_id = None
+def process_sms_or_email_notification(
+    *, form, notification_type, api_key, template, template_process_type, service, reply_to_text=None
+):
+    notification_id = uuid.uuid4()
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
@@ -215,6 +222,19 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         simulated=simulated
     )
 
+    key_type = api_key.key_type
+    service_in_research_mode = service.resear
+    resp = create_response_for_post_notification(
+        notification_id=notification_id,
+        client_reference=form.get('reference', None),
+        template_id=template.id,
+        template_version=template._template['version'],
+        service_id=service.id,
+        notification_type=notification_type,
+        reply_to=reply_to_text,
+        scheduled_for=None,
+        template_with_content=template)
+
     if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE') and api_key.key_type == KEY_TYPE_NORMAL \
        and notification_type == EMAIL_TYPE:
         # Put GOV.UK Email notifications onto a queue
@@ -222,7 +242,6 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
         # the task will then save the notification, then call send_notification_to_queue.
         # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
         try:
-            notification_id = uuid.uuid4()
             notification = save_email_to_queue(
                 form=form,
                 notification_id=str(notification_id),
@@ -242,16 +261,16 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
                 f'Notification {notification_id} failed to save to high volume queue. Using normal flow instead'
             )
 
-    notification = persist_notification(
+    persist_notification(
         notification_id=notification_id,
         template_id=template.id,
-        template_version=template.version,
+        template_version=template._template['version'],
         recipient=form_send_to,
         service=service,
         personalisation=personalisation,
         notification_type=notification_type,
         api_key_id=api_key.id,
-        key_type=api_key.key_type,
+        key_type=key_type,
         client_reference=form.get('reference', None),
         simulated=simulated,
         reply_to_text=reply_to_text,
@@ -260,19 +279,21 @@ def process_sms_or_email_notification(*, form, notification_type, api_key, templ
 
     scheduled_for = form.get("scheduled_for", None)
     if scheduled_for:
-        persist_scheduled_notification(notification.id, form["scheduled_for"])
+        persist_scheduled_notification(notification_id, form["scheduled_for"])
     else:
         if not simulated:
-            queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-            send_notification_to_queue(
-                notification=notification,
-                research_mode=service.research_mode,
+            queue_name = QueueNames.PRIORITY if template_process_type == PRIORITY else None
+            send_notification_to_queue_detached(
+                key_type=key_type,
+                notification_type=notification_type,
+                notification_id=notification_id,
+                research_mode=False,  # research_mode is a deprecated mode
                 queue=queue_name
             )
         else:
-            current_app.logger.debug("POST simulated notification for id: {}".format(notification.id))
+            current_app.logger.debug("POST simulated notification for id: {}".format(notification_id))
 
-    return notification
+    return resp
 
 
 def save_email_to_queue(
