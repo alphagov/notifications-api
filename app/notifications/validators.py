@@ -120,11 +120,7 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
     service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_recipients)
 
     if notification_type == SMS_TYPE:
-        international_phone_info = get_international_phone_info(send_to)
-
-        if international_phone_info.international and \
-                INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
-            raise BadRequestError(message="Cannot send to international mobile numbers")
+        international_phone_info = check_if_service_can_send_to_number(service, send_to)
 
         return validate_and_format_phone_number(
             number=send_to,
@@ -132,6 +128,18 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
         )
     elif notification_type == EMAIL_TYPE:
         return validate_and_format_email_address(email_address=send_to)
+
+
+def check_if_service_can_send_to_number(service, number):
+    international_phone_info = get_international_phone_info(number)
+
+    if (
+        # if number is international and not a crown dependency
+        international_phone_info.international and international_phone_info.country_prefix != '44'
+    ) and INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
+        raise BadRequestError(message="Cannot send to international mobile numbers")
+    else:
+        return international_phone_info
 
 
 def check_content_char_count(template_with_content):
