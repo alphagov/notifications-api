@@ -10,7 +10,7 @@ from app import notify_celery, statsd_client
 from app.config import QueueNames
 from app.clients.email.aws_ses import get_aws_responses
 from app.dao import notifications_dao
-from app.models import NOTIFICATION_SENDING, NOTIFICATION_PENDING
+from app.models import NOTIFICATION_SENDING, NOTIFICATION_PENDING, EMAIL_TYPE
 
 from app.notifications.notifications_ses_callback import (
     determine_notification_bounce_type,
@@ -39,7 +39,9 @@ def process_ses_results(self, response):
         reference = ses_message['mail']['messageId']
 
         try:
-            notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
+            notification = notifications_dao.dao_get_notification_or_history_by_reference(
+                reference=reference, notification_type=EMAIL_TYPE
+            )
         except NoResultFound:
             message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):

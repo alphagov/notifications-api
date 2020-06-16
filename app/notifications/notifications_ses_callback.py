@@ -5,7 +5,7 @@ from app.dao.notifications_dao import dao_get_notification_or_history_by_referen
 from app.dao.service_callback_api_dao import (
     get_service_delivery_status_callback_api_for_service, get_service_complaint_callback_api_for_service
 )
-from app.models import Complaint
+from app.models import Complaint, EMAIL_TYPE
 from app.celery.service_callback_tasks import (
     send_delivery_status_to_service,
     send_complaint_to_service,
@@ -33,7 +33,7 @@ def handle_complaint(ses_message):
     except KeyError as e:
         current_app.logger.exception("Complaint from SES failed to get reference from message", e)
         return
-    notification = dao_get_notification_or_history_by_reference(reference)
+    notification = dao_get_notification_or_history_by_reference(reference, EMAIL_TYPE)
     ses_complaint = ses_message.get('complaint', None)
 
     complaint = Complaint(

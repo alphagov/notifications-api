@@ -536,7 +536,7 @@ def update_letter_notification(filename, temporary_failures, update):
 
 
 def check_billable_units(notification_update):
-    notification = dao_get_notification_or_history_by_reference(notification_update.reference)
+    notification = dao_get_notification_or_history_by_reference(notification_update.reference, LETTER_TYPE)
 
     if int(notification_update.page_count) != notification.billable_units:
         msg = 'Notification with id {} has {} billable_units but DVLA says page count is {}'.format(

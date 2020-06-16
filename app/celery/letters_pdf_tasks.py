@@ -42,6 +42,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    LETTER_TYPE
 )
 from app.cronitor import cronitor
 
@@ -216,7 +217,7 @@ def group_letters(letter_pdfs):
 def sanitise_letter(self, filename):
     try:
         reference = get_reference_from_filename(filename)
-        notification = dao_get_notification_by_reference(reference)
+        notification = dao_get_notification_by_reference(reference=reference, notification_type=LETTER_TYPE)
 
         current_app.logger.info('Notification ID {} Virus scan passed: {}'.format(notification.id, filename))
 
@@ -352,7 +353,7 @@ def _move_invalid_letter_and_update_status(
 def process_virus_scan_failed(filename):
     move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
-    notification = dao_get_notification_by_reference(reference)
+    notification = dao_get_notification_by_reference(reference=reference, notification_type=LETTER_TYPE)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_VIRUS_SCAN_FAILED, billable_units=0)
 
     if updated_count != 1:
@@ -371,7 +372,7 @@ def process_virus_scan_failed(filename):
 def process_virus_scan_error(filename):
     move_failed_pdf(filename, ScanErrorType.ERROR)
     reference = get_reference_from_filename(filename)
-    notification = dao_get_notification_by_reference(reference)
+    notification = dao_get_notification_by_reference(reference=reference, notification_type=LETTER_TYPE)
     updated_count = update_letter_pdf_status(reference, NOTIFICATION_TECHNICAL_FAILURE, billable_units=0)
 
     if updated_count != 1:

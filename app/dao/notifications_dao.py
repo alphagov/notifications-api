@@ -650,31 +650,27 @@ def dao_get_notifications_by_recipient_or_reference(
 
 
 @statsd(namespace="dao")
-def dao_get_notification_by_reference(reference):
+def dao_get_notification_by_reference(reference, notification_type):
     return Notification.query.filter(
-        Notification.reference == reference
+        Notification.reference == reference,
+        Notification.notification_type == notification_type
     ).one()
 
 
 @statsd(namespace="dao")
-def dao_get_notification_or_history_by_reference(reference):
+def dao_get_notification_or_history_by_reference(reference, notification_type):
     try:
         # This try except is necessary because in test keys and research mode does not create notification history.
         # Otherwise we could just search for the NotificationHistory object
         return Notification.query.filter(
-            Notification.reference == reference
+            Notification.reference == reference,
+            Notification.notification_type == notification_type
         ).one()
     except NoResultFound:
         return NotificationHistory.query.filter(
-            NotificationHistory.reference == reference
+            NotificationHistory.reference == reference,
+            NotificationHistory.notification_type == notification_type
         ).one()
-
-
-@statsd(namespace="dao")
-def dao_get_notifications_by_references(references):
-    return Notification.query.filter(
-        Notification.reference.in_(references)
-    ).all()
 
 
 @statsd(namespace="dao")
