@@ -235,7 +235,6 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['email_branding'] is None
     assert 'branding' not in json_resp['data']
     assert json_resp['data']['prefix_sms'] is True
-    assert json_resp['data']['letter_logo_filename'] is None
 
 
 @pytest.mark.parametrize('detailed', [True, False])
@@ -347,7 +346,6 @@ def test_create_service(
     assert json_resp['data']['name'] == 'created service'
     assert json_resp['data']['email_from'] == 'created.service'
     assert not json_resp['data']['research_mode']
-    assert json_resp['data']['rate_limit'] == 3000
     assert json_resp['data']['letter_branding'] is None
     assert json_resp['data']['count_as_live'] is expected_count_as_live
 
@@ -1225,7 +1223,6 @@ def test_add_existing_user_to_another_service_with_all_permissions(
             )
             assert resp.status_code == 200
             json_resp = resp.json
-            assert str(user_to_add.id) in json_resp['data']['users']
 
             # check user has all permissions
             auth_header = create_authorization_header()
