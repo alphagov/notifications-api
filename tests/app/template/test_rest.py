@@ -499,6 +499,67 @@ def test_should_get_only_templates_for_that_service(admin_request, notify_db_ses
     assert {template['id'] for template in json_resp_2['data']} == {str(id_3)}
 
 
+@pytest.mark.parametrize('extra_args', (
+    {},
+    {'detailed': True},
+    {'detailed': 'True'},
+))
+def test_should_get_return_all_fields_by_default(
+    admin_request,
+    sample_email_template,
+    extra_args,
+):
+    json_response = admin_request.get(
+        'template.get_all_templates_for_service',
+        service_id=sample_email_template.service.id,
+        **extra_args
+    )
+    assert json_response['data'][0].keys() == {
+        'archived',
+        'content',
+        'created_at',
+        'created_by',
+        'folder',
+        'hidden',
+        'id',
+        'name',
+        'postage',
+        'process_type',
+        'redact_personalisation',
+        'reply_to',
+        'reply_to_text',
+        'service',
+        'service_letter_contact',
+        'subject',
+        'template_redacted',
+        'template_type',
+        'updated_at',
+        'version',
+    }
+
+
+@pytest.mark.parametrize('extra_args', (
+    {'detailed': False},
+    {'detailed': 'False'},
+))
+def test_should_not_return_content_and_subject_if_requested(
+    admin_request,
+    sample_email_template,
+    extra_args,
+):
+    json_response = admin_request.get(
+        'template.get_all_templates_for_service',
+        service_id=sample_email_template.service.id,
+        **extra_args
+    )
+    assert json_response['data'][0].keys() == {
+        'folder',
+        'id',
+        'name',
+        'template_type',
+    }
+
+
 @pytest.mark.parametrize(
     "subject, content, template_type", [
         (

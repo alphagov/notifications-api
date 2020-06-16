@@ -36,7 +36,7 @@ from app.letters.utils import get_letter_pdf_and_metadata
 from app.models import SMS_TYPE, Template, SECOND_CLASS, LETTER_TYPE
 from app.notifications.validators import service_has_permission, check_reply_to
 from app.schema_validation import validate
-from app.schemas import (template_schema, template_history_schema)
+from app.schemas import (template_schema, template_schema_no_detail, template_history_schema)
 from app.template.template_schemas import post_create_template_schema, post_update_template_schema
 from app.utils import get_public_notify_type_text
 
@@ -152,7 +152,10 @@ def get_precompiled_template_for_service(service_id):
 @template_blueprint.route('', methods=['GET'])
 def get_all_templates_for_service(service_id):
     templates = dao_get_all_templates_for_service(service_id=service_id)
-    data = template_schema.dump(templates, many=True).data
+    if str(request.args.get('detailed', True)) == 'True':
+        data = template_schema.dump(templates, many=True).data
+    else:
+        data = template_schema_no_detail.dump(templates, many=True).data
     return jsonify(data=data)
 
 
