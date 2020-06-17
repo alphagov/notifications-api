@@ -309,7 +309,7 @@ class Config(object):
 
     STATSD_HOST = os.getenv('STATSD_HOST')
     STATSD_PORT = 8125
-    STATSD_ENABLED = bool(STATSD_HOST)
+    STATSD_ENABLED = False
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
 
