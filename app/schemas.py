@@ -235,6 +235,18 @@ class ServiceSchema(BaseSchema):
             'letter_contacts',
             'complaints',
             'data_retention',
+            'all_template_folders',
+            'annual_billing',
+            'contact_list',
+            'crown',
+            'inbound_number',
+            'inbound_sms',
+            'letter_logo_filename',
+            'rate_limit',
+            'returned_letters',
+            'users',
+            'version',
+            'whitelist',
         )
         strict = True
 
@@ -289,7 +301,18 @@ class DetailedServiceSchema(BaseSchema):
             'sms_sender',
             'permissions',
             'inbound_number',
-            'inbound_sms'
+            'inbound_sms',
+            'all_template_folders',
+            'annual_billing',
+            'contact_list',
+            'created_by',
+            'crown',
+            'letter_logo_filename',
+            'rate_limit',
+            'returned_letters',
+            'users',
+            'version',
+            'whitelist',
         )
 
 
