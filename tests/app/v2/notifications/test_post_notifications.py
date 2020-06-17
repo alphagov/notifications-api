@@ -33,7 +33,7 @@ from tests.app.db import (
 )
 
 
-@pytest.mark.parametrize("reference", ["reference_from_client"])
+@pytest.mark.parametrize("reference", [None, "reference_from_client"])
 def test_post_sms_notification_returns_201(client, sample_template_with_placeholders, mocker, reference):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     data = {
