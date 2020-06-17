@@ -1630,6 +1630,12 @@ def test_dao_get_notification_by_reference_with_no_matches_raises_error(notify_d
         dao_get_notification_by_reference('REF1', 'email')
 
 
+def test_dao_get_notification_by_reference_with_no_matches_for_type_raises_error(sample_email_template):
+    create_notification(template=sample_email_template, reference='REF1')
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_by_reference('REF1', 'letter')
+
+
 def test_dao_get_notification_or_history_by_reference_with_one_match_returns_notification(
         sample_letter_template
 ):
@@ -1649,7 +1655,13 @@ def test_dao_get_notification_or_history_by_reference_with_multiple_matches_rais
         dao_get_notification_or_history_by_reference('REF1', 'letter')
 
 
-def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_error(notify_db):
+def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_error(sample_letter_template):
+    create_notification(template=sample_letter_template, reference='REF1')
+    with pytest.raises(SQLAlchemyError):
+        dao_get_notification_or_history_by_reference('REF1', 'email')
+
+
+def test_dao_get_notification_or_history_by_reference_with_no_matches_for_type_raises_error(notify_db):
     with pytest.raises(SQLAlchemyError):
         dao_get_notification_or_history_by_reference('REF1', 'email')
 
