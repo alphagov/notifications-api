@@ -49,6 +49,7 @@ def test_post_sms_notification_returns_201(client, sample_template_with_placehol
         path='/v2/notifications/sms',
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), auth_header])
+
     assert response.status_code == 201
     resp_json = json.loads(response.get_data(as_text=True))
     assert validate(resp_json, post_sms_response) == resp_json
@@ -424,7 +425,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 ):
     sample = create_template(service=sample_service, template_type=notification_type)
     persist_mock = mocker.patch('app.v2.notifications.post_notifications.persist_notification')
-    deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue')
+    deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue_detached')
     mocker.patch(
         'app.v2.notifications.post_notifications.check_rate_limiting',
         side_effect=RateLimitError("LIMIT", "INTERVAL", "TYPE"))

@@ -23,7 +23,7 @@ from app.notifications.process_notifications import (
 )
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
-from tests.app.db import create_service, create_template
+from tests.app.db import create_service, create_template, create_api_key
 
 
 def test_create_content_for_notification_passes(sample_email_template):
@@ -51,8 +51,7 @@ def test_create_content_for_notification_allows_additional_personalisation(sampl
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job, mocker):
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.get')
+def test_persist_notification_creates_and_save_to_db(sample_template, sample_api_key, sample_job):
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
@@ -90,8 +89,6 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert notification_from_db.client_reference == notification.client_reference
     assert notification_from_db.created_by_id == notification.created_by_id
     assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
-
-    mocked_redis.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count")
 
 
 def test_persist_notification_throws_exception_when_missing_template(sample_api_key):
@@ -157,10 +154,9 @@ def test_persist_notification_does_not_increment_cache_if_test_key(
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker):
+def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0
-    mocked_redis = mocker.patch('app.notifications.process_notifications.redis_store.get')
     n_id = uuid.uuid4()
     created_at = datetime.datetime(2016, 11, 11, 16, 8, 18)
     persist_notification(
@@ -186,7 +182,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
     persisted_notification.job_id == sample_job.id
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
-    mocked_redis.assert_called_once_with(str(sample_job.service_id) + "-2016-01-01-count")
+
     assert persisted_notification.client_reference == "ref from client"
     assert persisted_notification.reference is None
     assert persisted_notification.international is False
@@ -197,44 +193,77 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key, mocker)
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_doesnt_touch_cache_for_old_keys_that_dont_exist(sample_template, sample_api_key, mocker):
+def test_persist_notification_doesnt_touch_cache_for_old_keys_that_dont_exist(notify_db_session, mocker):
+    service = create_service(restricted=True)
+    template = create_template(service=service)
+    api_key = create_api_key(service=service)
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=None)
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash', return_value=None)
 
     persist_notification(
-        template_id=sample_template.id,
-        template_version=sample_template.version,
+        template_id=template.id,
+        template_version=template.version,
         recipient='+447111111111',
-        service=sample_template.service,
+        service=template.service,
         personalisation={},
         notification_type='sms',
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
+        api_key_id=api_key.id,
+        key_type=api_key.key_type,
         reference="ref"
     )
     mock_incr.assert_not_called()
 
 
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_increments_cache_if_key_exists(sample_template, sample_api_key, mocker):
+def test_persist_notification_increments_cache_if_key_exists_and_for_trial_service(
+    notify_db_session, mocker
+):
+    service = create_service(restricted=True)
+    template = create_template(service=service)
+    api_key = create_api_key(service=service)
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
     mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
-                 return_value={sample_template.id, 1})
+                 return_value={template.id, 1})
 
     persist_notification(
-        template_id=sample_template.id,
-        template_version=sample_template.version,
+        template_id=template.id,
+        template_version=template.version,
         recipient='+447111111122',
-        service=sample_template.service,
+        service=template.service,
         personalisation={},
         notification_type='sms',
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
+        api_key_id=api_key.id,
+        key_type=api_key.key_type,
         reference="ref2")
 
-    mock_incr.assert_called_once_with(str(sample_template.service_id) + "-2016-01-01-count", )
+    mock_incr.assert_called_once_with(str(service.id) + "-2016-01-01-count", )
+
+
+def test_persist_notification_does_not_increments_cache_live_service(
+    notify_db_session, mocker
+):
+    service = create_service(restricted=False)
+    template = create_template(service=service)
+    api_key = create_api_key(service=service)
+    mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
+    mocker.patch('app.notifications.process_notifications.redis_store.get_all_from_hash',
+                 return_value={template.id, 1})
+
+    persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient='+447111111122',
+        service=template.service,
+        personalisation={},
+        notification_type='sms',
+        api_key_id=api_key.id,
+        key_type=api_key.key_type,
+        reference="ref2")
+
+    assert not mock_incr.called
 
 
 @pytest.mark.parametrize((
