@@ -127,7 +127,6 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        print("****** COMMIT *******")
         # Only keep track of the daily limit for trial mode services.
         if service_in_trial_mode and key_type != KEY_TYPE_TEST:
             if redis_store.get(redis.daily_limit_cache_key(service_id)):
@@ -168,8 +167,8 @@ def send_notification_to_queue_detached(
         "{} {} sent to the {} queue for delivery".format(notification_type,
                                                          notification_id,
                                                          queue))
-    
-    
+
+
 def send_notification_to_queue(notification, research_mode, queue=None):
     send_notification_to_queue_detached(
         notification.key_type, notification.notification_type, notification.id, research_mode, queue

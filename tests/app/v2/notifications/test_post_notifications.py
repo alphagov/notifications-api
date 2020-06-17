@@ -426,7 +426,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
 ):
     sample = create_template(service=sample_service, template_type=notification_type)
     persist_mock = mocker.patch('app.v2.notifications.post_notifications.persist_notification')
-    deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue')
+    deliver_mock = mocker.patch('app.v2.notifications.post_notifications.send_notification_to_queue_detached')
     mocker.patch(
         'app.v2.notifications.post_notifications.check_rate_limiting',
         side_effect=RateLimitError("LIMIT", "INTERVAL", "TYPE"))
