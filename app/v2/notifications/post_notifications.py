@@ -347,6 +347,7 @@ def process_letter_notification(
     test_key = api_key.key_type == KEY_TYPE_TEST
 
     status = NOTIFICATION_CREATED
+    updated_at = None
     if test_key:
         # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
@@ -354,6 +355,7 @@ def process_letter_notification(
         # mark test letter as delivered and do not create a fake response later
         else:
             status = NOTIFICATION_DELIVERED
+            updated_at = datetime.utcnow()
 
     queue = QueueNames.CREATE_LETTERS_PDF if not test_key else QueueNames.RESEARCH_MODE
 
@@ -361,7 +363,9 @@ def process_letter_notification(
                                               template=template,
                                               api_key=api_key,
                                               status=status,
-                                              reply_to_text=reply_to_text)
+                                              reply_to_text=reply_to_text,
+                                              updated_at=updated_at
+                                              )
 
     get_pdf_for_templated_letter.apply_async(
         [str(notification.id)],
