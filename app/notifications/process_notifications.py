@@ -79,7 +79,8 @@ def persist_notification(
     billable_units=None,
     postage=None,
     template_postage=None,
-    document_download_count=None
+    document_download_count=None,
+    updated_at=None
 ):
     notification_created_at = created_at or datetime.utcnow()
     if not notification_id:
@@ -105,6 +106,7 @@ def persist_notification(
         reply_to_text=reply_to_text,
         billable_units=billable_units,
         document_download_count=document_download_count,
+        updated_at=updated_at
     )
 
     if notification_type == SMS_TYPE:

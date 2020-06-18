@@ -245,6 +245,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     fake_create_letter_task.assert_called_once_with([str(notification.id)], queue='research-mode-tasks')
     assert not fake_create_dvla_response_task.called
     assert notification.status == NOTIFICATION_DELIVERED
+    assert notification.updated_at is not None
 
 
 @pytest.mark.parametrize('env', [
