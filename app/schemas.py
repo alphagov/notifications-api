@@ -13,6 +13,7 @@ from marshmallow import (
     post_dump
 )
 from marshmallow_sqlalchemy import field_for
+from uuid import UUID
 
 from notifications_utils.recipients import (
     validate_email_address,
@@ -56,6 +57,14 @@ def _validate_datetime_not_in_future(dte, msg="Date cannot be in the future"):
 def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
     if dte < datetime.utcnow():
         raise ValidationError(msg)
+
+
+class UUIDsAsStringsMixin:
+    @post_dump()
+    def __post_dump(self, data):
+        for key, value in data.items():
+            if isinstance(value, UUID):
+                data[key] = str(value)
 
 
 class BaseSchema(ma.ModelSchema):
@@ -341,7 +350,7 @@ class BaseTemplateSchema(BaseSchema):
         strict = True
 
 
-class TemplateSchema(BaseTemplateSchema):
+class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
     created_by_id = field_for(
         models.Template, 'created_by_id', dump_to='created_by', dump_only=True
