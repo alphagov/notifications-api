@@ -400,7 +400,12 @@ class Test(Development):
     NOTIFY_ENVIRONMENT = 'test'
     TESTING = True
 
-    HIGH_VOLUME_SERVICE = ['941b6f9a-50d7-4742-8d50-f365ca74bf27']
+    HIGH_VOLUME_SERVICE = [
+        '941b6f9a-50d7-4742-8d50-f365ca74bf27',
+        '63f95b86-2d19-4497-b8b2-ccf25457df4e',
+        '7e5950cb-9954-41f5-8376-962b8c8555cf',
+        '10d1b9c9-0072-4fa9-ae1c-595e333841da',
+    ]
 
     CSV_UPLOAD_BUCKET_NAME = 'test-notifications-csv-upload'
     CONTACT_LIST_BUCKET_NAME = 'test-contact-list'

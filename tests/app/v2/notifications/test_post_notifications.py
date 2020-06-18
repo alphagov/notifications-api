@@ -1070,7 +1070,10 @@ def test_post_notifications_saves_email_to_queue(client, notify_db_session, mock
     save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
     mock_send_task = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    service = create_service(service_id='941b6f9a-50d7-4742-8d50-f365ca74bf27', service_name='high volume service')
+    service = create_service(
+        service_id=current_app.config['HIGH_VOLUME_SERVICE'][0],
+        service_name='high volume service',
+    )
     template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
     data = {
         "email_address": "joe.citizen@example.com",
@@ -1101,7 +1104,10 @@ def test_post_notifications_saves_email_normally_if_save_email_to_queue_fails(cl
     )
     mock_send_task = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    service = create_service(service_id='941b6f9a-50d7-4742-8d50-f365ca74bf27', service_name='high volume service')
+    service = create_service(
+        service_id=current_app.config['HIGH_VOLUME_SERVICE'][1],
+        service_name='high volume service',
+    )
     template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
     data = {
         "email_address": "joe.citizen@example.com",
@@ -1130,8 +1136,10 @@ def test_post_notifications_doesnt_save_email_to_queue_for_test_emails(client, n
     save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
     mock_send_task = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    service = create_service(service_id='941b6f9a-50d7-4742-8d50-f365ca74bf27', service_name='high volume service')
-    # create_api_key(service=service, key_type='test')
+    service = create_service(
+        service_id=current_app.config['HIGH_VOLUME_SERVICE'][2],
+        service_name='high volume service',
+    )
     template = create_template(service=service, content='((message))', template_type=EMAIL_TYPE)
     data = {
         "email_address": "joe.citizen@example.com",
@@ -1160,7 +1168,10 @@ def test_post_notifications_doesnt_save_email_to_queue_for_sms(client, notify_db
     save_email_task = mocker.patch("app.celery.tasks.save_api_email.apply_async")
     mock_send_task = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-    service = create_service(service_id='941b6f9a-50d7-4742-8d50-f365ca74bf27', service_name='high volume service')
+    service = create_service(
+        service_id=current_app.config['HIGH_VOLUME_SERVICE'][3],
+        service_name='high volume service',
+    )
     template = create_template(service=service, content='((message))', template_type=SMS_TYPE)
     data = {
         "phone_number": '+447700900855',

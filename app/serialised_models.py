@@ -126,6 +126,7 @@ class SerialisedService(SerialisedModel):
     }
 
     @classmethod
+    @memory_cache
     def from_id(cls, service_id):
         return cls(cls.get_dict(service_id))
 
@@ -156,6 +157,7 @@ class SerialisedAPIKeyCollection(SerialisedModelCollection):
     model = SerialisedAPIKey
 
     @classmethod
+    @memory_cache
     def from_service_id(cls, service_id):
         keys = [
             {k: getattr(key, k) for k in SerialisedAPIKey.ALLOWED_PROPERTIES}
