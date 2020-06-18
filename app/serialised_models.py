@@ -128,16 +128,17 @@ class SerialisedService(SerialisedModel):
     @classmethod
     @memory_cache
     def from_id(cls, service_id):
-        return cls(cls.get_dict(service_id))
+        return cls(cls.get_dict(service_id)['data'])
 
     @staticmethod
+    @redis_cache.set('service-{service_id}')
     def get_dict(service_id):
         from app.schemas import service_schema
 
         service_dict = service_schema.dump(dao_fetch_service_by_id(service_id)).data
         db.session.commit()
 
-        return service_dict
+        return {'data': service_dict}
 
     @cached_property
     def api_keys(self):

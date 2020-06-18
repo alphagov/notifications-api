@@ -240,9 +240,9 @@ def test_should_cache_template_lookups_in_memory(mocker, client, sample_template
     assert Notification.query.count() == 5
 
 
-def test_should_cache_template_lookups_in_redis(mocker, client, sample_template):
+def test_should_cache_template_and_service_in_redis(mocker, client, sample_template):
 
-    from app.schemas import template_schema
+    from app.schemas import service_schema, template_schema
 
     mock_redis_get = mocker.patch(
         'app.redis_store.get',
@@ -266,33 +266,48 @@ def test_should_cache_template_lookups_in_redis(mocker, client, sample_template)
         headers=[('Content-Type', 'application/json'), auth_header]
     )
 
-    expected_key = f'template-{sample_template.id}-version-None'
+    expected_service_key = f'service-{sample_template.service_id}'
+    expected_templates_key = f'template-{sample_template.id}-version-None'
 
-    assert mock_redis_get.call_args_list == [call(
-        expected_key,
-    )]
+    assert mock_redis_get.call_args_list == [
+        call(expected_service_key),
+        call(expected_templates_key),
+    ]
 
+    service_dict = service_schema.dump(sample_template.service).data
     template_dict = template_schema.dump(sample_template).data
 
-    assert len(mock_redis_set.call_args_list) == 1
-    assert mock_redis_set.call_args[0][0] == expected_key
-    assert json.loads(mock_redis_set.call_args[0][1]) == {
-        'data': template_dict,
-    }
-    assert mock_redis_set.call_args[1]['ex'] == 604_800
+    assert len(mock_redis_set.call_args_list) == 2
+
+    service_call, templates_call = mock_redis_set.call_args_list
+
+    assert service_call[0][0] == expected_service_key
+    assert json.loads(service_call[0][1]) == {'data': service_dict}
+    assert service_call[1]['ex'] == 604_800
+
+    assert templates_call[0][0] == expected_templates_key
+    assert json.loads(templates_call[0][1]) == {'data': template_dict}
+    assert templates_call[1]['ex'] == 604_800
 
 
 def test_should_return_template_if_found_in_redis(mocker, client, sample_template):
 
-    from app.schemas import template_schema
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_template.service).data
     template_dict = template_schema.dump(sample_template).data
 
     mocker.patch(
         'app.redis_store.get',
-        return_value=json.dumps({'data': template_dict}).encode('utf-8')
+        side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
     )
     mock_get_template = mocker.patch(
         'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
     )
 
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
@@ -311,6 +326,7 @@ def test_should_return_template_if_found_in_redis(mocker, client, sample_templat
 
     assert response.status_code == 201
     assert mock_get_template.called is False
+    assert mock_get_service.called is False
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
