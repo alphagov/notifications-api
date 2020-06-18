@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 from flask import json
-from freezegun import freeze_time
 from jsonschema import ValidationError
 
 from app.models import NOTIFICATION_CREATED, EMAIL_TYPE
@@ -257,66 +256,3 @@ def valid_email_response():
         },
         "scheduled_for": ""
     }
-
-
-@pytest.mark.parametrize("schema",
-                         [post_email_request_schema, post_sms_request_schema])
-@freeze_time("2017-05-12 13:00:00")
-def test_post_schema_valid_scheduled_for(schema):
-    j = {"template_id": str(uuid.uuid4()),
-         "scheduled_for": "2017-05-12 13:15"}
-    if schema == post_email_request_schema:
-        j.update({"email_address": "joe@gmail.com"})
-    else:
-        j.update({"phone_number": "07515111111"})
-    assert validate(j, schema) == j
-
-
-@pytest.mark.parametrize("invalid_datetime",
-                         ["13:00:00 2017-01-01",
-                          "2017-31-12 13:00:00",
-                          "01-01-2017T14:00:00.0000Z"
-                          ])
-@pytest.mark.parametrize("schema",
-                         [post_email_request_schema, post_sms_request_schema])
-def test_post_email_schema_invalid_scheduled_for(invalid_datetime, schema):
-    j = {"template_id": str(uuid.uuid4()),
-         "scheduled_for": invalid_datetime}
-    if schema == post_email_request_schema:
-        j.update({"email_address": "joe@gmail.com"})
-    else:
-        j.update({"phone_number": "07515111111"})
-    with pytest.raises(ValidationError) as e:
-        validate(j, schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                                'message': "scheduled_for datetime format is invalid. "
-                                           "It must be a valid ISO8601 date time format, "
-                                           "https://en.wikipedia.org/wiki/ISO_8601"}]
-
-
-@freeze_time("2017-05-12 13:00:00")
-def test_scheduled_for_raises_validation_error_when_in_the_past():
-    j = {"phone_number": "07515111111",
-         "template_id": str(uuid.uuid4()),
-         "scheduled_for": "2017-05-12 10:00"}
-    with pytest.raises(ValidationError) as e:
-        validate(j, post_sms_request_schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                                'message': "scheduled_for datetime can not be in the past"}]
-
-
-@freeze_time("2017-05-12 13:00:00")
-def test_scheduled_for_raises_validation_error_when_more_than_24_hours_in_the_future():
-    j = {"phone_number": "07515111111",
-         "template_id": str(uuid.uuid4()),
-         "scheduled_for": "2017-05-13 14:00"}
-    with pytest.raises(ValidationError) as e:
-        validate(j, post_sms_request_schema)
-    error = json.loads(str(e.value))
-    assert error['status_code'] == 400
-    assert error['errors'] == [{'error': 'ValidationError',
-                                'message': "scheduled_for datetime can only be 24 hours in the future"}]

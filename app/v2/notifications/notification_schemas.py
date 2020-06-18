@@ -136,7 +136,6 @@ post_sms_request = {
         "phone_number": {"type": "string", "format": "phone_number"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime_within_next_day"},
         "sms_sender_id": uuid
     },
     "required": ["phone_number", "template_id"],
@@ -182,7 +181,6 @@ post_email_request = {
         "email_address": {"type": "string", "format": "email_address"},
         "template_id": uuid,
         "personalisation": personalisation,
-        "scheduled_for": {"type": ["string", "null"], "format": "datetime_within_next_day"},
         "email_reply_to_id": uuid
     },
     "required": ["email_address", "template_id"],
