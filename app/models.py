@@ -901,13 +901,6 @@ class TemplateBase(db.Model):
     hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
     postage = db.Column(db.String, nullable=True)
-    CheckConstraint("""
-        CASE WHEN template_type = 'letter' THEN
-            postage is not null and postage in ('first', 'second')
-        ELSE
-            postage is null
-        END
-    """)
 
     @declared_attr
     def service_id(cls):
@@ -1353,10 +1346,14 @@ DVLA_RESPONSE_STATUS_SENT = 'Sent'
 
 FIRST_CLASS = 'first'
 SECOND_CLASS = 'second'
-POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS]
+EUROPE = 'europe'
+REST_OF_WORLD = 'rest-of-world'
+POSTAGE_TYPES = [FIRST_CLASS, SECOND_CLASS, EUROPE, REST_OF_WORLD]
 RESOLVE_POSTAGE_FOR_FILE_NAME = {
     FIRST_CLASS: 1,
-    SECOND_CLASS: 2
+    SECOND_CLASS: 2,
+    EUROPE: 'E',
+    REST_OF_WORLD: 'N',
 }
 
 
@@ -1431,13 +1428,6 @@ class Notification(db.Model):
     document_download_count = db.Column(db.Integer, nullable=True)
 
     postage = db.Column(db.String, nullable=True)
-    CheckConstraint("""
-        CASE WHEN notification_type = 'letter' THEN
-            postage is not null and postage in ('first', 'second')
-        ELSE
-            postage is null
-        END
-    """)
 
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -1698,13 +1688,6 @@ class NotificationHistory(db.Model, HistoryModel):
     created_by_id = db.Column(UUID(as_uuid=True), nullable=True)
 
     postage = db.Column(db.String, nullable=True)
-    CheckConstraint("""
-        CASE WHEN notification_type = 'letter' THEN
-            postage is not null and postage in ('first', 'second')
-        ELSE
-            postage is null
-        END
-    """)
 
     document_download_count = db.Column(db.Integer, nullable=True)
 

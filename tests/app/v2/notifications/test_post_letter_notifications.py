@@ -637,7 +637,7 @@ def test_post_letter_notification_throws_error_for_invalid_postage(client, notif
 
     assert response.status_code == 400, response.get_data(as_text=True)
     resp_json = json.loads(response.get_data(as_text=True))
-    assert resp_json['errors'][0]['message'] == "postage invalid. It must be either first or second."
+    assert resp_json['errors'][0]['message'] == "postage invalid. It must be first, second, europe or rest-of-world."
 
     assert not Notification.query.first()
 
