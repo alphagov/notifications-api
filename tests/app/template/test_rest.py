@@ -778,6 +778,41 @@ def test_create_a_template_with_foreign_service_reply_to(admin_request, sample_u
     )
 
 
+@pytest.mark.parametrize('post_data, expected_errors', [
+    (
+        {},
+        [
+            {"error": "ValidationError", "message": "subject is a required property"},
+            {"error": "ValidationError", "message": "name is a required property"},
+            {"error": "ValidationError", "message": "template_type is a required property"},
+            {"error": "ValidationError", "message": "content is a required property"},
+            {"error": "ValidationError", "message": "service is a required property"},
+            {"error": "ValidationError", "message": "created_by is a required property"},
+        ]
+    ),
+    (
+        {"name": "my template", "template_type": "sms", "content": "hi", "postage": "third",
+         "service": "1af43c02-b5a8-4923-ad7f-5279b75ff2d0", "created_by": "30587644-9083-44d8-a114-98887f07f1e3"},
+        [
+            {"error": "ValidationError", "message": "postage invalid. It must be either first or second."},
+        ]
+    ),
+])
+def test_create_template_validates_against_json_schema(
+    admin_request,
+    sample_service_full_permissions,
+    post_data,
+    expected_errors,
+):
+    response = admin_request.post(
+        'template.create_template',
+        service_id=sample_service_full_permissions.id,
+        _data=post_data,
+        _expected_status=400
+    )
+    assert response['errors'] == expected_errors
+
+
 @pytest.mark.parametrize('template_default, service_default',
                          [('template address', 'service address'),
                           (None, 'service address'),
@@ -847,6 +882,19 @@ def test_update_template_reply_to_set_to_blank(client, notify_db_session):
     assert template.service_letter_contact_id is None
     th = TemplateHistory.query.filter_by(id=template.id, version=2).one()
     assert th.service_letter_contact_id is None
+
+
+def test_update_template_validates_postage(admin_request, sample_service_full_permissions):
+    template = create_template(service=sample_service_full_permissions, template_type='letter')
+
+    response = admin_request.post(
+        'template.update_template',
+        service_id=sample_service_full_permissions.id,
+        template_id=template.id,
+        _data={"postage": "third"},
+        _expected_status=400
+    )
+    assert 'postage invalid' in response['errors'][0]['message']
 
 
 def test_update_template_with_foreign_service_reply_to(client, sample_letter_template):
