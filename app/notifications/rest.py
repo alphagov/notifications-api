@@ -15,7 +15,7 @@ from app.errors import (
     InvalidRequest
 )
 from app.models import (
-    EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, SMS_TYPE,
+    EMAIL_TYPE, SMS_TYPE,
     KEY_TYPE_TEAM, PRIORITY,
     LETTER_TYPE)
 from app.notifications.process_notifications import (
@@ -24,9 +24,10 @@ from app.notifications.process_notifications import (
     simulated_recipient
 )
 from app.notifications.validators import (
+    check_if_service_can_send_to_number,
     check_rate_limiting,
     service_has_permission,
-    validate_template
+    validate_template,
 )
 from app.schemas import (
     email_notification_schema,
@@ -38,7 +39,6 @@ from app.service.utils import service_allowed_to_send_to
 from app.utils import pagination_links, get_public_notify_type_text
 
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from notifications_utils.recipients import get_international_phone_info
 
 notifications = Blueprint('notifications', __name__)
 
@@ -115,7 +115,7 @@ def send_notification(notification_type):
         )
 
     if notification_type == SMS_TYPE:
-        _service_can_send_internationally(authenticated_service, notification_form['to'])
+        check_if_service_can_send_to_number(authenticated_service, notification_form['to'])
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
     notification_model = persist_notification(template_id=template.id,
@@ -158,17 +158,6 @@ def get_notification_return_data(notification_id, notification, template):
         output['subject'] = template.subject
 
     return output
-
-
-def _service_can_send_internationally(service, number):
-    international_phone_info = get_international_phone_info(number)
-
-    if international_phone_info.international and \
-            INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
-        raise InvalidRequest(
-            {'to': ["Cannot send to international mobile numbers"]},
-            status_code=400
-        )
 
 
 def _service_allowed_to_send_to(notification, service):

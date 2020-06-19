@@ -1051,7 +1051,9 @@ def test_should_allow_store_original_number_on_sms_notification(client, sample_t
     assert '+(44) 7700-900 855' == notifications[0].to
 
 
-def test_should_not_allow_international_number_on_sms_notification(client, sample_template, mocker):
+def test_should_not_allow_sending_to_international_number_without_international_permission(
+    client, sample_template, mocker
+):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
     data = {
@@ -1070,10 +1072,35 @@ def test_should_not_allow_international_number_on_sms_notification(client, sampl
     assert response.status_code == 400
     error_json = json.loads(response.get_data(as_text=True))
     assert error_json['result'] == 'error'
-    assert error_json['message']['to'][0] == 'Cannot send to international mobile numbers'
+    assert error_json['message'] == 'Cannot send to international mobile numbers'
 
 
-def test_should_allow_international_number_on_sms_notification(client, sample_service_full_permissions, mocker):
+def test_should_allow_sending_to_crown_dependency_number_without_international_permission(
+    client, mocker, notify_db_session
+):
+    service = create_service()
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    template = create_template(service)
+
+    data = {
+        'to': '07700-900-123',
+        'template': str(template.id)
+    }
+
+    auth_header = create_authorization_header(service_id=service.id)
+
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 201
+
+
+def test_should_allow_sending_to_international_number_with_international_permission(
+    client, sample_service_full_permissions, mocker
+):
     mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
     template = create_template(sample_service_full_permissions)
 
