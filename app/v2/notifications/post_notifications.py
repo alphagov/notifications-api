@@ -15,8 +15,8 @@ from app import (
     notify_celery,
     document_download_client,
     encryption,
-    DATETIME_FORMAT
-)
+    DATETIME_FORMAT,
+    db)
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter, sanitise_letter
 from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import save_api_email
@@ -187,8 +187,10 @@ def process_sms_or_email_notification(
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template.values = personalisation
+    api_key_id = api_key.id
     key_type = api_key.key_type
     service_in_research_mode = service.research_mode
+    template_version = template._template['version']
     resp = create_response_for_post_notification(
         notification_id=notification_id,
         client_reference=form.get('reference', None),
@@ -200,19 +202,22 @@ def process_sms_or_email_notification(
         scheduled_for=form.get("scheduled_for", None),
         template_with_content=template)
 
-    if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE') and api_key.key_type == KEY_TYPE_NORMAL \
+    if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE') and key_type == KEY_TYPE_NORMAL \
        and notification_type == EMAIL_TYPE:
         # Put GOV.UK Email notifications onto a queue
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
         # the task will then save the notification, then call send_notification_to_queue.
         # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
         try:
+            db.session.commit()
             save_email_to_queue(
                 form=form,
                 notification_id=str(notification_id),
                 notification_type=notification_type,
-                api_key=api_key,
-                template=template,
+                api_key_id=api_key_id,
+                key_type=key_type,
+                template_id=template.id,
+                template_version=template_version,
                 service_id=service.id,
                 personalisation=personalisation,
                 document_download_count=document_download_count,
@@ -229,12 +234,12 @@ def process_sms_or_email_notification(
     persist_notification(
         notification_id=notification_id,
         template_id=template.id,
-        template_version=template._template['version'],
+        template_version=template_version,
         recipient=form_send_to,
         service=service,
         personalisation=personalisation,
         notification_type=notification_type,
-        api_key_id=api_key.id,
+        api_key_id=api_key_id,
         key_type=key_type,
         client_reference=form.get('reference', None),
         simulated=simulated,
@@ -266,23 +271,26 @@ def save_email_to_queue(
     notification_id,
     form,
     notification_type,
-    api_key,
-    template,
+    api_key_id,
+    key_type,
+    template_id,
+    template_version,
     service_id,
     personalisation,
     document_download_count,
     reply_to_text=None
 ):
+    db.session.commit()
     data = {
         "id": notification_id,
-        "template_id": str(template.id),
-        "template_version": template._template['version'],
+        "template_id": str(template_id),
+        "template_version": template_version,
         "to": form['email_address'],
         "service_id": str(service_id),
         "personalisation": personalisation,
         "notification_type": notification_type,
-        "api_key_id": str(api_key.id),
-        "key_type": api_key.key_type,
+        "api_key_id": str(api_key_id),
+        "key_type": key_type,
         "client_reference": form.get('reference', None),
         "reply_to_text": reply_to_text,
         "document_download_count": document_download_count,

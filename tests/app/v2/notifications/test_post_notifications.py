@@ -1006,11 +1006,14 @@ def test_post_notifications_saves_email_normally_if_save_email_to_queue_fails(cl
         "template_id": template.id,
         "personalisation": {"message": "Dear citizen, have a nice day"}
     }
+
+    print("******** Start")
     response = client.post(
         path='/v2/notifications/email',
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header(service_id=service.id)]
     )
+    print("********** End")
 
     json_resp = response.get_json()
 
