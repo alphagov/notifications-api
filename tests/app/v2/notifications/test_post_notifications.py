@@ -235,7 +235,7 @@ def test_should_cache_template_lookups_in_memory(mocker, client, sample_template
 
     assert mock_get_template.call_count == 1
     assert mock_get_template.call_args_list == [
-        call(service_id=sample_template.service_id, template_id=str(sample_template.id))
+        call(service_id=str(sample_template.service_id), template_id=str(sample_template.id))
     ]
     assert Notification.query.count() == 5
 
@@ -920,8 +920,8 @@ def test_post_notification_with_document_upload(client, notify_db_session, mocke
     assert validate(resp_json, post_email_response) == resp_json
 
     assert document_download_mock.upload_document.call_args_list == [
-        call(service.id, 'abababab', csv_param.get('is_csv')),
-        call(service.id, 'cdcdcdcd', csv_param.get('is_csv'))
+        call(str(service.id), 'abababab', csv_param.get('is_csv')),
+        call(str(service.id), 'cdcdcdcd', csv_param.get('is_csv'))
     ]
 
     notification = Notification.query.one()

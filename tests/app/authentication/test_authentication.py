@@ -300,7 +300,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == 'Invalid token: API key revoked'
-    assert exc.value.service_id == expired_api_key.service_id
+    assert exc.value.service_id == str(expired_api_key.service_id)
     assert exc.value.api_key_id == expired_api_key.id
 
 
@@ -376,7 +376,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(client,
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == 'Invalid token: service has no API keys'
-    assert exc.value.service_id == sample_service.id
+    assert exc.value.service_id == str(sample_service.id)
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
@@ -387,7 +387,7 @@ def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_ser
             headers={'Authorization': 'Bearer {}'.format(token)}
         )
         assert response.status_code == 200
-        assert api_user == sample_api_key
+        assert str(api_user.id) == str(sample_api_key.id)
 
 
 def test_should_return_403_when_token_is_expired(client,
@@ -399,8 +399,8 @@ def test_should_return_403_when_token_is_expired(client,
             request.headers = {'Authorization': 'Bearer {}'.format(token)}
             requires_auth()
     assert exc.value.short_message == 'Error: Your system clock must be accurate to within 30 seconds'
-    assert exc.value.service_id == sample_api_key.service_id
-    assert exc.value.api_key_id == sample_api_key.id
+    assert exc.value.service_id == str(sample_api_key.service_id)
+    assert str(exc.value.api_key_id) == str(sample_api_key.id)
 
 
 def __create_token(service_id):

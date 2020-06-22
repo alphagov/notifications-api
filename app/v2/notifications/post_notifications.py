@@ -342,7 +342,7 @@ def process_letter_notification(
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message='Cannot send letters with a team api key', status_code=403)
 
-    if not api_key.service.research_mode and api_key.service.restricted and api_key.key_type != KEY_TYPE_TEST:
+    if not service.research_mode and service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message='Cannot send letters when service is in trial mode', status_code=403)
 
     if precompiled:
@@ -352,7 +352,7 @@ def process_letter_notification(
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    validate_address(api_key, letter_data)
+    validate_address(service, letter_data)
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 
@@ -402,10 +402,10 @@ def process_letter_notification(
     return resp
 
 
-def validate_address(api_key, letter_data):
+def validate_address(service, letter_data):
     address = PostalAddress.from_personalisation(
         letter_data['personalisation'],
-        allow_international_letters=api_key.service.has_permission(INTERNATIONAL_LETTERS),
+        allow_international_letters=(INTERNATIONAL_LETTERS in service.permissions),
     )
     if not address.has_enough_lines:
         raise ValidationError(
