@@ -23,7 +23,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
-from app.serialised_models import TemplateJSONModel
+from app.serialised_models import SerialisedTemplate
 from app.utils import get_template_instance
 
 from app.v2.errors import (
@@ -315,7 +315,7 @@ def test_check_content_char_count_passes_for_long_email_or_letter(sample_service
 
 def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
     template_id = create_template(sample_service, content="Content is not empty").id
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         template_id=template_id,
         service_id=sample_service.id
     )
@@ -331,7 +331,7 @@ def test_check_notification_content_is_not_empty_fails(
     notify_api, mocker, sample_service, template_content, notification_values
 ):
     template_id = create_template(sample_service, content=template_content).id
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         template_id=template_id,
         service_id=sample_service.id
     )

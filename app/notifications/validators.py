@@ -21,7 +21,7 @@ from app.notifications.process_notifications import create_content_for_notificat
 from app.utils import get_public_notify_type_text
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
-from app.serialised_models import TemplateJSONModel
+from app.serialised_models import SerialisedTemplate
 
 from gds_metrics.metrics import Histogram
 
@@ -159,7 +159,7 @@ def check_notification_content_is_not_empty(template_with_content):
 def validate_template(template_id, personalisation, service, notification_type):
 
     try:
-        template = TemplateJSONModel.from_id_and_service_id(template_id, service.id)
+        template = SerialisedTemplate.from_id_and_service_id(template_id, service.id)
     except NoResultFound:
         message = 'Template not found'
         raise BadRequestError(message=message,

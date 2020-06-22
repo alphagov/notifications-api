@@ -20,14 +20,14 @@ from app.notifications.process_notifications import (
     send_notification_to_queue,
     simulated_recipient
 )
-from app.serialised_models import TemplateJSONModel
+from app.serialised_models import SerialisedTemplate
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
 from tests.app.db import create_service, create_template, create_api_key
 
 
 def test_create_content_for_notification_passes(sample_email_template):
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         sample_email_template.id, sample_email_template.service_id
     )
     content = create_content_for_notification(template, None)
@@ -35,7 +35,7 @@ def test_create_content_for_notification_passes(sample_email_template):
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
     )
     content = create_content_for_notification(template, {'name': 'Bobby'})
@@ -44,7 +44,7 @@ def test_create_content_for_notification_with_placeholders_passes(sample_templat
 
 
 def test_create_content_for_notification_fails_with_missing_personalisation(sample_template_with_placeholders):
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
     )
     with pytest.raises(BadRequestError):
@@ -52,7 +52,7 @@ def test_create_content_for_notification_fails_with_missing_personalisation(samp
 
 
 def test_create_content_for_notification_allows_additional_personalisation(sample_template_with_placeholders):
-    template = TemplateJSONModel.from_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
     )
     create_content_for_notification(template, {'name': 'Bobby', 'Additional placeholder': 'Data'})

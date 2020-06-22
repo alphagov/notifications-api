@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from app.dao import templates_dao
 
 
-class JSONModel(ABC):
+class SerialisedModel(ABC):
 
     @property
     @abstractmethod
@@ -18,7 +18,7 @@ class JSONModel(ABC):
         return super().__dir__() + list(sorted(self.ALLOWED_PROPERTIES))
 
 
-class TemplateJSONModel(JSONModel):
+class SerialisedTemplate(SerialisedModel):
     ALLOWED_PROPERTIES = {
         'archived',
         'content',
