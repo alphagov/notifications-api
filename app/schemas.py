@@ -205,7 +205,6 @@ class ServiceSchema(BaseSchema):
     email_branding = field_for(models.Service, 'email_branding')
     organisation = field_for(models.Service, 'organisation')
     override_flag = False
-    letter_contact_block = fields.Method(serialize="get_letter_contact")
     go_live_at = field_for(models.Service, 'go_live_at', format=DATETIME_FORMAT_NO_TIMEZONE)
 
     def get_letter_logo_filename(self, service):
@@ -219,7 +218,6 @@ class ServiceSchema(BaseSchema):
 
     class Meta:
         model = models.Service
-        dump_only = ['letter_contact_block']
         exclude = (
             'updated_at',
             'created_at',
