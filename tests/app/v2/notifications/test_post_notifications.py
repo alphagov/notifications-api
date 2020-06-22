@@ -6,6 +6,7 @@ import pytest
 from freezegun import freeze_time
 from boto.exception import SQSError
 
+from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
     ScheduledNotification,
@@ -209,6 +210,33 @@ def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == '123456'
+
+
+def test_should_cache_template_lookups_in_memory(mocker, client, sample_template):
+
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id',
+        wraps=templates_dao.dao_get_template_by_id_and_service_id,
+    )
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    for i in range(5):
+        auth_header = create_authorization_header(service_id=sample_template.service_id)
+        client.post(
+            path='/v2/notifications/sms',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), auth_header]
+        )
+
+    assert mock_get_template.call_args_list == [
+        call(service_id=sample_template.service_id, template_id=str(sample_template.id))
+    ]
+    assert Notification.query.count() == 5
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",

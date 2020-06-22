@@ -1,6 +1,30 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
+from functools import partial
+from threading import RLock
+
+import cachetools
 
 from app.dao import templates_dao
+
+caches = defaultdict(partial(cachetools.TTLCache, maxsize=1024, ttl=2))
+locks = defaultdict(RLock)
+
+
+def memory_cache(func):
+    @cachetools.cached(
+        cache=caches[func.__qualname__],
+        lock=locks[func.__qualname__],
+        key=ignore_first_argument_cache_key,
+    )
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+def ignore_first_argument_cache_key(cls, *args, **kwargs):
+    return cachetools.keys.hashkey(*args, **kwargs)
 
 
 class SerialisedModel(ABC):
@@ -40,6 +64,7 @@ class SerialisedTemplate(SerialisedModel):
     }
 
     @classmethod
+    @memory_cache
     def from_id_and_service_id(cls, template_id, service_id):
         return cls(cls.get_dict(template_id, service_id))
 
