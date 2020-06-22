@@ -23,6 +23,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
+from app.serialised_models import SerialisedTemplate
 from app.utils import get_template_instance
 
 from app.v2.errors import (
@@ -314,7 +315,7 @@ def test_check_content_char_count_passes_for_long_email_or_letter(sample_service
 
 def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
     template_id = create_template(sample_service, content="Content is not empty").id
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         template_id=template_id,
         service_id=sample_service.id
     )
@@ -330,7 +331,7 @@ def test_check_notification_content_is_not_empty_fails(
     notify_api, mocker, sample_service, template_content, notification_values
 ):
     template_id = create_template(sample_service, content=template_content).id
-    template = templates_dao.dao_get_template_by_id_and_service_id(
+    template = SerialisedTemplate.from_id_and_service_id(
         template_id=template_id,
         service_id=sample_service.id
     )
@@ -356,7 +357,7 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
     )
     mock_check_not_empty = mocker.patch('app.notifications.validators.check_notification_content_is_not_empty')
     mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_content_char_count')
-    validate_template(template.id, {}, sample_service, "email")
+    template, template_with_content = validate_template(template.id, {}, sample_service, "email")
 
     mock_check_type.assert_called_once_with("email", "email")
     mock_check_if_active.assert_called_once_with(template)

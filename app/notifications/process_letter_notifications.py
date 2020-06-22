@@ -6,7 +6,14 @@ from app.notifications.process_notifications import persist_notification
 
 
 def create_letter_notification(
-    letter_data, template, api_key, status, reply_to_text=None, billable_units=None, updated_at=None
+    letter_data,
+    template,
+    service,
+    api_key,
+    status,
+    reply_to_text=None,
+    billable_units=None,
+    updated_at=None,
 ):
     notification = persist_notification(
         template_id=template.id,
@@ -14,7 +21,7 @@ def create_letter_notification(
         template_postage=template.postage,
         # we only accept addresses_with_underscores from the API (from CSV we also accept dashes, spaces etc)
         recipient=PostalAddress.from_personalisation(letter_data['personalisation']).normalised,
-        service=template.service,
+        service=service,
         personalisation=letter_data['personalisation'],
         notification_type=LETTER_TYPE,
         api_key_id=api_key.id,

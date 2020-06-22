@@ -343,7 +343,9 @@ class BaseTemplateSchema(BaseSchema):
 
 class TemplateSchema(BaseTemplateSchema):
 
-    created_by = field_for(models.Template, 'created_by', required=True)
+    created_by_id = field_for(
+        models.Template, 'created_by_id', dump_to='created_by', dump_only=True
+    )
     process_type = field_for(models.Template, 'process_type')
     redact_personalisation = fields.Method("redact")
 
@@ -356,6 +358,9 @@ class TemplateSchema(BaseTemplateSchema):
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
+
+    class Meta(BaseTemplateSchema.Meta):
+        exclude = BaseTemplateSchema.Meta.exclude + ('created_by',)
 
 
 class TemplateHistorySchema(BaseSchema):
