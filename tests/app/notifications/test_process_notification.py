@@ -31,7 +31,7 @@ def test_create_content_for_notification_passes(sample_email_template):
         sample_email_template.id, sample_email_template.service_id
     )
     content = create_content_for_notification(template, None)
-    assert str(content) == template._dict['content'] + '\n'
+    assert str(content) == template.content + '\n'
 
 
 def test_create_content_for_notification_with_placeholders_passes(sample_template_with_placeholders):
@@ -39,7 +39,7 @@ def test_create_content_for_notification_with_placeholders_passes(sample_templat
         sample_template_with_placeholders.id, sample_template_with_placeholders.service_id
     )
     content = create_content_for_notification(template, {'name': 'Bobby'})
-    assert content.content == template._dict['content']
+    assert content.content == template.content
     assert 'Bobby' in str(content)
 
 
