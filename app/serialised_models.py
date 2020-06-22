@@ -7,7 +7,7 @@ import cachetools
 from notifications_utils.clients.redis import RequestCache
 from werkzeug.utils import cached_property
 
-from app import redis_store
+from app import db, redis_store
 
 from app.dao import templates_dao
 from app.dao.api_key_dao import get_model_api_keys
@@ -109,6 +109,7 @@ class SerialisedTemplate(SerialisedModel):
         )
 
         template_dict = template_schema.dump(fetched_template).data
+        db.session.commit()
 
         return {'data': template_dict}
 
@@ -132,7 +133,10 @@ class SerialisedService(SerialisedModel):
     def get_dict(service_id):
         from app.schemas import service_schema
 
-        return service_schema.dump(dao_fetch_service_by_id(service_id)).data
+        service_dict = service_schema.dump(dao_fetch_service_by_id(service_id)).data
+        db.session.commit()
+
+        return service_dict
 
     @cached_property
     def api_keys(self):
@@ -153,7 +157,9 @@ class SerialisedAPIKeyCollection(SerialisedModelCollection):
 
     @classmethod
     def from_service_id(cls, service_id):
-        return cls([
+        keys = [
             {k: getattr(key, k) for k in SerialisedAPIKey.ALLOWED_PROPERTIES}
             for key in get_model_api_keys(service_id)
-        ])
+        ]
+        db.session.commit()
+        return cls(keys)
