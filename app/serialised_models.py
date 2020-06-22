@@ -4,11 +4,14 @@ from functools import partial
 from threading import RLock
 
 import cachetools
+from notifications_utils.clients.redis import RequestCache
 
+from app import redis_store
 from app.dao import templates_dao
 
 caches = defaultdict(partial(cachetools.TTLCache, maxsize=1024, ttl=2))
 locks = defaultdict(RLock)
+redis_cache = RequestCache(redis_store)
 
 
 def memory_cache(func):
@@ -69,6 +72,7 @@ class SerialisedTemplate(SerialisedModel):
         return cls(cls.get_dict(template_id, service_id))
 
     @staticmethod
+    @redis_cache.set('template-{template_id}-version-None')
     def get_dict(template_id, service_id):
         from app.schemas import template_schema
 

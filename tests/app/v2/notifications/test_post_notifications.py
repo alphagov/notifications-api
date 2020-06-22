@@ -239,6 +239,46 @@ def test_should_cache_template_lookups_in_memory(mocker, client, sample_template
     assert Notification.query.count() == 5
 
 
+def test_should_cache_template_lookups_in_redis(mocker, client, sample_template):
+
+    from app.schemas import template_schema
+
+    mock_redis_get = mocker.patch(
+        'app.redis_store.get',
+        return_value=None,
+    )
+    mock_redis_set = mocker.patch(
+        'app.redis_store.set',
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    expected_key = f'template-{sample_template.id}-version-None'
+
+    assert mock_redis_get.call_args_list == [call(
+        expected_key,
+    )]
+
+    template_dict = template_schema.dump(sample_template).data
+
+    assert len(mock_redis_set.call_args_list) == 1
+    assert mock_redis_set.call_args[0][0] == expected_key
+    assert json.loads(mock_redis_set.call_args[0][1]) == template_dict
+    assert mock_redis_set.call_args[1]['ex'] == 604_800
+
+
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
