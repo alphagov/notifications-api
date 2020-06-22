@@ -23,7 +23,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
-from app.json_models import TemplateJSONModel
+from app.serialised_models import TemplateJSONModel
 from app.utils import get_template_instance
 
 from app.v2.errors import (

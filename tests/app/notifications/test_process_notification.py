@@ -20,7 +20,7 @@ from app.notifications.process_notifications import (
     send_notification_to_queue,
     simulated_recipient
 )
-from app.json_models import TemplateJSONModel
+from app.serialised_models import TemplateJSONModel
 from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
 from tests.app.db import create_service, create_template, create_api_key
