@@ -5,6 +5,14 @@ from app.dao import templates_dao
 
 class SerialisedModel(ABC):
 
+    """
+    A SerialisedModel takes a dictionary, typically created by
+    serialising a database object. It then takes the value of specified
+    keys from the dictionary and adds them to itself as properties, so
+    that it can be interacted with like a normal database model object,
+    but with no risk that it will actually go back to the database.
+    """
+
     @property
     @abstractmethod
     def ALLOWED_PROPERTIES(self):
