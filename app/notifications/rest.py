@@ -128,7 +128,7 @@ def send_notification(notification_type):
                                               api_key_id=api_user.id,
                                               key_type=api_user.key_type,
                                               simulated=simulated,
-                                              reply_to_text=template.get_reply_to_text()
+                                              reply_to_text=template.reply_to_text
                                               )
     if not simulated:
         queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None

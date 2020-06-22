@@ -8,7 +8,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
 
-from app.dao import services_dao, templates_dao
+from app.dao import services_dao
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
@@ -21,6 +21,7 @@ from app.notifications.process_notifications import create_content_for_notificat
 from app.utils import get_public_notify_type_text
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
+from app.json_models import TemplateJSONModel
 
 from gds_metrics.metrics import Histogram
 
@@ -156,11 +157,9 @@ def check_notification_content_is_not_empty(template_with_content):
 
 
 def validate_template(template_id, personalisation, service, notification_type):
+
     try:
-        template = templates_dao.dao_get_template_by_id_and_service_id(
-            template_id=template_id,
-            service_id=service.id
-        )
+        template = TemplateJSONModel.from_id_and_service_id(template_id, service.id)
     except NoResultFound:
         message = 'Template not found'
         raise BadRequestError(message=message,
