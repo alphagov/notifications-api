@@ -369,7 +369,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'archived',
             'content',
             'created_at',
-            'created_by',
+            'created_by_id',
             'hidden',
             'postage',
             'process_type',
