@@ -233,6 +233,7 @@ def test_should_cache_template_lookups_in_memory(mocker, client, sample_template
             headers=[('Content-Type', 'application/json'), auth_header]
         )
 
+    assert mock_get_template.call_count == 1
     assert mock_get_template.call_args_list == [
         call(service_id=sample_template.service_id, template_id=str(sample_template.id))
     ]
