@@ -276,7 +276,9 @@ def test_should_cache_template_lookups_in_redis(mocker, client, sample_template)
 
     assert len(mock_redis_set.call_args_list) == 1
     assert mock_redis_set.call_args[0][0] == expected_key
-    assert json.loads(mock_redis_set.call_args[0][1]) == template_dict
+    assert json.loads(mock_redis_set.call_args[0][1]) == {
+        'data': template_dict,
+    }
     assert mock_redis_set.call_args[1]['ex'] == 604_800
 
 
@@ -287,7 +289,7 @@ def test_should_return_template_if_found_in_redis(mocker, client, sample_templat
 
     mocker.patch(
         'app.redis_store.get',
-        return_value=json.dumps(template_dict).encode('utf-8')
+        return_value=json.dumps({'data': template_dict}).encode('utf-8')
     )
     mock_get_template = mocker.patch(
         'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
