@@ -69,7 +69,7 @@ class SerialisedTemplate(SerialisedModel):
     @classmethod
     @memory_cache
     def from_id_and_service_id(cls, template_id, service_id):
-        return cls(cls.get_dict(template_id, service_id))
+        return cls(cls.get_dict(template_id, service_id)['data'])
 
     @staticmethod
     @redis_cache.set('template-{template_id}-version-None')
@@ -83,4 +83,4 @@ class SerialisedTemplate(SerialisedModel):
 
         template_dict = template_schema.dump(fetched_template).data
 
-        return template_dict
+        return {'data': template_dict}
