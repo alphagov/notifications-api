@@ -363,6 +363,28 @@ class TemplateSchema(BaseTemplateSchema):
         exclude = BaseTemplateSchema.Meta.exclude + ('created_by',)
 
 
+class TemplateSchemaNoDetail(TemplateSchema):
+    class Meta(TemplateSchema.Meta):
+        exclude = TemplateSchema.Meta.exclude + (
+            'archived',
+            'content',
+            'created_at',
+            'created_by',
+            'hidden',
+            'postage',
+            'process_type',
+            'redact_personalisation',
+            'reply_to',
+            'reply_to_text',
+            'service',
+            'service_letter_contact',
+            'subject',
+            'template_redacted',
+            'updated_at',
+            'version',
+        )
+
+
 class TemplateHistorySchema(BaseSchema):
 
     reply_to = fields.Method("get_reply_to", allow_none=True)
@@ -674,6 +696,7 @@ user_update_password_schema_load_json = UserUpdatePasswordSchema(load_json=True,
 service_schema = ServiceSchema()
 detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
+template_schema_no_detail = TemplateSchemaNoDetail()
 api_key_schema = ApiKeySchema()
 job_schema = JobSchema()
 sms_template_notification_schema = SmsTemplateNotificationSchema()
