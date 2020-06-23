@@ -468,7 +468,7 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
     REDIS_ENABLED = True
-    # SES_STUB_URL = 'https://notify-email-provider-stub-staging.cloudapps.digital/ses'
+    SES_STUB_URL = 'https://notify-email-provider-stub-staging.cloudapps.digital/ses'
     MMG_URL = 'https://notify-sms-provider-stub-staging.cloudapps.digital/mmg'
     FIRETEXT_URL = 'https://notify-sms-provider-stub-staging.cloudapps.digital/firetext'
 
