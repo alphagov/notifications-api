@@ -6,6 +6,7 @@ import pytest
 from freezegun import freeze_time
 from boto.exception import SQSError
 
+from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
     ScheduledNotification,
@@ -209,6 +210,105 @@ def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == '123456'
+
+
+def test_should_cache_template_lookups_in_memory(mocker, client, sample_template):
+
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id',
+        wraps=templates_dao.dao_get_template_by_id_and_service_id,
+    )
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    for i in range(5):
+        auth_header = create_authorization_header(service_id=sample_template.service_id)
+        client.post(
+            path='/v2/notifications/sms',
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), auth_header]
+        )
+
+    assert mock_get_template.call_count == 1
+    assert mock_get_template.call_args_list == [
+        call(service_id=sample_template.service_id, template_id=str(sample_template.id))
+    ]
+    assert Notification.query.count() == 5
+
+
+def test_should_cache_template_lookups_in_redis(mocker, client, sample_template):
+
+    from app.schemas import template_schema
+
+    mock_redis_get = mocker.patch(
+        'app.redis_store.get',
+        return_value=None,
+    )
+    mock_redis_set = mocker.patch(
+        'app.redis_store.set',
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    expected_key = f'template-{sample_template.id}-version-None'
+
+    assert mock_redis_get.call_args_list == [call(
+        expected_key,
+    )]
+
+    template_dict = template_schema.dump(sample_template).data
+
+    assert len(mock_redis_set.call_args_list) == 1
+    assert mock_redis_set.call_args[0][0] == expected_key
+    assert json.loads(mock_redis_set.call_args[0][1]) == template_dict
+    assert mock_redis_set.call_args[1]['ex'] == 604_800
+
+
+def test_should_return_template_if_found_in_redis(mocker, client, sample_template):
+
+    from app.schemas import template_schema
+    template_dict = template_schema.dump(sample_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        return_value=json.dumps(template_dict).encode('utf-8')
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 201
+    assert mock_get_template.called is False
 
 
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
