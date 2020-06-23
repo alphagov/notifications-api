@@ -773,7 +773,22 @@ def get_letter_details_from_zips_sent_file(file_paths):
         rows_from_file.extend(json.loads(file_contents))
 
     notification_references = tuple(row[18:34] for row in rows_from_file)
+    get_letters_data_from_references(notification_references)
 
+
+@notify_command(name='get-notification-and-service-ids-for-letters-that-failed-to-print')
+@click.option('-f', '--file_name', required=True,
+              help="""Full path of the file to upload, file should contain letter filenames, one per line""")
+def get_notification_and_service_ids_for_letters_that_failed_to_print(file_name):
+    print("Getting service and notification ids for letter filenames list {}".format(file_name))
+    file = open(file_name)
+    references = tuple([row[7:23] for row in file])
+
+    get_letters_data_from_references(tuple(references))
+    file.close()
+
+
+def get_letters_data_from_references(notification_references):
     sql = """
         SELECT id, service_id, reference, job_id, created_at
         FROM notifications
