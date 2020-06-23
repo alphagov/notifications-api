@@ -280,6 +280,37 @@ def test_should_cache_template_lookups_in_redis(mocker, client, sample_template)
     assert mock_redis_set.call_args[1]['ex'] == 604_800
 
 
+def test_should_return_template_if_found_in_redis(mocker, client, sample_template):
+
+    from app.schemas import template_schema
+    template_dict = template_schema.dump(sample_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        return_value=json.dumps(template_dict).encode('utf-8')
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    data = {
+        'phone_number': '+447700900855',
+        'template_id': str(sample_template.id),
+    }
+
+    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    response = client.post(
+        path='/v2/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header]
+    )
+
+    assert response.status_code == 201
+    assert mock_get_template.called is False
+
+
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
