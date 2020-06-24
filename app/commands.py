@@ -790,7 +790,7 @@ def get_notification_and_service_ids_for_letters_that_failed_to_print(file_name)
 
 def get_letters_data_from_references(notification_references):
     sql = """
-        SELECT id, service_id, reference, job_id, created_at
+        SELECT id, service_id, template_id, reference, job_id, created_at
         FROM notifications
         WHERE reference IN :notification_references
         ORDER BY service_id, job_id"""
@@ -798,7 +798,7 @@ def get_letters_data_from_references(notification_references):
 
     with open('zips_sent_details.csv', 'w') as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(['notification_id', 'service_id', 'reference', 'job_id', 'created_at'])
+        csv_writer.writerow(['notification_id', 'service_id', 'template_id', 'reference', 'job_id', 'created_at'])
 
         for row in result:
             csv_writer.writerow(row)
