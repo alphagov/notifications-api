@@ -493,6 +493,9 @@ class Live(Config):
 
     CRONITOR_ENABLED = True
 
+    # TODO: revert when we're confident statsd won't break things
+    STATSD_ENABLED = False
+
 
 class CloudFoundryConfig(Config):
     pass
