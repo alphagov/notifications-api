@@ -42,6 +42,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    RESOLVE_POSTAGE_FOR_FILE_NAME
 )
 from app.cronitor import cronitor
 
@@ -137,16 +138,17 @@ def collate_letter_pdfs_to_be_sent():
 
     letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline)
 
-    i = 0
     for zip_folder, letters_list in letters_to_print.items():
+        i = 0
         for letters in group_letters(letters_list):
             i += 1
             filenames = [letter['Key'] for letter in letters]
 
             hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
             # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-            dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
+            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.ZIP'.format(
                 date=print_run_deadline.strftime("%Y-%m-%d"),
+                postage=RESOLVE_POSTAGE_FOR_FILE_NAME[zip_folder],
                 num=i,
                 hash=hash
             )
@@ -171,10 +173,7 @@ def collate_letter_pdfs_to_be_sent():
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
     letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline)
-    zip_folders_by_postage = {
-        "first": "first", "second": "second", "europe": "international", "rest-of-world": "international"
-    }
-    letter_pdfs = {"first": [], "second": [], "international": []}
+    letter_pdfs = {"first": [], "second": [], "europe": [], "rest-of-world": []}
     for letter in letters_awaiting_sending:
         try:
             letter_file_name = get_letter_pdf_filename(
@@ -184,9 +183,7 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
                 postage=letter.postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
-            letter_pdfs[
-                zip_folders_by_postage[letter.postage]
-            ].append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
+            letter_pdfs[letter.postage].append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
         except BotoClientError as e:
             current_app.logger.exception(
                 f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}", e)
