@@ -27,7 +27,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
     LetterPrintTemplate,
 )
-from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from notifications_utils.timezones import convert_utc_to_bst
 
 from app.hashing import (
     hashpw,
@@ -1412,8 +1412,6 @@ class Notification(db.Model):
     client_reference = db.Column(db.String, index=True, nullable=True)
     _personalisation = db.Column(db.String, nullable=True)
 
-    scheduled_notification = db.relationship('ScheduledNotification', uselist=False)
-
     client_reference = db.Column(db.String, index=True, nullable=True)
 
     international = db.Column(db.Boolean, nullable=False, default=False)
@@ -1622,13 +1620,7 @@ class Notification(db.Model):
             "created_by_name": self.get_created_by_name(),
             "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
             "completed_at": self.completed_at(),
-            "scheduled_for": (
-                convert_bst_to_utc(
-                    self.scheduled_notification.scheduled_for
-                ).strftime(DATETIME_FORMAT)
-                if self.scheduled_notification
-                else None
-            ),
+            "scheduled_for": None,
             "postage": self.postage
         }
 

@@ -14,7 +14,6 @@ from notifications_utils.template import (
     SMSMessageTemplate,
     LetterPrintTemplate,
 )
-from notifications_utils.timezones import convert_bst_to_utc
 
 from app import redis_store
 from app.celery import provider_tasks
@@ -28,12 +27,10 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     Notification,
-    ScheduledNotification
 )
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_delete_notifications_by_id,
-    dao_created_scheduled_notification
 )
 
 from app.v2.errors import BadRequestError
@@ -217,10 +214,3 @@ def simulated_recipient(to_address, notification_type):
         return to_address in formatted_simulated_numbers
     else:
         return to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES']
-
-
-def persist_scheduled_notification(notification_id, scheduled_for):
-    scheduled_datetime = convert_bst_to_utc(datetime.strptime(scheduled_for, "%Y-%m-%d %H:%M"))
-    scheduled_notification = ScheduledNotification(notification_id=notification_id,
-                                                   scheduled_for=scheduled_datetime)
-    dao_created_scheduled_notification(scheduled_notification)

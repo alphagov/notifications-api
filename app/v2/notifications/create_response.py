@@ -2,10 +2,10 @@
 
 def create_post_sms_response_from_notification(
     notification_id, client_reference, template_id, template_version, service_id,
-    content, from_number, url_root, scheduled_for
+    content, from_number, url_root
 ):
     resp = __create_notification_response(
-        notification_id, client_reference, template_id, template_version, service_id, url_root, scheduled_for
+        notification_id, client_reference, template_id, template_version, service_id, url_root
     )
     resp['content'] = {
         'from_number': from_number,
@@ -24,10 +24,9 @@ def create_post_email_response_from_notification(
     subject,
     email_from,
     url_root,
-    scheduled_for
 ):
     resp = __create_notification_response(
-        notification_id, client_reference, template_id, template_version, service_id, url_root, scheduled_for
+        notification_id, client_reference, template_id, template_version, service_id, url_root
     )
     resp['content'] = {
         "from_email": email_from,
@@ -39,10 +38,10 @@ def create_post_email_response_from_notification(
 
 def create_post_letter_response_from_notification(
     notification_id, client_reference, template_id, template_version, service_id,
-    content, subject, url_root, scheduled_for
+    content, subject, url_root
 ):
     resp = __create_notification_response(
-        notification_id, client_reference, template_id, template_version, service_id, url_root, scheduled_for
+        notification_id, client_reference, template_id, template_version, service_id, url_root
     )
     resp['content'] = {
         "body": content,
@@ -52,7 +51,7 @@ def create_post_letter_response_from_notification(
 
 
 def __create_notification_response(
-    notification_id, client_reference, template_id, template_version, service_id, url_root, scheduled_for
+    notification_id, client_reference, template_id, template_version, service_id, url_root
 ):
     return {
         "id": notification_id,
@@ -67,5 +66,5 @@ def __create_notification_response(
                 str(template_id)
             )
         },
-        "scheduled_for": scheduled_for if scheduled_for else None
+        "scheduled_for": None
     }

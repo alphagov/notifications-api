@@ -10,7 +10,6 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_created_scheduled_notification,
     dao_delete_notifications_by_id,
     dao_get_last_notification_added_for_job_id,
     dao_get_notifications_by_recipient_or_reference,
@@ -36,7 +35,6 @@ from app.models import (
     Job,
     Notification,
     NotificationHistory,
-    ScheduledNotification,
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TEMPORARY_FAILURE,
@@ -449,7 +447,6 @@ def test_save_notification_with_no_job(sample_template, mmg_provider):
 
 def test_get_notification_with_personalisation_by_id(sample_template):
     notification = create_notification(template=sample_template,
-                                       scheduled_for='2017-05-05 14:15',
                                        status='created')
     notification_from_db = get_notification_with_personalisation(
         sample_template.service.id,
@@ -457,7 +454,6 @@ def test_get_notification_with_personalisation_by_id(sample_template):
         key_type=None
     )
     assert notification == notification_from_db
-    assert notification_from_db.scheduled_notification.scheduled_for == datetime(2017, 5, 5, 14, 15)
 
 
 def test_get_notification_by_id_when_notification_exists(sample_notification):
@@ -1390,18 +1386,6 @@ def test_dao_get_notifications_by_reference(
     results = dao_get_notifications_by_recipient_or_reference(service.id, '77', notification_type='letter')
     assert len(results.items) == 1
     assert results.items[0].id == letter.id
-
-
-def test_dao_created_scheduled_notification(sample_notification):
-
-    scheduled_notification = ScheduledNotification(notification_id=sample_notification.id,
-                                                   scheduled_for=datetime.strptime("2017-01-05 14:15",
-                                                                                   "%Y-%m-%d %H:%M"))
-    dao_created_scheduled_notification(scheduled_notification)
-    saved_notification = ScheduledNotification.query.all()
-    assert len(saved_notification) == 1
-    assert saved_notification[0].notification_id == sample_notification.id
-    assert saved_notification[0].scheduled_for == datetime(2017, 1, 5, 14, 15)
 
 
 def test_dao_get_notifications_by_to_field_filters_status(sample_template):
