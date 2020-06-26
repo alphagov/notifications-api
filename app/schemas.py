@@ -249,7 +249,6 @@ class ServiceSchema(BaseSchema):
             'inbound_number',
             'inbound_sms',
             'letter_logo_filename',
-            'rate_limit',
             'returned_letters',
             'users',
             'version',
