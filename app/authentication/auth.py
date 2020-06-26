@@ -8,7 +8,7 @@ from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 from gds_metrics import Histogram
 
-from app.serialised_models import SerialisedService
+from app.dao.services_dao import dao_fetch_service_by_id_with_api_keys
 
 
 GENERAL_TOKEN_ERROR_MESSAGE = 'Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header'  # noqa
@@ -94,7 +94,7 @@ def requires_auth():
 
     try:
         with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
-            service = SerialisedService.from_id(issuer)
+            service = dao_fetch_service_by_id_with_api_keys(issuer)
     except DataError:
         raise AuthError("Invalid token: service id is not the right data type", 403)
     except NoResultFound:
@@ -129,7 +129,7 @@ def requires_auth():
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
 
-        g.service_id = service.id
+        g.service_id = api_key.service_id
         _request_ctx_stack.top.authenticated_service = service
         _request_ctx_stack.top.api_user = api_key
 

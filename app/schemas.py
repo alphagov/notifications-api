@@ -205,7 +205,7 @@ class ProviderDetailsHistorySchema(BaseSchema):
         strict = True
 
 
-class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
+class ServiceSchema(BaseSchema):
 
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
@@ -249,7 +249,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'inbound_number',
             'inbound_sms',
             'letter_logo_filename',
-            'rate_limit',
             'returned_letters',
             'users',
             'version',
