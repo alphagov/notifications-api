@@ -23,7 +23,7 @@ from app.notifications.validators import (
     validate_and_format_recipient,
     validate_template,
 )
-from app.serialised_models import SerialisedTemplate
+from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import get_template_instance
 
 from app.v2.errors import (
@@ -439,8 +439,9 @@ def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_
         notify_db_session,
 ):
     service = create_service(service_permissions=[SMS_TYPE])
+    service_model = SerialisedService.from_id(service.id)
     with pytest.raises(BadRequestError) as e:
-        validate_and_format_recipient('20-12-1234-1234', key_type, service, SMS_TYPE)
+        validate_and_format_recipient('20-12-1234-1234', key_type, service_model, SMS_TYPE)
     assert e.value.status_code == 400
     assert e.value.message == 'Cannot send to international mobile numbers'
     assert e.value.fields == []
@@ -449,7 +450,8 @@ def test_rejects_api_calls_with_international_numbers_if_service_does_not_allow_
 @pytest.mark.parametrize('key_type', ['test', 'normal'])
 def test_allows_api_calls_with_international_numbers_if_service_does_allow_int_sms(
         key_type, sample_service_full_permissions):
-    result = validate_and_format_recipient('20-12-1234-1234', key_type, sample_service_full_permissions, SMS_TYPE)
+    service_model = SerialisedService.from_id(sample_service_full_permissions.id)
+    result = validate_and_format_recipient('20-12-1234-1234', key_type, service_model, SMS_TYPE)
     assert result == '201212341234'
 
 
