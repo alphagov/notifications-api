@@ -8,9 +8,18 @@ import pytest
 from flask import json, current_app, request
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
+from unittest.mock import call
 
 from app import api_user
-from app.dao.api_key_dao import get_unsigned_secrets, save_model_api_key, get_unsigned_secret, expire_api_key
+from app.dao.api_key_dao import (
+    get_unsigned_secrets,
+    save_model_api_key,
+    get_unsigned_secret,
+    expire_api_key,
+    get_model_api_keys,
+)
+from app.dao.services_dao import dao_fetch_service_by_id
+
 from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.authentication.auth import AuthError, requires_admin_auth, requires_auth, GENERAL_TOKEN_ERROR_MESSAGE
 
@@ -300,7 +309,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == 'Invalid token: API key revoked'
-    assert exc.value.service_id == expired_api_key.service_id
+    assert exc.value.service_id == str(expired_api_key.service_id)
     assert exc.value.api_key_id == expired_api_key.id
 
 
@@ -376,7 +385,7 @@ def test_authentication_returns_error_when_service_has_no_secrets(client,
     with pytest.raises(AuthError) as exc:
         requires_auth()
     assert exc.value.short_message == 'Invalid token: service has no API keys'
-    assert exc.value.service_id == sample_service.id
+    assert exc.value.service_id == str(sample_service.id)
 
 
 def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_service, sample_api_key):
@@ -387,7 +396,7 @@ def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_ser
             headers={'Authorization': 'Bearer {}'.format(token)}
         )
         assert response.status_code == 200
-        assert api_user == sample_api_key
+        assert str(api_user.id) == str(sample_api_key.id)
 
 
 def test_should_return_403_when_token_is_expired(client,
@@ -399,8 +408,8 @@ def test_should_return_403_when_token_is_expired(client,
             request.headers = {'Authorization': 'Bearer {}'.format(token)}
             requires_auth()
     assert exc.value.short_message == 'Error: Your system clock must be accurate to within 30 seconds'
-    assert exc.value.service_id == sample_api_key.service_id
-    assert exc.value.api_key_id == sample_api_key.id
+    assert exc.value.service_id == str(sample_api_key.service_id)
+    assert str(exc.value.api_key_id) == str(sample_api_key.id)
 
 
 def __create_token(service_id):
@@ -457,3 +466,28 @@ def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header
                 ]
             )
         assert response.status_code == expected_status
+
+
+def test_should_cache_service_and_api_key_lookups(mocker, client, sample_api_key):
+
+    mock_get_api_keys = mocker.patch(
+        'app.serialised_models.get_model_api_keys',
+        wraps=get_model_api_keys,
+    )
+    mock_get_service = mocker.patch(
+        'app.serialised_models.dao_fetch_service_by_id',
+        wraps=dao_fetch_service_by_id,
+    )
+
+    for i in range(5):
+        token = __create_token(sample_api_key.service_id)
+        client.get('/notifications', headers={
+            'Authorization': f'Bearer {token}'
+        })
+
+    assert mock_get_api_keys.call_args_list == [
+        call(str(sample_api_key.service_id))
+    ]
+    assert mock_get_service.call_args_list == [
+        call(str(sample_api_key.service_id))
+    ]
