@@ -78,7 +78,6 @@ def create_app(application):
     from app.config import configs
 
     notify_environment = os.environ['NOTIFY_ENVIRONMENT']
-    print(notify_environment)
 
     application.config.from_object(configs[notify_environment])
 
