@@ -137,7 +137,9 @@ def get_reply_to_text(notification_type, sender_id, service, template):
 def send_pdf_letter_notification(service_id, post_data):
     service = dao_fetch_service_by_id(service_id)
 
-    check_service_has_permission(LETTER_TYPE, service.permissions)
+    check_service_has_permission(LETTER_TYPE, [
+        p.permission for p in service.permissions
+    ])
     check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
     validate_created_by(service, post_data['created_by'])
     validate_and_format_recipient(

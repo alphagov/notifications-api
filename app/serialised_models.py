@@ -5,9 +5,12 @@ from threading import RLock
 
 import cachetools
 from notifications_utils.clients.redis import RequestCache
+from werkzeug.utils import cached_property
 
-from app import redis_store
-from app.dao import templates_dao
+from app import db, redis_store
+
+from app.dao.api_key_dao import get_model_api_keys
+from app.dao.services_dao import dao_fetch_service_by_id
 
 caches = defaultdict(partial(cachetools.TTLCache, maxsize=1024, ttl=2))
 locks = defaultdict(RLock)
@@ -53,6 +56,29 @@ class SerialisedModel(ABC):
         return super().__dir__() + list(sorted(self.ALLOWED_PROPERTIES))
 
 
+class SerialisedModelCollection(ABC):
+
+    """
+    A SerialisedModelCollection takes a list of dictionaries, typically
+    created by serialising database objects. When iterated over it
+    returns a SerialisedModel instance for each of the items in the list.
+    """
+
+    @property
+    @abstractmethod
+    def model(self):
+        pass
+
+    def __init__(self, items):
+        self.items = items
+
+    def __bool__(self):
+        return bool(self.items)
+
+    def __getitem__(self, index):
+        return self.model(self.items[index])
+
+
 class SerialisedTemplate(SerialisedModel):
     ALLOWED_PROPERTIES = {
         'archived',
@@ -74,6 +100,7 @@ class SerialisedTemplate(SerialisedModel):
     @staticmethod
     @redis_cache.set('template-{template_id}-version-None')
     def get_dict(template_id, service_id):
+        from app.dao import templates_dao
         from app.schemas import template_schema
 
         fetched_template = templates_dao.dao_get_template_by_id_and_service_id(
@@ -82,5 +109,62 @@ class SerialisedTemplate(SerialisedModel):
         )
 
         template_dict = template_schema.dump(fetched_template).data
+        db.session.commit()
 
         return {'data': template_dict}
+
+
+class SerialisedService(SerialisedModel):
+    ALLOWED_PROPERTIES = {
+        'id',
+        'active',
+        'contact_link',
+        'email_from',
+        'message_limit',
+        'permissions',
+        'rate_limit',
+        'research_mode',
+        'restricted',
+    }
+
+    @classmethod
+    @memory_cache
+    def from_id(cls, service_id):
+        return cls(cls.get_dict(service_id)['data'])
+
+    @staticmethod
+    @redis_cache.set('service-{service_id}')
+    def get_dict(service_id):
+        from app.schemas import service_schema
+
+        service_dict = service_schema.dump(dao_fetch_service_by_id(service_id)).data
+        db.session.commit()
+
+        return {'data': service_dict}
+
+    @cached_property
+    def api_keys(self):
+        return SerialisedAPIKeyCollection.from_service_id(self.id)
+
+
+class SerialisedAPIKey(SerialisedModel):
+    ALLOWED_PROPERTIES = {
+        'id',
+        'secret',
+        'expiry_date',
+        'key_type',
+    }
+
+
+class SerialisedAPIKeyCollection(SerialisedModelCollection):
+    model = SerialisedAPIKey
+
+    @classmethod
+    @memory_cache
+    def from_service_id(cls, service_id):
+        keys = [
+            {k: getattr(key, k) for k in SerialisedAPIKey.ALLOWED_PROPERTIES}
+            for key in get_model_api_keys(service_id)
+        ]
+        db.session.commit()
+        return cls(keys)
