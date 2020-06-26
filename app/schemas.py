@@ -63,8 +63,15 @@ class UUIDsAsStringsMixin:
     @post_dump()
     def __post_dump(self, data):
         for key, value in data.items():
+
             if isinstance(value, UUID):
                 data[key] = str(value)
+
+            if isinstance(value, list):
+                data[key] = [
+                    (str(item) if isinstance(item, UUID) else item)
+                    for item in value
+                ]
 
 
 class BaseSchema(ma.ModelSchema):

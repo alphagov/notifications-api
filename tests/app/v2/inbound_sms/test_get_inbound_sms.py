@@ -1,7 +1,7 @@
 from flask import json, url_for
 
 from tests import create_authorization_header
-from tests.app.db import create_inbound_sms
+from tests.app.db import create_inbound_sms, create_service_inbound_api, create_service_callback_api
 
 
 def test_get_inbound_sms_returns_200(
@@ -29,6 +29,27 @@ def test_get_inbound_sms_returns_200(
     expected_response = [i.serialize() for i in reversed_all_inbound_sms]
 
     assert json_response == expected_response
+
+
+def test_get_inbound_sms_returns_200_when_service_has_callbacks(
+    client, sample_service
+):
+    create_service_inbound_api(
+        service=sample_service,
+        url="https://inbound.example.com",
+    )
+    create_service_callback_api(
+        service=sample_service,
+        url="https://inbound.example.com",
+    )
+
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    response = client.get(
+        path='/v2/received-text-messages',
+        headers=[('Content-Type', 'application/json'), auth_header],
+    )
+
+    assert response.status_code == 200
 
 
 def test_get_inbound_sms_generate_page_links(client, sample_service, mocker):
