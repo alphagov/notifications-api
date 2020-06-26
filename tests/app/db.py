@@ -10,7 +10,6 @@ from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import (
     dao_create_notification,
-    dao_created_scheduled_notification
 )
 from app.dao.organisation_dao import dao_create_organisation, dao_add_service_to_organisation
 from app.dao.permissions_dao import permission_dao
@@ -39,7 +38,6 @@ from app.models import (
     ServiceInboundApi,
     ServiceCallbackApi,
     ServiceLetterContact,
-    ScheduledNotification,
     ServicePermission,
     ServiceSmsSender,
     ServiceWhitelist,
@@ -294,14 +292,6 @@ def create_notification(
     }
     notification = Notification(**data)
     dao_create_notification(notification)
-    if scheduled_for:
-        scheduled_notification = ScheduledNotification(id=uuid.uuid4(),
-                                                       notification_id=notification.id,
-                                                       scheduled_for=datetime.strptime(scheduled_for,
-                                                                                       "%Y-%m-%d %H:%M"))
-        if status != 'created':
-            scheduled_notification.pending = False
-        dao_created_scheduled_notification(scheduled_notification)
 
     return notification
 

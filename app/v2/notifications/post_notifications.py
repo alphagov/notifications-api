@@ -43,13 +43,11 @@ from app.notifications.process_letter_notifications import (
 )
 from app.notifications.process_notifications import (
     persist_notification,
-    persist_scheduled_notification,
     simulated_recipient,
     send_notification_to_queue_detached)
 from app.notifications.validators import (
     check_if_service_can_send_files_by_email,
     check_rate_limiting,
-    check_service_can_schedule_notification,
     check_service_email_reply_to_id,
     check_service_has_permission,
     check_service_sms_sender_id,
@@ -127,10 +125,6 @@ def post_notification(notification_type):
 
     check_service_has_permission(notification_type, authenticated_service.permissions)
 
-    scheduled_for = form.get("scheduled_for", None)
-
-    check_service_can_schedule_notification(authenticated_service.permissions, scheduled_for)
-
     check_rate_limiting(authenticated_service, api_user)
 
     template, template_with_content = validate_template(
@@ -206,8 +200,8 @@ def process_sms_or_email_notification(
         service_id=service.id,
         notification_type=notification_type,
         reply_to=reply_to_text,
-        scheduled_for=form.get("scheduled_for", None),
-        template_with_content=template_with_content)
+        template_with_content=template_with_content
+    )
 
     if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE') and api_key.key_type == KEY_TYPE_NORMAL \
        and notification_type == EMAIL_TYPE:
@@ -251,21 +245,17 @@ def process_sms_or_email_notification(
         document_download_count=document_download_count
     )
 
-    scheduled_for = form.get("scheduled_for", None)
-    if scheduled_for:
-        persist_scheduled_notification(notification_id, form["scheduled_for"])
+    if not simulated:
+        queue_name = QueueNames.PRIORITY if template_process_type == PRIORITY else None
+        send_notification_to_queue_detached(
+            key_type=key_type,
+            notification_type=notification_type,
+            notification_id=notification_id,
+            research_mode=service_in_research_mode,  # research_mode is deprecated
+            queue=queue_name
+        )
     else:
-        if not simulated:
-            queue_name = QueueNames.PRIORITY if template_process_type == PRIORITY else None
-            send_notification_to_queue_detached(
-                key_type=key_type,
-                notification_type=notification_type,
-                notification_id=notification_id,
-                research_mode=service_in_research_mode,  # research_mode is deprecated
-                queue=queue_name
-            )
-        else:
-            current_app.logger.debug("POST simulated notification for id: {}".format(notification_id))
+        current_app.logger.debug("POST simulated notification for id: {}".format(notification_id))
 
     return resp
 
@@ -395,7 +385,6 @@ def process_letter_notification(
         template_version=notification.template_version,
         notification_type=notification.notification_type,
         reply_to=reply_to_text,
-        scheduled_for=letter_data.get('scheduled_for', None),
         service_id=notification.service_id,
         template_with_content=template_with_content
     )
@@ -490,9 +479,16 @@ def get_reply_to_text(notification_type, form, template):
     return reply_to
 
 
-def create_response_for_post_notification(notification_id, client_reference, template_id, template_version, service_id,
-                                          notification_type, reply_to, scheduled_for,
-                                          template_with_content):
+def create_response_for_post_notification(
+    notification_id,
+    client_reference,
+    template_id,
+    template_version,
+    service_id,
+    notification_type,
+    reply_to,
+    template_with_content
+):
     if notification_type == SMS_TYPE:
         create_resp_partial = functools.partial(
             create_post_sms_response_from_notification,
@@ -512,7 +508,6 @@ def create_response_for_post_notification(notification_id, client_reference, tem
     resp = create_resp_partial(
         notification_id, client_reference, template_id, template_version, service_id,
         url_root=request.url_root,
-        scheduled_for=scheduled_for,
         content=template_with_content.content_with_placeholders_filled_in,
     )
     return resp
