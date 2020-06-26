@@ -90,7 +90,7 @@ def service_can_send_to_recipient(send_to, key_type, service, allow_whitelisted_
 
 
 def service_has_permission(notify_type, permissions):
-    return notify_type in [p.permission for p in permissions]
+    return notify_type in permissions
 
 
 def check_service_has_permission(notify_type, permissions):
@@ -131,7 +131,7 @@ def check_if_service_can_send_to_number(service, number):
     if (
         # if number is international and not a crown dependency
         international_phone_info.international and not international_phone_info.crown_dependency
-    ) and INTERNATIONAL_SMS_TYPE not in [p.permission for p in service.permissions]:
+    ) and INTERNATIONAL_SMS_TYPE not in service.permissions:
         raise BadRequestError(message="Cannot send to international mobile numbers")
     else:
         return international_phone_info

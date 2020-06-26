@@ -205,7 +205,7 @@ class ProviderDetailsHistorySchema(BaseSchema):
         strict = True
 
 
-class ServiceSchema(BaseSchema):
+class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
 
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
