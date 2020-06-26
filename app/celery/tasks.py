@@ -597,11 +597,8 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    """Retry: send_inbound_sms_to_service has retried the max number of
-                     times for service: {} and  inbound_sms {}""".format(
-                        service_id,
-                        inbound_sms_id
-                    )
+                    f"Retry: send_inbound_sms_to_service has retried the max number of" +
+                    f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
                 )
 
 
