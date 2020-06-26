@@ -9,6 +9,7 @@ from werkzeug.utils import cached_property
 
 from app import db, redis_store
 
+from app.dao import templates_dao
 from app.dao.api_key_dao import get_model_api_keys
 from app.dao.services_dao import dao_fetch_service_by_id
 
@@ -100,7 +101,6 @@ class SerialisedTemplate(SerialisedModel):
     @staticmethod
     @redis_cache.set('template-{template_id}-version-None')
     def get_dict(template_id, service_id):
-        from app.dao import templates_dao
         from app.schemas import template_schema
 
         fetched_template = templates_dao.dao_get_template_by_id_and_service_id(
