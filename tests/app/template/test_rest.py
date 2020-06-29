@@ -340,8 +340,13 @@ def test_must_have_a_subject_on_an_email_or_letter_template(client, sample_user,
 
 
 def test_update_should_update_a_template(client, sample_user):
+
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="second")
+
+    assert template.created_by == service.created_by
+    assert template.created_by != sample_user
+
     data = {
         'content': 'my template has new content, swell!',
         'created_by': str(sample_user.id),
@@ -365,6 +370,14 @@ def test_update_should_update_a_template(client, sample_user):
     assert update_json_resp['data']['name'] == template.name
     assert update_json_resp['data']['template_type'] == template.template_type
     assert update_json_resp['data']['version'] == 2
+
+    assert update_json_resp['data']['created_by'] == str(sample_user.id)
+    assert [
+        template.created_by_id for template in TemplateHistory.query.all()
+    ] == [
+        service.created_by.id,
+        sample_user.id,
+    ]
 
 
 def test_should_be_able_to_archive_template(client, sample_template):
