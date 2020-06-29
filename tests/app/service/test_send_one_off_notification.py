@@ -103,6 +103,29 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(
     )
 
 
+def test_send_one_off_notification_calls_persist_correctly_for_international_sms(
+    persist_mock,
+    celery_mock,
+    notify_db_session
+):
+    service = create_service(service_permissions=['sms', 'international_sms'])
+    template = create_template(
+        service=service,
+        template_type=SMS_TYPE,
+    )
+
+    post_data = {
+        'template_id': str(template.id),
+        'to': '+1 555 0100',
+        'personalisation': {'name': 'foo'},
+        'created_by': str(service.created_by_id)
+    }
+
+    send_one_off_notification(service.id, post_data)
+
+    assert persist_mock.call_args[1]['recipient'] == '+1 555 0100'
+
+
 def test_send_one_off_notification_calls_persist_correctly_for_email(
     persist_mock,
     celery_mock,
