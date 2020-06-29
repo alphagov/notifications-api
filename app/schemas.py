@@ -356,9 +356,7 @@ class BaseTemplateSchema(BaseSchema):
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
-    created_by_id = field_for(
-        models.Template, 'created_by_id', dump_to='created_by', dump_only=True
-    )
+    created_by = field_for(models.Template, 'created_by', required=True)
     process_type = field_for(models.Template, 'process_type')
     redact_personalisation = fields.Method("redact")
 
@@ -372,9 +370,6 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
 
-    class Meta(BaseTemplateSchema.Meta):
-        exclude = BaseTemplateSchema.Meta.exclude + ('created_by',)
-
 
 class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
@@ -382,6 +377,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'archived',
             'content',
             'created_at',
+            'created_by',
             'created_by_id',
             'hidden',
             'postage',
