@@ -3,9 +3,9 @@ from urllib.parse import unquote
 
 import iso8601
 from flask import jsonify, Blueprint, current_app, request, abort
+from gds_metrics.metrics import Counter
 from notifications_utils.recipients import try_validate_and_format_phone_number
 
-from app import statsd_client
 from app.celery import tasks
 from app.config import QueueNames
 from app.dao.services_dao import dao_fetch_service_by_inbound_number
@@ -15,6 +15,13 @@ from app.errors import register_errors
 
 receive_notifications_blueprint = Blueprint('receive_notifications', __name__)
 register_errors(receive_notifications_blueprint)
+
+
+INBOUND_SMS_COUNTER = Counter(
+    'inbound_sms',
+    'Total number of inbound SMS received',
+    ['provider']
+)
 
 
 @receive_notifications_blueprint.route('/notifications/sms/receive/mmg', methods=['POST'])
@@ -48,7 +55,7 @@ def receive_mmg_sms():
         # we should still tell MMG that we received it successfully
         return 'RECEIVED', 200
 
-    statsd_client.incr('inbound.mmg.successful')
+    INBOUND_SMS_COUNTER.labels("mmg").inc()
 
     inbound = create_inbound_sms_object(service,
                                         content=format_mmg_message(post_data["Message"]),
@@ -93,7 +100,7 @@ def receive_firetext_sms():
                                         date_received=post_data['time'],
                                         provider_name="firetext")
 
-    statsd_client.incr('inbound.firetext.successful')
+    INBOUND_SMS_COUNTER.labels("firetext").inc()
 
     tasks.send_inbound_sms_to_service.apply_async([str(inbound.id), str(service.id)], queue=QueueNames.NOTIFY)
     current_app.logger.debug(
@@ -155,7 +162,6 @@ def fetch_potential_service(inbound_number, provider_name):
         current_app.logger.error('Inbound number "{}" from {} not associated with a service'.format(
             inbound_number, provider_name
         ))
-        statsd_client.incr('inbound.{}.failed'.format(provider_name))
         return False
 
     if not has_inbound_sms_permissions(service.permissions):
