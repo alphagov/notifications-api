@@ -12,7 +12,8 @@ from app.dao import services_dao
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
-    KEY_TYPE_TEST, KEY_TYPE_TEAM
+    KEY_TYPE_TEST, KEY_TYPE_TEAM,
+    ServicePermission,
 )
 from app.service.utils import service_allowed_to_send_to
 from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
@@ -128,10 +129,15 @@ def validate_and_format_recipient(send_to, key_type, service, notification_type,
 def check_if_service_can_send_to_number(service, number):
     international_phone_info = get_international_phone_info(number)
 
+    if service.permissions and isinstance(service.permissions[0], ServicePermission):
+        permissions = [p.permission for p in service.permissions]
+    else:
+        permissions = service.permissions
+
     if (
         # if number is international and not a crown dependency
         international_phone_info.international and not international_phone_info.crown_dependency
-    ) and INTERNATIONAL_SMS_TYPE not in service.permissions:
+    ) and INTERNATIONAL_SMS_TYPE not in permissions:
         raise BadRequestError(message="Cannot send to international mobile numbers")
     else:
         return international_phone_info
