@@ -77,7 +77,6 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     return last_date
 
 
-@statsd(namespace="dao")
 @transactional
 def dao_create_notification(notification):
     if not notification.id:

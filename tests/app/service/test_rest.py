@@ -233,8 +233,34 @@ def test_get_service_by_id(admin_request, sample_service):
     assert json_resp['data']['id'] == str(sample_service.id)
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['email_branding'] is None
-    assert 'branding' not in json_resp['data']
     assert json_resp['data']['prefix_sms'] is True
+    assert json_resp['data'].keys() == {
+        'active',
+        'consent_to_research',
+        'contact_link',
+        'count_as_live',
+        'created_by',
+        'email_branding',
+        'email_from',
+        'go_live_at',
+        'go_live_user',
+        'id',
+        'inbound_api',
+        'letter_branding',
+        'message_limit',
+        'name',
+        'organisation',
+        'organisation_type',
+        'permissions',
+        'prefix_sms',
+        'rate_limit',
+        'research_mode',
+        'restricted',
+        'service_callback_api',
+        'volume_email',
+        'volume_letter',
+        'volume_sms',
+    }
 
 
 @pytest.mark.parametrize('detailed', [True, False])

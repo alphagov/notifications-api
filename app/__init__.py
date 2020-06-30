@@ -269,10 +269,6 @@ def register_v2_blueprints(application):
 def init_app(app):
 
     @app.before_request
-    def record_user_agent():
-        statsd_client.incr("user-agent.{}".format(process_user_agent(request.headers.get('User-Agent', None))))
-
-    @app.before_request
     def record_request_details():
         CONCURRENT_REQUESTS.inc()
 
@@ -316,18 +312,6 @@ def create_uuid():
 
 def create_random_identifier():
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
-
-
-def process_user_agent(user_agent_string):
-    if user_agent_string and user_agent_string.lower().startswith("notify"):
-        components = user_agent_string.split("/")
-        client_name = components[0].lower()
-        client_version = components[1].replace(".", "-")
-        return "{}.{}".format(client_name, client_version)
-    elif user_agent_string and not user_agent_string.lower().startswith("notify"):
-        return "non-notify-user-agent"
-    else:
-        return "unknown"
 
 
 def setup_sqlalchemy_events(app):

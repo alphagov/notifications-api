@@ -120,7 +120,9 @@ class SerialisedService(SerialisedModel):
         'active',
         'contact_link',
         'email_from',
+        'message_limit',
         'permissions',
+        'rate_limit',
         'research_mode',
         'restricted',
     }
