@@ -63,8 +63,15 @@ class UUIDsAsStringsMixin:
     @post_dump()
     def __post_dump(self, data):
         for key, value in data.items():
+
             if isinstance(value, UUID):
                 data[key] = str(value)
+
+            if isinstance(value, list):
+                data[key] = [
+                    (str(item) if isinstance(item, UUID) else item)
+                    for item in value
+                ]
 
 
 class BaseSchema(ma.ModelSchema):
@@ -249,7 +256,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'inbound_number',
             'inbound_sms',
             'letter_logo_filename',
-            'rate_limit',
             'returned_letters',
             'users',
             'version',
@@ -350,9 +356,7 @@ class BaseTemplateSchema(BaseSchema):
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
-    created_by_id = field_for(
-        models.Template, 'created_by_id', dump_to='created_by', dump_only=True
-    )
+    created_by = field_for(models.Template, 'created_by', required=True)
     process_type = field_for(models.Template, 'process_type')
     redact_personalisation = fields.Method("redact")
 
@@ -366,9 +370,6 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
 
-    class Meta(BaseTemplateSchema.Meta):
-        exclude = BaseTemplateSchema.Meta.exclude + ('created_by',)
-
 
 class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
@@ -376,6 +377,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'archived',
             'content',
             'created_at',
+            'created_by',
             'created_by_id',
             'hidden',
             'postage',
