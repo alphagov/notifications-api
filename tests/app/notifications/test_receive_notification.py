@@ -1,6 +1,5 @@
 import base64
 from datetime import datetime
-from unittest.mock import call
 
 import pytest
 from flask import json
@@ -54,6 +53,7 @@ def mmg_post(client, data, auth=True, password='testkey'):
 
 def test_receive_notification_returns_received_to_mmg(client, mocker, sample_service_full_permissions):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
+    prom_counter_labels_mock = mocker.patch('app.notifications.receive_notifications.INBOUND_SMS_COUNTER.labels')
     data = {
         "ID": "1234",
         "MSISDN": "447700900855",
@@ -68,6 +68,9 @@ def test_receive_notification_returns_received_to_mmg(client, mocker, sample_ser
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
     assert result['status'] == 'ok'
+
+    prom_counter_labels_mock.assert_called_once_with("mmg")
+    prom_counter_labels_mock.return_value.inc.assert_called_once_with()
 
     inbound_sms_id = InboundSms.query.all()[0].id
     mocked.assert_called_once_with(
@@ -299,7 +302,7 @@ def test_receive_notification_error_if_not_single_matching_service(client, notif
 
 def test_receive_notification_returns_received_to_firetext(notify_db_session, client, mocker):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    prom_counter_labels_mock = mocker.patch('app.notifications.receive_notifications.INBOUND_SMS_COUNTER.labels')
 
     service = create_service_with_inbound_number(
         service_name='b', inbound_number='07111111111', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
@@ -311,7 +314,8 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
     assert response.status_code == 200
     result = json.loads(response.get_data(as_text=True))
 
-    mock.assert_has_calls([call('inbound.firetext.successful')])
+    prom_counter_labels_mock.assert_called_once_with("firetext")
+    prom_counter_labels_mock.return_value.inc.assert_called_once_with()
 
     assert result['status'] == 'ok'
     inbound_sms_id = InboundSms.query.all()[0].id
@@ -320,7 +324,7 @@ def test_receive_notification_returns_received_to_firetext(notify_db_session, cl
 
 def test_receive_notification_from_firetext_persists_message(notify_db_session, client, mocker):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    mocker.patch('app.notifications.receive_notifications.INBOUND_SMS_COUNTER')
 
     service = create_service_with_inbound_number(
         inbound_number='07111111111',
@@ -347,7 +351,7 @@ def test_receive_notification_from_firetext_persists_message(notify_db_session, 
 
 def test_receive_notification_from_firetext_persists_message_with_normalized_phone(notify_db_session, client, mocker):
     mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    mocker.patch('app.notifications.receive_notifications.INBOUND_SMS_COUNTER')
 
     create_service_with_inbound_number(
         inbound_number='07111111111', service_name='b', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
@@ -367,7 +371,7 @@ def test_receive_notification_from_firetext_persists_message_with_normalized_pho
 
 def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, client, mocker):
     mocked = mocker.patch("app.notifications.receive_notifications.tasks.send_inbound_sms_to_service.apply_async")
-    mock = mocker.patch('app.notifications.receive_notifications.statsd_client.incr')
+    mocker.patch('app.notifications.receive_notifications.INBOUND_SMS_COUNTER')
 
     create_service_with_inbound_number(
         inbound_number='07111111199', service_name='b', service_permissions=[EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE])
@@ -381,7 +385,6 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
 
     assert not InboundSms.query.all()
     assert result['status'] == 'ok'
-    mock.assert_has_calls([call('inbound.firetext.failed')])
     mocked.call_count == 0
 
 
