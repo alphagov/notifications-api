@@ -28,7 +28,8 @@ from app.models import (
     EMAIL_TYPE,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_SENT,
-    NOTIFICATION_SENDING
+    NOTIFICATION_SENDING,
+    NOTIFICATION_STATUS_TYPES_COMPLETED
 )
 
 
@@ -125,7 +126,8 @@ def send_email_to_provider(notification):
 def update_notification_to_sending(notification, provider):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.get_name()
-    notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
+    if notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
+        notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
     dao_update_notification(notification)
 
 
