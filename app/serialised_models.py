@@ -47,6 +47,7 @@ class SerialisedTemplate(SerialisedModel):
         'subject',
         'template_type',
         'version',
+        'broadcast_data',
     }
 
     @classmethod

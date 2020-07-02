@@ -242,7 +242,7 @@ def test_get_all_template_request_schema_against_invalid_args_is_invalid(templat
 
     assert errors['status_code'] == 400
     assert len(errors['errors']) == 1
-    assert errors['errors'][0]['message'] == 'type unknown is not one of [sms, email, letter]'
+    assert errors['errors'][0]['message'] == 'type unknown is not one of [sms, email, letter, broadcast]'
 
 
 @pytest.mark.parametrize("response", valid_json_get_all_response)

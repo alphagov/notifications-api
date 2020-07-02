@@ -14,6 +14,7 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 
 from app.models import (
+    BROADCAST_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
@@ -31,6 +32,7 @@ from tests.conftest import set_config_values
 
 
 @pytest.mark.parametrize('template_type, subject', [
+    (BROADCAST_TYPE, None),
     (SMS_TYPE, None),
     (EMAIL_TYPE, 'subject'),
     (LETTER_TYPE, 'subject'),
@@ -529,6 +531,7 @@ def test_should_get_return_all_fields_by_default(
     )
     assert json_response['data'][0].keys() == {
         'archived',
+        'broadcast_data',
         'content',
         'created_at',
         'created_by',

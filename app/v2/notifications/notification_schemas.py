@@ -2,7 +2,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
-    TEMPLATE_TYPES
+    NOTIFICATION_TYPES,
 )
 from app.schema_validation.definitions import (uuid, personalisation)
 
@@ -83,7 +83,7 @@ get_notifications_request = {
         "template_type": {
             "type": "array",
             "items": {
-                "enum": TEMPLATE_TYPES
+                "enum": NOTIFICATION_TYPES
             }
         },
         "include_jobs": {"enum": ["true", "True"]},

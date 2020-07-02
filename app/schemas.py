@@ -365,7 +365,7 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
     @validates_schema
     def validate_type(self, data):
-        if data.get('template_type') in [models.EMAIL_TYPE, models.LETTER_TYPE]:
+        if data.get('template_type') in {models.EMAIL_TYPE, models.LETTER_TYPE}:
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
@@ -391,6 +391,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'template_redacted',
             'updated_at',
             'version',
+            'broadcast_data',
         )
 
 
