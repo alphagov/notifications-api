@@ -1,10 +1,13 @@
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from functools import partial
 from threading import RLock
 
 import cachetools
 from notifications_utils.clients.redis import RequestCache
+from notifications_utils.serialised_model import (
+    SerialisedModel,
+    SerialisedModelCollection,
+)
 from werkzeug.utils import cached_property
 
 from app import db, redis_store
@@ -31,52 +34,6 @@ def memory_cache(func):
 
 def ignore_first_argument_cache_key(cls, *args, **kwargs):
     return cachetools.keys.hashkey(*args, **kwargs)
-
-
-class SerialisedModel(ABC):
-
-    """
-    A SerialisedModel takes a dictionary, typically created by
-    serialising a database object. It then takes the value of specified
-    keys from the dictionary and adds them to itself as properties, so
-    that it can be interacted with like a normal database model object,
-    but with no risk that it will actually go back to the database.
-    """
-
-    @property
-    @abstractmethod
-    def ALLOWED_PROPERTIES(self):
-        pass
-
-    def __init__(self, _dict):
-        for property in self.ALLOWED_PROPERTIES:
-            setattr(self, property, _dict[property])
-
-    def __dir__(self):
-        return super().__dir__() + list(sorted(self.ALLOWED_PROPERTIES))
-
-
-class SerialisedModelCollection(ABC):
-
-    """
-    A SerialisedModelCollection takes a list of dictionaries, typically
-    created by serialising database objects. When iterated over it
-    returns a SerialisedModel instance for each of the items in the list.
-    """
-
-    @property
-    @abstractmethod
-    def model(self):
-        pass
-
-    def __init__(self, items):
-        self.items = items
-
-    def __bool__(self):
-        return bool(self.items)
-
-    def __getitem__(self, index):
-        return self.model(self.items[index])
 
 
 class SerialisedTemplate(SerialisedModel):
