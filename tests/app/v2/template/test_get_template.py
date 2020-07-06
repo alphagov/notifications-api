@@ -44,7 +44,6 @@ def test_get_template_by_id_returns_200(
         'name': expected_name,
         'personalisation': {},
         'postage': postage,
-        'broadcast_data': None,
     }
 
     assert json_response == expected_response

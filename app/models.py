@@ -991,7 +991,7 @@ class TemplateBase(db.Model):
         template.values = values
         return template
 
-    def serialize(self):
+    def serialize_for_v2(self):
         serialized = {
             "id": str(self.id),
             "type": self.template_type,
@@ -1009,7 +1009,6 @@ class TemplateBase(db.Model):
                 for key in self._as_utils_template().placeholders
             },
             "postage": self.postage,
-            "broadcast_data": self.broadcast_data
         }
 
         return serialized

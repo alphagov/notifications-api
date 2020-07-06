@@ -260,6 +260,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'users',
             'version',
             'whitelist',
+            'broadcast_messages',
         )
         strict = True
 
@@ -326,6 +327,7 @@ class DetailedServiceSchema(BaseSchema):
             'users',
             'version',
             'whitelist',
+            'broadcast_messages',
         )
 
 
@@ -350,7 +352,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta:
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id")
+        exclude = ("service_id", "jobs", "service_letter_contact_id", "broadcast_messages")
         strict = True
 
 
