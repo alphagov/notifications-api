@@ -9,7 +9,7 @@ from notifications_utils.recipients import validate_and_format_phone_number
 from requests import HTTPError
 
 import app
-from app import mmg_client, firetext_client
+from app import clients, mmg_client, firetext_client
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
@@ -523,6 +523,20 @@ def test_should_not_update_notification_if_research_mode_on_exception(
     persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
     assert persisted_notification.billable_units == 0
     assert update_mock.called
+
+
+@pytest.mark.parametrize("starting_status, expected_status", [
+    ("delivered", "delivered"),
+    ("created", "sending"),
+    ("technical-failure", "technical-failure"),
+])
+def test_update_notification_to_sending_does_not_update_status_from_a_final_status(
+    sample_service, notify_db_session, starting_status, expected_status
+):
+    template = create_template(sample_service)
+    notification = create_notification(template=template, status=starting_status)
+    send_to_providers.update_notification_to_sending(notification, clients.get_client_by_name_and_type("mmg", "sms"))
+    assert notification.status == expected_status
 
 
 def __update_notification(notification_to_update, research_mode, expected_status):
