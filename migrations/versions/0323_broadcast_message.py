@@ -85,6 +85,11 @@ def upgrade():
 
 
 def downgrade():
+    op.execute("DELETE FROM template_folder_map WHERE template_id IN (SELECT id FROM templates WHERE template_type = 'broadcast')")
+    op.execute("DELETE FROM template_redacted WHERE template_id IN (SELECT id FROM templates WHERE template_type = 'broadcast')")
+    op.execute("DELETE FROM templates WHERE template_type = 'broadcast'")
+    op.execute("DELETE FROM templates_history WHERE template_type = 'broadcast'")
+
     op.execute(f'ALTER TYPE {name} RENAME TO {tmp_name}')
     old_type.create(op.get_bind())
 
