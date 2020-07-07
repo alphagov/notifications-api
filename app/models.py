@@ -2174,7 +2174,7 @@ class BroadcastMessage(db.Model):
         {}
     )
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
     service = db.relationship('Service', backref='broadcast_messages')
@@ -2184,6 +2184,8 @@ class BroadcastMessage(db.Model):
     template = db.relationship('TemplateHistory', backref='broadcast_messages')
 
     _personalisation = db.Column(db.String, nullable=True)
+    # defaults to empty list
+    areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
 
     status = db.Column(
         db.String,
@@ -2197,7 +2199,7 @@ class BroadcastMessage(db.Model):
     finishes_at = db.Column(db.DateTime, nullable=True)  # isn't updated if user cancels
 
     # these times correspond to when
-    created_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     approved_at = db.Column(db.DateTime, nullable=True)
     cancelled_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
@@ -2209,3 +2211,41 @@ class BroadcastMessage(db.Model):
     created_by = db.relationship('User', foreign_keys=[created_by_id])
     approved_by = db.relationship('User', foreign_keys=[approved_by_id])
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
+
+    @property
+    def personalisation(self):
+        if self._personalisation:
+            return encryption.decrypt(self._personalisation)
+        return {}
+
+    @personalisation.setter
+    def personalisation(self, personalisation):
+        self._personalisation = encryption.encrypt(personalisation or {})
+
+    def serialize(self):
+        return {
+            'id': self.id,
+
+            'service_id': self.service_id,
+
+            'template_id': self.template_id,
+            'template_version': self.template_version,
+            'template_name': self.template.name,
+
+            'personalisation': self.personalisation,
+            'areas': self.areas,
+
+            'status': self.status,
+
+            'starts_at': self.starts_at.strftime(DATETIME_FORMAT) if self.starts_at else None,
+            'finishes_at': self.finishes_at.strftime(DATETIME_FORMAT) if self.finishes_at else None,
+
+            'created_at': self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            'approved_at': self.approved_at.strftime(DATETIME_FORMAT) if self.approved_at else None,
+            'cancelled_at': self.cancelled_at.strftime(DATETIME_FORMAT) if self.cancelled_at else None,
+            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+
+            'created_by_id': self.created_by_id,
+            'approved_by_id': self.approved_by_id,
+            'cancelled_by_id': self.cancelled_by_id,
+        }

@@ -152,6 +152,7 @@ def register_blueprint(application):
     from app.template_folder.rest import template_folder_blueprint
     from app.letter_branding.letter_branding_rest import letter_branding_blueprint
     from app.upload.rest import upload_blueprint
+    from app.broadcast_message.rest import broadcast_message_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
@@ -236,6 +237,9 @@ def register_blueprint(application):
 
     upload_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(upload_blueprint)
+
+    broadcast_message_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(broadcast_message_blueprint)
 
 
 def register_v2_blueprints(application):
