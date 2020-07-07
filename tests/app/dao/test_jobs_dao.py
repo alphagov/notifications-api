@@ -28,10 +28,6 @@ from app.models import (
 from tests.app.db import create_job, create_service, create_template, create_notification, create_service_contact_list
 
 
-def test_should_have_decorated_notifications_dao_functions():
-    assert dao_get_notification_outcomes_for_job.__wrapped__.__name__ == 'dao_get_notification_outcomes_for_job'  # noqa
-
-
 def test_should_count_of_statuses_for_notifications_associated_with_job(sample_template, sample_job):
     create_notification(sample_template, job=sample_job, status='created')
     create_notification(sample_template, job=sample_job, status='created')

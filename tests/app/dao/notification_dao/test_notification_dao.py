@@ -56,20 +56,6 @@ from tests.app.db import (
 )
 
 
-def test_should_have_decorated_notifications_dao_functions():
-    assert dao_create_notification.__wrapped__.__name__ == 'dao_create_notification'  # noqa
-    assert update_notification_status_by_id.__wrapped__.__name__ == 'update_notification_status_by_id'  # noqa
-    assert dao_update_notification.__wrapped__.__name__ == 'dao_update_notification'  # noqa
-    assert update_notification_status_by_reference.__wrapped__.__name__ == 'update_notification_status_by_reference'  # noqa
-    assert get_notification_for_job.__wrapped__.__name__ == 'get_notification_for_job'  # noqa
-    assert get_notifications_for_job.__wrapped__.__name__ == 'get_notifications_for_job'  # noqa
-    assert get_notification_with_personalisation.__wrapped__.__name__ == 'get_notification_with_personalisation'  # noqa
-    assert get_notifications_for_service.__wrapped__.__name__ == 'get_notifications_for_service'  # noqa
-    assert get_notification_by_id.__wrapped__.__name__ == 'get_notification_by_id'  # noqa
-    assert delete_notifications_older_than_retention_by_type.__wrapped__.__name__ == 'delete_notifications_older_than_retention_by_type'  # noqa
-    assert dao_delete_notifications_by_id.__wrapped__.__name__ == 'dao_delete_notifications_by_id'  # noqa
-
-
 def test_should_by_able_to_update_status_by_reference(sample_email_template, ses_provider):
     data = _notification_json(sample_email_template, status='sending')
 
