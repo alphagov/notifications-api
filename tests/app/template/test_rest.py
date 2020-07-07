@@ -14,6 +14,7 @@ from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 
 from app.models import (
+    BROADCAST_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
@@ -31,6 +32,7 @@ from tests.conftest import set_config_values
 
 
 @pytest.mark.parametrize('template_type, subject', [
+    (BROADCAST_TYPE, None),
     (SMS_TYPE, None),
     (EMAIL_TYPE, 'subject'),
     (LETTER_TYPE, 'subject'),
@@ -210,6 +212,7 @@ def test_should_raise_error_if_service_does_not_exist_on_create(client, sample_u
 
 
 @pytest.mark.parametrize('permissions, template_type, subject, expected_error', [
+    ([EMAIL_TYPE, SMS_TYPE, LETTER_TYPE], BROADCAST_TYPE, None, {'template_type': ['Creating broadcast message templates is not allowed']}),  # noqa
     ([EMAIL_TYPE], SMS_TYPE, None, {'template_type': ['Creating text message templates is not allowed']}),
     ([SMS_TYPE], EMAIL_TYPE, 'subject', {'template_type': ['Creating email templates is not allowed']}),
     ([SMS_TYPE], LETTER_TYPE, 'subject', {'template_type': ['Creating letter templates is not allowed']}),
@@ -529,6 +532,7 @@ def test_should_get_return_all_fields_by_default(
     )
     assert json_response['data'][0].keys() == {
         'archived',
+        'broadcast_data',
         'content',
         'created_at',
         'created_by',

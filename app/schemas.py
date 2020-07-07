@@ -260,6 +260,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'users',
             'version',
             'whitelist',
+            'broadcast_messages',
         )
         strict = True
 
@@ -326,6 +327,7 @@ class DetailedServiceSchema(BaseSchema):
             'users',
             'version',
             'whitelist',
+            'broadcast_messages',
         )
 
 
@@ -350,7 +352,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta:
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id")
+        exclude = ("service_id", "jobs", "service_letter_contact_id", "broadcast_messages")
         strict = True
 
 
@@ -365,7 +367,7 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
 
     @validates_schema
     def validate_type(self, data):
-        if data.get('template_type') in [models.EMAIL_TYPE, models.LETTER_TYPE]:
+        if data.get('template_type') in {models.EMAIL_TYPE, models.LETTER_TYPE}:
             subject = data.get('subject')
             if not subject or subject.strip() == '':
                 raise ValidationError('Invalid template subject', 'subject')
@@ -391,6 +393,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'template_redacted',
             'updated_at',
             'version',
+            'broadcast_data',
         )
 
 

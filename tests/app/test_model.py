@@ -214,17 +214,17 @@ def test_notification_serializes_created_by_name_with_created_by_id(client, samp
 
 
 def test_sms_notification_serializes_without_subject(client, sample_template):
-    res = sample_template.serialize()
+    res = sample_template.serialize_for_v2()
     assert res['subject'] is None
 
 
 def test_email_notification_serializes_with_subject(client, sample_email_template):
-    res = sample_email_template.serialize()
+    res = sample_email_template.serialize_for_v2()
     assert res['subject'] == 'Email Subject'
 
 
 def test_letter_notification_serializes_with_subject(client, sample_letter_template):
-    res = sample_letter_template.serialize()
+    res = sample_letter_template.serialize_for_v2()
     assert res['subject'] == 'Template subject'
 
 

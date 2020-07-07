@@ -4,7 +4,12 @@ import pytz
 from flask import url_for
 from sqlalchemy import func
 from notifications_utils.timezones import convert_utc_to_bst
-from notifications_utils.template import SMSMessageTemplate, HTMLEmailTemplate, LetterPrintTemplate
+from notifications_utils.template import (
+    SMSMessageTemplate,
+    HTMLEmailTemplate,
+    LetterPrintTemplate,
+    BroadcastMessageTemplate,
+)
 
 
 local_timezone = pytz.timezone("Europe/London")
@@ -30,9 +35,12 @@ def url_with_token(data, url, config, base_url=None):
 
 
 def get_template_instance(template, values):
-    from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE
+    from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE
     return {
-        SMS_TYPE: SMSMessageTemplate, EMAIL_TYPE: HTMLEmailTemplate, LETTER_TYPE: LetterPrintTemplate
+        SMS_TYPE: SMSMessageTemplate,
+        EMAIL_TYPE: HTMLEmailTemplate,
+        LETTER_TYPE: LetterPrintTemplate,
+        BROADCAST_TYPE: BroadcastMessageTemplate,
     }[template['template_type']](template, values)
 
 
@@ -70,14 +78,16 @@ def get_london_month_from_utc_column(column):
 
 
 def get_public_notify_type_text(notify_type, plural=False):
-    from app.models import (SMS_TYPE, UPLOAD_DOCUMENT, PRECOMPILED_LETTER)
+    from app.models import (SMS_TYPE, BROADCAST_TYPE, UPLOAD_DOCUMENT, PRECOMPILED_LETTER)
     notify_type_text = notify_type
     if notify_type == SMS_TYPE:
         notify_type_text = 'text message'
-    if notify_type == UPLOAD_DOCUMENT:
+    elif notify_type == UPLOAD_DOCUMENT:
         notify_type_text = 'document'
-    if notify_type == PRECOMPILED_LETTER:
+    elif notify_type == PRECOMPILED_LETTER:
         notify_type_text = 'precompiled letter'
+    elif notify_type == BROADCAST_TYPE:
+        notify_type_text = 'broadcast message'
 
     return '{}{}'.format(notify_type_text, 's' if plural else '')
 

@@ -26,6 +26,7 @@ from notifications_utils.template import (
     PlainTextEmailTemplate,
     SMSMessageTemplate,
     LetterPrintTemplate,
+    BroadcastMessageTemplate,
 )
 from notifications_utils.timezones import convert_utc_to_bst
 
@@ -44,8 +45,10 @@ from app.history_meta import Versioned
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
 LETTER_TYPE = 'letter'
+BROADCAST_TYPE = 'broadcast'
 
-TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
+TEMPLATE_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE]
+NOTIFICATION_TYPES = [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]  # not broadcast
 
 template_types = db.Enum(*TEMPLATE_TYPES, name='template_type')
 
@@ -299,12 +302,12 @@ UPLOAD_DOCUMENT = 'upload_document'
 EDIT_FOLDER_PERMISSIONS = 'edit_folder_permissions'
 UPLOAD_LETTERS = 'upload_letters'
 INTERNATIONAL_LETTERS = 'international_letters'
-BROADCAST_TYPE = 'broadcast'
 
 SERVICE_PERMISSION_TYPES = [
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
+    BROADCAST_TYPE,
     INTERNATIONAL_SMS_TYPE,
     INBOUND_SMS_TYPE,
     SCHEDULE_NOTIFICATIONS,
@@ -314,7 +317,6 @@ SERVICE_PERMISSION_TYPES = [
     EDIT_FOLDER_PERMISSIONS,
     UPLOAD_LETTERS,
     INTERNATIONAL_LETTERS,
-    BROADCAST_TYPE,
 ]
 
 
@@ -903,6 +905,7 @@ class TemplateBase(db.Model):
     hidden = db.Column(db.Boolean, nullable=False, default=False)
     subject = db.Column(db.Text)
     postage = db.Column(db.String, nullable=True)
+    broadcast_data = db.Column(JSONB(none_as_null=True), nullable=True)
 
     @declared_attr
     def service_id(cls):
@@ -975,6 +978,8 @@ class TemplateBase(db.Model):
             return PlainTextEmailTemplate(self.__dict__)
         if self.template_type == SMS_TYPE:
             return SMSMessageTemplate(self.__dict__)
+        if self.template_type == BROADCAST_TYPE:
+            return BroadcastMessageTemplate(self.__dict__)
         if self.template_type == LETTER_TYPE:
             return LetterPrintTemplate(
                 self.__dict__,
@@ -986,7 +991,7 @@ class TemplateBase(db.Model):
         template.values = values
         return template
 
-    def serialize(self):
+    def serialize_for_v2(self):
         serialized = {
             "id": str(self.id),
             "type": self.template_type,
@@ -995,7 +1000,7 @@ class TemplateBase(db.Model):
             "created_by": self.created_by.email_address,
             "version": self.version,
             "body": self.content,
-            "subject": self.subject if self.template_type != SMS_TYPE else None,
+            "subject": self.subject if self.template_type in {EMAIL_TYPE, LETTER_TYPE} else None,
             "name": self.name,
             "personalisation": {
                 key: {
@@ -2142,3 +2147,65 @@ class ServiceContactList(db.Model):
             "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
         }
         return contact_list
+
+
+class BroadcastStatusType(db.Model):
+    __tablename__ = 'broadcast_status_type'
+    DRAFT = 'draft'
+    PENDING_APPROVAL = 'pending-approval'
+    REJECTED = 'rejected'
+    BROADCASTING = 'broadcasting'
+    COMPLETED = 'completed'
+    CANCELLED = 'cancelled'
+    TECHNICAL_FAILURE = 'technical-failure'
+
+    STATUSES = [DRAFT, PENDING_APPROVAL, REJECTED, BROADCASTING, COMPLETED, CANCELLED, TECHNICAL_FAILURE]
+
+    name = db.Column(db.String, primary_key=True)
+
+
+class BroadcastMessage(db.Model):
+    __tablename__ = 'broadcast_message'
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['template_id', 'template_version'],
+            ['templates_history.id', 'templates_history.version'],
+        ),
+        {}
+    )
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
+    service = db.relationship('Service', backref='broadcast_messages')
+
+    template_id = db.Column(UUID(as_uuid=True), nullable=False)
+    template_version = db.Column(db.Integer, nullable=False)
+    template = db.relationship('TemplateHistory', backref='broadcast_messages')
+
+    _personalisation = db.Column(db.String, nullable=True)
+
+    status = db.Column(
+        db.String,
+        db.ForeignKey('broadcast_status_type.name'),
+        nullable=False,
+        default=BroadcastStatusType.DRAFT
+    )
+
+    # these times are related to the actual broadcast, rather than auditing purposes
+    starts_at = db.Column(db.DateTime, nullable=True)
+    finishes_at = db.Column(db.DateTime, nullable=True)  # isn't updated if user cancels
+
+    # these times correspond to when
+    created_at = db.Column(db.DateTime, nullable=False)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    approved_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+    cancelled_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+    approved_by = db.relationship('User', foreign_keys=[approved_by_id])
+    cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])

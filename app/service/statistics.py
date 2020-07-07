@@ -3,7 +3,7 @@ from datetime import datetime
 
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app.models import NOTIFICATION_STATUS_TYPES, TEMPLATE_TYPES
+from app.models import NOTIFICATION_STATUS_TYPES, NOTIFICATION_TYPES
 from app.dao.date_util import get_months_for_financial_year
 
 
@@ -37,7 +37,7 @@ def format_admin_stats(statistics):
 
 def create_stats_dict():
     stats_dict = {}
-    for template in TEMPLATE_TYPES:
+    for template in NOTIFICATION_TYPES:
         stats_dict[template] = {}
 
         for status in ('total', 'test-key'):
@@ -79,7 +79,7 @@ def create_zeroed_stats_dicts():
     return {
         template_type: {
             status: 0 for status in ('requested', 'delivered', 'failed')
-        } for template_type in TEMPLATE_TYPES
+        } for template_type in NOTIFICATION_TYPES
     }
 
 
@@ -100,7 +100,7 @@ def create_empty_monthly_notification_status_stats_dict(year):
     return {
         convert_utc_to_bst(start).strftime('%Y-%m'): {
             template_type: defaultdict(int)
-            for template_type in TEMPLATE_TYPES
+            for template_type in NOTIFICATION_TYPES
         }
         for start in utc_month_starts
     }
