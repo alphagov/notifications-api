@@ -17,7 +17,6 @@ from app.dao.notifications_dao import (
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
-    delete_notifications_older_than_retention_by_type,
     get_notification_by_id,
     get_notification_for_job,
     get_notification_with_personalisation,
