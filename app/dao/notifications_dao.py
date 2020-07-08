@@ -733,7 +733,7 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
-def dao_get_letters_to_be_printed(print_run_deadline):
+def dao_get_letters_to_be_printed(print_run_deadline, postage):
     """
     Return all letters created before the print run deadline that have not yet been sent
     """
@@ -741,7 +741,8 @@ def dao_get_letters_to_be_printed(print_run_deadline):
         Notification.created_at < convert_bst_to_utc(print_run_deadline),
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
-        Notification.key_type == KEY_TYPE_NORMAL
+        Notification.key_type == KEY_TYPE_NORMAL,
+        Notification.postage == postage,
     ).order_by(
         Notification.created_at
     ).all()

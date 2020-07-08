@@ -155,20 +155,19 @@ def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mo
 
 @freeze_time('2020-02-17 18:00:00')
 def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sample_letter_template):
+    # second class
     create_notification(
         template=sample_letter_template,
         status='created',
         reference='ref0',
         created_at=(datetime.now() - timedelta(hours=2))
     )
-
     create_notification(
         template=sample_letter_template,
         status='created',
         reference='ref1',
         created_at=(datetime.now() - timedelta(hours=3))
     )
-
     create_notification(
         template=sample_letter_template,
         status='created',
@@ -208,7 +207,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         {'ContentLength': 3},
     ])
 
-    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30))
+    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
 
     assert mock_s3.call_count == 3
     mock_s3.assert_has_calls(
@@ -220,6 +219,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     )
 
     assert len(results) == 3
+
     assert results == [
         {'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF', 'Size': 2},
         {'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', 'Size': 1},
@@ -256,7 +256,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
         ClientError(error_response, "File not found")
     ])
 
-    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30))
+    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
 
     assert mock_head_s3_object.call_count == 2
     mock_head_s3_object.assert_has_calls(
@@ -275,20 +275,19 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
 ])
 def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mocker, time_to_run_task):
     with freeze_time("2020-02-17 18:00:00"):
+        # second class
         create_notification(
             template=sample_letter_template,
             status='created',
             reference='ref0',
             created_at=(datetime.now() - timedelta(hours=2))
         )
-
         create_notification(
             template=sample_letter_template,
             status='created',
             reference='ref1',
             created_at=(datetime.now() - timedelta(hours=3))
         )
-
         create_notification(
             template=sample_letter_template,
             status='created',
@@ -296,10 +295,38 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
             created_at=(datetime.now() - timedelta(days=2))
         )
 
+        # first class
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='first_class',
+            created_at=(datetime.now() - timedelta(hours=4)),
+            postage="first"
+        )
+
+        # international
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='international',
+            created_at=(datetime.now() - timedelta(days=3)),
+            postage="europe"
+        )
+        create_notification(
+            template=sample_letter_template,
+            status='created',
+            reference='international',
+            created_at=(datetime.now() - timedelta(days=4)),
+            postage="rest-of-world"
+        )
+
     mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 1},
+        {'ContentLength': 1},
         {'ContentLength': 2},
         {'ContentLength': 1},
         {'ContentLength': 3},
+        {'ContentLength': 1},
     ])
 
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
@@ -308,15 +335,14 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         with freeze_time(time_to_run_task):
             collate_letter_pdfs_to_be_sent()
 
-    assert len(mock_celery.call_args_list) == 2
+    assert len(mock_celery.call_args_list) == 5
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
+                '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.C.20200217140000.PDF'
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
+            'upload_filename': 'NOTIFY.2020-02-17.1.001.kHh01fdUxT9iEIYUt5Wx.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -325,9 +351,43 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
+                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.2.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[2] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': [
                 '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.002.J85cUw-FWlKuAIOcwdLS.ZIP'
+            'upload_filename': 'NOTIFY.2020-02-17.2.002.J85cUw-FWlKuAIOcwdLS.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[3] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': [
+                '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF'
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.E.001.4YajCZzgzIl7zf8bjWK2.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[4] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': [
+                '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.C.20200213180000.PDF',
+            ],
+            'upload_filename': 'NOTIFY.2020-02-17.N.001.eSvP8Ph6EBKhh3k7BSA2.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'

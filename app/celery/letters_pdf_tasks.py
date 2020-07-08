@@ -42,6 +42,8 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    POSTAGE_TYPES,
+    RESOLVE_POSTAGE_FOR_FILE_NAME
 )
 from app.cronitor import cronitor
 
@@ -134,41 +136,41 @@ def collate_letter_pdfs_to_be_sent():
     print_run_deadline = print_run_date.replace(
         hour=17, minute=30, second=0, microsecond=0
     )
+    for postage in POSTAGE_TYPES:
+        letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
 
-    letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline)
+        for i, letters in enumerate(group_letters(letters_to_print)):
+            filenames = [letter['Key'] for letter in letters]
 
-    for i, letters in enumerate(group_letters(letters_to_print)):
-        filenames = [letter['Key'] for letter in letters]
-
-        hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
-        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-        dvla_filename = 'NOTIFY.{date}.{num:03}.{hash}.ZIP'.format(
-            date=print_run_deadline.strftime("%Y-%m-%d"),
-            num=i + 1,
-            hash=hash
-        )
-
-        current_app.logger.info(
-            'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
-                len(filenames),
-                dvla_filename,
-                sum(letter['Size'] for letter in letters)
+            hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
+            # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
+            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.ZIP'.format(
+                date=print_run_deadline.strftime("%Y-%m-%d"),
+                postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
+                num=i + 1,
+                hash=hash
             )
-        )
-        notify_celery.send_task(
-            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-            kwargs={
-                'filenames_to_zip': filenames,
-                'upload_filename': dvla_filename
-            },
-            queue=QueueNames.PROCESS_FTP,
-            compression='zlib'
-        )
+
+            current_app.logger.info(
+                'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
+                    len(filenames),
+                    dvla_filename,
+                    sum(letter['Size'] for letter in letters)
+                )
+            )
+            notify_celery.send_task(
+                name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
+                kwargs={
+                    'filenames_to_zip': filenames,
+                    'upload_filename': dvla_filename
+                },
+                queue=QueueNames.PROCESS_FTP,
+                compression='zlib'
+            )
 
 
-def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline):
-    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline)
-
+def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):
+    letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline, postage)
     letter_pdfs = []
     for letter in letters_awaiting_sending:
         try:
