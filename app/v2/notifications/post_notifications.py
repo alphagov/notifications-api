@@ -149,7 +149,6 @@ def post_notification(notification_type):
         notification = process_sms_or_email_notification(
             form=form,
             notification_type=notification_type,
-            api_key=api_user,
             template=template,
             template_with_content=template_with_content,
             template_process_type=template.process_type,
@@ -164,7 +163,6 @@ def process_sms_or_email_notification(
     *,
     form,
     notification_type,
-    api_key,
     template,
     template_with_content,
     template_process_type,
@@ -175,7 +173,7 @@ def process_sms_or_email_notification(
     form_send_to = form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number']
 
     send_to = validate_and_format_recipient(send_to=form_send_to,
-                                            key_type=api_key.key_type,
+                                            key_type=api_user.key_type,
                                             service=service,
                                             notification_type=notification_type)
 
@@ -190,8 +188,7 @@ def process_sms_or_email_notification(
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template_with_content.values = personalisation
-    key_type = api_key.key_type
-    service_in_research_mode = service.research_mode
+
     resp = create_response_for_post_notification(
         notification_id=notification_id,
         client_reference=form.get('reference', None),
@@ -203,7 +200,7 @@ def process_sms_or_email_notification(
         template_with_content=template_with_content
     )
 
-    if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE') and api_key.key_type == KEY_TYPE_NORMAL \
+    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') and api_user.key_type == KEY_TYPE_NORMAL \
        and notification_type == EMAIL_TYPE:
         # Put GOV.UK Email notifications onto a queue
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
@@ -214,7 +211,7 @@ def process_sms_or_email_notification(
                 form=form,
                 notification_id=str(notification_id),
                 notification_type=notification_type,
-                api_key=api_key,
+                api_key=api_user,
                 template=template,
                 service_id=service.id,
                 personalisation=personalisation,
@@ -237,8 +234,8 @@ def process_sms_or_email_notification(
         service=service,
         personalisation=personalisation,
         notification_type=notification_type,
-        api_key_id=api_key.id,
-        key_type=key_type,
+        api_key_id=api_user.id,
+        key_type=api_user.key_type,
         client_reference=form.get('reference', None),
         simulated=simulated,
         reply_to_text=reply_to_text,
@@ -248,10 +245,10 @@ def process_sms_or_email_notification(
     if not simulated:
         queue_name = QueueNames.PRIORITY if template_process_type == PRIORITY else None
         send_notification_to_queue_detached(
-            key_type=key_type,
+            key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
-            research_mode=service_in_research_mode,  # research_mode is deprecated
+            research_mode=service.research_mode,  # research_mode is deprecated
             queue=queue_name
         )
     else:
