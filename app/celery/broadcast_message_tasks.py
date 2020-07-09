@@ -3,8 +3,6 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 
 from app import notify_celery
-from app.schemas import template_schema
-
 
 from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id
 
@@ -12,6 +10,10 @@ from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id
 @notify_celery.task(name="send-broadcast-message")
 @statsd(namespace="tasks")
 def send_broadcast_message(broadcast_message_id, provider='stub-1'):
+    # imports of schemas from tasks have to happen within functions to prevent
+    # `AttributeError: 'DummySession' object has no attribute 'query'` errors in unrelated tests
+    from app.schemas import template_schema
+
     broadcast_message = dao_get_broadcast_message_by_id(broadcast_message_id)
 
     current_app.logger.info(
