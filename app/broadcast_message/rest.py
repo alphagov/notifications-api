@@ -88,7 +88,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
     if 'starts_at' in data:
         broadcast_message.starts_at = _parse_nullable_datetime(data['starts_at'])
     if 'finishes_at' in data:
-        broadcast_message.starts_at = _parse_nullable_datetime(data['finishes_at'])
+        broadcast_message.finishes_at = _parse_nullable_datetime(data['finishes_at'])
     if 'areas' in data:
         broadcast_message.areas = data['areas']
 
