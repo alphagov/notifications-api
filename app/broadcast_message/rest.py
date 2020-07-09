@@ -1,8 +1,9 @@
 from datetime import datetime
 
 import iso8601
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app
 
+from app.config import QueueNames
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
 from app.dao.broadcast_message_dao import (
@@ -14,6 +15,7 @@ from app.dao.broadcast_message_dao import (
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors
 from app.models import BroadcastMessage, BroadcastStatusType
+from app.celery.broadcast_message_tasks import send_broadcast_message
 from app.broadcast_message.broadcast_message_schema import (
     create_broadcast_message_schema,
     update_broadcast_message_schema,
@@ -107,8 +109,7 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     new_status = data['status']
 
     # TODO: Restrict status transitions
-    # TODO: Do we need to validate that the user belongs to the same service, isn't the creator, has permissions, etc?
-    # or is that admin's job
+    # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
     if new_status == BroadcastStatusType.BROADCASTING:
         broadcast_message.approved_at = datetime.utcnow()
         broadcast_message.approved_by = get_user_by_id(data['created_by'])
@@ -118,6 +119,15 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
 
     broadcast_message.status = new_status
 
+    current_app.logger.info(
+        f'broadcast_message {broadcast_message_id} moving from {broadcast_message.status} to {new_status}'
+    )
     dao_update_broadcast_message(broadcast_message)
+
+    if new_status == BroadcastStatusType.BROADCASTING:
+        send_broadcast_message.apply_async(
+            kwargs={'broadcast_message_id': str(broadcast_message.id)},
+            queue=QueueNames.NOTIFY
+        )
 
     return jsonify(broadcast_message.serialize()), 200
