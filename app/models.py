@@ -1009,6 +1009,7 @@ class TemplateBase(db.Model):
                 for key in self._as_utils_template().placeholders
             },
             "postage": self.postage,
+            "letter_contact_block": self.service_letter_contact.contact_block if self.service_letter_contact else None,
         }
 
         return serialized

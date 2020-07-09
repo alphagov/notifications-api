@@ -19,7 +19,12 @@ valid_version_params = [None, 1]
 def test_get_template_by_id_returns_200(
     client, sample_service, tmp_type, expected_name, expected_subject, version, postage
 ):
-    template = create_template(sample_service, template_type=tmp_type)
+    letter_contact_block_id = None
+    if tmp_type == 'letter':
+        letter_contact_block = create_letter_contact(sample_service, "Buckingham Palace, London, SW1A 1AA")
+        letter_contact_block_id = letter_contact_block.id
+
+    template = create_template(sample_service, template_type=tmp_type, contact_block_id=(letter_contact_block_id))
     auth_header = create_authorization_header(service_id=sample_service.id)
 
     version_path = '/version/{}'.format(version) if version else ''
@@ -44,6 +49,7 @@ def test_get_template_by_id_returns_200(
         'name': expected_name,
         'personalisation': {},
         'postage': postage,
+        'letter_contact_block': letter_contact_block.contact_block if letter_contact_block_id else None,
     }
 
     assert json_response == expected_response
