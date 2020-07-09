@@ -20,6 +20,10 @@ def dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service
     ).one()
 
 
+def dao_get_broadcast_message_by_id(broadcast_message_id):
+    return BroadcastMessage.query.get(broadcast_message_id)
+
+
 def dao_get_broadcast_messages_for_service(service_id):
     return BroadcastMessage.query.filter(
         BroadcastMessage.service_id == service_id

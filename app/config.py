@@ -112,6 +112,9 @@ class Config(object):
     # Antivirus
     ANTIVIRUS_ENABLED = True
 
+    # Broadcast Messaging
+    CBC_PROXY_URL = None
+
     ###########################
     # Default config values ###
     ###########################
@@ -393,6 +396,8 @@ class Development(Config):
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
 
+    CBC_PROXY_URL = 'http://localhost:8080'
+
 
 class Test(Development):
     NOTIFY_EMAIL_DOMAIN = 'test.notify.com'
@@ -436,6 +441,8 @@ class Test(Development):
     FIRETEXT_INBOUND_SMS_AUTH = ['testkey']
     TEMPLATE_PREVIEW_API_HOST = 'http://localhost:9999'
 
+    CBC_PROXY_URL = 'http://test-cbc-proxy'
+
     MMG_URL = 'https://example.com/mmg'
     FIRETEXT_URL = 'https://example.com/firetext'
 
@@ -452,6 +459,7 @@ class Preview(Config):
     INVALID_PDF_BUCKET_NAME = 'preview-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'preview-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'preview-letters-sanitise'
+    CBC_PROXY_URL = 'https://notify-stub-cbc-sandbox.cloudapps.digital'
     FROM_NUMBER = 'preview'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = False
@@ -469,6 +477,7 @@ class Staging(Config):
     INVALID_PDF_BUCKET_NAME = 'staging-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'staging-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'staging-letters-sanitise'
+    CBC_PROXY_URL = 'https://notify-stub-cbc-sandbox.cloudapps.digital'
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
@@ -487,6 +496,7 @@ class Live(Config):
     INVALID_PDF_BUCKET_NAME = 'production-letters-invalid-pdf'
     TRANSIENT_UPLOADED_LETTERS = 'production-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'production-letters-sanitise'
+    CBC_PROXY_URL = 'https://notify-stub-cbc-sandbox.cloudapps.digital'
     FROM_NUMBER = 'GOVUK'
     PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
