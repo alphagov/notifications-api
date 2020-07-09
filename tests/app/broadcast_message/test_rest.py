@@ -149,6 +149,23 @@ def test_update_broadcast_message(admin_request, sample_service):
     assert response['updated_at'] is not None
 
 
+def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sample_service):
+    t = create_template(sample_service, BROADCAST_TYPE)
+    bm = create_broadcast_message(t, areas=['manchester'])
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message',
+        _data={'starts_at': '2020-06-01 20:00:01', 'finishes_at': '2020-06-02 20:00:01'},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['starts_at'] == '2020-06-01T20:00:01.000000Z'
+    assert response['finishes_at'] == '2020-06-02T20:00:01.000000Z'
+    assert response['updated_at'] is not None
+
+
 @pytest.mark.parametrize('input_dt', [
     '2020-06-01 20:00:01',
     '2020-06-01T20:00:01',
