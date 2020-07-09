@@ -59,7 +59,9 @@ from app.models import (
     Domain,
     NotificationHistory,
     ReturnedLetter,
-    ServiceContactList
+    ServiceContactList,
+    BroadcastMessage,
+    BroadcastStatusType,
 )
 
 
@@ -984,3 +986,28 @@ def create_service_contact_list(
     db.session.add(contact_list)
     db.session.commit()
     return contact_list
+
+
+def create_broadcast_message(
+    template,
+    created_by=None,
+    personalisation={},
+    status=BroadcastStatusType.DRAFT,
+    starts_at=None,
+    finishes_at=None,
+    areas=[],
+):
+    broadcast_message = BroadcastMessage(
+        service_id=template.service_id,
+        template_id=template.id,
+        template_version=template.version,
+        personalisation=personalisation,
+        status=BroadcastStatusType.DRAFT,
+        starts_at=starts_at,
+        finishes_at=finishes_at,
+        created_by_id=created_by.id if created_by else template.created_by_id,
+        areas=areas,
+    )
+    db.session.add(broadcast_message)
+    db.session.commit()
+    return broadcast_message
