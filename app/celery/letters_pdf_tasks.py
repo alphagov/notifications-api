@@ -129,6 +129,7 @@ def collate_letter_pdfs_to_be_sent():
     that have not yet been sent.
     If run after midnight, it will collect up letters created before 5:30pm the day before.
     """
+    current_app.logger.info("starting collate-letter-pdfs-to-be-sent")
     print_run_date = convert_utc_to_bst(datetime.utcnow())
     if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
         print_run_date = print_run_date - timedelta(days=1)
@@ -137,6 +138,7 @@ def collate_letter_pdfs_to_be_sent():
         hour=17, minute=30, second=0, microsecond=0
     )
     for postage in POSTAGE_TYPES:
+        current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
         letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
 
         for i, letters in enumerate(group_letters(letters_to_print)):
@@ -167,6 +169,9 @@ def collate_letter_pdfs_to_be_sent():
                 queue=QueueNames.PROCESS_FTP,
                 compression='zlib'
             )
+        current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+
+    current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
 
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):
