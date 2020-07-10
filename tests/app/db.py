@@ -1011,7 +1011,7 @@ def create_broadcast_message(
         template_id=template.id,
         template_version=template.version,
         personalisation=personalisation,
-        status=BroadcastStatusType.DRAFT,
+        status=status,
         starts_at=starts_at,
         finishes_at=finishes_at,
         created_by_id=created_by.id if created_by else template.created_by_id,

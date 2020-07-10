@@ -132,9 +132,14 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
     assert response['errors'] == expected_errors
 
 
-def test_update_broadcast_message(admin_request, sample_service):
+@pytest.mark.parametrize('status', [
+    BroadcastStatusType.DRAFT,
+    BroadcastStatusType.PENDING_APPROVAL,
+    BroadcastStatusType.REJECTED,
+])
+def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, sample_service, status):
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['manchester'])
+    bm = create_broadcast_message(t, areas=['manchester'], status=status)
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
@@ -147,6 +152,26 @@ def test_update_broadcast_message(admin_request, sample_service):
     assert response['starts_at'] == '2020-06-01T20:00:01.000000Z'
     assert response['areas'] == ['london', 'glasgow']
     assert response['updated_at'] is not None
+
+
+@pytest.mark.parametrize('status', [
+    BroadcastStatusType.BROADCASTING,
+    BroadcastStatusType.CANCELLED,
+    BroadcastStatusType.COMPLETED,
+    BroadcastStatusType.TECHNICAL_FAILURE,
+])
+def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(admin_request, sample_service, status):
+    t = create_template(sample_service, BROADCAST_TYPE)
+    bm = create_broadcast_message(t, areas=['manchester'], status=status)
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message',
+        _data={'areas': ['london', 'glasgow']},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=400
+    )
+    assert f'status {status}' in response['message']
 
 
 def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sample_service):

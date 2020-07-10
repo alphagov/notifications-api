@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import iso8601
-from flask import Blueprint, jsonify, request, current_app
+from flask import Blueprint, jsonify, request, current_app, abort
 
 from app.config import QueueNames
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
@@ -84,6 +84,12 @@ def update_broadcast_message(service_id, broadcast_message_id):
     validate(data, update_broadcast_message_schema)
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
+
+    if broadcast_message.status not in BroadcastStatusType.PRE_BROADCAST_STATUSES:
+        abort(
+            400,
+            f'Cannot update broadcast_message {broadcast_message.id} while it has status {broadcast_message.status}'
+        )
 
     if 'personalisation' in data:
         broadcast_message.personalisation = data['personalisation']

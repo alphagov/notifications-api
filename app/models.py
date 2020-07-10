@@ -2172,6 +2172,10 @@ class BroadcastStatusType(db.Model):
 
     STATUSES = [DRAFT, PENDING_APPROVAL, REJECTED, BROADCASTING, COMPLETED, CANCELLED, TECHNICAL_FAILURE]
 
+    # a broadcast message can be edited while in one of these states
+    PRE_BROADCAST_STATUSES = [DRAFT, PENDING_APPROVAL, REJECTED]
+    LIVE_STATUSES = [BROADCASTING, COMPLETED, CANCELLED]
+
     name = db.Column(db.String, primary_key=True)
 
 
