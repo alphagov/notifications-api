@@ -623,7 +623,7 @@ def test_fetch_letter_costs_for_all_services(notify_db_session):
     assert len(results) == 3
     assert results[0] == (org.name, org.id, service.name, service.id, Decimal('3.40'))
     assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal('14.00'))
-    assert results[2] == (None, None, service_3.name, service_3.id, Decimal('8.25'))
+    assert results[2] == (None, None, service_3.name, service_3.id, Decimal('24.45'))
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
@@ -632,12 +632,14 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
 
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
-    assert len(results) == 5
+    assert len(results) == 7
     assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal('0.45'), 'second', 6)
     assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal("0.35"), 'first', 2)
     assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.65"), 'second', 20)
     assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.50"), 'first', 2)
-    assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)
+    assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.35"), 'second', 2)
+    assert results[5] == (None, None, service_3.name, service_3.id, Decimal("0.50"), 'first', 1)
+    assert results[6] == (None, None, service_3.name, service_3.id, Decimal("1.55"), 'international', 15)
 
 
 @freeze_time('2019-06-01 13:30')

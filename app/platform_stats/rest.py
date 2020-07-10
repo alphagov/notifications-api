@@ -9,6 +9,7 @@ from app.dao.fact_billing_dao import (
 )
 from app.dao.fact_notification_status_dao import fetch_notification_status_totals_for_all_services
 from app.errors import register_errors, InvalidRequest
+from app.models import UK_POSTAGE_TYPES
 from app.platform_stats.platform_stats_schema import platform_stats_request
 from app.service.statistics import format_admin_stats
 from app.schema_validation import validate
@@ -65,7 +66,8 @@ def get_usage_for_all_services():
     letter_breakdown = fetch_letter_line_items_for_all_services(start_date, end_date)
 
     lb_by_service = [
-        (lb.service_id, "{} {} class letters at {}p".format(lb.letters_sent, lb.postage, int(lb.letter_rate * 100)))
+        (lb.service_id,
+         f"{lb.letters_sent} {postage_description(lb.postage)} letters at {format_letter_rate(lb.letter_rate)}")
         for lb in letter_breakdown
     ]
     combined = {}
@@ -106,3 +108,17 @@ def get_usage_for_all_services():
         x['organisation_name'],
         x['service_name']
     )))
+
+
+def postage_description(postage):
+    if postage in UK_POSTAGE_TYPES:
+        return f'{postage} class'
+    else:
+        return 'international'
+
+
+def format_letter_rate(number):
+    if number >= 1:
+        return f"£{number:,.2f}"
+
+    return f"{number * 100:.0f}p"

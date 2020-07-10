@@ -153,5 +153,7 @@ def test_get_usage_for_all_services(notify_db_session, admin_request):
     assert response[3]["service_id"] == str(service_3.id)
     assert response[3]["sms_cost"] == 0
     assert response[3]["sms_fragments"] == 0
-    assert response[3]["letter_cost"] == 8.25
-    assert response[3]["letter_breakdown"] == "15 second class letters at 55p\n"
+    assert response[3]["letter_cost"] == 24.45
+    assert response[3]["letter_breakdown"] == (
+        "2 second class letters at 35p\n1 first class letters at 50p\n15 international letters at £1.55\n"
+    )

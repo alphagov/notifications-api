@@ -941,7 +941,13 @@ def set_up_usage_data(start_date):
                       notifications_sent=12, billable_unit=5, rate=.65, postage='second')
 
     create_ft_billing(bst_date=two_days_later, template=letter_template_4,
-                      notifications_sent=15, billable_unit=4, rate=.55, postage='second')
+                      notifications_sent=7, billable_unit=4, rate=1.55, postage='rest-of-world')
+    create_ft_billing(bst_date=two_days_later, template=letter_template_4,
+                      notifications_sent=8, billable_unit=4, rate=1.55, postage='europe')
+    create_ft_billing(bst_date=two_days_later, template=letter_template_4,
+                      notifications_sent=2, billable_unit=1, rate=.35, postage='second')
+    create_ft_billing(bst_date=two_days_later, template=letter_template_4,
+                      notifications_sent=1, billable_unit=1, rate=.50, postage='first')
 
     create_ft_billing(bst_date=start_date, template=email_template, notifications_sent=10)
 

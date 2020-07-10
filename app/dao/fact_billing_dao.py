@@ -4,7 +4,7 @@ from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, desc, Date, Integer, and_
-from sqlalchemy.sql.expression import literal
+from sqlalchemy.sql.expression import case, literal
 
 from app import db
 from app.dao.date_util import (
@@ -28,6 +28,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
     AnnualBilling,
     Organisation,
+    INTERNATIONAL_POSTAGE_TYPES,
 )
 from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
 
@@ -146,13 +147,21 @@ def fetch_letter_costs_for_all_services(start_date, end_date):
 
 
 def fetch_letter_line_items_for_all_services(start_date, end_date):
+    formatted_postage = case(
+        [(FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international")], else_=FactBilling.postage
+    ).label("postage")
+
+    postage_order = case(((formatted_postage == "second", 1),
+                          (formatted_postage == "first", 2),
+                          (formatted_postage == "international", 3)))
+
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         FactBilling.rate.label("letter_rate"),
-        FactBilling.postage.label("postage"),
+        formatted_postage,
         func.sum(FactBilling.notifications_sent).label("letters_sent"),
     ).select_from(
         Service
@@ -170,11 +179,11 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         Service.id,
         Service.name,
         FactBilling.rate,
-        FactBilling.postage
+        formatted_postage
     ).order_by(
         Organisation.name,
         Service.name,
-        FactBilling.postage.desc(),
+        postage_order,
         FactBilling.rate,
     )
     return query.all()
