@@ -2224,11 +2224,11 @@ class BroadcastMessage(db.Model):
 
     def serialize(self):
         return {
-            'id': self.id,
+            'id': str(self.id),
 
-            'service_id': self.service_id,
+            'service_id': str(self.service_id),
 
-            'template_id': self.template_id,
+            'template_id': str(self.template_id),
             'template_version': self.template_version,
             'template_name': self.template.name,
 
@@ -2245,7 +2245,7 @@ class BroadcastMessage(db.Model):
             'cancelled_at': self.cancelled_at.strftime(DATETIME_FORMAT) if self.cancelled_at else None,
             'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
 
-            'created_by_id': self.created_by_id,
-            'approved_by_id': self.approved_by_id,
-            'cancelled_by_id': self.cancelled_by_id,
+            'created_by_id': str(self.created_by_id),
+            'approved_by_id': str(self.approved_by_id),
+            'cancelled_by_id': str(self.cancelled_by_id),
         }

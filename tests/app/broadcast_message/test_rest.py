@@ -258,10 +258,15 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
     assert response['cancelled_by_id'] == str(canceller.id)
 
 
-def test_update_broadcast_message_status_stores_approved_by_and_approved_at(admin_request, sample_service):
+def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
+    admin_request,
+    sample_service,
+    mocker
+):
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user('approver@gov.uk')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -274,3 +279,4 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at(admi
     assert response['status'] == BroadcastStatusType.BROADCASTING
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
+    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
