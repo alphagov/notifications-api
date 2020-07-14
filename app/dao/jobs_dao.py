@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.letter_timings import letter_can_be_cancelled, CANCELLABLE_JOB_LETTER_STATUSES
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import (
     asc,
     desc,
@@ -32,7 +31,6 @@ from app.models import (
 )
 
 
-@statsd(namespace="dao")
 def dao_get_notification_outcomes_for_job(service_id, job_id):
     notification_statuses = db.session.query(
         func.count(Notification.status).label('count'), Notification.status

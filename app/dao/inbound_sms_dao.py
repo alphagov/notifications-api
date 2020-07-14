@@ -1,5 +1,4 @@
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import desc, and_
 from sqlalchemy.orm import aliased
 from sqlalchemy.dialects.postgresql import insert
@@ -108,7 +107,6 @@ def _delete_inbound_sms(datetime_to_delete_from, query_filter):
     return deleted
 
 
-@statsd(namespace="dao")
 @transactional
 def delete_inbound_sms_older_than_retention():
     current_app.logger.info('Deleting inbound sms for services with flexible data retention')

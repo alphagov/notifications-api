@@ -14,7 +14,6 @@ from notifications_utils.recipients import (
     InvalidEmailError,
     try_validate_and_format_phone_number
 )
-from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import (desc, func, asc, and_, or_)
 from sqlalchemy.orm import joinedload
@@ -54,7 +53,6 @@ from app.utils import midnight_n_days_ago, escape_special_characters
 from app.clients.sms.firetext import get_message_status_and_reason_from_firetext_code
 
 
-@statsd(namespace="dao")
 def dao_get_last_date_template_was_used(template_id, service_id):
     last_date_from_notifications = db.session.query(
         functions.max(Notification.created_at)
@@ -121,7 +119,6 @@ def _update_notification_status(notification, status, detailed_status_code=None)
     return notification
 
 
-@statsd(namespace="dao")
 @transactional
 def update_notification_status_by_id(notification_id, status, sent_by=None, detailed_status_code=None):
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
@@ -154,7 +151,6 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
     )
 
 
-@statsd(namespace="dao")
 @transactional
 def update_notification_status_by_reference(reference, status):
     # this is used to update letters and emails
@@ -177,19 +173,16 @@ def update_notification_status_by_reference(reference, status):
     )
 
 
-@statsd(namespace="dao")
 @transactional
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     db.session.add(notification)
 
 
-@statsd(namespace="dao")
 def get_notification_for_job(service_id, job_id, notification_id):
     return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
 
 
-@statsd(namespace="dao")
 def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -201,12 +194,10 @@ def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page
     )
 
 
-@statsd(namespace="dao")
 def dao_get_notification_count_for_job_id(*, job_id):
     return Notification.query.filter_by(job_id=job_id).count()
 
 
-@statsd(namespace="dao")
 def get_notification_with_personalisation(service_id, notification_id, key_type):
     filter_dict = {'service_id': service_id, 'id': notification_id}
     if key_type:
@@ -215,7 +206,6 @@ def get_notification_with_personalisation(service_id, notification_id, key_type)
     return Notification.query.filter_by(**filter_dict).options(joinedload('template')).one()
 
 
-@statsd(namespace="dao")
 def get_notification_by_id(notification_id, service_id=None, _raise=False):
     filters = [Notification.id == notification_id]
 
@@ -231,7 +221,6 @@ def get_notifications(filter_dict=None):
     return _filter_query(Notification.query, filter_dict=filter_dict)
 
 
-@statsd(namespace="dao")
 def get_notifications_for_service(
         service_id,
         filter_dict=None,
@@ -308,7 +297,6 @@ def _filter_query(query, filter_dict=None):
     return query
 
 
-@statsd(namespace="dao")
 def delete_notifications_older_than_retention_by_type(notification_type, qry_limit=50000):
     current_app.logger.info(
         'Deleting {} notifications for services with flexible data retention'.format(notification_type))
@@ -343,7 +331,6 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     return deleted
 
 
-@statsd(namespace="dao")
 @transactional
 def insert_notification_history_delete_notifications(
     notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
@@ -453,7 +440,6 @@ def _delete_letters_from_s3(
                         "Could not delete S3 object with filename: {}".format(s3_object['Key']))
 
 
-@statsd(namespace="dao")
 @transactional
 def dao_delete_notifications_by_id(notification_id):
     db.session.query(Notification).filter(
@@ -564,7 +550,6 @@ def is_delivery_slow_for_providers(
     return slow_providers
 
 
-@statsd(namespace="dao")
 @transactional
 def dao_update_notifications_by_reference(references, update_dict):
     updated_count = Notification.query.filter(
@@ -586,7 +571,6 @@ def dao_update_notifications_by_reference(references, update_dict):
     return updated_count, updated_history_count
 
 
-@statsd(namespace="dao")
 def dao_get_notifications_by_recipient_or_reference(
     service_id,
     search_term,
@@ -648,14 +632,12 @@ def dao_get_notifications_by_recipient_or_reference(
     return results
 
 
-@statsd(namespace="dao")
 def dao_get_notification_by_reference(reference):
     return Notification.query.filter(
         Notification.reference == reference
     ).one()
 
 
-@statsd(namespace="dao")
 def dao_get_notification_or_history_by_reference(reference):
     try:
         # This try except is necessary because in test keys and research mode does not create notification history.
@@ -669,7 +651,6 @@ def dao_get_notification_or_history_by_reference(reference):
         ).one()
 
 
-@statsd(namespace="dao")
 def dao_get_notifications_by_references(references):
     return Notification.query.filter(
         Notification.reference.in_(references)
@@ -711,7 +692,6 @@ def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date
     ).one()
 
 
-@statsd(namespace="dao")
 def dao_get_last_notification_added_for_job_id(job_id):
     last_notification_added = Notification.query.filter(
         Notification.job_id == job_id

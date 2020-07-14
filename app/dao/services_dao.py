@@ -1,7 +1,6 @@
 import uuid
 from datetime import date, datetime, timedelta
 
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.sql.expression import asc, case, and_, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy import cast, Float
@@ -426,7 +425,6 @@ def delete_service_and_all_associated_db_objects(service):
     db.session.commit()
 
 
-@statsd(namespace="dao")
 def dao_fetch_stats_for_service(service_id, limit_days):
     # We always want between seven and eight days
     start_date = midnight_n_days_ago(limit_days)
@@ -435,7 +433,6 @@ def dao_fetch_stats_for_service(service_id, limit_days):
     ).all()
 
 
-@statsd(namespace="dao")
 def dao_fetch_todays_stats_for_service(service_id):
     return _stats_for_service_query(service_id).filter(
         func.date(Notification.created_at) == date.today()
@@ -470,7 +467,6 @@ def _stats_for_service_query(service_id):
     )
 
 
-@statsd(namespace='dao')
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
     today = date.today()
     start_date = get_london_midnight_in_utc(today)

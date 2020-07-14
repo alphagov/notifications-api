@@ -54,11 +54,6 @@ from tests.app.db import (create_annual_billing, create_api_key,
                           create_template_folder, create_user)
 
 
-def test_should_have_decorated_services_dao_functions():
-    assert dao_fetch_todays_stats_for_service.__wrapped__.__name__ == 'dao_fetch_todays_stats_for_service'  # noqa
-    assert dao_fetch_stats_for_service.__wrapped__.__name__ == 'dao_fetch_stats_for_service'  # noqa
-
-
 def test_create_service(notify_db_session):
     user = create_user()
     create_letter_branding()

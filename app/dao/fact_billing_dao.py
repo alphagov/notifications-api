@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta, time, date
 
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import func, desc, Date, Integer, and_
@@ -33,7 +32,6 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
 
 
-@statsd(namespace="dao")
 def fetch_sms_free_allowance_remainder(start_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     billing_year = get_financial_year_for_datetime(start_date)
@@ -64,7 +62,6 @@ def fetch_sms_free_allowance_remainder(start_date):
     return query
 
 
-@statsd(namespace="dao")
 def fetch_sms_billing_for_all_services(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
@@ -117,7 +114,6 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_letter_costs_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
@@ -149,7 +145,6 @@ def fetch_letter_costs_for_all_services(start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_letter_line_items_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
@@ -185,7 +180,6 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_billing_totals_for_year(service_id, year):
     year_start_date, year_end_date = get_financial_year(year)
     """
@@ -234,7 +228,6 @@ def fetch_billing_totals_for_year(service_id, year):
     return yearly_data
 
 
-@statsd(namespace="dao")
 def fetch_monthly_billing_for_year(service_id, year):
     year_start_datetime, year_end_datetime = get_financial_year(year)
 
@@ -295,7 +288,6 @@ def fetch_monthly_billing_for_year(service_id, year):
     return yearly_data
 
 
-@statsd(namespace="dao")
 def delete_billing_data_for_service_for_day(process_day, service_id):
     """
     Delete all ft_billing data for a given service on a given bst_date
@@ -308,7 +300,6 @@ def delete_billing_data_for_service_for_day(process_day, service_id):
     ).delete()
 
 
-@statsd(namespace="dao")
 def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
@@ -430,14 +421,12 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
     return query.all()
 
 
-@statsd(namespace="dao")
 def get_rates_for_billing():
     non_letter_rates = Rate.query.order_by(desc(Rate.valid_from)).all()
     letter_rates = LetterRate.query.order_by(desc(LetterRate.start_date)).all()
     return non_letter_rates, letter_rates
 
 
-@statsd(namespace="dao")
 def get_service_ids_that_need_billing_populated(start_date, end_date):
     return db.session.query(
         NotificationHistory.service_id
@@ -478,7 +467,6 @@ def get_rate(
         return 0
 
 
-@statsd(namespace="dao")
 def update_fact_billing(data, process_day):
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates,
@@ -522,7 +510,6 @@ def update_fact_billing(data, process_day):
     db.session.commit()
 
 
-@statsd(namespace="dao")
 def create_billing_record(data, rate, process_day):
     billing_record = FactBilling(
         bst_date=process_day,
@@ -540,7 +527,6 @@ def create_billing_record(data, rate, process_day):
     return billing_record
 
 
-@statsd(namespace="dao")
 def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
@@ -566,7 +552,6 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
@@ -591,7 +576,6 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
@@ -638,7 +622,6 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-@statsd(namespace="dao")
 def fetch_usage_year_for_organisation(organisation_id, year):
     year_start_datetime, year_end_datetime = get_financial_year(year)
 
