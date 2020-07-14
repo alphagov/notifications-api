@@ -1,3 +1,4 @@
+import pytest
 import uuid
 import json
 
@@ -10,10 +11,14 @@ from app.models import (
 from app.dao.service_whitelist_dao import dao_add_and_commit_whitelisted_contacts
 
 
-def test_get_whitelist_returns_data(client, sample_service_whitelist):
+@pytest.mark.parametrize('url_path', (
+    'service/{}/whitelist',
+    'service/{}/guest-list',
+))
+def test_get_whitelist_returns_data(client, sample_service_whitelist, url_path):
     service_id = sample_service_whitelist.service_id
 
-    response = client.get('service/{}/whitelist'.format(service_id), headers=[create_authorization_header()])
+    response = client.get(url_path.format(service_id), headers=[create_authorization_header()])
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'email_addresses': [sample_service_whitelist.recipient],
@@ -28,7 +33,7 @@ def test_get_whitelist_separates_emails_and_phones(client, sample_service):
         ServiceWhitelist.from_string(sample_service.id, MOBILE_TYPE, '+1800-555-555'),
     ])
 
-    response = client.get('service/{}/whitelist'.format(sample_service.id), headers=[create_authorization_header()])
+    response = client.get('service/{}/guest-list'.format(sample_service.id), headers=[create_authorization_header()])
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['email_addresses'] == ['service@example.com']
@@ -36,7 +41,7 @@ def test_get_whitelist_separates_emails_and_phones(client, sample_service):
 
 
 def test_get_whitelist_404s_with_unknown_service_id(client):
-    path = 'service/{}/whitelist'.format(uuid.uuid4())
+    path = 'service/{}/guest-list'.format(uuid.uuid4())
 
     response = client.get(path, headers=[create_authorization_header()])
     assert response.status_code == 404
@@ -46,7 +51,7 @@ def test_get_whitelist_404s_with_unknown_service_id(client):
 
 
 def test_get_whitelist_returns_no_data(client, sample_service):
-    path = 'service/{}/whitelist'.format(sample_service.id)
+    path = 'service/{}/guest-list'.format(sample_service.id)
 
     response = client.get(path, headers=[create_authorization_header()])
 
@@ -54,14 +59,18 @@ def test_get_whitelist_returns_no_data(client, sample_service):
     assert json.loads(response.get_data(as_text=True)) == {'email_addresses': [], 'phone_numbers': []}
 
 
-def test_update_whitelist_replaces_old_whitelist(client, sample_service_whitelist):
+@pytest.mark.parametrize('url_path', (
+    'service/{}/whitelist',
+    'service/{}/guest-list',
+))
+def test_update_whitelist_replaces_old_whitelist(client, sample_service_whitelist, url_path):
     data = {
         'email_addresses': ['foo@bar.com'],
         'phone_numbers': ['07123456789']
     }
 
     response = client.put(
-        'service/{}/whitelist'.format(sample_service_whitelist.service_id),
+        url_path.format(sample_service_whitelist.service_id),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -81,7 +90,7 @@ def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_se
     }
 
     response = client.put(
-        'service/{}/whitelist'.format(sample_service_whitelist.service_id),
+        'service/{}/guest-list'.format(sample_service_whitelist.service_id),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
