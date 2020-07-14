@@ -37,6 +37,23 @@ def _parse_nullable_datetime(dt):
     return dt
 
 
+def _update_broadcast_message(broadcast_message, new_status, updating_user):
+    # TODO: Restrict status transitions
+    # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
+    if new_status == BroadcastStatusType.BROADCASTING:
+        broadcast_message.approved_at = datetime.utcnow()
+        broadcast_message.approved_by = updating_user
+
+    if new_status == BroadcastStatusType.CANCELLED:
+        broadcast_message.cancelled_at = datetime.utcnow()
+        broadcast_message.cancelled_by = updating_user
+
+    current_app.logger.info(
+        f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
+    )
+    broadcast_message.status = new_status
+
+
 @broadcast_message_blueprint.route('', methods=['GET'])
 def get_broadcast_messages_for_service(service_id):
     # TODO: should this return template content/data in some way? or can we rely on them being cached admin side.
@@ -113,21 +130,9 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
     new_status = data['status']
+    updating_user = get_user_by_id(data['created_by'])
 
-    # TODO: Restrict status transitions
-    # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
-    if new_status == BroadcastStatusType.BROADCASTING:
-        broadcast_message.approved_at = datetime.utcnow()
-        broadcast_message.approved_by = get_user_by_id(data['created_by'])
-    if new_status == BroadcastStatusType.CANCELLED:
-        broadcast_message.cancelled_at = datetime.utcnow()
-        broadcast_message.cancelled_by = get_user_by_id(data['created_by'])
-
-    broadcast_message.status = new_status
-
-    current_app.logger.info(
-        f'broadcast_message {broadcast_message_id} moving from {broadcast_message.status} to {new_status}'
-    )
+    _update_broadcast_message(broadcast_message, new_status, updating_user)
     dao_update_broadcast_message(broadcast_message)
 
     if new_status == BroadcastStatusType.BROADCASTING:
