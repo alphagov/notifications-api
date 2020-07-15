@@ -66,6 +66,7 @@ from app.models import (
 
 
 def create_user(
+    *,
     mobile_number="+447700900986",
     email="notify@digital.cabinet-office.gov.uk",
     state='active',

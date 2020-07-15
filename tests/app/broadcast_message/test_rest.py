@@ -268,7 +268,7 @@ def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admi
 def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(admin_request, sample_service):
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
-    canceller = create_user('canceller@gov.uk')
+    canceller = create_user(email='canceller@gov.uk')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -290,7 +290,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
 ):
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
-    approver = create_user('approver@gov.uk')
+    approver = create_user(email='approver@gov.uk')
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
 
     response = admin_request.post(
@@ -305,3 +305,24 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
     mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+
+
+def test_update_broadcast_message_status_rejects_approval_from_creator(
+    admin_request,
+    sample_service,
+    mocker
+):
+    t = create_template(sample_service, BROADCAST_TYPE)
+    bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(t.created_by_id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=400
+    )
+
+    assert mock_task.called is False
+    assert f'cannot approve their own broadcast' in response['message']
