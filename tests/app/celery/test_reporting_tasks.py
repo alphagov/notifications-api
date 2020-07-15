@@ -243,6 +243,22 @@ def test_create_nightly_billing_for_day_different_letter_postage(
         billable_units=2,
         postage='second'
     )
+    create_notification(
+        created_at=yesterday,
+        template=sample_letter_template,
+        status='delivered',
+        sent_by='dvla',
+        billable_units=1,
+        postage='europe'
+    )
+    create_notification(
+        created_at=yesterday,
+        template=sample_letter_template,
+        status='delivered',
+        sent_by='dvla',
+        billable_units=3,
+        postage='rest-of-world'
+    )
 
     records = FactBilling.query.all()
     assert len(records) == 0
@@ -251,18 +267,31 @@ def test_create_nightly_billing_for_day_different_letter_postage(
     create_nightly_billing_for_day(yesterday_str)
 
     records = FactBilling.query.order_by('postage').all()
-    assert len(records) == 2
+    assert len(records) == 4
+
     assert records[0].notification_type == LETTER_TYPE
     assert records[0].bst_date == datetime.date(yesterday)
-    assert records[0].postage == 'first'
-    assert records[0].notifications_sent == 2
-    assert records[0].billable_units == 4
+    assert records[0].postage == 'europe'
+    assert records[0].notifications_sent == 1
+    assert records[0].billable_units == 1
 
     assert records[1].notification_type == LETTER_TYPE
     assert records[1].bst_date == datetime.date(yesterday)
-    assert records[1].postage == 'second'
-    assert records[1].notifications_sent == 1
-    assert records[1].billable_units == 2
+    assert records[1].postage == 'first'
+    assert records[1].notifications_sent == 2
+    assert records[1].billable_units == 4
+
+    assert records[2].notification_type == LETTER_TYPE
+    assert records[2].bst_date == datetime.date(yesterday)
+    assert records[2].postage == 'rest-of-world'
+    assert records[2].notifications_sent == 1
+    assert records[2].billable_units == 3
+
+    assert records[3].notification_type == LETTER_TYPE
+    assert records[3].bst_date == datetime.date(yesterday)
+    assert records[3].postage == 'second'
+    assert records[3].notifications_sent == 1
+    assert records[3].billable_units == 2
 
 
 def test_create_nightly_billing_for_day_letter(

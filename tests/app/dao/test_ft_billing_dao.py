@@ -326,10 +326,12 @@ def test_get_rates_for_billing(notify_db_session):
     create_rate(start_date=datetime.utcnow(), value=33, notification_type='email')
     create_letter_rate(start_date=datetime.utcnow(), rate=0.66, post_class='first')
     create_letter_rate(start_date=datetime.utcnow(), rate=0.33, post_class='second')
+    create_letter_rate(start_date=datetime.utcnow(), rate=0.84, post_class='europe')
+    create_letter_rate(start_date=datetime.utcnow(), rate=0.84, post_class='rest-of-world')
     non_letter_rates, letter_rates = get_rates_for_billing()
 
     assert len(non_letter_rates) == 3
-    assert len(letter_rates) == 2
+    assert len(letter_rates) == 4
 
 
 @freeze_time('2017-06-01 12:00')
@@ -353,10 +355,17 @@ def test_get_rate(notify_db_session):
     assert letter_rate == Decimal('0.3')
 
 
-@pytest.mark.parametrize("letter_post_class,expected_rate", [("first", "0.61"), ("second", "0.35")])
+@pytest.mark.parametrize("letter_post_class,expected_rate", [
+    ("first", "0.61"),
+    ("second", "0.35"),
+    ("europe", "0.92"),
+    ("rest-of-world", "1.05"),
+])
 def test_get_rate_filters_letters_by_post_class(notify_db_session, letter_post_class, expected_rate):
     create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=0.61, post_class='first')
     create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=0.35, post_class='second')
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=0.92, post_class='europe')
+    create_letter_rate(start_date=datetime(2017, 5, 30, 23, 0), sheet_count=2, rate=1.05, post_class='rest-of-world')
 
     non_letter_rates, letter_rates = get_rates_for_billing()
     rate = get_rate(non_letter_rates, letter_rates, "letter", datetime(2018, 10, 1), True, 2, letter_post_class)
@@ -614,7 +623,7 @@ def test_fetch_letter_costs_for_all_services(notify_db_session):
     assert len(results) == 3
     assert results[0] == (org.name, org.id, service.name, service.id, Decimal('3.40'))
     assert results[1] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal('14.00'))
-    assert results[2] == (None, None, service_3.name, service_3.id, Decimal('8.25'))
+    assert results[2] == (None, None, service_3.name, service_3.id, Decimal('24.45'))
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
@@ -623,12 +632,14 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
 
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
-    assert len(results) == 5
+    assert len(results) == 7
     assert results[0] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal('0.45'), 'second', 6)
     assert results[1] == (org_1.name, org_1.id, service_1.name, service_1.id, Decimal("0.35"), 'first', 2)
     assert results[2] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.65"), 'second', 20)
     assert results[3] == (org_2.name, org_2.id, service_2.name, service_2.id, Decimal("0.50"), 'first', 2)
-    assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.55"), 'second', 15)
+    assert results[4] == (None, None, service_3.name, service_3.id, Decimal("0.35"), 'second', 2)
+    assert results[5] == (None, None, service_3.name, service_3.id, Decimal("0.50"), 'first', 1)
+    assert results[6] == (None, None, service_3.name, service_3.id, Decimal("1.55"), 'international', 15)
 
 
 @freeze_time('2019-06-01 13:30')
