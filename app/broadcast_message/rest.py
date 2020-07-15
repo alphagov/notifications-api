@@ -41,8 +41,15 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
     # TODO: Restrict status transitions
     # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
     if new_status == BroadcastStatusType.BROADCASTING:
-        broadcast_message.approved_at = datetime.utcnow()
-        broadcast_message.approved_by = updating_user
+        # TODO: Remove this platform admin shortcut when the feature goes live
+        if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
+            abort(
+                400,
+                f'User {updating_user.id} cannot approve their own broadcast {broadcast_message.id}'
+            )
+        else:
+            broadcast_message.approved_at = datetime.utcnow()
+            broadcast_message.approved_by = updating_user
 
     if new_status == BroadcastStatusType.CANCELLED:
         broadcast_message.cancelled_at = datetime.utcnow()
