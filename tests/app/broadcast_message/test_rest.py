@@ -377,3 +377,35 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
 
     assert mock_task.called is False
     assert f'cannot approve broadcast' in response['message']
+
+
+@pytest.mark.parametrize('current_status, new_status', [
+    (BroadcastStatusType.DRAFT, BroadcastStatusType.DRAFT),
+    (BroadcastStatusType.DRAFT, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.BROADCASTING, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.COMPLETED, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.CANCELLED, BroadcastStatusType.DRAFT),
+])
+def test_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
+    admin_request,
+    sample_service,
+    mocker,
+    current_status,
+    new_status
+):
+    t = create_template(sample_service, BROADCAST_TYPE)
+    bm = create_broadcast_message(t, status=current_status)
+    approver = create_user(email='approver@gov.uk')
+    sample_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': new_status, 'created_by': str(approver.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=400
+    )
+
+    assert mock_task.called is False
+    assert f'from {current_status} to {new_status}' in response['message']

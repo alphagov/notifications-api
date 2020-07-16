@@ -2176,6 +2176,17 @@ class BroadcastStatusType(db.Model):
     PRE_BROADCAST_STATUSES = [DRAFT, PENDING_APPROVAL, REJECTED]
     LIVE_STATUSES = [BROADCASTING, COMPLETED, CANCELLED]
 
+    # these are only the transitions we expect to administer via the API code.
+    ALLOWED_STATUS_TRANSITIONS = {
+        DRAFT: {PENDING_APPROVAL},
+        PENDING_APPROVAL: {REJECTED, DRAFT, BROADCASTING},
+        REJECTED: {DRAFT, PENDING_APPROVAL},
+        BROADCASTING: {COMPLETED, CANCELLED},
+        COMPLETED: {},
+        CANCELLED: {},
+        TECHNICAL_FAILURE: {},
+    }
+
     name = db.Column(db.String, primary_key=True)
 
 

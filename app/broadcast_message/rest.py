@@ -41,16 +41,21 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
     if updating_user not in broadcast_message.service.users:
         abort(
             400,
-            f'User {updating_user.id} cannot approve broadcast {broadcast_message.id} from other service'
+            f'User {updating_user.id} cannot approve broadcast_message {broadcast_message.id} from other service'
         )
 
-    # TODO: Restrict status transitions
+    if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
+        abort(
+            400,
+            f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}'
+        )
+
     if new_status == BroadcastStatusType.BROADCASTING:
         # TODO: Remove this platform admin shortcut when the feature goes live
         if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
             abort(
                 400,
-                f'User {updating_user.id} cannot approve their own broadcast {broadcast_message.id}'
+                f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}'
             )
         else:
             broadcast_message.approved_at = datetime.utcnow()
