@@ -381,10 +381,10 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
 
 @pytest.mark.parametrize('current_status, new_status', [
     (BroadcastStatusType.DRAFT, BroadcastStatusType.DRAFT),
-    (BroadcastStatusType.DRAFT, BroadcastStatusType.BROADCASTING),
     (BroadcastStatusType.BROADCASTING, BroadcastStatusType.PENDING_APPROVAL),
     (BroadcastStatusType.COMPLETED, BroadcastStatusType.BROADCASTING),
     (BroadcastStatusType.CANCELLED, BroadcastStatusType.DRAFT),
+    pytest.param(BroadcastStatusType.DRAFT, BroadcastStatusType.BROADCASTING, marks=pytest.mark.xfail()),
 ])
 def test_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
     admin_request,
