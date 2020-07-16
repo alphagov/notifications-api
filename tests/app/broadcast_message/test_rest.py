@@ -269,6 +269,7 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
+    sample_service.users.append(canceller)
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -291,6 +292,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
+    sample_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
 
     response = admin_request.post(
@@ -353,3 +355,25 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     assert response['created_by_id'] == str(user.id)
     assert response['approved_by_id'] == str(user.id)
     mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+
+
+def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_service(
+    admin_request,
+    sample_service,
+    mocker
+):
+    t = create_template(sample_service, BROADCAST_TYPE)
+    bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    approver = create_user(email='approver@gov.uk')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=400
+    )
+
+    assert mock_task.called is False
+    assert f'cannot approve broadcast' in response['message']

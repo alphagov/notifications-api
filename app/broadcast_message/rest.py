@@ -38,8 +38,13 @@ def _parse_nullable_datetime(dt):
 
 
 def _update_broadcast_message(broadcast_message, new_status, updating_user):
+    if updating_user not in broadcast_message.service.users:
+        abort(
+            400,
+            f'User {updating_user.id} cannot approve broadcast {broadcast_message.id} from other service'
+        )
+
     # TODO: Restrict status transitions
-    # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
     if new_status == BroadcastStatusType.BROADCASTING:
         # TODO: Remove this platform admin shortcut when the feature goes live
         if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
