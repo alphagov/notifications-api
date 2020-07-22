@@ -12,10 +12,10 @@ from app import notify_celery, zendesk_client
 from app.celery.tasks import (
     process_job,
     get_recipient_csv_and_template_and_sender_id,
-    process_row
-)
+    process_row,
+    process_incomplete_jobs)
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
-from app.config import QueueNames, TaskNames
+from app.config import QueueNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
 from app.dao.jobs_dao import (
@@ -45,7 +45,6 @@ from app.models import (
     EMAIL_TYPE,
 )
 from app.notifications.process_notifications import send_notification_to_queue
-from app.v2.errors import JobIncompleteError
 
 
 @notify_celery.task(name="run-scheduled-jobs")
@@ -149,12 +148,11 @@ def check_job_status():
         job_ids.append(str(job.id))
 
     if job_ids:
-        notify_celery.send_task(
-            name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-            args=(job_ids,),
+        current_app.logger.info("Job(s) {} have not completed.".format(job_ids))
+        process_incomplete_jobs.apply_async(
+            [job_ids],
             queue=QueueNames.JOBS
         )
-        raise JobIncompleteError("Job(s) {} have not completed.".format(job_ids))
 
 
 @notify_celery.task(name='replay-created-notifications')

@@ -19,7 +19,7 @@ from app.celery.scheduled_tasks import (
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
 )
-from app.config import QueueNames, TaskNames, Config
+from app.config import QueueNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import (
@@ -29,7 +29,6 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
-from app.v2.errors import JobIncompleteError
 from tests.app import load_example_csv
 
 from tests.app.db import (
@@ -141,44 +140,40 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
     assert mock_reduce.called is False
 
 
-def test_check_job_status_task_raises_job_incomplete_error(mocker, sample_template):
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
                      job_status=JOB_STATUS_IN_PROGRESS)
     create_notification(template=sample_template, job=job)
-    with pytest.raises(expected_exception=JobIncompleteError) as e:
-        check_job_status()
-    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+    check_job_status()
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job.id)],),
+        [[str(job.id)]],
         queue=QueueNames.JOBS
     )
 
 
-def test_check_job_status_task_raises_job_incomplete_error_when_scheduled_job_is_not_complete(mocker, sample_template):
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_is_not_complete(
+    mocker, sample_template
+):
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                      processing_started=datetime.utcnow() - timedelta(minutes=31),
                      job_status=JOB_STATUS_IN_PROGRESS)
-    with pytest.raises(expected_exception=JobIncompleteError) as e:
-        check_job_status()
-    assert e.value.message == "Job(s) ['{}'] have not completed.".format(str(job.id))
+    check_job_status()
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job.id)],),
+        [[str(job.id)]],
         queue=QueueNames.JOBS
     )
 
 
-def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(mocker, sample_template):
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(mocker, sample_template):
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(template=sample_template, notification_count=3,
                      created_at=datetime.utcnow() - timedelta(hours=2),
                      scheduled_for=datetime.utcnow() - timedelta(minutes=31),
@@ -189,20 +184,16 @@ def test_check_job_status_task_raises_job_incomplete_error_for_multiple_jobs(moc
                        scheduled_for=datetime.utcnow() - timedelta(minutes=31),
                        processing_started=datetime.utcnow() - timedelta(minutes=31),
                        job_status=JOB_STATUS_IN_PROGRESS)
-    with pytest.raises(expected_exception=JobIncompleteError) as e:
-        check_job_status()
-    assert str(job.id) in e.value.message
-    assert str(job_2.id) in e.value.message
+    check_job_status()
 
     mock_celery.assert_called_once_with(
-        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job.id), str(job_2.id)],),
+        [[str(job.id), str(job_2.id)]],
         queue=QueueNames.JOBS
     )
 
 
 def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -211,28 +202,24 @@ def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
         processing_started=datetime.utcnow() - timedelta(minutes=31),
         job_status=JOB_STATUS_IN_PROGRESS
     )
-    job_2 = create_job(
+    create_job(
         template=sample_template,
         notification_count=3,
         created_at=datetime.utcnow() - timedelta(minutes=31),
         processing_started=datetime.utcnow() - timedelta(minutes=29),
         job_status=JOB_STATUS_IN_PROGRESS
     )
-    with pytest.raises(expected_exception=JobIncompleteError) as e:
-        check_job_status()
-    assert str(job.id) in e.value.message
-    assert str(job_2.id) not in e.value.message
+    check_job_status()
 
     # job 2 not in celery task
     mock_celery.assert_called_once_with(
-        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job.id)],),
+        [[str(job.id)]],
         queue=QueueNames.JOBS
     )
 
 
 def test_check_job_status_task_sets_jobs_to_error(mocker, sample_template):
-    mock_celery = mocker.patch('app.celery.tasks.notify_celery.send_task')
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(
         template=sample_template,
         notification_count=3,
@@ -248,15 +235,11 @@ def test_check_job_status_task_sets_jobs_to_error(mocker, sample_template):
         processing_started=datetime.utcnow() - timedelta(minutes=29),
         job_status=JOB_STATUS_IN_PROGRESS
     )
-    with pytest.raises(expected_exception=JobIncompleteError) as e:
-        check_job_status()
-    assert str(job.id) in e.value.message
-    assert str(job_2.id) not in e.value.message
+    check_job_status()
 
     # job 2 not in celery task
     mock_celery.assert_called_once_with(
-        name=TaskNames.PROCESS_INCOMPLETE_JOBS,
-        args=([str(job.id)],),
+        [[str(job.id)]],
         queue=QueueNames.JOBS
     )
     assert job.job_status == JOB_STATUS_ERROR
