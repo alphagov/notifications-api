@@ -184,6 +184,7 @@ def create_template(
         folder=None,
         postage=None,
         process_type='normal',
+        contact_block_id=None
 ):
     data = {
         'name': template_name or '{} Template Name'.format(template_type),
@@ -194,10 +195,12 @@ def create_template(
         'reply_to': reply_to,
         'hidden': hidden,
         'folder': folder,
-        'process_type': process_type
+        'process_type': process_type,
     }
     if template_type == LETTER_TYPE:
         data["postage"] = postage or "second"
+        if contact_block_id:
+            data['service_letter_contact_id'] = contact_block_id
     if template_type != SMS_TYPE:
         data['subject'] = subject
     template = Template(**data)
