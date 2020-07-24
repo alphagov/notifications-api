@@ -2278,3 +2278,81 @@ class BroadcastMessage(db.Model):
             'approved_by_id': str(self.approved_by_id),
             'cancelled_by_id': str(self.cancelled_by_id),
         }
+
+
+class BroadcastEventMessageType:
+    ALERT = 'alert'
+    UPDATE = 'update'
+    CANCEL = 'cancel'
+
+    MESSAGE_TYPES = [ALERT, UPDATE, CANCEL]
+
+
+class BroadcastEvent(db.Model):
+    """
+    This table represents a single CAP XML blob that we sent to the mobile network providers.
+
+    We should be able to create the complete CAP message without joining from this to any other tables, eg
+    template, service, or broadcast_message.
+
+    The only exception to this is that we will have to join to itself to find other broadcast_events with the
+    same broadcast_message_id when building up the `<references>` xml field for updating/cancelling an existing message.
+
+    As such, this shouldn't have foreign keys to things that can change or be deleted.
+    """
+    __tablename__ = 'broadcast_event'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # TODO: do we need this? or should we just join via broadcast_message.
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
+    service = db.relationship('Service')
+
+    broadcast_message_id = db.Column(UUID(as_uuid=True), db.ForeignKey('broadcast_message.id'), nullable=False)
+    broadcast_message = db.relationship('BroadcastMessage', backref='events')
+
+    # this is used for <sent> in the cap xml
+    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    # msgType. alert, cancel, or update. (other options in the spec are "ack" and "error")
+    message_type = db.Column(db.String, nullable=False)
+
+    # reckon: this will be json containing {'headline': '...', 'description': '...', 'title': '...'}. anything that isnt
+    # hardcoded in utils/cbc proxy
+    transmitted_content = db.Column(
+        JSONB(none_as_null=True),
+        nullable=True,
+        default=lambda: {'headline': '', 'description': '', 'title': ''}
+    )
+    # unsubstantiated reckon: even if we're sending a cancel, we'll still need to provide areas
+    transmitted_areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
+    transmitted_sender = db.Column(db.String(), nullable=False)
+
+    # TODO: do we need this?
+    transmitted_starts_at = db.Column(db.DateTime, nullable=True)
+    transmitted_finishes_at = db.Column(db.DateTime, nullable=True)
+
+    # @property
+    # def reference(self):
+    #     # TODO: write this `from_event` function
+    #     return BroadcastMessageTemplate.from_event(self.serialize()).reference
+
+    def serialize(self):
+        return {
+            'id': self.id,
+
+            'service_id': self.service_id,
+
+            # 'reference': self.reference,
+
+            'broadcast_message_id': self.broadcast_message_id,
+            'sent_at': self.sent_at,
+            'message_type': self.message_type,
+
+            'transmitted_content': self.transmitted_content,
+            'transmitted_areas': self.transmitted_areas,
+            'transmitted_sender': self.transmitted_sender,
+
+            'transmitted_starts_at': self.updated_at.strftime(DATETIME_FORMAT) if self.transmitted_starts_at else None,
+            'transmitted_finishes_at': self.updated_at.strftime(DATETIME_FORMAT) if self.transmitted_finishes_at else None,
+        }

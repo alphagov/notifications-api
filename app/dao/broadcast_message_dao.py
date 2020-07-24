@@ -1,5 +1,5 @@
 from app import db
-from app.models import BroadcastMessage
+from app.models import BroadcastMessage, BroadcastEvent
 from app.dao.dao_utils import transactional
 
 
@@ -28,3 +28,16 @@ def dao_get_broadcast_messages_for_service(service_id):
     return BroadcastMessage.query.filter(
         BroadcastMessage.service_id == service_id
     ).order_by(BroadcastMessage.created_at)
+
+
+def dao_get_earlier_events_for_broadcast_event(broadcast_event_id):
+    """
+    This is used to build up the references list.
+    """
+    this_event = BroadcastEvent.query.get(broadcast_event_id)
+    return BroadcastEvent.query.filter(
+        BroadcastEvent.broadcast_message_id == this_event.id,
+        BroadcastEvent.sent_at < this_event.sent_at
+    ).order_by(
+        BroadcastEvent.sent_at.asc()
+    )
