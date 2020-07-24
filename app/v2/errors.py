@@ -10,23 +10,6 @@ from app.authentication.auth import AuthError
 from app.errors import InvalidRequest
 
 
-class JobIncompleteError(Exception):
-    def __init__(self, message):
-        self.message = message
-        self.status_code = 500
-
-    def to_dict_v2(self):
-        return {
-            'status_code': self.status_code,
-            "errors": [
-                {
-                    "error": 'JobIncompleteError',
-                    "message": self.message
-                }
-            ]
-        }
-
-
 class TooManyRequestsError(InvalidRequest):
     status_code = 429
     message_template = 'Exceeded send limits ({}) for today'
@@ -90,10 +73,6 @@ def register_errors(blueprint):
     def validation_error(error):
         current_app.logger.info(error)
         return jsonify(json.loads(error.message)), 400
-
-    @blueprint.errorhandler(JobIncompleteError)
-    def job_incomplete_error(error):
-        return jsonify(error.to_dict_v2()), 500
 
     @blueprint.errorhandler(NoResultFound)
     @blueprint.errorhandler(DataError)
