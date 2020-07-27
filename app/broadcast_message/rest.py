@@ -1,8 +1,7 @@
 from datetime import datetime
 
 import iso8601
-from flask import Blueprint, jsonify, request, current_app, abort
-
+from flask import Blueprint, jsonify, request, current_app
 from app.config import QueueNames
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
@@ -13,7 +12,7 @@ from app.dao.broadcast_message_dao import (
     dao_update_broadcast_message,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.errors import register_errors
+from app.errors import register_errors, InvalidRequest
 from app.models import BroadcastMessage, BroadcastStatusType
 from app.celery.broadcast_message_tasks import send_broadcast_message
 from app.broadcast_message.broadcast_message_schema import (
@@ -39,23 +38,23 @@ def _parse_nullable_datetime(dt):
 
 def _update_broadcast_message(broadcast_message, new_status, updating_user):
     if updating_user not in broadcast_message.service.users:
-        abort(
-            400,
-            f'User {updating_user.id} cannot approve broadcast_message {broadcast_message.id} from other service'
+        raise InvalidRequest(
+            f'User {updating_user.id} cannot approve broadcast_message {broadcast_message.id} from other service',
+            status_code=400
         )
 
     if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
-        abort(
-            400,
-            f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}'
+        raise InvalidRequest(
+            f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}',
+            status_code=400
         )
 
     if new_status == BroadcastStatusType.BROADCASTING:
         # TODO: Remove this platform admin shortcut when the feature goes live
         if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
-            abort(
-                400,
-                f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}'
+            raise InvalidRequest(
+                f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
+                status_code=400
             )
         else:
             broadcast_message.approved_at = datetime.utcnow()
@@ -120,9 +119,9 @@ def update_broadcast_message(service_id, broadcast_message_id):
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
     if broadcast_message.status not in BroadcastStatusType.PRE_BROADCAST_STATUSES:
-        abort(
-            400,
-            f'Cannot update broadcast_message {broadcast_message.id} while it has status {broadcast_message.status}'
+        raise InvalidRequest(
+            f'Cannot update broadcast_message {broadcast_message.id} while it has status {broadcast_message.status}',
+            status_code=400
         )
 
     if 'personalisation' in data:
