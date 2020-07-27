@@ -2123,7 +2123,8 @@ class ServiceContactList(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
     archived = db.Column(db.Boolean, nullable=False, default=False)
 
-    def get_job_count(self):
+    @property
+    def job_count(self):
         today = datetime.datetime.utcnow().date()
         return Job.query.filter(
             Job.contact_list_id == self.id,
@@ -2137,13 +2138,20 @@ class ServiceContactList(db.Model):
             )
         ).count()
 
+    @property
+    def has_jobs(self):
+        return bool(Job.query.filter(
+            Job.contact_list_id == self.id,
+        ).first())
+
     def serialize(self):
         created_at_in_bst = convert_utc_to_bst(self.created_at)
         contact_list = {
             "id": str(self.id),
             "original_file_name": self.original_file_name,
             "row_count": self.row_count,
-            "job_count": self.get_job_count(),
+            "recent_job_count": self.job_count,
+            "has_jobs": self.has_jobs,
             "template_type": self.template_type,
             "service_id": str(self.service_id),
             "created_by": self.created_by.name,
