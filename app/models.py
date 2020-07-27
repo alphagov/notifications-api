@@ -2305,7 +2305,6 @@ class BroadcastEvent(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # TODO: do we need this? or should we just join via broadcast_message.
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
     service = db.relationship('Service')
 
@@ -2318,18 +2317,18 @@ class BroadcastEvent(db.Model):
     # msgType. alert, cancel, or update. (other options in the spec are "ack" and "error")
     message_type = db.Column(db.String, nullable=False)
 
-    # reckon: this will be json containing {'headline': '...', 'description': '...', 'title': '...'}. anything that isnt
-    # hardcoded in utils/cbc proxy
+    # this will be json containing anything that isnt hardcoded in utils/cbc proxy. for now just body but may grow to
+    # include, eg, title, headline, instructions.
     transmitted_content = db.Column(
         JSONB(none_as_null=True),
-        nullable=True,
-        default=lambda: {'headline': '', 'description': '', 'title': ''}
+        nullable=True
     )
     # unsubstantiated reckon: even if we're sending a cancel, we'll still need to provide areas
     transmitted_areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
     transmitted_sender = db.Column(db.String(), nullable=False)
 
-    # TODO: do we need this?
+    # we may only need this starts_at if this is scheduled for the future. Interested to see how this affects
+    # updates/cancels (ie: can you schedule an update for the future?)
     transmitted_starts_at = db.Column(db.DateTime, nullable=True)
     transmitted_finishes_at = db.Column(db.DateTime, nullable=True)
 
