@@ -11,6 +11,7 @@ from notifications_utils.template import (
     BroadcastMessageTemplate,
 )
 
+from app import DATETIME_FORMAT
 
 local_timezone = pytz.timezone("Europe/London")
 
@@ -141,3 +142,7 @@ def get_notification_table_to_use(service, notification_type, process_day, has_d
 def get_archived_db_column_value(column):
     date = datetime.utcnow().strftime("%Y-%m-%d")
     return f'_archived_{date}_{column}'
+
+
+def get_dt_string_or_none(val):
+    return val.strftime(DATETIME_FORMAT) if val else None
