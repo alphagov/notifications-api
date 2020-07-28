@@ -39,6 +39,7 @@ from app import (
     encryption,
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE)
+from app.utils import get_dt_string_or_none
 
 from app.history_meta import Versioned
 
@@ -169,7 +170,7 @@ class User(db.Model):
             'current_session_id': self.current_session_id,
             'failed_login_count': self.failed_login_count,
             'email_access_validated_at': self.email_access_validated_at.strftime(DATETIME_FORMAT),
-            'logged_in_at': self.logged_in_at.strftime(DATETIME_FORMAT) if self.logged_in_at else None,
+            'logged_in_at': get_dt_string_or_none(self.logged_in_at),
             'mobile_number': self.mobile_number,
             'organisations': [x.id for x in self.organisations if x.active],
             'password_changed_at': self.password_changed_at.strftime(DATETIME_FORMAT_NO_TIMEZONE),
@@ -569,7 +570,7 @@ class AnnualBilling(db.Model):
             'service_id': self.service_id,
             'financial_year_start': self.financial_year_start,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "updated_at": get_dt_string_or_none(self.updated_at),
             "service": serialize_service() if self.service else None,
         }
 
@@ -600,7 +601,7 @@ class InboundNumber(db.Model):
             "service": serialize_service() if self.service else None,
             "active": self.active,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "updated_at": get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -631,7 +632,7 @@ class ServiceSmsSender(db.Model):
             "archived": self.archived,
             "inbound_number_id": str(self.inbound_number_id) if self.inbound_number_id else None,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "updated_at": get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -723,7 +724,7 @@ class ServiceInboundApi(db.Model, Versioned):
             "url": self.url,
             "updated_by_id": str(self.updated_by_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+            "updated_at": get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -762,7 +763,7 @@ class ServiceCallbackApi(db.Model, Versioned):
             "url": self.url,
             "updated_by_id": str(self.updated_by_id),
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+            "updated_at": get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -996,7 +997,7 @@ class TemplateBase(db.Model):
             "id": str(self.id),
             "type": self.template_type,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "updated_at": get_dt_string_or_none(self.updated_at),
             "created_by": self.created_by.email_address,
             "version": self.version,
             "body": self.content,
@@ -1628,7 +1629,7 @@ class Notification(db.Model):
             "subject": self.subject,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
             "created_by_name": self.get_created_by_name(),
-            "sent_at": self.sent_at.strftime(DATETIME_FORMAT) if self.sent_at else None,
+            "sent_at": get_dt_string_or_none(self.sent_at),
             "completed_at": self.completed_at(),
             "scheduled_for": None,
             "postage": self.postage
@@ -1955,7 +1956,7 @@ class ServiceEmailReplyTo(db.Model):
             'is_default': self.is_default,
             'archived': self.archived,
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
-            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+            'updated_at': get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -1981,7 +1982,7 @@ class ServiceLetterContact(db.Model):
             'is_default': self.is_default,
             'archived': self.archived,
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
-            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None
+            'updated_at': get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -2058,7 +2059,7 @@ class Complaint(db.Model):
             'service_name': self.service.name,
             'ses_feedback_id': str(self.ses_feedback_id),
             'complaint_type': self.complaint_type,
-            'complaint_date': self.complaint_date.strftime(DATETIME_FORMAT) if self.complaint_date else None,
+            'complaint_date': get_dt_string_or_none(self.complaint_date),
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
         }
 
@@ -2092,7 +2093,7 @@ class ServiceDataRetention(db.Model):
             "notification_type": self.notification_type,
             "days_of_retention": self.days_of_retention,
             "created_at": self.created_at.strftime(DATETIME_FORMAT),
-            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            "updated_at": get_dt_string_or_none(self.updated_at),
         }
 
 
@@ -2266,15 +2267,92 @@ class BroadcastMessage(db.Model):
 
             'status': self.status,
 
-            'starts_at': self.starts_at.strftime(DATETIME_FORMAT) if self.starts_at else None,
-            'finishes_at': self.finishes_at.strftime(DATETIME_FORMAT) if self.finishes_at else None,
+            'starts_at': get_dt_string_or_none(self.starts_at),
+            'finishes_at': get_dt_string_or_none(self.finishes_at),
 
-            'created_at': self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
-            'approved_at': self.approved_at.strftime(DATETIME_FORMAT) if self.approved_at else None,
-            'cancelled_at': self.cancelled_at.strftime(DATETIME_FORMAT) if self.cancelled_at else None,
-            'updated_at': self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
+            'created_at': get_dt_string_or_none(self.created_at),
+            'approved_at': get_dt_string_or_none(self.approved_at),
+            'cancelled_at': get_dt_string_or_none(self.cancelled_at),
+            'updated_at': get_dt_string_or_none(self.updated_at),
 
             'created_by_id': str(self.created_by_id),
             'approved_by_id': str(self.approved_by_id),
             'cancelled_by_id': str(self.cancelled_by_id),
+        }
+
+
+class BroadcastEventMessageType:
+    ALERT = 'alert'
+    UPDATE = 'update'
+    CANCEL = 'cancel'
+
+    MESSAGE_TYPES = [ALERT, UPDATE, CANCEL]
+
+
+class BroadcastEvent(db.Model):
+    """
+    This table represents a single CAP XML blob that we sent to the mobile network providers.
+
+    We should be able to create the complete CAP message without joining from this to any other tables, eg
+    template, service, or broadcast_message.
+
+    The only exception to this is that we will have to join to itself to find other broadcast_events with the
+    same broadcast_message_id when building up the `<references>` xml field for updating/cancelling an existing message.
+
+    As such, this shouldn't have foreign keys to things that can change or be deleted.
+    """
+    __tablename__ = 'broadcast_event'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
+    service = db.relationship('Service')
+
+    broadcast_message_id = db.Column(UUID(as_uuid=True), db.ForeignKey('broadcast_message.id'), nullable=False)
+    broadcast_message = db.relationship('BroadcastMessage', backref='events')
+
+    # this is used for <sent> in the cap xml
+    sent_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+    # msgType. alert, cancel, or update. (other options in the spec are "ack" and "error")
+    message_type = db.Column(db.String, nullable=False)
+
+    # this will be json containing anything that isnt hardcoded in utils/cbc proxy. for now just body but may grow to
+    # include, eg, title, headline, instructions.
+    transmitted_content = db.Column(
+        JSONB(none_as_null=True),
+        nullable=True
+    )
+    # unsubstantiated reckon: even if we're sending a cancel, we'll still need to provide areas
+    transmitted_areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
+    transmitted_sender = db.Column(db.String(), nullable=False)
+
+    # we may only need this starts_at if this is scheduled for the future. Interested to see how this affects
+    # updates/cancels (ie: can you schedule an update for the future?)
+    transmitted_starts_at = db.Column(db.DateTime, nullable=True)
+    transmitted_finishes_at = db.Column(db.DateTime, nullable=True)
+
+    # @property
+    # def reference(self):
+    #     # TODO: write this `from_event` function
+    #     return BroadcastMessageTemplate.from_event(self.serialize()).reference
+
+    def serialize(self):
+        return {
+            'id': self.id,
+
+            'service_id': self.service_id,
+
+            # 'reference': self.reference,
+
+            'broadcast_message_id': self.broadcast_message_id,
+            'sent_at': self.sent_at,
+            'message_type': self.message_type,
+
+            'transmitted_content': self.transmitted_content,
+            'transmitted_areas': self.transmitted_areas,
+            'transmitted_sender': self.transmitted_sender,
+
+            'transmitted_starts_at': get_dt_string_or_none(self.transmitted_starts_at),
+            'transmitted_finishes_at': get_dt_string_or_none(self.transmitted_finishes_at),
         }

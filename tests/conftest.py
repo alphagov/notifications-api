@@ -117,6 +117,7 @@ def notify_db_session(notify_db, sms_providers):
                             "organisation_types",
                             "service_permission_types",
                             "auth_type",
+                            "broadcast_status_type",
                             "invite_status_type",
                             "service_callback_type"]:
             notify_db.engine.execute(tbl.delete())

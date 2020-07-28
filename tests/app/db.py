@@ -62,6 +62,7 @@ from app.models import (
     ServiceContactList,
     BroadcastMessage,
     BroadcastStatusType,
+    BroadcastEvent
 )
 
 
@@ -1021,3 +1022,29 @@ def create_broadcast_message(
     db.session.add(broadcast_message)
     db.session.commit()
     return broadcast_message
+
+
+def create_broadcast_event(
+    broadcast_message,
+    sent_at=None,
+    message_type='alert',
+    transmitted_content=None,
+    transmitted_areas=None,
+    transmitted_sender=None,
+    transmitted_starts_at=None,
+    transmitted_finishes_at=None,
+):
+    b_e = BroadcastEvent(
+        service=broadcast_message.service,
+        broadcast_message=broadcast_message,
+        sent_at=sent_at or datetime.utcnow(),
+        message_type=message_type,
+        transmitted_content=transmitted_content or {'body': 'this is an emergency broadcast message'},
+        transmitted_areas=transmitted_areas or ['london'],
+        transmitted_sender=transmitted_sender or 'www.notifications.service.gov.uk',
+        transmitted_starts_at=transmitted_starts_at,
+        transmitted_finishes_at=transmitted_finishes_at,
+    )
+    db.session.add(b_e)
+    db.session.commit()
+    return b_e
