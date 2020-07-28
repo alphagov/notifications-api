@@ -259,9 +259,9 @@ def test_send_one_off_notification_raises_if_invalid_recipient(notify_db_session
 
 
 @pytest.mark.parametrize('recipient', [
-    '07700 900 001',  # not in team or whitelist
-    '07700900123',  # in whitelist
-    '+447700-900-123',  # in whitelist in different format
+    '07700 900 001',  # not in team or guest_list
+    '07700900123',  # in guest_list
+    '+447700-900-123',  # in guest_list in different format
 ])
 def test_send_one_off_notification_raises_if_cant_send_to_recipient(
     notify_db_session,

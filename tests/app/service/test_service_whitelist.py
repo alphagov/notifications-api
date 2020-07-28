@@ -15,18 +15,18 @@ from app.dao.service_whitelist_dao import dao_add_and_commit_guest_list_contacts
     'service/{}/whitelist',
     'service/{}/guest-list',
 ))
-def test_get_whitelist_returns_data(client, sample_service_whitelist, url_path):
-    service_id = sample_service_whitelist.service_id
+def test_get_guest_list_returns_data(client, sample_service_guest_list, url_path):
+    service_id = sample_service_guest_list.service_id
 
     response = client.get(url_path.format(service_id), headers=[create_authorization_header()])
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
-        'email_addresses': [sample_service_whitelist.recipient],
+        'email_addresses': [sample_service_guest_list.recipient],
         'phone_numbers': []
     }
 
 
-def test_get_whitelist_separates_emails_and_phones(client, sample_service):
+def test_get_guest_list_separates_emails_and_phones(client, sample_service):
     dao_add_and_commit_guest_list_contacts([
         ServiceGuestList.from_string(sample_service.id, EMAIL_TYPE, 'service@example.com'),
         ServiceGuestList.from_string(sample_service.id, MOBILE_TYPE, '07123456789'),
@@ -40,7 +40,7 @@ def test_get_whitelist_separates_emails_and_phones(client, sample_service):
     assert sorted(json_resp['phone_numbers']) == sorted(['+1800-555-555', '07123456789'])
 
 
-def test_get_whitelist_404s_with_unknown_service_id(client):
+def test_get_guest_list_404s_with_unknown_service_id(client):
     path = 'service/{}/guest-list'.format(uuid.uuid4())
 
     response = client.get(path, headers=[create_authorization_header()])
@@ -50,7 +50,7 @@ def test_get_whitelist_404s_with_unknown_service_id(client):
     assert json_resp['message'] == 'No result found'
 
 
-def test_get_whitelist_returns_no_data(client, sample_service):
+def test_get_guest_list_returns_no_data(client, sample_service):
     path = 'service/{}/guest-list'.format(sample_service.id)
 
     response = client.get(path, headers=[create_authorization_header()])
@@ -63,26 +63,26 @@ def test_get_whitelist_returns_no_data(client, sample_service):
     'service/{}/whitelist',
     'service/{}/guest-list',
 ))
-def test_update_whitelist_replaces_old_whitelist(client, sample_service_whitelist, url_path):
+def test_update_guest_list_replaces_old_guest_list(client, sample_service_guest_list, url_path):
     data = {
         'email_addresses': ['foo@bar.com'],
         'phone_numbers': ['07123456789']
     }
 
     response = client.put(
-        url_path.format(sample_service_whitelist.service_id),
+        url_path.format(sample_service_guest_list.service_id),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
 
     assert response.status_code == 204
-    whitelist = ServiceGuestList.query.order_by(ServiceGuestList.recipient).all()
-    assert len(whitelist) == 2
-    assert whitelist[0].recipient == '07123456789'
-    assert whitelist[1].recipient == 'foo@bar.com'
+    guest_list = ServiceGuestList.query.order_by(ServiceGuestList.recipient).all()
+    assert len(guest_list) == 2
+    assert guest_list[0].recipient == '07123456789'
+    assert guest_list[1].recipient == 'foo@bar.com'
 
 
-def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_service_whitelist):
+def test_update_guest_list_doesnt_remove_old_guest_list_if_error(client, sample_service_guest_list):
 
     data = {
         'email_addresses': [''],
@@ -90,7 +90,7 @@ def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_se
     }
 
     response = client.put(
-        'service/{}/guest-list'.format(sample_service_whitelist.service_id),
+        'service/{}/guest-list'.format(sample_service_guest_list.service_id),
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -100,5 +100,5 @@ def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_se
         'result': 'error',
         'message': 'Invalid guest list: "" is not a valid email address or phone number'
     }
-    whitelist = ServiceGuestList.query.one()
-    assert whitelist.id == sample_service_whitelist.id
+    guest_list = ServiceGuestList.query.one()
+    assert guest_list.id == sample_service_guest_list.id

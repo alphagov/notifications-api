@@ -652,7 +652,7 @@ def test_post_sms_notification_returns_400_if_not_allowed_to_send_notification(
 
 
 @pytest.mark.parametrize('restricted', [True, False])
-def test_post_sms_notification_returns_400_if_number_not_whitelisted(
+def test_post_sms_notification_returns_400_if_number_not_in_guest_list(
         notify_db_session, client, restricted
 ):
     service = create_service(restricted=restricted, service_permissions=[SMS_TYPE, INTERNATIONAL_SMS_TYPE])

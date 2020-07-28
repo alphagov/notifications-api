@@ -39,7 +39,7 @@ from tests.app.db import (
     create_reply_to_email,
     create_service,
     create_service_sms_sender,
-    create_service_whitelist,
+    create_service_guest_list,
     create_template,
 )
 from unittest.mock import ANY
@@ -245,12 +245,12 @@ def test_service_can_send_to_recipient_passes_for_live_service_non_team_member(k
                                          serialised_service) is None
 
 
-def test_service_can_send_to_recipient_passes_for_whitelisted_recipient_passes(sample_service):
-    create_service_whitelist(sample_service, email_address="some_other_email@test.com")
+def test_service_can_send_to_recipient_passes_for_guest_list_recipient_passes(sample_service):
+    create_service_guest_list(sample_service, email_address="some_other_email@test.com")
     assert service_can_send_to_recipient("some_other_email@test.com",
                                          'team',
                                          sample_service) is None
-    create_service_whitelist(sample_service, mobile_number='07513332413')
+    create_service_guest_list(sample_service, mobile_number='07513332413')
     assert service_can_send_to_recipient('07513332413',
                                          'team',
                                          sample_service) is None
@@ -260,13 +260,13 @@ def test_service_can_send_to_recipient_passes_for_whitelisted_recipient_passes(s
     {"email_address": "some_other_email@test.com"},
     {"mobile_number": "07513332413"},
 ])
-def test_service_can_send_to_recipient_fails_when_ignoring_whitelist(
+def test_service_can_send_to_recipient_fails_when_ignoring_guest_list(
     notify_db,
     notify_db_session,
     sample_service,
     recipient,
 ):
-    create_service_whitelist(sample_service, **recipient)
+    create_service_guest_list(sample_service, **recipient)
     with pytest.raises(BadRequestError) as exec_info:
         service_can_send_to_recipient(
             next(iter(recipient.values())),

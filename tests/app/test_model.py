@@ -37,19 +37,19 @@ from tests.app.db import (
     '07700 900678',
     '+44 7700 900678'
 ])
-def test_should_build_service_whitelist_from_mobile_number(mobile_number):
-    service_whitelist = ServiceGuestList.from_string('service_id', MOBILE_TYPE, mobile_number)
+def test_should_build_service_guest_list_from_mobile_number(mobile_number):
+    service_guest_list = ServiceGuestList.from_string('service_id', MOBILE_TYPE, mobile_number)
 
-    assert service_whitelist.recipient == mobile_number
+    assert service_guest_list.recipient == mobile_number
 
 
 @pytest.mark.parametrize('email_address', [
     'test@example.com'
 ])
-def test_should_build_service_whitelist_from_email_address(email_address):
-    service_whitelist = ServiceGuestList.from_string('service_id', EMAIL_TYPE, email_address)
+def test_should_build_service_guest_list_from_email_address(email_address):
+    service_guest_list = ServiceGuestList.from_string('service_id', EMAIL_TYPE, email_address)
 
-    assert service_whitelist.recipient == email_address
+    assert service_guest_list.recipient == email_address
 
 
 @pytest.mark.parametrize('contact, recipient_type', [
@@ -57,7 +57,7 @@ def test_should_build_service_whitelist_from_email_address(email_address):
     ('07700dsadsad', MOBILE_TYPE),
     ('gmail.com', EMAIL_TYPE)
 ])
-def test_should_not_build_service_whitelist_from_invalid_contact(recipient_type, contact):
+def test_should_not_build_service_guest_list_from_invalid_contact(recipient_type, contact):
     with pytest.raises(ValueError):
         ServiceGuestList.from_string('service_id', recipient_type, contact)
 

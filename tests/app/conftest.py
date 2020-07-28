@@ -809,13 +809,13 @@ def notify_service(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_service_whitelist(notify_db, notify_db_session):
+def sample_service_guest_list(notify_db, notify_db_session):
     service = create_service(check_if_service_exists=True)
-    whitelisted_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
+    guest_list_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, 'guest_list_user@digital.gov.uk')
 
-    notify_db.session.add(whitelisted_user)
+    notify_db.session.add(guest_list_user)
     notify_db.session.commit()
-    return whitelisted_user
+    return guest_list_user
 
 
 @pytest.fixture
