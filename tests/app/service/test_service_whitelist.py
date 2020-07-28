@@ -8,7 +8,7 @@ from app.models import (
     ServiceGuestList,
     MOBILE_TYPE, EMAIL_TYPE)
 
-from app.dao.service_whitelist_dao import dao_add_and_commit_guest_list_contacts
+from app.dao.service_guest_list_dao import dao_add_and_commit_guest_list_contacts
 
 
 @pytest.mark.parametrize('url_path', (

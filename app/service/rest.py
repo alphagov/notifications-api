@@ -74,7 +74,7 @@ from app.dao.services_dao import (
     dao_update_service,
     get_services_by_partial_name,
 )
-from app.dao.service_whitelist_dao import (
+from app.dao.service_guest_list_dao import (
     dao_fetch_service_guest_list,
     dao_add_and_commit_guest_list_contacts,
     dao_remove_service_guest_list

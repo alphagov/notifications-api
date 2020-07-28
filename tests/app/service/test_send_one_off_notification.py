@@ -7,7 +7,7 @@ from notifications_utils.recipients import InvalidPhoneError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
-from app.dao.service_whitelist_dao import dao_add_and_commit_guest_list_contacts
+from app.dao.service_guest_list_dao import dao_add_and_commit_guest_list_contacts
 from app.service.send_notification import send_one_off_notification
 from app.models import (
     EMAIL_TYPE,
