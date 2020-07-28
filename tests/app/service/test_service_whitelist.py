@@ -8,7 +8,7 @@ from app.models import (
     ServiceWhitelist,
     MOBILE_TYPE, EMAIL_TYPE)
 
-from app.dao.service_whitelist_dao import dao_add_and_commit_whitelisted_contacts
+from app.dao.service_whitelist_dao import dao_add_and_commit_guest_list_contacts
 
 
 @pytest.mark.parametrize('url_path', (
@@ -27,7 +27,7 @@ def test_get_whitelist_returns_data(client, sample_service_whitelist, url_path):
 
 
 def test_get_whitelist_separates_emails_and_phones(client, sample_service):
-    dao_add_and_commit_whitelisted_contacts([
+    dao_add_and_commit_guest_list_contacts([
         ServiceWhitelist.from_string(sample_service.id, EMAIL_TYPE, 'service@example.com'),
         ServiceWhitelist.from_string(sample_service.id, MOBILE_TYPE, '07123456789'),
         ServiceWhitelist.from_string(sample_service.id, MOBILE_TYPE, '+1800-555-555'),
