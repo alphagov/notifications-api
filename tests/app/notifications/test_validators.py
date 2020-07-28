@@ -272,7 +272,7 @@ def test_service_can_send_to_recipient_fails_when_ignoring_whitelist(
             next(iter(recipient.values())),
             'team',
             sample_service,
-            allow_whitelisted_recipients=False,
+            allow_guest_list_recipients=False,
         )
     assert exec_info.value.status_code == 400
     assert exec_info.value.message == 'Can’t send to this recipient using a team-only API key'

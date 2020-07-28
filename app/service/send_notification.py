@@ -73,7 +73,7 @@ def send_one_off_notification(service_id, post_data):
         key_type=KEY_TYPE_NORMAL,
         service=service,
         notification_type=template.template_type,
-        allow_whitelisted_recipients=False,
+        allow_guest_list_recipients=False,
     )
 
     validate_created_by(service, post_data['created_by'])
@@ -147,7 +147,7 @@ def send_pdf_letter_notification(service_id, post_data):
         key_type=KEY_TYPE_NORMAL,
         service=service,
         notification_type=LETTER_TYPE,
-        allow_whitelisted_recipients=False,
+        allow_guest_list_recipients=False,
     )
 
     template = get_precompiled_letter_template(service.id)

@@ -119,7 +119,7 @@ from app.service.service_senders_schema import (
     add_service_letter_contact_block_request,
     add_service_sms_sender_request
 )
-from app.service.utils import get_whitelist_objects
+from app.service.utils import get_guest_list_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
 from app.schemas import (
@@ -584,7 +584,7 @@ def update_guest_list(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db
     dao_remove_service_guest_list(service_id)
     try:
-        guest_list_objects = get_whitelist_objects(service_id, request.get_json())
+        guest_list_objects = get_guest_list_objects(service_id, request.get_json())
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()

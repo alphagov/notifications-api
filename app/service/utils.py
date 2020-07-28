@@ -14,7 +14,7 @@ def get_recipients_from_request(request_json, key, type):
     return [(type, recipient) for recipient in request_json.get(key)]
 
 
-def get_whitelist_objects(service_id, request_json):
+def get_guest_list_objects(service_id, request_json):
     return [
         ServiceWhitelist.from_string(service_id, type, recipient)
         for type, recipient in (
@@ -28,7 +28,7 @@ def get_whitelist_objects(service_id, request_json):
     ]
 
 
-def service_allowed_to_send_to(recipient, service, key_type, allow_whitelisted_recipients=True):
+def service_allowed_to_send_to(recipient, service, key_type, allow_guest_list_recipients=True):
     if key_type == KEY_TYPE_TEST:
         return True
 
@@ -42,9 +42,9 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_whitelisted_r
     team_members = itertools.chain.from_iterable(
         [user.mobile_number, user.email_address] for user in service.users
     )
-    whitelist_members = [
+    guest_list_members = [
         member.recipient for member in service.whitelist
-        if allow_whitelisted_recipients
+        if allow_guest_list_recipients
     ]
 
     if (
@@ -55,6 +55,6 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_whitelisted_r
             recipient,
             itertools.chain(
                 team_members,
-                whitelist_members
+                guest_list_members
             )
         )
