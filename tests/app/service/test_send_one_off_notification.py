@@ -17,7 +17,7 @@ from app.models import (
     PRIORITY,
     SMS_TYPE,
     Notification,
-    ServiceWhitelist,
+    ServiceGuestList,
 )
 
 from tests.app.db import (
@@ -270,7 +270,7 @@ def test_send_one_off_notification_raises_if_cant_send_to_recipient(
     service = create_service(restricted=True)
     template = create_template(service=service)
     dao_add_and_commit_guest_list_contacts([
-        ServiceWhitelist.from_string(service.id, MOBILE_TYPE, '07700900123'),
+        ServiceGuestList.from_string(service.id, MOBILE_TYPE, '07700900123'),
     ])
 
     post_data = {

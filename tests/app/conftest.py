@@ -33,7 +33,7 @@ from app.models import (
     ProviderDetails,
     ProviderDetailsHistory,
     ProviderRates,
-    ServiceWhitelist,
+    ServiceGuestList,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
@@ -811,7 +811,7 @@ def notify_service(notify_db, notify_db_session):
 @pytest.fixture(scope='function')
 def sample_service_whitelist(notify_db, notify_db_session):
     service = create_service(check_if_service_exists=True)
-    whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
+    whitelisted_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
 
     notify_db.session.add(whitelisted_user)
     notify_db.session.commit()

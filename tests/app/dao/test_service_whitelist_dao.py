@@ -1,7 +1,7 @@
 import uuid
 
 from app.models import (
-    ServiceWhitelist,
+    ServiceGuestList,
     EMAIL_TYPE,
 )
 
@@ -24,11 +24,11 @@ def test_fetch_service_whitelist_ignores_other_service(sample_service_whitelist)
 
 
 def test_add_and_commit_whitelisted_contacts_saves_data(sample_service):
-    whitelist = ServiceWhitelist.from_string(sample_service.id, EMAIL_TYPE, 'foo@example.com')
+    whitelist = ServiceGuestList.from_string(sample_service.id, EMAIL_TYPE, 'foo@example.com')
 
     dao_add_and_commit_guest_list_contacts([whitelist])
 
-    db_contents = ServiceWhitelist.query.all()
+    db_contents = ServiceGuestList.query.all()
     assert len(db_contents) == 1
     assert db_contents[0].id == whitelist.id
 
@@ -37,8 +37,8 @@ def test_remove_service_whitelist_only_removes_for_my_service(notify_db, notify_
     service_1 = create_service(service_name="service 1")
     service_2 = create_service(service_name="service 2")
     dao_add_and_commit_guest_list_contacts([
-        ServiceWhitelist.from_string(service_1.id, EMAIL_TYPE, 'service1@example.com'),
-        ServiceWhitelist.from_string(service_2.id, EMAIL_TYPE, 'service2@example.com')
+        ServiceGuestList.from_string(service_1.id, EMAIL_TYPE, 'service1@example.com'),
+        ServiceGuestList.from_string(service_2.id, EMAIL_TYPE, 'service2@example.com')
     ])
 
     dao_remove_service_guest_list(service_1.id)
@@ -53,4 +53,4 @@ def test_remove_service_whitelist_does_not_commit(notify_db, sample_service_whit
     # since dao_remove_service_guest_list doesn't commit, we can still rollback its changes
     notify_db.session.rollback()
 
-    assert ServiceWhitelist.query.count() == 1
+    assert ServiceGuestList.query.count() == 1

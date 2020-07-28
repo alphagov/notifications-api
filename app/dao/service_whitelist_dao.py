@@ -1,10 +1,10 @@
 from app import db
-from app.models import ServiceWhitelist
+from app.models import ServiceGuestList
 
 
 def dao_fetch_service_guest_list(service_id):
-    return ServiceWhitelist.query.filter(
-        ServiceWhitelist.service_id == service_id).all()
+    return ServiceGuestList.query.filter(
+        ServiceGuestList.service_id == service_id).all()
 
 
 def dao_add_and_commit_guest_list_contacts(objs):
@@ -13,5 +13,5 @@ def dao_add_and_commit_guest_list_contacts(objs):
 
 
 def dao_remove_service_guest_list(service_id):
-    return ServiceWhitelist.query.filter(
-        ServiceWhitelist.service_id == service_id).delete()
+    return ServiceGuestList.query.filter(
+        ServiceGuestList.service_id == service_id).delete()

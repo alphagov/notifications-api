@@ -40,7 +40,7 @@ from app.models import (
     ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
-    ServiceWhitelist,
+    ServiceGuestList,
     Template,
     User,
     EMAIL_TYPE,
@@ -740,11 +740,11 @@ def create_ft_notification_status(
 
 def create_service_whitelist(service, email_address=None, mobile_number=None):
     if email_address:
-        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, email_address)
+        whitelisted_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, email_address)
     elif mobile_number:
-        whitelisted_user = ServiceWhitelist.from_string(service.id, MOBILE_TYPE, mobile_number)
+        whitelisted_user = ServiceGuestList.from_string(service.id, MOBILE_TYPE, mobile_number)
     else:
-        whitelisted_user = ServiceWhitelist.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
+        whitelisted_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, 'whitelisted_user@digital.gov.uk')
 
     db.session.add(whitelisted_user)
     db.session.commit()
