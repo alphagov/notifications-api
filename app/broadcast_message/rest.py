@@ -2,7 +2,6 @@ from datetime import datetime
 
 import iso8601
 from flask import Blueprint, jsonify, request, current_app
-
 from app.config import QueueNames
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
@@ -13,7 +12,7 @@ from app.dao.broadcast_message_dao import (
     dao_update_broadcast_message,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.errors import register_errors
+from app.errors import register_errors, InvalidRequest
 from app.models import BroadcastMessage, BroadcastStatusType
 from app.celery.broadcast_message_tasks import send_broadcast_message
 from app.broadcast_message.broadcast_message_schema import (
@@ -35,6 +34,40 @@ def _parse_nullable_datetime(dt):
     if dt:
         return iso8601.parse_date(dt).replace(tzinfo=None)
     return dt
+
+
+def _update_broadcast_message(broadcast_message, new_status, updating_user):
+    if updating_user not in broadcast_message.service.users:
+        raise InvalidRequest(
+            f'User {updating_user.id} cannot approve broadcast_message {broadcast_message.id} from other service',
+            status_code=400
+        )
+
+    if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
+        raise InvalidRequest(
+            f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}',
+            status_code=400
+        )
+
+    if new_status == BroadcastStatusType.BROADCASTING:
+        # TODO: Remove this platform admin shortcut when the feature goes live
+        if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
+            raise InvalidRequest(
+                f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
+                status_code=400
+            )
+        else:
+            broadcast_message.approved_at = datetime.utcnow()
+            broadcast_message.approved_by = updating_user
+
+    if new_status == BroadcastStatusType.CANCELLED:
+        broadcast_message.cancelled_at = datetime.utcnow()
+        broadcast_message.cancelled_by = updating_user
+
+    current_app.logger.info(
+        f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
+    )
+    broadcast_message.status = new_status
 
 
 @broadcast_message_blueprint.route('', methods=['GET'])
@@ -85,6 +118,12 @@ def update_broadcast_message(service_id, broadcast_message_id):
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
+    if broadcast_message.status not in BroadcastStatusType.PRE_BROADCAST_STATUSES:
+        raise InvalidRequest(
+            f'Cannot update broadcast_message {broadcast_message.id} while it has status {broadcast_message.status}',
+            status_code=400
+        )
+
     if 'personalisation' in data:
         broadcast_message.personalisation = data['personalisation']
     if 'starts_at' in data:
@@ -107,21 +146,9 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
     new_status = data['status']
+    updating_user = get_user_by_id(data['created_by'])
 
-    # TODO: Restrict status transitions
-    # TODO: validate that the user belongs to the same service, isn't the creator, has permissions, etc
-    if new_status == BroadcastStatusType.BROADCASTING:
-        broadcast_message.approved_at = datetime.utcnow()
-        broadcast_message.approved_by = get_user_by_id(data['created_by'])
-    if new_status == BroadcastStatusType.CANCELLED:
-        broadcast_message.cancelled_at = datetime.utcnow()
-        broadcast_message.cancelled_by = get_user_by_id(data['created_by'])
-
-    broadcast_message.status = new_status
-
-    current_app.logger.info(
-        f'broadcast_message {broadcast_message_id} moving from {broadcast_message.status} to {new_status}'
-    )
+    _update_broadcast_message(broadcast_message, new_status, updating_user)
     dao_update_broadcast_message(broadcast_message)
 
     if new_status == BroadcastStatusType.BROADCASTING:
