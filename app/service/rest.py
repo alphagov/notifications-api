@@ -562,36 +562,36 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
 @service_blueprint.route('/<uuid:service_id>/guest-list', methods=['GET'])
-def get_whitelist(service_id):
+def get_guest_list(service_id):
     from app.models import (EMAIL_TYPE, MOBILE_TYPE)
     service = dao_fetch_service_by_id(service_id)
 
     if not service:
         raise InvalidRequest("Service does not exist", status_code=404)
 
-    whitelist = dao_fetch_service_whitelist(service.id)
+    guest_list = dao_fetch_service_whitelist(service.id)
     return jsonify(
-        email_addresses=[item.recipient for item in whitelist
+        email_addresses=[item.recipient for item in guest_list
                          if item.recipient_type == EMAIL_TYPE],
-        phone_numbers=[item.recipient for item in whitelist
+        phone_numbers=[item.recipient for item in guest_list
                        if item.recipient_type == MOBILE_TYPE]
     )
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
 @service_blueprint.route('/<uuid:service_id>/guest-list', methods=['PUT'])
-def update_whitelist(service_id):
+def update_guest_list(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db
     dao_remove_service_whitelist(service_id)
     try:
-        whitelist_objs = get_whitelist_objects(service_id, request.get_json())
+        guest_list_objects = get_whitelist_objects(service_id, request.get_json())
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()
         msg = '{} is not a valid email address or phone number'.format(str(e))
         raise InvalidRequest(msg, 400)
     else:
-        dao_add_and_commit_whitelisted_contacts(whitelist_objs)
+        dao_add_and_commit_whitelisted_contacts(guest_list_objects)
         return '', 204
 
 
