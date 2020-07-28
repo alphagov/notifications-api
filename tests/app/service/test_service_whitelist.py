@@ -98,7 +98,7 @@ def test_update_whitelist_doesnt_remove_old_whitelist_if_error(client, sample_se
     assert response.status_code == 400
     assert json.loads(response.get_data(as_text=True)) == {
         'result': 'error',
-        'message': 'Invalid whitelist: "" is not a valid email address or phone number'
+        'message': 'Invalid guest list: "" is not a valid email address or phone number'
     }
     whitelist = ServiceGuestList.query.one()
     assert whitelist.id == sample_service_whitelist.id

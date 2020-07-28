@@ -683,9 +683,9 @@ class ServiceGuestList(db.Model):
             else:
                 raise ValueError('Invalid recipient type')
         except InvalidPhoneError:
-            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+            raise ValueError('Invalid guest list: "{}"'.format(recipient))
         except InvalidEmailError:
-            raise ValueError('Invalid whitelist: "{}"'.format(recipient))
+            raise ValueError('Invalid guest list: "{}"'.format(recipient))
         else:
             return instance
 
