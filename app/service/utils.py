@@ -43,7 +43,7 @@ def service_allowed_to_send_to(recipient, service, key_type, allow_guest_list_re
         [user.mobile_number, user.email_address] for user in service.users
     )
     guest_list_members = [
-        member.recipient for member in service.whitelist
+        member.recipient for member in service.guest_list
         if allow_guest_list_recipients
     ]
 

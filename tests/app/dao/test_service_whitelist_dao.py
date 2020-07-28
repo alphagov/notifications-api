@@ -43,8 +43,8 @@ def test_remove_service_whitelist_only_removes_for_my_service(notify_db, notify_
 
     dao_remove_service_guest_list(service_1.id)
 
-    assert service_1.whitelist == []
-    assert len(service_2.whitelist) == 1
+    assert service_1.guest_list == []
+    assert len(service_2.guest_list) == 1
 
 
 def test_remove_service_whitelist_does_not_commit(notify_db, sample_service_whitelist):
