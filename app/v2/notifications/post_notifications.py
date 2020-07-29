@@ -339,7 +339,7 @@ def process_letter_notification(
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    validate_address(service, letter_data)
+    postage = validate_address(service, letter_data)
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 
@@ -362,7 +362,8 @@ def process_letter_notification(
                                               api_key=api_key,
                                               status=status,
                                               reply_to_text=reply_to_text,
-                                              updated_at=updated_at
+                                              updated_at=updated_at,
+                                              postage=postage
                                               )
 
     get_pdf_for_templated_letter.apply_async(
@@ -413,6 +414,10 @@ def validate_address(service, letter_data):
         raise ValidationError(
             message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
         )
+    if address.postage == 'united-kingdom':
+        return None  # use postage from template
+    else:
+        return address.postage
 
 
 def process_precompiled_letter_notifications(*, letter_data, api_key, service, template, reply_to_text):
