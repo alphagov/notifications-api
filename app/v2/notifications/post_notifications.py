@@ -5,7 +5,6 @@ from datetime import datetime
 
 from boto.exception import SQSError
 from flask import request, jsonify, current_app, abort
-from notifications_utils.postal_address import PostalAddress
 from notifications_utils.recipients import try_validate_and_format_phone_number
 from gds_metrics import Histogram
 
@@ -36,7 +35,6 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    INTERNATIONAL_LETTERS,
     Notification)
 from app.notifications.process_letter_notifications import (
     create_letter_notification
@@ -51,15 +49,18 @@ from app.notifications.validators import (
     check_service_email_reply_to_id,
     check_service_has_permission,
     check_service_sms_sender_id,
+    validate_address,
     validate_and_format_recipient,
     validate_template,
 )
 from app.schema_validation import validate
-from app.v2.errors import BadRequestError, ValidationError
-from app.v2.notifications import v2_notification_blueprint
+from app.v2.errors import BadRequestError
 from app.v2.notifications.create_response import (
-    create_post_sms_response_from_notification, create_post_email_response_from_notification,
-    create_post_letter_response_from_notification)
+    create_post_email_response_from_notification,
+    create_post_sms_response_from_notification,
+    create_post_letter_response_from_notification
+)
+from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
     post_sms_request,
     post_email_request,
@@ -339,7 +340,7 @@ def process_letter_notification(
                                                         template=template,
                                                         reply_to_text=reply_to_text)
 
-    postage = validate_address(service, letter_data)
+    postage = validate_address(service, letter_data['personalisation'])
 
     test_key = api_key.key_type == KEY_TYPE_TEST
 
@@ -387,37 +388,6 @@ def process_letter_notification(
         template_with_content=template_with_content
     )
     return resp
-
-
-def validate_address(service, letter_data):
-    address = PostalAddress.from_personalisation(
-        letter_data['personalisation'],
-        allow_international_letters=(INTERNATIONAL_LETTERS in service.permissions),
-    )
-    if not address.has_enough_lines:
-        raise ValidationError(
-            message=f'Address must be at least {PostalAddress.MIN_LINES} lines'
-        )
-    if address.has_too_many_lines:
-        raise ValidationError(
-            message=f'Address must be no more than {PostalAddress.MAX_LINES} lines'
-        )
-    if not address.has_valid_last_line:
-        if address.allow_international_letters:
-            raise ValidationError(
-                message=f'Last line of address must be a real UK postcode or another country'
-            )
-        raise ValidationError(
-            message='Must be a real UK postcode'
-        )
-    if address.has_invalid_characters:
-        raise ValidationError(
-            message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
-        )
-    if address.postage == 'united-kingdom':
-        return None  # use postage from template
-    else:
-        return address.postage
 
 
 def process_precompiled_letter_notifications(*, letter_data, api_key, service, template, reply_to_text):

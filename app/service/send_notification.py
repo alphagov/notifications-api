@@ -13,8 +13,8 @@ from app.notifications.validators import (
     check_service_has_permission,
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
-    validate_template
-)
+    validate_template,
+    validate_address)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -75,7 +75,11 @@ def send_one_off_notification(service_id, post_data):
         notification_type=template.template_type,
         allow_whitelisted_recipients=False,
     )
-
+    postage = None
+    if template.template_type == LETTER_TYPE:
+        # Validate address and set postage to europe|rest-of-world if international letter,
+        # otherwise persist_notification with use template postage
+        postage = validate_address(service, personalisation)
     validate_created_by(service, post_data['created_by'])
 
     sender_id = post_data.get('sender_id', None)
@@ -98,6 +102,7 @@ def send_one_off_notification(service_id, post_data):
         created_by_id=post_data['created_by'],
         reply_to_text=reply_to,
         reference=create_one_off_reference(template.template_type),
+        postage=postage
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None

@@ -541,3 +541,23 @@ def test_persist_notification_with_billable_units_stores_correct_info(
     persisted_notification = Notification.query.all()[0]
 
     assert persisted_notification.billable_units == 3
+
+
+@pytest.mark.parametrize('postage', ['europe', 'rest-of-world'])
+def test_persist_notification_for_international_letter(sample_letter_template, postage):
+    notification = persist_notification(
+        template_id=sample_letter_template.id,
+        template_version=sample_letter_template.version,
+        recipient="123 Main Street",
+        service=sample_letter_template.service,
+        personalisation=None,
+        notification_type=sample_letter_template.template_type,
+        api_key_id=None,
+        key_type="normal",
+        billable_units=3,
+        postage=postage,
+        template_postage='second'
+    )
+    persisted_notification = Notification.query.get(notification.id)
+    assert persisted_notification.postage == postage
+    assert persisted_notification.international
