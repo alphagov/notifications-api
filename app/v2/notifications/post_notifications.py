@@ -409,6 +409,10 @@ def validate_address(service, letter_data):
         raise ValidationError(
             message='Must be a real UK postcode'
         )
+    if address.has_invalid_characters:
+        raise ValidationError(
+            message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
+        )
 
 
 def process_precompiled_letter_notifications(*, letter_data, api_key, service, template, reply_to_text):
