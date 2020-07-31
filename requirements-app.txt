@@ -10,7 +10,7 @@ Flask-Migrate==2.5.3
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.1.2
 click-datetime==0.2
-eventlet==0.26.1
+eventlet==0.25.2
 gunicorn==20.0.4
 iso8601==0.1.12
 itsdangerous==1.1.0
@@ -29,7 +29,7 @@ notifications-python-client==5.5.1
 # PaaS
 awscli-cwlogs>=1.4,<1.5
 
-git+https://github.com/alphagov/notifications-utils.git@40.6.0#egg=notifications-utils==40.6.0
+git+https://github.com/alphagov/notifications-utils.git@40.2.1#egg=notifications-utils==40.2.1
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.7.1

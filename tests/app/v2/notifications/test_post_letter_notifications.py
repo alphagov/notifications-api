@@ -176,49 +176,31 @@ def test_post_letter_notification_stores_country(
     )
 
 
-@pytest.mark.parametrize('permissions, personalisation, expected_error', (
+@pytest.mark.parametrize('permissions, expected_error', (
     (
         [LETTER_TYPE],
-        {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': 'Buckingham Palace',
-            'address_line_3': 'London',
-            'postcode': 'not a real postcode',
-            'name': 'Lizzie'
-        },
         'Must be a real UK postcode',
     ),
     (
-        [LETTER_TYPE],
-        {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': ']Buckingham Palace',
-            'postcode': 'SW1A 1AA',
-            'name': 'Lizzie'
-        },
-        'Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,',
-    ),
-    (
         [LETTER_TYPE, INTERNATIONAL_LETTERS],
-        {
-            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
-            'address_line_2': 'Buckingham Palace',
-            'address_line_3': 'London',
-            'postcode': 'not a real postcode',
-            'name': 'Lizzie'
-        },
         'Last line of address must be a real UK postcode or another country',
     ),
 ))
-def test_post_letter_notification_throws_error_for_bad_address(
-    client, notify_db_session, mocker, permissions, personalisation, expected_error
+def test_post_letter_notification_throws_error_for_bad_postcode(
+    client, notify_db_session, mocker, permissions, expected_error
 ):
-    service = create_service(service_permissions=permissions)
+    service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
     mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(template.id),
-        'personalisation': personalisation
+        'personalisation': {
+            'address_line_1': 'Her Royal Highness Queen Elizabeth II',
+            'address_line_2': 'Buckingham Palace',
+            'address_line_3': 'London',
+            'postcode': 'not a real postcode',
+            'name': 'Lizzie'
+        }
     }
 
     error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
@@ -226,7 +208,7 @@ def test_post_letter_notification_throws_error_for_bad_address(
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
         'error': 'ValidationError',
-        'message': expected_error
+        'message': 'Must be a real UK postcode'
     }]
 
 
