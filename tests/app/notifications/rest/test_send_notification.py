@@ -25,7 +25,7 @@ from tests.app.db import (
     create_api_key,
     create_notification,
     create_service,
-    create_service_whitelist,
+    create_service_guest_list,
     create_template,
     create_reply_to_email,
 )
@@ -776,24 +776,24 @@ def test_should_not_persist_notification_or_send_sms_if_simulated_number(
 ])
 @pytest.mark.parametrize('notification_type, to', [
     (SMS_TYPE, '07827992635'),
-    (EMAIL_TYPE, 'non_whitelist_recipient@mail.com')]
+    (EMAIL_TYPE, 'non_guest_list_recipient@mail.com')]
 )
-def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
+def test_should_not_send_notification_to_non_guest_list_recipient_in_trial_mode(
     client,
-    sample_service_whitelist,
+    sample_service_guest_list,
     notification_type,
     to,
     key_type,
     mocker
 ):
-    service = sample_service_whitelist.service
+    service = sample_service_guest_list.service
     service.restricted = True
     service.message_limit = 2
 
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     template = create_template(service, template_type=notification_type)
-    assert sample_service_whitelist.service_id == service.id
-    assert to not in [member.recipient for member in service.whitelist]
+    assert sample_service_guest_list.service_id == service.id
+    assert to not in [member.recipient for member in service.guest_list]
 
     create_notification(template=template)
 
@@ -830,9 +830,9 @@ def test_should_not_send_notification_to_non_whitelist_recipient_in_trial_mode(
 ])
 @pytest.mark.parametrize('notification_type, to', [
     (SMS_TYPE, '07123123123'),
-    (EMAIL_TYPE, 'whitelist_recipient@mail.com')]
+    (EMAIL_TYPE, 'guest_list_recipient@mail.com')]
 )
-def test_should_send_notification_to_whitelist_recipient(
+def test_should_send_notification_to_guest_list_recipient(
     client,
     sample_service,
     notification_type,
@@ -847,12 +847,12 @@ def test_should_send_notification_to_whitelist_recipient(
     apply_async = mocker.patch('app.celery.provider_tasks.deliver_{}.apply_async'.format(notification_type))
     template = create_template(sample_service, template_type=notification_type)
     if notification_type == SMS_TYPE:
-        service_whitelist = create_service_whitelist(sample_service, mobile_number=to)
+        service_guest_list = create_service_guest_list(sample_service, mobile_number=to)
     elif notification_type == EMAIL_TYPE:
-        service_whitelist = create_service_whitelist(sample_service, email_address=to)
+        service_guest_list = create_service_guest_list(sample_service, email_address=to)
 
-    assert service_whitelist.service_id == sample_service.id
-    assert to in [member.recipient for member in sample_service.whitelist]
+    assert service_guest_list.service_id == sample_service.id
+    assert to in [member.recipient for member in sample_service.guest_list]
 
     create_notification(template=template)
 

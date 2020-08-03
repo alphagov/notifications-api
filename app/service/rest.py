@@ -74,10 +74,10 @@ from app.dao.services_dao import (
     dao_update_service,
     get_services_by_partial_name,
 )
-from app.dao.service_whitelist_dao import (
-    dao_fetch_service_whitelist,
-    dao_add_and_commit_whitelisted_contacts,
-    dao_remove_service_whitelist
+from app.dao.service_guest_list_dao import (
+    dao_fetch_service_guest_list,
+    dao_add_and_commit_guest_list_contacts,
+    dao_remove_service_guest_list
 )
 from app.dao.service_email_reply_to_dao import (
     add_reply_to_email_address_for_service,
@@ -119,7 +119,7 @@ from app.service.service_senders_schema import (
     add_service_letter_contact_block_request,
     add_service_sms_sender_request
 )
-from app.service.utils import get_whitelist_objects
+from app.service.utils import get_guest_list_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
 from app.schemas import (
@@ -561,35 +561,37 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
-def get_whitelist(service_id):
+@service_blueprint.route('/<uuid:service_id>/guest-list', methods=['GET'])
+def get_guest_list(service_id):
     from app.models import (EMAIL_TYPE, MOBILE_TYPE)
     service = dao_fetch_service_by_id(service_id)
 
     if not service:
         raise InvalidRequest("Service does not exist", status_code=404)
 
-    whitelist = dao_fetch_service_whitelist(service.id)
+    guest_list = dao_fetch_service_guest_list(service.id)
     return jsonify(
-        email_addresses=[item.recipient for item in whitelist
+        email_addresses=[item.recipient for item in guest_list
                          if item.recipient_type == EMAIL_TYPE],
-        phone_numbers=[item.recipient for item in whitelist
+        phone_numbers=[item.recipient for item in guest_list
                        if item.recipient_type == MOBILE_TYPE]
     )
 
 
 @service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
-def update_whitelist(service_id):
+@service_blueprint.route('/<uuid:service_id>/guest-list', methods=['PUT'])
+def update_guest_list(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db
-    dao_remove_service_whitelist(service_id)
+    dao_remove_service_guest_list(service_id)
     try:
-        whitelist_objs = get_whitelist_objects(service_id, request.get_json())
+        guest_list_objects = get_guest_list_objects(service_id, request.get_json())
     except ValueError as e:
         current_app.logger.exception(e)
         dao_rollback()
         msg = '{} is not a valid email address or phone number'.format(str(e))
         raise InvalidRequest(msg, 400)
     else:
-        dao_add_and_commit_whitelisted_contacts(whitelist_objs)
+        dao_add_and_commit_guest_list_contacts(guest_list_objects)
         return '', 204
 
 

@@ -7,7 +7,7 @@ from notifications_utils.recipients import InvalidPhoneError
 
 from app.v2.errors import BadRequestError, TooManyRequestsError
 from app.config import QueueNames
-from app.dao.service_whitelist_dao import dao_add_and_commit_whitelisted_contacts
+from app.dao.service_guest_list_dao import dao_add_and_commit_guest_list_contacts
 from app.service.send_notification import send_one_off_notification
 from app.models import (
     EMAIL_TYPE,
@@ -17,7 +17,7 @@ from app.models import (
     PRIORITY,
     SMS_TYPE,
     Notification,
-    ServiceWhitelist,
+    ServiceGuestList,
 )
 
 from tests.app.db import (
@@ -259,9 +259,9 @@ def test_send_one_off_notification_raises_if_invalid_recipient(notify_db_session
 
 
 @pytest.mark.parametrize('recipient', [
-    '07700 900 001',  # not in team or whitelist
-    '07700900123',  # in whitelist
-    '+447700-900-123',  # in whitelist in different format
+    '07700 900 001',  # not in team or guest_list
+    '07700900123',  # in guest_list
+    '+447700-900-123',  # in guest_list in different format
 ])
 def test_send_one_off_notification_raises_if_cant_send_to_recipient(
     notify_db_session,
@@ -269,8 +269,8 @@ def test_send_one_off_notification_raises_if_cant_send_to_recipient(
 ):
     service = create_service(restricted=True)
     template = create_template(service=service)
-    dao_add_and_commit_whitelisted_contacts([
-        ServiceWhitelist.from_string(service.id, MOBILE_TYPE, '07700900123'),
+    dao_add_and_commit_guest_list_contacts([
+        ServiceGuestList.from_string(service.id, MOBILE_TYPE, '07700900123'),
     ])
 
     post_data = {

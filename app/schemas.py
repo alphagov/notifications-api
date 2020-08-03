@@ -259,7 +259,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'returned_letters',
             'users',
             'version',
-            'whitelist',
+            'guest_list',
             'broadcast_messages',
         )
         strict = True
@@ -310,7 +310,7 @@ class DetailedServiceSchema(BaseSchema):
             'message_limit',
             'email_from',
             'inbound_api',
-            'whitelist',
+            'guest_list',
             'reply_to_email_address',
             'sms_sender',
             'permissions',
@@ -326,7 +326,7 @@ class DetailedServiceSchema(BaseSchema):
             'returned_letters',
             'users',
             'version',
-            'whitelist',
+            'guest_list',
             'broadcast_messages',
         )
 
