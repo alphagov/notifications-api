@@ -560,7 +560,6 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
     return results
 
 
-@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['GET'])
 @service_blueprint.route('/<uuid:service_id>/guest-list', methods=['GET'])
 def get_guest_list(service_id):
     from app.models import (EMAIL_TYPE, MOBILE_TYPE)
@@ -578,7 +577,6 @@ def get_guest_list(service_id):
     )
 
 
-@service_blueprint.route('/<uuid:service_id>/whitelist', methods=['PUT'])
 @service_blueprint.route('/<uuid:service_id>/guest-list', methods=['PUT'])
 def update_guest_list(service_id):
     # doesn't commit so if there are any errors, we preserve old values in db

@@ -1,4 +1,3 @@
-import pytest
 import uuid
 import json
 
@@ -11,14 +10,10 @@ from app.models import (
 from app.dao.service_guest_list_dao import dao_add_and_commit_guest_list_contacts
 
 
-@pytest.mark.parametrize('url_path', (
-    'service/{}/whitelist',
-    'service/{}/guest-list',
-))
-def test_get_guest_list_returns_data(client, sample_service_guest_list, url_path):
+def test_get_guest_list_returns_data(client, sample_service_guest_list):
     service_id = sample_service_guest_list.service_id
 
-    response = client.get(url_path.format(service_id), headers=[create_authorization_header()])
+    response = client.get(f'service/{service_id}/guest-list', headers=[create_authorization_header()])
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'email_addresses': [sample_service_guest_list.recipient],
@@ -59,18 +54,14 @@ def test_get_guest_list_returns_no_data(client, sample_service):
     assert json.loads(response.get_data(as_text=True)) == {'email_addresses': [], 'phone_numbers': []}
 
 
-@pytest.mark.parametrize('url_path', (
-    'service/{}/whitelist',
-    'service/{}/guest-list',
-))
-def test_update_guest_list_replaces_old_guest_list(client, sample_service_guest_list, url_path):
+def test_update_guest_list_replaces_old_guest_list(client, sample_service_guest_list):
     data = {
         'email_addresses': ['foo@bar.com'],
         'phone_numbers': ['07123456789']
     }
 
     response = client.put(
-        url_path.format(sample_service_guest_list.service_id),
+        f'service/{sample_service_guest_list.service_id}/guest-list',
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
