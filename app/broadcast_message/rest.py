@@ -14,7 +14,7 @@ from app.dao.broadcast_message_dao import (
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
 from app.models import BroadcastMessage, BroadcastStatusType, BroadcastEvent, BroadcastEventMessageType
-from app.celery.broadcast_message_tasks import send_broadcast_message
+from app.celery.broadcast_message_tasks import send_broadcast_event
 from app.broadcast_message.broadcast_message_schema import (
     create_broadcast_message_schema,
     update_broadcast_message_schema,
@@ -196,7 +196,7 @@ def _create_broadcast_event(broadcast_message):
     # save to the DB
     dao_create_broadcast_message(event)
 
-    send_broadcast_message.apply_async(
-        kwargs={'broadcast_message_id': str(broadcast_message.id)},
+    send_broadcast_event.apply_async(
+        kwargs={'broadcast_event_id': str(event.id)},
         queue=QueueNames.NOTIFY
     )

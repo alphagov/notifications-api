@@ -1,9 +1,10 @@
+from unittest.mock import ANY
 import uuid
 
 from freezegun import freeze_time
 import pytest
 
-from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEvent, BroadcastEventMessageType
+from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
 
 from tests.app.db import create_broadcast_message, create_template, create_service, create_user
 
@@ -270,7 +271,7 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
     sample_service.users.append(canceller)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -280,13 +281,16 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
         _expected_status=200
     )
 
+    assert len(bm.events) == 1
+    cancel_event = bm.events[0]
+
+    cancel_id = str(cancel_event.id)
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': cancel_id}, queue='notify-internal-tasks')
     assert response['status'] == BroadcastStatusType.CANCELLED
     assert response['cancelled_at'] is not None
     assert response['cancelled_by_id'] == str(canceller.id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
 
-    assert len(bm.events) == 1
-    cancel_event = bm.events[0]
     assert cancel_event.service_id == sample_service.id
     assert cancel_event.transmitted_areas == bm.areas
     assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
@@ -303,7 +307,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
     sample_service.users.append(approver)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -316,10 +320,12 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert response['status'] == BroadcastStatusType.BROADCASTING
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
 
     assert len(bm.events) == 1
     alert_event = bm.events[0]
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
+
     assert alert_event.service_id == sample_service.id
     assert alert_event.transmitted_areas == bm.areas
     assert alert_event.message_type == BroadcastEventMessageType.ALERT
@@ -334,7 +340,7 @@ def test_update_broadcast_message_status_rejects_approval_from_creator(
 ):
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -358,7 +364,7 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     user.platform_admin = True
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -372,7 +378,10 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     assert response['approved_at'] is not None
     assert response['created_by_id'] == str(user.id)
     assert response['approved_by_id'] == str(user.id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(
+        kwargs={'broadcast_event_id': str(bm.events[0].id)},
+        queue='notify-internal-tasks'
+    )
 
 
 def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
@@ -384,7 +393,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     sample_service.restricted = True
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -398,7 +407,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     assert response['approved_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['approved_by_id'] == str(t.created_by_id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': ANY}, queue='notify-internal-tasks')
 
 
 def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_service(
@@ -409,7 +418,7 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -441,7 +450,7 @@ def test_update_broadcast_message_status_restricts_status_transitions_to_explici
     bm = create_broadcast_message(t, status=current_status)
     approver = create_user(email='approver@gov.uk')
     sample_service.users.append(approver)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
