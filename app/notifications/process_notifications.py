@@ -107,7 +107,6 @@ def persist_notification(
     reply_to_text=None,
     billable_units=None,
     postage=None,
-    template_postage=None,
     document_download_count=None,
     updated_at=None
 ):
@@ -147,8 +146,8 @@ def persist_notification(
     elif notification_type == EMAIL_TYPE:
         notification.normalised_to = format_email_address(notification.to)
     elif notification_type == LETTER_TYPE:
-        notification.postage = postage or template_postage
-        notification.international = True if postage in INTERNATIONAL_POSTAGE_TYPES else False
+        notification.postage = postage
+        notification.international = postage in INTERNATIONAL_POSTAGE_TYPES
         notification.normalised_to = ''.join(notification.to.split()).lower()
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB

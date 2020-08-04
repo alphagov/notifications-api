@@ -90,7 +90,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage=None,
         recipient=post_data['to'],
         service=template.service,
         personalisation={'name': 'foo'},
@@ -152,7 +151,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage=None,
         recipient=post_data['to'],
         service=template.service,
         personalisation={'name': 'foo'},
@@ -202,7 +200,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage='first',
         recipient=post_data['to'],
         service=template.service,
         personalisation=post_data['personalisation'],
@@ -212,7 +209,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         created_by_id=str(service.created_by_id),
         reply_to_text=None,
         reference='this-is-random-in-real-life',
-        postage=None
+        postage='first'
     )
 
 

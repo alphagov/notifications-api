@@ -489,8 +489,7 @@ def test_persist_email_notification_stores_normalised_email(
     [
         ("second", "first", "second"),
         ("first", "first", "first"),
-        ("first", "second", "first"),
-        (None, "second", "second")
+        ("first", "second", "first")
     ]
 )
 def test_persist_letter_notification_finds_correct_postage(
@@ -506,7 +505,6 @@ def test_persist_letter_notification_finds_correct_postage(
     persist_notification(
         template_id=template.id,
         template_version=template.version,
-        template_postage=template.postage,
         recipient="Jane Doe, 10 Downing Street, London",
         service=sample_service_full_permissions,
         personalisation=None,
@@ -536,7 +534,6 @@ def test_persist_notification_with_billable_units_stores_correct_info(
         api_key_id=None,
         key_type="normal",
         billable_units=3,
-        template_postage=template.postage
     )
     persisted_notification = Notification.query.all()[0]
 
@@ -556,7 +553,6 @@ def test_persist_notification_for_international_letter(sample_letter_template, p
         key_type="normal",
         billable_units=3,
         postage=postage,
-        template_postage='second'
     )
     persisted_notification = Notification.query.get(notification.id)
     assert persisted_notification.postage == postage
