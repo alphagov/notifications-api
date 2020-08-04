@@ -13,7 +13,7 @@ from app.dao.broadcast_message_dao import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
-from app.models import BroadcastMessage, BroadcastStatusType
+from app.models import BroadcastMessage, BroadcastStatusType, BroadcastEvent, BroadcastEventMessageType
 from app.celery.broadcast_message_tasks import send_broadcast_message
 from app.broadcast_message.broadcast_message_schema import (
     create_broadcast_message_schema,
@@ -155,10 +155,48 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     _update_broadcast_message(broadcast_message, new_status, updating_user)
     dao_update_broadcast_message(broadcast_message)
 
-    if new_status == BroadcastStatusType.BROADCASTING:
-        send_broadcast_message.apply_async(
-            kwargs={'broadcast_message_id': str(broadcast_message.id)},
-            queue=QueueNames.NOTIFY
-        )
+    if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
+        _create_broadcast_event(broadcast_message)
 
     return jsonify(broadcast_message.serialize()), 200
+
+
+def _create_broadcast_event(broadcast_message):
+    """
+    Creates a broadcast event, stores it in the database, and triggers the task to send the CAP XML off
+    """
+    msg_types = {
+        BroadcastStatusType.BROADCASTING: BroadcastEventMessageType.ALERT,
+        BroadcastStatusType.CANCELLED: BroadcastEventMessageType.CANCEL,
+    }
+
+    if broadcast_message.status == BroadcastStatusType.CANCELLED:
+        transmitted_finishes_at = broadcast_message.cancelled_at
+    else:
+        transmitted_finishes_at = broadcast_message.finishes_at
+
+    # TODO: This doesn't support placeholders yet. We shouldn't use BroadcastMessageTemplate when we add placeholders
+    # as that just outputs XML, we need the raw text.
+    event = BroadcastEvent(
+        service=broadcast_message.service,
+        broadcast_message=broadcast_message,
+        message_type=msg_types[broadcast_message.status],
+        transmitted_content={"body": broadcast_message.template.content},
+        transmitted_areas=broadcast_message.areas,
+        # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it include
+        # a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar
+        transmitted_sender='notifications.service.gov.uk',
+
+        # TODO: Should this be set to now? Or the original starts_at?
+        transmitted_starts_at=broadcast_message.starts_at,
+        # TODO: When cancelling, do we need to set this to now? Or should we keep it as the original time.
+        transmitted_finishes_at=transmitted_finishes_at,
+    )
+
+    # save to the DB
+    dao_create_broadcast_message(event)
+
+    send_broadcast_message.apply_async(
+        kwargs={'broadcast_message_id': str(broadcast_message.id)},
+        queue=QueueNames.NOTIFY
+    )

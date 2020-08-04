@@ -2332,10 +2332,13 @@ class BroadcastEvent(db.Model):
     transmitted_starts_at = db.Column(db.DateTime, nullable=True)
     transmitted_finishes_at = db.Column(db.DateTime, nullable=True)
 
-    # @property
-    # def reference(self):
-    #     # TODO: write this `from_event` function
-    #     return BroadcastMessageTemplate.from_event(self.serialize()).reference
+    @property
+    def reference(self):
+        return BroadcastMessageTemplate.from_event(self.serialize()).reference
+
+    def get_earlier_message_references(self):
+        from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event
+        return [event.reference for event in get_earlier_events_for_broadcast_event(self)]
 
     def serialize(self):
         return {
@@ -2343,7 +2346,9 @@ class BroadcastEvent(db.Model):
 
             'service_id': self.service_id,
 
-            # 'reference': self.reference,
+            'reference': self.reference,
+
+            'previous_event_references': self.get_earlier_message_references(),
 
             'broadcast_message_id': self.broadcast_message_id,
             'sent_at': self.sent_at,
@@ -2355,4 +2360,5 @@ class BroadcastEvent(db.Model):
 
             'transmitted_starts_at': get_dt_string_or_none(self.transmitted_starts_at),
             'transmitted_finishes_at': get_dt_string_or_none(self.transmitted_finishes_at),
+
         }

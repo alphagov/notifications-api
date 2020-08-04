@@ -3,7 +3,7 @@ import uuid
 from freezegun import freeze_time
 import pytest
 
-from app.models import BROADCAST_TYPE, BroadcastStatusType
+from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEvent, BroadcastEventMessageType
 
 from tests.app.db import create_broadcast_message, create_template, create_service, create_user
 
@@ -265,11 +265,12 @@ def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admi
     }]
 
 
-def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(admin_request, sample_service, mocker):
+    t = create_template(sample_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
     sample_service.users.append(canceller)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_message.apply_async')
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -282,6 +283,15 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
     assert response['status'] == BroadcastStatusType.CANCELLED
     assert response['cancelled_at'] is not None
     assert response['cancelled_by_id'] == str(canceller.id)
+    mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+
+    assert len(bm.events) == 1
+    cancel_event = bm.events[0]
+    assert cancel_event.service_id == sample_service.id
+    assert cancel_event.transmitted_areas == bm.areas
+    assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
+    assert cancel_event.transmitted_finishes_at == bm.cancelled_at
+    assert cancel_event.transmitted_content == {"body": "emergency broadcast"}
 
 
 def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
@@ -289,7 +299,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     sample_service,
     mocker
 ):
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
     sample_service.users.append(approver)
@@ -307,6 +317,14 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
     mock_task.assert_called_once_with(kwargs={'broadcast_message_id': str(bm.id)}, queue='notify-internal-tasks')
+
+    assert len(bm.events) == 1
+    alert_event = bm.events[0]
+    assert alert_event.service_id == sample_service.id
+    assert alert_event.transmitted_areas == bm.areas
+    assert alert_event.message_type == BroadcastEventMessageType.ALERT
+    assert alert_event.transmitted_finishes_at == bm.finishes_at
+    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
 def test_update_broadcast_message_status_rejects_approval_from_creator(
