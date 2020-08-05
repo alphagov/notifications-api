@@ -21,6 +21,7 @@ from app.notifications.notifications_ses_callback import (
 
 from tests.app.db import (
     create_notification,
+    create_notification_history,
     ses_complaint_callback,
     create_service_callback_api,
 )
@@ -256,3 +257,13 @@ def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email
         'service_callback_api_url': 'https://original_url.com',
         'to': 'recipient1@example.com'
     }
+
+
+def test_ses_callback_works_if_notification_is_in_history(sample_email_template, notify_db_session, mocker):
+    notification = create_notification_history(template=sample_email_template, status='sending', reference='ref')
+    create_service_callback_api(service=notification.service)
+    send_mock = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+    assert process_ses_results(ses_notification_callback(reference='ref'))
+    assert send_mock.called

@@ -13,6 +13,7 @@ from app import (
     encryption
 )
 from app.config import QueueNames
+from app.models import Notification
 
 
 @notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
@@ -106,11 +107,13 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
 
 
 def create_delivery_status_callback_data(notification, service_callback_api):
+    # Check notification could be of type NotificationHistory
+    recipient = notification.to if isinstance(notification, Notification) else None
     from app import DATETIME_FORMAT, encryption
     data = {
         "notification_id": str(notification.id),
         "notification_client_reference": notification.client_reference,
-        "notification_to": notification.to,
+        "notification_to": recipient,
         "notification_status": notification.status,
         "notification_created_at": notification.created_at.strftime(DATETIME_FORMAT),
         "notification_updated_at":
