@@ -51,7 +51,11 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
 
     if new_status == BroadcastStatusType.BROADCASTING:
         # TODO: Remove this platform admin shortcut when the feature goes live
-        if updating_user == broadcast_message.created_by and not updating_user.platform_admin:
+        if updating_user == broadcast_message.created_by and not (
+            # platform admins and trial mode services can approve their own broadcasts
+            updating_user.platform_admin or
+            broadcast_message.service.restricted
+        ):
             raise InvalidRequest(
                 f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
                 status_code=400
