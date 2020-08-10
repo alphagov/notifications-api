@@ -242,7 +242,7 @@ def validate_address(service, letter_data):
         raise ValidationError(
             message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
         )
-    if address.postage == 'united-kingdom':
-        return None  # use postage from template
-    else:
+    if address.international:
         return address.postage
+    else:
+        return None
