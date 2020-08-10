@@ -90,7 +90,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage=None,
         recipient=post_data['to'],
         service=template.service,
         personalisation={'name': 'foo'},
@@ -100,6 +99,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(
         created_by_id=str(service.created_by_id),
         reply_to_text='testing',
         reference=None,
+        postage=None
     )
 
 
@@ -151,7 +151,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage=None,
         recipient=post_data['to'],
         service=template.service,
         personalisation={'name': 'foo'},
@@ -161,6 +160,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(
         created_by_id=str(service.created_by_id),
         reply_to_text=None,
         reference=None,
+        postage=None
     )
 
 
@@ -188,8 +188,8 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         'to': 'First Last',
         'personalisation': {
             'name': 'foo',
-            'address line 1': 'First Last',
-            'address line 2': '1 Example Street',
+            'address_line_1': 'First Last',
+            'address_line_2': '1 Example Street',
             'postcode': 'SW1A 1AA',
         },
         'created_by': str(service.created_by_id)
@@ -200,7 +200,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
     persist_mock.assert_called_once_with(
         template_id=template.id,
         template_version=template.version,
-        template_postage='first',
         recipient=post_data['to'],
         service=template.service,
         personalisation=post_data['personalisation'],
@@ -210,6 +209,7 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         created_by_id=str(service.created_by_id),
         reply_to_text=None,
         reference='this-is-random-in-real-life',
+        postage='first'
     )
 
 
@@ -362,6 +362,12 @@ def test_send_one_off_letter_notification_should_use_template_reply_to_text(samp
     data = {
         'to': 'user@example.com',
         'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'name': 'foo',
+            'address_line_1': 'First Last',
+            'address_line_2': '1 Example Street',
+            'address_line_3': 'SW1A 1AA',
+        },
         'created_by': str(sample_letter_template.service.created_by_id)
     }
 
@@ -383,6 +389,12 @@ def test_send_one_off_letter_should_not_make_pdf_in_research_mode(sample_letter_
     data = {
         'to': 'A. Name',
         'template_id': str(sample_letter_template.id),
+        'personalisation': {
+            'name': 'foo',
+            'address_line_1': 'First Last',
+            'address_line_2': '1 Example Street',
+            'address_line_3': 'SW1A 1AA',
+        },
         'created_by': str(sample_letter_template.service.created_by_id)
     }
 

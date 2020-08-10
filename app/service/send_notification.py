@@ -13,8 +13,8 @@ from app.notifications.validators import (
     check_service_has_permission,
     check_service_over_daily_message_limit,
     validate_and_format_recipient,
-    validate_template
-)
+    validate_template,
+    validate_address)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue
@@ -75,7 +75,13 @@ def send_one_off_notification(service_id, post_data):
         notification_type=template.template_type,
         allow_guest_list_recipients=False,
     )
-
+    postage = None
+    if template.template_type == LETTER_TYPE:
+        # Validate address and set postage to europe|rest-of-world if international letter,
+        # otherwise persist_notification with use template postage
+        postage = validate_address(service, personalisation)
+        if not postage:
+            postage = template.postage
     validate_created_by(service, post_data['created_by'])
 
     sender_id = post_data.get('sender_id', None)
@@ -88,7 +94,6 @@ def send_one_off_notification(service_id, post_data):
     notification = persist_notification(
         template_id=template.id,
         template_version=template.version,
-        template_postage=template.postage,
         recipient=post_data['to'],
         service=service,
         personalisation=personalisation,
@@ -98,6 +103,7 @@ def send_one_off_notification(service_id, post_data):
         created_by_id=post_data['created_by'],
         reply_to_text=reply_to,
         reference=create_one_off_reference(template.template_type),
+        postage=postage
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
@@ -173,7 +179,6 @@ def send_pdf_letter_notification(service_id, post_data):
         notification_id=post_data['file_id'],
         template_id=template.id,
         template_version=template.version,
-        template_postage=template.postage,
         recipient=urllib.parse.unquote(post_data['recipient_address']),
         service=service,
         personalisation=personalisation,
@@ -184,7 +189,7 @@ def send_pdf_letter_notification(service_id, post_data):
         client_reference=post_data['filename'],
         created_by_id=post_data['created_by'],
         billable_units=billable_units,
-        postage=post_data['postage'],
+        postage=post_data['postage'] or template.postage,
     )
 
     upload_filename = get_letter_pdf_filename(

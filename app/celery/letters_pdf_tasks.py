@@ -4,6 +4,7 @@ from base64 import urlsafe_b64encode
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
+from notifications_utils.postal_address import PostalAddress
 
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
@@ -43,8 +44,8 @@ from app.models import (
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
     POSTAGE_TYPES,
-    RESOLVE_POSTAGE_FOR_FILE_NAME
-)
+    RESOLVE_POSTAGE_FOR_FILE_NAME,
+    INTERNATIONAL_POSTAGE_TYPES)
 from app.cronitor import cronitor
 
 
@@ -393,8 +394,16 @@ def process_virus_scan_error(filename):
 
 
 def update_letter_pdf_status(reference, status, billable_units, recipient_address=None):
-
+    postage = None
+    if recipient_address:
+        # fix allow_international_letters
+        postage = PostalAddress(raw_address=recipient_address.replace(',', '\n'),
+                                allow_international_letters=True
+                                ).postage
+        postage = postage if postage in INTERNATIONAL_POSTAGE_TYPES else None
     update_dict = {'status': status, 'billable_units': billable_units, 'updated_at': datetime.utcnow()}
+    if postage:
+        update_dict.update({'postage': postage, 'international': True})
     if recipient_address:
         update_dict['to'] = recipient_address
     return dao_update_notifications_by_reference(

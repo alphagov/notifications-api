@@ -1,3 +1,4 @@
+from notifications_utils.postal_address import PostalAddress
 from sqlalchemy.orm.exc import NoResultFound
 from flask import current_app
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
@@ -14,9 +15,9 @@ from app.models import (
     INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
     KEY_TYPE_TEST, KEY_TYPE_TEAM,
     ServicePermission,
-)
+    INTERNATIONAL_LETTERS)
 from app.service.utils import service_allowed_to_send_to
-from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError
+from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError, ValidationError
 from app import redis_store
 from app.notifications.process_notifications import create_content_for_notification
 from app.utils import get_public_notify_type_text
@@ -214,3 +215,34 @@ def check_service_letter_contact_id(service_id, letter_contact_id, notification_
             message = 'letter_contact_id {} does not exist in database for service id {}'\
                 .format(letter_contact_id, service_id)
             raise BadRequestError(message=message)
+
+
+def validate_address(service, letter_data):
+    address = PostalAddress.from_personalisation(
+        letter_data,
+        allow_international_letters=(INTERNATIONAL_LETTERS in str(service.permissions)),
+    )
+    if not address.has_enough_lines:
+        raise ValidationError(
+            message=f'Address must be at least {PostalAddress.MIN_LINES} lines'
+        )
+    if address.has_too_many_lines:
+        raise ValidationError(
+            message=f'Address must be no more than {PostalAddress.MAX_LINES} lines'
+        )
+    if not address.has_valid_last_line:
+        if address.allow_international_letters:
+            raise ValidationError(
+                message=f'Last line of address must be a real UK postcode or another country'
+            )
+        raise ValidationError(
+            message='Must be a real UK postcode'
+        )
+    if address.has_invalid_characters:
+        raise ValidationError(
+            message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
+        )
+    if address.postage == 'united-kingdom':
+        return None  # use postage from template
+    else:
+        return address.postage

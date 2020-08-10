@@ -18,6 +18,7 @@ from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
 from app.errors import InvalidRequest
 from app.models import Template
+from app.service.send_notification import send_one_off_notification
 from app.v2.errors import RateLimitError
 
 from tests import create_authorization_header
@@ -1214,3 +1215,29 @@ def test_post_notification_should_set_reply_to_text(client, sample_service, mock
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == expected_reply_to
+
+
+@pytest.mark.parametrize('last_line_of_address, expected_postage, expected_international',
+                         [('France', 'europe', True),
+                          ('Canada', 'rest-of-world', True),
+                          ('SW1 1AA', 'second', False)])
+def test_send_notification_should_send_international_letters(
+    sample_letter_template, mocker, last_line_of_address, expected_postage, expected_international
+):
+    deliver_mock = mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
+    data = {
+        'template_id': sample_letter_template.id,
+        'personalisation': {
+            'address_line_1': 'Jane',
+            'address_line_2': 'Rue Vert',
+            'address_line_3': last_line_of_address
+        },
+        'to': 'Jane',
+        'created_by': sample_letter_template.service.created_by_id
+    }
+
+    notification_id = send_one_off_notification(sample_letter_template.service_id, data)
+    assert deliver_mock.called
+    notification = Notification.query.get(notification_id['id'])
+    assert notification.postage == expected_postage
+    assert notification.international == expected_international

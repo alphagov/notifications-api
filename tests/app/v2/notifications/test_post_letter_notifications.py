@@ -174,6 +174,31 @@ def test_post_letter_notification_stores_country(
         'Kronprinzenpalais\n'
         'Germany'
     )
+    assert notification.postage == 'europe'
+    assert notification.international
+
+
+def test_post_letter_notification_international_sets_rest_of_world(
+    client, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
+    template = create_template(service, template_type="letter")
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
+    data = {
+        'template_id': str(template.id),
+        'personalisation': {
+            'address_line_1': 'Prince Harry',
+            'address_line_2': 'Toronto',
+            'address_line_5': 'Canada',
+        }
+    }
+
+    resp_json = letter_request(client, data, service_id=service.id)
+
+    assert validate(resp_json, post_letter_response) == resp_json
+    notification = Notification.query.one()
+
+    assert notification.postage == 'rest-of-world'
 
 
 @pytest.mark.parametrize('permissions, personalisation, expected_error', (

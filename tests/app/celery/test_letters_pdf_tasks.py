@@ -647,6 +647,54 @@ def test_process_sanitised_letter_with_valid_letter(
 
 
 @mock_s3
+@pytest.mark.parametrize('address, expected_postage, expected_international',
+                         [('Lady Lou, 123 Main Street, SW1 1AA', 'second', False),
+                          ('Lady Lou, 123 Main Street, France', 'europe', True),
+                          ('Lady Lou, 123 Main Street, New Zealand', 'rest-of-world', True),
+                          ])
+def test_process_sanitised_letter_sets_postage_international(
+    sample_letter_notification,
+    expected_postage,
+    expected_international,
+    address
+):
+    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+
+    scan_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
+    template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
+    destination_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    conn.create_bucket(Bucket=scan_bucket_name)
+    conn.create_bucket(Bucket=template_preview_bucket_name)
+    conn.create_bucket(Bucket=destination_bucket_name)
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
+    s3.put_object(Bucket=template_preview_bucket_name, Key=filename, Body=b'sanitised_pdf_content')
+
+    sample_letter_notification.status = NOTIFICATION_PENDING_VIRUS_CHECK
+    sample_letter_notification.billable_units = 1
+    sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
+
+    encrypted_data = encryption.encrypt({
+        'page_count': 2,
+        'message': None,
+        'invalid_pages': None,
+        'validation_status': 'passed',
+        'filename': filename,
+        'notification_id': str(sample_letter_notification.id),
+        'address': address
+    })
+    process_sanitised_letter(encrypted_data)
+
+    assert sample_letter_notification.status == 'created'
+    assert sample_letter_notification.billable_units == 1
+    assert sample_letter_notification.to == address
+    assert sample_letter_notification.postage == expected_postage
+    assert sample_letter_notification.international == expected_international
+
+
+@mock_s3
 @pytest.mark.parametrize('key_type', [KEY_TYPE_NORMAL, KEY_TYPE_TEST])
 def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification, key_type):
     filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
