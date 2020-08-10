@@ -1035,8 +1035,14 @@ def test_save_letter_saves_letter_to_database(
     assert notification_db.reply_to_text == contact_block.contact_block
 
 
-@pytest.mark.parametrize('postage', ['first', 'second'])
-def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, notify_db_session, postage):
+@pytest.mark.parametrize('last_line_of_address, postage, expected_postage, expected_international',
+                         [('SW1 1AA', 'first', 'first', False),
+                          ('SW1 1AA', 'second', 'second', False),
+                          ('New Zealand', 'second', 'rest-of-world', True),
+                          ('France', 'first', 'europe', True)])
+def test_save_letter_saves_letter_to_database_with_correct_postage(
+    mocker, notify_db_session, last_line_of_address, postage, expected_postage, expected_international
+):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service=service, template_type=LETTER_TYPE, postage=postage)
     letter_job = create_job(template=template)
@@ -1045,7 +1051,7 @@ def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, notif
     notification_json = _notification_json(
         template=letter_job.template,
         to='Foo',
-        personalisation={'addressline1': 'Foo', 'addressline2': 'Bar', 'postcode': 'Flob'},
+        personalisation={'addressline1': 'Foo', 'addressline2': 'Bar', 'postcode': last_line_of_address},
         job_id=letter_job.id,
         row_number=1
     )
@@ -1058,7 +1064,8 @@ def test_save_letter_saves_letter_to_database_with_correct_postage(mocker, notif
 
     notification_db = Notification.query.one()
     assert notification_db.id == notification_id
-    assert notification_db.postage == postage
+    assert notification_db.postage == expected_postage
+    assert notification_db.international == expected_international
 
 
 def test_save_letter_saves_letter_to_database_with_formatted_postcode(mocker, notify_db_session):

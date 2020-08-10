@@ -340,9 +340,9 @@ def save_letter(
 ):
     notification = encryption.decrypt(encrypted_notification)
 
-    recipient = PostalAddress.from_personalisation(
+    postal_address = PostalAddress.from_personalisation(
         Columns(notification['personalisation'])
-    ).normalised
+    )
 
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
@@ -354,8 +354,8 @@ def save_letter(
         saved_notification = persist_notification(
             template_id=notification['template'],
             template_version=notification['template_version'],
-            postage=template.postage,
-            recipient=recipient,
+            postage=postal_address.postage if postal_address.international else template.postage,
+            recipient=postal_address.normalised,
             service=service,
             personalisation=notification['personalisation'],
             notification_type=LETTER_TYPE,
