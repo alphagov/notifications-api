@@ -481,7 +481,6 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
-    REDIS_ENABLED = True
 
 
 class Live(Config):
@@ -523,7 +522,6 @@ class Sandbox(CloudFoundryConfig):
     LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'cf-sandbox-letters-invalid-pdf'
     FROM_NUMBER = 'sandbox'
-    REDIS_ENABLED = False
 
 
 configs = {
