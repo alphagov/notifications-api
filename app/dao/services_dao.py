@@ -51,6 +51,7 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     UPLOAD_LETTERS,
+    INTERNATIONAL_LETTERS
 )
 from app.utils import (
     email_address_is_nhs,
@@ -66,6 +67,7 @@ DEFAULT_SERVICE_PERMISSIONS = [
     LETTER_TYPE,
     INTERNATIONAL_SMS_TYPE,
     UPLOAD_LETTERS,
+    INTERNATIONAL_LETTERS,
 ]
 
 
@@ -294,9 +296,6 @@ def dao_create_service(
     service_id=None,
     service_permissions=None,
 ):
-    # the default property does not appear to work when there is a difference between the sqlalchemy schema and the
-    # db schema (ie: during a migration), so we have to set sms_sender manually here. After the GOVUK sms_sender
-    # migration is completed, this code should be able to be removed.
 
     if not user:
         raise ValueError("Can't create a service without a user")
