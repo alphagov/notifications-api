@@ -90,7 +90,7 @@ class Config(object):
 
     # URL of redis instance
     REDIS_URL = os.getenv('REDIS_URL')
-    REDIS_ENABLED = os.getenv('REDIS_ENABLED') == '1'
+    REDIS_ENABLED = False
     EXPIRE_CACHE_TEN_MINUTES = 600
     EXPIRE_CACHE_EIGHT_DAYS = 8 * 24 * 60 * 60
 
@@ -481,7 +481,6 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
-    REDIS_ENABLED = True
 
 
 class Live(Config):
@@ -523,7 +522,6 @@ class Sandbox(CloudFoundryConfig):
     LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
     INVALID_PDF_BUCKET_NAME = 'cf-sandbox-letters-invalid-pdf'
     FROM_NUMBER = 'sandbox'
-    REDIS_ENABLED = False
 
 
 configs = {
