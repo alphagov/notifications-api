@@ -24,7 +24,7 @@ strict-rfc3339==0.7
 rfc3987==1.3.8
 cachetools==4.1.1
 
-notifications-python-client==5.5.1
+notifications-python-client==5.7.0
 
 # PaaS
 awscli-cwlogs>=1.4,<1.5
