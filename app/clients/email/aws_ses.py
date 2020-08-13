@@ -43,6 +43,10 @@ class AwsSesClientException(EmailClientException):
     pass
 
 
+class AwsSesClientThrottlingSendRateException(AwsSesClientException):
+    pass
+
+
 class AwsSesClient(EmailClient):
     '''
     Amazon SES email client.
@@ -122,6 +126,11 @@ class AwsSesClient(EmailClient):
                     to_addresses[0],
                     e.response['Error']['Message']
                 ))
+            elif (
+                e.response['Error']['Code'] == 'Throttling'
+                and e.response['Error']['Message'] == 'Maximum sending rate exceeded.'
+            ):
+                raise AwsSesClientThrottlingSendRateException(str(e))
             else:
                 self.statsd_client.incr("clients.ses.error")
                 raise AwsSesClientException(str(e))

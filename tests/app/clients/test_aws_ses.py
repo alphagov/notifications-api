@@ -4,7 +4,7 @@ from unittest.mock import Mock, ANY
 from notifications_utils.recipients import InvalidEmailError
 
 from app import aws_ses_client
-from app.clients.email.aws_ses import get_aws_responses, AwsSesClientException
+from app.clients.email.aws_ses import get_aws_responses, AwsSesClientException, AwsSesClientThrottlingSendRateException
 
 
 def test_should_return_correct_details_for_delivery():
@@ -114,6 +114,48 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
 
     assert 'some error message from amazon' in str(excinfo.value)
     assert 'definitely@invalid_email.com' in str(excinfo.value)
+
+
+def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRateException(mocker):
+    boto_mock = mocker.patch.object(aws_ses_client, '_client', create=True)
+    mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
+    error_response = {
+        'Error': {
+            'Code': 'Throttling',
+            'Message': 'Maximum sending rate exceeded.',
+            'Type': 'Sender'
+        }
+    }
+    boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, 'opname')
+
+    with pytest.raises(AwsSesClientThrottlingSendRateException):
+        aws_ses_client.send_email(
+            source=Mock(),
+            to_addresses='foo@bar.com',
+            subject=Mock(),
+            body=Mock()
+        )
+
+
+def test_send_email_does_not_raise_AwsSesClientThrottlingSendRateException_if_non_send_rate_throttling(mocker):
+    boto_mock = mocker.patch.object(aws_ses_client, '_client', create=True)
+    mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
+    error_response = {
+        'Error': {
+            'Code': 'Throttling',
+            'Message': 'Daily message quota exceeded',
+            'Type': 'Sender'
+        }
+    }
+    boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, 'opname')
+
+    with pytest.raises(AwsSesClientException):
+        aws_ses_client.send_email(
+            source=Mock(),
+            to_addresses='foo@bar.com',
+            subject=Mock(),
+            body=Mock()
+        )
 
 
 def test_send_email_raises_other_errs_as_AwsSesClientException(mocker):

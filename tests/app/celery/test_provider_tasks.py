@@ -6,7 +6,7 @@ from notifications_utils.recipients import InvalidEmailError
 import app
 from app.celery import provider_tasks
 from app.celery.provider_tasks import deliver_sms, deliver_email
-from app.clients.email.aws_ses import AwsSesClientException
+from app.clients.email.aws_ses import AwsSesClientException, AwsSesClientThrottlingSendRateException
 from app.exceptions import NotificationTechnicalFailureException
 
 
@@ -72,8 +72,17 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(s
     assert sample_notification.status == 'technical-failure'
 
 
-def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task(sample_notification, mocker):
-    mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=Exception("EXPECTED"))
+@pytest.mark.parametrize(
+    'exception_class', [
+        Exception(),
+        AwsSesClientException(),
+        AwsSesClientThrottlingSendRateException(),
+    ]
+)
+def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task(
+    sample_notification, mocker, exception_class
+):
+    mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=exception_class)
     mocker.patch('app.celery.provider_tasks.deliver_email.retry', side_effect=MaxRetriesExceededError())
 
     with pytest.raises(NotificationTechnicalFailureException) as e:
@@ -105,11 +114,38 @@ def test_should_retry_and_log_exception(sample_notification, mocker):
     ex = ClientError(error_response=error_response, operation_name='opname')
     mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=AwsSesClientException(str(ex)))
     mocker.patch('app.celery.provider_tasks.deliver_email.retry')
+    mock_logger_exception = mocker.patch('app.celery.tasks.current_app.logger.exception')
 
     deliver_email(sample_notification.id)
 
     assert provider_tasks.deliver_email.retry.called is True
     assert sample_notification.status == 'created'
+    assert mock_logger_exception.called
+
+
+def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_notification, mocker):
+    error_response = {
+        'Error': {
+            'Code': 'Throttling',
+            'Message': 'Maximum sending rate exceeded.',
+            'Type': 'Sender'
+        }
+    }
+    ex = ClientError(error_response=error_response, operation_name='opname')
+    mocker.patch(
+        'app.delivery.send_to_providers.send_email_to_provider',
+        side_effect=AwsSesClientThrottlingSendRateException(str(ex))
+    )
+    mocker.patch('app.celery.provider_tasks.deliver_email.retry')
+    mock_logger_warning = mocker.patch('app.celery.tasks.current_app.logger.warning')
+    mock_logger_exception = mocker.patch('app.celery.tasks.current_app.logger.exception')
+
+    deliver_email(sample_notification.id)
+
+    assert provider_tasks.deliver_email.retry.called is True
+    assert sample_notification.status == 'created'
+    assert not mock_logger_exception.called
+    assert mock_logger_warning.called
 
 
 def test_send_sms_should_not_switch_providers_on_non_provider_failure(
