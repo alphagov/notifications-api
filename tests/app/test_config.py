@@ -57,11 +57,6 @@ def test_load_config_if_cloudfoundry_not_available(reload_config):
     assert config.Config.ADMIN_BASE_URL == 'env'
 
 
-def test_cloudfoundry_config_has_different_defaults():
-    # these should always be set on Sandbox
-    assert config.Sandbox.REDIS_ENABLED is False
-
-
 def test_queue_names_all_queues_correct():
     # Need to ensure that all_queues() only returns queue names used in API
     queues = QueueNames.all_queues()
