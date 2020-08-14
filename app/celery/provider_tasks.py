@@ -5,6 +5,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.config import QueueNames
+from app.clients.email.aws_ses import AwsSesClientThrottlingSendRateException
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.delivery import send_to_providers
@@ -49,11 +50,17 @@ def deliver_email(self, notification_id):
     except InvalidEmailError as e:
         current_app.logger.exception(e)
         update_notification_status_by_id(notification_id, 'technical-failure')
-    except Exception:
+    except Exception as e:
         try:
-            current_app.logger.exception(
-                "RETRY: Email notification {} failed".format(notification_id)
-            )
+            if isinstance(e, AwsSesClientThrottlingSendRateException):
+                current_app.logger.warning(
+                    f"RETRY: Email notification {notification_id} was rate limited by SES"
+                )
+            else:
+                current_app.logger.exception(
+                    f"RETRY: Email notification {notification_id} failed"
+                )
+
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
             message = "RETRY FAILED: Max retries reached. " \
