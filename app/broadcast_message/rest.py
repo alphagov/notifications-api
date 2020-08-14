@@ -3,13 +3,12 @@ from datetime import datetime
 import iso8601
 from flask import Blueprint, jsonify, request, current_app
 from app.config import QueueNames
+from app.dao.dao_utils import dao_save_object
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
 from app.dao.users_dao import get_user_by_id
 from app.dao.broadcast_message_dao import (
-    dao_create_broadcast_message,
     dao_get_broadcast_message_by_id_and_service_id,
     dao_get_broadcast_messages_for_service,
-    dao_update_broadcast_message,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.errors import register_errors, InvalidRequest
@@ -109,7 +108,7 @@ def create_broadcast_message(service_id):
         created_by_id=user.id,
     )
 
-    dao_create_broadcast_message(broadcast_message)
+    dao_save_object(broadcast_message)
 
     return jsonify(broadcast_message.serialize()), 201
 
@@ -137,7 +136,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
     if 'areas' in data:
         broadcast_message.areas = data['areas']
 
-    dao_update_broadcast_message(broadcast_message)
+    dao_save_object(broadcast_message)
 
     return jsonify(broadcast_message.serialize()), 200
 
@@ -153,7 +152,7 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     updating_user = get_user_by_id(data['created_by'])
 
     _update_broadcast_message(broadcast_message, new_status, updating_user)
-    dao_update_broadcast_message(broadcast_message)
+    dao_save_object(broadcast_message)
 
     if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
         _create_broadcast_event(broadcast_message)
@@ -193,8 +192,7 @@ def _create_broadcast_event(broadcast_message):
         transmitted_finishes_at=transmitted_finishes_at,
     )
 
-    # save to the DB
-    dao_create_broadcast_message(event)
+    dao_save_object(event)
 
     send_broadcast_event.apply_async(
         kwargs={'broadcast_event_id': str(event.id)},
