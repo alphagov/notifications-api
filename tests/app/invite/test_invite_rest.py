@@ -160,6 +160,29 @@ def test_get_invited_users_by_service_with_no_invites(client, notify_db, notify_
     assert len(json_resp['data']) == 0
 
 
+def test_get_invited_user_by_service(admin_request, sample_invited_user):
+    json_resp = admin_request.get(
+        'invite.get_invited_user_by_service',
+        service_id=sample_invited_user.service.id,
+        invited_user_id=sample_invited_user.id
+    )
+    assert json_resp['data']['email_address'] == sample_invited_user.email_address
+
+
+def test_get_invited_user_by_service_when_user_does_not_belong_to_the_service(
+    admin_request,
+    sample_invited_user,
+    fake_uuid,
+):
+    json_resp = admin_request.get(
+        'invite.get_invited_user_by_service',
+        service_id=fake_uuid,
+        invited_user_id=sample_invited_user.id,
+        _expected_status=404
+    )
+    assert json_resp['result'] == 'error'
+
+
 def test_update_invited_user_set_status_to_cancelled(client, sample_invited_user):
     data = {'status': 'cancelled'}
     url = '/service/{0}/invite/{1}'.format(sample_invited_user.service_id, sample_invited_user.id)
