@@ -21,7 +21,9 @@ from app.models import (
     Template,
     TemplateHistory
 )
-from app.dao.templates_dao import dao_get_template_by_id, dao_redact_template
+from app.dao.templates_dao import (
+    dao_get_template_by_id, dao_get_template_versions, dao_redact_template, dao_update_template
+)
 
 from tests import create_authorization_header
 from tests.app.db import (
@@ -1148,6 +1150,49 @@ def test_preview_letter_template_by_id_valid_file_type(
             assert post_json['date'] == '2012-12-12T00:00:00'
             assert post_json['filename'] is None
             assert base64.b64decode(resp['content']) == content
+
+
+@freeze_time('2012-12-12')
+def test_preview_letter_template_by_id_shows_template_version_used_by_notification(
+    notify_api,
+    sample_letter_notification,
+    sample_letter_template,
+    admin_request
+):
+    sample_letter_notification.created_at = datetime.utcnow()
+    assert sample_letter_notification.template_version == 1
+
+    # Create a new template history to check that our preview doesn't use the newest version
+    # but instead the one linked with the notification
+    sample_letter_template.content = 'new content'
+    dao_update_template(sample_letter_template)
+    versions = dao_get_template_versions(sample_letter_notification.service.id, sample_letter_template.id)
+    assert len(versions) == 2
+
+    with set_config_values(notify_api, {
+        'TEMPLATE_PREVIEW_API_HOST': 'http://localhost/notifications-template-preview',
+        'TEMPLATE_PREVIEW_API_KEY': 'test-key'
+    }):
+        with requests_mock.Mocker() as request_mock:
+            content = b'\x00\x01'
+
+            mock_post = request_mock.post(
+                'http://localhost/notifications-template-preview/preview.png',
+                content=content,
+                headers={'X-pdf-page-count': '1'},
+                status_code=200
+            )
+
+            admin_request.get(
+                'template.preview_letter_template_by_notification_id',
+                service_id=sample_letter_notification.service_id,
+                notification_id=sample_letter_notification.id,
+                file_type='png',
+            )
+
+            post_json = mock_post.last_request.json()
+            assert post_json['template']['id'] == str(sample_letter_notification.template_id)
+            assert post_json['template']['version'] == '1'
 
 
 def test_preview_letter_template_by_id_template_preview_500(
