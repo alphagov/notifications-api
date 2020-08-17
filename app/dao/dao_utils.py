@@ -73,3 +73,9 @@ def version_class(*version_options):
 
 def dao_rollback():
     db.session.rollback()
+
+
+@transactional
+def dao_save_object(obj):
+    # add/update object in db
+    db.session.add(obj)

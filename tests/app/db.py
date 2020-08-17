@@ -1043,7 +1043,7 @@ def create_broadcast_event(
         transmitted_areas=transmitted_areas or ['london'],
         transmitted_sender=transmitted_sender or 'www.notifications.service.gov.uk',
         transmitted_starts_at=transmitted_starts_at,
-        transmitted_finishes_at=transmitted_finishes_at,
+        transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow(),
     )
     db.session.add(b_e)
     db.session.commit()
