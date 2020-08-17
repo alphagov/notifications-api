@@ -243,8 +243,7 @@ def preview_letter_template_by_notification_id(service_id, notification_id, file
     page = request.args.get('page')
 
     notification = get_notification_by_id(notification_id)
-
-    template = dao_get_template_by_id(notification.template_id)
+    template = dao_get_template_by_id(notification.template_id, notification.template_version)
     metadata = {}
 
     if template.is_precompiled_letter:
