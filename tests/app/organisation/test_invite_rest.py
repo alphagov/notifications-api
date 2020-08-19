@@ -116,6 +116,29 @@ def test_get_invited_users_by_service_with_no_invites(admin_request, sample_orga
     assert len(json_resp['data']) == 0
 
 
+def test_get_invited_user_by_organisation(admin_request, sample_invited_org_user):
+    json_resp = admin_request.get(
+        'organisation_invite.get_invited_org_user_by_organisation',
+        organisation_id=sample_invited_org_user.organisation.id,
+        invited_org_user_id=sample_invited_org_user.id
+    )
+    assert json_resp['data']['email_address'] == sample_invited_org_user.email_address
+
+
+def test_get_invited_user_by_organisation_when_user_does_not_belong_to_the_org(
+    admin_request,
+    sample_invited_org_user,
+    fake_uuid,
+):
+    json_resp = admin_request.get(
+        'organisation_invite.get_invited_org_user_by_organisation',
+        organisation_id=fake_uuid,
+        invited_org_user_id=sample_invited_org_user.id,
+        _expected_status=404
+    )
+    assert json_resp['result'] == 'error'
+
+
 def test_update_org_invited_user_set_status_to_cancelled(admin_request, sample_invited_org_user):
     data = {'status': 'cancelled'}
 

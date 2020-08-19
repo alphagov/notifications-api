@@ -76,6 +76,12 @@ def get_invited_org_users_by_organisation(organisation_id):
     return jsonify(data=[x.serialize() for x in invited_org_users]), 200
 
 
+@organisation_invite_blueprint.route('/<invited_org_user_id>', methods=['GET'])
+def get_invited_org_user_by_organisation(organisation_id, invited_org_user_id):
+    invited_org_user = get_invited_org_user(organisation_id, invited_org_user_id)
+    return jsonify(data=invited_org_user.serialize()), 200
+
+
 @organisation_invite_blueprint.route('/<invited_org_user_id>', methods=['POST'])
 def update_org_invite_status(organisation_id, invited_org_user_id):
     fetched = get_invited_org_user(organisation_id=organisation_id, invited_org_user_id=invited_org_user_id)

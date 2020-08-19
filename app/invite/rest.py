@@ -60,6 +60,12 @@ def get_invited_users_by_service(service_id):
     return jsonify(data=invited_user_schema.dump(invited_users, many=True).data), 200
 
 
+@invite.route('/<invited_user_id>', methods=['GET'])
+def get_invited_user_by_service(service_id, invited_user_id):
+    invited_user = get_invited_user(service_id, invited_user_id)
+    return jsonify(data=invited_user_schema.dump(invited_user).data), 200
+
+
 @invite.route('/<invited_user_id>', methods=['POST'])
 def update_invited_user(service_id, invited_user_id):
     fetched = get_invited_user(service_id=service_id, invited_user_id=invited_user_id)
