@@ -401,7 +401,7 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             literal(notification_type).label('notification_type'),
             literal('dvla').label('sent_by'),
             rate_multiplier.label('rate_multiplier'),
-            literal(False).label('international'),  # todo: this may change in the future.
+            table.international,
             table.billable_units.label('letter_page_count'),
             postage.label('postage'),
             func.sum(table.billable_units).label('billable_units'),
@@ -417,7 +417,8 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             table.template_id,
             rate_multiplier,
             table.billable_units,
-            postage
+            postage,
+            table.international
         )
 
     query_funcs = {

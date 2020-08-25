@@ -175,15 +175,17 @@ def test_fetch_billing_data_for_day_is_grouped_by_rate_mulitplier(notify_db_sess
 
 def test_fetch_billing_data_for_day_is_grouped_by_international(notify_db_session):
     service = create_service()
-    template = create_template(service=service)
-    create_notification(template=template, status='delivered', international=True)
-    create_notification(template=template, status='delivered', international=False)
+    sms_template = create_template(service=service)
+    letter_template = create_template(template_type='letter', service=service)
+    create_notification(template=sms_template, status='delivered', international=True)
+    create_notification(template=sms_template, status='delivered', international=False)
+    create_notification(template=letter_template, status='delivered', international=True)
+    create_notification(template=letter_template, status='delivered', international=False)
 
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 2
-    assert results[0].notifications_sent == 1
-    assert results[1].notifications_sent == 1
+    assert len(results) == 4
+    assert all(result.notifications_sent == 1 for result in results)
 
 
 def test_fetch_billing_data_for_day_is_grouped_by_notification_type(notify_db_session):
@@ -212,11 +214,13 @@ def test_fetch_billing_data_for_day_groups_by_postage(notify_db_session):
     create_notification(template=letter_template, status='delivered', postage='first')
     create_notification(template=letter_template, status='delivered', postage='first')
     create_notification(template=letter_template, status='delivered', postage='second')
+    create_notification(template=letter_template, status='delivered', postage='europe')
+    create_notification(template=letter_template, status='delivered', postage='rest-of-world')
     create_notification(template=email_template, status='delivered')
 
     today = convert_utc_to_bst(datetime.utcnow())
     results = fetch_billing_data_for_day(today.date())
-    assert len(results) == 3
+    assert len(results) == 5
 
 
 def test_fetch_billing_data_for_day_groups_by_sent_by(notify_db_session):
