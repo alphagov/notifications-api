@@ -352,49 +352,55 @@ def setup_sqlalchemy_events(app):
 
         @event.listens_for(db.engine, 'checkout')
         def checkout(dbapi_connection, connection_record, connection_proxy):
-            # connection given to a web worker
-            TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
+            try:
+                # connection given to a web worker
+                TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
 
-            # this will overwrite any previous checkout_at timestamp
-            connection_record.info['checkout_at'] = time.monotonic()
+                # this will overwrite any previous checkout_at timestamp
+                connection_record.info['checkout_at'] = time.monotonic()
 
-            # checkin runs after the request is already torn down, therefore we add the request_data onto the
-            # connection_record as otherwise it won't have that information when checkin actually runs.
-            # Note: this is not a problem for checkouts as the checkout always happens within a web request or task
+                # checkin runs after the request is already torn down, therefore we add the request_data onto the
+                # connection_record as otherwise it won't have that information when checkin actually runs.
+                # Note: this is not a problem for checkouts as the checkout always happens within a web request or task
 
-            # web requests
-            if has_request_context():
-                connection_record.info['request_data'] = {
-                    'method': request.method,
-                    'host': request.host,
-                    'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
-                }
-            # celery apps
-            elif current_task:
-                connection_record.info['request_data'] = {
-                    'method': 'celery',
-                    'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
-                    'url_rule': current_task.name,  # task name
-                }
-            # anything else. migrations possibly.
-            else:
-                current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
-                connection_record.info['request_data'] = {
-                    'method': 'unknown',
-                    'host': 'unknown',
-                    'url_rule': 'unknown',
-                }
+                # web requests
+                if has_request_context():
+                    connection_record.info['request_data'] = {
+                        'method': request.method,
+                        'host': request.host,
+                        'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
+                    }
+                # celery apps
+                elif current_task:
+                    connection_record.info['request_data'] = {
+                        'method': 'celery',
+                        'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
+                        'url_rule': current_task.name,  # task name
+                    }
+                # anything else. migrations possibly.
+                else:
+                    current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
+                    connection_record.info['request_data'] = {
+                        'method': 'unknown',
+                        'host': 'unknown',
+                        'url_rule': 'unknown',
+                    }
+            except Exception:
+                current_app.logger.exception("Exception caught for checkout event.")
 
         @event.listens_for(db.engine, 'checkin')
         def checkin(dbapi_connection, connection_record):
-            # connection returned by a web worker
-            TOTAL_CHECKED_OUT_DB_CONNECTIONS.dec()
+            try:
+                # connection returned by a web worker
+                TOTAL_CHECKED_OUT_DB_CONNECTIONS.dec()
 
-            # duration that connection was held by a single web request
-            duration = time.monotonic() - connection_record.info['checkout_at']
+                # duration that connection was held by a single web request
+                duration = time.monotonic() - connection_record.info['checkout_at']
 
-            DB_CONNECTION_OPEN_DURATION_SECONDS.labels(
-                connection_record.info['request_data']['method'],
-                connection_record.info['request_data']['host'],
-                connection_record.info['request_data']['url_rule']
-            ).observe(duration)
+                DB_CONNECTION_OPEN_DURATION_SECONDS.labels(
+                    connection_record.info['request_data']['method'],
+                    connection_record.info['request_data']['host'],
+                    connection_record.info['request_data']['url_rule']
+                ).observe(duration)
+            except Exception:
+                current_app.logger.exception("Exception caught for checkin event.")
