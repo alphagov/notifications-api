@@ -143,11 +143,19 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
 ])
 def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, sample_service, status):
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['manchester'], status=status)
+    bm = create_broadcast_message(
+        t,
+        areas={"areas": ['manchester'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        status=status
+    )
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
-        _data={'starts_at': '2020-06-01 20:00:01', 'areas': ['london', 'glasgow']},
+        _data={
+            'starts_at': '2020-06-01 20:00:01',
+            'areas': ['london', 'glasgow'],
+            "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]
+        },
         service_id=t.service_id,
         broadcast_message_id=bm.id,
         _expected_status=200
@@ -310,7 +318,11 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     mocker
 ):
     t = create_template(sample_service, BROADCAST_TYPE, content='emergency broadcast')
-    bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[50.21, 1.12], [50.22, 1.12], [50.23, 1.13]]}
+    )
     approver = create_user(email='approver@gov.uk')
     sample_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
@@ -360,6 +372,31 @@ def test_update_broadcast_message_status_rejects_approval_from_creator(
     assert f'cannot approve their own broadcast' in response['message']
 
 
+def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_areas(
+    admin_request,
+    sample_service,
+    mocker
+):
+    template = create_template(sample_service, BROADCAST_TYPE)
+    broadcast = create_broadcast_message(template, status=BroadcastStatusType.PENDING_APPROVAL)
+    approver = create_user(email='approver@gov.uk')
+    sample_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=template.service_id,
+        broadcast_message_id=broadcast.id,
+        _expected_status=400
+    )
+
+    assert mock_task.called is False
+    assert response[
+        'message'
+    ] == f'broadcast_message {broadcast.id} has no selected areas and so cannot be broadcasted.'
+
+
 def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_message(
     notify_db,
     admin_request,
@@ -369,7 +406,11 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     user = sample_service.created_by
     user.platform_admin = True
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[50.21, 1.12], [50.22, 1.12], [50.23, 1.13]]}
+    )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -398,7 +439,11 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
 ):
     sample_service.restricted = True
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[50.21, 1.12], [50.22, 1.12], [50.23, 1.13]]}
+    )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
