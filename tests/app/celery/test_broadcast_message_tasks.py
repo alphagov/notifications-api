@@ -11,7 +11,11 @@ from tests.app.db import create_template, create_broadcast_message, create_broad
 
 def test_send_broadcast_message_sends_data_correctly(sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        status=BroadcastStatusType.BROADCASTING
+    )
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post("http://test-cbc-proxy/broadcasts/stub-1", json={'valid': 'true'}, status_code=200)
@@ -29,7 +33,11 @@ def test_send_broadcast_message_sends_data_correctly(sample_service):
 
 def test_send_broadcast_message_sends_old_version_of_template(sample_service):
     template = create_template(sample_service, BROADCAST_TYPE, content='first content')
-    broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        status=BroadcastStatusType.BROADCASTING
+    )
 
     template.content = 'second content'
     dao_update_template(template)

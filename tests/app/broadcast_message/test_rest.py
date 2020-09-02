@@ -11,7 +11,10 @@ from tests.app.db import create_broadcast_message, create_template, create_servi
 
 def test_get_broadcast_message(admin_request, sample_service):
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['place A', 'region B'])
+    bm = create_broadcast_message(t, areas={
+        "areas": ['place A', 'region B'],
+        "simple_polygons": [[50.1, 1.2], [50.12, 1.2]]
+    })
 
     response = admin_request.get(
         'broadcast_message.get_broadcast_message',
@@ -177,7 +180,10 @@ def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(a
 
 def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sample_service):
     t = create_template(sample_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['manchester'])
+    bm = create_broadcast_message(
+        t,
+        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]}
+    )
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',

@@ -1006,7 +1006,7 @@ def create_broadcast_message(
     status=BroadcastStatusType.DRAFT,
     starts_at=None,
     finishes_at=None,
-    areas=[],
+    areas={},
 ):
     broadcast_message = BroadcastMessage(
         service_id=template.service_id,

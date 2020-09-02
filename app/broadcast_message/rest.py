@@ -101,7 +101,7 @@ def create_broadcast_message(service_id):
         template_id=template.id,
         template_version=template.version,
         personalisation=data.get('personalisation', {}),
-        areas=data.get('areas', []),
+        areas=data.get('areas', {}),
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
@@ -133,8 +133,8 @@ def update_broadcast_message(service_id, broadcast_message_id):
         broadcast_message.starts_at = _parse_nullable_datetime(data['starts_at'])
     if 'finishes_at' in data:
         broadcast_message.finishes_at = _parse_nullable_datetime(data['finishes_at'])
-    if 'areas' in data:
-        broadcast_message.areas = data['areas']
+    if 'areas' in data and 'simple_polygons' in data:
+        broadcast_message.areas = {"areas": data["areas"], "simple_polygons": data["simple_polygons"]}
 
     dao_save_object(broadcast_message)
 
