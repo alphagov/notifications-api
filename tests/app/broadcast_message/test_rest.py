@@ -235,7 +235,10 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
-        _data={'areas': ['glasgow'], 'status': BroadcastStatusType.BROADCASTING},
+        _data={
+            'areas': ['glasgow'],
+            "simple_polygons": [[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]],
+            'status': BroadcastStatusType.BROADCASTING},
         service_id=t.service_id,
         broadcast_message_id=bm.id,
         _expected_status=400
@@ -245,6 +248,29 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
         'error': 'ValidationError',
         'message': 'Additional properties are not allowed (status was unexpected)'
     }]
+
+
+@pytest.mark.parametrize("incomplete_area_data", [
+    {"areas": ["cardiff"]},
+    {"simple_polygons": [[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]},
+])
+def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
+    admin_request, sample_service, incomplete_area_data
+):
+    template = create_template(sample_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template)
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message',
+        _data=incomplete_area_data,
+        service_id=template.service_id,
+        broadcast_message_id=broadcast_message.id,
+        _expected_status=400
+    )
+
+    assert response[
+        'message'
+    ] == f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.'
 
 
 def test_update_broadcast_message_status(admin_request, sample_service):

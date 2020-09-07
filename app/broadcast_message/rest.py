@@ -132,6 +132,12 @@ def update_broadcast_message(service_id, broadcast_message_id):
             status_code=400
         )
 
+    if ('areas' in data and 'simple_polygons' not in data) or ('areas' not in data and 'simple_polygons' in data):
+        raise InvalidRequest(
+            f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.',
+            status_code=400
+        )
+
     if 'personalisation' in data:
         broadcast_message.personalisation = data['personalisation']
     if 'starts_at' in data:
