@@ -24,10 +24,18 @@ from app.models import (
     ServicePermission,
     ServiceSmsSender,
     User,
-    KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-    INTERNATIONAL_SMS_TYPE, INBOUND_SMS_TYPE,
-    NOTIFICATION_RETURNED_LETTER, UPLOAD_LETTERS,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    EMAIL_TYPE,
+    SMS_TYPE,
+    LETTER_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    INBOUND_SMS_TYPE,
+    NOTIFICATION_RETURNED_LETTER,
+    UPLOAD_LETTERS,
+
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -91,9 +99,9 @@ def test_get_service_list_with_only_active_flag(client, service_factory):
 
 
 def test_get_service_list_with_user_id_and_only_active_flag(
-        admin_request,
-        sample_user,
-        service_factory
+    admin_request,
+    sample_user,
+    service_factory
 ):
     other_user = create_user(email='foo@bar.gov.uk')
 
@@ -280,9 +288,9 @@ def test_get_service_list_has_default_permissions(admin_request, service_factory
     assert all(
         set(
             json['permissions']
-        ) == set([
-            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS,
-        ])
+        ) == {
+            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
+        }
         for json in json_resp['data']
     )
 
@@ -292,9 +300,9 @@ def test_get_service_by_id_has_default_service_permissions(admin_request, sample
 
     assert set(
         json_resp['data']['permissions']
-    ) == set([
-        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS,
-    ])
+    ) == {
+        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
+    }
 
 
 def test_get_service_by_id_should_404_if_no_service(admin_request, notify_db_session):
@@ -407,7 +415,6 @@ def test_create_service_with_domain_sets_organisation(
     domain,
     expected_org,
 ):
-
     red_herring_org = create_organisation(name='Sub example')
     create_domain('specific.example.gov.uk', red_herring_org.id)
     create_domain('aaaaaaaa.example.gov.uk', red_herring_org.id)
@@ -445,7 +452,6 @@ def test_create_service_inherits_branding_from_organisation(
     admin_request,
     sample_user,
 ):
-
     org = create_organisation()
     email_branding = create_email_branding()
     org.email_branding = email_branding
@@ -1518,7 +1524,7 @@ def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db
 
 
 def test_remove_user_from_service(
-        client, sample_user_service_permission
+    client, sample_user_service_permission
 ):
     second_user = create_user(email="new@digital.cabinet-office.gov.uk")
     service = sample_user_service_permission.service
@@ -1542,7 +1548,7 @@ def test_remove_user_from_service(
 
 
 def test_remove_non_existant_user_from_service(
-        client, sample_user_service_permission
+    client, sample_user_service_permission
 ):
     second_user = create_user(email="new@digital.cabinet-office.gov.uk")
     endpoint = url_for(
@@ -1649,7 +1655,6 @@ def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_
 
 
 def test_get_notification_for_service(client, notify_db_session):
-
     service_1 = create_service(service_name="1", email_from='1')
     service_2 = create_service(service_name="2", email_from='2')
 
@@ -1725,13 +1730,13 @@ def test_get_notification_for_service_returns_old_template_version(admin_request
     ]
 )
 def test_get_all_notifications_for_service_including_ones_made_by_jobs(
-        client,
-        sample_service,
-        include_from_test_key,
-        expected_count_of_notifications,
-        sample_notification,
-        sample_notification_with_job,
-        sample_template,
+    client,
+    sample_service,
+    include_from_test_key,
+    expected_count_of_notifications,
+    sample_notification,
+    sample_notification_with_job,
+    sample_template,
 ):
     # notification from_test_api_key
     create_notification(sample_template, key_type=KEY_TYPE_TEST)
@@ -2070,7 +2075,6 @@ def test_get_detailed_services_for_date_range(sample_template, start_date_delta,
 
 
 def test_search_for_notification_by_to_field(client, sample_template, sample_email_template):
-
     notification1 = create_notification(template=sample_template, to_field='+447700900855',
                                         normalised_to='447700900855')
     notification2 = create_notification(template=sample_email_template, to_field='jack@gmail.com',
@@ -2544,9 +2548,9 @@ def test_is_service_name_unique_returns_200_with_name_capitalized_or_punctuation
 
 
 @pytest.mark.parametrize('name, email_from', [
-                         ("existing name", "email.from"),
-                         ("name", "existing.name")
-                         ])
+    ("existing name", "email.from"),
+    ("name", "existing.name")
+])
 def test_is_service_name_unique_returns_200_and_false_if_name_or_email_from_exist_for_a_different_service(
     admin_request,
     notify_db,
