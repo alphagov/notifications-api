@@ -14,6 +14,7 @@ create_broadcast_message_schema = {
         'starts_at': {'type': 'string', 'format': 'datetime'},
         'finishes_at': {'type': 'string', 'format': 'datetime'},
         'areas': {"type": "array", "items": {"type": "string"}},
+        'simple_polygons': {"type": "array", "items": {"type": "array"}},
     },
     'required': ['template_id', 'service_id', 'created_by'],
     'additionalProperties': False
@@ -29,6 +30,7 @@ update_broadcast_message_schema = {
         'starts_at': {'type': 'string', 'format': 'datetime'},
         'finishes_at': {'type': 'string', 'format': 'datetime'},
         'areas': {"type": "array", "items": {"type": "string"}},
+        'simple_polygons': {"type": "array", "items": {"type": "array"}},
     },
     'required': [],
     'additionalProperties': False

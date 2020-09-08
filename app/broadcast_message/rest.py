@@ -59,6 +59,11 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
                 f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
                 status_code=400
             )
+        elif not broadcast_message.areas:
+            raise InvalidRequest(
+                f'broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.',
+                status_code=400
+            )
         else:
             broadcast_message.approved_at = datetime.utcnow()
             broadcast_message.approved_by = updating_user
@@ -101,7 +106,7 @@ def create_broadcast_message(service_id):
         template_id=template.id,
         template_version=template.version,
         personalisation=data.get('personalisation', {}),
-        areas=data.get('areas', []),
+        areas={"areas": data.get("areas", []), "simple_polygons": data.get("simple_polygons", [])},
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
@@ -127,14 +132,20 @@ def update_broadcast_message(service_id, broadcast_message_id):
             status_code=400
         )
 
+    if ('areas' in data and 'simple_polygons' not in data) or ('areas' not in data and 'simple_polygons' in data):
+        raise InvalidRequest(
+            f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.',
+            status_code=400
+        )
+
     if 'personalisation' in data:
         broadcast_message.personalisation = data['personalisation']
     if 'starts_at' in data:
         broadcast_message.starts_at = _parse_nullable_datetime(data['starts_at'])
     if 'finishes_at' in data:
         broadcast_message.finishes_at = _parse_nullable_datetime(data['finishes_at'])
-    if 'areas' in data:
-        broadcast_message.areas = data['areas']
+    if 'areas' in data and 'simple_polygons' in data:
+        broadcast_message.areas = {"areas": data["areas"], "simple_polygons": data["simple_polygons"]}
 
     dao_save_object(broadcast_message)
 

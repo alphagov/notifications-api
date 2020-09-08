@@ -2263,7 +2263,8 @@ class BroadcastMessage(db.Model):
             'template_name': self.template.name,
 
             'personalisation': self.personalisation,
-            'areas': self.areas,
+            'areas': self.areas.get("areas", []),
+            'simple_polygons': self.areas.get("simple_polygons", []),
 
             'status': self.status,
 
