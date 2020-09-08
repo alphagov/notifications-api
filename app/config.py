@@ -144,8 +144,8 @@ class Config(object):
 
     # these should always add up to 100%
     SMS_PROVIDER_RESTING_POINTS = {
-        'mmg': 70,
-        'firetext': 30
+        'mmg': 60,
+        'firetext': 40
     }
 
     NOTIFY_SERVICE_ID = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
