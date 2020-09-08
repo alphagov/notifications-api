@@ -106,7 +106,7 @@ def create_broadcast_message(service_id):
         template_id=template.id,
         template_version=template.version,
         personalisation=data.get('personalisation', {}),
-        areas=data.get('areas', {}),
+        areas={"areas": data.get("areas", []), "simple_polygons": data.get("simple_polygons", [])},
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
