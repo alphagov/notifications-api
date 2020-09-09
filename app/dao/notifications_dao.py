@@ -141,7 +141,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
         return None
 
     if (
-        notification.notification_type == 'sms'
+        notification.notification_type == SMS_TYPE
         and notification.international
         and not country_records_delivery(notification.phone_prefix)
     ):
