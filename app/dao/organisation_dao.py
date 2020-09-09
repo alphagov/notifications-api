@@ -89,6 +89,9 @@ def dao_update_organisation(organisation_id, **kwargs):
     if 'organisation_type' in kwargs:
         _update_organisation_services(organisation, 'organisation_type', only_where_none=False)
 
+    if 'crown' in kwargs:
+        _update_organisation_services(organisation, 'crown', only_where_none=False)
+
     if 'email_branding_id' in kwargs:
         _update_organisation_services(organisation, 'email_branding')
 
