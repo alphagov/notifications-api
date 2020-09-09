@@ -213,6 +213,20 @@ def test_update_organisation_does_not_override_service_branding(
     assert sample_service.letter_branding == custom_letter_branding
 
 
+def test_update_organisation_updates_services_with_new_crown_type(
+    sample_service,
+    sample_organisation
+):
+    sample_organisation.services.append(sample_service)
+    db.session.commit()
+
+    assert Service.query.get(sample_service.id).crown
+
+    dao_update_organisation(sample_organisation.id, crown=False)
+
+    assert not Service.query.get(sample_service.id).crown
+
+
 def test_add_service_to_organisation(sample_service, sample_organisation):
     assert sample_organisation.services == []
 
