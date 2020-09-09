@@ -122,6 +122,17 @@ def test_should_update_status_by_id_if_pending_virus_check(sample_letter_templat
     assert updated.status == 'cancelled'
 
 
+def test_should_update_status_of_international_letter_to_cancelled(sample_letter_template):
+    notification = create_notification(
+        template=sample_letter_template,
+        international=True,
+        postage='europe',
+    )
+    assert Notification.query.get(notification.id).international is True
+    update_notification_status_by_id(notification.id, 'cancelled')
+    assert Notification.query.get(notification.id).status == 'cancelled'
+
+
 def test_should_update_status_by_id_and_set_sent_by(sample_template):
     notification = create_notification(template=sample_template, status='sending')
 
