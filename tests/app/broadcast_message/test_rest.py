@@ -154,7 +154,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
         _data={
             'starts_at': '2020-06-01 20:00:01',
             'areas': ['london', 'glasgow'],
-            "simple_polygons": [[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]
+            "simple_polygons": [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
         },
         service_id=t.service_id,
         broadcast_message_id=bm.id,

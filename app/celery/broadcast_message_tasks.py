@@ -4,7 +4,7 @@ from notifications_utils.statsd_decorators import statsd
 
 from app import notify_celery
 
-from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id, dao_get_broadcast_event_by_id
+from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id
 
 
 @notify_celery.task(name="send-broadcast-event")

@@ -3,7 +3,6 @@ import pytest
 import requests_mock
 from requests import RequestException
 
-from app.dao.templates_dao import dao_update_template
 from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
 from app.celery.broadcast_message_tasks import send_broadcast_event
 from tests.app.db import create_template, create_broadcast_message, create_broadcast_event
@@ -12,7 +11,11 @@ from tests.app.db import create_template, create_broadcast_message, create_broad
 @freeze_time('2020-08-01 12:00')
 def test_send_broadcast_event_sends_data_correctly(sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={"areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
+        status=BroadcastStatusType.BROADCASTING
+    )
     event = create_broadcast_event(broadcast_message)
 
     with requests_mock.Mocker() as request_mock:
@@ -28,7 +31,9 @@ def test_send_broadcast_event_sends_data_correctly(sample_service):
     assert cbc_json['broadcast_message_id'] == str(broadcast_message.id)
     assert cbc_json['sent_at'] == '2020-08-01T12:00:00.000000Z'
     assert cbc_json['transmitted_starts_at'] is None
-    assert cbc_json['transmitted_areas'] == ['london']
+    assert cbc_json['transmitted_areas'] == {
+        "areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]
+    }
 
 
 def test_send_broadcast_event_sends_references(sample_service):
