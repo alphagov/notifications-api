@@ -13,7 +13,7 @@ def test_get_broadcast_message(admin_request, sample_service):
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, areas={
         "areas": ['place A', 'region B'],
-        "simple_polygons": [[50.1, 1.2], [50.12, 1.2]]
+        "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     })
 
     response = admin_request.get(
@@ -145,7 +145,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
-        areas={"areas": ['manchester'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        areas={"areas": ['manchester'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
         status=status
     )
 
@@ -163,7 +163,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
 
     assert response['starts_at'] == '2020-06-01T20:00:01.000000Z'
     assert response['areas'] == ['london', 'glasgow']
-    assert response['simple_polygons'] == [[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]
+    assert response['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['updated_at'] is not None
 
 
@@ -191,7 +191,7 @@ def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sam
     t = create_template(sample_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
-        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]}
+        areas={"areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]}
     )
 
     response = admin_request.post(
@@ -237,7 +237,7 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
         'broadcast_message.update_broadcast_message',
         _data={
             'areas': ['glasgow'],
-            "simple_polygons": [[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]],
+            "simple_polygons": [[[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]]],
             'status': BroadcastStatusType.BROADCASTING},
         service_id=t.service_id,
         broadcast_message_id=bm.id,
@@ -252,7 +252,7 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
 
 @pytest.mark.parametrize("incomplete_area_data", [
     {"areas": ["cardiff"]},
-    {"simple_polygons": [[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]},
+    {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]},
 ])
 def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
     admin_request, sample_service, incomplete_area_data
@@ -348,7 +348,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]}
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
     )
     approver = create_user(email='approver@gov.uk')
     sample_service.users.append(approver)
@@ -436,7 +436,7 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]}
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
@@ -469,7 +469,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]}
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 

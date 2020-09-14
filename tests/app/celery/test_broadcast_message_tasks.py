@@ -13,7 +13,7 @@ def test_send_broadcast_message_sends_data_correctly(sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
-        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        areas={"areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
         status=BroadcastStatusType.BROADCASTING
     )
 
@@ -35,7 +35,7 @@ def test_send_broadcast_message_sends_old_version_of_template(sample_service):
     template = create_template(sample_service, BROADCAST_TYPE, content='first content')
     broadcast_message = create_broadcast_message(
         template,
-        areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
+        areas={"areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
         status=BroadcastStatusType.BROADCASTING
     )
 
