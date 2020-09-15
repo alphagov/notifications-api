@@ -592,18 +592,60 @@ def test_sanitise_letter_puts_letter_into_technical_failure_if_max_retries_excee
 
 
 @mock_s3
-@pytest.mark.parametrize('key_type, destination_bucket, expected_status, destination_filename', [
-    (KEY_TYPE_NORMAL, 'LETTERS_PDF_BUCKET_NAME', NOTIFICATION_CREATED, '2018-07-01/NOTIFY.foo'),
-    (KEY_TYPE_TEST, 'TEST_LETTERS_BUCKET_NAME', NOTIFICATION_DELIVERED, 'NOTIFY.foo'),
+@pytest.mark.parametrize('key_type, destination_bucket, expected_status, postage, destination_filename', [
+    (
+        KEY_TYPE_NORMAL,
+        'LETTERS_PDF_BUCKET_NAME',
+        NOTIFICATION_CREATED,
+        'first',
+        '2018-07-01/NOTIFY.FOO.D.1.C.C.20180701120000.PDF'
+    ),
+    (
+        KEY_TYPE_NORMAL,
+        'LETTERS_PDF_BUCKET_NAME',
+        NOTIFICATION_CREATED,
+        'second',
+        '2018-07-01/NOTIFY.FOO.D.2.C.C.20180701120000.PDF'
+    ),
+    (
+        KEY_TYPE_NORMAL,
+        'LETTERS_PDF_BUCKET_NAME',
+        NOTIFICATION_CREATED,
+        'europe',
+        '2018-07-01/NOTIFY.FOO.D.E.C.C.20180701120000.PDF'
+    ),
+    (
+        KEY_TYPE_NORMAL,
+        'LETTERS_PDF_BUCKET_NAME',
+        NOTIFICATION_CREATED,
+        'rest-of-world',
+        '2018-07-01/NOTIFY.FOO.D.N.C.C.20180701120000.PDF'
+    ),
+    (
+        KEY_TYPE_TEST,
+        'TEST_LETTERS_BUCKET_NAME',
+        NOTIFICATION_DELIVERED,
+        'second',
+        'NOTIFY.FOO.D.2.C.C.20180701120000.PDF',
+    ),
+    (
+        KEY_TYPE_TEST,
+        'TEST_LETTERS_BUCKET_NAME',
+        NOTIFICATION_DELIVERED,
+        'first',
+        'NOTIFY.FOO.D.1.C.C.20180701120000.PDF',
+    ),
 ])
 def test_process_sanitised_letter_with_valid_letter(
     sample_letter_notification,
     key_type,
     destination_bucket,
     expected_status,
+    postage,
     destination_filename,
 ):
-    filename = 'NOTIFY.{}'.format(sample_letter_notification.reference)
+    # We save the letter as if it's 2nd class initially, and the task changes the filename to have the correct postage
+    filename = 'NOTIFY.FOO.D.2.C.C.20180701120000.PDF'
 
     scan_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
@@ -622,6 +664,7 @@ def test_process_sanitised_letter_with_valid_letter(
     sample_letter_notification.key_type = key_type
     sample_letter_notification.billable_units = 1
     sample_letter_notification.created_at = datetime(2018, 7, 1, 12)
+    sample_letter_notification.postage = postage
 
     encrypted_data = encryption.encrypt({
         'page_count': 2,

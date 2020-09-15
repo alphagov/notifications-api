@@ -148,10 +148,10 @@ def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
     )
 
 
-def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, created_at):
+def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, created_at, new_filename):
     target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
     target_bucket_name = current_app.config[target_bucket_config]
-    target_filename = get_folder_name(created_at, dont_use_sending_date=is_test_letter) + filename
+    target_filename = get_folder_name(created_at, dont_use_sending_date=is_test_letter) + new_filename
 
     _move_s3_object(
         source_bucket=current_app.config['LETTER_SANITISE_BUCKET_NAME'],

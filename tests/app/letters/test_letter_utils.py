@@ -336,7 +336,8 @@ def test_move_sanitised_letter_to_live_pdf_bucket(notify_api, mocker):
     move_sanitised_letter_to_test_or_live_pdf_bucket(
         filename=filename,
         is_test_letter=False,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        new_filename=filename
     )
 
     assert not [x for x in source_bucket.objects.all()]
@@ -359,7 +360,8 @@ def test_move_sanitised_letter_to_test_pdf_bucket(notify_api, mocker):
     move_sanitised_letter_to_test_or_live_pdf_bucket(
         filename=filename,
         is_test_letter=True,
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
+        new_filename=filename
     )
 
     assert not [x for x in source_bucket.objects.all()]

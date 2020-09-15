@@ -306,7 +306,23 @@ def process_sanitised_letter(self, sanitise_data):
             billable_units=billable_units,
             recipient_address=letter_details['address']
         )
-        move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_key, notification.created_at)
+
+        # The original filename could be wrong because we didn't know the postage.
+        # Now we know if the letter is international, we can check what the filename should be.
+        upload_file_name = get_letter_pdf_filename(
+            reference=notification.reference,
+            crown=notification.service.crown,
+            sending_date=notification.created_at,
+            dont_use_sending_date=True,
+            postage=notification.postage
+        )
+
+        move_sanitised_letter_to_test_or_live_pdf_bucket(
+            filename,
+            is_test_key,
+            notification.created_at,
+            upload_file_name,
+        )
         # We've moved the sanitised PDF from the sanitise bucket, but still need to delete the original file:
         original_pdf_object.delete()
 
