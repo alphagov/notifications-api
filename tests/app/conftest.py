@@ -636,14 +636,27 @@ def email_verification_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def invitation_email_template(notify_db,
-                              notify_db_session):
+def invitation_email_template(notify_db, notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)
     content = '((user_name)) is invited to Notify by ((service_name)) ((url)) to complete registration',
     return create_custom_template(
         service=service,
         user=user,
         template_config_name='INVITATION_EMAIL_TEMPLATE_ID',
+        content=content,
+        subject='Invitation to ((service_name))',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
+def broadcast_invitation_email_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    content = '((user_name)) is invited to broadcast Notify by ((service_name)) ((url)) to complete registration',
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='BROADCAST_INVITATION_EMAIL_TEMPLATE_ID',
         content=content,
         subject='Invitation to ((service_name))',
         template_type='email'

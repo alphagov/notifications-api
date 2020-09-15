@@ -1,5 +1,6 @@
 import json
 import pytest
+from flask import current_app
 
 from app.models import Notification, SMS_AUTH_TYPE, EMAIL_AUTH_TYPE
 from tests import create_authorization_header
@@ -62,6 +63,60 @@ def test_create_invited_user(
     assert notification.personalisation['user_name'] == 'Test User'
     assert notification.personalisation['url'].startswith(expected_start_of_invite_url)
     assert len(notification.personalisation['url']) > len(expected_start_of_invite_url)
+    assert str(notification.template_id) == current_app.config['INVITATION_EMAIL_TEMPLATE_ID']
+
+    mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
+
+
+@pytest.mark.parametrize('extra_args, expected_start_of_invite_url', [
+    (
+        {},
+        'http://localhost:6012/invitation/'
+    ),
+    (
+        {'invite_link_host': 'https://www.example.com'},
+        'https://www.example.com/invitation/'
+    ),
+])
+def test_invited_user_for_broadcast_service_receives_broadcast_invite_email(
+    admin_request,
+    sample_broadcast_service,
+    mocker,
+    broadcast_invitation_email_template,
+    extra_args,
+    expected_start_of_invite_url,
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    email_address = 'invited_user@service.gov.uk'
+    invite_from = sample_broadcast_service.users[0]
+
+    data = dict(
+        service=str(sample_broadcast_service.id),
+        email_address=email_address,
+        from_user=str(invite_from.id),
+        permissions='send_messages,manage_service,manage_api_keys',
+        auth_type=EMAIL_AUTH_TYPE,
+        folder_permissions=['folder_1', 'folder_2', 'folder_3'],
+        **extra_args
+    )
+
+    admin_request.post(
+        'invite.create_invited_user',
+        service_id=sample_broadcast_service.id,
+        _data=data,
+        _expected_status=201
+    )
+
+    notification = Notification.query.first()
+
+    assert notification.reply_to_text == invite_from.email_address
+
+    assert len(notification.personalisation.keys()) == 3
+    assert notification.personalisation['service_name'] == 'Sample broadcast service'
+    assert notification.personalisation['user_name'] == 'Test User'
+    assert notification.personalisation['url'].startswith(expected_start_of_invite_url)
+    assert len(notification.personalisation['url']) > len(expected_start_of_invite_url)
+    assert str(notification.template_id) == current_app.config['BROADCAST_INVITATION_EMAIL_TEMPLATE_ID']
 
     mocked.assert_called_once_with([(str(notification.id))], queue="notify-internal-tasks")
 
