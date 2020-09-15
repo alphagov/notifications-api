@@ -9,8 +9,8 @@ from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessag
 from tests.app.db import create_broadcast_message, create_template, create_service, create_user
 
 
-def test_get_broadcast_message(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_get_broadcast_message(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, areas={
         "areas": ['place A', 'region B'],
         "simple_polygons": [[50.1, 1.2], [50.12, 1.2]]
@@ -32,24 +32,24 @@ def test_get_broadcast_message(admin_request, sample_service):
     assert response['personalisation'] == {}
 
 
-def test_get_broadcast_message_404s_if_message_doesnt_exist(admin_request, sample_service):
+def test_get_broadcast_message_404s_if_message_doesnt_exist(admin_request, sample_broadcast_service):
     err = admin_request.get(
         'broadcast_message.get_broadcast_message',
-        service_id=sample_service.id,
+        service_id=sample_broadcast_service.id,
         broadcast_message_id=uuid.uuid4(),
         _expected_status=404
     )
     assert err == {'message': 'No result found', 'result': 'error'}
 
 
-def test_get_broadcast_message_404s_if_message_is_for_different_service(admin_request, sample_service):
+def test_get_broadcast_message_404s_if_message_is_for_different_service(admin_request, sample_broadcast_service):
     other_service = create_service(service_name='other')
     other_template = create_template(other_service, BROADCAST_TYPE)
     bm = create_broadcast_message(other_template)
 
     err = admin_request.get(
         'broadcast_message.get_broadcast_message',
-        service_id=sample_service.id,
+        service_id=sample_broadcast_service.id,
         broadcast_message_id=bm.id,
         _expected_status=404
     )
@@ -57,8 +57,8 @@ def test_get_broadcast_message_404s_if_message_is_for_different_service(admin_re
 
 
 @freeze_time('2020-01-01')
-def test_get_broadcast_messages_for_service(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_get_broadcast_messages_for_service(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     with freeze_time('2020-01-01 12:00'):
         bm1 = create_broadcast_message(t, personalisation={'foo': 'bar'})
@@ -76,8 +76,8 @@ def test_get_broadcast_messages_for_service(admin_request, sample_service):
 
 
 @freeze_time('2020-01-01')
-def test_create_broadcast_message(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_create_broadcast_message(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     response = admin_request.post(
         'broadcast_message.create_broadcast_message',
@@ -121,11 +121,11 @@ def test_create_broadcast_message(admin_request, sample_service):
 ])
 def test_create_broadcast_message_400s_if_json_schema_fails_validation(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     data,
     expected_errors
 ):
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     response = admin_request.post(
         'broadcast_message.create_broadcast_message',
@@ -141,8 +141,8 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
     BroadcastStatusType.PENDING_APPROVAL,
     BroadcastStatusType.REJECTED,
 ])
-def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, sample_service, status):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, sample_broadcast_service, status):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
         areas={"areas": ['manchester'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]},
@@ -173,8 +173,10 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
     BroadcastStatusType.COMPLETED,
     BroadcastStatusType.TECHNICAL_FAILURE,
 ])
-def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(admin_request, sample_service, status):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
+    admin_request, sample_broadcast_service, status
+):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, areas=['manchester'], status=status)
 
     response = admin_request.post(
@@ -187,8 +189,8 @@ def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(a
     assert f'status {status}' in response['message']
 
 
-def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
         areas={"areas": ['london'], "simple_polygons": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]}
@@ -213,8 +215,8 @@ def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sam
     '2020-06-01 20:00:01Z',
     '2020-06-01T20:00:01+00:00',
 ])
-def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request, sample_service, input_dt):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request, sample_broadcast_service, input_dt):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t)
 
     response = admin_request.post(
@@ -229,8 +231,8 @@ def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request
     assert response['updated_at'] is not None
 
 
-def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t)
 
     response = admin_request.post(
@@ -255,9 +257,9 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
     {"simple_polygons": [[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]},
 ])
 def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
-    admin_request, sample_service, incomplete_area_data
+    admin_request, sample_broadcast_service, incomplete_area_data
 ):
-    template = create_template(sample_service, BROADCAST_TYPE)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template)
 
     response = admin_request.post(
@@ -273,8 +275,8 @@ def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
     ] == f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.'
 
 
-def test_update_broadcast_message_status(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_status(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.DRAFT)
 
     response = admin_request.post(
@@ -289,8 +291,8 @@ def test_update_broadcast_message_status(admin_request, sample_service):
     assert response['updated_at'] is not None
 
 
-def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admin_request, sample_service):
-    t = create_template(sample_service, BROADCAST_TYPE)
+def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admin_request, sample_broadcast_service):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t)
 
     response = admin_request.post(
@@ -307,11 +309,13 @@ def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admi
     }]
 
 
-def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(admin_request, sample_service, mocker):
-    t = create_template(sample_service, BROADCAST_TYPE, content='emergency broadcast')
+def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(
+    admin_request, sample_broadcast_service, mocker
+):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
-    sample_service.users.append(canceller)
+    sample_broadcast_service.users.append(canceller)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -332,7 +336,7 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
     assert response['cancelled_at'] is not None
     assert response['cancelled_by_id'] == str(canceller.id)
 
-    assert cancel_event.service_id == sample_service.id
+    assert cancel_event.service_id == sample_broadcast_service.id
     assert cancel_event.transmitted_areas == bm.areas
     assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
     assert cancel_event.transmitted_finishes_at == bm.cancelled_at
@@ -341,17 +345,17 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(ad
 
 def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    t = create_template(sample_service, BROADCAST_TYPE, content='emergency broadcast')
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={"areas": ["london"], "simple_polygons": [[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]}
     )
     approver = create_user(email='approver@gov.uk')
-    sample_service.users.append(approver)
+    sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -371,7 +375,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
 
     mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
 
-    assert alert_event.service_id == sample_service.id
+    assert alert_event.service_id == sample_broadcast_service.id
     assert alert_event.transmitted_areas == bm.areas
     assert alert_event.message_type == BroadcastEventMessageType.ALERT
     assert alert_event.transmitted_finishes_at == bm.finishes_at
@@ -380,10 +384,10 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
 
 def test_update_broadcast_message_status_rejects_approval_from_creator(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
@@ -401,13 +405,13 @@ def test_update_broadcast_message_status_rejects_approval_from_creator(
 
 def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_areas(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    template = create_template(sample_service, BROADCAST_TYPE)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast = create_broadcast_message(template, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
-    sample_service.users.append(approver)
+    sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -427,12 +431,12 @@ def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_a
 def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_message(
     notify_db,
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    user = sample_service.created_by
+    user = sample_broadcast_service.created_by
     user.platform_admin = True
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
@@ -461,11 +465,11 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
 def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
     notify_db,
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    sample_service.restricted = True
-    t = create_template(sample_service, BROADCAST_TYPE)
+    sample_broadcast_service.restricted = True
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
@@ -490,10 +494,10 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
 
 def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_service(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker
 ):
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
     approver = create_user(email='approver@gov.uk')
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
@@ -519,15 +523,15 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
 ])
 def test_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
     admin_request,
-    sample_service,
+    sample_broadcast_service,
     mocker,
     current_status,
     new_status
 ):
-    t = create_template(sample_service, BROADCAST_TYPE)
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=current_status)
     approver = create_user(email='approver@gov.uk')
-    sample_service.users.append(approver)
+    sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(

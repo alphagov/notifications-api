@@ -41,7 +41,8 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES,
-    ServiceEmailReplyTo
+    ServiceEmailReplyTo,
+    BROADCAST_TYPE
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -141,6 +142,31 @@ def sample_service(notify_db_session):
     if not service:
         service = Service(**data)
         dao_create_service(service, user, service_permissions=None)
+    else:
+        if user not in service.users:
+            dao_add_user_to_service(service, user)
+
+    return service
+
+
+@pytest.fixture(scope='function')
+def sample_broadcast_service(notify_db_session):
+    user = create_user()
+    service_name = 'Sample broadcast service'
+    email_from = service_name.lower().replace(' ', '.')
+
+    data = {
+        'name': service_name,
+        'message_limit': 1000,
+        'restricted': False,
+        'email_from': email_from,
+        'created_by': user,
+        'crown': True
+    }
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        dao_create_service(service, user, service_permissions=[BROADCAST_TYPE])
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
