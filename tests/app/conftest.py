@@ -41,7 +41,8 @@ from app.models import (
     SMS_TYPE,
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES,
-    ServiceEmailReplyTo
+    ServiceEmailReplyTo,
+    BROADCAST_TYPE
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -141,6 +142,31 @@ def sample_service(notify_db_session):
     if not service:
         service = Service(**data)
         dao_create_service(service, user, service_permissions=None)
+    else:
+        if user not in service.users:
+            dao_add_user_to_service(service, user)
+
+    return service
+
+
+@pytest.fixture(scope='function')
+def sample_broadcast_service(notify_db_session):
+    user = create_user()
+    service_name = 'Sample broadcast service'
+    email_from = service_name.lower().replace(' ', '.')
+
+    data = {
+        'name': service_name,
+        'message_limit': 1000,
+        'restricted': False,
+        'email_from': email_from,
+        'created_by': user,
+        'crown': True
+    }
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        dao_create_service(service, user, service_permissions=[BROADCAST_TYPE])
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -610,14 +636,27 @@ def email_verification_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def invitation_email_template(notify_db,
-                              notify_db_session):
+def invitation_email_template(notify_db, notify_db_session):
     service, user = notify_service(notify_db, notify_db_session)
     content = '((user_name)) is invited to Notify by ((service_name)) ((url)) to complete registration',
     return create_custom_template(
         service=service,
         user=user,
         template_config_name='INVITATION_EMAIL_TEMPLATE_ID',
+        content=content,
+        subject='Invitation to ((service_name))',
+        template_type='email'
+    )
+
+
+@pytest.fixture(scope='function')
+def broadcast_invitation_email_template(notify_db, notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+    content = '((user_name)) is invited to broadcast Notify by ((service_name)) ((url)) to complete registration',
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='BROADCAST_INVITATION_EMAIL_TEMPLATE_ID',
         content=content,
         subject='Invitation to ((service_name))',
         template_type='email'
