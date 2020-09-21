@@ -60,12 +60,11 @@ def create_letters_pdf(self, notification_id):
 def get_pdf_for_templated_letter(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
-
         letter_filename = get_letter_pdf_filename(
             reference=notification.reference,
             crown=notification.service.crown,
             sending_date=notification.created_at,
-            dont_use_sending_date=notification.key_type == KEY_TYPE_TEST,
+            ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage
         )
         letter_data = {
@@ -313,7 +312,7 @@ def process_sanitised_letter(self, sanitise_data):
             reference=notification.reference,
             crown=notification.service.crown,
             sending_date=notification.created_at,
-            dont_use_sending_date=True,
+            ignore_folder=True,
             postage=notification.postage
         )
 

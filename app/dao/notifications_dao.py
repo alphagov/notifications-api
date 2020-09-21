@@ -433,7 +433,7 @@ def _delete_letters_from_s3(
             prefix = get_letter_pdf_filename(reference=letter.reference,
                                              crown=letter.service.crown,
                                              sending_date=letter.created_at,
-                                             dont_use_sending_date=letter.key_type == KEY_TYPE_TEST,
+                                             ignore_folder=letter.key_type == KEY_TYPE_TEST,
                                              postage=letter.postage)
             s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
             for s3_object in s3_objects:
