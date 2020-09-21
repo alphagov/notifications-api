@@ -27,20 +27,16 @@ LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
 
-def get_folder_name(created_at, *, ignore_folder=False):
-    if ignore_folder:
-        folder_name = ''
-    else:
-        print_datetime = convert_utc_to_bst(created_at)
-        if print_datetime.time() > LETTER_PROCESSING_DEADLINE:
-            print_datetime += timedelta(days=1)
-        folder_name = '{}/'.format(print_datetime.date())
-    return folder_name
+def get_folder_name(created_at):
+    print_datetime = convert_utc_to_bst(created_at)
+    if print_datetime.time() > LETTER_PROCESSING_DEADLINE:
+        print_datetime += timedelta(days=1)
+    return '{}/'.format(print_datetime.date())
 
 
 def get_letter_pdf_filename(reference, crown, sending_date, ignore_folder=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder=get_folder_name(sending_date, ignore_folder=ignore_folder),
+        folder='' if ignore_folder else get_folder_name(sending_date),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
@@ -59,7 +55,7 @@ def get_bucket_name_and_prefix_for_notification(notification):
         bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
     else:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        folder = get_folder_name(notification.created_at, ignore_folder=False)
+        folder = get_folder_name(notification.created_at)
 
     upload_file_name = PRECOMPILED_BUCKET_PREFIX.format(
         folder=folder,
@@ -151,7 +147,8 @@ def move_uploaded_pdf_to_letters_bucket(source_filename, upload_filename):
 def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, created_at, new_filename):
     target_bucket_config = 'TEST_LETTERS_BUCKET_NAME' if is_test_letter else 'LETTERS_PDF_BUCKET_NAME'
     target_bucket_name = current_app.config[target_bucket_config]
-    target_filename = get_folder_name(created_at, ignore_folder=is_test_letter) + new_filename
+    target_folder = '' if is_test_letter else get_folder_name(created_at)
+    target_filename = target_folder + new_filename
 
     _move_s3_object(
         source_bucket=current_app.config['LETTER_SANITISE_BUCKET_NAME'],

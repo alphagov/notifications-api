@@ -312,12 +312,8 @@ def test_move_failed_pdf_scan_failed(notify_api):
                           ])
 def test_get_folder_name_in_british_summer_time(notify_api, timestamp, expected_folder_name):
     timestamp = dateutil.parser.parse(timestamp)
-    folder_name = get_folder_name(created_at=timestamp, ignore_folder=False)
+    folder_name = get_folder_name(created_at=timestamp)
     assert folder_name == expected_folder_name
-
-
-def test_get_folder_name_returns_empty_string_for_test_letter():
-    assert '' == get_folder_name(datetime.utcnow(), ignore_folder=True)
 
 
 @mock_s3
