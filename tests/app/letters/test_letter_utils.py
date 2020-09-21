@@ -140,8 +140,8 @@ def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
 ])
 def test_get_letter_pdf_filename_returns_correct_filename(
         notify_api, mocker, crown_flag, expected_crown_text):
-    sending_date = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown=crown_flag, sending_date=sending_date)
+    created_at = datetime(2017, 12, 4, 17, 29)
+    filename = get_letter_pdf_filename(reference='foo', crown=crown_flag, created_at=created_at)
 
     assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
 
@@ -152,24 +152,24 @@ def test_get_letter_pdf_filename_returns_correct_filename(
 ])
 def test_get_letter_pdf_filename_returns_correct_postage_for_filename(
         notify_api, postage, expected_postage):
-    sending_date = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown=True, sending_date=sending_date, postage=postage)
+    created_at = datetime(2017, 12, 4, 17, 29)
+    filename = get_letter_pdf_filename(reference='foo', crown=True, created_at=created_at, postage=postage)
 
     assert filename == '2017-12-04/NOTIFY.FOO.D.{}.C.C.20171204172900.PDF'.format(expected_postage)
 
 
 def test_get_letter_pdf_filename_returns_correct_filename_for_test_letters(
         notify_api, mocker):
-    sending_date = datetime(2017, 12, 4, 17, 29)
+    created_at = datetime(2017, 12, 4, 17, 29)
     filename = get_letter_pdf_filename(reference='foo', crown='C',
-                                       sending_date=sending_date, ignore_folder=True)
+                                       created_at=created_at, ignore_folder=True)
 
     assert filename == 'NOTIFY.FOO.D.2.C.C.20171204172900.PDF'
 
 
 def test_get_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
-    sending_date = datetime(2017, 12, 4, 17, 31)
-    filename = get_letter_pdf_filename(reference='foo', crown=True, sending_date=sending_date)
+    created_at = datetime(2017, 12, 4, 17, 31)
+    filename = get_letter_pdf_filename(reference='foo', crown=True, created_at=created_at)
 
     assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
 
@@ -216,7 +216,7 @@ def test_upload_letter_pdf_to_correct_bucket(
     filename = get_letter_pdf_filename(
         reference=sample_letter_notification.reference,
         crown=sample_letter_notification.service.crown,
-        sending_date=sample_letter_notification.created_at,
+        created_at=sample_letter_notification.created_at,
         ignore_folder=is_precompiled_letter
     )
 
@@ -243,7 +243,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(
     filename = get_letter_pdf_filename(
         reference=letter_notification.reference,
         crown=letter_notification.service.crown,
-        sending_date=letter_notification.created_at,
+        created_at=letter_notification.created_at,
         ignore_folder=False,
         postage=letter_notification.postage
     )

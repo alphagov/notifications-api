@@ -93,13 +93,13 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
     mock_get_letter_pdf_filename.assert_called_once_with(
         reference=sample_letter_notification.reference,
         crown=True,
-        sending_date=sample_letter_notification.created_at,
+        created_at=sample_letter_notification.created_at,
         ignore_folder=False,
         postage='second'
     )
 
 
-def test_get_pdf_for_templated_letter_non_existent_notification(notify_api, mocker, fake_uuid):
+def test_get_pdf_for_templated_letter_non_existent_notification(notify_db_session, mocker, fake_uuid):
     with pytest.raises(expected_exception=NoResultFound):
         get_pdf_for_templated_letter(fake_uuid)
 

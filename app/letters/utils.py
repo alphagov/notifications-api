@@ -34,15 +34,15 @@ def get_folder_name(created_at):
     return '{}/'.format(print_datetime.date())
 
 
-def get_letter_pdf_filename(reference, crown, sending_date, ignore_folder=False, postage=SECOND_CLASS):
+def get_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
-        folder='' if ignore_folder else get_folder_name(sending_date),
+        folder='' if ignore_folder else get_folder_name(created_at),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
         colour="C",
         crown="C" if crown else "N",
-        date=sending_date.strftime('%Y%m%d%H%M%S')
+        date=created_at.strftime('%Y%m%d%H%M%S')
     ).upper()
     return upload_file_name
 
@@ -78,7 +78,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     upload_file_name = get_letter_pdf_filename(
         reference=notification.reference,
         crown=notification.service.crown,
-        sending_date=notification.created_at,
+        created_at=notification.created_at,
         ignore_folder=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage
     )
