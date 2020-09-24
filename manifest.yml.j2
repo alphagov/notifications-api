@@ -19,6 +19,27 @@
       'production': 25
     },
   },
+
+  'notify-api-sms-callbacks': {
+    'NOTIFY_APP_NAME': 'api',
+    'disk_quota': '2G',
+    'additional_env_vars': {
+      'STATSD_HOST': None
+    },
+    'routes': {
+      'preview': ['api.notify.works/notifications/sms/mmg', 'api.notify.works/notifications/sms/firetext'],
+      'staging': ['api.staging-notify.works/notifications/sms/mmg', 'api.staging-notify.works/notifications/sms/firetext'],
+      'production': ['api.notifications.service.gov.uk/notifications/sms/mmg', 'api.notifications.service.gov.uk/notifications/sms/firetext'],
+    },
+    'health-check-type': 'port',
+    'health-check-invocation-timeout': 3,
+    'instances': {
+      'preview': 1,
+      'staging': 2,
+      'production': 10
+    },
+  },
+
   'notify-api-db-migration': {
     'NOTIFY_APP_NAME': 'api',
     'instances': {
