@@ -234,9 +234,8 @@ def check_templated_letter_state():
 
 @notify_celery.task(name='check-for-missing-rows-in-completed-jobs')
 def check_for_missing_rows_in_completed_jobs():
-    jobs_and_job_size = find_jobs_with_missing_rows()
-    for x in jobs_and_job_size:
-        job = x[1]
+    jobs = find_jobs_with_missing_rows()
+    for job in jobs:
         recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:

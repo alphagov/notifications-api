@@ -461,8 +461,7 @@ def test_find_jobs_with_missing_rows(sample_email_template):
     results = find_jobs_with_missing_rows()
 
     assert len(results) == 1
-    assert results[0].actual_count == 4
-    assert results[0][1] == job_with_missing_rows
+    assert results[0] == job_with_missing_rows
 
 
 def test_find_jobs_with_missing_rows_returns_nothing_for_a_job_completed_less_than_10_minutes_ago(
