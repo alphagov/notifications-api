@@ -446,14 +446,14 @@ def test_find_jobs_with_missing_rows(sample_email_template):
     healthy_job = create_job(template=sample_email_template,
                              notification_count=3,
                              job_status=JOB_STATUS_FINISHED,
-                             processing_finished=datetime.utcnow() - timedelta(minutes=11)
+                             processing_finished=datetime.utcnow() - timedelta(minutes=20)
                              )
     for i in range(0, 3):
         create_notification(job=healthy_job, job_row_number=i)
     job_with_missing_rows = create_job(template=sample_email_template,
                                        notification_count=5,
                                        job_status=JOB_STATUS_FINISHED,
-                                       processing_finished=datetime.utcnow() - timedelta(minutes=11)
+                                       processing_finished=datetime.utcnow() - timedelta(minutes=20)
                                        )
     for i in range(0, 4):
         create_notification(job=job_with_missing_rows, job_row_number=i)
