@@ -398,6 +398,36 @@ def test_check_templated_letter_state_during_utc(mocker, sample_letter_template)
     )
 
 
+@pytest.mark.parametrize('offset', (
+    timedelta(days=1),
+    pytest.param(timedelta(hours=23, minutes=59), marks=pytest.mark.xfail),
+    pytest.param(timedelta(minutes=20), marks=pytest.mark.xfail),
+    timedelta(minutes=19),
+))
+def test_check_for_missing_rows_in_completed_jobs_ignores_old_and_new_jobs(
+    mocker,
+    sample_email_template,
+    offset,
+):
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_email'), {"sender_id": None}))
+    mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
+    process_row = mocker.patch('app.celery.scheduled_tasks.process_row')
+
+    job = create_job(
+        template=sample_email_template,
+        notification_count=5,
+        job_status=JOB_STATUS_FINISHED,
+        processing_finished=datetime.utcnow() - offset,
+    )
+    for i in range(0, 4):
+        create_notification(job=job, job_row_number=i)
+
+    check_for_missing_rows_in_completed_jobs()
+
+    assert process_row.called is False
+
+
 def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template):
     mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
                  return_value=(load_example_csv('multiple_email'), {"sender_id": None}))
@@ -407,7 +437,7 @@ def test_check_for_missing_rows_in_completed_jobs(mocker, sample_email_template)
     job = create_job(template=sample_email_template,
                      notification_count=5,
                      job_status=JOB_STATUS_FINISHED,
-                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+                     processing_finished=datetime.utcnow() - timedelta(minutes=20))
     for i in range(0, 4):
         create_notification(job=job, job_row_number=i)
 
@@ -428,7 +458,7 @@ def test_check_for_missing_rows_in_completed_jobs_calls_save_email(mocker, sampl
     job = create_job(template=sample_email_template,
                      notification_count=5,
                      job_status=JOB_STATUS_FINISHED,
-                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+                     processing_finished=datetime.utcnow() - timedelta(minutes=20))
     for i in range(0, 4):
         create_notification(job=job, job_row_number=i)
 
@@ -452,7 +482,7 @@ def test_check_for_missing_rows_in_completed_jobs_uses_sender_id(mocker, sample_
     job = create_job(template=sample_email_template,
                      notification_count=5,
                      job_status=JOB_STATUS_FINISHED,
-                     processing_finished=datetime.utcnow() - timedelta(minutes=11))
+                     processing_finished=datetime.utcnow() - timedelta(minutes=20))
     for i in range(0, 4):
         create_notification(job=job, job_row_number=i)
 

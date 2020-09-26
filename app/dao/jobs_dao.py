@@ -209,9 +209,9 @@ def can_letter_job_be_cancelled(job):
 
 
 def find_jobs_with_missing_rows():
-    # Jobs can be a maximum of 50,000 rows. It typically takes 5 minutes to create all those notifications.
-    # Using 10 minutes as a condition seems reasonable.
-    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    # Jobs can be a maximum of 100,000 rows. It typically takes 10 minutes to create all those notifications.
+    # Using 20 minutes as a condition seems reasonable.
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
     yesterday = datetime.utcnow() - timedelta(days=1)
     jobs_with_rows_missing = db.session.query(
         func.count(Notification.id).label('actual_count'),
