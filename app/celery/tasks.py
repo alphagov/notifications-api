@@ -42,7 +42,7 @@ from app.dao.returned_letters_dao import insert_or_update_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.dao.services_dao import dao_fetch_service_by_id, fetch_todays_total_message_count
+from app.dao.services_dao import fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
@@ -65,6 +65,7 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
+from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import DATETIME_FORMAT
 
 
@@ -190,13 +191,17 @@ def save_sms(self,
              encrypted_notification,
              sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
-    service = dao_fetch_service_by_id(service_id)
-    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
+    service = SerialisedService.from_id(service_id)
+    template = SerialisedTemplate.from_id_and_service_id(
+        notification['template'],
+        service_id=service.id,
+        version=notification['template_version'],
+    )
 
     if sender_id:
         reply_to_text = dao_get_service_sms_senders_by_id(service_id, sender_id).sms_sender
     else:
-        reply_to_text = template.get_reply_to_text()
+        reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.debug(
@@ -246,13 +251,17 @@ def save_email(self,
                sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
 
-    service = dao_fetch_service_by_id(service_id)
-    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
+    service = SerialisedService.from_id(service_id)
+    template = SerialisedTemplate.from_id_and_service_id(
+        notification['template'],
+        service_id=service.id,
+        version=notification['template_version'],
+    )
 
     if sender_id:
         reply_to_text = dao_get_reply_to_by_id(service_id, sender_id).email_address
     else:
-        reply_to_text = template.get_reply_to_text()
+        reply_to_text = template.reply_to_text
 
     if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
@@ -300,7 +309,7 @@ def save_api_sms(self, encrypted_notification):
 
 def save_api_email_or_sms(self, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
-    service = dao_fetch_service_by_id(notification['service_id'])
+    service = SerialisedService.from_id(notification['service_id'])
     q = QueueNames.SEND_EMAIL if notification['notification_type'] == EMAIL_TYPE else QueueNames.SEND_SMS
     provider_task = provider_tasks.deliver_email if notification['notification_type'] == EMAIL_TYPE \
         else provider_tasks.deliver_sms
@@ -356,8 +365,12 @@ def save_letter(
         Columns(notification['personalisation'])
     )
 
-    service = dao_fetch_service_by_id(service_id)
-    template = dao_get_template_by_id(notification['template'], version=notification['template_version'])
+    service = SerialisedService.from_id(service_id)
+    template = SerialisedTemplate.from_id_and_service_id(
+        notification['template'],
+        service_id=service.id,
+        version=notification['template_version'],
+    )
 
     try:
         # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
@@ -378,7 +391,7 @@ def save_letter(
             job_row_number=notification['row_number'],
             notification_id=notification_id,
             reference=create_random_identifier(),
-            reply_to_text=template.get_reply_to_text(),
+            reply_to_text=template.reply_to_text,
             status=status
         )
 
