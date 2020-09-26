@@ -237,14 +237,13 @@ def check_for_missing_rows_in_completed_jobs():
     jobs_and_job_size = find_jobs_with_missing_rows()
     for x in jobs_and_job_size:
         job = x[1]
+        recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
-            recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
-            for row in recipient_csv.get_rows():
-                if row.index == row_to_process.missing_row:
-                    current_app.logger.info(
-                        "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
-                    process_row(row, template, job, job.service, sender_id=sender_id)
+            row = recipient_csv[row_to_process.missing_row]
+            current_app.logger.info(
+                "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
+            process_row(row, template, job, job.service, sender_id=sender_id)
 
 
 @notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
