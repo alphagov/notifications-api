@@ -910,3 +910,36 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     assert resp_json['data'][1]['statistics'] == [{'status': 'created', 'count': 1}]
     assert resp_json['data'][2]['id'] == str(job_1.id)
     assert resp_json['data'][2]['statistics'] == [{'status': 'delivered', 'count': 6}]
+
+
+@freeze_time('2017-07-17 07:17')
+def test_get_scheduled_job_stats_when_no_scheduled_jobs(admin_request, sample_template):
+
+    # This sets up a bunch of regular, non-scheduled jobs
+    _setup_jobs(sample_template)
+
+    service_id = sample_template.service.id
+
+    resp_json = admin_request.get('job.get_scheduled_job_stats', service_id=service_id)
+    assert resp_json == {
+        'count': 0,
+        'soonest_scheduled_for': None,
+    }
+
+
+@freeze_time('2017-07-17 07:17')
+def test_get_scheduled_job_stats(admin_request, sample_template):
+    create_job(sample_template, job_status='scheduled', scheduled_for='2017-07-17 09:00')
+    create_job(sample_template, job_status='scheduled', scheduled_for='2017-07-17 10:00')
+    create_job(sample_template, job_status='scheduled', scheduled_for='2017-07-17 11:00')
+
+    service_id = sample_template.service.id
+
+    resp_json = admin_request.get(
+        'job.get_scheduled_job_stats',
+        service_id=service_id,
+    )
+    assert resp_json == {
+        'count': 3,
+        'soonest_scheduled_for': '2017-07-17T09:00:00+00:00',
+    }

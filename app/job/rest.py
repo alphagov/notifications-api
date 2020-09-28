@@ -1,4 +1,5 @@
 import dateutil
+import pytz
 from flask import (
     Blueprint,
     jsonify,
@@ -14,6 +15,7 @@ from app.dao.jobs_dao import (
     dao_get_jobs_by_service_id,
     dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
+    dao_get_scheduled_job_stats,
     dao_cancel_letter_job,
     can_letter_job_be_cancelled
 )
@@ -186,6 +188,18 @@ def create_job(service_id):
     job_json['statistics'] = []
 
     return jsonify(data=job_json), 201
+
+
+@job_blueprint.route('/scheduled-job-stats', methods=['GET'])
+def get_scheduled_job_stats(service_id):
+    count, soonest_scheduled_for = dao_get_scheduled_job_stats(service_id)
+    return jsonify(
+        count=count,
+        soonest_scheduled_for=(
+            soonest_scheduled_for.replace(tzinfo=pytz.UTC).isoformat()
+            if soonest_scheduled_for else None
+        ),
+    ), 200
 
 
 def get_paginated_jobs(
