@@ -60,12 +60,11 @@ def create_letters_pdf(self, notification_id):
 def get_pdf_for_templated_letter(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
-
         letter_filename = get_letter_pdf_filename(
             reference=notification.reference,
             crown=notification.service.crown,
-            sending_date=notification.created_at,
-            dont_use_sending_date=notification.key_type == KEY_TYPE_TEST,
+            created_at=notification.created_at,
+            ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage
         )
         letter_data = {
@@ -183,7 +182,7 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
             letter_file_name = get_letter_pdf_filename(
                 reference=letter.reference,
                 crown=letter.service.crown,
-                sending_date=letter.created_at,
+                created_at=letter.created_at,
                 postage=letter.postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
@@ -312,8 +311,8 @@ def process_sanitised_letter(self, sanitise_data):
         upload_file_name = get_letter_pdf_filename(
             reference=notification.reference,
             crown=notification.service.crown,
-            sending_date=notification.created_at,
-            dont_use_sending_date=True,
+            created_at=notification.created_at,
+            ignore_folder=True,
             postage=notification.postage
         )
 

@@ -62,7 +62,10 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         letter_branding = create_letter_branding(name=branding_name, filename=logo_filename)
         sample_letter_notification.service.letter_branding = letter_branding
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
-    mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
+    mock_get_letter_pdf_filename = mocker.patch(
+        'app.celery.letters_pdf_tasks.get_letter_pdf_filename',
+        return_value='LETTER.PDF'
+    )
     get_pdf_for_templated_letter(sample_letter_notification.id)
 
     letter_data = {
@@ -87,8 +90,16 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         queue=QueueNames.SANITISE_LETTERS
     )
 
+    mock_get_letter_pdf_filename.assert_called_once_with(
+        reference=sample_letter_notification.reference,
+        crown=True,
+        created_at=sample_letter_notification.created_at,
+        ignore_folder=False,
+        postage='second'
+    )
 
-def test_get_pdf_for_templated_letter_non_existent_notification(notify_api, mocker, fake_uuid):
+
+def test_get_pdf_for_templated_letter_non_existent_notification(notify_db_session, mocker, fake_uuid):
     with pytest.raises(expected_exception=NoResultFound):
         get_pdf_for_templated_letter(fake_uuid)
 
