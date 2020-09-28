@@ -318,7 +318,7 @@ def save_api_email(self,
             [notification['id']],
             queue=q
         )
-        current_app.logger.info(f"Email {notification['id']} has been persisted and sent to delivery queue.")
+        current_app.logger.debug(f"Email {notification['id']} has been persisted and sent to delivery queue.")
     except IntegrityError:
         current_app.logger.info(f"Email {notification['id']} already exists.")
 
