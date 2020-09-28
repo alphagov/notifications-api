@@ -195,11 +195,11 @@ def check_precompiled_letter_state():
     letters = dao_precompiled_letters_still_pending_virus_check()
 
     if len(letters) > 0:
-        letter_ids = [str(letter.id) for letter in letters]
+        letter_ids = [(str(letter.id), letter.reference) for letter in letters]
 
         msg = """{} precompiled letters have been pending-virus-check for over 90 minutes. Follow runbook to resolve:
             https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
-            Notifications: {}""".format(len(letters), letter_ids)
+            Notifications: {}""".format(len(letters), sorted(letter_ids))
 
         current_app.logger.exception(msg)
 

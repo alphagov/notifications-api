@@ -327,18 +327,23 @@ def test_check_precompiled_letter_state(mocker, sample_letter_template):
     create_notification(template=sample_letter_template,
                         status=NOTIFICATION_DELIVERED,
                         created_at=datetime.utcnow() - timedelta(seconds=6000))
-    noti_1 = create_notification(template=sample_letter_template,
-                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
-                                 created_at=datetime.utcnow() - timedelta(seconds=5401))
-    noti_2 = create_notification(template=sample_letter_template,
-                                 status=NOTIFICATION_PENDING_VIRUS_CHECK,
-                                 created_at=datetime.utcnow() - timedelta(seconds=70000))
+    notification_1 = create_notification(template=sample_letter_template,
+                                         status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                         created_at=datetime.utcnow() - timedelta(seconds=5401),
+                                         reference='one')
+    notification_2 = create_notification(template=sample_letter_template,
+                                         status=NOTIFICATION_PENDING_VIRUS_CHECK,
+                                         created_at=datetime.utcnow() - timedelta(seconds=70000),
+                                         reference='two')
 
     check_precompiled_letter_state()
 
+    id_references = sorted([(str(notification_1.id), notification_1.reference),
+                            (str(notification_2.id), notification_2.reference)])
+
     message = """2 precompiled letters have been pending-virus-check for over 90 minutes. Follow runbook to resolve:
             https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
-            Notifications: ['{}', '{}']""".format(noti_2.id, noti_1.id)
+            Notifications: {}""".format(id_references)
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
