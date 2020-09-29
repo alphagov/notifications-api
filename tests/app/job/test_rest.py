@@ -17,7 +17,9 @@ from tests.app.db import (
     create_ft_notification_status,
     create_job,
     create_notification,
-    create_service_contact_list
+    create_service,
+    create_service_contact_list,
+    create_template,
 )
 
 
@@ -910,3 +912,55 @@ def test_get_jobs_should_retrieve_from_ft_notification_status_for_old_jobs(admin
     assert resp_json['data'][1]['statistics'] == [{'status': 'created', 'count': 1}]
     assert resp_json['data'][2]['id'] == str(job_1.id)
     assert resp_json['data'][2]['statistics'] == [{'status': 'delivered', 'count': 6}]
+
+
+@freeze_time('2017-07-17 07:17')
+def test_get_scheduled_job_stats_when_no_scheduled_jobs(admin_request, sample_template):
+
+    # This sets up a bunch of regular, non-scheduled jobs
+    _setup_jobs(sample_template)
+
+    service_id = sample_template.service.id
+
+    resp_json = admin_request.get('job.get_scheduled_job_stats', service_id=service_id)
+    assert resp_json == {
+        'count': 0,
+        'soonest_scheduled_for': None,
+    }
+
+
+@freeze_time('2017-07-17 07:17')
+def test_get_scheduled_job_stats(admin_request):
+
+    service_1 = create_service(service_name='service 1')
+    service_1_template = create_template(service=service_1)
+    service_2 = create_service(service_name='service 2')
+    service_2_template = create_template(service=service_2)
+
+    # Shouldn’t be counted – wrong status
+    create_job(service_1_template, job_status='finished', scheduled_for='2017-07-17 07:00')
+    create_job(service_1_template, job_status='in progress', scheduled_for='2017-07-17 08:00')
+
+    # Should be counted – service 1
+    create_job(service_1_template, job_status='scheduled', scheduled_for='2017-07-17 09:00')
+    create_job(service_1_template, job_status='scheduled', scheduled_for='2017-07-17 10:00')
+    create_job(service_1_template, job_status='scheduled', scheduled_for='2017-07-17 11:00')
+
+    # Should be counted – service 2
+    create_job(service_2_template, job_status='scheduled', scheduled_for='2017-07-17 11:00')
+
+    assert admin_request.get(
+        'job.get_scheduled_job_stats',
+        service_id=service_1.id,
+    ) == {
+        'count': 3,
+        'soonest_scheduled_for': '2017-07-17T09:00:00+00:00',
+    }
+
+    assert admin_request.get(
+        'job.get_scheduled_job_stats',
+        service_id=service_2.id,
+    ) == {
+        'count': 1,
+        'soonest_scheduled_for': '2017-07-17T11:00:00+00:00',
+    }

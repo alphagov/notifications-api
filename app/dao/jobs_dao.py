@@ -84,6 +84,18 @@ def dao_get_jobs_by_service_id(
         .paginate(page=page, per_page=page_size)
 
 
+def dao_get_scheduled_job_stats(
+    service_id,
+):
+    return db.session.query(
+        func.count(Job.id),
+        func.min(Job.scheduled_for),
+    ).filter(
+        Job.service_id == service_id,
+        Job.job_status == JOB_STATUS_SCHEDULED,
+    ).one()
+
+
 def dao_get_job_by_id(job_id):
     return Job.query.filter_by(id=job_id).one()
 
