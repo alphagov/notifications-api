@@ -24,6 +24,8 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     )
 
     assert response['id'] == str(bm.id)
+    assert response['template_id'] == str(t.id)
+    assert response['template_content'] == t.content
     assert response['template_name'] == t.name
     assert response['status'] == BroadcastStatusType.DRAFT
     assert response['created_at'] is not None
