@@ -55,7 +55,7 @@ class SerialisedTemplate(SerialisedModel):
         return cls(cls.get_dict(template_id, service_id)['data'])
 
     @staticmethod
-    @redis_cache.set('template-{template_id}-version-None')
+    @redis_cache.set('service-{service_id}-template-{template_id}-version-None')
     def get_dict(template_id, service_id):
         from app.dao import templates_dao
         from app.schemas import template_schema
