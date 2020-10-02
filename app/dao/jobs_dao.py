@@ -226,7 +226,6 @@ def find_jobs_with_missing_rows():
     ten_minutes_ago = datetime.utcnow() - timedelta(minutes=20)
     yesterday = datetime.utcnow() - timedelta(days=1)
     jobs_with_rows_missing = db.session.query(
-        func.count(Notification.id).label('actual_count'),
         Job
     ).filter(
         Job.job_status == JOB_STATUS_FINISHED,
