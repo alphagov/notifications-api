@@ -598,6 +598,24 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_send_user_reset_password_reset_password_link_contains_redirect_link_if_present_in_request(
+    client, sample_user, mocker, password_reset_email_template
+):
+    mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = json.dumps({'email': sample_user.email_address, "next": "blob"})
+    auth_header = create_authorization_header()
+    response = client.post(
+        url_for('user.send_user_reset_password'),
+        data=data,
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert response.status_code == 204
+    notification = Notification.query.first()
+    assert "?next=blob" in notification.content
+    mocked.assert_called_once_with([str(notification.id)], queue="notify-internal-tasks")
+
+
 def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({})
