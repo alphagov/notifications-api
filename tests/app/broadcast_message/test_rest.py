@@ -10,11 +10,21 @@ from tests.app.db import create_broadcast_message, create_template, create_servi
 
 
 def test_get_broadcast_message(admin_request, sample_broadcast_service):
-    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas={
-        "areas": ['place A', 'region B'],
-        "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
-    })
+    t = create_template(
+        sample_broadcast_service,
+        BROADCAST_TYPE,
+        content='This is a ((thing))'
+    )
+    bm = create_broadcast_message(
+        t,
+        areas={
+            "areas": ['place A', 'region B'],
+            "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
+        },
+        personalisation={
+            'thing': 'test',
+        },
+    )
 
     response = admin_request.get(
         'broadcast_message.get_broadcast_message',
@@ -25,13 +35,13 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
 
     assert response['id'] == str(bm.id)
     assert response['template_id'] == str(t.id)
-    assert response['template_content'] == t.content
+    assert response['template_content'] == 'This is a test'
     assert response['template_name'] == t.name
     assert response['status'] == BroadcastStatusType.DRAFT
     assert response['created_at'] is not None
     assert response['starts_at'] is None
     assert response['areas'] == ['place A', 'region B']
-    assert response['personalisation'] == {}
+    assert response['personalisation'] == {'thing': 'test'}
 
 
 def test_get_broadcast_message_404s_if_message_doesnt_exist(admin_request, sample_broadcast_service):
