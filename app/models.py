@@ -2243,6 +2243,12 @@ class BroadcastMessage(db.Model):
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
 
     @property
+    def content(self):
+        return self.template._as_utils_template_with_personalisation(
+            self.personalisation
+        ).content_with_placeholders_filled_in
+
+    @property
     def personalisation(self):
         if self._personalisation:
             return encryption.decrypt(self._personalisation)
@@ -2261,6 +2267,7 @@ class BroadcastMessage(db.Model):
             'template_id': str(self.template_id),
             'template_version': self.template_version,
             'template_name': self.template.name,
+            'content': self.content,
 
             'personalisation': self.personalisation,
             'areas': self.areas.get("areas", []),
