@@ -2267,7 +2267,7 @@ class BroadcastMessage(db.Model):
             'template_id': str(self.template_id),
             'template_version': self.template_version,
             'template_name': self.template.name,
-            'template_content': self.content,
+            'content': self.content,
 
             'personalisation': self.personalisation,
             'areas': self.areas.get("areas", []),
