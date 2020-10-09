@@ -98,6 +98,17 @@ make test
 That will run flake8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
 [notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
 
+## To test with docker
+
+Using docker to test will setup the database before executing the tests.
+
+Run
+
+```
+make test-with-docker
+```
+
+Then the tests will run inside a container and you can see the container's log, 
 
 ## To update application dependencies
 
