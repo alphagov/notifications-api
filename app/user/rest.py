@@ -480,7 +480,7 @@ def get_organisations_and_services_for_user(user_id):
     return jsonify(data)
 
 
-def _create_reset_password_url(email, next_redirect=None):
+def _create_reset_password_url(email, next_redirect):
     data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
     static_url_part = '/new-password/'
     full_url = url_with_token(data, static_url_part, current_app.config)
@@ -501,13 +501,13 @@ def _create_confirmation_url(user, email_address):
     return url_with_token(data, url, current_app.config)
 
 
-def _create_2fa_url(user, secret_code, next_redir, email_auth_link_host):
+def _create_2fa_url(user, secret_code, next_redirect, email_auth_link_host):
     data = json.dumps({'user_id': str(user.id), 'secret_code': secret_code})
     url = '/email-auth/'
-    ret = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
-    if next_redir:
-        ret += '?{}'.format(urlencode({'next': next_redir}))
-    return ret
+    full_url = url_with_token(data, url, current_app.config, base_url=email_auth_link_host)
+    if next_redirect:
+        full_url += '?{}'.format(urlencode({'next': next_redirect}))
+    return full_url
 
 
 def get_orgs_and_services(user):
