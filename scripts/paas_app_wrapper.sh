@@ -24,6 +24,14 @@ case $NOTIFY_APP_NAME in
     exec scripts/run_multi_worker_app_paas.sh celery multi start 3 -c 10 -A run_celery.notify_celery --loglevel=INFO \
     -Q send-sms-tasks,send-email-tasks
     ;;
+  delivery-worker-sender-sms)
+    exec scripts/run_multi_worker_app_paas.sh celery multi start 3 -c 10 -A run_celery.notify_celery --loglevel=INFO \
+    -Q send-sms-tasks
+    ;;
+  delivery-worker-sender-email)
+    exec scripts/run_multi_worker_app_paas.sh celery multi start 3 -c 10 -A run_celery.notify_celery --loglevel=INFO \
+    -Q send-email-tasks
+    ;;
   delivery-worker-periodic)
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=2 \
     -Q periodic-tasks 2> /dev/null
