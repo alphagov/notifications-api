@@ -338,21 +338,21 @@ def test_check_message_is_not_too_long_for_too_long_sms_messages(notify_db_sessi
         check_message_is_not_too_long(template_with_content)
     assert e.value.status_code == 400
     assert e.value.message == f'Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. ' \
-                              f'Your message is {char_count} characters.'
+                              f'Your message is {char_count} characters long.'
     assert e.value.fields == []
 
 
 def test_check_message_is_not_too_long_for_too_big_email_messages(notify_db_session):
     with pytest.raises(BadRequestError) as e:
         service = create_service()
-        t = create_template(service=service, content='a' * 7500000, template_type='email')
+        t = create_template(service=service, content='a' * 1000000, template_type='email')
         template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id, service_id=service.id)
         template_with_content = get_template_instance(template=template.__dict__, values={})
         check_message_is_not_too_long(template_with_content)
     assert e.value.status_code == 400
     assert e.value.message == (
-        f"Email messages cannot be longer than 7500000 bytes. "
-        f"Your message is 7500081 bytes."
+        f"Emails cannot be longer than 1000000 bytes. "
+        f"Your message is 1000081 bytes."
     )
     assert e.value.fields == []
 
