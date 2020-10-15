@@ -29,7 +29,7 @@ from app.dao.notifications_dao import (
     dao_get_notifications_by_references,
     dao_get_notification_or_history_by_reference,
     notifications_not_yet_sent,
-)
+    dao_get_letters_to_be_printed)
 from app.models import (
     Job,
     Notification,
@@ -1681,3 +1681,17 @@ def test_notifications_not_yet_sent_return_no_rows(sample_service, notification_
 
     results = notifications_not_yet_sent(older_than, notification_type)
     assert len(results) == 0
+
+
+def test_letters_to_be_printed_sort_by_service(notify_db_session):
+    first_service = create_service(service_name='first service', service_id='3a5cea08-29fd-4bb9-b582-8dedd928b149')
+    second_service = create_service(service_name='second service', service_id='642bf33b-54b5-45f2-8c13-942a46616704')
+    first_template = create_template(service=first_service, template_type='letter', postage='second')
+    second_template = create_template(service=second_service, template_type='letter', postage='second')
+    notification_1 = create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 30))
+    notification_2 = create_notification(template=first_template, created_at=datetime(2020, 12, 1, 12, 30))
+    notification_3 = create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 30))
+
+    results = dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second')
+    assert len(results) == 3
+    assert results == [notification_1, notification_2, notification_3]
