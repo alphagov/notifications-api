@@ -377,7 +377,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
         exclude = TemplateSchema.Meta.exclude + (
             'archived',
-            'content',
             'created_at',
             'created_by',
             'created_by_id',
@@ -395,6 +394,11 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'version',
             'broadcast_data',
         )
+
+    @pre_dump
+    def remove_content_for_non_broadcast_templates(self, template):
+        if template.template_type != models.BROADCAST_TYPE:
+            template.content = None
 
 
 class TemplateHistorySchema(BaseSchema):
