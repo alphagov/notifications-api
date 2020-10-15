@@ -728,6 +728,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage):
         Notification.key_type == KEY_TYPE_NORMAL,
         Notification.postage == postage,
     ).order_by(
+        Notification.service_id,
         Notification.created_at
     ).all()
     return notifications
