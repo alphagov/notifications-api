@@ -721,12 +721,16 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage):
     """
     Return all letters created before the print run deadline that have not yet been sent
     """
-    notifications = Notification.query.filter(
+    notifications = Notification.query.join(
+        Service,
+        Notification.service_id == Service.id
+    ).filter(
         Notification.created_at < convert_bst_to_utc(print_run_deadline),
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
         Notification.postage == postage,
+        or_(Service.organisation_id != 'f33fdfdd-7533-40cb-b5e8-cd78a1f5d21e', Service.organisation_id.is_(None)),
     ).order_by(
         Notification.service_id,
         Notification.created_at

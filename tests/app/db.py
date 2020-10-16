@@ -128,6 +128,7 @@ def create_service(
             created_by=user if user else create_user(email='{}@digital.cabinet-office.gov.uk'.format(uuid.uuid4())),
             prefix_sms=prefix_sms,
             organisation_type=organisation_type,
+            organisation=organisation,
             go_live_user=go_live_user,
             go_live_at=go_live_at,
             crown=crown
@@ -636,8 +637,9 @@ def create_domain(domain, organisation_id):
     return domain
 
 
-def create_organisation(name='test_org_1', active=True, organisation_type=None, domains=None):
+def create_organisation(name='test_org_1', active=True, organisation_type=None, domains=None, organisation_id=None):
     data = {
+        'id': organisation_id,
         'name': name,
         'active': active,
         'organisation_type': organisation_type,
