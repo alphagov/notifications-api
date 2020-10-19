@@ -33,8 +33,9 @@ from app.celery.tasks import (
     s3,
     send_inbound_sms_to_service,
     process_returned_letters_list,
-    save_api_email,
     get_recipient_csv_and_template_and_sender_id,
+    save_api_email,
+    save_api_sms
 )
 from app.config import QueueNames
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
@@ -1791,51 +1792,66 @@ def test_process_returned_letters_populates_returned_letters_table(
 
 
 @freeze_time('2020-03-25 14:30')
-def test_save_api_email(sample_email_template, mocker):
-    mock_send_email_to_provider = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    api_key = create_api_key(service=sample_email_template.service)
+@pytest.mark.parametrize('notification_type', ['sms', 'email'])
+def test_save_api_email_or_sms(mocker, sample_service, notification_type):
+    template = create_template(sample_service) if notification_type == SMS_TYPE \
+        else create_template(sample_service, template_type=EMAIL_TYPE)
+    mock_provider_task = mocker.patch(f'app.celery.provider_tasks.deliver_{notification_type}.apply_async')
+    api_key = create_api_key(service=template.service)
     data = {
         "id": str(uuid.uuid4()),
-        "template_id": str(sample_email_template.id),
-        "template_version": sample_email_template.version,
-        "to": "jane.citizen@example.com",
-        "service_id": str(sample_email_template.service_id),
+        "template_id": str(template.id),
+        "template_version": template.version,
+        "service_id": str(template.service_id),
         "personalisation": None,
-        "notification_type": sample_email_template.template_type,
+        "notification_type": template.template_type,
         "api_key_id": str(api_key.id),
         "key_type": api_key.key_type,
         "client_reference": 'our email',
-        "reply_to_text": "our.email@gov.uk",
+        "reply_to_text": None,
         "document_download_count": 0,
         "status": NOTIFICATION_CREATED,
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
     }
+
+    if notification_type == EMAIL_TYPE:
+        data.update({"to": "jane.citizen@example.com"})
+        expected_queue = QueueNames.SEND_EMAIL
+    else:
+        data.update({"to": "+447700900855"})
+        expected_queue = QueueNames.SEND_SMS
 
     encrypted = encryption.encrypt(
         data
     )
 
     assert len(Notification.query.all()) == 0
-    save_api_email(encrypted)
+    if notification_type == EMAIL_TYPE:
+        save_api_email(encrypted_notification=encrypted)
+    else:
+        save_api_sms(encrypted_notification=encrypted)
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert str(notifications[0].id) == data['id']
     assert notifications[0].created_at == datetime(2020, 3, 25, 14, 30)
-    mock_send_email_to_provider.assert_called_once_with([data['id']], queue=QueueNames.SEND_EMAIL)
+    assert notifications[0].notification_type == notification_type
+    mock_provider_task.assert_called_once_with([data['id']], queue=expected_queue)
 
 
 @freeze_time('2020-03-25 14:30')
-def test_save_api_email_dont_retry_if_notification_already_exists(sample_email_template, mocker):
-    mock_send_email_to_provider = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    api_key = create_api_key(service=sample_email_template.service)
+@pytest.mark.parametrize('notification_type', ['sms', 'email'])
+def test_save_api_email_dont_retry_if_notification_already_exists(sample_service, mocker, notification_type):
+    template = create_template(sample_service) if notification_type == SMS_TYPE \
+        else create_template(sample_service, template_type=EMAIL_TYPE)
+    mock_provider_task = mocker.patch(f'app.celery.provider_tasks.deliver_{notification_type}.apply_async')
+    api_key = create_api_key(service=template.service)
     data = {
         "id": str(uuid.uuid4()),
-        "template_id": str(sample_email_template.id),
-        "template_version": sample_email_template.version,
-        "to": "jane.citizen@example.com",
-        "service_id": str(sample_email_template.service_id),
+        "template_id": str(template.id),
+        "template_version": template.version,
+        "service_id": str(template.service_id),
         "personalisation": None,
-        "notification_type": sample_email_template.template_type,
+        "notification_type": template.template_type,
         "api_key_id": str(api_key.id),
         "key_type": api_key.key_type,
         "client_reference": 'our email',
@@ -1845,18 +1861,32 @@ def test_save_api_email_dont_retry_if_notification_already_exists(sample_email_t
         "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
     }
 
+    if notification_type == EMAIL_TYPE:
+        data.update({"to": "jane.citizen@example.com"})
+        expected_queue = QueueNames.SEND_EMAIL
+    else:
+        data.update({"to": "+447700900855"})
+        expected_queue = QueueNames.SEND_SMS
+
     encrypted = encryption.encrypt(
         data
     )
     assert len(Notification.query.all()) == 0
-    save_api_email(encrypted)
+
+    if notification_type == EMAIL_TYPE:
+        save_api_email(encrypted_notification=encrypted)
+    else:
+        save_api_sms(encrypted_notification=encrypted)
     notifications = Notification.query.all()
     assert len(notifications) == 1
     # call the task again with the same notification
-    save_api_email(encrypted)
+    if notification_type == EMAIL_TYPE:
+        save_api_email(encrypted_notification=encrypted)
+    else:
+        save_api_sms(encrypted_notification=encrypted)
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert str(notifications[0].id) == data['id']
     assert notifications[0].created_at == datetime(2020, 3, 25, 14, 30)
     # should only have sent the notification once.
-    mock_send_email_to_provider.assert_called_once_with([data['id']], queue=QueueNames.SEND_EMAIL)
+    mock_provider_task.assert_called_once_with([data['id']], queue=expected_queue)
