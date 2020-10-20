@@ -143,14 +143,16 @@ def collate_letter_pdfs_to_be_sent():
 
         for i, letters in enumerate(group_letters(letters_to_print)):
             filenames = [letter['Key'] for letter in letters]
+            service_id = letters[0]['ServiceId']
 
             hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
             # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.ZIP'.format(
+            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.ZIP'.format(
                 date=print_run_deadline.strftime("%Y-%m-%d"),
                 postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
                 num=i + 1,
-                hash=hash
+                hash=hash,
+                service_id=service_id
             )
 
             current_app.logger.info(
@@ -186,7 +188,11 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
                 postage=letter.postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
-            letter_pdfs.append({"Key": letter_file_name, "Size": letter_head['ContentLength']})
+            letter_pdfs.append({
+                "Key": letter_file_name,
+                "Size": letter_head['ContentLength'],
+                "ServiceId": str(letter.service.id)
+            })
         except BotoClientError as e:
             current_app.logger.exception(
                 f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}", e)
@@ -202,16 +208,23 @@ def group_letters(letter_pdfs):
     """
     running_filesize = 0
     list_of_files = []
+    service_id = None
     for letter in letter_pdfs:
         if letter['Key'].lower().endswith('.pdf'):
+            if not service_id:
+                service_id = letter['ServiceId']
             if (
-                running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE'] or
-                len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
+                running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE']
+                or len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
+                or letter['ServiceId'] != service_id
             ):
                 yield list_of_files
                 running_filesize = 0
                 list_of_files = []
+                service_id = None
 
+            if not service_id:
+                service_id = letter['ServiceId']
             running_filesize += letter['Size']
             list_of_files.append(letter)
 
