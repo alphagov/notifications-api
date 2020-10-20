@@ -29,6 +29,7 @@ def test_cbc_proxy_ld_client_has_correct_keys(cbc_proxy):
     assert secret == 'cbc-proxy-aws-secret-access-key'
 
 
+
 def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
@@ -39,6 +40,10 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
         '_ld_client',
         create=True,
     )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+    }
 
     cbc_proxy.create_and_send_broadcast(
         identifier=identifier,

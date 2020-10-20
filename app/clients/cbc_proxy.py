@@ -52,12 +52,17 @@ class CBCProxyClient:
             'description': description,
         }), encoding='utf8')
 
-        self._ld_client.invoke(
+        result = self._ld_client.invoke(
             FunctionName='bt-ee-1-proxy',
             InvocationType='RequestResponse',
             Payload=payload_bytes,
         )
-        pass
+
+        if result['StatusCode'] > 299:
+            raise Exception('Could not invoke lambda')
+
+        if 'FunctionError' in result:
+            raise Exception('Function exited with unhandled exception')
 
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
