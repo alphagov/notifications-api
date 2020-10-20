@@ -1,3 +1,5 @@
+import json
+
 import boto3
 
 # Noop = no operation
@@ -44,9 +46,17 @@ class CBCProxyClient:
         self,
         identifier, headline, description,
     ):
-        # identifier=broadcast_message.identifier,
-        # headline="GOV.UK Notify Broadcast",
-        # description=broadcast_message.description,
+        payload_bytes = bytes(json.dumps({
+            'identifier': identifier,
+            'headline': headline,
+            'description': description,
+        }), encoding='utf8')
+
+        self._ld_client.invoke(
+            FunctionName='bt-ee-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=payload_bytes,
+        )
         pass
 
     # We have not implementated updating a broadcast
