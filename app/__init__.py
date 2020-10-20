@@ -114,6 +114,7 @@ def create_app(application):
     performance_platform_client.init_app(application)
     document_download_client.init_app(application)
 
+    global cbc_proxy_client
     if application.config['CBC_PROXY_AWS_ACCESS_KEY_ID']:
         cbc_proxy_client = CBCProxyClient()
     cbc_proxy_client.init_app(application)
