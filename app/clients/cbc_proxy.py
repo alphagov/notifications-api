@@ -1,3 +1,5 @@
+import boto3
+
 # Noop = no operation
 class CBCProxyNoopClient:
 
@@ -31,9 +33,12 @@ class CBCProxyNoopClient:
 class CBCProxyClient:
 
     def init_app(self, app):
-        self.aws_access_key_id = app.config['CBC_PROXY_AWS_ACCESS_KEY_ID']
-        self.aws_secret_access_key = app.config['CBC_PROXY_AWS_SECRET_ACCESS_KEY']
-        self.aws_region = 'eu-west-2'
+        self._lambda_client = boto3.client(
+            'lambda',
+            region_name='eu-west-2',
+            aws_access_key_id=app.config['CBC_PROXY_AWS_ACCESS_KEY_ID'],
+            aws_secret_access_key=app.config['CBC_PROXY_AWS_SECRET_ACCESS_KEY'],
+        )
 
     def create_and_send_broadcast(
         self,
