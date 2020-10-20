@@ -42,7 +42,13 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 
-from tests.app.db import create_notification, create_letter_branding, create_service, create_template
+from tests.app.db import (
+    create_letter_branding,
+    create_notification,
+    create_organisation,
+    create_service,
+    create_template
+)
 
 from tests.conftest import set_config_values
 
@@ -251,6 +257,68 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
 
 
 @freeze_time('2020-02-17 18:00:00')
+def test_get_key_and_size_of_letters_to_be_sent_to_print_mark_insolvency_letters(
+    notify_api, notify_db_session, mocker
+):
+    # random service
+    service_1 = create_service(service_name="service 1", service_id='f2fe37b0-1301-11eb-aba9-4c3275916899')
+    letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
+    create_notification(
+        template=letter_template_1,
+        status='created',
+        reference='ref0',
+        created_at=(datetime.now() - timedelta(hours=2))
+    )
+    # insolvency service
+    insolvency_org = create_organisation(organisation_id='f33fdfdd-7533-40cb-b5e8-cd78a1f5d21e', name="Insolvency")
+    insolvency_service = create_service(
+        service_name="insolvency service",
+        service_id='3a5cea08-29fd-4bb9-b582-8dedd928b149',
+        organisation=insolvency_org
+    )
+    insolvency_letter_template = create_template(insolvency_service, template_type=LETTER_TYPE)
+    create_notification(
+        template=insolvency_letter_template,
+        status='created',
+        reference='insolvency',
+        created_at=(datetime.now() - timedelta(hours=3))
+    )
+
+    mock_s3 = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
+        {'ContentLength': 1},
+        {'ContentLength': 1},
+    ])
+
+    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
+
+    assert mock_s3.call_count == 2
+    mock_s3.assert_has_calls(
+        [
+            call(
+                current_app.config['LETTERS_PDF_BUCKET_NAME'],
+                '2020-02-17/NOTIFY.INSOLVENCY.D.2.C.C.20200217150000.PDF'
+            ),
+            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'),
+        ]
+    )
+
+    assert len(results) == 2
+
+    assert results == [
+        {
+            'Key': '2020-02-17/NOTIFY.INSOLVENCY.D.2.C.C.20200217150000.PDF',
+            'Size': 1,
+            'ServiceId': str(insolvency_letter_template.service_id) + ".INSOLVENCY"
+        },
+        {
+            'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
+            'Size': 1,
+            'ServiceId': str(letter_template_1.service_id)
+        },
+    ]
+
+
+@freeze_time('2020-02-17 18:00:00')
 def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
     notify_api, mocker, sample_letter_template
 ):
@@ -361,12 +429,28 @@ def test_collate_letter_pdfs_to_be_sent(
             created_at=(datetime.now() - timedelta(hours=2))
         )
 
+        # insolvency service
+        insolvency_org = create_organisation(organisation_id='f33fdfdd-7533-40cb-b5e8-cd78a1f5d21e', name="Insolvency")
+        insolvency_service = create_service(
+            service_name="insolvency service",
+            service_id='0d3eb2b8-12fe-11eb-88be-4c3275916899',
+            organisation=insolvency_org
+        )
+        insolvency_letter_template = create_template(insolvency_service, template_type=LETTER_TYPE)
+        create_notification(
+            template=insolvency_letter_template,
+            status='created',
+            reference='insolvency',
+            created_at=(datetime.now() - timedelta(hours=3))
+        )
+
     mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
         {'ContentLength': 1},
         {'ContentLength': 1},
         {'ContentLength': 2},
         {'ContentLength': 1},
         {'ContentLength': 3},
+        {'ContentLength': 1},
         {'ContentLength': 1},
         {'ContentLength': 1},
     ])
@@ -377,7 +461,7 @@ def test_collate_letter_pdfs_to_be_sent(
         with freeze_time(time_to_run_task):
             collate_letter_pdfs_to_be_sent()
 
-    assert len(mock_celery.call_args_list) == 6
+    assert len(mock_celery.call_args_list) == 7
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
@@ -392,8 +476,8 @@ def test_collate_letter_pdfs_to_be_sent(
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'],
-            'upload_filename': f'NOTIFY.2020-02-17.2.001.MezXnKP3IvNZEoMsSlVo.{service_2.id}.ZIP'
+            'filenames_to_zip': ['2020-02-17/NOTIFY.INSOLVENCY.D.2.C.C.20200217150000.PDF'],
+            'upload_filename': f'NOTIFY.2020-02-17.2.001.riA3Fz85m5DumlU7vaC0.{insolvency_service.id}.INSOLVENCY.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -401,11 +485,8 @@ def test_collate_letter_pdfs_to_be_sent(
     assert mock_celery.call_args_list[2] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': [
-                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
-            ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.002.k3x_WqC5KhB6e2DWv9Ma.{letter_template_1.service_id}.ZIP'
+            'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'],
+            'upload_filename': f'NOTIFY.2020-02-17.2.002.MezXnKP3IvNZEoMsSlVo.{service_2.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -414,14 +495,26 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.003.J85cUw-FWlKuAIOcwdLS.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.2.003.k3x_WqC5KhB6e2DWv9Ma.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
     )
     assert mock_celery.call_args_list[4] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': [
+                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+            ],
+            'upload_filename': f'NOTIFY.2020-02-17.2.004.J85cUw-FWlKuAIOcwdLS.{letter_template_1.service_id}.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[5] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
@@ -432,7 +525,7 @@ def test_collate_letter_pdfs_to_be_sent(
         queue='process-ftp-tasks',
         compression='zlib'
     )
-    assert mock_celery.call_args_list[5] == call(
+    assert mock_celery.call_args_list[6] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
