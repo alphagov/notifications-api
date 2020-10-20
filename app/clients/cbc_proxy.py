@@ -33,7 +33,7 @@ class CBCProxyNoopClient:
 class CBCProxyClient:
 
     def init_app(self, app):
-        self._lambda_client = boto3.client(
+        self._ld_client = boto3.client(
             'lambda',
             region_name='eu-west-2',
             aws_access_key_id=app.config['CBC_PROXY_AWS_ACCESS_KEY_ID'],

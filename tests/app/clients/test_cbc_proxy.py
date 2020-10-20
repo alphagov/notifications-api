@@ -14,14 +14,14 @@ def cbc_proxy(client, mocker):
     return client
 
 
-def test_cbc_proxy_lambda_client_has_correct_region(cbc_proxy):
-    assert cbc_proxy._lambda_client._client_config.region_name == 'eu-west-2'
+def test_cbc_proxy_ld_client_has_correct_region(cbc_proxy):
+    assert cbc_proxy._ld_client._client_config.region_name == 'eu-west-2'
     pass
 
 
-def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy):
-    key = cbc_proxy._lambda_client._request_signer._credentials.access_key
-    secret = cbc_proxy._lambda_client._request_signer._credentials.secret_key
+def test_cbc_proxy_ld_client_has_correct_keys(cbc_proxy):
+    key = cbc_proxy._ld_client._request_signer._credentials.access_key
+    secret = cbc_proxy._ld_client._request_signer._credentials.secret_key
 
     assert key == 'cbc-proxy-aws-access-key-id'
     assert secret == 'cbc-proxy-aws-secret-access-key'
