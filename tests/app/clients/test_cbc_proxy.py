@@ -29,7 +29,6 @@ def test_cbc_proxy_ld_client_has_correct_keys(cbc_proxy):
     assert secret == 'cbc-proxy-aws-secret-access-key'
 
 
-
 def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
@@ -64,3 +63,66 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     assert payload['identifier'] == identifier
     assert payload['headline'] == headline
     assert payload['description'] == description
+
+
+def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
+    identifier = 'my-identifier'
+    headline = 'my-headline'
+    description = 'my-description'
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_ld_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 400,
+    }
+
+    with pytest.raises(Exception) as e:
+        cbc_proxy.create_and_send_broadcast(
+            identifier=identifier,
+            headline=headline,
+            description=description,
+        )
+
+    assert e.match('Could not invoke lambda')
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+
+def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
+    identifier = 'my-identifier'
+    headline = 'my-headline'
+    description = 'my-description'
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_ld_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+        'FunctionError': 'something',
+    }
+
+    with pytest.raises(Exception) as e:
+        cbc_proxy.create_and_send_broadcast(
+            identifier=identifier,
+            headline=headline,
+            description=description,
+        )
+
+        assert e.match('Function exited with unhandled exception')
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )

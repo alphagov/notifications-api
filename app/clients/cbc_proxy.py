@@ -2,6 +2,7 @@ import json
 
 import boto3
 
+
 # Noop = no operation
 class CBCProxyNoopClient:
 
