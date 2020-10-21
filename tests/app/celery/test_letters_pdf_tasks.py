@@ -42,7 +42,7 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
 )
 
-from tests.app.db import create_notification, create_letter_branding, create_service
+from tests.app.db import create_notification, create_letter_branding, create_service, create_template
 
 from tests.conftest import set_config_values
 
@@ -232,9 +232,21 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     assert len(results) == 3
 
     assert results == [
-        {'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF', 'Size': 2},
-        {'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', 'Size': 1},
-        {'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF', 'Size': 3},
+        {
+            'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+            'Size': 2,
+            'ServiceId': str(sample_letter_template.service_id)
+        },
+        {
+            'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
+            'Size': 1,
+            'ServiceId': str(sample_letter_template.service_id)
+        },
+        {
+            'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
+            'Size': 3,
+            'ServiceId': str(sample_letter_template.service_id)
+        },
     ]
 
 
@@ -277,30 +289,38 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
         ]
     )
 
-    assert results == [{'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', 'Size': 2}]
+    assert results == [{
+        'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
+        'Size': 2,
+        'ServiceId': str(sample_letter_template.service_id)}
+    ]
 
 
 @pytest.mark.parametrize('time_to_run_task', [
     "2020-02-17 18:00:00",  # after 5:30pm
     "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
 ])
-def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mocker, time_to_run_task):
+def test_collate_letter_pdfs_to_be_sent(
+    notify_api, notify_db_session, mocker, time_to_run_task
+):
     with freeze_time("2020-02-17 18:00:00"):
+        service_1 = create_service(service_name="service 1", service_id='f2fe37b0-1301-11eb-aba9-4c3275916899')
+        letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
         # second class
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='ref0',
             created_at=(datetime.now() - timedelta(hours=2))
         )
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='ref1',
             created_at=(datetime.now() - timedelta(hours=3))
         )
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='ref2',
             created_at=(datetime.now() - timedelta(days=2))
@@ -308,7 +328,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
 
         # first class
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='first_class',
             created_at=(datetime.now() - timedelta(hours=4)),
@@ -317,18 +337,28 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
 
         # international
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='international',
             created_at=(datetime.now() - timedelta(days=3)),
             postage="europe"
         )
         create_notification(
-            template=sample_letter_template,
+            template=letter_template_1,
             status='created',
             reference='international',
             created_at=(datetime.now() - timedelta(days=4)),
             postage="rest-of-world"
+        )
+
+        # different service second class
+        service_2 = create_service(service_name="service 2", service_id='3a5cea08-29fd-4bb9-b582-8dedd928b149')
+        letter_template_2 = create_template(service_2, template_type=LETTER_TYPE)
+        create_notification(
+            template=letter_template_2,
+            status='created',
+            reference='another_service',
+            created_at=(datetime.now() - timedelta(hours=2))
         )
 
     mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
@@ -338,6 +368,7 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         {'ContentLength': 1},
         {'ContentLength': 3},
         {'ContentLength': 1},
+        {'ContentLength': 1},
     ])
 
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
@@ -346,14 +377,14 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         with freeze_time(time_to_run_task):
             collate_letter_pdfs_to_be_sent()
 
-    assert len(mock_celery.call_args_list) == 5
+    assert len(mock_celery.call_args_list) == 6
     assert mock_celery.call_args_list[0] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
                 '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.C.20200217140000.PDF'
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.1.001.kHh01fdUxT9iEIYUt5Wx.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.1.001.kHh01fdUxT9iEIYUt5Wx.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -361,11 +392,8 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': [
-                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
-            ],
-            'upload_filename': 'NOTIFY.2020-02-17.2.001.k3x_WqC5KhB6e2DWv9Ma.ZIP'
+            'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'],
+            'upload_filename': f'NOTIFY.2020-02-17.2.001.MezXnKP3IvNZEoMsSlVo.{service_2.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -374,9 +402,10 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.2.002.J85cUw-FWlKuAIOcwdLS.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.2.002.k3x_WqC5KhB6e2DWv9Ma.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -385,9 +414,9 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF'
+                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.E.001.4YajCZzgzIl7zf8bjWK2.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.2.003.J85cUw-FWlKuAIOcwdLS.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -396,9 +425,20 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
+                '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF'
+            ],
+            'upload_filename': f'NOTIFY.2020-02-17.E.001.4YajCZzgzIl7zf8bjWK2.{letter_template_1.service_id}.ZIP'
+        },
+        queue='process-ftp-tasks',
+        compression='zlib'
+    )
+    assert mock_celery.call_args_list[5] == call(
+        name='zip-and-send-letter-pdfs',
+        kwargs={
+            'filenames_to_zip': [
                 '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.C.20200213180000.PDF',
             ],
-            'upload_filename': 'NOTIFY.2020-02-17.N.001.eSvP8Ph6EBKhh3k7BSA2.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.N.001.eSvP8Ph6EBKhh3k7BSA2.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -408,48 +448,72 @@ def test_collate_letter_pdfs_to_be_sent(notify_api, sample_letter_template, mock
 def test_group_letters_splits_on_file_size(notify_api):
     letters = [
         # ends under max but next one is too big
-        {'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2},
+        {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'}, {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'},
         # ends on exactly max
-        {'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1},
+        {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'},
+        {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'},
         # exactly max goes in next file
-        {'Key': 'F.pdf', 'Size': 5},
+        {'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'},
         # if it's bigger than the max, still gets included
-        {'Key': 'G.pdf', 'Size': 6},
+        {'Key': 'G.pdf', 'Size': 6, 'ServiceId': '123'},
         # whatever's left goes in last list
-        {'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1},
+        {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'}, {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'},
     ]
 
     with set_config_values(notify_api, {'MAX_LETTER_PDF_ZIP_FILESIZE': 5}):
         x = group_letters(letters)
 
-        assert next(x) == [{'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2}]
-        assert next(x) == [{'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1}]
-        assert next(x) == [{'Key': 'F.pdf', 'Size': 5}]
-        assert next(x) == [{'Key': 'G.pdf', 'Size': 6}]
-        assert next(x) == [{'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1}]
+        assert next(x) == [
+            {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'}
+        ]
+        assert next(x) == [
+            {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'},
+            {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'}
+        ]
+        assert next(x) == [{'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'}]
+        assert next(x) == [{'Key': 'G.pdf', 'Size': 6, 'ServiceId': '123'}]
+        assert next(x) == [
+            {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'}
+        ]
         # make sure iterator is exhausted
         assert next(x, None) is None
 
 
 def test_group_letters_splits_on_file_count(notify_api):
     letters = [
-        {'Key': 'A.pdf', 'Size': 1},
-        {'Key': 'B.pdf', 'Size': 2},
-        {'Key': 'C.pdf', 'Size': 3},
-        {'Key': 'D.pdf', 'Size': 1},
-        {'Key': 'E.pdf', 'Size': 1},
-        {'Key': 'F.pdf', 'Size': 5},
-        {'Key': 'G.pdf', 'Size': 6},
-        {'Key': 'H.pdf', 'Size': 1},
-        {'Key': 'I.pdf', 'Size': 1},
+        {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'},
+        {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'},
+        {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'},
+        {'Key': 'G.pdf', 'Size': 6, 'ServiceId': '123'},
+        {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'},
     ]
 
     with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 3}):
         x = group_letters(letters)
 
-        assert next(x) == [{'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2}, {'Key': 'C.pdf', 'Size': 3}]
-        assert next(x) == [{'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1}, {'Key': 'F.pdf', 'Size': 5}]
-        assert next(x) == [{'Key': 'G.pdf', 'Size': 6}, {'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1}]
+        assert next(x) == [
+            {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'},
+            {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'}
+        ]
+        assert next(x) == [
+            {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'}
+        ]
+        assert next(x) == [
+            {'Key': 'G.pdf', 'Size': 6, 'ServiceId': '123'},
+            {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'}
+        ]
         # make sure iterator is exhausted
         assert next(x, None) is None
 
@@ -457,20 +521,20 @@ def test_group_letters_splits_on_file_count(notify_api):
 def test_group_letters_splits_on_file_size_and_file_count(notify_api):
     letters = [
         # ends under max file size but next file is too big
-        {'Key': 'A.pdf', 'Size': 1},
-        {'Key': 'B.pdf', 'Size': 2},
+        {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'},
         # ends on exactly max number of files and file size
-        {'Key': 'C.pdf', 'Size': 3},
-        {'Key': 'D.pdf', 'Size': 1},
-        {'Key': 'E.pdf', 'Size': 1},
+        {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'},
+        {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'},
         # exactly max file size goes in next file
-        {'Key': 'F.pdf', 'Size': 5},
+        {'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'},
         # file size is within max but number of files reaches limit
-        {'Key': 'G.pdf', 'Size': 1},
-        {'Key': 'H.pdf', 'Size': 1},
-        {'Key': 'I.pdf', 'Size': 1},
+        {'Key': 'G.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'},
+        {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'},
         # whatever's left goes in last list
-        {'Key': 'J.pdf', 'Size': 1},
+        {'Key': 'J.pdf', 'Size': 1, 'ServiceId': '123'},
     ]
 
     with set_config_values(notify_api, {
@@ -479,11 +543,22 @@ def test_group_letters_splits_on_file_size_and_file_count(notify_api):
     }):
         x = group_letters(letters)
 
-        assert next(x) == [{'Key': 'A.pdf', 'Size': 1}, {'Key': 'B.pdf', 'Size': 2}]
-        assert next(x) == [{'Key': 'C.pdf', 'Size': 3}, {'Key': 'D.pdf', 'Size': 1}, {'Key': 'E.pdf', 'Size': 1}]
-        assert next(x) == [{'Key': 'F.pdf', 'Size': 5}]
-        assert next(x) == [{'Key': 'G.pdf', 'Size': 1}, {'Key': 'H.pdf', 'Size': 1}, {'Key': 'I.pdf', 'Size': 1}]
-        assert next(x) == [{'Key': 'J.pdf', 'Size': 1}]
+        assert next(x) == [
+            {'Key': 'A.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'B.pdf', 'Size': 2, 'ServiceId': '123'}
+        ]
+        assert next(x) == [
+            {'Key': 'C.pdf', 'Size': 3, 'ServiceId': '123'},
+            {'Key': 'D.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'E.pdf', 'Size': 1, 'ServiceId': '123'}
+        ]
+        assert next(x) == [{'Key': 'F.pdf', 'Size': 5, 'ServiceId': '123'}]
+        assert next(x) == [
+            {'Key': 'G.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'H.pdf', 'Size': 1, 'ServiceId': '123'},
+            {'Key': 'I.pdf', 'Size': 1, 'ServiceId': '123'}
+        ]
+        assert next(x) == [{'Key': 'J.pdf', 'Size': 1, 'ServiceId': '123'}]
         # make sure iterator is exhausted
         assert next(x, None) is None
 
@@ -496,8 +571,8 @@ def test_group_letters_ignores_non_pdfs(key):
 
 @pytest.mark.parametrize('key', ["A.PDF", "B.pdf", "C.PdF"])
 def test_group_letters_includes_pdf_files(key):
-    letters = [{'Key': key, 'Size': 1}]
-    assert list(group_letters(letters)) == [[{'Key': key, 'Size': 1}]]
+    letters = [{'Key': key, 'Size': 1, 'ServiceId': '123'}]
+    assert list(group_letters(letters)) == [[{'Key': key, 'Size': 1, 'ServiceId': '123'}]]
 
 
 def test_group_letters_with_no_letters():
