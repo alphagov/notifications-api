@@ -49,7 +49,6 @@ from app.models import (
 from tests.app.db import (
     create_job,
     create_notification,
-    create_organisation,
     create_service,
     create_template,
     create_notification_history
@@ -1696,30 +1695,3 @@ def test_letters_to_be_printed_sort_by_service(notify_db_session):
     results = dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second')
     assert len(results) == 3
     assert results == [notification_1, notification_2, notification_3]
-
-
-def test_dao_get_letters_to_be_printed_does_not_fetch_insolvency_org_letters(notify_db_session):
-    insolvency_org = create_organisation(organisation_id='f33fdfdd-7533-40cb-b5e8-cd78a1f5d21e', name="Insolvency")
-    other_org = create_organisation(name="Other Org")
-    insolvency_service = create_service(
-        service_name='insolvency_service',
-        organisation=insolvency_org
-    )
-    no_org_service = create_service(
-        service_name='no_org_service'
-    )
-    other_org_service = create_service(
-        service_name='other_org_service',
-        organisation=other_org
-    )
-    first_template = create_template(service=insolvency_service, template_type='letter', postage='second')
-    second_template = create_template(service=no_org_service, template_type='letter', postage='second')
-    third_template = create_template(service=other_org_service, template_type='letter', postage='second')
-    create_notification(template=first_template, created_at=datetime(2020, 12, 1, 9, 30))
-    notification_2 = create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 30))
-    notification_3 = create_notification(template=third_template, created_at=datetime(2020, 12, 1, 8, 30))
-
-    results = dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second')
-    assert len(results) == 2
-    assert notification_2 in results
-    assert notification_3 in results

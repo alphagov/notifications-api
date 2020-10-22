@@ -181,6 +181,10 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
     letter_pdfs = []
     for letter in letters_awaiting_sending:
         try:
+            if str(letter.service.organisation_id) == 'f33fdfdd-7533-40cb-b5e8-cd78a1f5d21e':
+                letter_service_marking = str(letter.service.id) + ".INSOLVENCY"
+            else:
+                letter_service_marking = str(letter.service.id)
             letter_file_name = get_letter_pdf_filename(
                 reference=letter.reference,
                 crown=letter.service.crown,
@@ -191,7 +195,7 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
             letter_pdfs.append({
                 "Key": letter_file_name,
                 "Size": letter_head['ContentLength'],
-                "ServiceId": str(letter.service.id)
+                "ServiceId": letter_service_marking
             })
         except BotoClientError as e:
             current_app.logger.exception(
