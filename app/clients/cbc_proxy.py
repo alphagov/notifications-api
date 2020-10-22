@@ -2,6 +2,19 @@ import json
 
 import boto3
 
+# The variable names in this file have specific meaning in a CAP message
+#
+# identifier is a unique field for each CAP message
+#
+# headline is a field which we are not sure if we will use
+#
+# description is the body of the message
+#
+# references is a whitespace separated list of message identifiers
+# where each identifier is a previous sent message
+# ie a Cancel message would have a unique identifier but have the identifier of
+#    the preceeding Alert message in the references field
+
 
 # Noop = no operation
 class CBCProxyNoopClient:
@@ -13,9 +26,6 @@ class CBCProxyNoopClient:
         self,
         identifier, headline, description,
     ):
-        # identifier=broadcast_message.identifier,
-        # headline="GOV.UK Notify Broadcast",
-        # description=broadcast_message.description,
         pass
 
     # We have not implementated updating a broadcast
