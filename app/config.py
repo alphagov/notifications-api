@@ -355,8 +355,8 @@ class Config(object):
 
     # CBC Proxy
     # if the access keys are empty then noop client is used
-    CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
-    CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+    CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('CBC_PROXY_AWS_ACCESS_KEY_ID', '')
+    CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('CBC_PROXY_AWS_SECRET_ACCESS_KEY', '')
 
 
 ######################
