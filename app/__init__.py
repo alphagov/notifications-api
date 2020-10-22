@@ -23,6 +23,7 @@ from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
 from app.clients import Clients
+from app.clients.cbc_proxy import CBCProxyClient, CBCProxyNoopClient
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
@@ -60,6 +61,7 @@ zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
 performance_platform_client = PerformancePlatformClient()
+cbc_proxy_client = CBCProxyNoopClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
 
@@ -111,6 +113,11 @@ def create_app(application):
     redis_store.init_app(application)
     performance_platform_client.init_app(application)
     document_download_client.init_app(application)
+
+    global cbc_proxy_client
+    if application.config['CBC_PROXY_AWS_ACCESS_KEY_ID']:
+        cbc_proxy_client = CBCProxyClient()
+    cbc_proxy_client.init_app(application)
 
     register_blueprint(application)
     register_v2_blueprints(application)

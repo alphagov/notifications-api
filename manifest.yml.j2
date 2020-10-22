@@ -125,6 +125,11 @@ applications:
       AWS_ACCESS_KEY_ID: '{{ AWS_ACCESS_KEY_ID }}'
       AWS_SECRET_ACCESS_KEY: '{{ AWS_SECRET_ACCESS_KEY }}'
 
+      {% if CBC_PROXY_AWS_ACCESS_KEY_ID is defined %}
+      CBC_PROXY_AWS_ACCESS_KEY_ID: '{{ CBC_PROXY_AWS_ACCESS_KEY_ID }}'
+      CBC_PROXY_AWS_SECRET_ACCESS_KEY: '{{ CBC_PROXY_AWS_SECRET_ACCESS_KEY }}'
+      {% endif %}
+
       STATSD_HOST: "notify-statsd-exporter-{{ environment }}.apps.internal"
 
       ZENDESK_API_KEY: '{{ ZENDESK_API_KEY }}'

@@ -9,7 +9,7 @@ from tests.app.db import create_template, create_broadcast_message, create_broad
 
 
 @freeze_time('2020-08-01 12:00')
-def test_send_broadcast_event_sends_data_correctly(sample_service):
+def test_send_broadcast_event_sends_data_correctly(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
@@ -18,9 +18,19 @@ def test_send_broadcast_event_sends_data_correctly(sample_service):
     )
     event = create_broadcast_event(broadcast_message)
 
+    mock_create_broadcast = mocker.patch(
+        'app.cbc_proxy_client.create_and_send_broadcast',
+    )
+
     with requests_mock.Mocker() as request_mock:
         request_mock.post("http://test-cbc-proxy/broadcasts/events/stub-1", json={'valid': 'true'}, status_code=200)
         send_broadcast_event(broadcast_event_id=str(event.id))
+
+    mock_create_broadcast.assert_called_once_with(
+        identifier=str(event.id),
+        headline="GOV.UK Notify Broadcast",
+        description='this is an emergency broadcast message',
+    )
 
     assert request_mock.call_count == 1
     assert request_mock.request_history[0].method == 'POST'
@@ -36,15 +46,21 @@ def test_send_broadcast_event_sends_data_correctly(sample_service):
     }
 
 
-def test_send_broadcast_event_sends_references(sample_service):
+def test_send_broadcast_event_sends_references(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
     broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
 
+    mock_create_broadcast = mocker.patch(
+        'app.cbc_proxy_client.create_and_send_broadcast',
+    )
+
     with requests_mock.Mocker() as request_mock:
         request_mock.post("http://test-cbc-proxy/broadcasts/events/stub-1", json={'valid': 'true'}, status_code=200)
         send_broadcast_event(broadcast_event_id=str(cancel_event.id))
+
+    assert not mock_create_broadcast.called
 
     assert request_mock.call_count == 1
     assert request_mock.request_history[0].method == 'POST'
@@ -56,10 +72,14 @@ def test_send_broadcast_event_sends_references(sample_service):
     assert cbc_json['previous_event_references'] == [alert_event.reference]
 
 
-def test_send_broadcast_event_errors(sample_service):
+def test_send_broadcast_event_errors(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
+
+    mock_create_broadcast = mocker.patch(
+        'app.cbc_proxy_client.create_and_send_broadcast',
+    )
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post("http://test-cbc-proxy/broadcasts/events/stub-1", text='503 bad gateway', status_code=503)
@@ -68,3 +88,9 @@ def test_send_broadcast_event_errors(sample_service):
             send_broadcast_event(broadcast_event_id=str(event.id))
 
     assert ex.value.response.status_code == 503
+
+    mock_create_broadcast.assert_called_once_with(
+        identifier=str(event.id),
+        headline="GOV.UK Notify Broadcast",
+        description='this is an emergency broadcast message',
+    )
