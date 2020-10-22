@@ -18,7 +18,6 @@ def cbc_proxy(client, mocker):
 
 def test_cbc_proxy_ld_client_has_correct_region(cbc_proxy):
     assert cbc_proxy._ld_client._client_config.region_name == 'eu-west-2'
-    pass
 
 
 def test_cbc_proxy_ld_client_has_correct_keys(cbc_proxy):
