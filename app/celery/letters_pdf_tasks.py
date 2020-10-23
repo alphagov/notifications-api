@@ -178,7 +178,6 @@ def collate_letter_pdfs_to_be_sent():
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):
     letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline, postage)
-    letter_pdfs = []
     for letter in letters_awaiting_sending:
         try:
             letter_file_name = get_letter_pdf_filename(
@@ -188,16 +187,14 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
                 postage=letter.postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
-            letter_pdfs.append({
+            yield {
                 "Key": letter_file_name,
                 "Size": letter_head['ContentLength'],
                 "ServiceId": str(letter.service.id)
-            })
+            }
         except BotoClientError as e:
             current_app.logger.exception(
                 f"Error getting letter from bucket for notification: {letter.id} with reference: {letter.reference}", e)
-
-    return letter_pdfs
 
 
 def group_letters(letter_pdfs):

@@ -223,7 +223,9 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         {'ContentLength': 3},
     ])
 
-    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
+    results = list(
+        get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
+    )
 
     assert mock_s3.call_count == 3
     mock_s3.assert_has_calls(
@@ -284,7 +286,9 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
         ClientError(error_response, "File not found")
     ])
 
-    results = get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
+    results = list(
+        get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
+    )
 
     assert mock_head_s3_object.call_count == 2
     mock_head_s3_object.assert_has_calls(
