@@ -717,9 +717,20 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     return notifications
 
 
-def dao_get_letters_to_be_printed(print_run_deadline, postage):
+def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000):
     """
-    Return all letters created before the print run deadline that have not yet been sent
+    Return all letters created before the print run deadline that have not yet been sent. This yields in batches of 10k
+    to prevent the query taking too long and eating up too much memory. As each 10k batch is yielded, the
+    get_key_and_size_of_letters_to_be_sent_to_print function will go and fetch the s3 data, andhese  start sending off
+    tasks to the notify-ftp app to send them.
+
+    CAUTION! Modify this query with caution. Modifying filters etc is fine, but if we join onto another table, then
+    there may be undefined behaviour. Essentially we need each ORM object returned for each row to be unique,
+    and we should avoid modifying state of returned objects.
+
+    For more reading:
+    https://docs.sqlalchemy.org/en/13/orm/query.html?highlight=yield_per#sqlalchemy.orm.query.Query.yield_per
+    https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
     notifications = db.session.query(
         Notification.id,
@@ -738,7 +749,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage):
     ).order_by(
         Notification.service_id,
         Notification.created_at
-    ).limit(50000)
+    ).yield_per(query_limit)
     return notifications
 
 
