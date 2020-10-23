@@ -1692,6 +1692,6 @@ def test_letters_to_be_printed_sort_by_service(notify_db_session):
     notification_2 = create_notification(template=first_template, created_at=datetime(2020, 12, 1, 12, 30))
     notification_3 = create_notification(template=second_template, created_at=datetime(2020, 12, 1, 8, 30))
 
-    results = dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second')
+    results = list(dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second'))
     assert len(results) == 3
     assert results == [notification_1, notification_2, notification_3]
