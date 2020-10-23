@@ -34,8 +34,6 @@ from app.models import (
     INTERNATIONAL_SMS_TYPE,
     INBOUND_SMS_TYPE,
     NOTIFICATION_RETURNED_LETTER,
-    UPLOAD_LETTERS,
-
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -289,7 +287,7 @@ def test_get_service_list_has_default_permissions(admin_request, service_factory
         set(
             json['permissions']
         ) == {
-            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
+            EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, INTERNATIONAL_LETTERS
         }
         for json in json_resp['data']
     )
@@ -301,7 +299,7 @@ def test_get_service_by_id_has_default_service_permissions(admin_request, sample
     assert set(
         json_resp['data']['permissions']
     ) == {
-        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
+        EMAIL_TYPE, SMS_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE, INTERNATIONAL_LETTERS
     }
 
 

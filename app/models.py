@@ -301,7 +301,6 @@ LETTERS_AS_PDF = 'letters_as_pdf'
 PRECOMPILED_LETTER = 'precompiled_letter'
 UPLOAD_DOCUMENT = 'upload_document'
 EDIT_FOLDER_PERMISSIONS = 'edit_folder_permissions'
-UPLOAD_LETTERS = 'upload_letters'
 INTERNATIONAL_LETTERS = 'international_letters'
 
 SERVICE_PERMISSION_TYPES = [
@@ -316,7 +315,6 @@ SERVICE_PERMISSION_TYPES = [
     LETTERS_AS_PDF,
     UPLOAD_DOCUMENT,
     EDIT_FOLDER_PERMISSIONS,
-    UPLOAD_LETTERS,
     INTERNATIONAL_LETTERS,
 ]
 
