@@ -140,38 +140,52 @@ def collate_letter_pdfs_to_be_sent():
     for postage in POSTAGE_TYPES:
         current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
         letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
+        services_with_letters_to_print = list(set([letter["ServiceId"] for letter in letters_to_print]))
 
-        for i, letters in enumerate(group_letters(letters_to_print)):
-            filenames = [letter['Key'] for letter in letters]
-            service_id = letters[0]['ServiceId']
-
-            hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
-            # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.ZIP'.format(
-                date=print_run_deadline.strftime("%Y-%m-%d"),
-                postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
-                num=i + 1,
-                hash=hash,
-                service_id=service_id
+        for service_id in services_with_letters_to_print:
+            letters_to_print_by_service = [letter for letter in letters_to_print if letter["ServiceId"] == service_id]
+            collate_letter_pdfs_to_be_sent_part_two.apply_async(
+                letters_to_print_by_service,
+                service_id,
+                print_run_deadline,
+                postage,
+                queue=QueueNames.PERIODIC
             )
 
-            current_app.logger.info(
-                'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
-                    len(filenames),
-                    dvla_filename,
-                    sum(letter['Size'] for letter in letters)
-                )
+
+@notify_celery.task(name='collate-letter-pdfs-to-be-sent-part-two')
+@cronitor("collate-letter-pdfs-to-be-sent-part-two")
+def collate_letter_pdfs_to_be_sent_part_two(letters_to_print, service_id, print_run_deadline, postage):
+    for i, letters in enumerate(group_letters(letters_to_print)):
+        filenames = [letter['Key'] for letter in letters]
+
+        hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
+        # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
+        dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.ZIP'.format(
+            date=print_run_deadline.strftime("%Y-%m-%d"),
+            postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
+            num=i + 1,
+            hash=hash,
+            service_id=service_id
+        )
+
+        current_app.logger.info(
+            'Calling task zip-and-send-letter-pdfs for {} pdfs to upload {} with total size {:,} bytes'.format(
+                len(filenames),
+                dvla_filename,
+                sum(letter['Size'] for letter in letters)
             )
-            notify_celery.send_task(
-                name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
-                kwargs={
-                    'filenames_to_zip': filenames,
-                    'upload_filename': dvla_filename
-                },
-                queue=QueueNames.PROCESS_FTP,
-                compression='zlib'
-            )
-        current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
+        )
+        notify_celery.send_task(
+            name=TaskNames.ZIP_AND_SEND_LETTER_PDFS,
+            kwargs={
+                'filenames_to_zip': filenames,
+                'upload_filename': dvla_filename
+            },
+            queue=QueueNames.PROCESS_FTP,
+            compression='zlib'
+        )
+    current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
 
@@ -205,23 +219,16 @@ def group_letters(letter_pdfs):
     """
     running_filesize = 0
     list_of_files = []
-    service_id = None
     for letter in letter_pdfs:
         if letter['Key'].lower().endswith('.pdf'):
-            if not service_id:
-                service_id = letter['ServiceId']
             if (
                 running_filesize + letter['Size'] > current_app.config['MAX_LETTER_PDF_ZIP_FILESIZE']
                 or len(list_of_files) >= current_app.config['MAX_LETTER_PDF_COUNT_PER_ZIP']
-                or letter['ServiceId'] != service_id
             ):
                 yield list_of_files
                 running_filesize = 0
                 list_of_files = []
-                service_id = None
 
-            if not service_id:
-                service_id = letter['ServiceId']
             running_filesize += letter['Size']
             list_of_files.append(letter)
 
