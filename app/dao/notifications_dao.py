@@ -730,7 +730,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage):
     ).order_by(
         Notification.service_id,
         Notification.created_at
-    )
+    ).limit(50000)
     return notifications
 
 
