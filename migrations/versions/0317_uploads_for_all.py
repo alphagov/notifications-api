@@ -6,11 +6,11 @@ Create Date: 2019-05-13 10:44:51.867661
 
 """
 from alembic import op
+from app.models import UPLOAD_LETTERS
+
 
 revision = '0317_uploads_for_all'
 down_revision = '0316_int_letters_permission'
-
-UPLOAD_LETTERS = 'upload_letters'
 
 
 def upgrade():
