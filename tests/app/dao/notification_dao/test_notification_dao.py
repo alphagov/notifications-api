@@ -1694,4 +1694,4 @@ def test_letters_to_be_printed_sort_by_service(notify_db_session):
 
     results = list(dao_get_letters_to_be_printed(print_run_deadline=datetime(2020, 12, 1, 17, 30), postage='second'))
     assert len(results) == 3
-    assert results == [notification_1, notification_2, notification_3]
+    assert [x.id for x in results] == [notification_1.id, notification_2.id, notification_3.id]
