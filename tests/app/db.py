@@ -1042,9 +1042,7 @@ def create_broadcast_event(
         sent_at=sent_at or datetime.utcnow(),
         message_type=message_type,
         transmitted_content=transmitted_content or {'body': 'this is an emergency broadcast message'},
-        transmitted_areas=transmitted_areas or {
-            'areas': ['london'], 'simple_polygons': [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]
-        },
+        transmitted_areas=transmitted_areas or broadcast_message.areas,
         transmitted_sender=transmitted_sender or 'www.notifications.service.gov.uk',
         transmitted_starts_at=transmitted_starts_at,
         transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow(),
