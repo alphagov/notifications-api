@@ -19,11 +19,8 @@ def send_broadcast_event(broadcast_event_id):
     )
 
     areas = [
-        {"description": desc, "polygon": polygon}
-        for desc, polygon in zip(
-            broadcast_event.transmitted_areas["areas"],
-            broadcast_event.transmitted_areas["simple_polygons"],
-        )
+        {"polygon": polygon}
+        for polygon in broadcast_event.transmitted_areas["simple_polygons"]
     ]
 
     if broadcast_event.message_type == BroadcastEventMessageType.ALERT:

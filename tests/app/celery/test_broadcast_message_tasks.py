@@ -72,7 +72,6 @@ def test_update_broadcast_event_sends_references(mocker, sample_service):
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
-            "description": "london",
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         references=[alert_event.reference],
@@ -108,7 +107,6 @@ def test_cancel_broadcast_event_sends_references(mocker, sample_service):
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
-            "description": "london",
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         references=[alert_event.reference, update_event.reference],
@@ -146,7 +144,6 @@ def test_send_broadcast_event_errors(mocker, sample_service):
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
-            'description': 'london',
             'polygon': [
                 [50.12, 1.2],
                 [50.13, 1.2],
