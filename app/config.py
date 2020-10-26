@@ -303,6 +303,11 @@ class Config(object):
             'schedule': crontab(hour=23, minute=00),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'send-canary-to-cbc-proxy': {
+            'task': 'send-canary-to-cbc-proxy',
+            'schedule': timedelta(minutes=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
     }
     CELERY_QUEUES = []
 

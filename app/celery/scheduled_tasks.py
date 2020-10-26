@@ -1,3 +1,5 @@
+import uuid
+
 from datetime import (
     datetime,
     timedelta
@@ -8,7 +10,7 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import and_
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, zendesk_client
+from app import cbc_proxy_client, notify_celery, zendesk_client
 from app.celery.tasks import (
     process_job,
     get_recipient_csv_and_template_and_sender_id,
@@ -291,3 +293,9 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 message=message,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+
+
+@notify_celery.task(name='send-canary-to-cbc-proxy')
+def send_canary_to_cbc_proxy():
+    identifier = str(uuid.uuid4())
+    cbc_proxy_client.send_canary(identifier)
