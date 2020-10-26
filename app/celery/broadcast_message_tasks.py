@@ -20,10 +20,19 @@ def send_broadcast_event(broadcast_event_id, provider='stub-1'):
             f'msgType {broadcast_event.message_type} to {provider}'
         )
 
+        areas = [
+            {"description": desc, "polygon": polygon}
+            for desc, polygon in zip(
+                broadcast_event.transmitted_areas["areas"],
+                broadcast_event.transmitted_areas["simple_polygons"],
+            )
+        ]
+
         cbc_proxy_client.create_and_send_broadcast(
             identifier=str(broadcast_event.id),
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
+            areas=areas,
         )
 
     current_app.logger.info(

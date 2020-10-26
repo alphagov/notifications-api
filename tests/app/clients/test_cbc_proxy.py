@@ -33,6 +33,18 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     headline = 'my-headline'
     description = 'my-description'
 
+    # a single area which is a square including london
+    areas = [{
+        'description': 'london',
+        'polygon': [
+            [51.12, -1.2],
+            [51.12, 1.2],
+            [51.74, 1.2],
+            [51.74, -1.2],
+            [51.12, -1.2],
+        ],
+    }]
+
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
         '_lambda_client',
@@ -47,6 +59,7 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
         identifier=identifier,
         headline=headline,
         description=description,
+        areas=areas,
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -62,12 +75,25 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     assert payload['identifier'] == identifier
     assert payload['headline'] == headline
     assert payload['description'] == description
+    assert payload['areas'] == areas
 
 
 def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
     description = 'my-description'
+
+    # a single area which is a square including london
+    areas = [{
+        'description': 'london',
+        'polygon': [
+            [51.12, -1.2],
+            [51.12, 1.2],
+            [51.74, 1.2],
+            [51.74, -1.2],
+            [51.12, -1.2],
+        ],
+    }]
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -84,6 +110,7 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
             identifier=identifier,
             headline=headline,
             description=description,
+            areas=areas,
         )
 
     assert e.match('Could not invoke lambda')
@@ -99,6 +126,18 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
     description = 'my-description'
+
+    # a single area which is a square including london
+    areas = [{
+        'description': 'london',
+        'polygon': [
+            [51.12, -1.2],
+            [51.12, 1.2],
+            [51.74, 1.2],
+            [51.74, -1.2],
+            [51.12, -1.2],
+        ],
+    }]
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -116,6 +155,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
             identifier=identifier,
             headline=headline,
             description=description,
+            areas=areas,
         )
 
         assert e.match('Function exited with unhandled exception')

@@ -30,6 +30,10 @@ def test_send_broadcast_event_sends_data_correctly(mocker, sample_service):
         identifier=str(event.id),
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
+        areas=[{
+            "description": "london",
+            "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+        }]
     )
 
     assert request_mock.call_count == 1
@@ -93,4 +97,12 @@ def test_send_broadcast_event_errors(mocker, sample_service):
         identifier=str(event.id),
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
+        areas=[{
+            'description': 'london',
+            'polygon': [
+                [50.12, 1.2],
+                [50.13, 1.2],
+                [50.14, 1.21],
+            ],
+        }],
     )
