@@ -2195,6 +2195,10 @@ class BroadcastStatusType(db.Model):
 
 
 class BroadcastMessage(db.Model):
+    """
+    This is for creating a message, viewing it in notify, adding areas, approvals, drafts, etc. Notify logic before
+    hitting send.
+    """
     __tablename__ = 'broadcast_message'
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -2299,7 +2303,8 @@ class BroadcastEventMessageType:
 
 class BroadcastEvent(db.Model):
     """
-    This table represents a single CAP XML blob that we sent to the mobile network providers.
+    This table represents an instruction that we will send to the broadcast providers. It directly correlates with an
+    instruction from the admin - to broadcast a message, to cancel an existing message, or to update an existing one.
 
     We should be able to create the complete CAP message without joining from this to any other tables, eg
     template, service, or broadcast_message.
@@ -2398,3 +2403,43 @@ class BroadcastEvent(db.Model):
             'transmitted_finishes_at': self.transmitted_finishes_at.strftime(DATETIME_FORMAT),
 
         }
+
+
+class BroadcastProvider:
+    EE = 'ee'
+    VODAFONE = 'vodafone'
+    THREE = 'three'
+    O2 = 'o2'
+
+    PROVIDERS = [EE, VODAFONE, THREE, O2]
+
+
+class BroadcastProviderMessageStatus:
+    TECHNICAL_FAILURE = 'technical-failure'  # Couldn’t send (cbc proxy 5xx/4xx)
+    SENDING = 'sending'  # Sent to cbc, awaiting response
+    ACK = 'returned-ack'  # Received ack response
+    ERR = 'returned-error'  # Received error response
+
+    STATES = [TECHNICAL_FAILURE, SENDING, ACK, ERR]
+
+
+class BroadcastProviderMessage(db.Model):
+    """
+    A row in this table represents the XML blob sent to a single provider.
+    """
+    __tablename__ = 'broadcast_provider_message'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    broadcast_event_id = db.Column(UUID(as_uuid=True), db.ForeignKey('broadcast_event.id'))
+    broadcast_event = db.relationship('BroadcastEvent')
+
+    # 'ee', 'three', 'vodafone', etc
+    provider = db.Column(db.String)
+
+    status = db.Column(db.String)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    UniqueConstraint(broadcast_event_id, provider)
