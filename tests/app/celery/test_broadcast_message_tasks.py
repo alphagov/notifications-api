@@ -11,7 +11,13 @@ def test_create_broadcast_event_sends_data_correctly(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
-        areas={"areas": ['london'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
+        areas={
+            'areas': ['london', 'glasgow'],
+            'simple_polygons': [
+                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+                [[-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96]],
+            ],
+        },
         status=BroadcastStatusType.BROADCASTING
     )
     event = create_broadcast_event(broadcast_message)
@@ -24,18 +30,34 @@ def test_create_broadcast_event_sends_data_correctly(mocker, sample_service):
 
     mock_create_broadcast.assert_called_once_with(
         identifier=str(event.id),
-        headline="GOV.UK Notify Broadcast",
+        headline='GOV.UK Notify Broadcast',
         description='this is an emergency broadcast message',
         areas=[{
-            "description": "london",
-            "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+            'polygon': [
+                [50.12, 1.2], [50.13, 1.2], [50.14, 1.21],
+            ],
+        }, {
+            'polygon': [
+                [-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96],
+            ],
         }],
     )
 
 
 def test_update_broadcast_event_sends_references(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
-    broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
+
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={
+            'areas': ['london'],
+            'simple_polygons': [
+                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+            ],
+        },
+        status=BroadcastStatusType.BROADCASTING
+    )
+
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
 
@@ -59,7 +81,18 @@ def test_update_broadcast_event_sends_references(mocker, sample_service):
 
 def test_cancel_broadcast_event_sends_references(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
-    broadcast_message = create_broadcast_message(template, areas=['london'], status=BroadcastStatusType.BROADCASTING)
+
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={
+            'areas': ['london'],
+            'simple_polygons': [
+                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+            ],
+        },
+        status=BroadcastStatusType.BROADCASTING
+    )
+
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
@@ -84,7 +117,18 @@ def test_cancel_broadcast_event_sends_references(mocker, sample_service):
 
 def test_send_broadcast_event_errors(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
+
+    broadcast_message = create_broadcast_message(
+        template,
+        areas={
+            'areas': ['london'],
+            'simple_polygons': [
+                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+            ],
+        },
+        status=BroadcastStatusType.BROADCASTING
+    )
+
     event = create_broadcast_event(broadcast_message)
 
     mock_create_broadcast = mocker.patch(
