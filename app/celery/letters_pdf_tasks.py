@@ -182,15 +182,15 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
         try:
             letter_file_name = get_letter_pdf_filename(
                 reference=letter.reference,
-                crown=letter.service.crown,
+                crown=letter.crown,
                 created_at=letter.created_at,
-                postage=letter.postage
+                postage=postage
             )
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
             yield {
                 "Key": letter_file_name,
                 "Size": letter_head['ContentLength'],
-                "ServiceId": str(letter.service.id)
+                "ServiceId": str(letter.service_id)
             }
         except BotoClientError as e:
             current_app.logger.exception(
