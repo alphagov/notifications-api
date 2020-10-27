@@ -189,6 +189,7 @@ def test_get_uploads_orders_by_processing_started_desc(sample_template):
     assert results[1].id == upload_2.id
 
 
+@freeze_time("2020-10-27 16:15")  # GMT time
 def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
