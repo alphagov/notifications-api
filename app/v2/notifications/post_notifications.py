@@ -69,7 +69,6 @@ from app.v2.notifications.notification_schemas import (
 )
 from app.v2.utils import get_valid_json
 
-
 POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
     'post_notification_json_parse_duration_seconds',
     'Time taken to parse and validate post request json',
@@ -201,11 +200,14 @@ def process_sms_or_email_notification(
         template_with_content=template_with_content
     )
 
-    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') and api_user.key_type == KEY_TYPE_NORMAL:
-        # Put GOV.UK Email notifications onto a queue
+    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') \
+        and api_user.key_type == KEY_TYPE_NORMAL \
+            and notification_type in [EMAIL_TYPE, SMS_TYPE]:
+        # Put service with high volumes of notifications onto a queue
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
         # the task will then save the notification, then call send_notification_to_queue.
-        # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
+        # NOTE: The high volume service should be aware that the notification is not immediately
+        # available by a GET request, it is recommend they use callbacks to keep track of status updates.
         try:
             save_email_or_sms_to_queue(
                 form=form,
@@ -291,7 +293,7 @@ def save_email_or_sms_to_queue(
 
     if notification_type == EMAIL_TYPE:
         save_api_email.apply_async([encrypted], queue=QueueNames.SAVE_API_EMAIL)
-    else:
+    elif notification_type == SMS_TYPE:
         save_api_sms.apply_async([encrypted], queue=QueueNames.SAVE_API_SMS)
 
     return Notification(**data)
