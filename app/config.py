@@ -32,6 +32,7 @@ class QueueNames(object):
     ANTIVIRUS = 'antivirus-tasks'
     SANITISE_LETTERS = 'sanitise-letter-tasks'
     SAVE_API_EMAIL = 'save-api-email-tasks'
+    SAVE_API_SMS = 'save-api-sms-tasks'
 
     @staticmethod
     def all_queues():
@@ -50,7 +51,8 @@ class QueueNames(object):
             QueueNames.CALLBACKS,
             QueueNames.LETTERS,
             QueueNames.SMS_CALLBACKS,
-            QueueNames.SAVE_API_EMAIL
+            QueueNames.SAVE_API_EMAIL,
+            QueueNames.SAVE_API_SMS
         ]
 
 
