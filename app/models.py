@@ -2342,7 +2342,31 @@ class BroadcastEvent(db.Model):
 
     @property
     def reference(self):
-        return BroadcastMessageTemplate.from_event(self.serialize()).reference
+        notify_email_domain = current_app.config['NOTIFY_EMAIL_DOMAIN']
+        return (
+            f'https://www.{notify_email_domain}/,'
+            f'{self.id},'
+            f'{self.sent_at_as_cap_datetime_string}'
+        )
+
+    @property
+    def sent_at_as_cap_datetime_string(self):
+        return self.formatted_datetime_for('sent_at')
+
+    def formatted_datetime_for(self, property_name):
+        return self.convert_naive_utc_datetime_to_cap_standard_string(
+            getattr(self, property_name)
+        )
+
+    @staticmethod
+    def convert_naive_utc_datetime_to_cap_standard_string(dt):
+        """
+        As defined in section 3.3.2 of
+        http://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2-os.html
+        They define the standard "YYYY-MM-DDThh:mm:ssXzh:zm", where X is
+        `+` if the timezone is > UTC, otherwise `-`
+        """
+        return f"{dt.strftime('%Y-%m-%dT%H:%M:%S')}-00:00"
 
     def get_earlier_message_references(self):
         from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event
