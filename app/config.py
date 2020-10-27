@@ -308,6 +308,11 @@ class Config(object):
             'schedule': timedelta(minutes=5),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'trigger-link-tests': {
+            'task': 'trigger-link-tests',
+            'schedule': timedelta(minutes=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
     }
     CELERY_QUEUES = []
 
