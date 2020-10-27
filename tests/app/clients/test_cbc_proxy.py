@@ -74,6 +74,7 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     payload = json.loads(payload_bytes)
 
     assert payload['identifier'] == identifier
+    assert payload['message_type'] == 'alert'
     assert payload['headline'] == headline
     assert payload['description'] == description
     assert payload['areas'] == areas
@@ -248,6 +249,92 @@ def test_cbc_proxy_send_canary_handles_function_error(mocker, cbc_proxy):
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='canary',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+
+def test_cbc_proxy_send_link_test_invokes_function(mocker, cbc_proxy):
+    identifier = str(uuid.uuid4())
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+    }
+
+    cbc_proxy.send_link_test(
+        identifier=identifier,
+    )
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+    kwargs = ld_client_mock.invoke.mock_calls[0][-1]
+    payload_bytes = kwargs['Payload']
+    payload = json.loads(payload_bytes)
+
+    assert payload['identifier'] == identifier
+    assert payload['message_type'] == 'test'
+
+
+def test_cbc_proxy_send_link_test_handles_invoke_error(mocker, cbc_proxy):
+    identifier = str(uuid.uuid4())
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 400,
+    }
+
+    with pytest.raises(Exception) as e:
+        cbc_proxy.send_link_test(
+            identifier=identifier,
+        )
+
+        assert e.match('Function exited with unhandled exception')
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+
+def test_cbc_proxy_send_link_test_handles_function_error(mocker, cbc_proxy):
+    identifier = str(uuid.uuid4())
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+        'FunctionError': 'something',
+    }
+
+    with pytest.raises(Exception) as e:
+        cbc_proxy.send_link_test(
+            identifier=identifier,
+        )
+
+        assert e.match('Could not invoke lambda')
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
         InvocationType='RequestResponse',
         Payload=mocker.ANY,
     )

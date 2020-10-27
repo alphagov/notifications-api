@@ -32,6 +32,12 @@ class CBCProxyNoopClient:
     ):
         pass
 
+    def send_link_test(
+        self,
+        identifier,
+    ):
+        pass
+
     def create_and_send_broadcast(
         self,
         identifier, headline, description, areas
@@ -83,11 +89,33 @@ class CBCProxyClient:
         if 'FunctionError' in result:
             raise Exception('Function exited with unhandled exception')
 
+    def send_link_test(
+        self,
+        identifier,
+    ):
+        payload_bytes = bytes(json.dumps({
+            'message_type': 'test',
+            'identifier': identifier,
+        }), encoding='utf8')
+
+        result = self._lambda_client.invoke(
+            FunctionName='bt-ee-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=payload_bytes,
+        )
+
+        if result['StatusCode'] > 299:
+            raise Exception('Could not invoke lambda')
+
+        if 'FunctionError' in result:
+            raise Exception('Function exited with unhandled exception')
+
     def create_and_send_broadcast(
         self,
         identifier, headline, description, areas,
     ):
         payload_bytes = bytes(json.dumps({
+            'message_type': 'alert',
             'identifier': identifier,
             'headline': headline,
             'description': description,
