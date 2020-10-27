@@ -298,4 +298,6 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
 @notify_celery.task(name='send-canary-to-cbc-proxy')
 def send_canary_to_cbc_proxy():
     identifier = str(uuid.uuid4())
+    message = f"Sending a canary message to CBC proxy with ID {identifier}"
+    current_app.logger.info(message)
     cbc_proxy_client.send_canary(identifier)
