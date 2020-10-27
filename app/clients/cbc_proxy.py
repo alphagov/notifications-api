@@ -26,6 +26,12 @@ class CBCProxyNoopClient:
     def init_app(self, app):
         pass
 
+    def send_canary(
+        self,
+        identifier,
+    ):
+        pass
+
     def create_and_send_broadcast(
         self,
         identifier, headline, description, areas
@@ -56,6 +62,26 @@ class CBCProxyClient:
             aws_access_key_id=app.config['CBC_PROXY_AWS_ACCESS_KEY_ID'],
             aws_secret_access_key=app.config['CBC_PROXY_AWS_SECRET_ACCESS_KEY'],
         )
+
+    def send_canary(
+        self,
+        identifier,
+    ):
+        payload_bytes = bytes(json.dumps({
+            'identifier': identifier,
+        }), encoding='utf8')
+
+        result = self._lambda_client.invoke(
+            FunctionName='canary',
+            InvocationType='RequestResponse',
+            Payload=payload_bytes,
+        )
+
+        if result['StatusCode'] > 299:
+            raise Exception('Could not invoke lambda')
+
+        if 'FunctionError' in result:
+            raise Exception('Function exited with unhandled exception')
 
     def create_and_send_broadcast(
         self,
