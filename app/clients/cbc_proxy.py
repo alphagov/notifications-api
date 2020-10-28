@@ -40,21 +40,24 @@ class CBCProxyNoopClient:
 
     def create_and_send_broadcast(
         self,
-        identifier, headline, description, areas
+        identifier, headline, description, areas,
+        sent, expires,
     ):
         pass
 
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
         self,
-        identifier, references, headline, description, areas
+        identifier, references, headline, description, areas,
+        sent, expires,
     ):
         pass
 
     # We have not implemented cancelling a broadcast
     def cancel_broadcast(
         self,
-        identifier, references, headline, description, areas
+        identifier, references, headline, description, areas,
+        sent, expires,
     ):
         pass
 
@@ -113,6 +116,7 @@ class CBCProxyClient:
     def create_and_send_broadcast(
         self,
         identifier, headline, description, areas,
+        sent, expires,
     ):
         payload_bytes = bytes(json.dumps({
             'message_type': 'alert',
@@ -120,6 +124,7 @@ class CBCProxyClient:
             'headline': headline,
             'description': description,
             'areas': areas,
+            'sent': sent, 'expires': expires,
         }), encoding='utf8')
 
         result = self._lambda_client.invoke(
@@ -138,6 +143,7 @@ class CBCProxyClient:
     def update_and_send_broadcast(
         self,
         identifier, references, headline, description, areas,
+        sent, expires,
     ):
         pass
 
@@ -145,5 +151,6 @@ class CBCProxyClient:
     def cancel_broadcast(
         self,
         identifier, references, headline, description, areas,
+        sent, expires,
     ):
         pass

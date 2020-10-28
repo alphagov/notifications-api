@@ -29,6 +29,8 @@ def send_broadcast_event(broadcast_event_id):
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
+            sent=broadcast_event.sent_at_as_cap_datetime_string,
+            expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
         cbc_proxy_client.update_and_send_broadcast(
@@ -37,6 +39,8 @@ def send_broadcast_event(broadcast_event_id):
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
             references=broadcast_event.get_earlier_message_references(),
+            sent=broadcast_event.sent_at_as_cap_datetime_string,
+            expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
         cbc_proxy_client.cancel_broadcast(
@@ -45,4 +49,6 @@ def send_broadcast_event(broadcast_event_id):
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
             references=broadcast_event.get_earlier_message_references(),
+            sent=broadcast_event.sent_at_as_cap_datetime_string,
+            expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )

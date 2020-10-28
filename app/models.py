@@ -2353,6 +2353,10 @@ class BroadcastEvent(db.Model):
     def sent_at_as_cap_datetime_string(self):
         return self.formatted_datetime_for('sent_at')
 
+    @property
+    def transmitted_finishes_at_as_cap_datetime_string(self):
+        return self.formatted_datetime_for('transmitted_finishes_at')
+
     def formatted_datetime_for(self, property_name):
         return self.convert_naive_utc_datetime_to_cap_standard_string(
             getattr(self, property_name)
