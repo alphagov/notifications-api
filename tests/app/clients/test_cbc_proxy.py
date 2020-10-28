@@ -34,6 +34,9 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     headline = 'my-headline'
     description = 'my-description'
 
+    sent = 'a-passed-through-sent-value'
+    expires = 'a-passed-through-expires-value'
+
     # a single area which is a square including london
     areas = [{
         'description': 'london',
@@ -61,6 +64,7 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
         headline=headline,
         description=description,
         areas=areas,
+        sent=sent, expires=expires,
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -78,12 +82,17 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy):
     assert payload['headline'] == headline
     assert payload['description'] == description
     assert payload['areas'] == areas
+    assert payload['sent'] == sent
+    assert payload['expires'] == expires
 
 
 def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
     description = 'my-description'
+
+    sent = 'a-passed-through-sent-value'
+    expires = 'a-passed-through-expires-value'
 
     # a single area which is a square including london
     areas = [{
@@ -113,6 +122,7 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
             headline=headline,
             description=description,
             areas=areas,
+            sent=sent, expires=expires,
         )
 
     assert e.match('Could not invoke lambda')
@@ -128,6 +138,9 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
     identifier = 'my-identifier'
     headline = 'my-headline'
     description = 'my-description'
+
+    sent = 'a-passed-through-sent-value'
+    expires = 'a-passed-through-expires-value'
 
     # a single area which is a square including london
     areas = [{
@@ -158,6 +171,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
             headline=headline,
             description=description,
             areas=areas,
+            sent=sent, expires=expires,
         )
 
         assert e.match('Function exited with unhandled exception')

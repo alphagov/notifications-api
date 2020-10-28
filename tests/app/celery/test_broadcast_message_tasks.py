@@ -41,6 +41,8 @@ def test_create_broadcast_event_sends_data_correctly(mocker, sample_service):
                 [-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96],
             ],
         }],
+        sent=event.sent_at_as_cap_datetime_string,
+        expires=event.transmitted_finishes_at_as_cap_datetime_string,
     )
 
 
@@ -75,6 +77,8 @@ def test_update_broadcast_event_sends_references(mocker, sample_service):
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         references=[alert_event.reference],
+        sent=update_event.sent_at_as_cap_datetime_string,
+        expires=update_event.transmitted_finishes_at_as_cap_datetime_string,
     )
 
 
@@ -110,6 +114,8 @@ def test_cancel_broadcast_event_sends_references(mocker, sample_service):
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         references=[alert_event.reference, update_event.reference],
+        sent=cancel_event.sent_at_as_cap_datetime_string,
+        expires=cancel_event.transmitted_finishes_at_as_cap_datetime_string,
     )
 
 
@@ -150,4 +156,6 @@ def test_send_broadcast_event_errors(mocker, sample_service):
                 [50.14, 1.21],
             ],
         }],
+        sent=event.sent_at_as_cap_datetime_string,
+        expires=event.transmitted_finishes_at_as_cap_datetime_string,
     )
