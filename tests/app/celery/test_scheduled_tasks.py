@@ -575,3 +575,22 @@ def test_send_canary_to_cbc_proxy_invokes_cbc_proxy_client(
         uuid.UUID(identifier)
     except BaseException:
         pytest.fail(f"{identifier} is not a valid uuid")
+
+
+def test_trigger_link_tests_invokes_cbc_proxy_client(
+    mocker,
+):
+    mock_send_link_test = mocker.patch(
+        'app.cbc_proxy_client.send_link_test',
+    )
+
+    scheduled_tasks.trigger_link_tests()
+
+    mock_send_link_test.assert_called
+    # the 0th argument of the call to send_link_test
+    identifier = mock_send_link_test.mock_calls[0][1][0]
+
+    try:
+        uuid.UUID(identifier)
+    except BaseException:
+        pytest.fail(f"{identifier} is not a valid uuid")
