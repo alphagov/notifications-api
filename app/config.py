@@ -367,6 +367,9 @@ class Config(object):
     CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('CBC_PROXY_AWS_ACCESS_KEY_ID', '')
     CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('CBC_PROXY_AWS_SECRET_ACCESS_KEY', '')
 
+    # matches up with the strings in models.py::BroadcastProvider
+    ENABLED_CBCS = ['ee']
+
 
 ######################
 # Config overrides ###

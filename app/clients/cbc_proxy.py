@@ -2,6 +2,8 @@ import json
 
 import boto3
 
+from app.models import BroadcastProviders
+
 # The variable names in this file have specific meaning in a CAP message
 #
 # identifier is a unique field for each CAP message
@@ -67,6 +69,9 @@ class CBCProxyNoopClient:
 
 
 class CBCProxyClient:
+    provider_function_name_map = {
+        BroadcastProviders.EE: 'bt-ee-1-proxy',
+    }
 
     def init_app(self, app):
         self._lambda_client = boto3.client(
@@ -97,12 +102,21 @@ class CBCProxyClient:
         self,
         identifier,
     ):
+        """
+        canary - a specific lambda that does not connect to a provider, but just confirms the connectivity between
+        Notify and the CBC proxy AWS account
+        """
         self._invoke_lambda(function_name='canary', payload={'identifier': identifier})
 
     def send_link_test(
         self,
         identifier,
+        provider,
     ):
+        """
+        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
+        test.
+        """
         payload = {'message_type': 'test', 'identifier': identifier}
 
         self._invoke_lambda(function_name='bt-ee-1-proxy', payload=payload)
@@ -121,7 +135,6 @@ class CBCProxyClient:
             'sent': sent,
             'expires': expires,
         }
-
         self._invoke_lambda(function_name='bt-ee-1-proxy', payload=payload)
 
     # We have not implementated updating a broadcast
