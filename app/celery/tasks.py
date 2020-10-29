@@ -287,13 +287,23 @@ def save_email(self,
 
 @notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
 @statsd(namespace="tasks")
-def save_api_email(self,
-                   encrypted_notification,
-                   ):
+def save_api_email(self, encrypted_notification):
 
+    save_api_email_or_sms(self, encrypted_notification)
+
+
+@notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
+@statsd(namespace="tasks")
+def save_api_sms(self, encrypted_notification):
+    save_api_email_or_sms(self, encrypted_notification)
+
+
+def save_api_email_or_sms(self, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
     service = dao_fetch_service_by_id(notification['service_id'])
-
+    q = QueueNames.SEND_EMAIL if notification['notification_type'] == EMAIL_TYPE else QueueNames.SEND_SMS
+    provider_task = provider_tasks.deliver_email if notification['notification_type'] == EMAIL_TYPE \
+        else provider_tasks.deliver_sms
     try:
 
         persist_notification(
@@ -303,7 +313,7 @@ def save_api_email(self,
             recipient=notification['to'],
             service=service,
             personalisation=notification.get('personalisation'),
-            notification_type=EMAIL_TYPE,
+            notification_type=notification['notification_type'],
             client_reference=notification['client_reference'],
             api_key_id=notification.get('api_key_id'),
             key_type=KEY_TYPE_NORMAL,
@@ -313,14 +323,16 @@ def save_api_email(self,
             document_download_count=notification['document_download_count']
         )
 
-        q = QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
-        provider_tasks.deliver_email.apply_async(
+        q = q if not service.research_mode else QueueNames.RESEARCH_MODE
+        provider_task.apply_async(
             [notification['id']],
             queue=q
         )
-        current_app.logger.debug(f"Email {notification['id']} has been persisted and sent to delivery queue.")
+        current_app.logger.debug(
+            f"{notification['notification_type']} {notification['id']} has been persisted and sent to delivery queue."
+        )
     except IntegrityError:
-        current_app.logger.info(f"Email {notification['id']} already exists.")
+        current_app.logger.info(f"{notification['notification_type']} {notification['id']} already exists.")
 
     except SQLAlchemyError:
 

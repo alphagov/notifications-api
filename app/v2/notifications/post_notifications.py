@@ -18,7 +18,7 @@ from app import (
 )
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter, sanitise_letter
 from app.celery.research_mode_tasks import create_fake_letter_response_file
-from app.celery.tasks import save_api_email
+from app.celery.tasks import save_api_email, save_api_sms
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
 from app.dao.templates_dao import get_precompiled_letter_template
@@ -68,7 +68,6 @@ from app.v2.notifications.notification_schemas import (
     post_precompiled_letter_request
 )
 from app.v2.utils import get_valid_json
-
 
 POST_NOTIFICATION_JSON_PARSE_DURATION_SECONDS = Histogram(
     'post_notification_json_parse_duration_seconds',
@@ -201,14 +200,16 @@ def process_sms_or_email_notification(
         template_with_content=template_with_content
     )
 
-    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') and api_user.key_type == KEY_TYPE_NORMAL \
-       and notification_type == EMAIL_TYPE:
-        # Put GOV.UK Email notifications onto a queue
+    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') \
+        and api_user.key_type == KEY_TYPE_NORMAL \
+            and notification_type in [EMAIL_TYPE, SMS_TYPE]:
+        # Put service with high volumes of notifications onto a queue
         # To take the pressure off the db for API requests put the notification for our high volume service onto a queue
         # the task will then save the notification, then call send_notification_to_queue.
-        # We know that this team does not use the GET request, but relies on callbacks to get the status updates.
+        # NOTE: The high volume service should be aware that the notification is not immediately
+        # available by a GET request, it is recommend they use callbacks to keep track of status updates.
         try:
-            save_email_to_queue(
+            save_email_or_sms_to_queue(
                 form=form,
                 notification_id=str(notification_id),
                 notification_type=notification_type,
@@ -258,7 +259,7 @@ def process_sms_or_email_notification(
     return resp
 
 
-def save_email_to_queue(
+def save_email_or_sms_to_queue(
     *,
     notification_id,
     form,
@@ -274,7 +275,7 @@ def save_email_to_queue(
         "id": notification_id,
         "template_id": str(template.id),
         "template_version": template.version,
-        "to": form['email_address'],
+        "to": form['email_address'] if notification_type == EMAIL_TYPE else form['phone_number'],
         "service_id": str(service_id),
         "personalisation": personalisation,
         "notification_type": notification_type,
@@ -290,7 +291,11 @@ def save_email_to_queue(
         data
     )
 
-    save_api_email.apply_async([encrypted], queue=QueueNames.SAVE_API_EMAIL)
+    if notification_type == EMAIL_TYPE:
+        save_api_email.apply_async([encrypted], queue=QueueNames.SAVE_API_EMAIL)
+    elif notification_type == SMS_TYPE:
+        save_api_sms.apply_async([encrypted], queue=QueueNames.SAVE_API_SMS)
+
     return Notification(**data)
 
 
