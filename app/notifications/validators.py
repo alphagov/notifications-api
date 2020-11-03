@@ -144,19 +144,10 @@ def check_if_service_can_send_to_number(service, number):
         return international_phone_info
 
 
-def check_message_is_not_too_long(template_with_content):
+def check_content_char_count(template_with_content):
     if template_with_content.is_message_too_long():
-        message = "Your message is too long."
-        if template_with_content.template_type == SMS_TYPE:
-            message = (
-                f"Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. "
-                f"Your message is {template_with_content.content_count_without_prefix} characters long."
-            )
-        elif template_with_content.template_type == EMAIL_TYPE:
-            message = (
-                f"Emails cannot be longer than 1000000 bytes. "
-                f"Your message is {template_with_content.content_size_in_bytes} bytes."
-            )
+        message = f"Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. " \
+                  f"Your message is {template_with_content.content_count_without_prefix} characters"
         raise BadRequestError(message=message)
 
 
@@ -182,7 +173,7 @@ def validate_template(template_id, personalisation, service, notification_type):
 
     check_notification_content_is_not_empty(template_with_content)
 
-    check_message_is_not_too_long(template_with_content)
+    check_content_char_count(template_with_content)
 
     return template, template_with_content
 
