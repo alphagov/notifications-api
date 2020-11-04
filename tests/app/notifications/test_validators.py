@@ -404,6 +404,25 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
     mock_check_message_is_too_long.assert_called_once_with("content")
 
 
+def test_validate_template_calls_all_validators_exception_message_too_long(mocker, fake_uuid, sample_service):
+    template = create_template(sample_service, template_type="email")
+    mock_check_type = mocker.patch('app.notifications.validators.check_template_is_for_notification_type')
+    mock_check_if_active = mocker.patch('app.notifications.validators.check_template_is_active')
+    mock_create_conent = mocker.patch(
+        'app.notifications.validators.create_content_for_notification', return_value="content"
+    )
+    mock_check_not_empty = mocker.patch('app.notifications.validators.check_notification_content_is_not_empty')
+    mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_content_char_count')
+    template, template_with_content = validate_template(template.id, {}, sample_service, "email",
+                                                        check_char_count=False)
+
+    mock_check_type.assert_called_once_with("email", "email")
+    mock_check_if_active.assert_called_once_with(template)
+    mock_create_conent.assert_called_once_with(template, {})
+    mock_check_not_empty.assert_called_once_with("content")
+    assert not mock_check_message_is_too_long.called
+
+
 @pytest.mark.parametrize('key_type', ['team', 'live', 'test'])
 def test_that_when_exceed_rate_limit_request_fails(
         key_type,

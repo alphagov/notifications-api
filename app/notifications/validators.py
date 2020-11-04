@@ -27,7 +27,6 @@ from app.serialised_models import SerialisedTemplate
 
 from gds_metrics.metrics import Histogram
 
-
 REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
     'redis_exceeded_rate_limit_duration_seconds',
     'Time taken to check rate limit',
@@ -106,7 +105,7 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
     if not service_contact_link:
         raise BadRequestError(
             message=f"Send files by email has not been set up - add contact details for your service at "
-                    f"{current_app.config['ADMIN_BASE_URL']}/services/{service_id}/service-settings/send-files-by-email"
+            f"{current_app.config['ADMIN_BASE_URL']}/services/{service_id}/service-settings/send-files-by-email"
         )
 
 
@@ -147,7 +146,7 @@ def check_if_service_can_send_to_number(service, number):
 def check_content_char_count(template_with_content):
     if template_with_content.is_message_too_long():
         message = f"Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. " \
-                  f"Your message is {template_with_content.content_count_without_prefix} characters"
+            f"Your message is {template_with_content.content_count_without_prefix} characters"
         raise BadRequestError(message=message)
 
 
@@ -157,8 +156,7 @@ def check_notification_content_is_not_empty(template_with_content):
         raise BadRequestError(message=message)
 
 
-def validate_template(template_id, personalisation, service, notification_type):
-
+def validate_template(template_id, personalisation, service, notification_type, check_char_count=True):
     try:
         template = SerialisedTemplate.from_id_and_service_id(template_id, service.id)
     except NoResultFound:
@@ -173,7 +171,11 @@ def validate_template(template_id, personalisation, service, notification_type):
 
     check_notification_content_is_not_empty(template_with_content)
 
-    check_content_char_count(template_with_content)
+    # validating the template in post_notifications happens before the file is uploaded for doc download,
+    # which means the length of the message can be exceeded because it's including the file.
+    # The document download feature is only available through the api.
+    if check_char_count:
+        check_content_char_count(template_with_content)
 
     return template, template_with_content
 
@@ -192,7 +194,7 @@ def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
         try:
             return dao_get_reply_to_by_id(service_id, reply_to_id).email_address
         except NoResultFound:
-            message = 'email_reply_to_id {} does not exist in database for service id {}'\
+            message = 'email_reply_to_id {} does not exist in database for service id {}' \
                 .format(reply_to_id, service_id)
             raise BadRequestError(message=message)
 
@@ -202,7 +204,7 @@ def check_service_sms_sender_id(service_id, sms_sender_id, notification_type):
         try:
             return dao_get_service_sms_senders_by_id(service_id, sms_sender_id).sms_sender
         except NoResultFound:
-            message = 'sms_sender_id {} does not exist in database for service id {}'\
+            message = 'sms_sender_id {} does not exist in database for service id {}' \
                 .format(sms_sender_id, service_id)
             raise BadRequestError(message=message)
 
@@ -212,7 +214,7 @@ def check_service_letter_contact_id(service_id, letter_contact_id, notification_
         try:
             return dao_get_letter_contact_by_id(service_id, letter_contact_id).contact_block
         except NoResultFound:
-            message = 'letter_contact_id {} does not exist in database for service id {}'\
+            message = 'letter_contact_id {} does not exist in database for service id {}' \
                 .format(letter_contact_id, service_id)
             raise BadRequestError(message=message)
 

@@ -52,7 +52,7 @@ from app.notifications.validators import (
     validate_address,
     validate_and_format_recipient,
     validate_template,
-)
+    check_content_char_count)
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
 from app.v2.notifications.create_response import (
@@ -132,6 +132,7 @@ def post_notification(notification_type):
         form.get('personalisation', {}),
         authenticated_service,
         notification_type,
+        check_char_count=False
     )
 
     reply_to = get_reply_to_text(notification_type, form, template)
@@ -188,6 +189,9 @@ def process_sms_or_email_notification(
     if document_download_count:
         # We changed personalisation which means we need to update the content
         template_with_content.values = personalisation
+
+    # validate content length after url is replaced in personalisation.
+    check_content_char_count(template_with_content)
 
     resp = create_response_for_post_notification(
         notification_id=notification_id,
