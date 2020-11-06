@@ -312,7 +312,7 @@ class Config(object):
         },
         'trigger-link-tests': {
             'task': 'trigger-link-tests',
-            'schedule': timedelta(minutes=5),
+            'schedule': timedelta(minutes=15),
             'options': {'queue': QueueNames.PERIODIC}
         },
     }
