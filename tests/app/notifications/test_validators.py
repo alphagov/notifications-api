@@ -13,7 +13,7 @@ from app.models import (
 )
 from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import (
-    check_content_char_count,
+    check_is_message_too_long,
     check_if_service_can_send_files_by_email,
     check_notification_content_is_not_empty,
     check_service_over_daily_message_limit,
@@ -319,36 +319,46 @@ def test_service_can_send_to_recipient_fails_when_mobile_number_is_not_on_team(s
 @pytest.mark.parametrize('char_count', [612, 0, 494, 200, 918])
 @pytest.mark.parametrize('show_prefix', [True, False])
 @pytest.mark.parametrize('template_type', ['sms', 'email', 'letter'])
-def test_check_content_char_count_passes(notify_db_session, show_prefix, char_count, template_type):
+def test_check_is_message_too_long_passes(notify_db_session, show_prefix, char_count, template_type):
     service = create_service(prefix_sms=show_prefix)
     t = create_template(service=service, content='a' * char_count, template_type=template_type)
     template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id, service_id=service.id)
     template_with_content = get_template_instance(template=template.__dict__, values={})
-    assert check_content_char_count(template_with_content) is None
+    assert check_is_message_too_long(template_with_content) is None
 
 
 @pytest.mark.parametrize('char_count', [919, 6000])
 @pytest.mark.parametrize('show_prefix', [True, False])
-def test_check_content_char_count_fails(notify_db_session, show_prefix, char_count):
+def test_check_is_message_too_long_fails(notify_db_session, show_prefix, char_count):
     with pytest.raises(BadRequestError) as e:
         service = create_service(prefix_sms=show_prefix)
         t = create_template(service=service, content='a' * char_count, template_type='sms')
         template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id, service_id=service.id)
         template_with_content = get_template_instance(template=template.__dict__, values={})
-        check_content_char_count(template_with_content)
+        check_is_message_too_long(template_with_content)
     assert e.value.status_code == 400
-    assert e.value.message == f'Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. ' \
-                              f'Your message is {char_count} characters'
+    expected_message = f'Your message is too long. '\
+                       f'Text messages cannot be longer than {SMS_CHAR_COUNT_LIMIT} characters. '\
+                       f'Your message is {char_count} characters long.'
+    assert e.value.message == expected_message
     assert e.value.fields == []
 
 
-@pytest.mark.parametrize('template_type', ['email', 'letter'])
-def test_check_content_char_count_passes_for_long_email_or_letter(sample_service, template_type):
-    t = create_template(service=sample_service, content='a' * 1000, template_type=template_type)
+def test_check_is_message_too_long_passes_for_long_email(sample_service):
+    email_character_count = 1000003
+    t = create_template(service=sample_service, content='a' * email_character_count, template_type='email')
     template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id,
                                                                    service_id=t.service_id)
     template_with_content = get_template_instance(template=template.__dict__, values={})
-    assert check_content_char_count(template_with_content) is None
+    template_with_content.values
+    with pytest.raises(BadRequestError) as e:
+        check_is_message_too_long(template_with_content)
+    assert e.value.status_code == 400
+    expected_message = f'Your message is too long. ' \
+        f'Emails cannot be longer than 1000000 bytes. ' \
+        f'Your message is 1000084 bytes.'
+    assert e.value.message == expected_message
+    assert e.value.fields == []
 
 
 def test_check_notification_content_is_not_empty_passes(notify_api, mocker, sample_service):
@@ -386,7 +396,8 @@ def test_validate_template(sample_service):
     validate_template(template.id, {}, sample_service, "email")
 
 
-def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_service):
+@pytest.mark.parametrize("check_char_count", [True, False])
+def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_service, check_char_count):
     template = create_template(sample_service, template_type="email")
     mock_check_type = mocker.patch('app.notifications.validators.check_template_is_for_notification_type')
     mock_check_if_active = mocker.patch('app.notifications.validators.check_template_is_active')
@@ -394,14 +405,19 @@ def test_validate_template_calls_all_validators(mocker, fake_uuid, sample_servic
         'app.notifications.validators.create_content_for_notification', return_value="content"
     )
     mock_check_not_empty = mocker.patch('app.notifications.validators.check_notification_content_is_not_empty')
-    mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_content_char_count')
-    template, template_with_content = validate_template(template.id, {}, sample_service, "email")
+    mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_is_message_too_long')
+    template, template_with_content = validate_template(template.id, {}, sample_service, "email",
+                                                        check_char_count=check_char_count
+                                                        )
 
     mock_check_type.assert_called_once_with("email", "email")
     mock_check_if_active.assert_called_once_with(template)
     mock_create_conent.assert_called_once_with(template, {})
     mock_check_not_empty.assert_called_once_with("content")
-    mock_check_message_is_too_long.assert_called_once_with("content")
+    if check_char_count:
+        mock_check_message_is_too_long.assert_called_once_with("content")
+    else:
+        assert not mock_check_message_is_too_long.called
 
 
 def test_validate_template_calls_all_validators_exception_message_too_long(mocker, fake_uuid, sample_service):
@@ -412,7 +428,7 @@ def test_validate_template_calls_all_validators_exception_message_too_long(mocke
         'app.notifications.validators.create_content_for_notification', return_value="content"
     )
     mock_check_not_empty = mocker.patch('app.notifications.validators.check_notification_content_is_not_empty')
-    mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_content_char_count')
+    mock_check_message_is_too_long = mocker.patch('app.notifications.validators.check_is_message_too_long')
     template, template_with_content = validate_template(template.id, {}, sample_service, "email",
                                                         check_char_count=False)
 

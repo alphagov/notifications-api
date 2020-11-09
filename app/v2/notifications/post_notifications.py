@@ -52,7 +52,7 @@ from app.notifications.validators import (
     validate_address,
     validate_and_format_recipient,
     validate_template,
-    check_content_char_count)
+    check_is_message_too_long)
 from app.schema_validation import validate
 from app.v2.errors import BadRequestError
 from app.v2.notifications.create_response import (
@@ -191,7 +191,7 @@ def process_sms_or_email_notification(
         template_with_content.values = personalisation
 
     # validate content length after url is replaced in personalisation.
-    check_content_char_count(template_with_content)
+    check_is_message_too_long(template_with_content)
 
     resp = create_response_for_post_notification(
         notification_id=notification_id,
