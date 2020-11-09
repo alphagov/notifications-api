@@ -14,7 +14,12 @@ def extract_cloudfoundry_config():
 
 def set_config_env_vars(vcap_services):
     # Postgres config
-    os.environ['SQLALCHEMY_DATABASE_URI'] = vcap_services['postgres'][0]['credentials']['uri']
+    db_uri = vcap_services['postgres'][0]['credentials']['uri']
+
+    sep = "&" if "?" in db_uri else "?"
+    db_uri += sep + "sslmode=verify-full"
+
+    os.environ['SQLALCHEMY_DATABASE_URI'] = db_uri
 
     vcap_application = json.loads(os.environ['VCAP_APPLICATION'])
     os.environ['NOTIFY_ENVIRONMENT'] = vcap_application['space_name']
