@@ -5,14 +5,14 @@ from notifications_utils.statsd_decorators import statsd
 
 from app import cbc_proxy_client, notify_celery
 from app.config import QueueNames
-from app.models import BroadcastEventMessageType, BroadcastProvider
+from app.models import BroadcastEventMessageType
 from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id
 
 
 @notify_celery.task(name="send-broadcast-event")
 @statsd(namespace="tasks")
 def send_broadcast_event(broadcast_event_id):
-    for provider in BroadcastProvider.PROVIDERS:
+    for provider in current_app.config['ENABLED_CBCS']:
         # TODO: Decide whether to send to each provider based on platform admin, service level settings, broadcast
         # level settings, etc.
         send_broadcast_provider_message.apply_async(

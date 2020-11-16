@@ -56,6 +56,15 @@ class QueueNames(object):
         ]
 
 
+class BroadcastProvider:
+    EE = 'ee'
+    VODAFONE = 'vodafone'
+    THREE = 'three'
+    O2 = 'o2'
+
+    PROVIDERS = [EE, VODAFONE, THREE, O2]
+
+
 class TaskNames(object):
     PROCESS_INCOMPLETE_JOBS = 'process-incomplete-jobs'
     ZIP_AND_SEND_LETTER_PDFS = 'zip-and-send-letter-pdfs'
@@ -367,8 +376,7 @@ class Config(object):
     CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('CBC_PROXY_AWS_ACCESS_KEY_ID', '')
     CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('CBC_PROXY_AWS_SECRET_ACCESS_KEY', '')
 
-    # matches up with the strings in models.py::BroadcastProvider
-    ENABLED_CBCS = ['ee']
+    ENABLED_CBCS = {BroadcastProvider.EE}
 
 
 ######################

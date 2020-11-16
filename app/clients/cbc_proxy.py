@@ -2,7 +2,7 @@ import json
 
 import boto3
 
-from app.models import BroadcastProviders
+from app.config import BroadcastProvider
 
 # The variable names in this file have specific meaning in a CAP message
 #
@@ -70,7 +70,7 @@ class CBCProxyNoopClient:
 
 class CBCProxyClient:
     provider_function_name_map = {
-        BroadcastProviders.EE: 'bt-ee-1-proxy',
+        BroadcastProvider.EE: 'bt-ee-1-proxy',
     }
 
     def init_app(self, app):
@@ -111,7 +111,6 @@ class CBCProxyClient:
     def send_link_test(
         self,
         identifier,
-        provider,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
