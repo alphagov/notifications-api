@@ -1,10 +1,10 @@
 import uuid
-from unittest.mock import call
+from unittest.mock import call, ANY
 
 from freezegun import freeze_time
 import pytest
 
-from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
+from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType, BroadcastProviderMessageStatus
 from app.celery.broadcast_message_tasks import send_broadcast_event, send_broadcast_provider_message, trigger_link_test
 
 from tests.app.db import create_template, create_broadcast_message, create_broadcast_event
@@ -46,10 +46,15 @@ def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_ser
         'app.cbc_proxy_client.create_and_send_broadcast',
     )
 
+    assert event.get_provider_message('ee') is None
+
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(event.id))
 
+    broadcast_provider_message = event.get_provider_message('ee')
+    assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
+
     mock_create_broadcast.assert_called_once_with(
-        identifier=str(event.id),
+        identifier=str(broadcast_provider_message.id),
         headline='GOV.UK Notify Broadcast',
         description='this is an emergency broadcast message',
         areas=[{
@@ -89,8 +94,11 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
 
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(update_event.id))
 
+    broadcast_provider_message = update_event.get_provider_message('ee')
+    assert broadcast_provider_message.state == BroadcastProviderMessageStatus.SENDING
+
     mock_update_broadcast.assert_called_once_with(
-        identifier=str(update_event.id),
+        identifier=str(broadcast_provider_message.id),
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -126,8 +134,11 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
 
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(cancel_event.id))
 
+    broadcast_provider_message = cancel_event.get_provider_message('ee')
+    assert broadcast_provider_message.state == BroadcastProviderMessageStatus.SENDING
+
     mock_cancel_broadcast.assert_called_once_with(
-        identifier=str(cancel_event.id),
+        identifier=str(broadcast_provider_message.id),
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -166,7 +177,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
     assert ex.match('oh no')
 
     mock_create_broadcast.assert_called_once_with(
-        identifier=str(event.id),
+        identifier=ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{

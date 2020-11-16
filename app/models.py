@@ -2377,6 +2377,16 @@ class BroadcastEvent(db.Model):
         """
         return f"{dt.strftime('%Y-%m-%dT%H:%M:%S')}-00:00"
 
+    def get_provider_message(self, provider):
+        return next(
+            (
+                provider_message
+                for provider_message in self.provider_messages
+                if provider_message.provider == provider
+            ),
+            None
+        )
+
     def get_earlier_message_references(self):
         from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event
         return [event.reference for event in get_earlier_events_for_broadcast_event(self.id)]
@@ -2432,7 +2442,7 @@ class BroadcastProviderMessage(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
     broadcast_event_id = db.Column(UUID(as_uuid=True), db.ForeignKey('broadcast_event.id'))
-    broadcast_event = db.relationship('BroadcastEvent')
+    broadcast_event = db.relationship('BroadcastEvent', backref='provider_messages')
 
     # 'ee', 'three', 'vodafone', etc
     provider = db.Column(db.String)
