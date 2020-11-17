@@ -22,7 +22,7 @@ from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
-from app.clients import Clients
+from app.clients import NotificationProviderClients
 from app.clients.cbc_proxy import CBCProxyClient, CBCProxyNoopClient
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
@@ -65,7 +65,7 @@ cbc_proxy_client = CBCProxyNoopClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
 
-clients = Clients()
+notification_provider_clients = NotificationProviderClients()
 
 api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
 authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
@@ -106,7 +106,7 @@ def create_app(application):
     )
     # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
     email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
-    clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
+    notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
     notify_celery.init_app(application)
     encryption.init_app(application)

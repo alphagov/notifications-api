@@ -9,7 +9,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
-from app import clients, statsd_client, create_uuid
+from app import notification_provider_clients, statsd_client, create_uuid
 from app.dao.notifications_dao import (
     dao_update_notification
 )
@@ -144,7 +144,7 @@ def provider_to_use(notification_type, international=False):
 
     chosen_provider = random.choices(active_providers, weights=[p.priority for p in active_providers])[0]
 
-    return clients.get_client_by_name_and_type(chosen_provider.identifier, notification_type)
+    return notification_provider_clients.get_client_by_name_and_type(chosen_provider.identifier, notification_type)
 
 
 def get_logo_url(base_url, logo_file):
