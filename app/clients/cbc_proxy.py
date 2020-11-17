@@ -16,10 +16,10 @@ from app.config import BroadcastProvider
 # * description is a string which populates the areaDesc field
 # * polygon is a list of lat/long pairs
 #
-# references is a whitespace separated list of message identifiers
+# previous_provider_messages is a whitespace separated list of message identifiers
 # where each identifier is a previous sent message
 # ie a Cancel message would have a unique identifier but have the identifier of
-#    the preceeding Alert message in the references field
+#    the preceeding Alert message in the previous_provider_messages field
 
 
 class CBCProxyException(Exception):
@@ -54,7 +54,7 @@ class CBCProxyNoopClient:
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
         self,
-        identifier, references, headline, description, areas,
+        identifier, previous_provider_messages, headline, description, areas,
         sent, expires,
     ):
         pass
@@ -62,7 +62,7 @@ class CBCProxyNoopClient:
     # We have not implemented cancelling a broadcast
     def cancel_broadcast(
         self,
-        identifier, references, headline, description, areas,
+        identifier, previous_provider_messages, headline, description, areas,
         sent, expires,
     ):
         pass
@@ -139,7 +139,7 @@ class CBCProxyClient:
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
         self,
-        identifier, references, headline, description, areas,
+        identifier, previous_provider_messages, headline, description, areas,
         sent, expires,
     ):
         pass
@@ -147,7 +147,7 @@ class CBCProxyClient:
     # We have not implemented cancelling a broadcast
     def cancel_broadcast(
         self,
-        identifier, references, headline, description, areas,
+        identifier, previous_provider_messages, headline, description, areas,
         sent, expires,
     ):
         pass

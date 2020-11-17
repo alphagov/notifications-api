@@ -1,11 +1,10 @@
 from datetime import datetime
 
-from freezegun import freeze_time
-
-from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
+from app.models import BROADCAST_TYPE, BroadcastEventMessageType
 from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event, create_broadcast_provider_message
 
 from tests.app.db import create_broadcast_message, create_template, create_broadcast_event
+
 
 def test_get_earlier_events_for_broadcast_event(sample_service):
     t = create_template(sample_service, BROADCAST_TYPE)
@@ -44,10 +43,9 @@ def test_get_earlier_events_for_broadcast_event(sample_service):
     assert earlier_events == [events[0], events[1]]
 
 
-@freeze_time('2020-02-03 04:05:06')
 def test_create_broadcast_provider_message_creates_in_correct_state(sample_broadcast_service):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(t, status=BroadcastStatusType.APPROVED)
+    broadcast_message = create_broadcast_message(t)
     broadcast_event = create_broadcast_event(
         broadcast_message,
         sent_at=datetime(2020, 1, 1, 12, 0, 0),
@@ -59,4 +57,5 @@ def test_create_broadcast_provider_message_creates_in_correct_state(sample_broad
 
     assert broadcast_provider_message.status == 'sending'
     assert broadcast_provider_message.broadcast_event_id == broadcast_event.id
-    assert broadcast_provider_message.created_at == datetime.utcnow()
+    assert broadcast_provider_message.created_at is not None
+    assert broadcast_provider_message.updated_at is None

@@ -62,7 +62,8 @@ from app.models import (
     ServiceContactList,
     BroadcastMessage,
     BroadcastStatusType,
-    BroadcastEvent
+    BroadcastEvent,
+    BroadcastProviderMessage
 )
 
 
@@ -1050,3 +1051,18 @@ def create_broadcast_event(
     db.session.add(b_e)
     db.session.commit()
     return b_e
+
+
+def create_broadcast_provider_message(
+    broadcast_event,
+    provider,
+    status='sending'
+):
+    provider_message = BroadcastProviderMessage(
+        broadcast_event=broadcast_event,
+        provider=provider,
+        status=status
+    )
+    db.session.add(provider_message)
+    db.session.commit()
+    return provider_message

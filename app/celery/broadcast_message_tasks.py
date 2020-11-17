@@ -54,7 +54,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
-            references=broadcast_event.get_earlier_message_references(),
+            previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
@@ -64,7 +64,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
-            references=broadcast_event.get_earlier_message_references(),
+            previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )

@@ -2387,17 +2387,36 @@ class BroadcastEvent(db.Model):
             None
         )
 
-    def get_earlier_message_references(self):
+    def get_earlier_provider_messages(self, provider):
+        """
+        Get the previous message for a provider. These are differentper provider, as the identifiers are different.
+        Return the full provider_message object rather than just an identifier, since the different providers expect
+        reference to contain different things - let the cbc_proxy work out what information is relevant.
+        """
         from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event
-        return [event.reference for event in get_earlier_events_for_broadcast_event(self.id)]
+        earlier_events = [
+            event for event in get_earlier_events_for_broadcast_event(self.id)
+        ]
+        ret = []
+        for event in earlier_events:
+            provider_message = event.get_provider_message(provider)
+            if provider_message is None:
+                # TODO: We should figure out what to do if a previous message hasn't been sent out yet.
+                # We don't want to not cancel a message just because it's stuck in a queue somewhere.
+                # This exception should probably be named, and then should be caught further up and handled
+                # appropriately.
+                raise Exception(
+                    f'Cannot get earlier message references for event {self.id}, previous event {event.id} has not ' +
+                    f' been sent to provider "{provider}" yet'
+                )
+            ret.append(provider_message)
+        return ret
 
     def serialize(self):
         return {
             'id': str(self.id),
 
             'service_id': str(self.service_id),
-
-            'previous_event_references': self.get_earlier_message_references(),
 
             'broadcast_message_id': str(self.broadcast_message_id),
             # sent_at is required by BroadcastMessageTemplate.from_broadcast_event

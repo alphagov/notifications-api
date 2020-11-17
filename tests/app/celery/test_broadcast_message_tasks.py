@@ -7,7 +7,12 @@ import pytest
 from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType, BroadcastProviderMessageStatus
 from app.celery.broadcast_message_tasks import send_broadcast_event, send_broadcast_provider_message, trigger_link_test
 
-from tests.app.db import create_template, create_broadcast_message, create_broadcast_event
+from tests.app.db import (
+    create_template,
+    create_broadcast_message,
+    create_broadcast_event,
+    create_broadcast_provider_message
+)
 from tests.conftest import set_config
 
 
@@ -86,6 +91,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
     )
 
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
+    create_broadcast_provider_message(alert_event, 'ee')
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
 
     mock_update_broadcast = mocker.patch(
@@ -95,7 +101,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(update_event.id))
 
     broadcast_provider_message = update_event.get_provider_message('ee')
-    assert broadcast_provider_message.state == BroadcastProviderMessageStatus.SENDING
+    assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
     mock_update_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
@@ -104,7 +110,9 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
         areas=[{
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
-        references=[alert_event.reference],
+        previous_provider_messages=[
+            alert_event.get_provider_message('ee')
+        ],
         sent=update_event.sent_at_as_cap_datetime_string,
         expires=update_event.transmitted_finishes_at_as_cap_datetime_string,
     )
@@ -128,6 +136,9 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
 
+    create_broadcast_provider_message(alert_event, 'ee')
+    create_broadcast_provider_message(update_event, 'ee')
+
     mock_cancel_broadcast = mocker.patch(
         'app.cbc_proxy_client.cancel_broadcast',
     )
@@ -135,7 +146,7 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(cancel_event.id))
 
     broadcast_provider_message = cancel_event.get_provider_message('ee')
-    assert broadcast_provider_message.state == BroadcastProviderMessageStatus.SENDING
+    assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
     mock_cancel_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
@@ -144,7 +155,10 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
         areas=[{
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
-        references=[alert_event.reference, update_event.reference],
+        previous_provider_messages=[
+            alert_event.get_provider_message('ee'),
+            update_event.get_provider_message('ee')
+        ],
         sent=cancel_event.sent_at_as_cap_datetime_string,
         expires=cancel_event.transmitted_finishes_at_as_cap_datetime_string,
     )
