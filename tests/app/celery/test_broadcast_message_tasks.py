@@ -48,7 +48,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_ser
     event = create_broadcast_event(broadcast_message)
 
     mock_create_broadcast = mocker.patch(
-        'app.cbc_proxy_client.create_and_send_broadcast',
+        'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
     )
 
     assert event.get_provider_message('ee') is None
@@ -95,7 +95,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
 
     mock_update_broadcast = mocker.patch(
-        'app.cbc_proxy_client.update_and_send_broadcast',
+        'app.clients.cbc_proxy.CBCProxyEE.update_and_send_broadcast',
     )
 
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(update_event.id))
@@ -140,7 +140,7 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
     create_broadcast_provider_message(update_event, 'ee')
 
     mock_cancel_broadcast = mocker.patch(
-        'app.cbc_proxy_client.cancel_broadcast',
+        'app.clients.cbc_proxy.CBCProxyEE.cancel_broadcast',
     )
 
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(cancel_event.id))
@@ -181,7 +181,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
     event = create_broadcast_event(broadcast_message)
 
     mock_create_broadcast = mocker.patch(
-        'app.cbc_proxy_client.create_and_send_broadcast',
+        'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
         side_effect=Exception('oh no'),
     )
 
@@ -210,10 +210,10 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
     mocker,
 ):
     mock_send_link_test = mocker.patch(
-        'app.cbc_proxy_client.send_link_test',
+        'app.clients.cbc_proxy.CBCProxyEE.send_link_test',
     )
 
-    trigger_link_test('some-provider')
+    trigger_link_test('ee')
 
     assert mock_send_link_test.called
     # the 0th argument of the call to send_link_test

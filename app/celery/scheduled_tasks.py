@@ -301,7 +301,7 @@ def send_canary_to_cbc_proxy():
     identifier = str(uuid.uuid4())
     message = f"Sending a canary message to CBC proxy with ID {identifier}"
     current_app.logger.info(message)
-    cbc_proxy_client.send_canary(identifier)
+    cbc_proxy_client.get_proxy('canary').send_canary(identifier)
 
 
 @notify_celery.task(name='trigger-link-tests')

@@ -39,8 +39,10 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         for polygon in broadcast_event.transmitted_areas["simple_polygons"]
     ]
 
+    cbc_proxy_provider_client = cbc_proxy_client.get_proxy(provider)
+
     if broadcast_event.message_type == BroadcastEventMessageType.ALERT:
-        cbc_proxy_client.create_and_send_broadcast(
+        cbc_proxy_provider_client.create_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
@@ -49,7 +51,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
-        cbc_proxy_client.update_and_send_broadcast(
+        cbc_proxy_provider_client.update_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
@@ -59,7 +61,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
-        cbc_proxy_client.cancel_broadcast(
+        cbc_proxy_provider_client.cancel_broadcast(
             identifier=str(broadcast_provider_message.id),
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
@@ -88,4 +90,4 @@ def trigger_link_test(provider):
     identifier = str(uuid.uuid4())
     message = f"Sending a link test to CBC proxy for provider {provider} with ID {identifier}"
     current_app.logger.info(message)
-    cbc_proxy_client.send_link_test(identifier)
+    cbc_proxy_client.get_proxy(provider).send_link_test(identifier)

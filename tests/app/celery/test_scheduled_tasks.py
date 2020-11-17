@@ -561,9 +561,10 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
 
 def test_send_canary_to_cbc_proxy_invokes_cbc_proxy_client(
     mocker,
+    notify_api
 ):
     mock_send_canary = mocker.patch(
-        'app.cbc_proxy_client.send_canary',
+        'app.clients.cbc_proxy.CBCProxyCanary.send_canary',
     )
 
     scheduled_tasks.send_canary_to_cbc_proxy()
