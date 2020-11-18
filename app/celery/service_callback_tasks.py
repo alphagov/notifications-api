@@ -85,7 +85,7 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "{} request failed for notification_id: {} and url: {}. exc: {}".format(
+            "{} request failed for notification_id: {} and url: {}. exception: {}".format(
                 function_name,
                 notification_id,
                 service_callback_url,
@@ -103,6 +103,15 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
                         notification_id
                     )
                 )
+        else:
+            current_app.logger.warning(
+                "{} callback is not being retried for notification_id: {} and url: {}. exception: {}".format(
+                    function_name,
+                    notification_id,
+                    service_callback_url,
+                    e
+                )
+            )
 
 
 def create_delivery_status_callback_data(notification, service_callback_api):

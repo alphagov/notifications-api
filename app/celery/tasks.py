@@ -589,20 +589,15 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
             },
             timeout=60
         )
-        current_app.logger.debug('send_inbound_sms_to_service sending {} to {}, response {}'.format(
-            inbound_sms_id,
-            inbound_api.url,
-            response.status_code
-        ))
+        current_app.logger.debug(
+            f"send_inbound_sms_to_service sending {inbound_sms_id} to {inbound_api.url}, " +
+            f"response {response.status_code}"
+        )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            "send_inbound_sms_to_service failed for service_id: {} for inbound_sms_id: {} and url: {}. exc: {}".format(
-                service_id,
-                inbound_sms_id,
-                inbound_api.url,
-                e
-            )
+            f"send_inbound_sms_to_service failed for service_id: {service_id} for inbound_sms_id: {inbound_sms_id} " +
+            f"and url: {inbound_api.url}. exception: {e}"
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
@@ -612,6 +607,11 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                     f"Retry: send_inbound_sms_to_service has retried the max number of" +
                     f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
                 )
+        else:
+            current_app.logger.warning(
+                f"send_inbound_sms_to_service is not being retried for service_id: {service_id} for " +
+                f"inbound_sms id: {inbound_sms_id} and url: {inbound_api.url}. exception: {e}"
+            )
 
 
 @notify_celery.task(name='process-incomplete-jobs')
