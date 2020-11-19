@@ -9,7 +9,7 @@ from notifications_utils.recipients import validate_and_format_phone_number
 from requests import HTTPError
 
 import app
-from app import clients, mmg_client, firetext_client
+from app import notification_provider_clients, mmg_client, firetext_client
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
@@ -535,7 +535,10 @@ def test_update_notification_to_sending_does_not_update_status_from_a_final_stat
 ):
     template = create_template(sample_service)
     notification = create_notification(template=template, status=starting_status)
-    send_to_providers.update_notification_to_sending(notification, clients.get_client_by_name_and_type("mmg", "sms"))
+    send_to_providers.update_notification_to_sending(
+        notification,
+        notification_provider_clients.get_client_by_name_and_type("mmg", "sms")
+    )
     assert notification.status == expected_status
 
 

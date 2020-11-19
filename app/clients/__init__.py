@@ -17,7 +17,7 @@ STATISTICS_DELIVERED = 'delivered'
 STATISTICS_FAILURE = 'failure'
 
 
-class Clients(object):
+class NotificationProviderClients(object):
     sms_clients = {}
     email_clients = {}
 

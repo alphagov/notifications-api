@@ -20,6 +20,10 @@ import boto3
 #    the preceeding Alert message in the references field
 
 
+class CBCProxyException(Exception):
+    pass
+
+
 # Noop = no operation
 class CBCProxyNoopClient:
 
@@ -72,72 +76,53 @@ class CBCProxyClient:
             aws_secret_access_key=app.config['CBC_PROXY_AWS_SECRET_ACCESS_KEY'],
         )
 
-    def send_canary(
-        self,
-        identifier,
-    ):
-        payload_bytes = bytes(json.dumps({
-            'identifier': identifier,
-        }), encoding='utf8')
+    def _invoke_lambda(self, function_name, payload):
+        payload_bytes = bytes(json.dumps(payload), encoding='utf8')
 
         result = self._lambda_client.invoke(
-            FunctionName='canary',
+            FunctionName=function_name,
             InvocationType='RequestResponse',
             Payload=payload_bytes,
         )
 
         if result['StatusCode'] > 299:
-            raise Exception('Could not invoke lambda')
+            raise CBCProxyException('Could not invoke lambda')
 
         if 'FunctionError' in result:
-            raise Exception('Function exited with unhandled exception')
+            raise CBCProxyException('Function exited with unhandled exception')
+
+        return result
+
+    def send_canary(
+        self,
+        identifier,
+    ):
+        self._invoke_lambda(function_name='canary', payload={'identifier': identifier})
 
     def send_link_test(
         self,
         identifier,
     ):
-        payload_bytes = bytes(json.dumps({
-            'message_type': 'test',
-            'identifier': identifier,
-        }), encoding='utf8')
+        payload = {'message_type': 'test', 'identifier': identifier}
 
-        result = self._lambda_client.invoke(
-            FunctionName='bt-ee-1-proxy',
-            InvocationType='RequestResponse',
-            Payload=payload_bytes,
-        )
-
-        if result['StatusCode'] > 299:
-            raise Exception('Could not invoke lambda')
-
-        if 'FunctionError' in result:
-            raise Exception('Function exited with unhandled exception')
+        self._invoke_lambda(function_name='bt-ee-1-proxy', payload=payload)
 
     def create_and_send_broadcast(
         self,
         identifier, headline, description, areas,
         sent, expires,
     ):
-        payload_bytes = bytes(json.dumps({
+        payload = {
             'message_type': 'alert',
             'identifier': identifier,
             'headline': headline,
             'description': description,
             'areas': areas,
-            'sent': sent, 'expires': expires,
-        }), encoding='utf8')
+            'sent': sent,
+            'expires': expires,
+        }
 
-        result = self._lambda_client.invoke(
-            FunctionName='bt-ee-1-proxy',
-            InvocationType='RequestResponse',
-            Payload=payload_bytes,
-        )
-
-        if result['StatusCode'] > 299:
-            raise Exception('Could not invoke lambda')
-
-        if 'FunctionError' in result:
-            raise Exception('Function exited with unhandled exception')
+        self._invoke_lambda(function_name='bt-ee-1-proxy', payload=payload)
 
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(

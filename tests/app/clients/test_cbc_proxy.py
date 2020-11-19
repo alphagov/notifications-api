@@ -3,7 +3,7 @@ import uuid
 
 import pytest
 
-from app.clients.cbc_proxy import CBCProxyClient
+from app.clients.cbc_proxy import CBCProxyClient, CBCProxyException
 
 
 @pytest.fixture(scope='function')
@@ -116,7 +116,7 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy):
         'StatusCode': 400,
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier=identifier,
             headline=headline,
@@ -165,7 +165,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
         'FunctionError': 'something',
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier=identifier,
             headline=headline,
@@ -174,7 +174,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy):
             sent=sent, expires=expires,
         )
 
-        assert e.match('Function exited with unhandled exception')
+    assert e.match('Function exited with unhandled exception')
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='bt-ee-1-proxy',
@@ -226,12 +226,12 @@ def test_cbc_proxy_send_canary_handles_invoke_error(mocker, cbc_proxy):
         'StatusCode': 400,
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.send_canary(
             identifier=identifier,
         )
 
-        assert e.match('Function exited with unhandled exception')
+    assert e.match('Could not invoke lambda')
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='canary',
@@ -254,12 +254,12 @@ def test_cbc_proxy_send_canary_handles_function_error(mocker, cbc_proxy):
         'FunctionError': 'something',
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.send_canary(
             identifier=identifier,
         )
 
-        assert e.match('Could not invoke lambda')
+    assert e.match('Function exited with unhandled exception')
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='canary',
@@ -312,12 +312,12 @@ def test_cbc_proxy_send_link_test_handles_invoke_error(mocker, cbc_proxy):
         'StatusCode': 400,
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.send_link_test(
             identifier=identifier,
         )
 
-        assert e.match('Function exited with unhandled exception')
+    assert e.match('Could not invoke lambda')
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='bt-ee-1-proxy',
@@ -340,12 +340,12 @@ def test_cbc_proxy_send_link_test_handles_function_error(mocker, cbc_proxy):
         'FunctionError': 'something',
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.send_link_test(
             identifier=identifier,
         )
 
-        assert e.match('Could not invoke lambda')
+    assert e.match('Function exited with unhandled exception')
 
     ld_client_mock.invoke.assert_called_once_with(
         FunctionName='bt-ee-1-proxy',
