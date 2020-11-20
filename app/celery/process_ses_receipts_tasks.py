@@ -26,9 +26,10 @@ def process_ses_results(self, response):
     try:
         ses_message = json.loads(response['Message'])
         notification_type = ses_message['notificationType']
+        bounce_message = None
 
         if notification_type == 'Bounce':
-            notification_type = determine_notification_bounce_type(notification_type, ses_message)
+            notification_type, bounce_message = determine_notification_bounce_type(notification_type, ses_message)
         elif notification_type == 'Complaint':
             _check_and_queue_complaint_callback_task(*handle_complaint(ses_message))
             return True
@@ -53,6 +54,9 @@ def process_ses_results(self, response):
                     f"notification not found for reference: {reference} (update to {notification_status})"
                 )
             return
+
+        if bounce_message:
+            current_app.logger.info(f"SES bounce for notification ID {notification.id}: {bounce_message}")
 
         if notification.status not in [NOTIFICATION_SENDING, NOTIFICATION_PENDING]:
             notifications_dao._duplicate_update_warning(
