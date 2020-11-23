@@ -200,6 +200,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
+    mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.info')
     notification = create_notification(
         template=sample_email_template,
         status='sending',
@@ -210,6 +211,7 @@ def test_ses_callback_should_set_status_to_temporary_failure(client,
     assert process_ses_results(ses_soft_bounce_callback(reference='ref'))
     assert get_notification_by_id(notification.id).status == 'temporary-failure'
     assert send_mock.called
+    assert f'SES bounce for notification ID {notification.id}: ' in mock_logger.call_args[0][0]
 
 
 def test_ses_callback_should_set_status_to_permanent_failure(client,
@@ -219,6 +221,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     send_mock = mocker.patch(
         'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
     )
+    mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.info')
     notification = create_notification(
         template=sample_email_template,
         status='sending',
@@ -230,6 +233,7 @@ def test_ses_callback_should_set_status_to_permanent_failure(client,
     assert process_ses_results(ses_hard_bounce_callback(reference='ref'))
     assert get_notification_by_id(notification.id).status == 'permanent-failure'
     assert send_mock.called
+    assert f'SES bounce for notification ID {notification.id}: ' in mock_logger.call_args[0][0]
 
 
 def test_ses_callback_should_send_on_complaint_to_user_callback_api(sample_email_template, mocker):
