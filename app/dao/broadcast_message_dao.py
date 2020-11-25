@@ -1,4 +1,6 @@
-from app.models import BroadcastMessage, BroadcastEvent
+from app import db
+from app.dao.dao_utils import transactional
+from app.models import BroadcastMessage, BroadcastEvent, BroadcastProviderMessage, BroadcastProviderMessageStatus
 
 
 def dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id):
@@ -34,3 +36,14 @@ def get_earlier_events_for_broadcast_event(broadcast_event_id):
     ).order_by(
         BroadcastEvent.sent_at.asc()
     ).all()
+
+
+@transactional
+def create_broadcast_provider_message(broadcast_event, provider):
+    provider_message = BroadcastProviderMessage(
+        broadcast_event=broadcast_event,
+        provider=provider,
+        status=BroadcastProviderMessageStatus.SENDING,
+    )
+    db.session.add(provider_message)
+    return provider_message

@@ -19,6 +19,7 @@ from app.celery.scheduled_tasks import (
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
+    trigger_link_tests,
 )
 from app.config import QueueNames, Config
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -30,8 +31,8 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
+from tests.conftest import set_config
 from tests.app import load_example_csv
-
 from tests.app.db import (
     create_notification,
     create_template,
@@ -560,9 +561,10 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
 
 def test_send_canary_to_cbc_proxy_invokes_cbc_proxy_client(
     mocker,
+    notify_api
 ):
     mock_send_canary = mocker.patch(
-        'app.cbc_proxy_client.send_canary',
+        'app.clients.cbc_proxy.CBCProxyCanary.send_canary',
     )
 
     scheduled_tasks.send_canary_to_cbc_proxy()
@@ -577,20 +579,17 @@ def test_send_canary_to_cbc_proxy_invokes_cbc_proxy_client(
         pytest.fail(f"{identifier} is not a valid uuid")
 
 
-def test_trigger_link_tests_invokes_cbc_proxy_client(
-    mocker,
+def test_trigger_link_tests_calls_for_all_providers(
+    mocker, notify_api
 ):
-    mock_send_link_test = mocker.patch(
-        'app.cbc_proxy_client.send_link_test',
+    mock_trigger_link_test = mocker.patch(
+        'app.celery.scheduled_tasks.trigger_link_test',
     )
 
-    scheduled_tasks.trigger_link_tests()
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
+        trigger_link_tests()
 
-    mock_send_link_test.assert_called
-    # the 0th argument of the call to send_link_test
-    identifier = mock_send_link_test.mock_calls[0][1][0]
-
-    try:
-        uuid.UUID(identifier)
-    except BaseException:
-        pytest.fail(f"{identifier} is not a valid uuid")
+    assert mock_trigger_link_test.apply_async.call_args_list == [
+        call(kwargs={'provider': 'ee'}, queue='notify-internal-tasks'),
+        call(kwargs={'provider': 'vodafone'}, queue='notify-internal-tasks')
+    ]

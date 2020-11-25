@@ -17,6 +17,7 @@ from app.celery.tasks import (
     process_row,
     process_incomplete_jobs)
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.broadcast_message_tasks import trigger_link_test
 from app.config import QueueNames
 from app.dao.invited_org_user_dao import delete_org_invitations_created_more_than_two_days_ago
 from app.dao.invited_user_dao import delete_invitations_created_more_than_two_days_ago
@@ -300,26 +301,10 @@ def send_canary_to_cbc_proxy():
     identifier = str(uuid.uuid4())
     message = f"Sending a canary message to CBC proxy with ID {identifier}"
     current_app.logger.info(message)
-    cbc_proxy_client.send_canary(identifier)
+    cbc_proxy_client.get_proxy('canary').send_canary(identifier)
 
 
 @notify_celery.task(name='trigger-link-tests')
 def trigger_link_tests():
-    """
-    Currently we only have one hardcoded CBC Proxy, which corresponds to one
-    CBC, and so currently we do not specify the CBC Proxy name
-
-    In future we will have multiple CBC proxies, each proxy corresponding to
-    one MNO's CBC
-
-    This task should invoke other tasks which do the actual link tests, eg:
-    for cbc_name in app.config.ENABLED_CBCS:
-      send_link_test_for_cbc(cbc_name)
-
-    Alternatively this task could be configured to be a Celery group
-    """
-    for _ in range(1):
-        identifier = str(uuid.uuid4())
-        message = f"Sending a link test to CBC proxy with ID {identifier}"
-        current_app.logger.info(message)
-        cbc_proxy_client.send_link_test(identifier)
+    for cbc_name in current_app.config['ENABLED_CBCS']:
+        trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.NOTIFY)
