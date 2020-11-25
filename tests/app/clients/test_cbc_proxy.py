@@ -13,6 +13,7 @@ def cbc_proxy_client(client, mocker):
     current_app = mocker.Mock(config={
         'CBC_PROXY_AWS_ACCESS_KEY_ID': 'cbc-proxy-aws-access-key-id',
         'CBC_PROXY_AWS_SECRET_ACCESS_KEY': 'cbc-proxy-aws-secret-access-key',
+        'CBC_PROXY_ENABLED': True,
     })
     client.init_app(current_app)
     return client

@@ -31,6 +31,18 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api)
     ]
 
 
+def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_api):
+    mock_send_broadcast_provider_message = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
+    )
+
+    event_id = uuid.uuid4()
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']), set_config(notify_api, 'CBC_PROXY_ENABLED', False):
+        send_broadcast_event(event_id)
+
+    assert mock_send_broadcast_provider_message.apply_async.called is False
+
+
 @freeze_time('2020-08-01 12:00')
 def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_service):
     template = create_template(sample_service, BROADCAST_TYPE)
