@@ -298,13 +298,15 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
 
 @notify_celery.task(name='send-canary-to-cbc-proxy')
 def send_canary_to_cbc_proxy():
-    identifier = str(uuid.uuid4())
-    message = f"Sending a canary message to CBC proxy with ID {identifier}"
-    current_app.logger.info(message)
-    cbc_proxy_client.get_proxy('canary').send_canary(identifier)
+    if current_app.config['CBC_PROXY_ENABLED']:
+        identifier = str(uuid.uuid4())
+        message = f"Sending a canary message to CBC proxy with ID {identifier}"
+        current_app.logger.info(message)
+        cbc_proxy_client.get_proxy('canary').send_canary(identifier)
 
 
 @notify_celery.task(name='trigger-link-tests')
 def trigger_link_tests():
-    for cbc_name in current_app.config['ENABLED_CBCS']:
-        trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.NOTIFY)
+    if current_app.config['CBC_PROXY_ENABLED']:
+        for cbc_name in current_app.config['ENABLED_CBCS']:
+            trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.NOTIFY)

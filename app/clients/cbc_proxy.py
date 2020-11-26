@@ -30,7 +30,7 @@ class CBCProxyClient:
     _lambda_client = None
 
     def init_app(self, app):
-        if app.config.get('CBC_PROXY_AWS_ACCESS_KEY_ID'):
+        if app.config.get('CBC_PROXY_ENABLED'):
             self._lambda_client = boto3.client(
                 'lambda',
                 region_name='eu-west-2',

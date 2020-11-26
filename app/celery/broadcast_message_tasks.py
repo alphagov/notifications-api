@@ -12,6 +12,10 @@ from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id, create_
 @notify_celery.task(name="send-broadcast-event")
 @statsd(namespace="tasks")
 def send_broadcast_event(broadcast_event_id):
+    if not current_app.config['CBC_PROXY_ENABLED']:
+        current_app.logger.info(f'CBC Proxy disabled, not sending broadcast_event {broadcast_event_id}')
+        return
+
     for provider in current_app.config['ENABLED_CBCS']:
         # TODO: Decide whether to send to each provider based on platform admin, service level settings, broadcast
         # level settings, etc.

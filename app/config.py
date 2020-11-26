@@ -376,6 +376,8 @@ class Config(object):
     CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('CBC_PROXY_AWS_ACCESS_KEY_ID', '')
     CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('CBC_PROXY_AWS_SECRET_ACCESS_KEY', '')
 
+    CBC_PROXY_ENABLED = bool(CBC_PROXY_AWS_ACCESS_KEY_ID)
+
     ENABLED_CBCS = {BroadcastProvider.EE}
 
 
@@ -467,6 +469,8 @@ class Test(Development):
 
     MMG_URL = 'https://example.com/mmg'
     FIRETEXT_URL = 'https://example.com/firetext'
+
+    CBC_PROXY_ENABLED = True
 
 
 class Preview(Config):
