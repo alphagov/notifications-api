@@ -129,7 +129,6 @@ def send_email_to_provider(notification):
             update_notification_to_sending(notification, provider)
 
         delta_seconds = (datetime.utcnow() - notification.created_at).total_seconds()
-        statsd_client.timing("email.total-time", delta_seconds)
 
         if notification.key_type == KEY_TYPE_TEST:
             statsd_client.timing("email.test-key.total-time", delta_seconds)
