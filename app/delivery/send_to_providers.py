@@ -80,7 +80,7 @@ def send_sms_to_provider(notification):
             statsd_client.timing("sms.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
-            if service.id in current_app.config.get('HIGH_VOLUME_SERVICE'):
+            if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
                 statsd_client.timing("sms.live-key.high-volume.total-time", delta_seconds)
             else:
                 statsd_client.timing("sms.live-key.not-high-volume.total-time", delta_seconds)
@@ -134,7 +134,7 @@ def send_email_to_provider(notification):
             statsd_client.timing("email.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("email.live-key.total-time", delta_seconds)
-            if service.id in current_app.config.get('HIGH_VOLUME_SERVICE'):
+            if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
                 statsd_client.timing("email.live-key.high-volume.total-time", delta_seconds)
             else:
                 statsd_client.timing("email.live-key.not-high-volume.total-time", delta_seconds)
