@@ -496,6 +496,8 @@ class Service(db.Model, Versioned):
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
 
+    allowed_broadcast_provider = association_proxy('service_broadcast_provider_restriction', 'provider')
+
     @classmethod
     def from_json(cls, data):
         """
@@ -2486,7 +2488,7 @@ class ServiceBroadcastProviderRestriction(db.Model):
     __tablename__ = "service_broadcast_provider_restriction"
 
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False)
-    service = db.relationship(Service, backref=db.backref("allowed_broadcast_provider", uselist=False))
+    service = db.relationship(Service, backref=db.backref("service_broadcast_provider_restriction", uselist=False))
 
     provider = db.Column(db.String, nullable=False)
 

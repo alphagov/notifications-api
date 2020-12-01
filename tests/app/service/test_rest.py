@@ -242,8 +242,11 @@ def test_get_service_by_id(admin_request, sample_service):
     assert not json_resp['data']['research_mode']
     assert json_resp['data']['email_branding'] is None
     assert json_resp['data']['prefix_sms'] is True
-    assert json_resp['data'].keys() == {
+    assert json_resp['data']['allowed_broadcast_provider'] is None
+
+    assert set(json_resp['data'].keys()) == {
         'active',
+        'allowed_broadcast_provider',
         'consent_to_research',
         'contact_link',
         'count_as_live',
@@ -268,6 +271,7 @@ def test_get_service_by_id(admin_request, sample_service):
         'volume_email',
         'volume_letter',
         'volume_sms',
+
     }
 
 
