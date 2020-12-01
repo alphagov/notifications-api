@@ -2472,3 +2472,22 @@ class BroadcastProviderMessage(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
     UniqueConstraint(broadcast_event_id, provider)
+
+
+class ServiceBroadcastProviderRestriction(db.Model):
+    """
+    Most services don't send broadcasts. Of those that do, most send to all broadcast providers.
+    However, some services don't send to all providers. These services are test services that we or the providers
+    themselves use.
+
+    This table links those services. There should only be one row per service in this table, and this is enforced by
+    the service_id being a primary key.
+    """
+    __tablename__ = "service_broadcast_provider_restriction"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref("allowed_broadcast_provider", uselist=False))
+
+    provider = db.Column(db.String, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
