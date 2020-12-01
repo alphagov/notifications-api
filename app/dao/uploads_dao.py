@@ -43,7 +43,8 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         Job.job_status.notin_([JOB_STATUS_CANCELLED, JOB_STATUS_SCHEDULED]),
         func.coalesce(
             Job.processing_started, Job.created_at
-        ) >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7)
+        ) >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7),
+        Job.contact_list_id.is_(None),
     ]
     if limit_days is not None:
         jobs_query_filter.append(Job.created_at >= midnight_n_days_ago(limit_days))
