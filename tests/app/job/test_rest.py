@@ -743,21 +743,6 @@ def test_get_jobs_with_limit_days(admin_request, sample_template):
     assert len(resp_json['data']) == 2
 
 
-def test_get_jobs_filters_jobs_from_contact_lists(admin_request, sample_template):
-    contact_list = create_service_contact_list()
-
-    create_job(template=sample_template, contact_list_id=contact_list.id)
-    job_without_contact_list = create_job(template=sample_template)
-
-    resp_json = admin_request.get(
-        'job.get_jobs_by_service',
-        service_id=sample_template.service_id,
-    )
-
-    assert len(resp_json['data']) == 1
-    assert resp_json['data'][0]['id'] == str(job_without_contact_list.id)
-
-
 def test_get_jobs_by_contact_list(admin_request, sample_template):
     contact_list = create_service_contact_list()
     create_job(template=sample_template)
