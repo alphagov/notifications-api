@@ -6,6 +6,7 @@ from flask import url_for, current_app
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.schema import Sequence
 from sqlalchemy.dialects.postgresql import (
     UUID,
     JSON,
@@ -2481,6 +2482,24 @@ class BroadcastProviderMessage(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
     UniqueConstraint(broadcast_event_id, provider)
+
+
+class BroadcastProviderMessageNumber(db.Model):
+    """
+    To send IBAG messages via the CBC proxy to Nokia CBC appliances, Notify must generate and store a numeric
+    message_number alongside the message ID (GUID).
+    Subsequent messages (Update, Cancel) in IBAG format must reference the original message_number & message_id.
+    This model relates broadcast_provider_message_id to that numeric message_number.
+    """
+    __tablename__ = 'broadcast_provider_message_number'
+
+    sequence = Sequence('broadcast_provider_message_number_seq')
+    broadcast_provider_message_number = db.Column(
+        db.Integer, sequence, server_default=sequence.next_value(), primary_key=True
+    )
+    broadcast_provider_message_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey('broadcast_provider_message.id'), nullable=False
+    )
 
 
 class ServiceBroadcastProviderRestriction(db.Model):
