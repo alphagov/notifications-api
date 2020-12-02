@@ -16,13 +16,15 @@ def send_broadcast_event(broadcast_event_id):
         current_app.logger.info(f'CBC Proxy disabled, not sending broadcast_event {broadcast_event_id}')
         return
 
+    broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
     for provider in current_app.config['ENABLED_CBCS']:
-        # TODO: Decide whether to send to each provider based on platform admin, service level settings, broadcast
-        # level settings, etc.
-        send_broadcast_provider_message.apply_async(
-            kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
-            queue=QueueNames.NOTIFY
-        )
+        if broadcast_event.service.allowed_broadcast_provider in {None, provider}:
+            # There may be future checks here to decide whether to send to each provider based on platform admin level
+            # settings
+            send_broadcast_provider_message.apply_async(
+                kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
+                queue=QueueNames.NOTIFY
+            )
 
 
 @notify_celery.task(name="send-broadcast-provider-message")
