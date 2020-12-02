@@ -19,6 +19,7 @@ from app.models import (
     Notification,
     Permission,
     Service,
+    ServiceBroadcastProviderRestriction,
     ServiceEmailReplyTo,
     ServiceLetterContact,
     ServicePermission,
@@ -271,8 +272,19 @@ def test_get_service_by_id(admin_request, sample_service):
         'volume_email',
         'volume_letter',
         'volume_sms',
-
     }
+
+
+def test_get_service_by_id_returns_allowed_broadcast_provider(notify_db, admin_request, sample_service):
+    notify_db.session.add(ServiceBroadcastProviderRestriction(
+        service=sample_service,
+        provider='ee'
+    ))
+    notify_db.session.commit()
+
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert json_resp['data']['allowed_broadcast_provider'] == 'ee'
 
 
 @pytest.mark.parametrize('detailed', [True, False])
