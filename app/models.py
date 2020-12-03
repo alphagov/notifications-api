@@ -541,6 +541,13 @@ class Service(db.Model, Versioned):
             'research_mode': self.research_mode
         }
 
+    def get_available_broadcast_providers(self):
+        # There may be future checks here if we add, for example, platform admin level provider killswitches.
+        if self.allowed_broadcast_provider:
+            return [x for x in current_app.config['ENABLED_CBCS'] if x == self.allowed_broadcast_provider]
+        else:
+            return current_app.config['ENABLED_CBCS']
+
 
 class AnnualBilling(db.Model):
     __tablename__ = "annual_billing"
