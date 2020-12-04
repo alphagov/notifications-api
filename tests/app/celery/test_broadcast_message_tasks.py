@@ -133,6 +133,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_ser
 
     mock_create_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline='GOV.UK Notify Broadcast',
         description='this is an emergency broadcast message',
         areas=[{
@@ -178,6 +179,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
 
     mock_update_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -223,6 +225,7 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
 
     mock_cancel_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -265,6 +268,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
 
     mock_create_broadcast.assert_called_once_with(
         identifier=ANY,
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{

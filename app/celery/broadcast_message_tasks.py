@@ -32,7 +32,8 @@ def send_broadcast_event(broadcast_event_id):
 def send_broadcast_provider_message(broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    broadcast_provider_message = create_broadcast_provider_message(broadcast_event, provider)
+    broadcast_provider_message, message_number = create_broadcast_provider_message(broadcast_event, provider)
+    formatted_message_number = format_sequential_number(message_number.broadcast_provider_message_number)
 
     current_app.logger.info(
         f'invoking cbc proxy to send '
@@ -50,6 +51,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     if broadcast_event.message_type == BroadcastEventMessageType.ALERT:
         cbc_proxy_provider_client.create_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -59,6 +61,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
         cbc_proxy_provider_client.update_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -69,6 +72,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
         cbc_proxy_provider_client.cancel_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,

@@ -1074,4 +1074,4 @@ def create_broadcast_provider_message(
     db.session.add(provider_message_number)
 
     db.session.commit()
-    return provider_message
+    return provider_message, provider_message_number
