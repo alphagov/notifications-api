@@ -83,6 +83,7 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy_ee):
 
     cbc_proxy_ee.create_and_send_broadcast(
         identifier=identifier,
+        message_number='0000007b',
         headline=headline,
         description=description,
         areas=areas,
@@ -100,6 +101,7 @@ def test_cbc_proxy_create_and_send_invokes_function(mocker, cbc_proxy_ee):
     payload = json.loads(payload_bytes)
 
     assert payload['identifier'] == identifier
+    assert payload['message_number'] == '0000007b'
     assert payload['message_type'] == 'alert'
     assert payload['headline'] == headline
     assert payload['description'] == description
@@ -141,6 +143,7 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):
     with pytest.raises(CBCProxyException) as e:
         cbc_proxy_ee.create_and_send_broadcast(
             identifier=identifier,
+            message_number='0000007b',
             headline=headline,
             description=description,
             areas=areas,
@@ -190,6 +193,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy_ee):
     with pytest.raises(CBCProxyException) as e:
         cbc_proxy_ee.create_and_send_broadcast(
             identifier=identifier,
+            message_number='0000007b',
             headline=headline,
             description=description,
             areas=areas,
@@ -252,6 +256,7 @@ def test_cbc_proxy_send_link_test_invokes_function(mocker, cbc_proxy_ee):
 
     cbc_proxy_ee.send_link_test(
         identifier=identifier,
+        sequential_number='0000007b'
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -266,3 +271,4 @@ def test_cbc_proxy_send_link_test_invokes_function(mocker, cbc_proxy_ee):
 
     assert payload['identifier'] == identifier
     assert payload['message_type'] == 'test'
+    assert payload['message_number'] == '0000007b'
