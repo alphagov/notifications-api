@@ -5,6 +5,7 @@ from app.dao.dao_utils import transactional
 from app.models import (
     BroadcastMessage,
     BroadcastEvent,
+    BroadcastProvider,
     BroadcastProviderMessage,
     BroadcastProviderMessageNumber,
     BroadcastProviderMessageStatus
@@ -53,9 +54,10 @@ def create_broadcast_provider_message(broadcast_event, provider):
     )
     db.session.add(provider_message)
     db.session.commit()
-
-    provider_message_number = BroadcastProviderMessageNumber(
-        broadcast_provider_message_id=broadcast_provider_message_id)
-    db.session.add(provider_message_number)
-    db.session.commit()
+    provider_message_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        provider_message_number = BroadcastProviderMessageNumber(
+            broadcast_provider_message_id=broadcast_provider_message_id)
+        db.session.add(provider_message_number)
+        db.session.commit()
     return provider_message, provider_message_number

@@ -63,6 +63,7 @@ from app.models import (
     BroadcastMessage,
     BroadcastStatusType,
     BroadcastEvent,
+    BroadcastProvider,
     BroadcastProviderMessage,
     BroadcastProviderMessageNumber
 )
@@ -1069,9 +1070,10 @@ def create_broadcast_provider_message(
     db.session.add(provider_message)
     db.session.commit()
 
-    provider_message_number = BroadcastProviderMessageNumber(
-        broadcast_provider_message_id=broadcast_provider_message_id)
-    db.session.add(provider_message_number)
-
-    db.session.commit()
+    provider_message_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        provider_message_number = BroadcastProviderMessageNumber(
+            broadcast_provider_message_id=broadcast_provider_message_id)
+        db.session.add(provider_message_number)
+        db.session.commit()
     return provider_message, provider_message_number

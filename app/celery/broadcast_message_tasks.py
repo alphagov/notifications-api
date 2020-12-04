@@ -33,7 +33,9 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
     broadcast_provider_message, message_number = create_broadcast_provider_message(broadcast_event, provider)
-    formatted_message_number = format_sequential_number(message_number.broadcast_provider_message_number)
+    formatted_message_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        formatted_message_number = format_sequential_number(message_number.broadcast_provider_message_number)
 
     current_app.logger.info(
         f'invoking cbc proxy to send '
