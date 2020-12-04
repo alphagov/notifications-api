@@ -279,14 +279,18 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
     )
 
 
+@pytest.mark.parametrize("provider,provider_capitalised", [
+    ["ee", "EE"],
+    ["vodafone", "Vodafone"]
+])
 def test_trigger_link_tests_invokes_cbc_proxy_client(
-    mocker,
+    mocker, provider, provider_capitalised
 ):
     mock_send_link_test = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyEE.send_link_test',
+        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.send_link_test',
     )
 
-    trigger_link_test('ee')
+    trigger_link_test(provider)
 
     assert mock_send_link_test.called
     # the 0th argument of the call to send_link_test
@@ -296,3 +300,9 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
         uuid.UUID(identifier)
     except BaseException:
         pytest.fail(f"{identifier} is not a valid uuid")
+
+    # testing sequential number:
+    if provider == 'vodafone':
+        assert type(mock_send_link_test.mock_calls[0][1][1]) is int
+    else:
+        assert not mock_send_link_test.mock_calls[0][1][1]

@@ -42,6 +42,7 @@ class CBCProxyClient:
         proxy_classes = {
             'canary': CBCProxyCanary,
             BroadcastProvider.EE: CBCProxyEE,
+            BroadcastProvider.VODAFONE: CBCProxyVodafone,
         }
         return proxy_classes[provider](self._lambda_client)
 
@@ -61,6 +62,7 @@ class CBCProxyClientBase:
     def send_link_test(
         self,
         identifier,
+        sequential_number=None
     ):
         pass
 
@@ -131,6 +133,7 @@ class CBCProxyEE(CBCProxyClientBase):
     def send_link_test(
         self,
         identifier,
+        sequential_number=None
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
@@ -154,4 +157,21 @@ class CBCProxyEE(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
         }
+        self._invoke_lambda(payload=payload)
+
+
+class CBCProxyVodafone(CBCProxyClientBase):
+    lambda_name = 'bt-ee-1-proxy'
+
+    def send_link_test(
+        self,
+        identifier,
+        sequential_number
+    ):
+        """
+        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
+        test.
+        """
+        payload = {'message_type': 'test', 'identifier': identifier, 'message_number': sequential_number}
+
         self._invoke_lambda(payload=payload)

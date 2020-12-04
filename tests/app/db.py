@@ -63,7 +63,8 @@ from app.models import (
     BroadcastMessage,
     BroadcastStatusType,
     BroadcastEvent,
-    BroadcastProviderMessage
+    BroadcastProviderMessage,
+    BroadcastProviderMessageNumber
 )
 
 
@@ -1058,11 +1059,19 @@ def create_broadcast_provider_message(
     provider,
     status='sending'
 ):
+    broadcast_provider_message_id = uuid.uuid4()
     provider_message = BroadcastProviderMessage(
+        id=broadcast_provider_message_id,
         broadcast_event=broadcast_event,
         provider=provider,
-        status=status
+        status=status,
     )
     db.session.add(provider_message)
+    db.session.commit()
+
+    provider_message_number = BroadcastProviderMessageNumber(
+        broadcast_provider_message_id=broadcast_provider_message_id)
+    db.session.add(provider_message_number)
+
     db.session.commit()
     return provider_message
