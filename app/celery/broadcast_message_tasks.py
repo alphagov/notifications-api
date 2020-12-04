@@ -16,9 +16,8 @@ def send_broadcast_event(broadcast_event_id):
         current_app.logger.info(f'CBC Proxy disabled, not sending broadcast_event {broadcast_event_id}')
         return
 
-    for provider in current_app.config['ENABLED_CBCS']:
-        # TODO: Decide whether to send to each provider based on platform admin, service level settings, broadcast
-        # level settings, etc.
+    broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
+    for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
             kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
             queue=QueueNames.NOTIFY
@@ -78,19 +77,6 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
 
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
-    """
-    Currently we only have one hardcoded CBC Proxy, which corresponds to one
-    CBC, and so currently we do not specify the CBC Proxy name
-
-    In future we will have multiple CBC proxies, each proxy corresponding to
-    one MNO's CBC
-
-    This task should invoke other tasks which do the actual link tests, eg:
-    for cbc_name in app.config.ENABLED_CBCS:
-        send_link_test_for_cbc(cbc_name)
-
-    Alternatively this task could be configured to be a Celery group
-    """
     identifier = str(uuid.uuid4())
     message = f"Sending a link test to CBC proxy for provider {provider} with ID {identifier}"
     current_app.logger.info(message)

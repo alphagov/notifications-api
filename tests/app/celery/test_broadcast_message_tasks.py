@@ -4,7 +4,13 @@ from unittest.mock import call, ANY
 from freezegun import freeze_time
 import pytest
 
-from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType, BroadcastProviderMessageStatus
+from app.models import (
+    BROADCAST_TYPE,
+    BroadcastStatusType,
+    BroadcastEventMessageType,
+    BroadcastProviderMessageStatus,
+    ServiceBroadcastProviderRestriction
+)
 from app.celery.broadcast_message_tasks import send_broadcast_event, send_broadcast_provider_message, trigger_link_test
 
 from tests.app.db import (
@@ -16,19 +22,74 @@ from tests.app.db import (
 from tests.conftest import set_config
 
 
-def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api):
+def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api, sample_service):
+    template = create_template(sample_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
+    event = create_broadcast_event(broadcast_message)
+
     mock_send_broadcast_provider_message = mocker.patch(
         'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
     )
 
-    event_id = uuid.uuid4()
     with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
-        send_broadcast_event(event_id)
+        send_broadcast_event(event.id)
 
     assert mock_send_broadcast_provider_message.apply_async.call_args_list == [
-        call(kwargs={'broadcast_event_id': event_id, 'provider': 'ee'}, queue='notify-internal-tasks'),
-        call(kwargs={'broadcast_event_id': event_id, 'provider': 'vodafone'}, queue='notify-internal-tasks')
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'ee'}, queue='notify-internal-tasks'),
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='notify-internal-tasks')
     ]
+
+
+def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
+    mocker,
+    notify_db,
+    notify_api,
+    sample_service
+):
+    notify_db.session.add(ServiceBroadcastProviderRestriction(
+        service=sample_service,
+        provider='vodafone'
+    ))
+
+    template = create_template(sample_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
+    event = create_broadcast_event(broadcast_message)
+
+    mock_send_broadcast_provider_message = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
+    )
+
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
+        send_broadcast_event(event.id)
+
+    assert mock_send_broadcast_provider_message.apply_async.call_args_list == [
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='notify-internal-tasks')
+    ]
+
+
+def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabled_globally(
+    mocker,
+    notify_db,
+    notify_api,
+    sample_service
+):
+    notify_db.session.add(ServiceBroadcastProviderRestriction(
+        service=sample_service,
+        provider='three'
+    ))
+
+    template = create_template(sample_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
+    event = create_broadcast_event(broadcast_message)
+
+    mock_send_broadcast_provider_message = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
+    )
+
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
+        send_broadcast_event(event.id)
+
+    assert mock_send_broadcast_provider_message.apply_async.called is False
 
 
 def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_api):
