@@ -303,6 +303,7 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
 
     # testing sequential number:
     if provider == 'vodafone':
-        assert type(mock_send_link_test.mock_calls[0][1][1]) is int
+        assert type(mock_send_link_test.mock_calls[0][1][1]) is str
+        assert len(mock_send_link_test.mock_calls[0][1][1]) == 8
     else:
         assert not mock_send_link_test.mock_calls[0][1][1]
