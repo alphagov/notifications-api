@@ -22,7 +22,8 @@ CF_SPACE ?= ${DEPLOY_ENV}
 CF_HOME ?= ${HOME}
 $(eval export CF_HOME)
 
-CF_MANIFEST_FILE = manifest-$(firstword $(subst -, ,$(subst notify-,,${CF_APP})))-${CF_SPACE}.yml
+CF_MANIFEST_PATH ?= /tmp/manifest.yml
+
 
 NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
@@ -102,7 +103,7 @@ clean-docker-containers: ## Clean up any remaining docker containers
 
 .PHONY: clean
 clean:
-	rm -rf node_modules cache target venv .coverage build tests/.cache
+	rm -rf node_modules cache target venv .coverage build tests/.cache ${CF_MANIFEST_PATH}
 
 
 ## DEPLOYMENT
@@ -156,14 +157,24 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	# cancel any existing deploys to ensure we can apply manifest (if a deploy is in progress you'll see ScaleDisabledDuringDeployment)
 	cf cancel-deployment ${CF_APP} || true
 
+	# generate manifest (including secrets) and write it to CF_MANIFEST_PATH (in /tmp/)
+	make -s CF_APP=${CF_APP} generate-manifest > ${CF_MANIFEST_PATH}
+
 	# fails after 15 mins if deploy doesn't work
-	CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f <(make -s generate-manifest)
+	# reads manifest from CF_MANIFEST_PATH
+	CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f ${CF_MANIFEST_PATH}
+	# delete old manifest file
+	rm ${CF_MANIFEST_PATH}
 
 .PHONY: cf-deploy-api-db-migration
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
-	cf push notify-api-db-migration --no-route -f <(make -s CF_APP=notify-api-db-migration generate-manifest)
+	make -s CF_APP=notify-api-db-migration generate-manifest > ${CF_MANIFEST_PATH}
+
+	cf push notify-api-db-migration --no-route -f ${CF_MANIFEST_PATH}
+	rm ${CF_MANIFEST_PATH}
+
 	cf run-task notify-api-db-migration --command="flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
@@ -173,6 +184,7 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 .PHONY: cf-rollback
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
+	rm ${CF_MANIFEST_PATH}
 	cf cancel-deployment ${CF_APP}
 
 .PHONY: check-if-migrations-to-run
