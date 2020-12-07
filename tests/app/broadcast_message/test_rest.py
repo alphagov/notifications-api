@@ -412,7 +412,7 @@ def test_update_broadcast_message_status_rejects_approval_from_creator(
     )
 
     assert mock_task.called is False
-    assert f'cannot approve their own broadcast' in response['message']
+    assert 'cannot approve their own broadcast' in response['message']
 
 
 def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_areas(
@@ -523,7 +523,7 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
     )
 
     assert mock_task.called is False
-    assert f'cannot approve broadcast' in response['message']
+    assert 'cannot approve broadcast' in response['message']
 
 
 @pytest.mark.parametrize('current_status, new_status', [

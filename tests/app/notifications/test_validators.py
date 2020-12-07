@@ -354,9 +354,11 @@ def test_check_is_message_too_long_passes_for_long_email(sample_service):
     with pytest.raises(BadRequestError) as e:
         check_is_message_too_long(template_with_content)
     assert e.value.status_code == 400
-    expected_message = f'Your message is too long. ' \
-        f'Emails cannot be longer than 1000000 bytes. ' \
-        f'Your message is 1000084 bytes.'
+    expected_message = (
+        'Your message is too long. ' +
+        'Emails cannot be longer than 1000000 bytes. ' +
+        'Your message is 1000084 bytes.'
+    )
     assert e.value.message == expected_message
     assert e.value.fields == []
 
