@@ -747,9 +747,18 @@ def test_process_sanitised_letter_with_valid_letter(
     destination_bucket_name = current_app.config[destination_bucket]
     conn = boto3.resource('s3', region_name='eu-west-1')
 
-    scan_bucket = conn.create_bucket(Bucket=scan_bucket_name)
-    template_preview_bucket = conn.create_bucket(Bucket=template_preview_bucket_name)
-    destination_bucket = conn.create_bucket(Bucket=destination_bucket_name)
+    scan_bucket = conn.create_bucket(
+        Bucket=scan_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    template_preview_bucket = conn.create_bucket(
+        Bucket=template_preview_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    destination_bucket = conn.create_bucket(
+        Bucket=destination_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
 
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
@@ -802,9 +811,18 @@ def test_process_sanitised_letter_sets_postage_international(
     template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']
     destination_bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
     conn = boto3.resource('s3', region_name='eu-west-1')
-    conn.create_bucket(Bucket=scan_bucket_name)
-    conn.create_bucket(Bucket=template_preview_bucket_name)
-    conn.create_bucket(Bucket=destination_bucket_name)
+    conn.create_bucket(
+        Bucket=scan_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    conn.create_bucket(
+        Bucket=template_preview_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    conn.create_bucket(
+        Bucket=destination_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
 
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
@@ -842,9 +860,18 @@ def test_process_sanitised_letter_with_invalid_letter(sample_letter_notification
     invalid_letter_bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
     conn = boto3.resource('s3', region_name='eu-west-1')
 
-    scan_bucket = conn.create_bucket(Bucket=scan_bucket_name)
-    template_preview_bucket = conn.create_bucket(Bucket=template_preview_bucket_name)
-    invalid_letter_bucket = conn.create_bucket(Bucket=invalid_letter_bucket_name)
+    scan_bucket = conn.create_bucket(
+        Bucket=scan_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    template_preview_bucket = conn.create_bucket(
+        Bucket=template_preview_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    invalid_letter_bucket = conn.create_bucket(
+        Bucket=invalid_letter_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
 
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.put_object(Bucket=scan_bucket_name, Key=filename, Body=b'original_pdf_content')
