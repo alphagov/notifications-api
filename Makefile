@@ -154,18 +154,17 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	@cf app --guid ${CF_APP} || exit 1
 
 	# cancel any existing deploys to ensure we can apply manifest (if a deploy is in progress you'll see ScaleDisabledDuringDeployment)
-	cf v3-cancel-zdt-push ${CF_APP} || true
+	cf cancel-deployment ${CF_APP} || true
 
-	cf v3-apply-manifest ${CF_APP} -f <(make -s generate-manifest)
-	CF_STARTUP_TIMEOUT=15 cf v3-zdt-push ${CF_APP} --wait-for-deploy-complete  # fails after 15 mins if deploy doesn't work
-
+	# fails after 15 mins if deploy doesn't work
+	CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f <(make -s generate-manifest)
 
 .PHONY: cf-deploy-api-db-migration
 cf-deploy-api-db-migration:
 	$(if ${CF_SPACE},,$(error Must specify CF_SPACE))
 	cf target -o ${CF_ORG} -s ${CF_SPACE}
 	cf push notify-api-db-migration --no-route -f <(make -s CF_APP=notify-api-db-migration generate-manifest)
-	cf run-task notify-api-db-migration "flask db upgrade" --name api_db_migration
+	cf run-task notify-api-db-migration --command="flask db upgrade" --name api_db_migration
 
 .PHONY: cf-check-api-db-migration-task
 cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-migration task
@@ -174,7 +173,7 @@ cf-check-api-db-migration-task: ## Get the status for the last notify-api-db-mig
 .PHONY: cf-rollback
 cf-rollback: ## Rollbacks the app to the previous release
 	$(if ${CF_APP},,$(error Must specify CF_APP))
-	cf v3-cancel-zdt-push ${CF_APP}
+	cf cancel-deployment ${CF_APP}
 
 .PHONY: check-if-migrations-to-run
 check-if-migrations-to-run:
