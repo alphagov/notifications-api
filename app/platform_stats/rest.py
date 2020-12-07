@@ -84,21 +84,21 @@ def get_usage_for_all_services():
         }
         combined[s.service_id] = entry
 
-    for l in letter_costs:
-        if l.service_id in combined:
-            combined[l.service_id].update({'letter_cost': float(l.letter_cost)})
+    for letter_cost in letter_costs:
+        if letter_cost.service_id in combined:
+            combined[letter_cost.service_id].update({'letter_cost': float(letter_cost.letter_cost)})
         else:
             letter_entry = {
-                "organisation_id": str(l.organisation_id) if l.organisation_id else "",
-                "organisation_name": l.organisation_name or "",
-                "service_id": str(l.service_id),
-                "service_name": l.service_name,
+                "organisation_id": str(letter_cost.organisation_id) if letter_cost.organisation_id else "",
+                "organisation_name": letter_cost.organisation_name or "",
+                "service_id": str(letter_cost.service_id),
+                "service_name": letter_cost.service_name,
                 "sms_cost": 0,
                 "sms_fragments": 0,
-                "letter_cost": float(l.letter_cost),
+                "letter_cost": float(letter_cost.letter_cost),
                 "letter_breakdown": ""
             }
-            combined[l.service_id] = letter_entry
+            combined[letter_cost.service_id] = letter_entry
     for service_id, breakdown in lb_by_service:
         combined[service_id]['letter_breakdown'] += (breakdown + '\n')
 

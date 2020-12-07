@@ -60,8 +60,8 @@ class AwsSesClient(EmailClient):
 
         # events are generally undocumented, but some that might be of interest are:
         # before-call, after-call, after-call-error, request-created, response-received
-        self._client.meta.events.register(f'request-created.ses.SendEmail', self.ses_request_created_hook)
-        self._client.meta.events.register(f'response-received.ses.SendEmail', self.ses_response_received_hook)
+        self._client.meta.events.register('request-created.ses.SendEmail', self.ses_request_created_hook)
+        self._client.meta.events.register('response-received.ses.SendEmail', self.ses_response_received_hook)
 
     def ses_request_created_hook(self, **kwargs):
         # request created may be called multiple times if the request auto-retries. We want to count all these as the

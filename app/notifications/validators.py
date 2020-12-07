@@ -244,7 +244,7 @@ def validate_address(service, letter_data):
     if not address.has_valid_last_line:
         if address.allow_international_letters:
             raise ValidationError(
-                message=f'Last line of address must be a real UK postcode or another country'
+                message='Last line of address must be a real UK postcode or another country'
             )
         raise ValidationError(
             message='Must be a real UK postcode'

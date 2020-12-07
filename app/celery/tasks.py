@@ -339,7 +339,7 @@ def save_api_email_or_sms(self, encrypted_notification):
         try:
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
-            current_app.logger.error('Max retry failed' + f"Failed to persist notification {notification['id']}")
+            current_app.logger.error(f"Max retry failed Failed to persist notification {notification['id']}")
 
 
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
@@ -604,7 +604,7 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    f"Retry: send_inbound_sms_to_service has retried the max number of" +
+                    "Retry: send_inbound_sms_to_service has retried the max number of" +
                     f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
                 )
         else:
