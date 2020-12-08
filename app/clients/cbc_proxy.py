@@ -62,23 +62,30 @@ class CBCProxyClientBase:
     def send_link_test(
         self,
         identifier,
-        sequential_number
+        sequential_number,
+        message_format
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
         test.
         """
-        payload = {'message_type': 'test', 'identifier': identifier, 'message_number': sequential_number}
+        payload = {
+            'message_type': 'test',
+            'identifier': identifier,
+            'message_number': sequential_number,
+            'message_format': message_format
+        }
 
         self._invoke_lambda(payload=payload)
 
     def create_and_send_broadcast(
-        self, identifier, message_number, headline, description, areas, sent, expires,
+        self, identifier, message_number, message_format, headline, description, areas, sent, expires,
     ):
         payload = {
             'message_type': 'alert',
             'identifier': identifier,
             'message_number': message_number,
+            'message_format': message_format,
             'headline': headline,
             'description': description,
             'areas': areas,
@@ -91,7 +98,7 @@ class CBCProxyClientBase:
     def update_and_send_broadcast(
         self,
         identifier, previous_provider_messages, headline, description, areas,
-        sent, expires,
+        sent, expires, message_number, message_format
     ):
         pass
 
@@ -99,7 +106,7 @@ class CBCProxyClientBase:
     def cancel_broadcast(
         self,
         identifier, previous_provider_messages, headline, description, areas,
-        sent, expires,
+        sent, expires, message_number, message_format
     ):
         pass
 

@@ -6,7 +6,7 @@ from sqlalchemy.schema import Sequence
 
 from app import cbc_proxy_client, db, notify_celery
 from app.config import QueueNames
-from app.models import BroadcastEventMessageType, BroadcastProvider
+from app.models import BroadcastEventMessageType, BroadcastProvider, BroadcastProviderMessageType
 from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id, create_broadcast_provider_message
 
 from app.utils import format_sequential_number
@@ -34,8 +34,10 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
 
     broadcast_provider_message, message_number = create_broadcast_provider_message(broadcast_event, provider)
     formatted_message_number = None
+    message_format = BroadcastProviderMessageType.CBC
     if provider == BroadcastProvider.VODAFONE:
         formatted_message_number = format_sequential_number(message_number.broadcast_provider_message_number)
+        message_format = BroadcastProviderMessageType.IBAG
 
     current_app.logger.info(
         f'invoking cbc proxy to send '
@@ -54,6 +56,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         cbc_proxy_provider_client.create_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
             message_number=formatted_message_number,
+            message_format=message_format,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -64,6 +67,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         cbc_proxy_provider_client.update_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
             message_number=formatted_message_number,
+            message_format=message_format,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -75,6 +79,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         cbc_proxy_provider_client.cancel_broadcast(
             identifier=str(broadcast_provider_message.id),
             message_number=formatted_message_number,
+            message_format=message_format,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
