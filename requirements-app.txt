@@ -15,7 +15,7 @@ gunicorn==20.0.4
 iso8601==0.1.13
 itsdangerous==1.1.0
 jsonschema==3.2.0
-marshmallow-sqlalchemy==0.24.1
+marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.1 # v24 requires marshmallow v3
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.8.6
 PyJWT==1.7.1
