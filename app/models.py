@@ -2483,6 +2483,8 @@ class BroadcastProviderMessage(db.Model):
 
     UniqueConstraint(broadcast_event_id, provider)
 
+    message_number = association_proxy('broadcast_provider_message_number', 'broadcast_provider_message_number')
+
 
 class BroadcastProviderMessageNumber(db.Model):
     """
@@ -2499,6 +2501,9 @@ class BroadcastProviderMessageNumber(db.Model):
     )
     broadcast_provider_message_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey('broadcast_provider_message.id'), nullable=False
+    )
+    broadcast_provider_message = db.relationship(
+        'BroadcastProviderMessage', backref=db.backref("broadcast_provider_message_number", uselist=False)
     )
 
 

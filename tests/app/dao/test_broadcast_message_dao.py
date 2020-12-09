@@ -53,7 +53,7 @@ def test_create_broadcast_provider_message_creates_in_correct_state(sample_broad
         transmitted_content={'body': 'Initial content'}
     )
 
-    broadcast_provider_message, message_number = create_broadcast_provider_message(broadcast_event, 'fake-provider')
+    broadcast_provider_message = create_broadcast_provider_message(broadcast_event, 'fake-provider')
 
     assert broadcast_provider_message.status == 'sending'
     assert broadcast_provider_message.broadcast_event_id == broadcast_event.id
