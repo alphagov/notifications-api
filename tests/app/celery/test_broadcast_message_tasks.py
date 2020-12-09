@@ -105,12 +105,12 @@ def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_
 
 
 @freeze_time('2020-08-01 12:00')
-@pytest.mark.parametrize('provider,provider_capitalised,message_format', [
-    ['ee', 'EE', 'cbc'],
-    ['vodafone', 'Vodafone', 'ibag'],
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_data_correctly(
-    mocker, sample_service, provider, provider_capitalised, message_format
+    mocker, sample_service, provider, provider_capitalised
 ):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
@@ -140,7 +140,6 @@ def test_send_broadcast_provider_message_sends_data_correctly(
     mock_create_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
         message_number=mocker.ANY,
-        message_format=message_format,
         headline='GOV.UK Notify Broadcast',
         description='this is an emergency broadcast message',
         areas=[{
@@ -157,12 +156,12 @@ def test_send_broadcast_provider_message_sends_data_correctly(
     )
 
 
-@pytest.mark.parametrize('provider,provider_capitalised,message_format', [
-    ['ee', 'EE', 'cbc'],
-    ['vodafone', 'Vodafone', 'ibag'],
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_update_with_references(
-    mocker, sample_service, provider, provider_capitalised, message_format
+    mocker, sample_service, provider, provider_capitalised
 ):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
 
@@ -193,7 +192,6 @@ def test_send_broadcast_provider_message_sends_update_with_references(
     mock_update_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
         message_number=mocker.ANY,
-        message_format=message_format,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -207,12 +205,12 @@ def test_send_broadcast_provider_message_sends_update_with_references(
     )
 
 
-@pytest.mark.parametrize('provider,provider_capitalised,message_format', [
-    ['ee', 'EE', 'cbc'],
-    ['vodafone', 'Vodafone', 'ibag'],
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_cancel_with_references(
-    mocker, sample_service, provider, provider_capitalised, message_format
+    mocker, sample_service, provider, provider_capitalised
 ):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
 
@@ -246,7 +244,6 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(
     mock_cancel_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
         message_number=mocker.ANY,
-        message_format=message_format,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -290,7 +287,6 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
     mock_create_broadcast.assert_called_once_with(
         identifier=ANY,
         message_number=mocker.ANY,
-        message_format='cbc',
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{

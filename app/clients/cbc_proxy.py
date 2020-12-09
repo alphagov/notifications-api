@@ -65,34 +65,12 @@ class CBCProxyClientBase:
         sequential_number,
         message_format
     ):
-        """
-        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
-        test.
-        """
-        payload = {
-            'message_type': 'test',
-            'identifier': identifier,
-            'message_number': sequential_number,
-            'message_format': message_format
-        }
-
-        self._invoke_lambda(payload=payload)
+        pass
 
     def create_and_send_broadcast(
         self, identifier, message_number, message_format, headline, description, areas, sent, expires,
     ):
-        payload = {
-            'message_type': 'alert',
-            'identifier': identifier,
-            'message_number': message_number,
-            'message_format': message_format,
-            'headline': headline,
-            'description': description,
-            'areas': areas,
-            'sent': sent,
-            'expires': expires,
-        }
-        self._invoke_lambda(payload=payload)
+        pass
 
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
@@ -151,6 +129,76 @@ class CBCProxyCanary(CBCProxyClientBase):
 class CBCProxyEE(CBCProxyClientBase):
     lambda_name = 'bt-ee-1-proxy'
 
+    def send_link_test(
+        self,
+        identifier,
+        sequential_number=None,
+    ):
+        pass
+        """
+        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
+        test.
+        """
+        payload = {
+            'message_type': 'test',
+            'identifier': identifier,
+            'message_format': 'cbc'
+        }
+
+        self._invoke_lambda(payload=payload)
+
+    def create_and_send_broadcast(
+        self, identifier, headline, description, areas, sent, expires, message_number=None
+    ):
+        pass
+        payload = {
+            'message_type': 'alert',
+            'identifier': identifier,
+            'message_format': 'cbc',
+            'headline': headline,
+            'description': description,
+            'areas': areas,
+            'sent': sent,
+            'expires': expires,
+        }
+        self._invoke_lambda(payload=payload)
+
 
 class CBCProxyVodafone(CBCProxyClientBase):
     lambda_name = 'vodafone-1-proxy'
+
+    def send_link_test(
+        self,
+        identifier,
+        sequential_number,
+    ):
+        pass
+        """
+        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
+        test.
+        """
+        payload = {
+            'message_type': 'test',
+            'identifier': identifier,
+            'message_number': sequential_number,
+            'message_format': 'ibag'
+        }
+
+        self._invoke_lambda(payload=payload)
+
+    def create_and_send_broadcast(
+        self, identifier, message_number, headline, description, areas, sent, expires,
+    ):
+        pass
+        payload = {
+            'message_type': 'alert',
+            'identifier': identifier,
+            'message_number': message_number,
+            'message_format': 'ibag',
+            'headline': headline,
+            'description': description,
+            'areas': areas,
+            'sent': sent,
+            'expires': expires,
+        }
+        self._invoke_lambda(payload=payload)

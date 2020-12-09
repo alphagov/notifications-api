@@ -2453,11 +2453,6 @@ class BroadcastProvider:
     PROVIDERS = [EE, VODAFONE, THREE, O2]
 
 
-class BroadcastProviderMessageType:
-    CBC = 'cbc'
-    IBAG = 'ibag'
-
-
 class BroadcastProviderMessageStatus:
     TECHNICAL_FAILURE = 'technical-failure'  # Couldn’t send (cbc proxy 5xx/4xx)
     SENDING = 'sending'  # Sent to cbc, awaiting response
