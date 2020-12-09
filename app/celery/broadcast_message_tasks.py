@@ -2,11 +2,14 @@ import uuid
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
+from sqlalchemy.schema import Sequence
 
-from app import cbc_proxy_client, notify_celery
+from app import cbc_proxy_client, db, notify_celery
 from app.config import QueueNames
-from app.models import BroadcastEventMessageType
+from app.models import BroadcastEventMessageType, BroadcastProvider
 from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id, create_broadcast_provider_message
+
+from app.utils import format_sequential_number
 
 
 @notify_celery.task(name="send-broadcast-event")
@@ -30,6 +33,9 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
     broadcast_provider_message = create_broadcast_provider_message(broadcast_event, provider)
+    formatted_message_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        formatted_message_number = format_sequential_number(broadcast_provider_message.message_number)
 
     current_app.logger.info(
         f'invoking cbc proxy to send '
@@ -47,6 +53,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     if broadcast_event.message_type == BroadcastEventMessageType.ALERT:
         cbc_proxy_provider_client.create_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -56,6 +63,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
         cbc_proxy_provider_client.update_and_send_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -66,6 +74,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
         cbc_proxy_provider_client.cancel_broadcast(
             identifier=str(broadcast_provider_message.id),
+            message_number=formatted_message_number,
             headline="GOV.UK Notify Broadcast",
             description=broadcast_event.transmitted_content['body'],
             areas=areas,
@@ -78,6 +87,11 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
     identifier = str(uuid.uuid4())
+    formatted_seq_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        sequence = Sequence('broadcast_provider_message_number_seq')
+        sequential_number = db.session.connection().execute(sequence)
+        formatted_seq_number = format_sequential_number(sequential_number)
     message = f"Sending a link test to CBC proxy for provider {provider} with ID {identifier}"
     current_app.logger.info(message)
-    cbc_proxy_client.get_proxy(provider).send_link_test(identifier)
+    cbc_proxy_client.get_proxy(provider).send_link_test(identifier, formatted_seq_number)

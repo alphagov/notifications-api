@@ -105,7 +105,13 @@ def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_
 
 
 @freeze_time('2020-08-01 12:00')
-def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_service):
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
+])
+def test_send_broadcast_provider_message_sends_data_correctly(
+    mocker, sample_service, provider, provider_capitalised
+):
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
@@ -121,18 +127,19 @@ def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_ser
     event = create_broadcast_event(broadcast_message)
 
     mock_create_broadcast = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
+        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.create_and_send_broadcast',
     )
 
-    assert event.get_provider_message('ee') is None
+    assert event.get_provider_message(provider) is None
 
-    send_broadcast_provider_message(provider='ee', broadcast_event_id=str(event.id))
+    send_broadcast_provider_message(provider=provider, broadcast_event_id=str(event.id))
 
-    broadcast_provider_message = event.get_provider_message('ee')
+    broadcast_provider_message = event.get_provider_message(provider)
     assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
     mock_create_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline='GOV.UK Notify Broadcast',
         description='this is an emergency broadcast message',
         areas=[{
@@ -149,7 +156,13 @@ def test_send_broadcast_provider_message_sends_data_correctly(mocker, sample_ser
     )
 
 
-def test_send_broadcast_provider_message_sends_update_with_references(mocker, sample_service):
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
+])
+def test_send_broadcast_provider_message_sends_update_with_references(
+    mocker, sample_service, provider, provider_capitalised
+):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
 
     broadcast_message = create_broadcast_message(
@@ -164,34 +177,41 @@ def test_send_broadcast_provider_message_sends_update_with_references(mocker, sa
     )
 
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
-    create_broadcast_provider_message(alert_event, 'ee')
+    create_broadcast_provider_message(alert_event, provider)
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
 
     mock_update_broadcast = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyEE.update_and_send_broadcast',
+        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.update_and_send_broadcast',
     )
 
-    send_broadcast_provider_message(provider='ee', broadcast_event_id=str(update_event.id))
+    send_broadcast_provider_message(provider=provider, broadcast_event_id=str(update_event.id))
 
-    broadcast_provider_message = update_event.get_provider_message('ee')
+    broadcast_provider_message = update_event.get_provider_message(provider)
     assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
     mock_update_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         previous_provider_messages=[
-            alert_event.get_provider_message('ee')
+            alert_event.get_provider_message(provider)
         ],
         sent=update_event.sent_at_as_cap_datetime_string,
         expires=update_event.transmitted_finishes_at_as_cap_datetime_string,
     )
 
 
-def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sample_service):
+@pytest.mark.parametrize('provider,provider_capitalised', [
+    ['ee', 'EE'],
+    ['vodafone', 'Vodafone'],
+])
+def test_send_broadcast_provider_message_sends_cancel_with_references(
+    mocker, sample_service, provider, provider_capitalised
+):
     template = create_template(sample_service, BROADCAST_TYPE, content='content')
 
     broadcast_message = create_broadcast_message(
@@ -209,28 +229,29 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(mocker, sa
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
 
-    create_broadcast_provider_message(alert_event, 'ee')
-    create_broadcast_provider_message(update_event, 'ee')
+    create_broadcast_provider_message(alert_event, provider)
+    create_broadcast_provider_message(update_event, provider)
 
     mock_cancel_broadcast = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyEE.cancel_broadcast',
+        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.cancel_broadcast',
     )
 
-    send_broadcast_provider_message(provider='ee', broadcast_event_id=str(cancel_event.id))
+    send_broadcast_provider_message(provider=provider, broadcast_event_id=str(cancel_event.id))
 
-    broadcast_provider_message = cancel_event.get_provider_message('ee')
+    broadcast_provider_message = cancel_event.get_provider_message(provider)
     assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
     mock_cancel_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
             "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
         }],
         previous_provider_messages=[
-            alert_event.get_provider_message('ee'),
-            update_event.get_provider_message('ee')
+            alert_event.get_provider_message(provider),
+            update_event.get_provider_message(provider)
         ],
         sent=cancel_event.sent_at_as_cap_datetime_string,
         expires=cancel_event.transmitted_finishes_at_as_cap_datetime_string,
@@ -265,6 +286,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
 
     mock_create_broadcast.assert_called_once_with(
         identifier=ANY,
+        message_number=mocker.ANY,
         headline="GOV.UK Notify Broadcast",
         description='this is an emergency broadcast message',
         areas=[{
@@ -279,14 +301,18 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
     )
 
 
+@pytest.mark.parametrize("provider,provider_capitalised", [
+    ["ee", "EE"],
+    ["vodafone", "Vodafone"]
+])
 def test_trigger_link_tests_invokes_cbc_proxy_client(
-    mocker,
+    mocker, provider, provider_capitalised
 ):
     mock_send_link_test = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyEE.send_link_test',
+        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.send_link_test',
     )
 
-    trigger_link_test('ee')
+    trigger_link_test(provider)
 
     assert mock_send_link_test.called
     # the 0th argument of the call to send_link_test
@@ -296,3 +322,10 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
         uuid.UUID(identifier)
     except BaseException:
         pytest.fail(f"{identifier} is not a valid uuid")
+
+    # testing sequential number:
+    if provider == 'vodafone':
+        assert type(mock_send_link_test.mock_calls[0][1][1]) is str
+        assert len(mock_send_link_test.mock_calls[0][1][1]) == 8
+    else:
+        assert not mock_send_link_test.mock_calls[0][1][1]

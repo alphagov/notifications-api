@@ -1,6 +1,15 @@
+import uuid
+
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import BroadcastMessage, BroadcastEvent, BroadcastProviderMessage, BroadcastProviderMessageStatus
+from app.models import (
+    BroadcastMessage,
+    BroadcastEvent,
+    BroadcastProvider,
+    BroadcastProviderMessage,
+    BroadcastProviderMessageNumber,
+    BroadcastProviderMessageStatus
+)
 
 
 def dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id):
@@ -36,10 +45,19 @@ def get_earlier_events_for_broadcast_event(broadcast_event_id):
 
 @transactional
 def create_broadcast_provider_message(broadcast_event, provider):
+    broadcast_provider_message_id = uuid.uuid4()
     provider_message = BroadcastProviderMessage(
+        id=broadcast_provider_message_id,
         broadcast_event=broadcast_event,
         provider=provider,
         status=BroadcastProviderMessageStatus.SENDING,
     )
     db.session.add(provider_message)
+    db.session.commit()
+    provider_message_number = None
+    if provider == BroadcastProvider.VODAFONE:
+        provider_message_number = BroadcastProviderMessageNumber(
+            broadcast_provider_message_id=broadcast_provider_message_id)
+        db.session.add(provider_message_number)
+        db.session.commit()
     return provider_message

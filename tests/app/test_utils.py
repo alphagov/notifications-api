@@ -4,10 +4,11 @@ import pytest
 from freezegun import freeze_time
 
 from app.utils import (
+    format_sequential_number,
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
-    midnight_n_days_ago,
     get_notification_table_to_use,
+    midnight_n_days_ago
 )
 from app.models import Notification, NotificationHistory
 
@@ -99,3 +100,7 @@ def test_get_notification_table_to_use_checks_service_data_retention(sample_serv
     # falls back to 7 days if not specified
     assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 1), False) == NotificationHistory
     assert get_notification_table_to_use(sample_service, 'sms', date(2019, 1, 2), False) == Notification
+
+
+def test_format_sequential_number():
+    assert format_sequential_number(123) == '0000007b'
