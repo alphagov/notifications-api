@@ -28,16 +28,6 @@ def upgrade():
         sa.ForeignKeyConstraint(['broadcast_provider_message_id'], ['broadcast_provider_message.id'], ),
         sa.PrimaryKeyConstraint('broadcast_provider_message_number')
     )
-    op.execute(
-        """
-            INSERT INTO
-                broadcast_provider_message_number (broadcast_provider_message_id)
-            SELECT
-                id
-            FROM
-                broadcast_provider_message
-        """
-    )
     # ### end Alembic commands ###
 
 
