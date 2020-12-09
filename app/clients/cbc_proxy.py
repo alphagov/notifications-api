@@ -142,7 +142,7 @@ class CBCProxyEE(CBCProxyClientBase):
         payload = {
             'message_type': 'test',
             'identifier': identifier,
-            'message_format': 'cbc'
+            'message_format': 'cap'
         }
 
         self._invoke_lambda(payload=payload)
@@ -154,7 +154,7 @@ class CBCProxyEE(CBCProxyClientBase):
         payload = {
             'message_type': 'alert',
             'identifier': identifier,
-            'message_format': 'cbc',
+            'message_format': 'cap',
             'headline': headline,
             'description': description,
             'areas': areas,

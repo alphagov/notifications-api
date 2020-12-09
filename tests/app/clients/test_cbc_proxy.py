@@ -107,7 +107,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(mocker, cbc_proxy_ee):
 
     assert payload['identifier'] == identifier
     assert 'message_number' not in payload
-    assert payload['message_format'] == 'cbc'
+    assert payload['message_format'] == 'cap'
     assert payload['message_type'] == 'alert'
     assert payload['headline'] == headline
     assert payload['description'] == description
@@ -338,7 +338,7 @@ def test_cbc_proxy_ee_send_link_test_invokes_function(mocker, cbc_proxy_ee):
     assert payload['identifier'] == identifier
     assert payload['message_type'] == 'test'
     assert 'message_number' not in payload
-    assert payload['message_format'] == 'cbc'
+    assert payload['message_format'] == 'cap'
 
 
 def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vodafone):
