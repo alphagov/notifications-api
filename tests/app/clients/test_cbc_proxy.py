@@ -236,8 +236,8 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     MockProviderMessage = namedtuple('BroadcastProviderMessage', ['id', 'message_number', 'created_at'])
 
     provider_messages = [
-        MockProviderMessage(uuid.uuid4(), '0000007b', '2020-12-10 11:19:44.130585'),
-        MockProviderMessage(uuid.uuid4(), '0000004e', '2020-12-10 12:19:44.130585')
+        MockProviderMessage(uuid.uuid4(), 78, '2020-12-10 11:19:44.130585'),
+        MockProviderMessage(uuid.uuid4(), 123, '2020-12-10 12:19:44.130585')
     ]
     sent = '2020-12-10 14:19:44.130585'
 
@@ -275,12 +275,12 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     assert payload['references'] == [
         {
             "message_id": str(provider_messages[0].id),
-            "message_number": provider_messages[0].message_number,
+            "message_number": '0000004e',
             "sent": provider_messages[0].created_at
         },
         {
             "message_id": str(provider_messages[1].id),
-            "message_number": provider_messages[1].message_number,
+            "message_number": '0000007b',
             "sent": provider_messages[1].created_at
         },
     ]

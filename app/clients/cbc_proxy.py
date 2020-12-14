@@ -217,6 +217,9 @@ class CBCProxyVodafone(CBCProxyClientBase):
     def cancel_broadcast(
         self, identifier, previous_provider_messages, sent, message_number
     ):
+        # avoid cyclical import
+        from app.utils import format_sequential_number
+
         payload = {
             'message_type': 'cancel',
             'identifier': identifier,
@@ -225,7 +228,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             "references": [
                 {
                     "message_id": str(message.id),
-                    "message_number": message.message_number,
+                    "message_number": format_sequential_number(message.message_number),
                     "sent": message.created_at
                 } for message in previous_provider_messages
             ],
