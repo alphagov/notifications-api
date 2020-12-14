@@ -75,12 +75,8 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         cbc_proxy_provider_client.cancel_broadcast(
             identifier=str(broadcast_provider_message.id),
             message_number=formatted_message_number,
-            headline="GOV.UK Notify Broadcast",
-            description=broadcast_event.transmitted_content['body'],
-            areas=areas,
             previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
             sent=broadcast_event.sent_at_as_cap_datetime_string,
-            expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
         )
 
 
