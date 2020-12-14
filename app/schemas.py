@@ -74,7 +74,7 @@ class UUIDsAsStringsMixin:
                 ]
 
 
-class BaseSchema(ma.ModelSchema):
+class BaseSchema(ma.SQLAlchemyAutoSchema):
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
