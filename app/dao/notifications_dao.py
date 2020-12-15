@@ -43,6 +43,7 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
     SMS_TYPE,
     EMAIL_TYPE,
     ServiceDataRetention,
@@ -428,8 +429,10 @@ def _delete_letters_from_s3(
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        # I don't think we need this anymore, we should update the query to get letters sent 7 days ago
-        if letter.sent_at:
+        # We don't want to delete PDFs for letters until they have transitioned past created and sending, as at that
+        # point we are confident that our print provider could successfully handle them and there is no chance of us
+        # needing to resend them
+        if letter.status in NOTIFICATION_STATUS_TYPES_COMPLETED:
             prefix = get_letter_pdf_filename(reference=letter.reference,
                                              crown=letter.service.crown,
                                              created_at=letter.created_at,
