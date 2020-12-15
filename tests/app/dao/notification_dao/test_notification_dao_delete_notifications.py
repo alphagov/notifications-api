@@ -133,13 +133,24 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
 
 
 @freeze_time('2019-09-01 04:30')
-def test_delete_notifications_deletes_letters_from_s3(sample_letter_template, mocker):
+@pytest.mark.parametrize('notification_status', ['delivered', 'returned-letter', 'technical-failure'])
+def test_delete_notifications_deletes_letters_if_letter_in_final_state(
+    sample_letter_template, mocker, notification_status
+):
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
-    create_notification(template=sample_letter_template, status='delivered',
-                        reference='LETTER_REF', created_at=eight_days_ago, sent_at=eight_days_ago
-                        )
+    create_notification(
+        template=sample_letter_template,
+        status=notification_status,
+        reference='LETTER_REF',
+        created_at=eight_days_ago,
+        sent_at=eight_days_ago
+    )
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
     delete_notifications_older_than_retention_by_type(notification_type='letter')
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 1
     mock_get_s3.assert_called_once_with(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                         subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
                                             str(eight_days_ago.date()),
@@ -212,17 +223,26 @@ def test_delete_notifications_delete_notification_type_for_default_time_if_no_da
     assert Notification.query.filter_by(notification_type='email').count() == 1
 
 
-def test_delete_notifications_doesnt_try_to_delete_from_s3_when_letter_has_not_sent(sample_service, mocker):
+@pytest.mark.parametrize('notification_status', ['created', 'sending'])
+def test_delete_notifications_doesnt_try_to_delete_notification_when_letter_has_not_finished_sending(
+    sample_service, mocker, notification_status
+):
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
     letter_template = create_template(service=sample_service, template_type='letter')
 
     create_notification(
         template=letter_template,
-        status='created',
+        status=notification_status,
         reference='LETTER_REF',
         created_at=datetime.utcnow() - timedelta(days=14)
     )
-    delete_notifications_older_than_retention_by_type('letter', qry_limit=1)
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+    delete_notifications_older_than_retention_by_type(notification_type='letter')
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
     mock_get_s3.assert_not_called()
 
 
