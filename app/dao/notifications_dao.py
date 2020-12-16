@@ -419,6 +419,7 @@ def _move_notifications_to_notification_history(notification_type, service_id, d
 def _delete_letters_from_s3(
         notification_type, service_id, date_to_delete_from, query_limit
 ):
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
     letters_to_delete_from_s3 = db.session.query(
         Notification
     ).filter(
@@ -427,7 +428,6 @@ def _delete_letters_from_s3(
         Notification.service_id == service_id
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
-        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
         # although letters without a `sent_at` timestamp do have PDFs, they do not exist in the
         # production-letters-pdf bucket as they never made it that far so we do not try and delete
         # them from it
