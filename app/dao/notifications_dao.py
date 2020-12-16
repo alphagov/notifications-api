@@ -428,7 +428,9 @@ def _delete_letters_from_s3(
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
         bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
-        # I don't think we need this anymore, we should update the query to get letters sent 7 days ago
+        # although letters without a `sent_at` timestamp do have PDFs, they do not exist in the
+        # production-letters-pdf bucket as they never made it that far so we do not try and delete
+        # them from it
         if letter.sent_at:
             prefix = get_letter_pdf_filename(reference=letter.reference,
                                              crown=letter.service.crown,

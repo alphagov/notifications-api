@@ -256,7 +256,7 @@ def create_notification(
     if to_field is None:
         to_field = '+447700900855' if template.template_type == SMS_TYPE else 'test@example.com'
 
-    if status != 'created':
+    if status not in ('created', 'validation-failed', 'virus-scan-failed', 'pending-virus-check'):
         sent_at = sent_at or datetime.utcnow()
         updated_at = updated_at or datetime.utcnow()
 
