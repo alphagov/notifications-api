@@ -345,7 +345,7 @@ def test_check_is_message_too_long_fails(notify_db_session, show_prefix, char_co
 
 
 def test_check_is_message_too_long_passes_for_long_email(sample_service):
-    email_character_count = 1000003
+    email_character_count = 2000003
     t = create_template(service=sample_service, content='a' * email_character_count, template_type='email')
     template = templates_dao.dao_get_template_by_id_and_service_id(template_id=t.id,
                                                                    service_id=t.service_id)
@@ -356,8 +356,8 @@ def test_check_is_message_too_long_passes_for_long_email(sample_service):
     assert e.value.status_code == 400
     expected_message = (
         'Your message is too long. ' +
-        'Emails cannot be longer than 1000000 bytes. ' +
-        'Your message is 1000084 bytes.'
+        'Emails cannot be longer than 2000000 bytes. ' +
+        'Your message is 2000084 bytes.'
     )
     assert e.value.message == expected_message
     assert e.value.fields == []

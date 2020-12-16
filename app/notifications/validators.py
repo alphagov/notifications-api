@@ -153,7 +153,7 @@ def check_is_message_too_long(template_with_content):
             )
         elif template_with_content.template_type == EMAIL_TYPE:
             message += (
-                f"Emails cannot be longer than 1000000 bytes. "
+                f"Emails cannot be longer than 2000000 bytes. "
                 f"Your message is {template_with_content.content_size_in_bytes} bytes."
             )
         raise BadRequestError(message=message)
