@@ -213,9 +213,9 @@ def test_delete_notifications_delete_notification_type_for_default_time_if_no_da
 
 
 @pytest.mark.parametrize(
-    'notification_status', ['created', 'validation-failed', 'virus-scan-failed', 'pending-virus-check']
+    'notification_status', ['validation-failed', 'virus-scan-failed']
 )
-def test_delete_notifications_deletes_letters_not_sent_from_table_but_not_s3(
+def test_delete_notifications_deletes_letters_not_sent_and_in_final_state_from_table_but_not_s3(
     sample_service, mocker, notification_status
 ):
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
@@ -236,8 +236,8 @@ def test_delete_notifications_deletes_letters_not_sent_from_table_but_not_s3(
     mock_get_s3.assert_not_called()
 
 
-@pytest.mark.parametrize('notification_status', ['sending', 'delivered', 'returned-letter', 'technical-failure'])
-def test_delete_notifications_deletes_letters_sent_from_table_and_s3(
+@pytest.mark.parametrize('notification_status', ['delivered', 'returned-letter', 'technical-failure'])
+def test_delete_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3(
     sample_service, mocker, notification_status
 ):
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
@@ -264,6 +264,28 @@ def test_delete_notifications_deletes_letters_sent_from_table_and_s3(
             eight_days_ago.strftime('%Y%m%d%H%M%S')
         )
     )
+
+
+@pytest.mark.parametrize('notification_status', ['pending-virus-check', 'created', 'sending'])
+def test_delete_notifications_does_not_delete_letters_not_yet_in_final_state(
+    sample_service, mocker, notification_status
+):
+    mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    letter_template = create_template(service=sample_service, template_type='letter')
+    create_notification(
+        template=letter_template,
+        status=notification_status,
+        reference='LETTER_REF',
+        created_at=datetime.utcnow() - timedelta(days=8),
+    )
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+
+    delete_notifications_older_than_retention_by_type('letter')
+
+    assert Notification.query.count() == 1
+    assert NotificationHistory.query.count() == 0
+    mock_get_s3.assert_not_called()
 
 
 @freeze_time('2020-03-25 00:01')

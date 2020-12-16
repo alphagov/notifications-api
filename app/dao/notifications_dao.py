@@ -43,6 +43,7 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
     SMS_TYPE,
     EMAIL_TYPE,
     ServiceDataRetention,
@@ -357,6 +358,20 @@ def insert_notification_history_delete_notifications(
           AND key_type in ('normal', 'team')
         limit :qry_limit
         """
+    select_into_temp_table_for_letters = """
+         CREATE TEMP TABLE NOTIFICATION_ARCHIVE AS
+         SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
+             key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
+             client_reference, international, phone_prefix, rate_multiplier, notification_status,
+              created_by_id, postage, document_download_count
+          FROM notifications
+        WHERE service_id = :service_id
+          AND notification_type = :notification_type
+          AND created_at < :timestamp_to_delete_backwards_from
+          AND notification_status NOT IN ('pending-virus-check', 'created', 'sending')
+          AND key_type in ('normal', 'team')
+        limit :qry_limit
+        """
     # Insert into NotificationHistory if the row already exists do nothing.
     insert_query = """
         insert into notification_history
@@ -376,7 +391,9 @@ def insert_notification_history_delete_notifications(
     }
 
     db.session.execute(drop_table_if_exists)
-    db.session.execute(select_into_temp_table, input_params)
+
+    select_to_use = select_into_temp_table_for_letters if notification_type == 'letter' else select_into_temp_table
+    db.session.execute(select_to_use, input_params)
 
     result = db.session.execute("select * from NOTIFICATION_ARCHIVE")
 
@@ -425,25 +442,25 @@ def _delete_letters_from_s3(
     ).filter(
         Notification.notification_type == notification_type,
         Notification.created_at < date_to_delete_from,
-        Notification.service_id == service_id
-    ).limit(query_limit).all()
-    for letter in letters_to_delete_from_s3:
-        # although letters without a `sent_at` timestamp do have PDFs, they do not exist in the
+        Notification.service_id == service_id,
+        # although letters in non completed statuses do have PDFs in s3, they do not exist in the
         # production-letters-pdf bucket as they never made it that far so we do not try and delete
         # them from it
-        if letter.sent_at:
-            prefix = get_letter_pdf_filename(reference=letter.reference,
-                                             crown=letter.service.crown,
-                                             created_at=letter.created_at,
-                                             ignore_folder=letter.key_type == KEY_TYPE_TEST,
-                                             postage=letter.postage)
-            s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
-            for s3_object in s3_objects:
-                try:
-                    remove_s3_object(bucket_name, s3_object['Key'])
-                except ClientError:
-                    current_app.logger.exception(
-                        "Could not delete S3 object with filename: {}".format(s3_object['Key']))
+        Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED)
+    ).limit(query_limit).all()
+    for letter in letters_to_delete_from_s3:
+        prefix = get_letter_pdf_filename(reference=letter.reference,
+                                         crown=letter.service.crown,
+                                         created_at=letter.created_at,
+                                         ignore_folder=letter.key_type == KEY_TYPE_TEST,
+                                         postage=letter.postage)
+        s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
+        for s3_object in s3_objects:
+            try:
+                remove_s3_object(bucket_name, s3_object['Key'])
+            except ClientError:
+                current_app.logger.exception(
+                    "Could not delete S3 object with filename: {}".format(s3_object['Key']))
 
 
 @transactional
