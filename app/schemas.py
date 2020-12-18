@@ -23,11 +23,11 @@ from notifications_utils.recipients import (
     validate_and_format_phone_number
 )
 
-from app import ma, DATETIME_FORMAT_NO_TIMEZONE
+from app import ma
 from app import models
 from app.models import ServicePermission
 from app.dao.permissions_dao import permission_dao
-from app.utils import get_template_instance
+from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
 
 
 def _validate_positive_number(value, msg="Not a positive integer"):

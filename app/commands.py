@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 from notifications_utils.statsd_decorators import statsd
 
-from app import db, DATETIME_FORMAT, encryption
+from app import db, encryption
 from app.aws import s3
 from app.celery.tasks import record_daily_sorted_counts, process_row
 from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
@@ -60,7 +60,7 @@ from app.models import (
     LetterBranding,
 )
 from app.performance_platform.processing_time import send_processing_time_for_start_and_end
-from app.utils import get_london_midnight_in_utc, get_midnight_for_day_before
+from app.utils import DATETIME_FORMAT, get_london_midnight_in_utc, get_midnight_for_day_before
 
 
 @click.group(name='command', help='Additional commands')

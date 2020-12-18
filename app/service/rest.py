@@ -12,7 +12,6 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import DATE_FORMAT, DATETIME_FORMAT_NO_TIMEZONE
 from app.aws import s3
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
@@ -131,7 +130,7 @@ from app.schemas import (
     email_data_request_schema
 )
 from app.user.users_schema import post_set_permissions_schema
-from app.utils import midnight_n_days_ago, pagination_links
+from app.utils import DATE_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, midnight_n_days_ago, pagination_links
 
 service_blueprint = Blueprint('service', __name__)
 

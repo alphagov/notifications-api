@@ -16,10 +16,7 @@ from notifications_utils.template import (
 )
 from notifications_utils.columns import Row
 
-from app import (
-    DATETIME_FORMAT,
-    encryption
-)
+from app import encryption
 from app.celery import provider_tasks
 from app.celery import tasks
 from app.celery.tasks import (
@@ -52,6 +49,7 @@ from app.models import (
     SMS_TYPE,
     ReturnedLetter,
     NOTIFICATION_CREATED)
+from app.utils import DATETIME_FORMAT
 
 from tests.app import load_example_csv
 

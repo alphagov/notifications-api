@@ -18,7 +18,6 @@ from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from app import (
     create_uuid,
     create_random_identifier,
-    DATETIME_FORMAT,
     encryption,
     notify_celery,
 )
@@ -66,6 +65,7 @@ from app.models import (
 )
 from app.notifications.process_notifications import persist_notification
 from app.service.utils import service_allowed_to_send_to
+from app.utils import DATETIME_FORMAT
 
 
 @notify_celery.task(name="process-job")

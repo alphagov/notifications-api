@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 from freezegun import freeze_time
 
-from app import DATETIME_FORMAT
+from app.utils import DATETIME_FORMAT
 from tests.app.db import create_ft_notification_status, create_notification
 
 

@@ -6,8 +6,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from app import DATETIME_FORMAT
 from app.clients.cbc_proxy import CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary
+from app.utils import DATETIME_FORMAT
 
 
 @pytest.fixture(scope='function')
