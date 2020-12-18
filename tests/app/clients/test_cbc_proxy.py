@@ -1,10 +1,12 @@
 import json
 import uuid
 from collections import namedtuple
+from datetime import datetime
 from unittest.mock import Mock
 
 import pytest
 
+from app import DATETIME_FORMAT
 from app.clients.cbc_proxy import CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary
 
 
@@ -119,13 +121,15 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(mocker, cbc_proxy_ee):
 
 def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     identifier = 'my-identifier'
-    MockProviderMessage = namedtuple('BroadcastProviderMessage', ['id', 'message_number', 'created_at'])
+    MockProviderMessage = namedtuple(
+        'BroadcastProviderMessage', ['id', 'message_number', 'created_at']
+    )
 
     provider_messages = [
-        MockProviderMessage(uuid.uuid4(), '0000007b', '2020-12-10 11:19:44.130585'),
-        MockProviderMessage(uuid.uuid4(), '0000004e', '2020-12-10 12:19:44.130585')
+        MockProviderMessage(uuid.uuid4(), '0000007b', datetime(2020, 12, 16)),
+        MockProviderMessage(uuid.uuid4(), '0000004e', datetime(2020, 12, 17))
     ]
-    sent = '2020-12-10 14:19:44.130585'
+    sent = '2020-12-17 14:19:44.130585'
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy_ee,
@@ -161,11 +165,11 @@ def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     assert payload['references'] == [
         {
             "message_id": str(provider_messages[0].id),
-            "sent": provider_messages[0].created_at
+            "sent": provider_messages[0].created_at.strftime(DATETIME_FORMAT)
         },
         {
             "message_id": str(provider_messages[1].id),
-            "sent": provider_messages[1].created_at
+            "sent": provider_messages[1].created_at.strftime(DATETIME_FORMAT)
         },
     ]
     assert payload['sent'] == sent
@@ -233,13 +237,16 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(mocker, cbc_proxy_v
 
 def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     identifier = 'my-identifier'
-    MockProviderMessage = namedtuple('BroadcastProviderMessage', ['id', 'message_number', 'created_at'])
+    MockProviderMessage = namedtuple(
+        'BroadcastProviderMessage',
+        ['id', 'message_number', 'created_at']
+    )
 
     provider_messages = [
-        MockProviderMessage(uuid.uuid4(), 78, '2020-12-10 11:19:44.130585'),
-        MockProviderMessage(uuid.uuid4(), 123, '2020-12-10 12:19:44.130585')
+        MockProviderMessage(uuid.uuid4(), 78, datetime(2020, 12, 16)),
+        MockProviderMessage(uuid.uuid4(), 123, datetime(2020, 12, 17))
     ]
-    sent = '2020-12-10 14:19:44.130585'
+    sent = '2020-12-18 14:19:44.130585'
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy_vodafone,
@@ -276,12 +283,12 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
         {
             "message_id": str(provider_messages[0].id),
             "message_number": '0000004e',
-            "sent": provider_messages[0].created_at
+            "sent": provider_messages[0].created_at.strftime(DATETIME_FORMAT)
         },
         {
             "message_id": str(provider_messages[1].id),
             "message_number": '0000007b',
-            "sent": provider_messages[1].created_at
+            "sent": provider_messages[1].created_at.strftime(DATETIME_FORMAT)
         },
     ]
     assert payload['sent'] == sent

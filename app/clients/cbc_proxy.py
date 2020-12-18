@@ -165,12 +165,16 @@ class CBCProxyEE(CBCProxyClientBase):
         identifier, previous_provider_messages,
         sent, message_number=None
     ):
+        from app import DATETIME_FORMAT
         payload = {
             'message_type': 'cancel',
             'identifier': identifier,
             'message_format': 'cap',
             "references": [
-                {"message_id": str(message.id), "sent": message.created_at} for message in previous_provider_messages
+                {
+                    "message_id": str(message.id),
+                    "sent": message.created_at.strftime(DATETIME_FORMAT)
+                } for message in previous_provider_messages
             ],
             'sent': sent,
         }
@@ -219,6 +223,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
     ):
         # avoid cyclical import
         from app.utils import format_sequential_number
+        from app import DATETIME_FORMAT
 
         payload = {
             'message_type': 'cancel',
@@ -229,7 +234,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
                 {
                     "message_id": str(message.id),
                     "message_number": format_sequential_number(message.message_number),
-                    "sent": message.created_at
+                    "sent": message.created_at.strftime(DATETIME_FORMAT)
                 } for message in previous_provider_messages
             ],
             'sent': sent,
