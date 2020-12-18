@@ -1,5 +1,6 @@
 import json
 import uuid
+from collections import namedtuple
 from unittest.mock import Mock
 
 import pytest
@@ -116,6 +117,60 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(mocker, cbc_proxy_ee):
     assert payload['expires'] == expires
 
 
+def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
+    identifier = 'my-identifier'
+    MockProviderMessage = namedtuple('BroadcastProviderMessage', ['id', 'message_number', 'created_at'])
+
+    provider_messages = [
+        MockProviderMessage(uuid.uuid4(), '0000007b', '2020-12-10 11:19:44.130585'),
+        MockProviderMessage(uuid.uuid4(), '0000004e', '2020-12-10 12:19:44.130585')
+    ]
+    sent = '2020-12-10 14:19:44.130585'
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy_ee,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+    }
+
+    cbc_proxy_ee.cancel_broadcast(
+        identifier=identifier,
+        message_number='00000050',
+        previous_provider_messages=provider_messages,
+        sent=sent
+    )
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='bt-ee-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+    kwargs = ld_client_mock.invoke.mock_calls[0][-1]
+    payload_bytes = kwargs['Payload']
+    payload = json.loads(payload_bytes)
+
+    assert payload['identifier'] == identifier
+    assert 'message_number' not in payload
+    assert payload['message_format'] == 'cap'
+    assert payload['message_type'] == 'cancel'
+    assert payload['references'] == [
+        {
+            "message_id": str(provider_messages[0].id),
+            "sent": provider_messages[0].created_at
+        },
+        {
+            "message_id": str(provider_messages[1].id),
+            "sent": provider_messages[1].created_at
+        },
+    ]
+    assert payload['sent'] == sent
+
+
 def test_cbc_proxy_vodafone_create_and_send_invokes_function(mocker, cbc_proxy_vodafone):
     identifier = 'my-identifier'
     headline = 'my-headline'
@@ -174,6 +229,62 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(mocker, cbc_proxy_v
     assert payload['areas'] == areas
     assert payload['sent'] == sent
     assert payload['expires'] == expires
+
+
+def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
+    identifier = 'my-identifier'
+    MockProviderMessage = namedtuple('BroadcastProviderMessage', ['id', 'message_number', 'created_at'])
+
+    provider_messages = [
+        MockProviderMessage(uuid.uuid4(), 78, '2020-12-10 11:19:44.130585'),
+        MockProviderMessage(uuid.uuid4(), 123, '2020-12-10 12:19:44.130585')
+    ]
+    sent = '2020-12-10 14:19:44.130585'
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy_vodafone,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.return_value = {
+        'StatusCode': 200,
+    }
+
+    cbc_proxy_vodafone.cancel_broadcast(
+        identifier=identifier,
+        message_number='00000050',
+        previous_provider_messages=provider_messages,
+        sent=sent
+    )
+
+    ld_client_mock.invoke.assert_called_once_with(
+        FunctionName='vodafone-1-proxy',
+        InvocationType='RequestResponse',
+        Payload=mocker.ANY,
+    )
+
+    kwargs = ld_client_mock.invoke.mock_calls[0][-1]
+    payload_bytes = kwargs['Payload']
+    payload = json.loads(payload_bytes)
+
+    assert payload['identifier'] == identifier
+    assert payload['message_number'] == '00000050'
+    assert payload['message_format'] == 'ibag'
+    assert payload['message_type'] == 'cancel'
+    assert payload['references'] == [
+        {
+            "message_id": str(provider_messages[0].id),
+            "message_number": '0000004e',
+            "sent": provider_messages[0].created_at
+        },
+        {
+            "message_id": str(provider_messages[1].id),
+            "message_number": '0000007b',
+            "sent": provider_messages[1].created_at
+        },
+    ]
+    assert payload['sent'] == sent
 
 
 def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):

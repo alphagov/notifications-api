@@ -244,17 +244,11 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(
     mock_cancel_broadcast.assert_called_once_with(
         identifier=str(broadcast_provider_message.id),
         message_number=mocker.ANY,
-        headline="GOV.UK Notify Broadcast",
-        description='this is an emergency broadcast message',
-        areas=[{
-            "polygon": [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
-        }],
         previous_provider_messages=[
             alert_event.get_provider_message(provider),
             update_event.get_provider_message(provider)
         ],
         sent=cancel_event.sent_at_as_cap_datetime_string,
-        expires=cancel_event.transmitted_finishes_at_as_cap_datetime_string,
     )
 
 
