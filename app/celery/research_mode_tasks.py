@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import json
 
 from flask import current_app
-from requests import request, RequestException, HTTPError
+from requests import request, HTTPError
 
 from notifications_utils.s3 import s3upload
 
@@ -66,16 +66,14 @@ def make_request(notification_type, provider, data, headers):
             timeout=60
         )
         response.raise_for_status()
-    except RequestException as e:
-        api_error = HTTPError(e)
+    except HTTPError as e:
         current_app.logger.error(
-            "API {} request on {} failed with {}".format(
-                "POST",
+            "API POST request on {} failed with status {}".format(
                 api_call,
-                api_error.response
+                e.response.status_code
             )
         )
-        raise api_error
+        raise e
     finally:
         current_app.logger.info("Mocked provider callback request finished")
     return response.json()

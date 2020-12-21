@@ -14,6 +14,7 @@ from app.celery.research_mode_tasks import (
     firetext_callback,
     ses_notification_callback,
     create_fake_letter_response_file,
+    HTTPError
 )
 from tests.conftest import set_config_values, Matcher
 
@@ -36,6 +37,25 @@ def test_make_mmg_callback(notify_api, rmock):
     assert rmock.called
     assert rmock.request_history[0].url == endpoint
     assert json.loads(rmock.request_history[0].text)['MSISDN'] == '07700900001'
+
+
+def test_callback_logs_on_api_call_failure(notify_api, rmock, mocker):
+    endpoint = "http://localhost:6011/notifications/sms/mmg"
+    rmock.request(
+        "POST",
+        endpoint,
+        json={"error": "something went wrong"},
+        status_code=500)
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+
+    with pytest.raises(HTTPError):
+        send_sms_response("mmg", "1234", "07700900001")
+
+    assert rmock.called
+    assert rmock.request_history[0].url == endpoint
+    mock_logger.assert_called_once_with(
+        'API POST request on http://localhost:6011/notifications/sms/mmg failed with status 500'
+    )
 
 
 @pytest.mark.parametrize("phone_number",
