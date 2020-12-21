@@ -58,6 +58,8 @@ def make_task(app):
 
             if has_request_context() and hasattr(request, 'request_id'):
                 kwargs['request_id'] = request.request_id
+            elif g.request_id:
+                kwargs['request_id'] = g.request_id
 
             with SQS_APPLY_ASYNC_DURATION_SECONDS.labels(self.name).time():
                 return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
