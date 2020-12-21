@@ -2,7 +2,7 @@ import datetime
 import pytest
 from flask import json, url_for
 
-from app import DATETIME_FORMAT
+from app.utils import DATETIME_FORMAT
 from tests import create_authorization_header
 from tests.app.db import (
     create_notification,

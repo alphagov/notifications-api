@@ -14,7 +14,6 @@ from app import (
     notify_celery,
     document_download_client,
     encryption,
-    DATETIME_FORMAT
 )
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter, sanitise_letter
 from app.celery.research_mode_tasks import create_fake_letter_response_file
@@ -54,6 +53,7 @@ from app.notifications.validators import (
     validate_template,
     check_is_message_too_long)
 from app.schema_validation import validate
+from app.utils import DATETIME_FORMAT
 from app.v2.errors import BadRequestError
 from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,

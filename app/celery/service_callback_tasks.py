@@ -8,11 +8,9 @@ from requests import (
     RequestException
 )
 
-from app import (
-    notify_celery,
-    encryption
-)
+from app import encryption, notify_celery
 from app.config import QueueNames
+from app.utils import DATETIME_FORMAT
 
 
 @notify_celery.task(bind=True, name="send-delivery-status", max_retries=5, default_retry_delay=300)
@@ -115,7 +113,6 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
 
 
 def create_delivery_status_callback_data(notification, service_callback_api):
-    from app import DATETIME_FORMAT, encryption
     data = {
         "notification_id": str(notification.id),
         "notification_client_reference": notification.client_reference,
@@ -133,7 +130,6 @@ def create_delivery_status_callback_data(notification, service_callback_api):
 
 
 def create_complaint_callback_data(complaint, notification, service_callback_api, recipient):
-    from app import DATETIME_FORMAT, encryption
     data = {
         "complaint_id": str(complaint.id),
         "notification_id": str(notification.id),

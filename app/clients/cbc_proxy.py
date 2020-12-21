@@ -4,6 +4,7 @@ import boto3
 from flask import current_app
 
 from app.config import BroadcastProvider
+from app.utils import DATETIME_FORMAT, format_sequential_number
 
 # The variable names in this file have specific meaning in a CAP message
 #
@@ -170,7 +171,10 @@ class CBCProxyEE(CBCProxyClientBase):
             'identifier': identifier,
             'message_format': 'cap',
             "references": [
-                {"message_id": str(message.id), "sent": message.created_at} for message in previous_provider_messages
+                {
+                    "message_id": str(message.id),
+                    "sent": message.created_at.strftime(DATETIME_FORMAT)
+                } for message in previous_provider_messages
             ],
             'sent': sent,
         }
@@ -217,8 +221,6 @@ class CBCProxyVodafone(CBCProxyClientBase):
     def cancel_broadcast(
         self, identifier, previous_provider_messages, sent, message_number
     ):
-        # avoid cyclical import
-        from app.utils import format_sequential_number
 
         payload = {
             'message_type': 'cancel',
@@ -229,7 +231,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
                 {
                     "message_id": str(message.id),
                     "message_number": format_sequential_number(message.message_number),
-                    "sent": message.created_at
+                    "sent": message.created_at.strftime(DATETIME_FORMAT)
                 } for message in previous_provider_messages
             ],
             'sent': sent,

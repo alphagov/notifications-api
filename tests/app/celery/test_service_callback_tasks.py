@@ -5,8 +5,9 @@ import pytest
 import requests_mock
 from freezegun import freeze_time
 
-from app import (DATETIME_FORMAT, encryption)
+from app import encryption
 from app.celery.service_callback_tasks import send_delivery_status_to_service, send_complaint_to_service
+from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_complaint,
     create_notification,

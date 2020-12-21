@@ -35,12 +35,8 @@ from app.hashing import (
     hashpw,
     check_hash
 )
-from app import (
-    db,
-    encryption,
-    DATETIME_FORMAT,
-    DATETIME_FORMAT_NO_TIMEZONE)
-from app.utils import get_dt_string_or_none
+from app import db, encryption
+from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, get_dt_string_or_none
 
 from app.history_meta import Versioned
 
