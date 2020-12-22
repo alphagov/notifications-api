@@ -212,7 +212,7 @@ def test_get_uploaded_letters_by_print_date(admin_request, sample_template):
 def test_get_uploaded_letters_by_print_date_paginates(admin_request, sample_template):
     letter_template = create_precompiled_template(sample_template.service)
 
-    for i in range(101):
+    for _ in range(101):
         create_uploaded_letter(
             letter_template, sample_template.service, status='delivered',
             created_at=datetime.utcnow() - timedelta(minutes=1)

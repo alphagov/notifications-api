@@ -543,7 +543,7 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
                                                            include_from_test_key=include_from_test_key,
                                                            )
     results = []
-    for service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
+    for _service_id, rows in itertools.groupby(stats, lambda x: x.service_id):
         rows = list(rows)
         s = statistics.format_statistics(rows)
         results.append({

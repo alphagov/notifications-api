@@ -138,13 +138,13 @@ def test_should_not_delete_invitations_less_than_two_days_old(
     assert InvitedUser.query.first().email_address == "valid@2.com"
 
 
-def make_invitation(user, service, age=timedelta(hours=0), email_address="test@test.com"):
+def make_invitation(user, service, age=None, email_address="test@test.com"):
     verify_code = InvitedUser(
         email_address=email_address,
         from_user=user,
         service=service,
         status='pending',
-        created_at=datetime.utcnow() - age,
+        created_at=datetime.utcnow() - (age or timedelta(hours=0)),
         permissions='manage_settings',
         folder_permissions=[str(uuid.uuid4())]
     )

@@ -107,7 +107,7 @@ def create_service(
         service_id=None,
         restricted=False,
         count_as_live=True,
-        service_permissions=[EMAIL_TYPE, SMS_TYPE],
+        service_permissions=None,
         research_mode=False,
         active=True,
         email_from=None,
@@ -136,7 +136,12 @@ def create_service(
             go_live_at=go_live_at,
             crown=crown
         )
-        dao_create_service(service, service.created_by, service_id, service_permissions=service_permissions)
+        dao_create_service(
+            service,
+            service.created_by,
+            service_id,
+            service_permissions=service_permissions,
+        )
 
         service.active = active
         service.research_mode = research_mode
@@ -666,12 +671,12 @@ def create_invited_org_user(organisation, invited_by, email_address='invite@exam
     return invited_org_user
 
 
-def create_daily_sorted_letter(billing_day=date(2018, 1, 18),
+def create_daily_sorted_letter(billing_day=None,
                                file_name="Notify-20180118123.rs.txt",
                                unsorted_count=0,
                                sorted_count=0):
     daily_sorted_letter = DailySortedLetter(
-        billing_day=billing_day,
+        billing_day=billing_day or date(2018, 1, 18),
         file_name=file_name,
         unsorted_count=unsorted_count,
         sorted_count=sorted_count
@@ -1007,22 +1012,22 @@ def create_service_contact_list(
 def create_broadcast_message(
     template,
     created_by=None,
-    personalisation={},
+    personalisation=None,
     status=BroadcastStatusType.DRAFT,
     starts_at=None,
     finishes_at=None,
-    areas={},
+    areas=None,
 ):
     broadcast_message = BroadcastMessage(
         service_id=template.service_id,
         template_id=template.id,
         template_version=template.version,
-        personalisation=personalisation,
+        personalisation=personalisation or {},
         status=status,
         starts_at=starts_at,
         finishes_at=finishes_at,
         created_by_id=created_by.id if created_by else template.created_by_id,
-        areas=areas,
+        areas=areas or {},
     )
     db.session.add(broadcast_message)
     db.session.commit()

@@ -212,7 +212,7 @@ def test_create_nightly_billing_for_day_different_sent_by(
     records = FactBilling.query.order_by('rate_multiplier').all()
 
     assert len(records) == 2
-    for i, record in enumerate(records):
+    for _, record in enumerate(records):
         assert record.bst_date == datetime.date(yesterday)
         assert record.rate == Decimal(1.33)
         assert record.billable_units == 1
@@ -226,7 +226,7 @@ def test_create_nightly_billing_for_day_different_letter_postage(
     yesterday = datetime.now() - timedelta(days=1)
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
-    for i in range(2):
+    for _ in range(2):
         create_notification(
             created_at=yesterday,
             template=sample_letter_template,

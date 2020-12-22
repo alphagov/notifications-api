@@ -250,7 +250,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
 
 
 def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, sample_user):
-    for i in range(10):
+    for _ in range(10):
         verify_code = VerifyCode(
             code_type='sms',
             _code=12345,

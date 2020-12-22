@@ -118,7 +118,7 @@ def test_should_set_cache_value_as_value_from_database_if_cache_not_set(
 ):
     serialised_service = SerialisedService.from_id(sample_service.id)
     with freeze_time("2016-01-01 12:00:00.000000"):
-        for x in range(5):
+        for _ in range(5):
             create_notification(sample_template)
         mocker.patch('app.notifications.validators.redis_store.get', return_value=None)
         mocker.patch('app.notifications.validators.redis_store.set')
@@ -149,7 +149,7 @@ def test_check_service_message_limit_over_message_limit_fails(key_type, sample_s
         template = create_template(sample_service)
         serialised_service = SerialisedService.from_id(sample_service.id)
 
-        for x in range(5):
+        for _ in range(5):
             create_notification(template)
         with pytest.raises(TooManyRequestsError) as e:
             check_service_over_daily_message_limit(key_type, serialised_service)

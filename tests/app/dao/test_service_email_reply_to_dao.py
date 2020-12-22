@@ -73,7 +73,7 @@ def test_add_reply_to_email_address_for_service_creates_another_email_for_servic
         elif x.email_address == 'second@address.com':
             assert not x.is_default
         else:
-            assert False
+            raise AssertionError()
 
 
 def test_add_reply_to_email_address_new_reply_to_is_default_existing_reply_to_is_not(notify_db_session):
@@ -89,7 +89,7 @@ def test_add_reply_to_email_address_new_reply_to_is_default_existing_reply_to_is
         elif x.email_address == 'second@address.com':
             assert x.is_default
         else:
-            assert False
+            raise AssertionError()
 
 
 def test_add_reply_to_email_address_can_add_a_third_reply_to_address(sample_service):
@@ -112,7 +112,7 @@ def test_add_reply_to_email_address_can_add_a_third_reply_to_address(sample_serv
         elif x.email_address == 'third@address.com':
             assert not x.is_default
         else:
-            assert False
+            raise AssertionError()
 
 
 def test_add_reply_to_email_address_ensures_first_reply_to_is_default(sample_service):
@@ -161,7 +161,7 @@ def test_update_reply_to_email_address_set_updated_to_default(sample_service):
         elif x.email_address == 'first@address.com':
             assert not x.is_default
         else:
-            assert False
+            raise AssertionError()
 
 
 def test_update_reply_to_email_address_raises_exception_if_single_reply_to_and_setting_default_to_false(sample_service):

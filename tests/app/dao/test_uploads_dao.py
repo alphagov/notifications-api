@@ -320,28 +320,28 @@ def test_get_uploaded_letters_by_print_date(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
     # Letters for the previous day’s run
-    for i in range(3):
+    for _ in range(3):
         create_uploaded_letter(
             letter_template, sample_template.service, status='delivered',
             created_at=datetime.utcnow().replace(day=1, hour=17, minute=29, second=59)
         )
 
     # Letters from yesterday that rolled into today’s run
-    for i in range(30):
+    for _ in range(30):
         create_uploaded_letter(
             letter_template, sample_template.service, status='delivered',
             created_at=datetime.utcnow().replace(day=1, hour=17, minute=30, second=0)
         )
 
     # Letters that just made today’s run
-    for i in range(30):
+    for _ in range(30):
         create_uploaded_letter(
             letter_template, sample_template.service, status='delivered',
             created_at=datetime.utcnow().replace(hour=17, minute=29, second=59)
         )
 
     # Letters that just missed today’s run
-    for i in range(3):
+    for _ in range(3):
         create_uploaded_letter(
             letter_template, sample_template.service, status='delivered',
             created_at=datetime.utcnow().replace(hour=17, minute=30, second=0)

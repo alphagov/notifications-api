@@ -479,7 +479,7 @@ def test_should_cache_service_and_api_key_lookups(mocker, client, sample_api_key
         wraps=dao_fetch_service_by_id,
     )
 
-    for i in range(5):
+    for _ in range(5):
         token = __create_token(sample_api_key.service_id)
         client.get('/notifications', headers={
             'Authorization': f'Bearer {token}'

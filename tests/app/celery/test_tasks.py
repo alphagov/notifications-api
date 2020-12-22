@@ -1475,7 +1475,7 @@ def test_send_inbound_sms_to_service_does_not_sent_request_when_inbound_api_does
     mocked = mocker.patch("requests.request")
     send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
-    mocked.call_count == 0
+    assert mocked.call_count == 0
 
 
 def test_send_inbound_sms_to_service_retries_if_request_returns_500(notify_api, sample_service, mocker):
@@ -1525,7 +1525,7 @@ def test_send_inbound_sms_to_service_does_not_retries_if_request_returns_404(not
                           status_code=404)
         send_inbound_sms_to_service(inbound_sms.id, inbound_sms.service_id)
 
-    mocked.call_count == 0
+    assert mocked.call_count == 0
 
 
 def test_process_incomplete_job_sms(mocker, sample_template):

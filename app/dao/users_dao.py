@@ -23,12 +23,12 @@ def create_secret_code():
     return ''.join(map(str, [SystemRandom().randrange(10) for i in range(5)]))
 
 
-def save_user_attribute(usr, update_dict={}):
-    db.session.query(User).filter_by(id=usr.id).update(update_dict)
+def save_user_attribute(usr, update_dict=None):
+    db.session.query(User).filter_by(id=usr.id).update(update_dict or {})
     db.session.commit()
 
 
-def save_model_user(user, update_dict={}, password=None, validated_email_access=False):
+def save_model_user(user, update_dict=None, password=None, validated_email_access=False):
     if password:
         user.password = password
         user.password_changed_at = datetime.utcnow()
@@ -36,7 +36,7 @@ def save_model_user(user, update_dict={}, password=None, validated_email_access=
         user.email_access_validated_at = datetime.utcnow()
     if update_dict:
         _remove_values_for_keys_if_present(update_dict, ['id', 'password_changed_at'])
-        db.session.query(User).filter_by(id=user.id).update(update_dict)
+        db.session.query(User).filter_by(id=user.id).update(update_dict or {})
     else:
         db.session.add(user)
     db.session.commit()

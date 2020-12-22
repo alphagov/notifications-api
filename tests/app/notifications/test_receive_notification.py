@@ -385,7 +385,7 @@ def test_returns_ok_to_firetext_if_mismatched_sms_sender(notify_db_session, clie
 
     assert not InboundSms.query.all()
     assert result['status'] == 'ok'
-    mocked.call_count == 0
+    assert mocked.call_count == 0
 
 
 @pytest.mark.parametrize(

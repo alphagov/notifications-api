@@ -512,6 +512,8 @@ def test_removing_all_permission_returns_service_with_no_permissions(notify_db_s
     dao_remove_service_permission(service_id=service.id, permission=EMAIL_TYPE)
     dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
     dao_remove_service_permission(service_id=service.id, permission=INTERNATIONAL_SMS_TYPE)
+    dao_remove_service_permission(service_id=service.id, permission=UPLOAD_LETTERS)
+    dao_remove_service_permission(service_id=service.id, permission=INTERNATIONAL_LETTERS)
 
     service = dao_fetch_service_by_id(service.id)
     assert len(service.permissions) == 0
@@ -1089,22 +1091,22 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
 
     for service in services:
         template = create_template(service)
-        for x in range(0, 5):
+        for _ in range(0, 5):
             create_notification(template, normalised_to=tv_number, status="permanent-failure")
 
     service_6 = create_service(service_name="Service 6")  # notifications too old are excluded
     with freeze_time("2019-11-30 15:00:00.000000"):
         template_6 = create_template(service_6)
-        for x in range(0, 5):
+        for _ in range(0, 5):
             create_notification(template_6, normalised_to=tv_number, status="permanent-failure")
 
     service_2 = create_service(service_name="Service 2")  # below threshold is excluded
     template_2 = create_template(service_2)
     create_notification(template_2, normalised_to=tv_number, status="permanent-failure")
-    for x in range(0, 5):
+    for _ in range(0, 5):
         # test key type is excluded
         create_notification(template_2, normalised_to=tv_number, status="permanent-failure", key_type='test')
-    for x in range(0, 5):
+    for _ in range(0, 5):
         # normal numbers are not counted by the query
         create_notification(template_2, normalised_to=normal_number, status="delivered")
         create_notification(template_2, normalised_to=normal_number_resembling_tv_number, status="delivered")
@@ -1126,7 +1128,7 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
 
     for service in services:
         template = create_template(service)
-        for x in range(0, 3):
+        for _ in range(0, 3):
             create_notification(template, status="permanent-failure")
             create_notification(template, status="delivered")
             create_notification(template, status="sending")
@@ -1135,12 +1137,12 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
     service_6 = create_service(service_name="Service 6")
     with freeze_time("2019-11-30 15:00:00.000000"):
         template_6 = create_template(service_6)
-        for x in range(0, 4):
+        for _ in range(0, 4):
             create_notification(template_6, status="permanent-failure")  # notifications too old are excluded
 
     service_2 = create_service(service_name="Service 2")
     template_2 = create_template(service_2)
-    for x in range(0, 4):
+    for _ in range(0, 4):
         create_notification(template_2, status="permanent-failure", key_type='test')  # test key type is excluded
     create_notification(template_2, status="permanent-failure")  # below threshold is excluded
 
