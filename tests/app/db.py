@@ -1007,22 +1007,22 @@ def create_service_contact_list(
 def create_broadcast_message(
     template,
     created_by=None,
-    personalisation={},
+    personalisation=None,
     status=BroadcastStatusType.DRAFT,
     starts_at=None,
     finishes_at=None,
-    areas={},
+    areas=None,
 ):
     broadcast_message = BroadcastMessage(
         service_id=template.service_id,
         template_id=template.id,
         template_version=template.version,
-        personalisation=personalisation,
+        personalisation=personalisation or {},
         status=status,
         starts_at=starts_at,
         finishes_at=finishes_at,
         created_by_id=created_by.id if created_by else template.created_by_id,
-        areas=areas,
+        areas=areas or {},
     )
     db.session.add(broadcast_message)
     db.session.commit()
