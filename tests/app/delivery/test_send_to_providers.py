@@ -47,6 +47,23 @@ def test_provider_to_use_should_return_random_provider(mocker, notify_db_session
     assert ret.get_name() == 'mmg'
 
 
+def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
+    mock_choices = mocker.patch(
+        'app.delivery.send_to_providers.random.choices',
+        wraps=send_to_providers.random.choices,
+    )
+
+    send_to_providers.provider_cache.clear()
+
+    results = [
+        send_to_providers.provider_to_use('sms', international=False)
+        for _ in range(10)
+    ]
+
+    assert all(result == results[0] for result in results)
+    assert len(mock_choices.call_args_list) == 1
+
+
 def test_provider_to_use_should_only_return_mmg_for_international(mocker, notify_db_session):
     mmg = get_provider_details_by_identifier('mmg')
     mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
@@ -72,6 +89,8 @@ def test_provider_to_use_should_only_return_active_providers(mocker, restore_pro
 def test_provider_to_use_raises_if_no_active_providers(mocker, restore_provider_details):
     mmg = get_provider_details_by_identifier('mmg')
     mmg.active = False
+
+    send_to_providers.provider_cache.clear()
 
     with pytest.raises(Exception):
         send_to_providers.provider_to_use('sms', international=True)
@@ -624,6 +643,7 @@ def test_should_send_sms_to_international_providers(
         international=True,
         reply_to_text=sample_template.service.get_default_sms_sender()
     )
+    send_to_providers.provider_cache.clear()
     send_to_providers.send_sms_to_provider(
         notification_uk
     )
@@ -674,6 +694,7 @@ def test_should_handle_sms_sender_and_prefix_message(
     template = create_template(service, content='bar')
     notification = create_notification(template, reply_to_text=sms_sender)
 
+    send_to_providers.provider_cache.clear()
     send_to_providers.send_sms_to_provider(notification)
 
     mmg_client.send_sms.assert_called_once_with(

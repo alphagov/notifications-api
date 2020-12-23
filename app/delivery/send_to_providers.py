@@ -1,7 +1,7 @@
 import random
 from urllib import parse
 from datetime import datetime, timedelta
-
+from cachetools import TTLCache, cached
 from flask import current_app
 from notifications_utils.recipients import (
     validate_and_format_phone_number,
@@ -148,6 +148,10 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
+provider_cache = TTLCache(maxsize=8, ttl=2)
+
+
+@cached(cache=provider_cache)
 def provider_to_use(notification_type, international=False):
     active_providers = [
         p for p in get_provider_details_by_notification_type(notification_type, international) if p.active
