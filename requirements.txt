@@ -12,7 +12,7 @@ Flask-Migrate==2.5.3
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.1.2
 click-datetime==0.2
-eventlet==0.29.1
+eventlet==0.30.0
 gunicorn==20.0.4
 iso8601==0.1.13
 itsdangerous==1.1.0
@@ -20,11 +20,11 @@ jsonschema==3.2.0
 marshmallow-sqlalchemy==0.23.1
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.8.6
-PyJWT==1.7.1
-SQLAlchemy==1.3.20
+PyJWT==2.0.0
+SQLAlchemy==1.3.22
 strict-rfc3339==0.7
 rfc3987==1.3.8
-cachetools==4.1.1
+cachetools==4.2.0
 
 notifications-python-client==5.7.0
 
