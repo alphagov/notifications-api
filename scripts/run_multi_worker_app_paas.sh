@@ -3,6 +3,7 @@
 set -e -o pipefail
 
 TERMINATE_TIMEOUT=9
+MAX_DISK_SPACE_USAGE=75
 readonly LOGS_DIR="/home/vcap/logs"
 
 function check_params {
@@ -124,6 +125,23 @@ function ensure_celery_is_running {
   fi
 }
 
+function check_disk_space {
+    # get something like:
+    #
+    # Filesystem     Use%
+    # overlay         56%
+    # tmpfs            0%
+    #
+    # and only keep '56'
+    SPACE_USAGE=$(df --output="source,pcent" | grep overlay | tr --squeeze-repeats " " | cut -f2 -d" "| cut -f1 -d"%")
+
+    if [[ "${SPACE_USAGE}" -ge "${MAX_DISK_SPACE_USAGE}" ]]; then
+        echo "Terminating ${NOTIFY_APP_NAME}, instance ${INSTANCE_INDEX} because we're running out of disk space"
+        echo "Usage: ${SPACE_USAGE}% - limit ${MAX_DISK_SPACE_USAGE}%"
+        exit
+    fi
+}
+
 function run {
   while true; do
     get_celery_pids
@@ -135,6 +153,7 @@ function run {
     done
     kill -0 ${AWSLOGS_AGENT_PID} 2&>/dev/null || start_aws_logs_agent
     kill -0 ${LOGS_TAIL_PID} 2&>/dev/null || start_logs_tail
+    check_disk_space
     sleep 1
   done
 }
