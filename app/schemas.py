@@ -410,6 +410,7 @@ class TemplateHistorySchema(BaseSchema):
 
     reply_to = fields.Method("get_reply_to", allow_none=True)
     reply_to_text = fields.Method("get_reply_to_text", allow_none=True)
+    process_type = field_for(models.Template, 'process_type')
 
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
