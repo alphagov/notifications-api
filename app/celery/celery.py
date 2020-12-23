@@ -1,10 +1,9 @@
 import time
-
 from gds_metrics.metrics import Histogram
 from celery import Celery, Task
 from celery.signals import worker_process_shutdown
 from flask import g, request
-from flask.ctx import has_request_context
+from flask.ctx import has_request_context, has_app_context
 
 
 @worker_process_shutdown.connect
@@ -55,9 +54,10 @@ def make_task(app):
         def apply_async(self, args=None, kwargs=None, task_id=None, producer=None,
                         link=None, link_error=None, **options):
             kwargs = kwargs or {}
-
             if has_request_context() and hasattr(request, 'request_id'):
                 kwargs['request_id'] = request.request_id
+            elif has_app_context() and 'request_id' in g:
+                kwargs['request_id'] = g.request_id
 
             with SQS_APPLY_ASYNC_DURATION_SECONDS.labels(self.name).time():
                 return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
