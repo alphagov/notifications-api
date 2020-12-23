@@ -185,7 +185,7 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert NotificationHistory.query.count() == 0
     persisted_notification = Notification.query.all()[0]
     assert persisted_notification.id == n_id
-    persisted_notification.job_id == sample_job.id
+    assert persisted_notification.job_id == sample_job.id
     assert persisted_notification.job_row_number == 10
     assert persisted_notification.created_at == created_at
 

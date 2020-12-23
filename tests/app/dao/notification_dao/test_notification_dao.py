@@ -511,7 +511,7 @@ def test_get_notification_for_job(sample_notification):
 
 
 def test_get_all_notifications_for_job(sample_job):
-    for i in range(0, 5):
+    for _ in range(0, 5):
         try:
             create_notification(template=sample_job.template, job=sample_job)
         except IntegrityError:
@@ -546,7 +546,7 @@ def test_dao_get_notification_count_for_job_id(notify_db_session):
     service = create_service()
     template = create_template(service)
     job = create_job(template, notification_count=3)
-    for i in range(3):
+    for _ in range(3):
         create_notification(job=job)
 
     create_notification(template)

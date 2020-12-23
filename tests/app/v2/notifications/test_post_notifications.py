@@ -223,7 +223,7 @@ def test_should_cache_template_lookups_in_memory(mocker, client, sample_template
         'template_id': str(sample_template.id),
     }
 
-    for i in range(5):
+    for _ in range(5):
         auth_header = create_authorization_header(service_id=sample_template.service_id)
         client.post(
             path='/v2/notifications/sms',

@@ -104,8 +104,9 @@ def __format_message(e):
             error_path = e.path.popleft()
             # no need to catch IndexError exception explicity as
             # error_path is None if e.path has no items
-        finally:
-            return error_path
+        except Exception:
+            pass
+        return error_path
 
     def get_error_message(e):
         # e.cause is an exception (such as InvalidPhoneError). if it's not present it was a standard jsonschema error

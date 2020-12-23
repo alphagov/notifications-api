@@ -536,7 +536,7 @@ def test_create_job_returns_400_if_archived_template(client, sample_template, mo
 
 
 def _setup_jobs(template, number_of_jobs=5):
-    for i in range(number_of_jobs):
+    for _ in range(number_of_jobs):
         create_job(template=template)
 
 

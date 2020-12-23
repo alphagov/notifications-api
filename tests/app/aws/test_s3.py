@@ -13,11 +13,11 @@ from app.aws.s3 import (
 from tests.app.conftest import datetime_in_past
 
 
-def single_s3_object_stub(key='foo', last_modified=datetime.utcnow()):
+def single_s3_object_stub(key='foo', last_modified=None):
     return {
         'ETag': '"d41d8cd98f00b204e9800998ecf8427e"',
         'Key': key,
-        'LastModified': last_modified
+        'LastModified': last_modified or datetime.utcnow(),
     }
 
 

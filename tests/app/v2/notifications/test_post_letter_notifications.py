@@ -463,14 +463,24 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     assert not persist_mock.called
 
 
-@pytest.mark.parametrize('service_args', [
-    {'service_permissions': [EMAIL_TYPE, SMS_TYPE]},
-    {'restricted': True}
+@pytest.mark.parametrize('service_args, expected_status, expected_message', [
+    (
+        {'service_permissions': [EMAIL_TYPE, SMS_TYPE]},
+        400,
+        'Service is not allowed to send letters',
+    ),
+    (
+        {'restricted': True},
+        403,
+        'Cannot send letters when service is in trial mode',
+    )
 ])
 def test_post_letter_notification_returns_403_if_not_allowed_to_send_notification(
     client,
     notify_db_session,
-    service_args
+    service_args,
+    expected_status,
+    expected_message,
 ):
     service = create_service(**service_args)
     template = create_template(service, template_type=LETTER_TYPE)
@@ -480,10 +490,10 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
-    assert error_json['status_code'] == 400
+    error_json = letter_request(client, data, service_id=service.id, _expected_status=expected_status)
+    assert error_json['status_code'] == expected_status
     assert error_json['errors'] == [
-        {'error': 'BadRequestError', 'message': 'Service is not allowed to send letters'}
+        {'error': 'BadRequestError', 'message': expected_message}
     ]
 
 

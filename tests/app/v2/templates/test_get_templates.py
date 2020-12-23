@@ -76,7 +76,7 @@ def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_ser
     num_templates = 3
 
     templates = []
-    for i in range(num_templates):
+    for _ in range(num_templates):
         templates.append(create_template(sample_service, template_type=tmp_type))
 
     for other_type in TEMPLATE_TYPES:

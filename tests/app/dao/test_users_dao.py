@@ -124,12 +124,12 @@ def test_should_not_delete_verification_codes_less_than_one_day_old(sample_user)
     assert VerifyCode.query.one()._code == "12345"
 
 
-def make_verify_code(user, age=timedelta(hours=0), expiry_age=timedelta(0), code="12335", code_used=False):
+def make_verify_code(user, age=None, expiry_age=None, code="12335", code_used=False):
     verify_code = VerifyCode(
         code_type='sms',
         _code=code,
-        created_at=datetime.utcnow() - age,
-        expiry_datetime=datetime.utcnow() - expiry_age,
+        created_at=datetime.utcnow() - (age or timedelta(hours=0)),
+        expiry_datetime=datetime.utcnow() - (expiry_age or timedelta(0)),
         user=user,
         code_used=code_used
     )

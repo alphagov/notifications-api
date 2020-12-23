@@ -34,18 +34,18 @@ class RateLimitError(InvalidRequest):
 class BadRequestError(InvalidRequest):
     message = "An error occurred"
 
-    def __init__(self, fields=[], message=None, status_code=400):
+    def __init__(self, fields=None, message=None, status_code=400):
         self.status_code = status_code
-        self.fields = fields
+        self.fields = fields or []
         self.message = message if message else self.message
 
 
 class ValidationError(InvalidRequest):
     message = "Your notification has failed validation"
 
-    def __init__(self, fields=[], message=None, status_code=400):
+    def __init__(self, fields=None, message=None, status_code=400):
         self.status_code = status_code
-        self.fields = fields
+        self.fields = fields or []
         self.message = message if message else self.message
 
 

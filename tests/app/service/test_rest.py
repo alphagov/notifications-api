@@ -2149,7 +2149,7 @@ def test_search_for_notification_by_to_field_return_multiple_matches(client, sam
 def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(
     client, sample_template
 ):
-    for i in range(51):
+    for _ in range(51):
         create_notification(sample_template, to_field='+447700900855', normalised_to='447700900855')
 
     response = client.get(
