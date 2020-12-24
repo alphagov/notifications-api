@@ -52,7 +52,7 @@
   'notify-delivery-celery-beat': {'memory': '128M'},
   'notify-delivery-worker-jobs': {},
   'notify-delivery-worker-research': {},
-  'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '3G'},
+  'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '4G'},
   'notify-delivery-worker-periodic': {},
   'notify-delivery-worker-reporting': {
     'additional_env_vars': {
@@ -61,7 +61,7 @@
     }
   },
   'notify-delivery-worker-priority': {},
-  'notify-delivery-worker-letters': {},
+  'notify-delivery-worker-letters': {'memory': '2G'},
   'notify-delivery-worker-retry-tasks': {},
   'notify-delivery-worker-internal': {},
   'notify-delivery-worker-receipts': {},
