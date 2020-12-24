@@ -1,4 +1,5 @@
 import json
+from abc import ABC, abstractmethod
 
 import boto3
 from flask import current_app
@@ -49,11 +50,18 @@ class CBCProxyClient:
         return proxy_classes[provider](self._lambda_client)
 
 
-class CBCProxyClientBase:
+class CBCProxyClientBase(ABC):
     lambda_name = None
 
-    LANGUAGE_ENGLISH = 'en-GB'
-    LANGUAGE_WELSH = 'cy-GB'
+    @property
+    @abstractmethod
+    def LANGUAGE_ENGLISH(self):
+        pass
+
+    @property
+    @abstractmethod
+    def LANGUAGE_WELSH(self):
+        pass
 
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
@@ -128,6 +136,9 @@ class CBCProxyCanary(CBCProxyClientBase):
     """
     lambda_name = 'canary'
 
+    LANGUAGE_ENGLISH = None
+    LANGUAGE_WELSH = None
+
     def send_canary(
         self,
         identifier,
@@ -137,6 +148,9 @@ class CBCProxyCanary(CBCProxyClientBase):
 
 class CBCProxyEE(CBCProxyClientBase):
     lambda_name = 'bt-ee-1-proxy'
+
+    LANGUAGE_ENGLISH = 'en-GB'
+    LANGUAGE_WELSH = 'cy-GB'
 
     def send_link_test(
         self,
