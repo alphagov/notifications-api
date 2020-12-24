@@ -236,6 +236,7 @@ def test_delete_notifications_deletes_letters_not_sent_and_in_final_state_from_t
     mock_get_s3.assert_not_called()
 
 
+@freeze_time('2020-12-24 04:30')
 @pytest.mark.parametrize('notification_status', ['delivered', 'returned-letter', 'technical-failure'])
 def test_delete_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3(
     sample_service, mocker, notification_status
