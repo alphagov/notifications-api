@@ -2,6 +2,7 @@ import json
 
 import boto3
 from flask import current_app
+from notifications_utils.template import non_gsm_characters
 
 from app.config import BroadcastProvider
 from app.utils import DATETIME_FORMAT, format_sequential_number
@@ -50,6 +51,9 @@ class CBCProxyClient:
 
 class CBCProxyClientBase:
     lambda_name = None
+
+    LANGUAGE_ENGLISH = 'en-GB'
+    LANGUAGE_WELSH = 'cy-GB'
 
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
@@ -111,6 +115,11 @@ class CBCProxyClientBase:
 
         return result
 
+    def infer_language_from(self, content):
+        if non_gsm_characters(content):
+            return self.LANGUAGE_WELSH
+        return self.LANGUAGE_ENGLISH
+
 
 class CBCProxyCanary(CBCProxyClientBase):
     """
@@ -158,6 +167,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'areas': areas,
             'sent': sent,
             'expires': expires,
+            'language': self.infer_language_from(description),
         }
         self._invoke_lambda(payload=payload)
 
@@ -183,6 +193,9 @@ class CBCProxyEE(CBCProxyClientBase):
 
 class CBCProxyVodafone(CBCProxyClientBase):
     lambda_name = 'vodafone-1-proxy'
+
+    LANGUAGE_ENGLISH = 'English'
+    LANGUAGE_WELSH = 'Welsh'
 
     def send_link_test(
         self,
@@ -215,6 +228,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'areas': areas,
             'sent': sent,
             'expires': expires,
+            'language': self.infer_language_from(description),
         }
         self._invoke_lambda(payload=payload)
 

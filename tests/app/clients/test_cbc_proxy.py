@@ -59,10 +59,18 @@ def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy_ee):
     assert secret == 'cbc-proxy-aws-secret-access-key'
 
 
-def test_cbc_proxy_ee_create_and_send_invokes_function(mocker, cbc_proxy_ee):
+@pytest.mark.parametrize('description, expected_language', (
+    ('my-description', 'en-GB'),
+    ('mŷ-description', 'cy-GB'),
+))
+def test_cbc_proxy_ee_create_and_send_invokes_function(
+    mocker,
+    cbc_proxy_ee,
+    description,
+    expected_language,
+):
     identifier = 'my-identifier'
     headline = 'my-headline'
-    description = 'my-description'
 
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
@@ -117,6 +125,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(mocker, cbc_proxy_ee):
     assert payload['areas'] == areas
     assert payload['sent'] == sent
     assert payload['expires'] == expires
+    assert payload['language'] == expected_language
 
 
 def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
@@ -175,10 +184,18 @@ def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     assert payload['sent'] == sent
 
 
-def test_cbc_proxy_vodafone_create_and_send_invokes_function(mocker, cbc_proxy_vodafone):
+@pytest.mark.parametrize('description, expected_language', (
+    ('my-description', 'English'),
+    ('mŷ-description', 'Welsh'),
+))
+def test_cbc_proxy_vodafone_create_and_send_invokes_function(
+    mocker,
+    cbc_proxy_vodafone,
+    description,
+    expected_language,
+):
     identifier = 'my-identifier'
     headline = 'my-headline'
-    description = 'my-description'
 
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
@@ -233,6 +250,7 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(mocker, cbc_proxy_v
     assert payload['areas'] == areas
     assert payload['sent'] == sent
     assert payload['expires'] == expires
+    assert payload['language'] == expected_language
 
 
 def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
