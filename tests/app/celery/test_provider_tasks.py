@@ -1,11 +1,11 @@
 import pytest
 from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
-from notifications_utils.recipients import InvalidEmailError
 
 import app
 from app.celery import provider_tasks
 from app.celery.provider_tasks import deliver_sms, deliver_email
+from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import AwsSesClientException, AwsSesClientThrottlingSendRateException
 from app.exceptions import NotificationTechnicalFailureException
 
@@ -93,8 +93,11 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_email_task
     assert sample_notification.status == 'technical-failure'
 
 
-def test_should_technical_error_and_not_retry_if_invalid_email(sample_notification, mocker):
-    mocker.patch('app.delivery.send_to_providers.send_email_to_provider', side_effect=InvalidEmailError('bad email'))
+def test_should_technical_error_and_not_retry_if_EmailClientNonRetryableException(sample_notification, mocker):
+    mocker.patch(
+        'app.delivery.send_to_providers.send_email_to_provider',
+        side_effect=EmailClientNonRetryableException('bad email')
+    )
     mocker.patch('app.celery.provider_tasks.deliver_email.retry')
 
     deliver_email(sample_notification.id)

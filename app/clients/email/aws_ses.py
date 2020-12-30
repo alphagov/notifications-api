@@ -5,7 +5,7 @@ from time import monotonic
 from notifications_utils.recipients import InvalidEmailError
 
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
-from app.clients.email import (EmailClientException, EmailClient)
+from app.clients.email import EmailClient, EmailClientException, EmailClientNonRetryableException
 
 ses_response_map = {
     'Permanent': {
@@ -122,7 +122,7 @@ class AwsSesClient(EmailClient):
 
             # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
             if e.response['Error']['Code'] == 'InvalidParameterValue':
-                raise InvalidEmailError(str(e))
+                raise EmailClientNonRetryableException(str(e))
             elif (
                 e.response['Error']['Code'] == 'Throttling'
                 and e.response['Error']['Message'] == 'Maximum sending rate exceeded.'
