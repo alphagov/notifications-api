@@ -113,7 +113,6 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
         )
 
     assert 'some error message from amazon' in str(excinfo.value)
-    assert 'definitely@invalid_email.com' in str(excinfo.value)
 
 
 def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRateException(mocker):
