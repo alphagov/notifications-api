@@ -1,10 +1,10 @@
 from flask import current_app
-from notifications_utils.recipients import InvalidEmailError
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
 from app.config import QueueNames
+from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import AwsSesClientThrottlingSendRateException
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
@@ -47,8 +47,10 @@ def deliver_email(self, notification_id):
         if not notification:
             raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
-    except InvalidEmailError as e:
-        current_app.logger.exception(e)
+    except EmailClientNonRetryableException as e:
+        current_app.logger.exception(
+            f"Email notification {notification_id} failed: {e}"
+        )
         update_notification_status_by_id(notification_id, 'technical-failure')
     except Exception as e:
         try:

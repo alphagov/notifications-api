@@ -1,9 +1,9 @@
 import botocore
 import pytest
 from unittest.mock import Mock, ANY
-from notifications_utils.recipients import InvalidEmailError
 
 from app import aws_ses_client
+from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import get_aws_responses, AwsSesClientException, AwsSesClientThrottlingSendRateException
 
 
@@ -91,7 +91,7 @@ def test_send_email_handles_punycode_to_address(notify_api, mocker):
     )
 
 
-def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
+def test_send_email_raises_invalid_parameter_value_error_as_EmailClientNonRetryableException(mocker):
     boto_mock = mocker.patch.object(aws_ses_client, '_client', create=True)
     mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
     error_response = {
@@ -104,7 +104,7 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
     boto_mock.send_email.side_effect = botocore.exceptions.ClientError(error_response, 'opname')
     mocker.patch.object(aws_ses_client, 'statsd_client', create=True)
 
-    with pytest.raises(InvalidEmailError) as excinfo:
+    with pytest.raises(EmailClientNonRetryableException) as excinfo:
         aws_ses_client.send_email(
             source=Mock(),
             to_addresses='definitely@invalid_email.com',
@@ -113,7 +113,6 @@ def test_send_email_raises_bad_email_as_InvalidEmailError(mocker):
         )
 
     assert 'some error message from amazon' in str(excinfo.value)
-    assert 'definitely@invalid_email.com' in str(excinfo.value)
 
 
 def test_send_email_raises_send_rate_throttling_as_AwsSesClientThrottlingSendRateException(mocker):
