@@ -74,7 +74,11 @@ class UUIDsAsStringsMixin:
                 ]
 
 
-class BaseSchema(ma.ModelSchema):
+class BaseSchema(ma.SQLAlchemyAutoSchema):
+
+    class Meta:
+        load_instance = True
+        include_relationships = True
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
@@ -108,7 +112,7 @@ class UserSchema(BaseSchema):
             retval[service_id].append(x.permission)
         return retval
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
             "updated_at",
@@ -145,7 +149,7 @@ class UserSchema(BaseSchema):
 class UserUpdateAttributeSchema(BaseSchema):
     auth_type = field_for(models.User, 'auth_type')
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
             'id', 'updated_at', 'created_at', 'user_to_service',
@@ -182,7 +186,7 @@ class UserUpdateAttributeSchema(BaseSchema):
 
 class UserUpdatePasswordSchema(BaseSchema):
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.User
         only = ('password')
         strict = True
@@ -197,7 +201,7 @@ class UserUpdatePasswordSchema(BaseSchema):
 class ProviderDetailsSchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
         exclude = ("provider_rates", "provider_stats")
         strict = True
@@ -206,7 +210,7 @@ class ProviderDetailsSchema(BaseSchema):
 class ProviderDetailsHistorySchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
         exclude = ("provider_rates", "provider_stats")
         strict = True
@@ -236,7 +240,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     def get_letter_contact(self, service):
         return service.get_default_letter_contact()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
             'updated_at',
@@ -296,7 +300,7 @@ class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
     organisation_type = field_for(models.Service, 'organisation_type')
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
             'api_keys',
@@ -337,7 +341,7 @@ class DetailedServiceSchema(BaseSchema):
 
 
 class NotificationModelSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
         exclude = ('_personalisation', 'job', 'service', 'template', 'api_key',)
@@ -355,7 +359,7 @@ class BaseTemplateSchema(BaseSchema):
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Template
         exclude = ("service_id", "jobs", "service_letter_contact_id", "broadcast_messages")
         strict = True
@@ -421,7 +425,7 @@ class TemplateHistorySchema(BaseSchema):
     def get_reply_to_text(self, template):
         return template.get_reply_to_text()
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
 
 
@@ -430,7 +434,7 @@ class ApiKeySchema(BaseSchema):
     created_by = field_for(models.ApiKey, 'created_by', required=True)
     key_type = field_for(models.ApiKey, 'key_type', required=True)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.ApiKey
         exclude = ("service", "_secret")
         strict = True
@@ -462,7 +466,7 @@ class JobSchema(BaseSchema):
         _validate_datetime_not_in_past(value)
         _validate_datetime_not_more_than_96_hours_in_future(value)
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Job
         exclude = (
             'notifications',
@@ -515,7 +519,7 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
 
 
 class NotificationWithTemplateSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
         exclude = ('_personalisation', 'scheduled_notification')
@@ -594,7 +598,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 class InvitedUserSchema(BaseSchema):
     auth_type = field_for(models.InvitedUser, 'auth_type')
 
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.InvitedUser
         strict = True
 
@@ -697,7 +701,7 @@ class ApiKeyHistorySchema(ma.Schema):
 
 
 class EventSchema(BaseSchema):
-    class Meta:
+    class Meta(BaseSchema.Meta):
         model = models.Event
         strict = True
 
