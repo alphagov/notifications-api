@@ -122,7 +122,7 @@ class AwsSesClient(EmailClient):
 
             # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
             if e.response['Error']['Code'] == 'InvalidParameterValue':
-                raise EmailClientNonRetryableException(str(e))
+                raise EmailClientNonRetryableException(e.response['Error']['Message'])
             elif (
                 e.response['Error']['Code'] == 'Throttling'
                 and e.response['Error']['Message'] == 'Maximum sending rate exceeded.'
