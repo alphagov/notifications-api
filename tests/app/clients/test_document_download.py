@@ -1,3 +1,4 @@
+import requests
 import requests_mock
 import pytest
 
@@ -56,3 +57,16 @@ def test_should_raise_non_400_statuses_as_exceptions(document_download):
 
     assert type(excinfo.value) == Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
     assert str(excinfo.value) == 'Unhandled document download error: {"error": "Auth Error Of Some Kind"}'
+
+
+def test_should_raise_exceptions_without_http_response_bodies_as_exceptions(document_download):
+    with pytest.raises(Exception) as excinfo, requests_mock.Mocker() as request_mock:
+        request_mock.post(
+            'https://document-download/services/service-id/documents',
+            exc=requests.exceptions.ConnectTimeout
+        )
+
+        document_download.upload_document('service-id', 'abababab')
+
+    assert type(excinfo.value) == Exception  # make sure it's a base exception, so will be handled as a 500 by v2 api
+    assert str(excinfo.value) == 'Unhandled document download error: ConnectTimeout()'
