@@ -148,7 +148,7 @@ def update_notification_to_sending(notification, provider):
     dao_update_notification(notification)
 
 
-provider_cache = TTLCache(maxsize=8, ttl=2)
+provider_cache = TTLCache(maxsize=8, ttl=10)
 
 
 @cached(cache=provider_cache)
