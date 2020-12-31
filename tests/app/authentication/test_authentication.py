@@ -63,7 +63,7 @@ def test_should_not_allow_request_with_no_iss(client, auth_fn):
         'iat': int(time.time())
     }
 
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -84,7 +84,7 @@ def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
         # 'iat': not provided
     }
 
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -105,7 +105,7 @@ def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_a
         'iat': int(time.time())
     }
 
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers).decode()
+    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -128,7 +128,7 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client):
         # 'iat': not provided
     }
 
-    token = jwt.encode(payload=claims, key=secret, headers=headers).decode()
+    token = jwt.encode(payload=claims, key=secret, headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -151,7 +151,7 @@ def test_admin_auth_should_not_allow_request_with_old_iat(client):
         'iat': int(time.time()) - 60
     }
 
-    token = jwt.encode(payload=claims, key=secret, headers=headers).decode()
+    token = jwt.encode(payload=claims, key=secret, headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -174,7 +174,7 @@ def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key)
         'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
     }
 
-    token = jwt.encode(payload=claims, key=key, headers=headers).decode()
+    token = jwt.encode(payload=claims, key=key, headers=headers)
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
