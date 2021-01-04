@@ -34,6 +34,12 @@ from tests.app.db import (
 )
 
 
+def setup_function(_function):
+    # pytest will run this function before each test. It makes sure the
+    # state of the cache is not shared between tests.
+    send_to_providers.provider_cache.clear()
+
+
 def test_provider_to_use_should_return_random_provider(mocker, notify_db_session):
     mmg = get_provider_details_by_identifier('mmg')
     firetext = get_provider_details_by_identifier('firetext')
@@ -45,6 +51,21 @@ def test_provider_to_use_should_return_random_provider(mocker, notify_db_session
 
     mock_choices.assert_called_once_with([mmg, firetext], weights=[25, 75])
     assert ret.get_name() == 'mmg'
+
+
+def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
+    mock_choices = mocker.patch(
+        'app.delivery.send_to_providers.random.choices',
+        wraps=send_to_providers.random.choices,
+    )
+
+    results = [
+        send_to_providers.provider_to_use('sms', international=False)
+        for _ in range(10)
+    ]
+
+    assert all(result == results[0] for result in results)
+    assert len(mock_choices.call_args_list) == 1
 
 
 def test_provider_to_use_should_only_return_mmg_for_international(mocker, notify_db_session):
