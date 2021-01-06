@@ -3,6 +3,7 @@
 set -e -o pipefail
 
 TERMINATE_TIMEOUT=9
+MAX_DISK_SPACE_USAGE=75
 readonly LOGS_DIR="/home/vcap/logs"
 
 function check_params {
@@ -49,20 +50,29 @@ function on_exit {
   # check if the apps are still running every second
   while [[ "$wait_time" -le "$TERMINATE_TIMEOUT" ]]; do
     get_celery_pids
-
-    # look here for explanation regarding this syntax:
-    # https://unix.stackexchange.com/a/298942/230401
-    PROCESS_COUNT="${#APP_PIDS[@]}"
-    if [[ "${PROCESS_COUNT}" -eq "0" ]]; then
-        echo "No celery process is running any more, exiting"
-        return 0
-    fi
-
+    ensure_celery_is_running
     let wait_time=wait_time+1
     sleep 1
   done
 
   send_signal_to_celery_processes KILL
+}
+
+function check_disk_space {
+    # get something like:
+    #
+    # Filesystem     Use%
+    # overlay         56%
+    # tmpfs            0%
+    #
+    # and only keep '56'
+    SPACE_USAGE=$(df --output="source,pcent" | grep overlay | tr --squeeze-repeats " " | cut -f2 -d" "| cut -f1 -d"%")
+
+    if [[ "${SPACE_USAGE}" -ge "${MAX_DISK_SPACE_USAGE}" ]]; then
+        echo "Terminating ${NOTIFY_APP_NAME}, instance ${INSTANCE_INDEX} because we're running out of disk space"
+        echo "Usage: ${SPACE_USAGE}% - limit ${MAX_DISK_SPACE_USAGE}%"
+        exit
+    fi
 }
 
 function get_celery_pids {
@@ -126,6 +136,7 @@ function ensure_celery_is_running {
 
 function run {
   while true; do
+    check_disk_space
     get_celery_pids
 
     ensure_celery_is_running
