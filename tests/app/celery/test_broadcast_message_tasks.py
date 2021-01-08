@@ -156,6 +156,44 @@ def test_send_broadcast_provider_message_sends_data_correctly(
     )
 
 
+@freeze_time('2020-08-01 12:00')
+def test_send_broadcast_provider_message_sends_data_correctly_when_broadcast_message_has_no_template(
+    mocker, sample_service,
+):
+    broadcast_message = create_broadcast_message(
+        service=sample_service,
+        template=None,
+        content='this is an emergency broadcast message',
+        areas={
+            'areas': ['london', 'glasgow'],
+            'simple_polygons': [
+                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
+                [[-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96]],
+            ],
+        },
+        status=BroadcastStatusType.BROADCASTING
+    )
+    event = create_broadcast_event(broadcast_message)
+
+    mock_create_broadcast = mocker.patch(
+        f'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
+    )
+
+    send_broadcast_provider_message(provider='ee', broadcast_event_id=str(event.id))
+
+    broadcast_provider_message = event.get_provider_message('ee')
+
+    mock_create_broadcast.assert_called_once_with(
+        identifier=str(broadcast_provider_message.id),
+        message_number=mocker.ANY,
+        headline='GOV.UK Notify Broadcast',
+        description='this is an emergency broadcast message',
+        areas=mocker.ANY,
+        sent=mocker.ANY,
+        expires=mocker.ANY,
+    )
+
+
 @pytest.mark.parametrize('provider,provider_capitalised', [
     ['ee', 'EE'],
     ['vodafone', 'Vodafone'],

@@ -2,6 +2,8 @@ import random
 import uuid
 from datetime import datetime, date, timedelta
 
+import pytest
+
 from app import db
 from app.dao.email_branding_dao import dao_create_email_branding
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
@@ -1010,24 +1012,44 @@ def create_service_contact_list(
 
 
 def create_broadcast_message(
-    template,
+    template=None,
+    *,
+    service=None,  # only used if template is not provided
     created_by=None,
     personalisation=None,
+    content=None,
     status=BroadcastStatusType.DRAFT,
     starts_at=None,
     finishes_at=None,
     areas=None,
 ):
+    if template:
+        service = template.service
+        template_id = template.id
+        template_version = template.version
+        personalisation = personalisation or {}
+        content = template._as_utils_template_with_personalisation(
+            personalisation
+        ).content_with_placeholders_filled_in
+    elif content:
+        template_id = None
+        template_version = None
+        personalisation = None
+        content = content
+    else:
+        pytest.fail('Provide template or content')
+
     broadcast_message = BroadcastMessage(
-        service_id=template.service_id,
-        template_id=template.id,
-        template_version=template.version,
-        personalisation=personalisation or {},
+        service_id=service.id,
+        template_id=template_id,
+        template_version=template_version,
+        personalisation=personalisation,
         status=status,
         starts_at=starts_at,
         finishes_at=finishes_at,
-        created_by_id=created_by.id if created_by else template.created_by_id,
+        created_by_id=created_by.id if created_by else service.created_by_id,
         areas=areas or {},
+        content=content
     )
     db.session.add(broadcast_message)
     db.session.commit()

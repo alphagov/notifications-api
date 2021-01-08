@@ -101,16 +101,20 @@ def create_broadcast_message(service_id):
     user = get_user_by_id(data['created_by'])
     template = dao_get_template_by_id_and_service_id(data['template_id'], data['service_id'])
 
+    personalisation = data.get('personalisation', {})
     broadcast_message = BroadcastMessage(
         service_id=service.id,
         template_id=template.id,
         template_version=template.version,
-        personalisation=data.get('personalisation', {}),
+        personalisation=personalisation,
         areas={"areas": data.get("areas", []), "simple_polygons": data.get("simple_polygons", [])},
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
         created_by_id=user.id,
+        content=template._as_utils_template_with_personalisation(
+            personalisation
+        ).content_with_placeholders_filled_in,
     )
 
     dao_save_object(broadcast_message)
@@ -185,16 +189,11 @@ def _create_broadcast_event(broadcast_message):
     else:
         transmitted_finishes_at = broadcast_message.finishes_at
 
-    template = broadcast_message.template._as_utils_template_with_personalisation(
-        # Broadcast events don’t support personalisation yet
-        values={}
-    )
-
     event = BroadcastEvent(
         service=broadcast_message.service,
         broadcast_message=broadcast_message,
         message_type=msg_types[broadcast_message.status],
-        transmitted_content={"body": str(template)},
+        transmitted_content={"body": broadcast_message.content},
         transmitted_areas=broadcast_message.areas,
         # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it include
         # a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar

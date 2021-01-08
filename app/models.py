@@ -2219,11 +2219,12 @@ class BroadcastMessage(db.Model):
     service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'))
     service = db.relationship('Service', backref='broadcast_messages')
 
-    template_id = db.Column(UUID(as_uuid=True), nullable=False)
-    template_version = db.Column(db.Integer, nullable=False)
+    template_id = db.Column(UUID(as_uuid=True), nullable=True)
+    template_version = db.Column(db.Integer, nullable=True)
     template = db.relationship('TemplateHistory', backref='broadcast_messages')
 
     _personalisation = db.Column(db.String, nullable=True)
+    content = db.Column(db.String, nullable=False)
     # defaults to empty list
     areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
 
@@ -2253,12 +2254,6 @@ class BroadcastMessage(db.Model):
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
 
     @property
-    def content(self):
-        return self.template._as_utils_template_with_personalisation(
-            self.personalisation
-        ).content_with_placeholders_filled_in
-
-    @property
     def personalisation(self):
         if self._personalisation:
             return encryption.decrypt(self._personalisation)
@@ -2274,12 +2269,12 @@ class BroadcastMessage(db.Model):
 
             'service_id': str(self.service_id),
 
-            'template_id': str(self.template_id),
+            'template_id': str(self.template_id) if self.template else None,
             'template_version': self.template_version,
-            'template_name': self.template.name,
+            'template_name': self.template.name if self.template else None,
+            'personalisation': self.personalisation if self.template else None,
             'content': self.content,
 
-            'personalisation': self.personalisation,
             'areas': self.areas.get("areas", []),
             'simple_polygons': self.areas.get("simple_polygons", []),
 
