@@ -67,7 +67,7 @@ def remove_emails_from_complaint(complaint_dict):
 
 def _check_and_queue_callback_task(notification):
     # queue callback task only if the service_callback_api exists
-    service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
+    service_callback_api = SerialisedServiceCallbackApi.from_service_id(service_id)
     if service_callback_api:
         notification_data = create_delivery_status_callback_data(notification, service_callback_api)
         send_delivery_status_to_service.apply_async([str(notification.id), notification_data],

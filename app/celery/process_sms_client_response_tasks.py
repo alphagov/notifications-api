@@ -15,6 +15,7 @@ from app.dao import notifications_dao
 from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import NOTIFICATION_PENDING
+from app.serialised_models import SerialisedServiceCallbackApi
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -91,7 +92,7 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         notifications_dao.dao_update_notification(notification)
 
     if notification_status != NOTIFICATION_PENDING:
-        service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
+        service_callback_api = SerialisedServiceCallbackApi.from_service_id(service_id)
         # queue callback task only if the service_callback_api exists
         if service_callback_api:
             encrypted_notification = create_delivery_status_callback_data(notification, service_callback_api)

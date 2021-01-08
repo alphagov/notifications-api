@@ -125,3 +125,25 @@ class SerialisedAPIKeyCollection(SerialisedModelCollection):
         ]
         db.session.commit()
         return cls(keys)
+
+
+class SerialisedServiceCallbackApi(SerialisedModel):
+
+    @classmethod
+    @memory_cache
+    def from_service_id(cls, service_id):
+        service_callback_api_dict = cls.get_dict(service_id)
+        if service_callback_api_dict:
+            return cls(cls.get_dict(service_id))
+        return None
+
+    @staticmethod
+    # Don’t cache this because we probably don’t wanna put people’s
+    # bearer tokens in Redis
+    def get_dict(service_id):
+        service_callback_api = get_service_delivery_status_callback_api_for_service(
+            service_id
+        )
+        if service_callback_api:
+            return service_callback_api.serialize()
+        return None
