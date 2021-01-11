@@ -100,7 +100,7 @@ class CBCProxyClientBase(ABC):
     ):
         pass
 
-    def _invoke_lambda(self, payload):
+    def _invoke_lambda_with_failover(self, payload):
         if not self.lambda_name:
             current_app.logger.warning(
                 '{self.__class__.__name__} tried to send {payload} but cbc proxy aws env vars not set'
@@ -108,18 +108,22 @@ class CBCProxyClientBase(ABC):
             return
 
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
+        result = self._invoke_lambda(self.lambda_name, payload_bytes)
 
+        if 'FunctionError' in result:
+            raise CBCProxyException('Function exited with unhandled exception')
+
+        return result
+
+    def _invoke_lambda(self, lambda_name, payload_bytes):
         result = self._lambda_client.invoke(
-            FunctionName=self.lambda_name,
+            FunctionName=lambda_name,
             InvocationType='RequestResponse',
             Payload=payload_bytes,
         )
 
         if result['StatusCode'] > 299:
             raise CBCProxyException('Could not invoke lambda')
-
-        if 'FunctionError' in result:
-            raise CBCProxyException('Function exited with unhandled exception')
 
         return result
 
@@ -143,7 +147,7 @@ class CBCProxyCanary(CBCProxyClientBase):
         self,
         identifier,
     ):
-        self._invoke_lambda(payload={'identifier': identifier})
+        self._invoke_lambda_with_failover(payload={'identifier': identifier})
 
 
 class CBCProxyEE(CBCProxyClientBase):
@@ -167,7 +171,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'message_format': 'cap'
         }
 
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, message_number=None
@@ -183,7 +187,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'expires': expires,
             'language': self.infer_language_from(description),
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def cancel_broadcast(
         self,
@@ -202,7 +206,7 @@ class CBCProxyEE(CBCProxyClientBase):
             ],
             'sent': sent,
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
 
 class CBCProxyVodafone(CBCProxyClientBase):
@@ -227,7 +231,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'message_format': 'ibag'
         }
 
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, message_number, headline, description, areas, sent, expires,
@@ -244,7 +248,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'expires': expires,
             'language': self.infer_language_from(description),
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def cancel_broadcast(
         self, identifier, previous_provider_messages, sent, message_number
@@ -264,4 +268,4 @@ class CBCProxyVodafone(CBCProxyClientBase):
             ],
             'sent': sent,
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
