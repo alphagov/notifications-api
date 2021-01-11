@@ -113,7 +113,10 @@ class CBCProxyClientBase(ABC):
         result = self._invoke_lambda(self.lambda_name, payload_bytes)
 
         if 'FunctionError' in result:
-            raise CBCProxyException('Function exited with unhandled exception')
+            if result['Payload']['errorType'] == "CBCNewConnectionError":
+                result = self._invoke_lambda(self.failover_lambda_name, payload_bytes)
+            else:
+                raise CBCProxyException('Function exited with unhandled exception')
 
         return result
 
