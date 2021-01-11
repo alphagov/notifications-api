@@ -44,6 +44,35 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     assert response['personalisation'] == {'thing': 'test'}
 
 
+def test_get_broadcast_message_without_template(admin_request, sample_broadcast_service):
+    bm = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='emergency broadcast content',
+        areas={
+            "areas": ['place A', 'region B'],
+            "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
+        },
+    )
+
+    response = admin_request.get(
+        'broadcast_message.get_broadcast_message',
+        service_id=sample_broadcast_service.id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['id'] == str(bm.id)
+    assert response['template_id'] is None
+    assert response['template_version'] is None
+    assert response['template_name'] is None
+    assert response['content'] == 'emergency broadcast content'
+    assert response['status'] == BroadcastStatusType.DRAFT
+    assert response['created_at'] is not None
+    assert response['starts_at'] is None
+    assert response['areas'] == ['place A', 'region B']
+    assert response['personalisation'] is None
+
+
 def test_get_broadcast_message_404s_if_message_doesnt_exist(admin_request, sample_broadcast_service):
     err = admin_request.get(
         'broadcast_message.get_broadcast_message',
@@ -146,6 +175,26 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
         _expected_status=400
     )
     assert response['errors'] == expected_errors
+
+
+@freeze_time('2020-01-01')
+def test_create_broadcast_message_400s_if_content_provided_but_no_template(admin_request, sample_broadcast_service):
+    # we don't currently support this, but might in the future
+    response = admin_request.post(
+        'broadcast_message.create_broadcast_message',
+        _data={
+            'template_id': None,
+            'content': 'Some tailor made broadcast content',
+            'service_id': str(sample_broadcast_service.id),
+            'created_by': str(sample_broadcast_service.created_by_id),
+        },
+        service_id=sample_broadcast_service.id,
+        _expected_status=400
+    )
+    assert response['errors'] ==[
+        {'error': 'ValidationError', 'message': 'template_id is not a valid UUID'},
+        {'error': 'ValidationError', 'message': 'Additional properties are not allowed (content was unexpected)'},
+    ]
 
 
 @pytest.mark.parametrize('status', [
@@ -392,6 +441,40 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert alert_event.message_type == BroadcastEventMessageType.ALERT
     assert alert_event.transmitted_finishes_at == bm.finishes_at
     assert alert_event.transmitted_content == {"body": "emergency broadcast"}
+
+
+def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
+    admin_request,
+    sample_broadcast_service,
+    mocker
+):
+    bm = create_broadcast_message(
+        service=sample_broadcast_service,
+        template=None,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+    )
+    approver = create_user(email='approver@gov.uk')
+    sample_broadcast_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=sample_broadcast_service.id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['status'] == BroadcastStatusType.BROADCASTING
+
+    assert len(bm.events) == 1
+    alert_event = bm.events[0]
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
+
+    assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
 
 
 def test_update_broadcast_message_status_rejects_approval_from_creator(
