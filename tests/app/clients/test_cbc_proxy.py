@@ -9,6 +9,17 @@ import pytest
 from app.clients.cbc_proxy import CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary
 from app.utils import DATETIME_FORMAT
 
+EXAMPLE_AREAS = [{
+    'description': 'london',
+    'polygon': [
+        [51.12, -1.2],
+        [51.12, 1.2],
+        [51.74, 1.2],
+        [51.74, -1.2],
+        [51.12, -1.2],
+    ],
+}]
+
 
 @pytest.fixture(scope='function')
 def cbc_proxy_client(client, mocker):
@@ -75,18 +86,6 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
 
-    # a single area which is a square including london
-    areas = [{
-        'description': 'london',
-        'polygon': [
-            [51.12, -1.2],
-            [51.12, 1.2],
-            [51.74, 1.2],
-            [51.74, -1.2],
-            [51.12, -1.2],
-        ],
-    }]
-
     ld_client_mock = mocker.patch.object(
         cbc_proxy_ee,
         '_lambda_client',
@@ -102,7 +101,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
         message_number='0000007b',
         headline=headline,
         description=description,
-        areas=areas,
+        areas=EXAMPLE_AREAS,
         sent=sent, expires=expires,
     )
 
@@ -122,7 +121,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     assert payload['message_type'] == 'alert'
     assert payload['headline'] == headline
     assert payload['description'] == description
-    assert payload['areas'] == areas
+    assert payload['areas'] == EXAMPLE_AREAS
     assert payload['sent'] == sent
     assert payload['expires'] == expires
     assert payload['language'] == expected_language
@@ -136,17 +135,6 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_connection_error(
     cbc_proxy_vodafone,
     cbc
 ):
-    # a single area which is a square including london
-    areas = [{
-        'description': 'london',
-        'polygon': [
-            [51.12, -1.2],
-            [51.12, 1.2],
-            [51.74, 1.2],
-            [51.74, -1.2],
-            [51.12, -1.2],
-        ],
-    }]
     cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
 
     ld_client_mock = mocker.patch.object(
@@ -174,7 +162,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_connection_error(
         message_number='0000007b',
         headline='my-headline',
         description='test-description',
-        areas=areas,
+        areas=EXAMPLE_AREAS,
         sent='a-passed-through-sent-value',
         expires='a-passed-through-expires-value',
     )
@@ -265,18 +253,6 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
 
-    # a single area which is a square including london
-    areas = [{
-        'description': 'london',
-        'polygon': [
-            [51.12, -1.2],
-            [51.12, 1.2],
-            [51.74, 1.2],
-            [51.74, -1.2],
-            [51.12, -1.2],
-        ],
-    }]
-
     ld_client_mock = mocker.patch.object(
         cbc_proxy_vodafone,
         '_lambda_client',
@@ -292,7 +268,7 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(
         message_number='0000007b',
         headline=headline,
         description=description,
-        areas=areas,
+        areas=EXAMPLE_AREAS,
         sent=sent, expires=expires,
     )
 
@@ -312,7 +288,7 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(
     assert payload['message_type'] == 'alert'
     assert payload['headline'] == headline
     assert payload['description'] == description
-    assert payload['areas'] == areas
+    assert payload['areas'] == EXAMPLE_AREAS
     assert payload['sent'] == sent
     assert payload['expires'] == expires
     assert payload['language'] == expected_language
@@ -385,18 +361,6 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
 
-    # a single area which is a square including london
-    areas = [{
-        'description': 'london',
-        'polygon': [
-            [51.12, -1.2],
-            [51.12, 1.2],
-            [51.74, 1.2],
-            [51.74, -1.2],
-            [51.12, -1.2],
-        ],
-    }]
-
     ld_client_mock = mocker.patch.object(
         cbc_proxy_ee,
         '_lambda_client',
@@ -413,7 +377,7 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):
             message_number='0000007b',
             headline=headline,
             description=description,
-            areas=areas,
+            areas=EXAMPLE_AREAS,
             sent=sent, expires=expires,
         )
 
@@ -433,18 +397,6 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy_ee):
 
     sent = 'a-passed-through-sent-value'
     expires = 'a-passed-through-expires-value'
-
-    # a single area which is a square including london
-    areas = [{
-        'description': 'london',
-        'polygon': [
-            [51.12, -1.2],
-            [51.12, 1.2],
-            [51.74, 1.2],
-            [51.74, -1.2],
-            [51.12, -1.2],
-        ],
-    }]
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy_ee,
@@ -467,7 +419,7 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy_ee):
             message_number='0000007b',
             headline=headline,
             description=description,
-            areas=areas,
+            areas=EXAMPLE_AREAS,
             sent=sent, expires=expires,
         )
 
