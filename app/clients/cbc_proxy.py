@@ -58,6 +58,11 @@ class CBCProxyClientBase(ABC):
 
     @property
     @abstractmethod
+    def failover_lambda_name(self):
+        pass
+
+    @property
+    @abstractmethod
     def LANGUAGE_ENGLISH(self):
         pass
 
@@ -136,6 +141,9 @@ class CBCProxyCanary(CBCProxyClientBase):
     canary, a specific lambda that does not open a vpn or connect to a provider but just responds from within AWS.
     """
     lambda_name = 'canary'
+    # we don't need a failover lambda for the canary as it doesn't actually make calls out to a CBC
+    # so we just reuse the normal one in case of a failover scenario
+    failover_lambda_name = 'canary'
 
     LANGUAGE_ENGLISH = None
     LANGUAGE_WELSH = None
@@ -149,6 +157,7 @@ class CBCProxyCanary(CBCProxyClientBase):
 
 class CBCProxyEE(CBCProxyClientBase):
     lambda_name = 'bt-ee-1-proxy'
+    failover_lambda_name = 'bt-ee-2-proxy'
 
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'
@@ -208,6 +217,7 @@ class CBCProxyEE(CBCProxyClientBase):
 
 class CBCProxyVodafone(CBCProxyClientBase):
     lambda_name = 'vodafone-1-proxy'
+    failover_lambda_name = 'vodafone-2-proxy'
 
     LANGUAGE_ENGLISH = 'English'
     LANGUAGE_WELSH = 'Welsh'
