@@ -51,7 +51,10 @@ class CBCProxyClient:
 
 
 class CBCProxyClientBase(ABC):
-    lambda_name = None
+    @property
+    @abstractmethod
+    def lambda_name(self):
+        pass
 
     @property
     @abstractmethod
@@ -101,12 +104,6 @@ class CBCProxyClientBase(ABC):
         pass
 
     def _invoke_lambda_with_failover(self, payload):
-        if not self.lambda_name:
-            current_app.logger.warning(
-                '{self.__class__.__name__} tried to send {payload} but cbc proxy aws env vars not set'
-            )
-            return
-
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
         result = self._invoke_lambda(self.lambda_name, payload_bytes)
 
