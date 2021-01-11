@@ -14,7 +14,7 @@ down_revision = '0334_broadcast_message_number'
 
 
 def upgrade():
-    op.add_column('broadcast_message', sa.Column('content', sa.Text(), nullable=False))
+    op.add_column('broadcast_message', sa.Column('content', sa.Text(), nullable=True))
     op.alter_column('broadcast_message', 'template_id', nullable=True)
     op.alter_column('broadcast_message', 'template_version', nullable=True)
 
