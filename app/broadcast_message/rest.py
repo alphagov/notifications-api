@@ -189,11 +189,19 @@ def _create_broadcast_event(broadcast_message):
     else:
         transmitted_finishes_at = broadcast_message.finishes_at
 
+    # TODO: Remove this if statement after broadcast message content is guaranteed to always be populated.
+    if broadcast_message.content:
+        content = broadcast_message.content
+    else:
+        content = broadcast_message.template._as_utils_template_with_personalisation(
+            broadcast_message.personalisation
+        ).content_with_placeholders_filled_in
+
     event = BroadcastEvent(
         service=broadcast_message.service,
         broadcast_message=broadcast_message,
         message_type=msg_types[broadcast_message.status],
-        transmitted_content={"body": broadcast_message.content},
+        transmitted_content={"body": content},
         transmitted_areas=broadcast_message.areas,
         # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it include
         # a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar

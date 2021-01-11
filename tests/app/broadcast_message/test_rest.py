@@ -477,6 +477,43 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
     assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
 
 
+# TODO: Remove this unit test after broadcast message content is guaranteed to always be populated.
+def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_content_field(
+    admin_request,
+    sample_broadcast_service,
+    mocker
+):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+    )
+    # simulate having no content because the broadcast message was created before migration 0335 came in
+    bm.content = None
+
+    approver = create_user(email='approver@gov.uk')
+    sample_broadcast_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['status'] == BroadcastStatusType.BROADCASTING
+
+    assert len(bm.events) == 1
+    alert_event = bm.events[0]
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
+
+    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
+
+
 def test_update_broadcast_message_status_rejects_approval_from_creator(
     admin_request,
     sample_broadcast_service,
