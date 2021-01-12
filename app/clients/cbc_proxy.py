@@ -114,6 +114,7 @@ class CBCProxyClientBase(ABC):
 
         if 'FunctionError' in result:
             if result['Payload']['errorType'] == "CBCNewConnectionError":
+                current_app.logger.info(f"Got CBCNewConnectionError for {self.lambda_name}, calling failover lambda")
                 result = self._invoke_lambda(self.failover_lambda_name, payload_bytes)
             else:
                 raise CBCProxyException('Function exited with unhandled exception')
@@ -121,6 +122,7 @@ class CBCProxyClientBase(ABC):
         return result
 
     def _invoke_lambda(self, lambda_name, payload_bytes):
+        current_app.logger.info(f"Calling lambda {lambda_name}")
         result = self._lambda_client.invoke(
             FunctionName=lambda_name,
             InvocationType='RequestResponse',
@@ -130,6 +132,7 @@ class CBCProxyClientBase(ABC):
         if result['StatusCode'] > 299:
             raise CBCProxyException('Could not invoke lambda')
 
+        current_app.logger.info(f"Finished calling lambda {lambda_name}")
         return result
 
     def infer_language_from(self, content):
