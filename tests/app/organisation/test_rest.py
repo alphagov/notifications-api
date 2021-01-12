@@ -5,6 +5,7 @@ import uuid
 import pytest
 from freezegun import freeze_time
 
+from app.dao.services_dao import dao_archive_service
 from app.models import Organisation
 from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
 from tests.app.db import (
@@ -771,6 +772,49 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     assert service_usage['sms_billable_units'] == 19
     assert service_usage['sms_remainder'] == 10
     assert service_usage['sms_cost'] == 0.54
+
+
+@freeze_time('2020-02-24 13:30')
+def test_get_organisation_services_usage_sort_active_first(admin_request, notify_db_session):
+    org = create_organisation(name='Organisation without live services')
+    service = create_service(service_name='live service')
+    archived_service = create_service(service_name='archived_service')
+    template = create_template(service=service)
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    dao_add_service_to_organisation(service=archived_service, organisation_id=org.id)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
+    create_ft_billing(bst_date=datetime.utcnow().date(), template=template, billable_unit=19, rate=0.060,
+                      notifications_sent=19)
+    response = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=org.id,
+        **{"year": 2019}
+    )
+    assert len(response) == 1
+    assert len(response['services']) == 2
+    first_service = response['services'][0]
+    assert first_service['service_id'] == str(archived_service.id)
+    assert first_service['service_name'] == archived_service.name
+    assert first_service['active'] is True
+    last_service = response['services'][1]
+    assert last_service['service_id'] == str(service.id)
+    assert last_service['service_name'] == service.name
+    assert last_service['active'] is True
+
+    dao_archive_service(service_id=archived_service.id)
+    response_after_archive = admin_request.get(
+        'organisation.get_organisation_services_usage',
+        organisation_id=org.id,
+        **{"year": 2019}
+    )
+    first_service = response_after_archive['services'][0]
+    assert first_service['service_id'] == str(service.id)
+    assert first_service['service_name'] == service.name
+    assert first_service['active'] is True
+    last_service = response_after_archive['services'][1]
+    assert last_service['service_id'] == str(archived_service.id)
+    assert last_service['service_name'] == archived_service.name
+    assert last_service['active'] is False
 
 
 def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_request):
