@@ -127,60 +127,6 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     assert payload['language'] == expected_language
 
 
-
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
-def test_cbc_proxy_will_failover_to_second_lambda_if_connection_error(
-    mocker,
-    cbc_proxy_ee,
-    cbc_proxy_vodafone,
-    cbc
-):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
-
-    ld_client_mock = mocker.patch.object(
-        cbc_proxy,
-        '_lambda_client',
-        create=True,
-    )
-
-    ld_client_mock.invoke.side_effect = [
-        {
-            'StatusCode': 200,
-            'FunctionError': 'Handled',
-            'Payload': {
-                "errorMessage": "",
-                "errorType": "CBCNewConnectionError"
-            }
-        },
-        {
-            'StatusCode': 200
-        }
-    ]
-
-    cbc_proxy.create_and_send_broadcast(
-        identifier='my-identifier',
-        message_number='0000007b',
-        headline='my-headline',
-        description='test-description',
-        areas=EXAMPLE_AREAS,
-        sent='a-passed-through-sent-value',
-        expires='a-passed-through-expires-value',
-    )
-
-    assert ld_client_mock.invoke.call_args_list == [
-        call(
-            FunctionName=f'{cbc}-1-proxy',
-            InvocationType='RequestResponse',
-            Payload=mocker.ANY,
-        ),
-        call(
-            FunctionName=f'{cbc}-2-proxy',
-            InvocationType='RequestResponse',
-            Payload=mocker.ANY,
-        )
-    ]
-
-
 def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     identifier = 'my-identifier'
     MockProviderMessage = namedtuple(
@@ -353,16 +299,115 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     assert payload['sent'] == sent
 
 
-def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):
-    identifier = 'my-identifier'
-    headline = 'my-headline'
-    description = 'my-description'
-
-    sent = 'a-passed-through-sent-value'
-    expires = 'a-passed-through-expires-value'
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
+    mocker,
+    cbc_proxy_ee,
+    cbc_proxy_vodafone,
+    cbc
+):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
 
     ld_client_mock = mocker.patch.object(
-        cbc_proxy_ee,
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.side_effect = [
+        {
+            'StatusCode': 200,
+            'FunctionError': 'Handled',
+            'Payload': {
+                "errorMessage": "",
+                "errorType": "CBCNewConnectionError"
+            }
+        },
+        {
+            'StatusCode': 200
+        }
+    ]
+
+    cbc_proxy.create_and_send_broadcast(
+        identifier='my-identifier',
+        message_number='0000007b',
+        headline='my-headline',
+        description='test-description',
+        areas=EXAMPLE_AREAS,
+        sent='a-passed-through-sent-value',
+        expires='a-passed-through-expires-value',
+    )
+
+    assert ld_client_mock.invoke.call_args_list == [
+        call(
+            FunctionName=f'{cbc}-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        ),
+        call(
+            FunctionName=f'{cbc}-2-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        )
+    ]
+
+
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
+    mocker,
+    cbc_proxy_ee,
+    cbc_proxy_vodafone,
+    cbc
+):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.side_effect = [
+        {
+            'StatusCode': 400
+        },
+        {
+            'StatusCode': 200
+        }
+    ]
+
+    cbc_proxy.create_and_send_broadcast(
+        identifier='my-identifier',
+        message_number='0000007b',
+        headline='my-headline',
+        description='test-description',
+        areas=EXAMPLE_AREAS,
+        sent='a-passed-through-sent-value',
+        expires='a-passed-through-expires-value',
+    )
+
+    assert ld_client_mock.invoke.call_args_list == [
+        call(
+            FunctionName=f'{cbc}-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        ),
+        call(
+            FunctionName=f'{cbc}-2-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        )
+    ]
+
+
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_raises_if_both_invoke_error(
+    mocker, cbc_proxy_ee, cbc_proxy_vodafone, cbc
+):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
         '_lambda_client',
         create=True,
     )
@@ -372,34 +417,40 @@ def test_cbc_proxy_create_and_send_handles_invoke_error(mocker, cbc_proxy_ee):
     }
 
     with pytest.raises(CBCProxyException) as e:
-        cbc_proxy_ee.create_and_send_broadcast(
-            identifier=identifier,
+        cbc_proxy.create_and_send_broadcast(
+            identifier='my-identifier',
             message_number='0000007b',
-            headline=headline,
-            description=description,
+            headline='my-headline',
+            description='my-description',
             areas=EXAMPLE_AREAS,
-            sent=sent, expires=expires,
+            sent='a-passed-through-sent-value',
+            expires='a-passed-through-expires-value',
         )
 
-    assert e.match('Could not invoke lambda')
+    assert e.match(f'Lambda failed for both {cbc}-1-proxy and {cbc}-2-proxy')
 
-    ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='bt-ee-1-proxy',
-        InvocationType='RequestResponse',
-        Payload=mocker.ANY,
-    )
+    assert ld_client_mock.invoke.call_args_list == [
+        call(
+            FunctionName=f'{cbc}-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        ),
+        call(
+            FunctionName=f'{cbc}-2-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        )
+    ]
 
 
-def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy_ee):
-    identifier = 'my-identifier'
-    headline = 'my-headline'
-    description = 'my-description'
-
-    sent = 'a-passed-through-sent-value'
-    expires = 'a-passed-through-expires-value'
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_raises_if_both_function_error(
+    mocker, cbc_proxy_ee, cbc_proxy_vodafone, cbc
+):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
 
     ld_client_mock = mocker.patch.object(
-        cbc_proxy_ee,
+        cbc_proxy,
         '_lambda_client',
         create=True,
     )
@@ -414,22 +465,30 @@ def test_cbc_proxy_create_and_send_handles_function_error(mocker, cbc_proxy_ee):
     }
 
     with pytest.raises(CBCProxyException) as e:
-        cbc_proxy_ee.create_and_send_broadcast(
-            identifier=identifier,
+        cbc_proxy.create_and_send_broadcast(
+            identifier='my-identifier',
             message_number='0000007b',
-            headline=headline,
-            description=description,
+            headline='my-headline',
+            description='my-description',
             areas=EXAMPLE_AREAS,
-            sent=sent, expires=expires,
+            sent='a-passed-through-sent-value',
+            expires='a-passed-through-expires-value',
         )
 
-    assert e.match('Function exited with unhandled exception')
+    assert e.match(f'Lambda failed for both {cbc}-1-proxy and {cbc}-2-proxy')
 
-    ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='bt-ee-1-proxy',
-        InvocationType='RequestResponse',
-        Payload=mocker.ANY,
-    )
+    assert ld_client_mock.invoke.call_args_list == [
+        call(
+            FunctionName=f'{cbc}-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        ),
+        call(
+            FunctionName=f'{cbc}-2-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        )
+    ]
 
 
 def test_cbc_proxy_send_canary_invokes_function(mocker, cbc_proxy_client):

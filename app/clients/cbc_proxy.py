@@ -112,12 +112,10 @@ class CBCProxyClientBase(ABC):
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
         result = self._invoke_lambda(self.lambda_name, payload_bytes)
 
-        if 'FunctionError' in result:
-            if result['Payload']['errorType'] == "CBCNewConnectionError":
-                current_app.logger.info(f"Got CBCNewConnectionError for {self.lambda_name}, calling failover lambda")
-                result = self._invoke_lambda(self.failover_lambda_name, payload_bytes)
-            else:
-                raise CBCProxyException('Function exited with unhandled exception')
+        if not result:
+            failover_result = self._invoke_lambda(self.failover_lambda_name, payload_bytes)
+            if not failover_result:
+                raise CBCProxyException(f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}')
 
         return result
 
@@ -128,12 +126,24 @@ class CBCProxyClientBase(ABC):
             InvocationType='RequestResponse',
             Payload=payload_bytes,
         )
+        current_app.logger.info(f"Finished calling lambda {lambda_name}")
 
         if result['StatusCode'] > 299:
-            raise CBCProxyException('Could not invoke lambda')
+            current_app.logger.info(
+                f"Error calling lambda {self.lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
+            )
+            success = False
 
-        current_app.logger.info(f"Finished calling lambda {lambda_name}")
-        return result
+        elif 'FunctionError' in result:
+            current_app.logger.info(
+                f"Error calling lambda {self.lambda_name} with function error { result['Payload'] }"
+            )
+            success = False
+
+        else:
+            success = True
+
+        return success
 
     def infer_language_from(self, content):
         if non_gsm_characters(content):
