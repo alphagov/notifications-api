@@ -371,11 +371,12 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_thursda
 ):
     thursday = datetime(2018, 1, 11, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
+    create_notification(template=sample_letter_template, status='sending', sent_at=thursday, postage='first')
     create_notification(template=sample_letter_template, status='sending', sent_at=thursday, postage='second')
     create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='second')
 
     count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
-    assert count == 1
+    assert count == 2
     assert expected_sent_date == date(2018, 1, 11)
 
 
@@ -386,12 +387,11 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_friday_
     friday = datetime(2018, 1, 12, 13, 30)
     yesterday = datetime(2018, 1, 14, 13, 30)
     create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='first')
-    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='first')
-    # doesn't get reported because it's second class, and it's tuesday today
     create_notification(template=sample_letter_template, status='sending', sent_at=friday, postage='second')
+    create_notification(template=sample_letter_template, status='sending', sent_at=yesterday, postage='first')
 
     count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
-    assert count == 1
+    assert count == 2
     assert expected_sent_date == date(2018, 1, 12)
 
 
