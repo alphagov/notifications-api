@@ -135,7 +135,7 @@ def get_organisation_services_usage(organisation_id):
         return jsonify(result='error', message='No valid year provided'), 400
     services = fetch_usage_year_for_organisation(organisation_id, year)
     list_services = services.values()
-    sorted_services = sorted(list_services, key=lambda s: s['service_name'].lower())
+    sorted_services = sorted(list_services, key=lambda s: (-s['active'], s['service_name'].lower()))
     return jsonify(services=sorted_services)
 
 

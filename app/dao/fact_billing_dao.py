@@ -607,6 +607,7 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
         sms_billable_units.label('sms_billable_units'),
         chargeable_sms.label("chargeable_billable_sms"),
         sms_cost.label('sms_cost'),
+        Service.active.label("active")
     ).select_from(
         Service
     ).outerjoin(
@@ -658,7 +659,8 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'chargeable_billable_sms': 0,
             'sms_cost': 0.0,
             'letter_cost': 0.0,
-            'emails_sent': 0
+            'emails_sent': 0,
+            'active': service.active
         }
     sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start_date, year_end_date)
     letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start_date, year_end_date)
@@ -673,7 +675,8 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'chargeable_billable_sms': usage.chargeable_billable_sms,
             'sms_cost': float(usage.sms_cost),
             'letter_cost': 0.0,
-            'emails_sent': 0
+            'emails_sent': 0,
+            'active': usage.active
         }
     for letter_usage in letter_usages:
         service_with_usage[str(letter_usage.service_id)]['letter_cost'] = float(letter_usage.letter_cost)
