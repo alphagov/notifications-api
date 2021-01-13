@@ -266,11 +266,6 @@ def get_letter_notifications_still_sending_when_they_shouldnt_be():
         func.date(Notification.sent_at) <= expected_sent_date
     )
 
-    if today.isoweekday() in {2, 4}:  # on tue, thu, we only care about first class letters
-        q = q.filter(
-            Notification.postage == 'first'
-        )
-
     return q.count(), expected_sent_date
 
 
