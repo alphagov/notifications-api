@@ -603,8 +603,8 @@ def test_trigger_link_tests_calls_for_all_providers(
         trigger_link_tests()
 
     assert mock_trigger_link_test.apply_async.call_args_list == [
-        call(kwargs={'provider': 'ee'}, queue='notify-internal-tasks'),
-        call(kwargs={'provider': 'vodafone'}, queue='notify-internal-tasks')
+        call(kwargs={'provider': 'ee'}, queue='broadcast-tasks'),
+        call(kwargs={'provider': 'vodafone'}, queue='broadcast-tasks')
     ]
 
 
