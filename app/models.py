@@ -2245,13 +2245,20 @@ class BroadcastMessage(db.Model):
     cancelled_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
     approved_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
     cancelled_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
     created_by = db.relationship('User', foreign_keys=[created_by_id])
     approved_by = db.relationship('User', foreign_keys=[approved_by_id])
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
+
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), nullable=True)
+    api_key = db.relationship('ApiKey')
+
+    reference = db.Column(db.String(255), nullable=True)
+
+    CheckConstraint("created_by_id is not null or api_key_id is not null")
 
     @property
     def personalisation(self):
@@ -2266,6 +2273,7 @@ class BroadcastMessage(db.Model):
     def serialize(self):
         return {
             'id': str(self.id),
+            'reference': self.reference,
 
             'service_id': str(self.service_id),
 
