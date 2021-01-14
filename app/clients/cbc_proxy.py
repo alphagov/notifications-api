@@ -51,7 +51,15 @@ class CBCProxyClient:
 
 
 class CBCProxyClientBase(ABC):
-    lambda_name = None
+    @property
+    @abstractmethod
+    def lambda_name(self):
+        pass
+
+    @property
+    @abstractmethod
+    def failover_lambda_name(self):
+        pass
 
     @property
     @abstractmethod
@@ -100,28 +108,42 @@ class CBCProxyClientBase(ABC):
     ):
         pass
 
-    def _invoke_lambda(self, payload):
-        if not self.lambda_name:
-            current_app.logger.warning(
-                '{self.__class__.__name__} tried to send {payload} but cbc proxy aws env vars not set'
-            )
-            return
+    def _invoke_lambda_with_failover(self, payload):
+        result = self._invoke_lambda(self.lambda_name, payload)
 
+        if not result:
+            failover_result = self._invoke_lambda(self.failover_lambda_name, payload)
+            if not failover_result:
+                raise CBCProxyException(f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}')
+
+        return result
+
+    def _invoke_lambda(self, lambda_name, payload):
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
-
+        current_app.logger.info(f"Calling lambda {lambda_name}")
         result = self._lambda_client.invoke(
-            FunctionName=self.lambda_name,
+            FunctionName=lambda_name,
             InvocationType='RequestResponse',
             Payload=payload_bytes,
         )
+        current_app.logger.info(f"Finished calling lambda {lambda_name}")
 
         if result['StatusCode'] > 299:
-            raise CBCProxyException('Could not invoke lambda')
+            current_app.logger.info(
+                f"Error calling lambda {self.lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
+            )
+            success = False
 
-        if 'FunctionError' in result:
-            raise CBCProxyException('Function exited with unhandled exception')
+        elif 'FunctionError' in result:
+            current_app.logger.info(
+                f"Error calling lambda {self.lambda_name} with function error { result['Payload'] }"
+            )
+            success = False
 
-        return result
+        else:
+            success = True
+
+        return success
 
     def infer_language_from(self, content):
         if non_gsm_characters(content):
@@ -135,6 +157,9 @@ class CBCProxyCanary(CBCProxyClientBase):
     canary, a specific lambda that does not open a vpn or connect to a provider but just responds from within AWS.
     """
     lambda_name = 'canary'
+    # we don't need a failover lambda for the canary as it doesn't actually make calls out to a CBC
+    # so we just reuse the normal one in case of a failover scenario
+    failover_lambda_name = 'canary'
 
     LANGUAGE_ENGLISH = None
     LANGUAGE_WELSH = None
@@ -143,11 +168,12 @@ class CBCProxyCanary(CBCProxyClientBase):
         self,
         identifier,
     ):
-        self._invoke_lambda(payload={'identifier': identifier})
+        self._invoke_lambda(self.lambda_name, payload={'identifier': identifier})
 
 
 class CBCProxyEE(CBCProxyClientBase):
     lambda_name = 'bt-ee-1-proxy'
+    failover_lambda_name = 'bt-ee-2-proxy'
 
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'
@@ -167,7 +193,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'message_format': 'cap'
         }
 
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, message_number=None
@@ -183,7 +209,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'expires': expires,
             'language': self.infer_language_from(description),
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def cancel_broadcast(
         self,
@@ -202,11 +228,12 @@ class CBCProxyEE(CBCProxyClientBase):
             ],
             'sent': sent,
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
 
 class CBCProxyVodafone(CBCProxyClientBase):
     lambda_name = 'vodafone-1-proxy'
+    failover_lambda_name = 'vodafone-2-proxy'
 
     LANGUAGE_ENGLISH = 'English'
     LANGUAGE_WELSH = 'Welsh'
@@ -227,7 +254,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'message_format': 'ibag'
         }
 
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, message_number, headline, description, areas, sent, expires,
@@ -244,7 +271,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'expires': expires,
             'language': self.infer_language_from(description),
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
 
     def cancel_broadcast(
         self, identifier, previous_provider_messages, sent, message_number
@@ -264,4 +291,4 @@ class CBCProxyVodafone(CBCProxyClientBase):
             ],
             'sent': sent,
         }
-        self._invoke_lambda(payload=payload)
+        self._invoke_lambda_with_failover(payload=payload)
