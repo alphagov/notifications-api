@@ -6,7 +6,9 @@ from unittest.mock import Mock, call
 
 import pytest
 
-from app.clients.cbc_proxy import CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary
+from app.clients.cbc_proxy import (
+    CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree
+)
 from app.utils import DATETIME_FORMAT
 
 EXAMPLE_AREAS = [{
@@ -39,12 +41,19 @@ def cbc_proxy_ee(cbc_proxy_client):
 
 
 @pytest.fixture
+def cbc_proxy_three(cbc_proxy_client):
+    return cbc_proxy_client.get_proxy('three')
+
+
+@pytest.fixture
 def cbc_proxy_vodafone(cbc_proxy_client):
     return cbc_proxy_client.get_proxy('vodafone')
 
 
 @pytest.mark.parametrize('provider_name, expected_provider_class', [
     ('ee', CBCProxyEE),
+    ('three', CBCProxyThree),
+    ('vodafone', CBCProxyVodafone),
     ('canary', CBCProxyCanary),
 ])
 def test_cbc_proxy_client_returns_correct_client(provider_name, expected_provider_class):
@@ -74,12 +83,17 @@ def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy_ee):
     ('my-description', 'en-GB'),
     ('mŷ-description', 'cy-GB'),
 ))
-def test_cbc_proxy_ee_create_and_send_invokes_function(
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
+def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
     mocker,
     cbc_proxy_ee,
+    cbc_proxy_three,
     description,
+    cbc,
     expected_language,
 ):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+
     identifier = 'my-identifier'
     headline = 'my-headline'
 
@@ -87,7 +101,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     expires = 'a-passed-through-expires-value'
 
     ld_client_mock = mocker.patch.object(
-        cbc_proxy_ee,
+        cbc_proxy,
         '_lambda_client',
         create=True,
     )
@@ -96,7 +110,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
         'StatusCode': 200,
     }
 
-    cbc_proxy_ee.create_and_send_broadcast(
+    cbc_proxy.create_and_send_broadcast(
         identifier=identifier,
         message_number='0000007b',
         headline=headline,
@@ -106,7 +120,7 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     )
 
     ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='bt-ee-1-proxy',
+        FunctionName=f'{cbc}-1-proxy',
         InvocationType='RequestResponse',
         Payload=mocker.ANY,
     )
@@ -127,7 +141,10 @@ def test_cbc_proxy_ee_create_and_send_invokes_function(
     assert payload['language'] == expected_language
 
 
-def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
+def test_cbc_proxy_one_2_many_cancel_invokes_function(mocker, cbc_proxy_ee, cbc_proxy_three, cbc):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+
     identifier = 'my-identifier'
     MockProviderMessage = namedtuple(
         'BroadcastProviderMessage', ['id', 'message_number', 'created_at']
@@ -140,7 +157,7 @@ def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     sent = '2020-12-17 14:19:44.130585'
 
     ld_client_mock = mocker.patch.object(
-        cbc_proxy_ee,
+        cbc_proxy,
         '_lambda_client',
         create=True,
     )
@@ -149,7 +166,7 @@ def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
         'StatusCode': 200,
     }
 
-    cbc_proxy_ee.cancel_broadcast(
+    cbc_proxy.cancel_broadcast(
         identifier=identifier,
         message_number='00000050',
         previous_provider_messages=provider_messages,
@@ -157,7 +174,7 @@ def test_cbc_proxy_ee_cancel_invokes_function(mocker, cbc_proxy_ee):
     )
 
     ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='bt-ee-1-proxy',
+        FunctionName=f'{cbc}-1-proxy',
         InvocationType='RequestResponse',
         Payload=mocker.ANY,
     )
@@ -299,14 +316,13 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     assert payload['sent'] == sent
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
 def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
     mocker,
-    cbc_proxy_ee,
-    cbc_proxy_vodafone,
+    cbc_proxy_client,
     cbc
 ):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -352,14 +368,13 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
 def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
     mocker,
-    cbc_proxy_ee,
-    cbc_proxy_vodafone,
+    cbc_proxy_client,
     cbc
 ):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -400,11 +415,11 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
 def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_raises_if_both_invoke_error(
-    mocker, cbc_proxy_ee, cbc_proxy_vodafone, cbc
+    mocker, cbc_proxy_client, cbc
 ):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -443,11 +458,11 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_rai
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
 def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_raises_if_both_function_error(
-    mocker, cbc_proxy_ee, cbc_proxy_vodafone, cbc
+    mocker, cbc_proxy_client, cbc
 ):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_vodafone
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -523,11 +538,14 @@ def test_cbc_proxy_send_canary_invokes_function(mocker, cbc_proxy_client):
     assert payload['identifier'] == identifier
 
 
-def test_cbc_proxy_ee_send_link_test_invokes_function(mocker, cbc_proxy_ee):
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
+def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_ee, cbc_proxy_three, cbc):
+    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+
     identifier = str(uuid.uuid4())
 
     ld_client_mock = mocker.patch.object(
-        cbc_proxy_ee,
+        cbc_proxy,
         '_lambda_client',
         create=True,
     )
@@ -536,13 +554,13 @@ def test_cbc_proxy_ee_send_link_test_invokes_function(mocker, cbc_proxy_ee):
         'StatusCode': 200,
     }
 
-    cbc_proxy_ee.send_link_test(
+    cbc_proxy.send_link_test(
         identifier=identifier,
         sequential_number='0000007b',
     )
 
     ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='bt-ee-1-proxy',
+        FunctionName=f'{cbc}-1-proxy',
         InvocationType='RequestResponse',
         Payload=mocker.ANY,
     )
