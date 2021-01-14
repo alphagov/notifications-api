@@ -109,17 +109,17 @@ class CBCProxyClientBase(ABC):
         pass
 
     def _invoke_lambda_with_failover(self, payload):
-        payload_bytes = bytes(json.dumps(payload), encoding='utf8')
-        result = self._invoke_lambda(self.lambda_name, payload_bytes)
+        result = self._invoke_lambda(self.lambda_name, payload)
 
         if not result:
-            failover_result = self._invoke_lambda(self.failover_lambda_name, payload_bytes)
+            failover_result = self._invoke_lambda(self.failover_lambda_name, payload)
             if not failover_result:
                 raise CBCProxyException(f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}')
 
         return result
 
-    def _invoke_lambda(self, lambda_name, payload_bytes):
+    def _invoke_lambda(self, lambda_name, payload):
+        payload_bytes = bytes(json.dumps(payload), encoding='utf8')
         current_app.logger.info(f"Calling lambda {lambda_name}")
         result = self._lambda_client.invoke(
             FunctionName=lambda_name,
@@ -168,7 +168,7 @@ class CBCProxyCanary(CBCProxyClientBase):
         self,
         identifier,
     ):
-        self._invoke_lambda_with_failover(payload={'identifier': identifier})
+        self._invoke_lambda(self.lambda_name, payload={'identifier': identifier})
 
 
 class CBCProxyEE(CBCProxyClientBase):
