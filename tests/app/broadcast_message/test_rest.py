@@ -392,7 +392,7 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(
 
     cancel_id = str(cancel_event.id)
 
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': cancel_id}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': cancel_id}, queue='broadcast-tasks')
     assert response['status'] == BroadcastStatusType.CANCELLED
     assert response['cancelled_at'] is not None
     assert response['cancelled_by_id'] == str(canceller.id)
@@ -434,7 +434,7 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert len(bm.events) == 1
     alert_event = bm.events[0]
 
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
 
     assert alert_event.service_id == sample_broadcast_service.id
     assert alert_event.transmitted_areas == bm.areas
@@ -472,7 +472,7 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
     assert len(bm.events) == 1
     alert_event = bm.events[0]
 
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
 
     assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
 
@@ -553,7 +553,7 @@ def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_me
     assert response['approved_by_id'] == str(user.id)
     mock_task.assert_called_once_with(
         kwargs={'broadcast_event_id': str(bm.events[0].id)},
-        queue='notify-internal-tasks'
+        queue='broadcast-tasks'
     )
 
 
@@ -584,7 +584,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     assert response['approved_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['approved_by_id'] == str(t.created_by_id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': ANY}, queue='notify-internal-tasks')
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': ANY}, queue='broadcast-tasks')
 
 
 def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_service(

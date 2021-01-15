@@ -35,8 +35,8 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api,
         send_broadcast_event(event.id)
 
     assert mock_send_broadcast_provider_message.apply_async.call_args_list == [
-        call(kwargs={'broadcast_event_id': event.id, 'provider': 'ee'}, queue='notify-internal-tasks'),
-        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='notify-internal-tasks')
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'ee'}, queue='broadcast-tasks'),
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='broadcast-tasks')
     ]
 
 
@@ -63,7 +63,7 @@ def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
         send_broadcast_event(event.id)
 
     assert mock_send_broadcast_provider_message.apply_async.call_args_list == [
-        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='notify-internal-tasks')
+        call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='broadcast-tasks')
     ]
 
 

@@ -309,4 +309,4 @@ def send_canary_to_cbc_proxy():
 def trigger_link_tests():
     if current_app.config['CBC_PROXY_ENABLED']:
         for cbc_name in current_app.config['ENABLED_CBCS']:
-            trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.NOTIFY)
+            trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.BROADCASTS)

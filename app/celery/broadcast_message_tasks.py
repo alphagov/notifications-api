@@ -23,7 +23,7 @@ def send_broadcast_event(broadcast_event_id):
     for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
             kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
-            queue=QueueNames.NOTIFY
+            queue=QueueNames.BROADCASTS
         )
 
 
