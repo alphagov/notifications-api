@@ -36,7 +36,12 @@ from app.hashing import (
     check_hash
 )
 from app import db, encryption
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, get_dt_string_or_none
+from app.utils import (
+    DATETIME_FORMAT,
+    DATETIME_FORMAT_NO_TIMEZONE,
+    get_dt_string_or_none,
+    get_uuid_string_or_none,
+)
 
 from app.history_meta import Versioned
 
@@ -2296,9 +2301,9 @@ class BroadcastMessage(db.Model):
             'cancelled_at': get_dt_string_or_none(self.cancelled_at),
             'updated_at': get_dt_string_or_none(self.updated_at),
 
-            'created_by_id': str(self.created_by_id),
-            'approved_by_id': str(self.approved_by_id),
-            'cancelled_by_id': str(self.cancelled_by_id),
+            'created_by_id': get_uuid_string_or_none(self.created_by_id),
+            'approved_by_id': get_uuid_string_or_none(self.approved_by_id),
+            'cancelled_by_id': get_uuid_string_or_none(self.cancelled_by_id),
         }
 
 
