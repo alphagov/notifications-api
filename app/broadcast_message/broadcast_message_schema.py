@@ -15,8 +15,13 @@ create_broadcast_message_schema = {
         'finishes_at': {'type': 'string', 'format': 'datetime'},
         'areas': {"type": "array", "items": {"type": "string"}},
         'simple_polygons': {"type": "array", "items": {"type": "array"}},
+        'content': {'type': 'string', 'minLength': 1, 'maxLength': 1395},
     },
-    'required': ['template_id', 'service_id', 'created_by'],
+    'required': ['service_id', 'created_by'],
+    'oneOf': [
+        {'required': ['template_id']},
+        {'required': ['content']},
+    ],
     'additionalProperties': False
 }
 

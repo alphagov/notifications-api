@@ -143,9 +143,9 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service):
     (
         {},
         [
-            {'error': 'ValidationError', 'message': 'template_id is a required property'},
             {'error': 'ValidationError', 'message': 'service_id is a required property'},
-            {'error': 'ValidationError', 'message': 'created_by is a required property'}
+            {'error': 'ValidationError', 'message': 'created_by is a required property'},
+            {'error': 'ValidationError', 'message': '{} is not valid under any of the given schemas'},
         ]
     ),
     (
@@ -178,12 +178,30 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
 
 
 @freeze_time('2020-01-01')
-def test_create_broadcast_message_400s_if_content_provided_but_no_template(admin_request, sample_broadcast_service):
-    # we don't currently support this, but might in the future
+def test_create_broadcast_message_can_be_created_from_content(admin_request, sample_broadcast_service):
     response = admin_request.post(
         'broadcast_message.create_broadcast_message',
         _data={
-            'template_id': None,
+            'content': 'Some tailor made broadcast content',
+            'service_id': str(sample_broadcast_service.id),
+            'created_by': str(sample_broadcast_service.created_by_id),
+        },
+        service_id=sample_broadcast_service.id,
+        _expected_status=201
+    )
+    assert response['content'] == 'Some tailor made broadcast content'
+    assert response['template_id'] is None
+
+
+def test_create_broadcast_message_400s_if_content_and_template_provided(
+    admin_request,
+    sample_broadcast_service,
+):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    response = admin_request.post(
+        'broadcast_message.create_broadcast_message',
+        _data={
+            'template_id': str(template.id),
             'content': 'Some tailor made broadcast content',
             'service_id': str(sample_broadcast_service.id),
             'created_by': str(sample_broadcast_service.created_by_id),
@@ -191,11 +209,20 @@ def test_create_broadcast_message_400s_if_content_provided_but_no_template(admin
         service_id=sample_broadcast_service.id,
         _expected_status=400
     )
-    assert response['errors'] ==[
-        {'error': 'ValidationError', 'message': 'template_id is not a valid UUID'},
-        {'error': 'ValidationError', 'message': 'Additional properties are not allowed (content was unexpected)'},
-    ]
 
+    assert len(response['errors']) == 1
+    assert response['errors'][0]['error'] == 'ValidationError'
+    # The error message for oneOf is ugly, non-deterministic in ordering
+    # and contains some UUID, so let’s just pick out the important bits
+    assert (
+        ' is valid under each of '
+    ) in response['errors'][0]['message']
+    assert (
+        '{required: [content]}'
+    ) in response['errors'][0]['message']
+    assert (
+        '{required: [template_id]}'
+    ) in response['errors'][0]['message']
 
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.DRAFT,
