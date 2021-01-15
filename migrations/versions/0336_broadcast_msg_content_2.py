@@ -7,6 +7,7 @@ Create Date: 2020-12-04 15:06:22.544803
 """
 from alembic import op
 import sqlalchemy as sa
+from notifications_utils.template import BroadcastMessageTemplate
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm.session import Session
 
@@ -17,18 +18,22 @@ down_revision = '0335_broadcast_msg_content'
 
 
 def upgrade():
-    session = Session(bind=op.get_bind())
 
-    broadcast_messages = session.query(BroadcastMessage).filter(BroadcastMessage.content == None)
+    conn = op.get_bind()
 
-    for broadcast_message in broadcast_messages:
-        broadcast_message.content = broadcast_message.template._as_utils_template_with_personalisation(
-            broadcast_message.personalisation
-        ).content_with_placeholders_filled_in
-
-    session.commit()
-
-    op.alter_column('broadcast_message', 'content', nullable=False)
+    results = conn.execute(sa.text("""
+        UPDATE
+            broadcast_message
+        SET
+            content = templates_history.content
+        FROM
+            templates_history
+        WHERE
+            broadcast_message.content is NULL and
+            broadcast_message.template_id = templates_history.id and
+            broadcast_message.template_version = templates_history.version
+        ;
+    """))
 
 
 def downgrade():
