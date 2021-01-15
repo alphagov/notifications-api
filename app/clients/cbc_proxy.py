@@ -131,13 +131,13 @@ class CBCProxyClientBase(ABC):
 
         if result['StatusCode'] > 299:
             current_app.logger.info(
-                f"Error calling lambda {self.lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
+                f"Error calling lambda {lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
             )
             success = False
 
         elif 'FunctionError' in result:
             current_app.logger.info(
-                f"Error calling lambda {self.lambda_name} with function error { result['Payload'] }"
+                f"Error calling lambda {lambda_name} with function error { result['Payload'] }"
             )
             success = False
 
