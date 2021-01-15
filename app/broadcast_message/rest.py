@@ -109,8 +109,9 @@ def create_broadcast_message(service_id):
         content = template._as_utils_template_with_personalisation(
             personalisation
         ).content_with_placeholders_filled_in
+        reference = None
     else:
-        template, content = None, data['content']
+        template, content, reference = None, data['content'], data['reference']
 
     broadcast_message = BroadcastMessage(
         service_id=service.id,
@@ -123,6 +124,7 @@ def create_broadcast_message(service_id):
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
         created_by_id=user.id,
         content=content,
+        reference=reference,
     )
 
     dao_save_object(broadcast_message)

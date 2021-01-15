@@ -16,11 +16,18 @@ create_broadcast_message_schema = {
         'areas': {"type": "array", "items": {"type": "string"}},
         'simple_polygons': {"type": "array", "items": {"type": "array"}},
         'content': {'type': 'string', 'minLength': 1, 'maxLength': 1395},
+        'reference': {'type': 'string', 'minLength': 1, 'maxLength': 255},
     },
     'required': ['service_id', 'created_by'],
-    'oneOf': [
-        {'required': ['template_id']},
-        {'required': ['content']},
+    'allOf': [
+        {'oneOf': [
+            {'required': ['template_id']},
+            {'required': ['content']},
+        ]},
+        {'oneOf': [
+            {'required': ['template_id']},
+            {'required': ['reference']},
+        ]},
     ],
     'additionalProperties': False
 }
