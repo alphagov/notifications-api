@@ -150,5 +150,9 @@ def get_dt_string_or_none(val):
     return val.strftime(DATETIME_FORMAT) if val else None
 
 
+def get_uuid_string_or_none(val):
+    return str(val)  if val else None
+
+
 def format_sequential_number(sequential_number):
     return format(sequential_number, "x").zfill(8)

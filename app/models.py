@@ -36,7 +36,12 @@ from app.hashing import (
     check_hash
 )
 from app import db, encryption
-from app.utils import DATETIME_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, get_dt_string_or_none
+from app.utils import (
+    DATETIME_FORMAT,
+    DATETIME_FORMAT_NO_TIMEZONE,
+    get_dt_string_or_none,
+    get_uuid_string_or_none,
+)
 
 from app.history_meta import Versioned
 
@@ -2245,13 +2250,20 @@ class BroadcastMessage(db.Model):
     cancelled_at = db.Column(db.DateTime, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
-    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
     approved_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
     cancelled_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
 
     created_by = db.relationship('User', foreign_keys=[created_by_id])
     approved_by = db.relationship('User', foreign_keys=[approved_by_id])
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
+
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), nullable=True)
+    api_key = db.relationship('ApiKey')
+
+    reference = db.Column(db.String(255), nullable=True)
+
+    CheckConstraint("created_by_id is not null or api_key_id is not null")
 
     @property
     def personalisation(self):
@@ -2266,6 +2278,7 @@ class BroadcastMessage(db.Model):
     def serialize(self):
         return {
             'id': str(self.id),
+            'reference': self.reference,
 
             'service_id': str(self.service_id),
 
@@ -2288,9 +2301,9 @@ class BroadcastMessage(db.Model):
             'cancelled_at': get_dt_string_or_none(self.cancelled_at),
             'updated_at': get_dt_string_or_none(self.updated_at),
 
-            'created_by_id': str(self.created_by_id),
-            'approved_by_id': str(self.approved_by_id),
-            'cancelled_by_id': str(self.cancelled_by_id),
+            'created_by_id': get_uuid_string_or_none(self.created_by_id),
+            'approved_by_id': get_uuid_string_or_none(self.approved_by_id),
+            'cancelled_by_id': get_uuid_string_or_none(self.cancelled_by_id),
         }
 
 
