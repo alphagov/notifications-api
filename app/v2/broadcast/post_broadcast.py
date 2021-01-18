@@ -1,6 +1,7 @@
 from itertools import chain
 from flask import jsonify, request
 from app import authenticated_service, api_user
+from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.dao_utils import dao_save_object
 from app.notifications.validators import check_service_has_permission
 from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
@@ -17,7 +18,17 @@ def create_broadcast():
         authenticated_service.permissions,
     )
 
-    broadcast_json = validate(request.get_json(), post_broadcast_schema)
+    if request.content_type == 'application/json':
+        broadcast_json = request.get_json()
+    elif request.content_type == 'application/cap+xml':
+        broadcast_json = cap_xml_to_dict(request.get_data(as_text=True))
+    else:
+        raise BadRequestError(
+            message=f'Content type {request.content_type} not supported',
+            status_code=400,
+        )
+
+    validate(broadcast_json, post_broadcast_schema)
 
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
