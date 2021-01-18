@@ -122,3 +122,25 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['template_name'] is None
     assert response_json['template_version'] is None
     assert response_json['updated_at'] is None
+
+
+def test_invalid_post_cap_xml_broadcast_returns_400(
+    client,
+    sample_broadcast_service,
+):
+    auth_header = create_authorization_header(service_id=sample_broadcast_service.id)
+
+    response = client.post(
+        path='/v2/broadcast',
+        data="<alert>Oh no</alert>",
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert response.status_code == 400
+    assert json.loads(response.get_data(as_text=True)) == {
+        'errors': [{
+            'error': 'BadRequestError',
+            'message': 'Request data is not valid CAP XML'
+        }],
+        'status_code': 400,
+    }

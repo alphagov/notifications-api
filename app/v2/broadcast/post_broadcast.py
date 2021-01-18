@@ -8,6 +8,8 @@ from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
 from app.schema_validation import validate
 from app.v2.broadcast import v2_broadcast_blueprint
 from app.v2.broadcast.broadcast_schemas import post_broadcast_schema
+from app.v2.errors import BadRequestError
+from app.xml_schemas import validate_xml
 
 
 @v2_broadcast_blueprint.route("", methods=['POST'])
@@ -21,7 +23,13 @@ def create_broadcast():
     if request.content_type == 'application/json':
         broadcast_json = request.get_json()
     elif request.content_type == 'application/cap+xml':
-        broadcast_json = cap_xml_to_dict(request.get_data(as_text=True))
+        cap_xml = request.get_data(as_text=True)
+        if not validate_xml(cap_xml, 'CAP-v1.2.xsd'):
+            raise BadRequestError(
+                message=f'Request data is not valid CAP XML',
+                status_code=400,
+            )
+        broadcast_json = cap_xml_to_dict(cap_xml)
     else:
         raise BadRequestError(
             message=f'Content type {request.content_type} not supported',
