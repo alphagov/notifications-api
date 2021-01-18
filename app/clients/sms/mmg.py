@@ -90,7 +90,7 @@ class MMGClient(SmsClient):
             self.statsd_client.incr("clients.mmg.success")
         else:
             self.statsd_client.incr("clients.mmg.error")
-            self.current_app.logger.error(log_message)
+            self.current_app.logger.warning(log_message)
 
     def get_name(self):
         return self.name
