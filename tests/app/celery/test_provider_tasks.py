@@ -46,19 +46,6 @@ def test_should_call_send_email_to_provider_from_deliver_email_task(
     app.delivery.send_to_providers.send_email_to_provider.assert_called_with(sample_notification)
 
 
-def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_task(mocker):
-    mocker.patch('app.delivery.send_to_providers.send_email_to_provider')
-    mocker.patch('app.celery.provider_tasks.deliver_email.retry')
-
-    notification_id = app.create_uuid()
-
-    deliver_email(notification_id)
-    app.delivery.send_to_providers.send_email_to_provider.assert_not_called()
-    app.celery.provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
-
-
-# DO THESE FOR THE 4 TYPES OF TASK
-
 def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(sample_notification, mocker):
     mocker.patch('app.delivery.send_to_providers.send_sms_to_provider', side_effect=Exception("EXPECTED"))
     mocker.patch('app.celery.provider_tasks.deliver_sms.retry', side_effect=MaxRetriesExceededError())
@@ -70,6 +57,38 @@ def test_should_go_into_technical_error_if_exceeds_retries_on_deliver_sms_task(s
     provider_tasks.deliver_sms.retry.assert_called_with(queue="retry-tasks", countdown=0)
 
     assert sample_notification.status == 'technical-failure'
+
+
+def test_send_sms_should_not_switch_providers_on_non_provider_failure(
+    sample_notification,
+    mocker
+):
+    mocker.patch(
+        'app.delivery.send_to_providers.send_sms_to_provider',
+        side_effect=Exception("Non Provider Exception")
+    )
+    mock_dao_reduce_sms_provider_priority = mocker.patch(
+        'app.delivery.send_to_providers.dao_reduce_sms_provider_priority'
+    )
+    mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
+
+    deliver_sms(sample_notification.id)
+
+    assert mock_dao_reduce_sms_provider_priority.called is False
+
+
+# end of deliver_sms task tests, now deliver_email task tests
+
+
+def test_should_add_to_retry_queue_if_notification_not_found_in_deliver_email_task(mocker):
+    mocker.patch('app.delivery.send_to_providers.send_email_to_provider')
+    mocker.patch('app.celery.provider_tasks.deliver_email.retry')
+
+    notification_id = app.create_uuid()
+
+    deliver_email(notification_id)
+    app.delivery.send_to_providers.send_email_to_provider.assert_not_called()
+    app.celery.provider_tasks.deliver_email.retry.assert_called_with(queue="retry-tasks")
 
 
 @pytest.mark.parametrize(
@@ -149,21 +168,3 @@ def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_noti
     assert sample_notification.status == 'created'
     assert not mock_logger_exception.called
     assert mock_logger_warning.called
-
-
-def test_send_sms_should_not_switch_providers_on_non_provider_failure(
-    sample_notification,
-    mocker
-):
-    mocker.patch(
-        'app.delivery.send_to_providers.send_sms_to_provider',
-        side_effect=Exception("Non Provider Exception")
-    )
-    mock_dao_reduce_sms_provider_priority = mocker.patch(
-        'app.delivery.send_to_providers.dao_reduce_sms_provider_priority'
-    )
-    mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
-
-    deliver_sms(sample_notification.id)
-
-    assert mock_dao_reduce_sms_provider_priority.called is False
