@@ -32,9 +32,15 @@ def test_valid_post_broadcast_returns_201(
         data=json.dumps({
             'content': 'This is a test',
             'reference': 'abc123',
-            'polygons': [[
-                [1, 2], [3, 4], [5, 6],
-            ]],
+            'category': 'Other',
+            'areas': [
+                {
+                    'name': 'Borchester Downs',
+                    'polygons': [[
+                        [1, 2], [3, 4], [5, 6], [1, 2],
+                    ]],
+                },
+            ],
         }),
         headers=[('Content-Type', 'application/json'), auth_header],
     )
@@ -45,7 +51,9 @@ def test_valid_post_broadcast_returns_201(
 
     assert response_json['approved_at'] is None
     assert response_json['approved_by_id'] == None
-    assert response_json['areas'] == []
+    assert response_json['areas'] == [
+        'Borchester Downs'
+    ]
     assert response_json['cancelled_at'] == None
     assert response_json['cancelled_by_id'] == None
     assert response_json['content'] == 'This is a test'
@@ -56,7 +64,9 @@ def test_valid_post_broadcast_returns_201(
     assert response_json['id'] == ANY
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
-    assert response_json['simple_polygons'] == [[[1, 2], [3, 4], [5, 6]]]
+    assert response_json['simple_polygons'] == [
+        [[1, 2], [3, 4], [5, 6], [1, 2],]
+    ]
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None

@@ -1,9 +1,12 @@
+from itertools import chain
 from flask import jsonify, request
 from app import authenticated_service, api_user
 from app.dao.dao_utils import dao_save_object
 from app.notifications.validators import check_service_has_permission
 from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
+from app.schema_validation import validate
 from app.v2.broadcast import v2_broadcast_blueprint
+from app.v2.broadcast.broadcast_schemas import post_broadcast_schema
 
 
 @v2_broadcast_blueprint.route("", methods=['POST'])
@@ -14,15 +17,19 @@ def create_broadcast():
         authenticated_service.permissions,
     )
 
-    request_json = request.get_json()
+    broadcast_json = validate(request.get_json(), post_broadcast_schema)
 
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
-        content=request_json['content'],
-        reference=request_json['reference'],
+        content=broadcast_json['content'],
+        reference=broadcast_json['reference'],
         areas={
-            "areas": [],
-            "simple_polygons": request_json['polygons'],
+            'areas': [
+                area['name'] for area in broadcast_json['areas']
+            ],
+            'simple_polygons': list(chain.from_iterable((
+                area['polygons'] for area in broadcast_json['areas']
+            )))
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,
