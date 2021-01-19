@@ -62,6 +62,7 @@ class AwsSesClient(EmailClient):
         # before-call, after-call, after-call-error, request-created, response-received
         self._client.meta.events.register('request-created.ses.SendEmail', self.ses_request_created_hook)
         self._client.meta.events.register('response-received.ses.SendEmail', self.ses_response_received_hook)
+        self._client.meta.events.register('before-call.ses', self.ses_inject_connection_header)
 
     def ses_request_created_hook(self, **kwargs):
         # request created may be called multiple times if the request auto-retries. We want to count all these as the
@@ -76,6 +77,11 @@ class AwsSesClient(EmailClient):
 
     def get_name(self):
         return self.name
+
+    def ses_inject_connection_header(self, params, **kwargs):
+        # keep underlying TLS connection open, so we do not spend lots of CPU
+        # and network time renegotiating TLS
+        params['headers']['Connection'] = 'Keep-Alive'
 
     def send_email(self,
                    source,
@@ -148,3 +154,4 @@ def punycode_encode_email(email_address):
     # only the hostname should ever be punycode encoded.
     local, hostname = email_address.split('@')
     return '{}@{}'.format(local, hostname.encode('idna').decode('utf-8'))
+

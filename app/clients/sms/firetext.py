@@ -2,7 +2,8 @@ import json
 import logging
 
 from time import monotonic
-from requests import request, RequestException
+from requests import request, RequestException, Session
+from requests.adapters import HTTPAdapter
 
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
@@ -69,6 +70,9 @@ class FiretextClient(SmsClient):
         self.name = 'firetext'
         self.url = current_app.config.get('FIRETEXT_URL')
         self.statsd_client = statsd_client
+        # this uses urllib3 under the hood to create a connection pool
+        self.session = Session()
+        self.session.mount('https://', HTTPAdapter(pool_maxsize=32))
 
     def get_name(self):
         return self.name
@@ -103,8 +107,7 @@ class FiretextClient(SmsClient):
         response = None
         start_time = monotonic()
         try:
-            response = request(
-                "POST",
+            response = self.session.post(
                 self.url,
                 data=data,
                 timeout=60

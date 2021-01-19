@@ -1,6 +1,8 @@
 import json
 from time import monotonic
-from requests import (request, RequestException)
+from requests import (request, RequestException, Session)
+from requests.adapters import HTTPAdapter
+
 from app.clients.sms import (SmsClient, SmsClientResponseException)
 
 mmg_response_map = {
@@ -75,6 +77,9 @@ class MMGClient(SmsClient):
         self.name = 'mmg'
         self.statsd_client = statsd_client
         self.mmg_url = current_app.config.get('MMG_URL')
+        # this uses urllib3 under the hood to create a connection pool
+        self.session = Session()
+        self.session.mount('https://', HTTPAdapter(pool_maxsize=32))
 
     def record_outcome(self, success, response):
         status_code = response.status_code if response else 503
@@ -108,8 +113,8 @@ class MMGClient(SmsClient):
         response = None
         start_time = monotonic()
         try:
-            response = request(
-                "POST",
+
+            response = self.session.post(
                 self.mmg_url,
                 data=json.dumps(data),
                 headers={
