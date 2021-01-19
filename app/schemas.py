@@ -115,13 +115,13 @@ class UserSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
-            "updated_at",
-            "email_access_validated_at",
-            "created_at",
-            "user_to_service",
-            "user_to_organisation",
             "_password",
-            "verify_codes"
+            "created_at",
+            "email_access_validated_at",
+            "updated_at",
+            "user_to_organisation",
+            "user_to_service",
+            "verify_codes",
         )
         strict = True
 
@@ -152,9 +152,18 @@ class UserUpdateAttributeSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.User
         exclude = (
-            'id', 'updated_at', 'created_at', 'user_to_service',
-            '_password', 'verify_codes', 'logged_in_at', 'password_changed_at',
-            'failed_login_count', 'state', 'platform_admin')
+            '_password',
+            'created_at',
+            'failed_login_count',
+            'id',
+            'logged_in_at',
+            'password_changed_at',
+            'platform_admin',
+            'state',
+            'updated_at',
+            'user_to_service',
+            'verify_codes',
+        )
         strict = True
 
     @validates('name')
@@ -243,33 +252,33 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
-            'updated_at',
-            'created_at',
-            'api_keys',
-            'templates',
-            'jobs',
-            'old_id',
-            'template_statistics',
-            'service_provider_stats',
-            'service_notification_stats',
-            'service_sms_senders',
-            'reply_to_email_addresses',
-            'letter_contacts',
-            'complaints',
-            'data_retention',
             'all_template_folders',
             'annual_billing',
+            'api_keys',
+            'broadcast_messages',
+            'complaints',
             'contact_list',
+            'created_at',
             'crown',
+            'data_retention',
+            'guest_list',
             'inbound_number',
             'inbound_sms',
+            'jobs',
+            'letter_contacts',
             'letter_logo_filename',
+            'old_id',
+            'reply_to_email_addresses',
             'returned_letters',
+            'service_broadcast_provider_restriction',
+            'service_notification_stats',
+            'service_provider_stats',
+            'service_sms_senders',
+            'template_statistics',
+            'templates',
+            'updated_at',
             'users',
             'version',
-            'guest_list',
-            'broadcast_messages',
-            'service_broadcast_provider_restriction',
         )
         strict = True
 
@@ -303,40 +312,40 @@ class DetailedServiceSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
-            'api_keys',
-            'templates',
-            'users',
-            'created_by',
-            'jobs',
-            'template_statistics',
-            'service_provider_stats',
-            'service_notification_stats',
-            'email_branding',
-            'service_sms_senders',
-            'monthly_billing',
-            'reply_to_email_addresses',
-            'letter_contact_block',
-            'message_limit',
-            'email_from',
-            'inbound_api',
-            'guest_list',
-            'reply_to_email_address',
-            'sms_sender',
-            'permissions',
-            'inbound_number',
-            'inbound_sms',
             'all_template_folders',
             'annual_billing',
+            'api_keys',
+            'broadcast_messages',
             'contact_list',
             'created_by',
+            'created_by',
             'crown',
+            'email_branding',
+            'email_from',
+            'guest_list',
+            'guest_list',
+            'inbound_api',
+            'inbound_number',
+            'inbound_sms',
+            'jobs',
+            'letter_contact_block',
             'letter_logo_filename',
+            'message_limit',
+            'monthly_billing',
+            'permissions',
             'rate_limit',
+            'reply_to_email_address',
+            'reply_to_email_addresses',
             'returned_letters',
+            'service_notification_stats',
+            'service_provider_stats',
+            'service_sms_senders',
+            'sms_sender',
+            'template_statistics',
+            'templates',
+            'users',
             'users',
             'version',
-            'guest_list',
-            'broadcast_messages',
         )
 
 
@@ -386,6 +395,7 @@ class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
         exclude = TemplateSchema.Meta.exclude + (
             'archived',
+            'broadcast_data',
             'created_at',
             'created_by',
             'created_by_id',
@@ -401,7 +411,6 @@ class TemplateSchemaNoDetail(TemplateSchema):
             'template_redacted',
             'updated_at',
             'version',
-            'broadcast_data',
         )
 
     @pre_dump
@@ -470,9 +479,10 @@ class JobSchema(BaseSchema):
         model = models.Job
         exclude = (
             'notifications',
-            'notifications_sent',
             'notifications_delivered',
-            'notifications_failed')
+            'notifications_failed',
+            'notifications_sent',
+        )
         strict = True
 
 
@@ -565,12 +575,25 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
         # 'body', 'subject' [for emails], and 'content_char_count'
         fields = (
             # db rows
-            'id', 'to', 'job_row_number', 'template_version', 'billable_units', 'notification_type', 'created_at',
-            'sent_at', 'sent_by', 'updated_at', 'status', 'reference',
+            'billable_units',
+            'created_at',
+            'id',
+            'job_row_number',
+            'notification_type',
+            'reference',
+            'sent_at',
+            'sent_by',
+            'status',
+            'template_version',
+            'to',
+            'updated_at',
             # computed fields
             'personalisation',
             # relationships
-            'service', 'job', 'api_key', 'template_history'
+            'api_key',
+            'job',
+            'service',
+            'template_history',
         )
 
     @pre_dump
