@@ -99,22 +99,32 @@ def create_broadcast_message(service_id):
     validate(data, create_broadcast_message_schema)
     service = dao_fetch_service_by_id(data['service_id'])
     user = get_user_by_id(data['created_by'])
-    template = dao_get_template_by_id_and_service_id(data['template_id'], data['service_id'])
-
     personalisation = data.get('personalisation', {})
+    template_id = data.get('template_id')
+
+    if template_id:
+        template = dao_get_template_by_id_and_service_id(
+            template_id, data['service_id']
+        )
+        content = template._as_utils_template_with_personalisation(
+            personalisation
+        ).content_with_placeholders_filled_in
+        reference = None
+    else:
+        template, content, reference = None, data['content'], data['reference']
+
     broadcast_message = BroadcastMessage(
         service_id=service.id,
-        template_id=template.id,
-        template_version=template.version,
+        template_id=template_id,
+        template_version=template.version if template else None,
         personalisation=personalisation,
         areas={"areas": data.get("areas", []), "simple_polygons": data.get("simple_polygons", [])},
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
         created_by_id=user.id,
-        content=template._as_utils_template_with_personalisation(
-            personalisation
-        ).content_with_placeholders_filled_in,
+        content=content,
+        reference=reference,
     )
 
     dao_save_object(broadcast_message)
