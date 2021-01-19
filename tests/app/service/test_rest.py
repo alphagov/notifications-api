@@ -261,6 +261,7 @@ def test_get_service_by_id(admin_request, sample_service):
         'letter_branding',
         'message_limit',
         'name',
+        'notes',
         'organisation',
         'organisation_type',
         'permissions',
