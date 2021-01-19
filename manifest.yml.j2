@@ -53,6 +53,11 @@
   'notify-delivery-worker-jobs': {},
   'notify-delivery-worker-research': {},
   'notify-delivery-worker-sender': {'disk_quota': '2G', 'memory': '4G'},
+  'notify-delivery-worker-sender-canary': {'disk_quota': '2G', 'memory': '4G',  'instances': {
+      'preview': 0,
+      'staging': 1,
+      'production': 0
+    },},
   'notify-delivery-worker-periodic': {},
   'notify-delivery-worker-reporting': {
     'additional_env_vars': {
