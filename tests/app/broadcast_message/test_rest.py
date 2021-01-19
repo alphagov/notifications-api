@@ -280,6 +280,26 @@ def test_create_broadcast_message_400s_if_reference_not_provided_with_content(
     )
 
 
+def test_create_broadcast_message_400s_if_no_content_or_template(
+    admin_request,
+    sample_broadcast_service,
+):
+    response = admin_request.post(
+        'broadcast_message.create_broadcast_message',
+        _data={
+            'service_id': str(sample_broadcast_service.id),
+            'created_by': str(sample_broadcast_service.created_by_id),
+        },
+        service_id=sample_broadcast_service.id,
+        _expected_status=400
+    )
+    assert len(response['errors']) == 1
+    assert response['errors'][0]['error'] == 'ValidationError'
+    assert response['errors'][0]['message'].endswith(
+        'is not valid under any of the given schemas'
+    )
+
+
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.DRAFT,
     BroadcastStatusType.PENDING_APPROVAL,
