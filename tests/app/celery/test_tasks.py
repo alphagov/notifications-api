@@ -49,6 +49,7 @@ from app.models import (
     SMS_TYPE,
     ReturnedLetter,
     NOTIFICATION_CREATED)
+from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import DATETIME_FORMAT
 
 from tests.app import load_example_csv
@@ -1888,3 +1889,119 @@ def test_save_api_email_dont_retry_if_notification_already_exists(sample_service
     assert notifications[0].created_at == datetime(2020, 3, 25, 14, 30)
     # should only have sent the notification once.
     mock_provider_task.assert_called_once_with([data['id']], queue=expected_queue)
+
+
+@pytest.mark.parametrize('task_function, delivery_mock, recipient, template_args', (
+    (
+        save_email,
+        'app.celery.provider_tasks.deliver_email.apply_async',
+        'test@example.com',
+        {'template_type': 'email', 'subject': 'Hello'},
+    ), (
+        save_sms,
+        'app.celery.provider_tasks.deliver_sms.apply_async',
+        '07700 900890',
+        {'template_type': 'sms'}
+    ), (
+        save_letter,
+        'app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async',
+        '123 Example Street\nCity of Town\nXM4 5HQ',
+        {'template_type': 'letter', 'subject': 'Hello'}
+    ),
+))
+def test_save_tasks_use_cached_service_and_template(
+    notify_db_session,
+    mocker,
+    task_function,
+    delivery_mock,
+    recipient,
+    template_args,
+):
+    service = create_service()
+    template = create_template(service=service, **template_args)
+
+    notification = _notification_json(template, to=recipient)
+    delivery_mock = mocker.patch(delivery_mock)
+    service_dict_mock = mocker.patch(
+        'app.serialised_models.SerialisedService.get_dict',
+        wraps=SerialisedService.get_dict,
+    )
+    template_dict_mock = mocker.patch(
+        'app.serialised_models.SerialisedTemplate.get_dict',
+        wraps=SerialisedTemplate.get_dict,
+    )
+
+    for _ in range(3):
+        task_function(
+            service.id,
+            uuid.uuid4(),
+            encryption.encrypt(notification),
+        )
+
+    # We talk to the database once for the service and once for the
+    # template; subsequent calls are caught by the in memory cache
+    assert service_dict_mock.call_args_list == [
+        call(service.id),
+    ]
+    assert template_dict_mock.call_args_list == [
+        call(str(template.id), str(service.id), 1),
+    ]
+
+    # But we save 3 notifications and enqueue 3 tasks
+    assert len(Notification.query.all()) == 3
+    assert len(delivery_mock.call_args_list) == 3
+
+
+@freeze_time('2020-03-25 14:30')
+@pytest.mark.parametrize('notification_type, task_function, expected_queue, recipient', (
+    ('sms', save_api_sms, QueueNames.SEND_SMS, '+447700900855'),
+    ('email', save_api_email, QueueNames.SEND_EMAIL, 'jane.citizen@example.com'),
+))
+def test_save_api_tasks_use_cache(
+    sample_service,
+    mocker,
+    notification_type,
+    task_function,
+    expected_queue,
+    recipient,
+):
+    mock_provider_task = mocker.patch(
+        f'app.celery.provider_tasks.deliver_{notification_type}.apply_async'
+    )
+    service_dict_mock = mocker.patch(
+        'app.serialised_models.SerialisedService.get_dict',
+        wraps=SerialisedService.get_dict,
+    )
+
+    template = create_template(sample_service, template_type=notification_type)
+    api_key = create_api_key(service=template.service)
+
+    def create_encrypted_notification():
+        return encryption.encrypt({
+            "to": recipient,
+            "id": str(uuid.uuid4()),
+            "template_id": str(template.id),
+            "template_version": template.version,
+            "service_id": str(template.service_id),
+            "personalisation": None,
+            "notification_type": template.template_type,
+            "api_key_id": str(api_key.id),
+            "key_type": api_key.key_type,
+            "client_reference": 'our email',
+            "reply_to_text": "our.email@gov.uk",
+            "document_download_count": 0,
+            "status": NOTIFICATION_CREATED,
+            "created_at": datetime.utcnow().strftime(DATETIME_FORMAT),
+        })
+
+    assert len(Notification.query.all()) == 0
+
+    for _ in range(3):
+        task_function(encrypted_notification=create_encrypted_notification())
+
+    assert service_dict_mock.call_args_list == [
+        call(str(template.service_id))
+    ]
+
+    assert len(Notification.query.all()) == 3
+    assert len(mock_provider_task.call_args_list) == 3

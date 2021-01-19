@@ -51,18 +51,19 @@ class SerialisedTemplate(SerialisedModel):
 
     @classmethod
     @memory_cache
-    def from_id_and_service_id(cls, template_id, service_id):
-        return cls(cls.get_dict(template_id, service_id)['data'])
+    def from_id_and_service_id(cls, template_id, service_id, version=None):
+        return cls(cls.get_dict(template_id, service_id, version)['data'])
 
     @staticmethod
-    @redis_cache.set('service-{service_id}-template-{template_id}-version-None')
-    def get_dict(template_id, service_id):
+    @redis_cache.set('service-{service_id}-template-{template_id}-version-{version}')
+    def get_dict(template_id, service_id, version):
         from app.dao import templates_dao
         from app.schemas import template_schema
 
         fetched_template = templates_dao.dao_get_template_by_id_and_service_id(
             template_id=template_id,
-            service_id=service_id
+            service_id=service_id,
+            version=version,
         )
 
         template_dict = template_schema.dump(fetched_template).data
