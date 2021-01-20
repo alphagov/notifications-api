@@ -1,5 +1,6 @@
 from itertools import chain
 from flask import jsonify, request
+from notifications_utils.polygons import Polygons
 from app import authenticated_service, api_user
 from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.dao_utils import dao_save_object
@@ -38,6 +39,10 @@ def create_broadcast():
 
     validate(broadcast_json, post_broadcast_schema)
 
+    polygons = Polygons(list(chain.from_iterable((
+        area['polygons'] for area in broadcast_json['areas']
+    ))))
+
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
         content=broadcast_json['content'],
@@ -46,9 +51,7 @@ def create_broadcast():
             'areas': [
                 area['name'] for area in broadcast_json['areas']
             ],
-            'simple_polygons': list(chain.from_iterable((
-                area['polygons'] for area in broadcast_json['areas']
-            )))
+            'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_long_lat,
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,

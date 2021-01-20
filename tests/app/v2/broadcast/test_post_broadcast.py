@@ -36,9 +36,14 @@ def test_valid_post_broadcast_returns_201(
             'category': 'Other',
             'areas': [
                 {
-                    'name': 'Borchester Downs',
+                    'name': 'Hackney Marshes',
                     'polygons': [[
-                        [1, 2], [3, 4], [5, 6], [1, 2],
+                        [-0.038280487060546875, 51.55738264619775],
+                        [-0.03184318542480469, 51.553913882566754],
+                        [-0.023174285888671875, 51.55812972989382],
+                        [-0.023174285888671999, 51.55812972989999],
+                        [-0.029869079589843747, 51.56165153059717],
+                        [-0.038280487060546875, 51.55738264619775],
                     ]],
                 },
             ],
@@ -53,7 +58,7 @@ def test_valid_post_broadcast_returns_201(
     assert response_json['approved_at'] is None
     assert response_json['approved_by_id'] == None
     assert response_json['areas'] == [
-        'Borchester Downs'
+        'Hackney Marshes'
     ]
     assert response_json['cancelled_at'] == None
     assert response_json['cancelled_by_id'] == None
@@ -65,9 +70,21 @@ def test_valid_post_broadcast_returns_201(
     assert response_json['id'] == ANY
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
-    assert response_json['simple_polygons'] == [
-        [[1, 2], [3, 4], [5, 6], [1, 2],]
-    ]
+    assert response_json['simple_polygons'] == [[
+        [-0.03817522145265898, 51.557381351011166],
+        [-0.03791399800364216, 51.55758039392131],
+        [-0.030362635618559567, 51.56141279571522],
+        [-0.02986997783677049, 51.56152875195115],
+        [-0.029379069367567606, 51.561405599957745],
+        [-0.023537043373602105, 51.5583323982824],
+        [-0.02328416546450603, 51.55813395976017],
+        [-0.02355422144186266, 51.557933308587664],
+        [-0.0313493058222969, 51.55414241384808],
+        [-0.031840673207720764, 51.55403463730992],
+        [-0.032327132941933706, 51.55416275685022],
+        [-0.037918974384948616, 51.55717594115094],
+        [-0.03817522145265898, 51.557381351011166],
+    ]]
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None
@@ -113,9 +130,9 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
     assert len(response_json['simple_polygons']) == 1
-    assert len(response_json['simple_polygons'][0]) == 29
-    assert response_json['simple_polygons'][0][0] == [53.10569, 0.24453]
-    assert response_json['simple_polygons'][0][-1] == [53.10569, 0.24453]
+    assert len(response_json['simple_polygons'][0]) == 23
+    assert response_json['simple_polygons'][0][0] == [53.10561946699971, 0.2441253049430708]
+    assert response_json['simple_polygons'][0][-1] == [53.10561946699971, 0.2441253049430708]
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None
