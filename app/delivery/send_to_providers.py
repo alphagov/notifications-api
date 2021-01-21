@@ -9,7 +9,7 @@ from notifications_utils.recipients import (
 )
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
-from app import notification_provider_clients, statsd_client, create_uuid
+from app import notification_provider_clients, statsd_client, create_uuid, db
 from app.dao.notifications_dao import (
     dao_update_notification
 )
@@ -58,11 +58,16 @@ def send_sms_to_provider(notification):
 
         else:
             try:
+                recipient = notification.to
+                is_international = notification.international
+                notification_id = notification.id
+                reply_to_text = notification.reply_to_text
+                db.session.commit()
                 provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to, international=notification.international),
+                    to=validate_and_format_phone_number(recipient, international=is_international),
                     content=str(template),
-                    reference=str(notification.id),
-                    sender=notification.reply_to_text
+                    reference=str(notification_id),
+                    sender=reply_to_text
                 )
             except Exception as e:
                 notification.billable_units = template.fragment_count
