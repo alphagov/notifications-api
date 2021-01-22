@@ -579,14 +579,17 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
 
     assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
 
-
+@pytest.mark.parametrize('is_platform_admin', [True, False])
 def test_update_broadcast_message_status_rejects_approval_from_creator(
     admin_request,
     sample_broadcast_service,
-    mocker
+    mocker,
+    is_platform_admin
 ):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, status=BroadcastStatusType.PENDING_APPROVAL)
+    user = sample_broadcast_service.created_by
+    user.platform_admin = is_platform_admin
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -624,40 +627,6 @@ def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_a
     assert response[
         'message'
     ] == f'broadcast_message {broadcast.id} has no selected areas and so cannot be broadcasted.'
-
-
-def test_update_broadcast_message_status_allows_platform_admin_to_approve_own_message(
-    notify_db,
-    admin_request,
-    sample_broadcast_service,
-    mocker
-):
-    user = sample_broadcast_service.created_by
-    user.platform_admin = True
-    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(
-        t,
-        status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
-    )
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
-
-    response = admin_request.post(
-        'broadcast_message.update_broadcast_message_status',
-        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(user.id)},
-        service_id=t.service_id,
-        broadcast_message_id=bm.id,
-        _expected_status=200
-    )
-
-    assert response['status'] == BroadcastStatusType.BROADCASTING
-    assert response['approved_at'] is not None
-    assert response['created_by_id'] == str(user.id)
-    assert response['approved_by_id'] == str(user.id)
-    mock_task.assert_called_once_with(
-        kwargs={'broadcast_event_id': str(bm.events[0].id)},
-        queue='broadcast-tasks'
-    )
 
 
 def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
