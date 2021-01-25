@@ -248,8 +248,8 @@ def test_get_service_by_id(admin_request, sample_service):
     assert set(json_resp['data'].keys()) == {
         'active',
         'allowed_broadcast_provider',
-        'billing_contact_email_address',
-        'billing_contact_name',
+        'billing_contact_email_addresses',
+        'billing_contact_names',
         'billing_reference',
         'consent_to_research',
         'contact_link',

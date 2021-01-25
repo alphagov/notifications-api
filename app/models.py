@@ -489,8 +489,8 @@ class Service(db.Model, Versioned):
 
     notes = db.Column(db.Text, nullable=True)
     purchase_order_number = db.Column(db.String(255), nullable=True)
-    billing_contact_name = db.Column(db.Text, nullable=True)
-    billing_contact_email_address = db.Column(db.Text, nullable=True)
+    billing_contact_names = db.Column(db.Text, nullable=True)
+    billing_contact_email_addresses = db.Column(db.Text, nullable=True)
     billing_reference = db.Column(db.String(255), nullable=True)
 
     email_branding = db.relationship(
