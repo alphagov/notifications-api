@@ -49,7 +49,7 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
         )
 
     if new_status == BroadcastStatusType.BROADCASTING:
-        # trial mode services can approve their own broadcasts
+        # training mode services can approve their own broadcasts
         if updating_user == broadcast_message.created_by and not broadcast_message.service.restricted:
             raise InvalidRequest(
                 f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
