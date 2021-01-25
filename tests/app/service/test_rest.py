@@ -248,6 +248,9 @@ def test_get_service_by_id(admin_request, sample_service):
     assert set(json_resp['data'].keys()) == {
         'active',
         'allowed_broadcast_provider',
+        'billing_contact_email_address',
+        'billing_contact_name',
+        'billing_reference',
         'consent_to_research',
         'contact_link',
         'count_as_live',
@@ -266,6 +269,7 @@ def test_get_service_by_id(admin_request, sample_service):
         'organisation_type',
         'permissions',
         'prefix_sms',
+        'purchase_order_number',
         'rate_limit',
         'research_mode',
         'restricted',
