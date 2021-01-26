@@ -551,6 +551,47 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
+def test_update_broadcast_message_status_updates_details_but_does_not_queue_task_for_stubbed_broadcast_message(
+    admin_request,
+    sample_broadcast_service,
+    mocker
+):
+    sample_broadcast_service.restricted = True
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
+        stubbed=True
+    )
+    approver = create_user(email='approver@gov.uk')
+    sample_broadcast_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['status'] == BroadcastStatusType.BROADCASTING
+    assert response['approved_at'] is not None
+    assert response['approved_by_id'] == str(approver.id)
+
+    assert len(bm.events) == 1
+    alert_event = bm.events[0]
+
+    assert len(mock_task.mock_calls) == 0
+
+    assert alert_event.service_id == sample_broadcast_service.id
+    assert alert_event.transmitted_areas == bm.areas
+    assert alert_event.message_type == BroadcastEventMessageType.ALERT
+    assert alert_event.transmitted_finishes_at == bm.finishes_at
+    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
+
+
 def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
     admin_request,
     sample_broadcast_service,
