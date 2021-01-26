@@ -24,7 +24,7 @@ def create_broadcast():
     if request.content_type != 'application/cap+xml':
         raise BadRequestError(
             message=f'Content type {request.content_type} not supported',
-            status_code=400,
+            status_code=415,
         )
 
     cap_xml = request.get_data(as_text=True)

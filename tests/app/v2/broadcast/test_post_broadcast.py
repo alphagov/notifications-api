@@ -51,13 +51,13 @@ def test_valid_post_broadcast_returns_201(
         headers=[('Content-Type', 'application/json'), auth_header],
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 415
     assert json.loads(response.get_data(as_text=True)) == {
         'errors': [{
             'error': 'BadRequestError',
             'message': 'Content type application/json not supported'
         }],
-        'status_code': 400,
+        'status_code': 415,
     }
 
 
