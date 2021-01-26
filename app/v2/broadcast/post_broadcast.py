@@ -1,5 +1,5 @@
 from itertools import chain
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
 from app import authenticated_service, api_user
 from app.broadcast_message.translators import cap_xml_to_dict
@@ -62,5 +62,10 @@ def create_broadcast():
     )
 
     dao_save_object(broadcast_message)
+
+    current_app.logger.info(
+        f'Broadcast message {broadcast_message.id} created for service '
+        f'{authenticated_service.id} with reference {broadcast_json["reference"]}'
+    )
 
     return jsonify(broadcast_message.serialize()), 201
