@@ -21,21 +21,21 @@ def create_broadcast():
         authenticated_service.permissions,
     )
 
-    if request.content_type == 'application/json':
-        broadcast_json = request.get_json()
-    elif request.content_type == 'application/cap+xml':
-        cap_xml = request.get_data(as_text=True)
-        if not validate_xml(cap_xml, 'CAP-v1.2.xsd'):
-            raise BadRequestError(
-                message=f'Request data is not valid CAP XML',
-                status_code=400,
-            )
-        broadcast_json = cap_xml_to_dict(cap_xml)
-    else:
+    if request.content_type != 'application/cap+xml':
         raise BadRequestError(
             message=f'Content type {request.content_type} not supported',
             status_code=400,
         )
+
+    cap_xml = request.get_data(as_text=True)
+
+    if not validate_xml(cap_xml, 'CAP-v1.2.xsd'):
+        raise BadRequestError(
+            message=f'Request data is not valid CAP XML',
+            status_code=400,
+        )
+
+    broadcast_json = cap_xml_to_dict(cap_xml)
 
     validate(broadcast_json, post_broadcast_schema)
 
