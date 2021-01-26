@@ -380,7 +380,7 @@ class Config(object):
 
     CBC_PROXY_ENABLED = bool(CBC_PROXY_AWS_ACCESS_KEY_ID)
 
-    ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.VODAFONE}
+    ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
 
 
 ######################

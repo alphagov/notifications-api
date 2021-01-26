@@ -46,6 +46,7 @@ class CBCProxyClient:
             'canary': CBCProxyCanary,
             BroadcastProvider.EE: CBCProxyEE,
             BroadcastProvider.THREE: CBCProxyThree,
+            BroadcastProvider.O2: CBCProxyO2,
             BroadcastProvider.VODAFONE: CBCProxyVodafone,
         }
         return proxy_classes[provider](self._lambda_client)
@@ -235,6 +236,65 @@ class CBCProxyEE(CBCProxyClientBase):
 class CBCProxyThree(CBCProxyClientBase):
     lambda_name = 'three-1-proxy'
     failover_lambda_name = 'three-2-proxy'
+
+    LANGUAGE_ENGLISH = 'en-GB'
+    LANGUAGE_WELSH = 'cy-GB'
+
+    def send_link_test(
+        self,
+        identifier,
+        sequential_number=None,
+    ):
+        """
+        link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
+        test.
+        """
+        payload = {
+            'message_type': 'test',
+            'identifier': identifier,
+            'message_format': 'cap'
+        }
+
+        self._invoke_lambda_with_failover(payload=payload)
+
+    def create_and_send_broadcast(
+        self, identifier, headline, description, areas, sent, expires, message_number=None
+    ):
+        payload = {
+            'message_type': 'alert',
+            'identifier': identifier,
+            'message_format': 'cap',
+            'headline': headline,
+            'description': description,
+            'areas': areas,
+            'sent': sent,
+            'expires': expires,
+            'language': self.infer_language_from(description),
+        }
+        self._invoke_lambda_with_failover(payload=payload)
+
+    def cancel_broadcast(
+        self,
+        identifier, previous_provider_messages,
+        sent, message_number=None
+    ):
+        payload = {
+            'message_type': 'cancel',
+            'identifier': identifier,
+            'message_format': 'cap',
+            "references": [
+                {
+                    "message_id": str(message.id),
+                    "sent": message.created_at.strftime(DATETIME_FORMAT)
+                } for message in previous_provider_messages
+            ],
+            'sent': sent,
+        }
+        self._invoke_lambda_with_failover(payload=payload)
+
+class CBCProxyO2(CBCProxyClientBase):
+    lambda_name = 'o2-1-proxy'
+    failover_lambda_name = 'o2-2-proxy'
 
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'

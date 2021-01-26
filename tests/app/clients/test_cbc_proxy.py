@@ -7,7 +7,7 @@ from unittest.mock import Mock, call
 import pytest
 
 from app.clients.cbc_proxy import (
-    CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree
+    CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
 )
 from app.utils import DATETIME_FORMAT
 
@@ -39,12 +39,6 @@ def cbc_proxy_client(client, mocker):
 def cbc_proxy_ee(cbc_proxy_client):
     return cbc_proxy_client.get_proxy('ee')
 
-
-@pytest.fixture
-def cbc_proxy_three(cbc_proxy_client):
-    return cbc_proxy_client.get_proxy('three')
-
-
 @pytest.fixture
 def cbc_proxy_vodafone(cbc_proxy_client):
     return cbc_proxy_client.get_proxy('vodafone')
@@ -53,6 +47,7 @@ def cbc_proxy_vodafone(cbc_proxy_client):
 @pytest.mark.parametrize('provider_name, expected_provider_class', [
     ('ee', CBCProxyEE),
     ('three', CBCProxyThree),
+    ('o2', CBCProxyO2),
     ('vodafone', CBCProxyVodafone),
     ('canary', CBCProxyCanary),
 ])
@@ -83,16 +78,15 @@ def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy_ee):
     ('my-description', 'en-GB'),
     ('mŷ-description', 'cy-GB'),
 ))
-@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three', 'o2'])
 def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
     mocker,
-    cbc_proxy_ee,
-    cbc_proxy_three,
+    cbc_proxy_client,
     description,
     cbc,
     expected_language,
 ):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     identifier = 'my-identifier'
     headline = 'my-headline'
@@ -141,9 +135,9 @@ def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
     assert payload['language'] == expected_language
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
-def test_cbc_proxy_one_2_many_cancel_invokes_function(mocker, cbc_proxy_ee, cbc_proxy_three, cbc):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three', 'o2'])
+def test_cbc_proxy_one_2_many_cancel_invokes_function(mocker, cbc_proxy_client, cbc):
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     identifier = 'my-identifier'
     MockProviderMessage = namedtuple(
@@ -316,7 +310,7 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
     assert payload['sent'] == sent
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three', 'o2'])
 def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
     mocker,
     cbc_proxy_client,
@@ -368,7 +362,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three', 'o2'])
 def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
     mocker,
     cbc_proxy_client,
@@ -415,7 +409,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three', 'o2'])
 def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_raises_if_both_invoke_error(
     mocker, cbc_proxy_client, cbc
 ):
@@ -458,7 +452,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_rai
     ]
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three'])
+@pytest.mark.parametrize('cbc', ['bt-ee', 'vodafone', 'three', 'o2'])
 def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_raises_if_both_function_error(
     mocker, cbc_proxy_client, cbc
 ):
@@ -538,9 +532,9 @@ def test_cbc_proxy_send_canary_invokes_function(mocker, cbc_proxy_client):
     assert payload['identifier'] == identifier
 
 
-@pytest.mark.parametrize('cbc', ['bt-ee', 'three'])
-def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_ee, cbc_proxy_three, cbc):
-    cbc_proxy = cbc_proxy_ee if cbc == 'bt-ee' else cbc_proxy_three
+@pytest.mark.parametrize('cbc', ['bt-ee', 'three', 'o2'])
+def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_client, cbc):
+    cbc_proxy = cbc_proxy_client.get_proxy('ee') if cbc == 'bt-ee' else cbc_proxy_client.get_proxy(cbc)
 
     identifier = str(uuid.uuid4())
 
