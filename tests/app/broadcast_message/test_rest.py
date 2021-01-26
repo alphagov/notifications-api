@@ -4,6 +4,7 @@ import uuid
 from freezegun import freeze_time
 import pytest
 
+from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id_and_service_id
 from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
 
 from tests.app.db import create_broadcast_message, create_template, create_service, create_user
@@ -117,7 +118,9 @@ def test_get_broadcast_messages_for_service(admin_request, sample_broadcast_serv
 
 
 @freeze_time('2020-01-01')
-def test_create_broadcast_message(admin_request, sample_broadcast_service):
+@pytest.mark.parametrize('training_mode_service', [True, False])
+def test_create_broadcast_message(admin_request, sample_broadcast_service, training_mode_service):
+    sample_broadcast_service.restricted = training_mode_service
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     response = admin_request.post(
@@ -138,6 +141,8 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service):
     assert response['personalisation'] == {}
     assert response['areas'] == []
 
+    broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)
+    assert broadcast_message.stubbed == training_mode_service
 
 @pytest.mark.parametrize('data, expected_errors', [
     (

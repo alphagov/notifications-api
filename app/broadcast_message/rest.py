@@ -121,6 +121,7 @@ def create_broadcast_message(service_id):
         created_by_id=user.id,
         content=content,
         reference=reference,
+        stubbed=service.restricted
     )
 
     dao_save_object(broadcast_message)
