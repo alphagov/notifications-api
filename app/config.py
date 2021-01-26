@@ -381,6 +381,7 @@ class Config(object):
     CBC_PROXY_ENABLED = bool(CBC_PROXY_AWS_ACCESS_KEY_ID)
 
     ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
 
 
 ######################
@@ -508,6 +509,8 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
 
+    MAX_CONTENT_LENGTH = None
+
 
 class Live(Config):
     NOTIFY_EMAIL_DOMAIN = 'notifications.service.gov.uk'
@@ -528,6 +531,8 @@ class Live(Config):
     SES_STUB_URL = None
 
     CRONITOR_ENABLED = True
+
+    MAX_CONTENT_LENGTH = None
 
 
 class CloudFoundryConfig(Config):
