@@ -174,8 +174,8 @@ class CBCProxyCanary(CBCProxyClientBase):
 
 
 class CBCProxyEE(CBCProxyClientBase):
-    lambda_name = 'bt-ee-1-proxy'
-    failover_lambda_name = 'bt-ee-2-proxy'
+    lambda_name = 'ee-1-proxy'
+    failover_lambda_name = 'ee-2-proxy'
 
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'
