@@ -133,6 +133,7 @@ def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
     assert payload['sent'] == sent
     assert payload['expires'] == expires
     assert payload['language'] == expected_language
+    assert payload['channel'] == 'test'
 
 
 @pytest.mark.parametrize('cbc', ['bt-ee', 'three', 'o2'])
@@ -249,6 +250,7 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(
     assert payload['sent'] == sent
     assert payload['expires'] == expires
     assert payload['language'] == expected_language
+    assert payload['channel'] == 'test'
 
 
 def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
