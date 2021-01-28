@@ -19,6 +19,7 @@ from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils import logging, request_helper
 from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
+from werkzeug.exceptions import RequestEntityTooLarge as WerkzeugRequestEntityTooLarge
 from werkzeug.local import LocalProxy
 
 from app.celery.celery import NotifyCelery
@@ -280,6 +281,15 @@ def init_app(app):
 
         g.start = monotonic()
         g.endpoint = request.endpoint
+
+    @app.before_request
+    def check_content_length():
+        if (
+            request.content_length is not None
+            and current_app.config['MAX_CONTENT_LENGTH'] is not None
+            and request.content_length > current_app.config['MAX_CONTENT_LENGTH']
+        ):
+            raise WerkzeugRequestEntityTooLarge()
 
     @app.after_request
     def after_request(response):
