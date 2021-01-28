@@ -121,6 +121,7 @@ def create_broadcast_message(service_id):
         created_by_id=user.id,
         content=content,
         reference=reference,
+        stubbed=service.restricted
     )
 
     dao_save_object(broadcast_message)
@@ -214,7 +215,8 @@ def _create_broadcast_event(broadcast_message):
 
     dao_save_object(event)
 
-    send_broadcast_event.apply_async(
-        kwargs={'broadcast_event_id': str(event.id)},
-        queue=QueueNames.BROADCASTS
-    )
+    if not broadcast_message.stubbed:
+        send_broadcast_event.apply_async(
+            kwargs={'broadcast_event_id': str(event.id)},
+            queue=QueueNames.BROADCASTS
+        )

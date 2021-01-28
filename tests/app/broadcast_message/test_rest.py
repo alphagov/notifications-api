@@ -4,6 +4,7 @@ import uuid
 from freezegun import freeze_time
 import pytest
 
+from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id_and_service_id
 from app.models import BROADCAST_TYPE, BroadcastStatusType, BroadcastEventMessageType
 
 from tests.app.db import create_broadcast_message, create_template, create_service, create_user
@@ -117,7 +118,9 @@ def test_get_broadcast_messages_for_service(admin_request, sample_broadcast_serv
 
 
 @freeze_time('2020-01-01')
-def test_create_broadcast_message(admin_request, sample_broadcast_service):
+@pytest.mark.parametrize('training_mode_service', [True, False])
+def test_create_broadcast_message(admin_request, sample_broadcast_service, training_mode_service):
+    sample_broadcast_service.restricted = training_mode_service
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     response = admin_request.post(
@@ -138,6 +141,8 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service):
     assert response['personalisation'] == {}
     assert response['areas'] == []
 
+    broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)
+    assert broadcast_message.stubbed == training_mode_service
 
 @pytest.mark.parametrize('data, expected_errors', [
     (
@@ -538,6 +543,47 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     alert_event = bm.events[0]
 
     mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
+
+    assert alert_event.service_id == sample_broadcast_service.id
+    assert alert_event.transmitted_areas == bm.areas
+    assert alert_event.message_type == BroadcastEventMessageType.ALERT
+    assert alert_event.transmitted_finishes_at == bm.finishes_at
+    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
+
+
+def test_update_broadcast_message_status_updates_details_but_does_not_queue_task_for_stubbed_broadcast_message(
+    admin_request,
+    sample_broadcast_service,
+    mocker
+):
+    sample_broadcast_service.restricted = True
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    bm = create_broadcast_message(
+        t,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
+        stubbed=True
+    )
+    approver = create_user(email='approver@gov.uk')
+    sample_broadcast_service.users.append(approver)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(approver.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['status'] == BroadcastStatusType.BROADCASTING
+    assert response['approved_at'] is not None
+    assert response['approved_by_id'] == str(approver.id)
+
+    assert len(bm.events) == 1
+    alert_event = bm.events[0]
+
+    assert len(mock_task.mock_calls) == 0
 
     assert alert_event.service_id == sample_broadcast_service.id
     assert alert_event.transmitted_areas == bm.areas
