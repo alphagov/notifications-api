@@ -110,7 +110,9 @@ def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
         headline=headline,
         description=description,
         areas=EXAMPLE_AREAS,
-        sent=sent, expires=expires,
+        sent=sent,
+        expires=expires,
+        channel="severe",
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -133,7 +135,7 @@ def test_cbc_proxy_one_2_many_create_and_send_invokes_function(
     assert payload['sent'] == sent
     assert payload['expires'] == expires
     assert payload['language'] == expected_language
-    assert payload['channel'] == 'test'
+    assert payload['channel'] == 'severe'
 
 
 @pytest.mark.parametrize('cbc', ['ee', 'three', 'o2'])
@@ -227,7 +229,9 @@ def test_cbc_proxy_vodafone_create_and_send_invokes_function(
         headline=headline,
         description=description,
         areas=EXAMPLE_AREAS,
-        sent=sent, expires=expires,
+        sent=sent,
+        expires=expires,
+        channel="test",
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -348,6 +352,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
         areas=EXAMPLE_AREAS,
         sent='a-passed-through-sent-value',
         expires='a-passed-through-expires-value',
+        channel="severe",
     )
 
     assert ld_client_mock.invoke.call_args_list == [
@@ -395,6 +400,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_invoke_error(
         areas=EXAMPLE_AREAS,
         sent='a-passed-through-sent-value',
         expires='a-passed-through-expires-value',
+        channel="test",
     )
 
     assert ld_client_mock.invoke.call_args_list == [
@@ -436,6 +442,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_rai
             areas=EXAMPLE_AREAS,
             sent='a-passed-through-sent-value',
             expires='a-passed-through-expires-value',
+            channel="test",
         )
 
     assert e.match(f'Lambda failed for both {cbc}-1-proxy and {cbc}-2-proxy')
@@ -484,6 +491,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
             areas=EXAMPLE_AREAS,
             sent='a-passed-through-sent-value',
             expires='a-passed-through-expires-value',
+            channel="severe",
         )
 
     assert e.match(f'Lambda failed for both {cbc}-1-proxy and {cbc}-2-proxy')

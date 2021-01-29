@@ -59,6 +59,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             areas=areas,
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
+            channel="test"
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
         cbc_proxy_provider_client.update_and_send_broadcast(
@@ -70,6 +71,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
+            channel="test"
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
         cbc_proxy_provider_client.cancel_broadcast(

@@ -90,7 +90,7 @@ class CBCProxyClientBase(ABC):
         pass
 
     def create_and_send_broadcast(
-        self, identifier, headline, description, areas, sent, expires, message_number=None
+        self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         pass
 
@@ -98,7 +98,7 @@ class CBCProxyClientBase(ABC):
     def update_and_send_broadcast(
         self,
         identifier, previous_provider_messages, headline, description, areas,
-        sent, expires, message_number=None
+        sent, expires, channel, message_number=None
     ):
         pass
 
@@ -198,7 +198,7 @@ class CBCProxyEE(CBCProxyClientBase):
         self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
-        self, identifier, headline, description, areas, sent, expires, message_number=None
+        self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         payload = {
             'message_type': 'alert',
@@ -210,7 +210,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
-            'channel': 'test',
+            'channel': channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -259,7 +259,7 @@ class CBCProxyThree(CBCProxyClientBase):
         self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
-        self, identifier, headline, description, areas, sent, expires, message_number=None
+        self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         payload = {
             'message_type': 'alert',
@@ -271,7 +271,7 @@ class CBCProxyThree(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
-            'channel': 'test',
+            'channel': channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -319,7 +319,7 @@ class CBCProxyO2(CBCProxyClientBase):
         self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
-        self, identifier, headline, description, areas, sent, expires, message_number=None
+        self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         payload = {
             'message_type': 'alert',
@@ -331,7 +331,7 @@ class CBCProxyO2(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
-            'channel': 'test',
+            'channel': channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -381,7 +381,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
         self._invoke_lambda_with_failover(payload=payload)
 
     def create_and_send_broadcast(
-        self, identifier, message_number, headline, description, areas, sent, expires,
+        self, identifier, message_number, headline, description, areas, sent, expires, channel
     ):
         payload = {
             'message_type': 'alert',
@@ -394,7 +394,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
-            'channel': 'test',
+            'channel': channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 

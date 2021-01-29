@@ -153,6 +153,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(
         }],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
+        channel="test",
     )
 
 
@@ -191,6 +192,7 @@ def test_send_broadcast_provider_message_sends_data_correctly_when_broadcast_mes
         areas=mocker.ANY,
         sent=mocker.ANY,
         expires=mocker.ANY,
+        channel="test"
     )
 
 
@@ -240,6 +242,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(
         ],
         sent=update_event.sent_at_as_cap_datetime_string,
         expires=update_event.transmitted_finishes_at_as_cap_datetime_string,
+        channel="test"
     )
 
 
@@ -330,6 +333,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service):
         }],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
+        channel="test"
     )
 
 
