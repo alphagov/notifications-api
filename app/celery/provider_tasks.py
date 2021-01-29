@@ -6,6 +6,7 @@ from app import notify_celery
 from app.config import QueueNames
 from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import AwsSesClientThrottlingSendRateException
+from app.clients.sms import SmsClientResponseException
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
 from app.delivery import send_to_providers
@@ -22,11 +23,17 @@ def deliver_sms(self, notification_id):
         if not notification:
             raise NoResultFound()
         send_to_providers.send_sms_to_provider(notification)
-    except Exception:
-        try:
+    except Exception as e:
+        if isinstance(e, SmsClientResponseException):
+            current_app.logger.warning(
+                "SMS notification delivery for id: {} failed".format(notification_id)
+            )
+        else:
             current_app.logger.exception(
                 "SMS notification delivery for id: {} failed".format(notification_id)
             )
+
+        try:
             if self.request.retries == 0:
                 self.retry(queue=QueueNames.RETRY, countdown=0)
             else:
