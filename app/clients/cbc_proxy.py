@@ -102,7 +102,6 @@ class CBCProxyClientBase(ABC):
     ):
         pass
 
-    # We have not implemented cancelling a broadcast
     def cancel_broadcast(
         self,
         identifier, previous_provider_messages, headline, description, areas,
