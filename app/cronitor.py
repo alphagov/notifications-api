@@ -38,13 +38,11 @@ def cronitor(task_name):
         @wraps(func)
         def inner_decorator(*args, **kwargs):
             ping_cronitor('run')
+            status = 'fail'
             try:
                 ret = func(*args, **kwargs)
                 status = 'complete'
                 return ret
-            except Exception:
-                status = 'fail'
-                raise
             finally:
                 ping_cronitor(status)
 
