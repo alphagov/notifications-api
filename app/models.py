@@ -397,6 +397,12 @@ class Organisation(db.Model):
         nullable=True,
     )
 
+    notes = db.Column(db.Text, nullable=True)
+    purchase_order_number = db.Column(db.String(255), nullable=True)
+    billing_contact_names = db.Column(db.Text, nullable=True)
+    billing_contact_email_addresses = db.Column(db.Text, nullable=True)
+    billing_reference = db.Column(db.String(255), nullable=True)
+
     @property
     def live_services(self):
         return [
