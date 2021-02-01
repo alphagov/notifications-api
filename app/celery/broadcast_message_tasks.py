@@ -9,8 +9,12 @@ from celery.exceptions import MaxRetriesExceededError
 from app import cbc_proxy_client, db, notify_celery
 from app.clients.cbc_proxy import CBCProxyFatalException, CBCProxyRetryableException
 from app.config import QueueNames
-from app.models import BroadcastEventMessageType, BroadcastProvider
-from app.dao.broadcast_message_dao import dao_get_broadcast_event_by_id, create_broadcast_provider_message
+from app.models import BroadcastEventMessageType, BroadcastProvider, BroadcastProviderMessageStatus
+from app.dao.broadcast_message_dao import (
+    dao_get_broadcast_event_by_id,
+    create_broadcast_provider_message,
+    update_broadcast_provider_message_status
+)
 
 from app.utils import format_sequential_number
 
@@ -138,11 +142,19 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
         # (because the message has expired)
         check_provider_message_should_retry(broadcast_provider_message)
 
+        # TODO: Decide whether to set to TECHNICAL_FAILURE or ERROR based on response codes from cbc proxy
+        update_broadcast_provider_message_status(
+            broadcast_provider_message,
+            status=BroadcastProviderMessageStatus.TECHNICAL_FAILURE
+        )
+
         self.retry(
             exc=exc,
             countdown=get_retry_delay(self.request.retries),
             queue=QueueNames.BROADCASTS,
         )
+
+    update_broadcast_provider_message_status(broadcast_provider_message, status=BroadcastProviderMessageStatus.ACK)
 
 
 @notify_celery.task(name='trigger-link-test')
