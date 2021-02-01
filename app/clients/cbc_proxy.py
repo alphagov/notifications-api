@@ -210,6 +210,7 @@ class CBCProxyEE(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
+            'channel': 'test',
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -270,6 +271,7 @@ class CBCProxyThree(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
+            'channel': 'test',
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -329,6 +331,7 @@ class CBCProxyO2(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
+            'channel': 'test',
         }
         self._invoke_lambda_with_failover(payload=payload)
 
@@ -391,6 +394,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'sent': sent,
             'expires': expires,
             'language': self.infer_language_from(description),
+            'channel': 'test',
         }
         self._invoke_lambda_with_failover(payload=payload)
 
