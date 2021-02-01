@@ -70,7 +70,11 @@ def send_broadcast_event(broadcast_event_id):
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    broadcast_provider_message = create_broadcast_provider_message(broadcast_event, provider)
+    # the broadcast_provider_message will already exist if we retried previously
+    broadcast_provider_message = broadcast_event.get_provider_message(provider)
+    if broadcast_provider_message is None:
+        broadcast_provider_message = create_broadcast_provider_message(broadcast_event, provider)
+
     formatted_message_number = None
     if provider == BroadcastProvider.VODAFONE:
         formatted_message_number = format_sequential_number(broadcast_provider_message.message_number)
