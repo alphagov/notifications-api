@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import call, ANY
 
 from freezegun import freeze_time
-from celery.exceptions import MaxRetriesExceededError, Retry
+from celery.exceptions import Retry
 import pytest
 
 from app.models import (
@@ -14,9 +14,9 @@ from app.models import (
     ServiceBroadcastProviderRestriction,
     ServiceBroadcastSettings,
 )
-from app.clients.cbc_proxy import CBCProxyRetryableException
+from app.clients.cbc_proxy import CBCProxyRetryableException, CBCProxyFatalException
 from app.celery.broadcast_message_tasks import (
-    check_provider_message_should_retry,
+    check_provider_message_should_send,
     get_retry_delay,
     send_broadcast_event,
     send_broadcast_provider_message,
@@ -364,7 +364,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(
     )
 
     alert_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
-    create_broadcast_provider_message(alert_event, provider)
+    create_broadcast_provider_message(alert_event, provider, status=BroadcastProviderMessageStatus.ACK)
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
 
     mock_update_broadcast = mocker.patch(
@@ -419,8 +419,8 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(
     update_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.UPDATE)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
 
-    create_broadcast_provider_message(alert_event, provider)
-    create_broadcast_provider_message(update_event, provider)
+    create_broadcast_provider_message(alert_event, provider, status=BroadcastProviderMessageStatus.ACK)
+    create_broadcast_provider_message(update_event, provider, status=BroadcastProviderMessageStatus.ACK)
 
     mock_cancel_broadcast = mocker.patch(
         f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.cancel_broadcast',
@@ -498,7 +498,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
         queue='broadcast-tasks'
     )
     broadcast_provider_message = event.get_provider_message(provider)
-    assert broadcast_provider_message.status == BroadcastProviderMessageStatus.TECHNICAL_FAILURE
+    assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
 
 
@@ -597,74 +597,121 @@ def test_get_retry_delay_has_capped_backoff(retry_count, expected_delay):
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_retry_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
+def test_check_provider_message_should_send_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(
         broadcast_message,
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 12, 1),
     )
-    provider_message = create_broadcast_provider_message(current_event, 'ee')
-
-    check_provider_message_should_retry(provider_message)
+    check_provider_message_should_send(current_event, 'ee')
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_retry_raises_if_event_has_expired(sample_template):
+def test_check_provider_message_should_send_raises_if_event_has_expired(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(
         broadcast_message,
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 11, 59),
     )
-    provider_message = create_broadcast_provider_message(current_event, 'ee')
-
-    with pytest.raises(MaxRetriesExceededError) as exc:
-        check_provider_message_should_retry(provider_message)
+    with pytest.raises(CBCProxyFatalException) as exc:
+        check_provider_message_should_send(current_event, 'ee')
     assert 'The expiry time of 2021-01-01 11:59:00 has already passed' in str(exc.value)
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_retry_raises_if_a_newer_event_exists(sample_template):
+def test_check_provider_message_should_send_raises_if_older_event_still_sending(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     # event approved at midnight
-    past_event = create_broadcast_event(
+    past_succesful_event = create_broadcast_event(
         broadcast_message,
         message_type='alert',
         sent_at=datetime(2021, 1, 1, 0, 0),
-        transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
-        transmitted_finishes_at=datetime(2021, 1, 2, 0, 0),
     )
     # event updated at 5am (this is the event we're currently trying to send)
-    current_event = create_broadcast_event(
+    past_still_sending_event = create_broadcast_event(
         broadcast_message,
         message_type='update',
         sent_at=datetime(2021, 1, 1, 5, 0),
-        transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
-        transmitted_finishes_at=datetime(2021, 1, 2, 0, 0),
     )
     # event updated at 7am
-    future_event = create_broadcast_event(
+    current_event = create_broadcast_event(
         broadcast_message,
         message_type='update',
         sent_at=datetime(2021, 1, 1, 7, 0),
-        transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
-        transmitted_finishes_at=datetime(2021, 1, 2, 0, 0),
-    )
-    # event cancelled at 10am
-    futurest_event = create_broadcast_event(
-        broadcast_message,
-        message_type='cancel',
-        sent_at=datetime(2021, 1, 1, 10, 0),
-        transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
-        transmitted_finishes_at=datetime(2021, 1, 2, 0, 0),
     )
 
-    provider_message = create_broadcast_provider_message(current_event, 'ee')
+    create_broadcast_provider_message(past_succesful_event, provider='ee', status=BroadcastProviderMessageStatus.ACK)
+    create_broadcast_provider_message(past_still_sending_event, provider='ee', status=BroadcastProviderMessageStatus.SENDING)  # noqa
+
+    # we havent sent the previous update yet - it's still in sending - so don't try and send this one.
+    with pytest.raises(CBCProxyFatalException) as exc:
+        check_provider_message_should_send(current_event, 'ee')
+
+    assert f'Previous event {past_still_sending_event.id} (type update) has not finished sending to provider ee' in str(exc.value)  # noqa
+
+
+@freeze_time('2021-01-01 12:00')
+def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_sending_yet(sample_template):
+    broadcast_message = create_broadcast_message(sample_template)
+    # event approved at midnight
+    past_succesful_event = create_broadcast_event(
+        broadcast_message,
+        message_type='alert',
+        sent_at=datetime(2021, 1, 1, 0, 0),
+    )
+    # event updated at 5am (this is the event we're currently trying to send)
+    past_still_sending_event = create_broadcast_event(
+        broadcast_message,
+        message_type='update',
+        sent_at=datetime(2021, 1, 1, 5, 0),
+    )
+    # event updated at 7am
+    current_event = create_broadcast_event(
+        broadcast_message,
+        message_type='update',
+        sent_at=datetime(2021, 1, 1, 7, 0),
+    )
+
+    # no provider message for past_still_sending_event
+    create_broadcast_provider_message(past_succesful_event, provider='ee', status=BroadcastProviderMessageStatus.ACK)
 
     # even though the task is going on until midnight tomorrow, we shouldn't send the update now, because the cancel
     # message will be in the pipeline somewhere.
-    with pytest.raises(MaxRetriesExceededError) as exc:
-        check_provider_message_should_retry(provider_message)
+    with pytest.raises(CBCProxyFatalException) as exc:
+        check_provider_message_should_send(current_event, 'ee')
 
-    assert f'This event has been superceeded by cancel broadcast_event {futurest_event.id}' in str(exc.value)
+    assert f'Previous event {past_still_sending_event.id} (type update) has no provider_message for provider ee' in str(exc.value)  # noqa
+
+
+@freeze_time('2021-01-01 12:00')
+def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acked_yet(sample_template):
+    broadcast_message = create_broadcast_message(sample_template)
+    # event approved at midnight
+    current_event = create_broadcast_event(
+        broadcast_message,
+        message_type='alert',
+        sent_at=datetime(2021, 1, 1, 0, 0),
+    )
+    future_event = create_broadcast_event(
+        broadcast_message,
+        message_type='cancel',
+        sent_at=datetime(2021, 1, 1, 10, 0),
+    )
+
+    # this doesn't raise, because the alert event got an ack. The cancel doesn't have an event yet
+    # but this task is only interested in the current task (the update) so doesn't worry about that
+    check_provider_message_should_send(current_event, 'ee')
+
+
+def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(sample_template):
+    broadcast_message = create_broadcast_message(sample_template)
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    # this might be set to technical-failure if we're currently retrying this event
+    create_broadcast_provider_message(current_event, provider='ee', status='technical-failure')
+
+    # this doesn't raise, because the alert got an ack and it doesnt matter if the current event
+    # has a provider message yet or not
+    check_provider_message_should_send(current_event, 'ee')

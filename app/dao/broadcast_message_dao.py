@@ -64,5 +64,5 @@ def create_broadcast_provider_message(broadcast_event, provider):
 
 
 @transactional
-def update_broadcast_provider_message_status(broadcast_provider_message, status):
+def update_broadcast_provider_message_status(broadcast_provider_message, *, status):
     broadcast_provider_message.status = status

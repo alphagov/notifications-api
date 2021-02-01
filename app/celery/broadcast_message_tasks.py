@@ -32,25 +32,61 @@ def get_retry_delay(retry_count):
     return min(delay, 300)
 
 
-def check_provider_message_should_retry(broadcast_provider_message):
-    this_event = broadcast_provider_message.broadcast_event
+def check_provider_message_should_send(broadcast_event, provider):
+    """
+    If any previous event hasn't sent yet for that provider, then we shouldn't send the current event. Instead, fail and
+    raise a P1 - so that a notify team member can assess the state of the previous messages, and if necessary, can
+    replay the `send_broadcast_provider_message` task if the previous message has now been sent.
 
-    if this_event.transmitted_finishes_at < datetime.utcnow():
-        print(this_event.transmitted_finishes_at, datetime.utcnow(),)
-        raise MaxRetriesExceededError(
-            f'Given up sending broadcast_event {this_event.id} ' +
-            f'to provider {broadcast_provider_message.provider}: ' +
-            f'The expiry time of {this_event.transmitted_finishes_at} has already passed'
+    Note: This is called before the new broadcast_provider_message is created.
+
+    # Help, I've come across this code following a pagerduty alert, what should I do?
+
+    1. Find the failing broadcast_provider_message associated with the previous event that caused this to trip.
+    2. If that provider message is still failing to send, fix the issue causing that. The task to send that previous
+       message might still be retrying in the background - look for logs related to that task.
+    3. If that provider message has sent succesfully, you might need to send this task off depending on context. This
+       might not always be true though, for example, it may not be necessary to send a cancel if the original alert has
+       already expired.
+    4. If you need to re-send this task off again, you'll need to run the following command on paas:
+       `send_broadcast_provider_message.apply_async(args=(broadcast_event_id, provider), queue=QueueNames.BROADCASTS)`
+    """
+    if broadcast_event.transmitted_finishes_at < datetime.utcnow():
+        # TODO: This should be a different kind of exception to distinguish "We should know something went wrong, but
+        # no immediate action" from "We need to fix this immediately"
+        raise CBCProxyFatalException(
+            f'Cannot send broadcast_event {broadcast_event.id} ' +
+            f'to provider {provider}: ' +
+            f'The expiry time of {broadcast_event.transmitted_finishes_at} has already passed'
         )
 
-    newest_event = max(this_event.broadcast_message.events, key=lambda x: x.sent_at)
+    # get events sorted from earliest to latest
+    events = sorted(broadcast_event.broadcast_message.events, key=lambda x: x.sent_at)
 
-    if this_event != newest_event:
-        raise MaxRetriesExceededError(
-            f'Given up sending broadcast_event {this_event.id} ' +
-            f'to provider {broadcast_provider_message.provider}: ' +
-            f'This event has been superceeded by {newest_event.message_type} broadcast_event {newest_event.id}'
-        )
+    for prev_event in events:
+        if prev_event.id != broadcast_event.id and prev_event.sent_at < broadcast_event.sent_at:
+            # get the record from when that event was sent to the same provider
+            prev_provider_message = prev_event.get_provider_message(provider)
+
+            # the previous message hasn't even got round to running `send_broadcast_provider_message` yet.
+            if not prev_provider_message:
+                raise CBCProxyFatalException(
+                    f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
+                    f'(type {prev_event.message_type}) has no provider_message for provider {provider} yet.\n' +
+                    f'You must ensure that the other event sends succesfully, then manually kick off this event ' +
+                    f'again by re-running send_broadcast_provider_message for this event and provider.'
+                )
+
+            # if there's a previous message that has started but not finished sending (whether it fatally errored or is
+            # currently retrying)
+            if prev_provider_message.status != BroadcastProviderMessageStatus.ACK:
+                raise CBCProxyFatalException(
+                    f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
+                    f'(type {prev_event.message_type}) has not finished sending to provider {provider} yet.\n' +
+                    f'It is currently in status "{prev_provider_message.status}".\n' +
+                    f'You must ensure that the other event sends succesfully, then manually kick off this event ' +
+                    f'again by re-running send_broadcast_provider_message for this event and provider.'
+                )
 
 
 @notify_celery.task(name="send-broadcast-event")
@@ -74,7 +110,9 @@ def send_broadcast_event(broadcast_event_id):
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    # the broadcast_provider_message will already exist if we retried previously
+    check_provider_message_should_send(broadcast_event, provider)
+
+    # the broadcast_provider_message may already exist if we retried previously
     broadcast_provider_message = broadcast_event.get_provider_message(provider)
     if broadcast_provider_message is None:
         broadcast_provider_message = create_broadcast_provider_message(broadcast_event, provider)
@@ -138,19 +176,15 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
                 sent=broadcast_event.sent_at_as_cap_datetime_string,
             )
     except CBCProxyRetryableException as exc:
-        # this will raise MaxRetriesExceededError if we no longer want to retry
-        # (because the message has expired)
-        check_provider_message_should_retry(broadcast_provider_message)
-
-        # TODO: Decide whether to set to TECHNICAL_FAILURE or ERROR based on response codes from cbc proxy
-        update_broadcast_provider_message_status(
-            broadcast_provider_message,
-            status=BroadcastProviderMessageStatus.TECHNICAL_FAILURE
+        delay = get_retry_delay(self.request.retries)
+        current_app.logger.exception(
+            f'Retrying send_broadcast_provider_message for broadcast_event {broadcast_event_id} and ' +
+            f'provider {provider} in {delay} seconds'
         )
 
         self.retry(
             exc=exc,
-            countdown=get_retry_delay(self.request.retries),
+            countdown=delay,
             queue=QueueNames.BROADCASTS,
         )
 
