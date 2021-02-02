@@ -204,7 +204,7 @@ def check_precompiled_letter_state():
             https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
             Notifications: {}""".format(len(letters), sorted(letter_ids))
 
-        current_app.logger.exception(msg)
+        current_app.logger.warning(msg)
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             zendesk_client.create_ticket(
@@ -225,7 +225,7 @@ def check_templated_letter_state():
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
               "Notifications: {}".format(len(letters), letter_ids)
 
-        current_app.logger.exception(msg)
+        current_app.logger.warning(msg)
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             zendesk_client.create_ticket(
