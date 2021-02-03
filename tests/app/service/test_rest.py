@@ -36,7 +36,6 @@ from app.models import (
     INBOUND_SMS_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     UPLOAD_LETTERS,
-
 )
 from tests import create_authorization_header
 from tests.app.db import (

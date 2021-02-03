@@ -48,6 +48,10 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
         for polygon in broadcast_event.transmitted_areas["simple_polygons"]
     ]
 
+    channel = "test"
+    if broadcast_event.service.broadcast_channel:
+        channel = broadcast_event.service.broadcast_channel
+
     cbc_proxy_provider_client = cbc_proxy_client.get_proxy(provider)
 
     if broadcast_event.message_type == BroadcastEventMessageType.ALERT:
@@ -59,6 +63,7 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             areas=areas,
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
+            channel=channel
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
         cbc_proxy_provider_client.update_and_send_broadcast(
@@ -70,6 +75,13 @@ def send_broadcast_provider_message(broadcast_event_id, provider):
             previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
             sent=broadcast_event.sent_at_as_cap_datetime_string,
             expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
+            # We think an alert update should always go out on the same channel that created the alert
+            # We recognise there is a small risk with this code here that if the services channel was
+            # changed between an alert being sent out and then updated, then something might go wrong
+            # but we are relying on service channels changing almost never, and not mid incident
+            # We may consider in the future, changing this such that we store the channel a broadcast was
+            # sent on on the broadcast message itself and pick the value from there instead of the service
+            channel=channel
         )
     elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
         cbc_proxy_provider_client.cancel_broadcast(

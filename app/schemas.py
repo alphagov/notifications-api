@@ -271,6 +271,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'reply_to_email_addresses',
             'returned_letters',
             'service_broadcast_provider_restriction',
+            'service_broadcast_settings',
             'service_notification_stats',
             'service_provider_stats',
             'service_sms_senders',

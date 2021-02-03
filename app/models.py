@@ -505,6 +505,7 @@ class Service(db.Model, Versioned):
         backref=db.backref('services', lazy='dynamic'))
 
     allowed_broadcast_provider = association_proxy('service_broadcast_provider_restriction', 'provider')
+    broadcast_channel = association_proxy('service_broadcast_settings', 'channel')
 
     @classmethod
     def from_json(cls, data):
@@ -2517,6 +2518,39 @@ class BroadcastProviderMessageNumber(db.Model):
     broadcast_provider_message = db.relationship(
         'BroadcastProviderMessage', backref=db.backref("broadcast_provider_message_number", uselist=False)
     )
+
+
+class ServiceBroadcastSettings(db.Model):
+    """
+    For the moment, broadcasts services CAN have a row in this table which will configure which broadcast
+    channel they will send to. If they don't then we will assume they should send to the test channel.
+
+    There should only be one row per service in this table, and this is enforced by
+    the service_id being a primary key.
+
+    TODO: We should enforce that every broadcast service will have a row in this table. We will need to do
+    this when the admin turns a service into a broadcast service, it inserts a row into this table and adds
+    the service permission for broadcasts for the service. Once that is up and running, we then should write
+    a DB migration to create rows for all broadcast services that do not have one yet in this table.
+
+    TODO: Move functionality on the ServiceBroadcastProviderRestriction into this table and remove the
+    ServiceBroadcastProviderRestriction table
+    """
+    __tablename__ = "service_broadcast_settings"
+
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), primary_key=True, nullable=False)
+    service = db.relationship(Service, backref=db.backref("service_broadcast_settings", uselist=False))
+    channel = db.Column(
+        db.String(255), db.ForeignKey('broadcast_channel_types.name'), nullable=False
+    )
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
+class BroadcastChannelTypes(db.Model):
+    __tablename__ = 'broadcast_channel_types'
+
+    name = db.Column(db.String(255), primary_key=True)
 
 
 class ServiceBroadcastProviderRestriction(db.Model):
