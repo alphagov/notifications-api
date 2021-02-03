@@ -60,6 +60,7 @@ performance_platform_client = PerformancePlatformClient()
 cbc_proxy_client = CBCProxyClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
+counter = 0
 
 notification_provider_clients = NotificationProviderClients()
 
