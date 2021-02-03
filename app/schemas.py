@@ -236,9 +236,13 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     override_flag = False
     go_live_at = field_for(models.Service, 'go_live_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize='_get_allowed_broadcast_provider')
+    broadcast_channel = fields.Method(dump_only=True, serialize='_get_broadcast_channel')
 
     def _get_allowed_broadcast_provider(self, service):
         return service.allowed_broadcast_provider
+
+    def _get_broadcast_channel(self, service):
+        return service.broadcast_channel
 
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
