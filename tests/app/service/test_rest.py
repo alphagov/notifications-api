@@ -31,11 +31,13 @@ from app.models import (
     EMAIL_TYPE,
     SMS_TYPE,
     LETTER_TYPE,
+    BROADCAST_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
     INBOUND_SMS_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     UPLOAD_LETTERS,
+    ServiceBroadcastSettings,
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -3647,3 +3649,75 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert not response[4]['original_file_name']
     assert not response[4]['job_row_number']
     assert response[4]['uploaded_letter_file_name'] == 'filename.pdf'
+
+
+@pytest.mark.parametrize('channel', ["test", "severe"])
+def test_set_as_broadcast_service_sets_broadcast_channel(client, notify_db, sample_service, channel):
+    assert sample_service.service_broadcast_settings is None
+    data = {
+        'broadcast_channel': channel,
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'Sample service'
+    assert result['data']['broadcast_channel'] == channel
+
+    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_service.id).all()
+    assert len(records) == 1
+    assert records[0].service_id == sample_service.id
+    assert records[0].channel == channel
+
+
+def test_set_as_broadcast_service_updates_channel(client, notify_db, sample_service):
+    settings = ServiceBroadcastSettings(channel="test", service=sample_service)
+    notify_db.session.add(settings)
+    notify_db.session.commit()
+    assert sample_service.broadcast_channel == "test"
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps({
+            'broadcast_channel': "severe",
+        }),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'Sample service'
+    assert result['data']['broadcast_channel'] == "severe"
+
+    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_service.id).all()
+    assert len(records) == 1
+    assert records[0].service_id == sample_service.id
+    assert records[0].channel == "severe"
+
+
+@pytest.mark.parametrize('channel', ["government", "extreme", "exercise", "random", ""])
+def test_set_as_broadcast_service_rejects_unknown_channels(client, notify_db, sample_service, channel):
+    data = {
+        'broadcast_channel': channel,
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert resp.status_code == 400
+
+
+def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sample_service):
+    data = {}
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert resp.status_code == 400

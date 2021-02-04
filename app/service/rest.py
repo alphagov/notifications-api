@@ -73,6 +73,9 @@ from app.dao.services_dao import (
     dao_update_service,
     get_services_by_partial_name,
 )
+from app.dao.service_broadcast_settings_dao import (
+    insert_or_update_service_broadcast_settings
+)
 from app.dao.service_guest_list_dao import (
     dao_fetch_service_guest_list,
     dao_add_and_commit_guest_list_contacts,
@@ -100,9 +103,15 @@ from app.errors import (
 )
 from app.letters.utils import letter_print_day
 from app.models import (
-    KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service,
-    EmailBranding, LetterBranding,
-    ServiceContactList
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_CANCELLED,
+    Permission,
+    Service,
+    EmailBranding,
+    LetterBranding,
+    ServiceContactList,
+    ServiceBroadcastSettings,
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
@@ -118,6 +127,7 @@ from app.service.service_senders_schema import (
     add_service_letter_contact_block_request,
     add_service_sms_sender_request
 )
+from app.service.service_broadcast_settings_schema import service_broadcast_settings_schema
 from app.service.utils import get_guest_list_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
@@ -1070,3 +1080,12 @@ def create_contact_list(service_id):
     save_service_contact_list(list_to_save)
 
     return jsonify(list_to_save.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/set-as-broadcast-service', methods=['POST'])
+def set_as_broadcast_service(service_id):
+    data = validate(request.get_json(), service_broadcast_settings_schema)
+    service = dao_fetch_service_by_id(service_id)
+    insert_or_update_service_broadcast_settings(service, channel=data["broadcast_channel"])
+    data = service_schema.dump(service).data
+    return jsonify(data=data)
