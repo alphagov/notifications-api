@@ -267,7 +267,7 @@ def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, 
     existing_provider_message = create_broadcast_provider_message(
         broadcast_event=event,
         provider='ee',
-        status=BroadcastProviderMessageStatus.TECHNICAL_FAILURE
+        status=BroadcastProviderMessageStatus.SENDING
     )
 
     mock_create_broadcast = mocker.patch(
@@ -629,13 +629,13 @@ def test_check_provider_message_should_send_raises_if_older_event_still_sending(
         message_type='alert',
         sent_at=datetime(2021, 1, 1, 0, 0),
     )
-    # event updated at 5am (this is the event we're currently trying to send)
+    # event updated at 5am (this event is still sending)
     past_still_sending_event = create_broadcast_event(
         broadcast_message,
         message_type='update',
         sent_at=datetime(2021, 1, 1, 5, 0),
     )
-    # event updated at 7am
+    # event updated again at 7am
     current_event = create_broadcast_event(
         broadcast_message,
         message_type='update',
@@ -661,7 +661,7 @@ def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_
         message_type='alert',
         sent_at=datetime(2021, 1, 1, 0, 0),
     )
-    # event updated at 5am (this is the event we're currently trying to send)
+    # event updated at 5am
     past_still_sending_event = create_broadcast_event(
         broadcast_message,
         message_type='update',
@@ -677,8 +677,7 @@ def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_
     # no provider message for past_still_sending_event
     create_broadcast_provider_message(past_succesful_event, provider='ee', status=BroadcastProviderMessageStatus.ACK)
 
-    # even though the task is going on until midnight tomorrow, we shouldn't send the update now, because the cancel
-    # message will be in the pipeline somewhere.
+    # we shouldn't send the update now, because a previous event is still stuck in sending
     with pytest.raises(CBCProxyFatalException) as exc:
         check_provider_message_should_send(current_event, 'ee')
 
@@ -705,13 +704,21 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
     check_provider_message_should_send(current_event, 'ee')
 
 
-def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(sample_template):
+@pytest.mark.parametrize('existing_message_status', [
+    BroadcastProviderMessageStatus.SENDING,
+    BroadcastProviderMessageStatus.ACK,
+    BroadcastProviderMessageStatus.ERR,
+
+    # TODO: Make this case fail - so we have a way of aborting a send if it's stuck in retry loop
+    BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
+])
+def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(
+    sample_template,
+    existing_message_status
+):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(broadcast_message, message_type='alert')
 
-    # this might be set to technical-failure if we're currently retrying this event
-    create_broadcast_provider_message(current_event, provider='ee', status='technical-failure')
+    create_broadcast_provider_message(current_event, provider='ee', status=existing_message_status)
 
-    # this doesn't raise, because the alert got an ack and it doesnt matter if the current event
-    # has a provider message yet or not
     check_provider_message_should_send(current_event, 'ee')
