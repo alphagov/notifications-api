@@ -508,7 +508,7 @@ def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(
     assert cancel_event.service_id == sample_broadcast_service.id
     assert cancel_event.transmitted_areas == bm.areas
     assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
-    assert cancel_event.transmitted_finishes_at == bm.cancelled_at
+    assert cancel_event.transmitted_finishes_at == bm.finishes_at
     assert cancel_event.transmitted_content == {"body": "emergency broadcast"}
 
 
