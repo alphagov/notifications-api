@@ -77,6 +77,11 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         'domains',
         'request_to_go_live_notes',
         'count_of_live_services',
+        'notes',
+        'billing_contact_names',
+        'billing_contact_email_addresses',
+        'billing_reference',
+        'purchase_order_number'
     }
     assert response['id'] == str(org.id)
     assert response['name'] == 'test_org_1'
@@ -93,6 +98,11 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response['count_of_live_services'] == 0
     assert response['agreement_signed_on_behalf_of_name'] is None
     assert response['agreement_signed_on_behalf_of_email_address'] is None
+    assert response['notes'] is None
+    assert response['billing_contact_names'] is None
+    assert response['billing_contact_email_addresses'] is None
+    assert response['billing_reference'] is None
+    assert response['purchase_order_number'] is None
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):

@@ -434,6 +434,11 @@ class Organisation(db.Model):
             "domains": self.domain_list,
             "request_to_go_live_notes": self.request_to_go_live_notes,
             "count_of_live_services": len(self.live_services),
+            "notes": self.notes,
+            "purchase_order_number": self.purchase_order_number,
+            "billing_contact_names": self.billing_contact_names,
+            "billing_contact_email_addresses": self.billing_contact_email_addresses,
+            "billing_reference": self.billing_reference,
         }
 
     def serialize_for_list(self):
