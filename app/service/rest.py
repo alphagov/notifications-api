@@ -42,6 +42,11 @@ from app.dao.service_contact_list_dao import (
     dao_get_contact_list_by_id,
     save_service_contact_list,
 )
+from app.dao.service_permissions_dao import (
+    dao_add_service_permission,
+    dao_fetch_service_permissions,
+    dao_remove_service_permission,
+)
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -105,6 +110,7 @@ from app.letters.utils import letter_print_day
 from app.models import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
+    BROADCAST_TYPE,
     NOTIFICATION_CANCELLED,
     Permission,
     Service,
@@ -112,6 +118,7 @@ from app.models import (
     LetterBranding,
     ServiceContactList,
     ServiceBroadcastSettings,
+    ServicePermission
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
@@ -1084,8 +1091,21 @@ def create_contact_list(service_id):
 
 @service_blueprint.route('/<uuid:service_id>/set-as-broadcast-service', methods=['POST'])
 def set_as_broadcast_service(service_id):
+    """
+    This route does three things
+    - adds a service broadcast settings to define which channel broadcasts should go out on
+    - removes all current service permissions
+    - adds the broadcast service permission
+    """
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)
+
     insert_or_update_service_broadcast_settings(service, channel=data["broadcast_channel"])
+
+    current_service_permissions = dao_fetch_service_permissions(service.id)
+    for permission in current_service_permissions:
+        dao_remove_service_permission(service.id, permission.permission)
+    dao_add_service_permission(service.id, BROADCAST_TYPE)
+
     data = service_schema.dump(service).data
     return jsonify(data=data)

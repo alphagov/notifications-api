@@ -3718,3 +3718,44 @@ def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sampl
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
     assert resp.status_code == 400
+
+
+def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_permissions(client, notify_db, sample_service):
+    current_permissions = [p.permission for p in sample_service.permissions]
+    assert len(current_permissions) > 0
+    assert current_permissions != [BROADCAST_TYPE]
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps({
+            'broadcast_channel': "severe",
+        }),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['permissions'] == [BROADCAST_TYPE]
+
+    permissions = ServicePermission.query.filter_by(service_id=sample_service.id).all()
+    assert [p.permission for p in permissions] == [BROADCAST_TYPE]
+
+
+def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_broadcast_service(
+    client, notify_db, sample_broadcast_service
+):
+    current_permissions = [p.permission for p in sample_broadcast_service.permissions]
+    assert current_permissions == [BROADCAST_TYPE]
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_broadcast_service.id),
+        data=json.dumps({
+            'broadcast_channel': "severe",
+        }),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['permissions'] == [BROADCAST_TYPE]
+
+    permissions = ServicePermission.query.filter_by(service_id=sample_broadcast_service.id).all()
+    assert [p.permission for p in permissions] == [BROADCAST_TYPE]
