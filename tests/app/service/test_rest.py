@@ -3674,28 +3674,25 @@ def test_set_as_broadcast_service_sets_broadcast_channel(client, notify_db, samp
     assert records[0].channel == channel
 
 
-def test_set_as_broadcast_service_updates_channel(client, notify_db, sample_service):
-    settings = ServiceBroadcastSettings(channel="test", service=sample_service)
-    notify_db.session.add(settings)
-    notify_db.session.commit()
-    assert sample_service.broadcast_channel == "test"
+def test_set_as_broadcast_service_updates_channel_for_broadcast_service(client, notify_db, sample_broadcast_service):
+    assert sample_broadcast_service.broadcast_channel == "severe"
 
     resp = client.post(
-        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        '/service/{}/set-as-broadcast-service'.format(sample_broadcast_service.id),
         data=json.dumps({
-            'broadcast_channel': "severe",
+            'broadcast_channel': "test",
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
     result = resp.json
     assert resp.status_code == 200
-    assert result['data']['name'] == 'Sample service'
-    assert result['data']['broadcast_channel'] == "severe"
+    assert result['data']['name'] == 'Sample broadcast service'
+    assert result['data']['broadcast_channel'] == "test"
 
-    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_service.id).all()
+    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_broadcast_service.id).all()
     assert len(records) == 1
-    assert records[0].service_id == sample_service.id
-    assert records[0].channel == "severe"
+    assert records[0].service_id == sample_broadcast_service.id
+    assert records[0].channel == "test"
 
 
 @pytest.mark.parametrize('channel', ["government", "extreme", "exercise", "random", ""])
