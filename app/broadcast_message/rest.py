@@ -192,12 +192,6 @@ def _create_broadcast_event(broadcast_message):
         BroadcastStatusType.CANCELLED: BroadcastEventMessageType.CANCEL,
     }
 
-    if broadcast_message.status == BroadcastStatusType.CANCELLED:
-        transmitted_finishes_at = broadcast_message.cancelled_at
-    else:
-        transmitted_finishes_at = broadcast_message.finishes_at
-
-
     event = BroadcastEvent(
         service=broadcast_message.service,
         broadcast_message=broadcast_message,
@@ -210,8 +204,7 @@ def _create_broadcast_event(broadcast_message):
 
         # TODO: Should this be set to now? Or the original starts_at?
         transmitted_starts_at=broadcast_message.starts_at,
-        # TODO: When cancelling, do we need to set this to now? Or should we keep it as the original time.
-        transmitted_finishes_at=transmitted_finishes_at,
+        transmitted_finishes_at=broadcast_message.finishes_at,
     )
 
     dao_save_object(event)
