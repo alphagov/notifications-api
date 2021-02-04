@@ -1092,10 +1092,11 @@ def create_contact_list(service_id):
 @service_blueprint.route('/<uuid:service_id>/set-as-broadcast-service', methods=['POST'])
 def set_as_broadcast_service(service_id):
     """
-    This route does three things
+    This route does four things
     - adds a service broadcast settings to define which channel broadcasts should go out on
     - removes all current service permissions
     - adds the broadcast service permission
+    - sets the services `count_as_live` to false
     """
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)
@@ -1106,6 +1107,9 @@ def set_as_broadcast_service(service_id):
     for permission in current_service_permissions:
         dao_remove_service_permission(service.id, permission.permission)
     dao_add_service_permission(service.id, BROADCAST_TYPE)
+
+    service.count_as_live = False
+    dao_update_service(service)
 
     data = service_schema.dump(service).data
     return jsonify(data=data)

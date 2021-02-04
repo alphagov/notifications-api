@@ -3759,3 +3759,21 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
 
     permissions = ServicePermission.query.filter_by(service_id=sample_broadcast_service.id).all()
     assert [p.permission for p in permissions] == [BROADCAST_TYPE]
+
+
+def test_set_as_broadcast_service_sets_count_as_live_to_false(client, notify_db, sample_service):
+    assert sample_service.count_as_live == True
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps({
+            'broadcast_channel': "severe",
+        }),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['count_as_live'] == False
+
+    service_from_db = Service.query.filter_by(id=sample_service.id).all()[0]
+    assert service_from_db.count_as_live == False

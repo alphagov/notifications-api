@@ -162,7 +162,8 @@ def sample_broadcast_service(notify_db_session):
         'restricted': False,
         'email_from': email_from,
         'created_by': user,
-        'crown': True
+        'crown': True,
+        'count_as_live': False,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
