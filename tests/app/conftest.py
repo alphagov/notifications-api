@@ -16,6 +16,7 @@ from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
 from app.dao.organisation_dao import dao_create_organisation
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
+from app.dao.service_broadcast_settings_dao import insert_or_update_service_broadcast_settings
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
 from app.history_meta import create_history
@@ -42,7 +43,7 @@ from app.models import (
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES,
     ServiceEmailReplyTo,
-    BROADCAST_TYPE
+    BROADCAST_TYPE,
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -167,6 +168,7 @@ def sample_broadcast_service(notify_db_session):
     if not service:
         service = Service(**data)
         dao_create_service(service, user, service_permissions=[BROADCAST_TYPE])
+        insert_or_update_service_broadcast_settings(service, channel="severe")
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
