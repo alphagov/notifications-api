@@ -27,6 +27,7 @@ class QueueNames(object):
     PROCESS_FTP = 'process-ftp-tasks'
     CREATE_LETTERS_PDF = 'create-letters-pdf-tasks'
     CALLBACKS = 'service-callbacks'
+    CALLBACKS_RETRY = 'service-callbacks-retry'
     LETTERS = 'letter-tasks'
     SMS_CALLBACKS = 'sms-callbacks'
     ANTIVIRUS = 'antivirus-tasks'
@@ -50,6 +51,7 @@ class QueueNames(object):
             QueueNames.NOTIFY,
             QueueNames.CREATE_LETTERS_PDF,
             QueueNames.CALLBACKS,
+            QueueNames.CALLBACKS_RETRY,
             QueueNames.LETTERS,
             QueueNames.SMS_CALLBACKS,
             QueueNames.SAVE_API_EMAIL,

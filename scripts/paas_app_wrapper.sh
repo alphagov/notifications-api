@@ -51,7 +51,7 @@ case $NOTIFY_APP_NAME in
     ;;
   delivery-worker-service-callbacks)
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
-    -Q service-callbacks 2> /dev/null
+    -Q service-callbacks,service-callbacks-retry 2> /dev/null
     ;;
   delivery-worker-save-api-notifications)
     exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
