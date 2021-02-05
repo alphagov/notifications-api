@@ -64,7 +64,9 @@
   'notify-delivery-worker-letters': {'memory': '2G'},
   'notify-delivery-worker-retry-tasks': {},
   'notify-delivery-worker-internal': {},
-  'notify-delivery-worker-broadcasts': {},
+  'notify-delivery-worker-broadcasts': {
+      'CELERYD_PREFETCH_MULTIPLIER': 1,
+  },
   'notify-delivery-worker-receipts': {},
   'notify-delivery-worker-service-callbacks': {'disk_quota': '2G'},
   'notify-delivery-worker-save-api-notifications': {'disk_quota': '2G'},
