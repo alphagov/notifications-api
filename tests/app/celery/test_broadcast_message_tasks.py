@@ -505,7 +505,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
 @pytest.mark.parametrize('num_retries, expected_countdown', [
     (0, 1),
     (5, 32),
-    (20, 300),
+    (20, 240),
 ])
 def test_send_broadcast_provider_message_delays_retry_exponentially(
     mocker,
@@ -587,10 +587,10 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
     (0, 1),
     (1, 2),
     (2, 4),
-    (8, 256),
-    (9, 300),
-    (10, 300),
-    (1000, 300),
+    (7, 128),
+    (8, 240),
+    (9, 240),
+    (1000, 240),
 ])
 def test_get_retry_delay_has_capped_backoff(retry_count, expected_delay):
     assert get_retry_delay(retry_count) == expected_delay

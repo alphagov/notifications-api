@@ -28,8 +28,8 @@ def get_retry_delay(retry_count):
 
     # 2 to the power of x. 1, 2, 4, 8, 16, 32, ...
     delay = 2**retry_count
-    # never wait longer than 5 minutes
-    return min(delay, 300)
+    # never wait longer than 4 minutes
+    return min(delay, 240)
 
 
 def check_provider_message_should_send(broadcast_event, provider):
