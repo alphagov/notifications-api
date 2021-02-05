@@ -384,6 +384,9 @@ class Config(object):
 
     ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
 
+    # as defined in api db migration 0331_add_broadcast_org.py
+    BROADCAST_ORGANISATION_ID = '38e4bf69-93b0-445d-acee-53ea53fe02df'
+
 
 ######################
 # Config overrides ###

@@ -3652,7 +3652,9 @@ def test_get_returned_letter(admin_request, sample_letter_template):
 
 
 @pytest.mark.parametrize('channel', ["test", "severe"])
-def test_set_as_broadcast_service_sets_broadcast_channel(client, notify_db, sample_service, channel):
+def test_set_as_broadcast_service_sets_broadcast_channel(
+    client, notify_db, sample_service, broadcast_organisation, channel
+):
     assert sample_service.service_broadcast_settings is None
     data = {
         'broadcast_channel': channel,
@@ -3674,7 +3676,9 @@ def test_set_as_broadcast_service_sets_broadcast_channel(client, notify_db, samp
     assert records[0].channel == channel
 
 
-def test_set_as_broadcast_service_updates_channel_for_broadcast_service(client, notify_db, sample_broadcast_service):
+def test_set_as_broadcast_service_updates_channel_for_broadcast_service(
+    client, notify_db, sample_broadcast_service, broadcast_organisation
+):
     assert sample_broadcast_service.broadcast_channel == "severe"
 
     resp = client.post(
@@ -3696,7 +3700,9 @@ def test_set_as_broadcast_service_updates_channel_for_broadcast_service(client, 
 
 
 @pytest.mark.parametrize('channel', ["government", "extreme", "exercise", "random", ""])
-def test_set_as_broadcast_service_rejects_unknown_channels(client, notify_db, sample_service, channel):
+def test_set_as_broadcast_service_rejects_unknown_channels(
+    client, notify_db, sample_service, broadcast_organisation, channel
+):
     data = {
         'broadcast_channel': channel,
     }
@@ -3709,7 +3715,7 @@ def test_set_as_broadcast_service_rejects_unknown_channels(client, notify_db, sa
     assert resp.status_code == 400
 
 
-def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sample_service):
+def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sample_service, broadcast_organisation):
     data = {}
 
     resp = client.post(
@@ -3720,7 +3726,9 @@ def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sampl
     assert resp.status_code == 400
 
 
-def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_permissions(client, notify_db, sample_service):
+def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_permissions(
+    client, notify_db, sample_service, broadcast_organisation
+):
     current_permissions = [p.permission for p in sample_service.permissions]
     assert len(current_permissions) > 0
     assert current_permissions != [BROADCAST_TYPE]
@@ -3741,7 +3749,7 @@ def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_p
 
 
 def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_broadcast_service(
-    client, notify_db, sample_broadcast_service
+    client, notify_db, sample_broadcast_service, broadcast_organisation
 ):
     current_permissions = [p.permission for p in sample_broadcast_service.permissions]
     assert current_permissions == [BROADCAST_TYPE]
@@ -3761,7 +3769,7 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
     assert [p.permission for p in permissions] == [BROADCAST_TYPE]
 
 
-def test_set_as_broadcast_service_sets_count_as_live_to_false(client, notify_db, sample_service):
+def test_set_as_broadcast_service_sets_count_as_live_to_false(client, notify_db, sample_service, broadcast_organisation):
     assert sample_service.count_as_live == True
 
     resp = client.post(
@@ -3777,3 +3785,36 @@ def test_set_as_broadcast_service_sets_count_as_live_to_false(client, notify_db,
 
     service_from_db = Service.query.filter_by(id=sample_service.id).all()[0]
     assert service_from_db.count_as_live == False
+
+
+def test_set_as_broadcast_service_sets_service_org_to_broadcast_org(client, notify_db, sample_service, broadcast_organisation):
+    assert sample_service.organisation_id != current_app.config['BROADCAST_ORGANISATION_ID']
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps({
+            'broadcast_channel': "severe",
+        }),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['organisation'] == current_app.config['BROADCAST_ORGANISATION_ID']
+
+    service_from_db = Service.query.filter_by(id=sample_service.id).all()[0]
+    assert str(service_from_db.organisation_id) == current_app.config['BROADCAST_ORGANISATION_ID']
+
+
+def test_set_as_broadcast_service_does_not_error_if_run_on_a_service_that_is_already_a_broadcast_service(
+    client, notify_db, sample_service, broadcast_organisation
+):
+    for _ in range(2):
+        resp = client.post(
+            '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+            data=json.dumps({
+                'broadcast_channel': "severe",
+            }),
+            headers=[('Content-Type', 'application/json'), create_authorization_header()]
+        )
+        result = resp.json
+        assert resp.status_code == 200

@@ -29,7 +29,10 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.organisation_dao import (
+    dao_get_organisation_by_service_id,
+    dao_add_service_to_organisation,
+)
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -1094,9 +1097,9 @@ def set_as_broadcast_service(service_id):
     """
     This route does four things
     - adds a service broadcast settings to define which channel broadcasts should go out on
-    - removes all current service permissions
-    - adds the broadcast service permission
+    - removes all current service permissions and adds the broadcast service permission
     - sets the services `count_as_live` to false
+    - adds the service to the broadcast organisation
     """
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)
@@ -1110,6 +1113,8 @@ def set_as_broadcast_service(service_id):
 
     service.count_as_live = False
     dao_update_service(service)
+
+    dao_add_service_to_organisation(service, current_app.config['BROADCAST_ORGANISATION_ID'])
 
     data = service_schema.dump(service).data
     return jsonify(data=data)
