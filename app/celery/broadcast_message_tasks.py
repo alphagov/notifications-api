@@ -51,6 +51,15 @@ def check_provider_message_should_send(broadcast_event, provider):
     4. If you need to re-send this task off again, you'll need to run the following command on paas:
        `send_broadcast_provider_message.apply_async(args=(broadcast_event_id, provider), queue=QueueNames.BROADCASTS)`
     """
+    current_provider_message = broadcast_event.get_provider_message(provider)
+    # if this is the first time a task is being executed, it won't have a provider message yet
+    if current_provider_message and current_provider_message.status == BroadcastProviderMessageStatus.TECHNICAL_FAILURE:
+        raise CBCProxyFatalException(
+            f'Cannot send broadcast_event {broadcast_event.id} ' +
+            f'to provider {provider}: ' +
+            f'It is already in status technical-failure'
+        )
+
     if broadcast_event.transmitted_finishes_at < datetime.utcnow():
         # TODO: This should be a different kind of exception to distinguish "We should know something went wrong, but
         # no immediate action" from "We need to fix this immediately"

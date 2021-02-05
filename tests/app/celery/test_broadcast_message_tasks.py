@@ -709,8 +709,10 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
     BroadcastProviderMessageStatus.ACK,
     BroadcastProviderMessageStatus.ERR,
 
-    # TODO: Make this case fail - so we have a way of aborting a send if it's stuck in retry loop
-    BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
+    pytest.param(
+        BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
+        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+    ),
 ])
 def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(
     sample_template,
