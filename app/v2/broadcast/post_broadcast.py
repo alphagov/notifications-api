@@ -55,6 +55,7 @@ def create_broadcast():
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,
+        stubbed=authenticated_service.restricted
         # The client may pass in broadcast_json['expires'] but it’s
         # simpler for now to ignore it and have the rules around expiry
         # for broadcasts created with the API match those created from
