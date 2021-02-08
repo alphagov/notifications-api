@@ -7,7 +7,7 @@ from unittest.mock import Mock, call
 import pytest
 
 from app.clients.cbc_proxy import (
-    CBCProxyClient, CBCProxyRetryableException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
+    CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
 )
 from app.utils import DATETIME_FORMAT
 
@@ -433,7 +433,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_rai
         'StatusCode': 400,
     }
 
-    with pytest.raises(CBCProxyRetryableException) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier='my-identifier',
             message_number='0000007b',
@@ -482,7 +482,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
         }
     }
 
-    with pytest.raises(CBCProxyRetryableException) as e:
+    with pytest.raises(CBCProxyException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier='my-identifier',
             message_number='0000007b',

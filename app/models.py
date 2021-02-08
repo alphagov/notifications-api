@@ -2412,7 +2412,7 @@ class BroadcastEvent(db.Model):
 
     def get_earlier_provider_messages(self, provider):
         """
-        Get the previous message for a provider. These are different per provider, as the identifiers are different.
+        Get the previous message for a provider. These are differentper provider, as the identifiers are different.
         Return the full provider_message object rather than just an identifier, since the different providers expect
         reference to contain different things - let the cbc_proxy work out what information is relevant.
         """
