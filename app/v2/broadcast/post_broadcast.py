@@ -27,7 +27,7 @@ def create_broadcast():
             status_code=415,
         )
 
-    cap_xml = request.get_data(as_text=True)
+    cap_xml = request.get_data()
 
     if not validate_xml(cap_xml, 'CAP-v1.2.xsd'):
         raise BadRequestError(
