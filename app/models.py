@@ -2281,7 +2281,7 @@ class BroadcastMessage(db.Model):
 
     reference = db.Column(db.String(255), nullable=True)
 
-    stubbed = db.Column(db.Boolean, nullable=True)
+    stubbed = db.Column(db.Boolean, nullable=False)
 
     CheckConstraint("created_by_id is not null or api_key_id is not null")
 
