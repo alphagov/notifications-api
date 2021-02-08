@@ -4,7 +4,8 @@ service_broadcast_settings_schema = {
     "type": "object",
     "title": "Set a services broadcast settings",
     "properties": {
-        "broadcast_channel": {"enum": ["test", "severe"]}
+        "broadcast_channel": {"enum": ["test", "severe"]},
+        "service_mode": {"enum": ["training", "live"]}
     },
-    "required": ["broadcast_channel"]
+    "required": ["broadcast_channel", "service_mode"]
 }
