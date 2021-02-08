@@ -35,7 +35,7 @@ notifications-python-client==5.7.1
 # PaaS
 awscli-cwlogs==1.4.6
 
-git+https://github.com/alphagov/notifications-utils.git@43.8.1#egg=notifications-utils==43.8.1
+git+https://github.com/alphagov/notifications-utils.git@43.8.3#egg=notifications-utils==43.8.3
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.9.0
@@ -46,14 +46,14 @@ alembic==1.5.4
 amqp==1.4.9
 anyjson==0.3.3
 attrs==20.3.0
-awscli==1.19.3
+awscli==1.19.5
 bcrypt==3.2.0
 billiard==3.3.0.23
-bleach==3.2.1
+bleach==3.3.0
 blinker==1.4
 boto==2.49.0
-boto3==1.17.3
-botocore==1.20.3
+boto3==1.17.5
+botocore==1.20.5
 certifi==2020.12.5
 chardet==4.0.0
 click==7.1.2
@@ -66,6 +66,7 @@ geojson==2.5.0
 govuk-bank-holidays==0.8
 greenlet==1.0.0
 idna==2.10
+importlib-metadata==3.4.0
 Jinja2==2.11.3
 jmespath==0.10.0
 kombu==3.0.37
@@ -75,7 +76,7 @@ mistune==0.8.4
 monotonic==1.5
 orderedset==2.0.3
 packaging==20.9
-phonenumbers==8.12.17
+phonenumbers==8.12.18
 pyasn1==0.4.8
 pycparser==2.20
 pyparsing==2.4.7
@@ -93,8 +94,10 @@ s3transfer==0.3.4
 Shapely==1.7.1
 six==1.15.0
 smartypants==2.0.1
-soupsieve==2.1
+soupsieve==2.2
 statsd==3.3.0
+typing-extensions==3.7.4.3
 urllib3==1.26.3
 webencodings==0.5.1
 Werkzeug==1.0.1
+zipp==3.4.0
