@@ -1,3 +1,5 @@
+import pytest
+
 from flask import json
 from freezegun import freeze_time
 from tests import create_authorization_header
@@ -109,15 +111,20 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['updated_at'] is None
 
 
+@pytest.mark.parametrize('xml_document', (
+    '<alert>Oh no</alert>',
+    '<?xml version="1.0" encoding="utf-8" ?><foo><bar/></foo>',
+))
 def test_invalid_post_cap_xml_broadcast_returns_400(
     client,
     sample_broadcast_service,
+    xml_document,
 ):
     auth_header = create_authorization_header(service_id=sample_broadcast_service.id)
 
     response = client.post(
         path='/v2/broadcast',
-        data="<alert>Oh no</alert>",
+        data=xml_document,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
 
