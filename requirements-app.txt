@@ -25,6 +25,8 @@ rfc3987==1.3.8
 cachetools==4.2.0
 beautifulsoup4==4.9.3
 lxml==4.6.2
+# higher version causes build to fail
+cryptography<3.4
 
 notifications-python-client==5.7.1
 
