@@ -505,7 +505,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
 @pytest.mark.parametrize('num_retries, expected_countdown', [
     (0, 1),
     (5, 32),
-    (20, 240),
+    (20, 300),
 ])
 def test_send_broadcast_provider_message_delays_retry_exponentially(
     mocker,
@@ -587,10 +587,10 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
     (0, 1),
     (1, 2),
     (2, 4),
-    (7, 128),
-    (8, 240),
-    (9, 240),
-    (1000, 240),
+    (8, 256),
+    (9, 300),
+    (10, 300),
+    (1000, 300),
 ])
 def test_get_retry_delay_has_capped_backoff(retry_count, expected_delay):
     assert get_retry_delay(retry_count) == expected_delay
@@ -709,10 +709,8 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
     BroadcastProviderMessageStatus.ACK,
     BroadcastProviderMessageStatus.ERR,
 
-    pytest.param(
-        BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
-    ),
+    # TODO: Make this case fail - so we have a way of aborting a send if it's stuck in retry loop
+    BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
 ])
 def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(
     sample_template,
