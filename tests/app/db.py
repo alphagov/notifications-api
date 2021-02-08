@@ -1049,7 +1049,7 @@ def create_broadcast_message(
         starts_at=starts_at,
         finishes_at=finishes_at,
         created_by_id=created_by.id if created_by else service.created_by_id,
-        areas=areas or {'areas': [], 'simple_polygons': []},
+        areas=areas or {},
         content=content,
         stubbed=stubbed
     )
@@ -1077,7 +1077,7 @@ def create_broadcast_event(
         transmitted_areas=transmitted_areas or broadcast_message.areas,
         transmitted_sender=transmitted_sender or 'www.notifications.service.gov.uk',
         transmitted_starts_at=transmitted_starts_at,
-        transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow() + timedelta(hours=24),
+        transmitted_finishes_at=transmitted_finishes_at or datetime.utcnow(),
     )
     db.session.add(b_e)
     db.session.commit()
@@ -1105,4 +1105,4 @@ def create_broadcast_provider_message(
             broadcast_provider_message_id=broadcast_provider_message_id)
         db.session.add(provider_message_number)
         db.session.commit()
-    return provider_message
+    return provider_message, provider_message_number

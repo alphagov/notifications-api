@@ -56,7 +56,7 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
                 f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
                 status_code=400
             )
-        elif len(broadcast_message.areas['simple_polygons']) == 0:
+        elif not broadcast_message.areas:
             raise InvalidRequest(
                 f'broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.',
                 status_code=400

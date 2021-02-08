@@ -61,8 +61,3 @@ def create_broadcast_provider_message(broadcast_event, provider):
         db.session.add(provider_message_number)
         db.session.commit()
     return provider_message
-
-
-@transactional
-def update_broadcast_provider_message_status(broadcast_provider_message, *, status):
-    broadcast_provider_message.status = status
