@@ -49,7 +49,7 @@ attrs==20.3.0
 awscli==1.19.3
 bcrypt==3.2.0
 billiard==3.3.0.23
-bleach==3.2.1
+bleach==3.3.0
 blinker==1.4
 boto==2.49.0
 boto3==1.17.3
