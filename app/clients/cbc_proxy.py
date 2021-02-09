@@ -25,7 +25,11 @@ from app.utils import DATETIME_FORMAT, format_sequential_number
 #    the preceeding Alert message in the previous_provider_messages field
 
 
-class CBCProxyException(Exception):
+class CBCProxyFatalException(Exception):
+    pass
+
+
+class CBCProxyRetryableException(Exception):
     pass
 
 
@@ -115,7 +119,9 @@ class CBCProxyClientBase(ABC):
         if not result:
             failover_result = self._invoke_lambda(self.failover_lambda_name, payload)
             if not failover_result:
-                raise CBCProxyException(f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}')
+                raise CBCProxyRetryableException(
+                    f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}'
+                )
 
         return result
 
