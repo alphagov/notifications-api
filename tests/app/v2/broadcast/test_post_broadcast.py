@@ -5,6 +5,7 @@ from freezegun import freeze_time
 from tests import create_authorization_header
 from unittest.mock import ANY
 from . import sample_cap_xml_documents
+from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id_and_service_id
 
 
 def test_broadcast_for_service_without_permission_returns_400(
@@ -109,6 +110,30 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['template_name'] is None
     assert response_json['template_version'] is None
     assert response_json['updated_at'] is None
+
+
+@pytest.mark.parametrize("training_mode_service", [True, False])
+def test_valid_post_cap_xml_broadcast_sets_stubbed_to_true_for_training_mode_services(
+    client,
+    sample_broadcast_service,
+    training_mode_service
+):
+    sample_broadcast_service.restricted = training_mode_service
+    auth_header = create_authorization_header(service_id=sample_broadcast_service.id)
+
+    response = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert response.status_code == 201
+    response_json = json.loads(response.get_data(as_text=True))
+
+    broadcast_message = dao_get_broadcast_message_by_id_and_service_id(
+        response_json['id'], sample_broadcast_service.id
+    )
+    assert broadcast_message.stubbed == training_mode_service
 
 
 @pytest.mark.parametrize('xml_document', (
