@@ -3659,6 +3659,7 @@ def test_set_as_broadcast_service_sets_broadcast_channel(
     data = {
         'broadcast_channel': channel,
         'service_mode': 'live',
+        'provider_restriction': None,
     }
 
     resp = client.post(
@@ -3687,6 +3688,7 @@ def test_set_as_broadcast_service_updates_channel_for_broadcast_service(
         data=json.dumps({
             'broadcast_channel': "test",
             'service_mode': 'training',
+            'provider_restriction': None,
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -3708,6 +3710,7 @@ def test_set_as_broadcast_service_rejects_unknown_channels(
     data = {
         'broadcast_channel': channel,
         'service_mode': 'live',
+        'provider_restriction': None,
     }
 
     resp = client.post(
@@ -3719,7 +3722,10 @@ def test_set_as_broadcast_service_rejects_unknown_channels(
 
 
 def test_set_as_broadcast_service_rejects_if_no_channel(client, notify_db, sample_service, broadcast_organisation):
-    data = {'service_mode': 'training'}
+    data = {
+        'service_mode': 'training',
+        'provider_restriction': None,
+    }
 
     resp = client.post(
         '/service/{}/set-as-broadcast-service'.format(sample_service.id),
@@ -3741,6 +3747,7 @@ def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_p
         data=json.dumps({
             'broadcast_channel': "severe",
             'service_mode': 'training',
+            'provider_restriction': None,
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -3763,6 +3770,7 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
         data=json.dumps({
             'broadcast_channel': "severe",
             'service_mode': 'live',
+            'provider_restriction': None,
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -3782,6 +3790,7 @@ def test_set_as_broadcast_service_sets_count_as_live_to_false(client, notify_db,
         data=json.dumps({
             'broadcast_channel': "severe",
             'service_mode': 'live',
+            'provider_restriction': None,
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -3801,6 +3810,7 @@ def test_set_as_broadcast_service_sets_service_org_to_broadcast_org(client, noti
         data=json.dumps({
             'broadcast_channel': "severe",
             'service_mode': 'training',
+            'provider_restriction': None,
         }),
         headers=[('Content-Type', 'application/json'), create_authorization_header()]
     )
@@ -3820,7 +3830,8 @@ def test_set_as_broadcast_service_does_not_error_if_run_on_a_service_that_is_alr
             '/service/{}/set-as-broadcast-service'.format(sample_service.id),
             data=json.dumps({
                 'broadcast_channel': "severe",
-                'service_mode': "live"
+                'service_mode': "live",
+                'provider_restriction': None,
             }),
             headers=[('Content-Type', 'application/json'), create_authorization_header()]
         )
@@ -3838,6 +3849,7 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'live',
+        'provider_restriction': None,
     }
 
     resp = client.post(
@@ -3862,6 +3874,7 @@ def test_set_as_broadcast_service_sets_service_to_training_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'training',
+        'provider_restriction': None,
     }
 
     resp = client.post(
@@ -3882,6 +3895,7 @@ def test_set_as_broadcast_service_rejects_unknown_service_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': service_mode,
+        'provider_restriction': None,
     }
 
     resp = client.post(
@@ -3893,7 +3907,103 @@ def test_set_as_broadcast_service_rejects_unknown_service_mode(
 
 
 def test_set_as_broadcast_service_rejects_if_no_service_mode(client, notify_db, sample_service, broadcast_organisation):
-    data = {'broadcast_channel': 'severe'}
+    data = {
+        'broadcast_channel': 'severe',
+        'provider_restriction': None,
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 400
+
+
+@pytest.mark.parametrize('provider', [None, "three", "ee", "vodafone", "o2"])
+def test_set_as_broadcast_service_sets_mobile_provider_restriction(
+    client, notify_db, sample_service, broadcast_organisation, provider
+):
+    assert sample_service.service_broadcast_settings is None
+    data = {
+        'broadcast_channel': 'severe',
+        'service_mode': 'live',
+        'provider_restriction': provider
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'Sample service'
+    assert result['data']['allowed_broadcast_provider'] == provider
+
+    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_service.id).all()
+    assert len(records) == 1
+    assert records[0].service_id == sample_service.id
+    assert records[0].provider == provider
+
+
+@pytest.mark.parametrize('provider', [None, "vodafone"])
+def test_set_as_broadcast_service_updates_mobile_provider_restriction(
+    client, notify_db, sample_broadcast_service, broadcast_organisation, provider
+):
+    sample_broadcast_service.service_broadcast_settings.provider = "o2"
+    notify_db.session.add(sample_broadcast_service)
+    notify_db.session.commit()
+    assert sample_broadcast_service.service_broadcast_settings.provider == "o2"
+
+    data = {
+        'broadcast_channel': 'severe',
+        'service_mode': 'live',
+        'provider_restriction': provider
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_broadcast_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    result = resp.json
+    assert resp.status_code == 200
+    assert result['data']['name'] == 'Sample broadcast service'
+    assert result['data']['allowed_broadcast_provider'] == provider
+
+    records = ServiceBroadcastSettings.query.filter_by(service_id=sample_broadcast_service.id).all()
+    assert len(records) == 1
+    assert records[0].service_id == sample_broadcast_service.id
+    assert records[0].provider == provider
+
+
+@pytest.mark.parametrize('provider', ["three, o2", "giffgaff", "", "None"])
+def test_set_as_broadcast_service_rejects_unknown_provider_restriction(
+    client, notify_db, sample_service, broadcast_organisation, provider
+):
+    data = {
+        'broadcast_channel': 'test',
+        'service_mode': 'live',
+        'provider_restriction': provider
+    }
+
+    resp = client.post(
+        '/service/{}/set-as-broadcast-service'.format(sample_service.id),
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+    )
+    assert resp.status_code == 400
+
+
+def test_set_as_broadcast_service_errors_if_no_mobile_provider_restriction(
+    client, notify_db, sample_service, broadcast_organisation
+):
+    data = {
+        'broadcast_channel': 'severe',
+        'service_mode': 'live',
+    }
 
     resp = client.post(
         '/service/{}/set-as-broadcast-service'.format(sample_service.id),

@@ -1105,7 +1105,9 @@ def set_as_broadcast_service(service_id):
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)
 
-    insert_or_update_service_broadcast_settings(service, channel=data["broadcast_channel"])
+    insert_or_update_service_broadcast_settings(
+        service, channel=data["broadcast_channel"], provider_restriction=data.get("provider_restriction")
+    )
 
     current_service_permissions = dao_fetch_service_permissions(service.id)
     for permission in current_service_permissions:

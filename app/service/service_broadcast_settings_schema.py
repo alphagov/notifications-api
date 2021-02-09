@@ -5,7 +5,8 @@ service_broadcast_settings_schema = {
     "title": "Set a services broadcast settings",
     "properties": {
         "broadcast_channel": {"enum": ["test", "severe"]},
-        "service_mode": {"enum": ["training", "live"]}
+        "service_mode": {"enum": ["training", "live"]},
+        "provider_restriction": {"enum": [None, "three", "o2", "vodafone", "ee"]}
     },
-    "required": ["broadcast_channel", "service_mode"]
+    "required": ["broadcast_channel", "service_mode", "provider_restriction"]
 }
