@@ -9,7 +9,6 @@ from app.models import (
     BroadcastStatusType,
     BroadcastEventMessageType,
     BroadcastProviderMessageStatus,
-    ServiceBroadcastProviderRestriction,
     ServiceBroadcastSettings,
 )
 from app.celery.broadcast_message_tasks import send_broadcast_event, send_broadcast_provider_message, trigger_link_test
@@ -47,10 +46,8 @@ def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
     notify_api,
     sample_service
 ):
-    notify_db.session.add(ServiceBroadcastProviderRestriction(
-        service=sample_service,
-        provider='vodafone'
-    ))
+    settings = ServiceBroadcastSettings(service=sample_service, channel="test", provider="vodafone")
+    notify_db.session.add(settings)
 
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
@@ -74,10 +71,8 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
     notify_api,
     sample_service
 ):
-    notify_db.session.add(ServiceBroadcastProviderRestriction(
-        service=sample_service,
-        provider='three'
-    ))
+    settings = ServiceBroadcastSettings(service=sample_service, channel="test", provider="three")
+    notify_db.session.add(settings)
 
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
