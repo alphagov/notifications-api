@@ -223,7 +223,9 @@ def check_templated_letter_state():
         letter_ids = [str(letter.id) for letter in letters]
 
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: {}".format(len(letters), letter_ids)
+            "Follow runbook to resolve: " \
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+            "Notifications: {}".format(len(letters), letter_ids)
 
         current_app.logger.warning(msg)
 

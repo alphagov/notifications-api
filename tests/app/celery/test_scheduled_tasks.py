@@ -370,7 +370,9 @@ def test_check_templated_letter_state_during_bst(mocker, sample_letter_template)
     check_templated_letter_state()
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "Follow runbook to resolve: " \
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
@@ -395,7 +397,9 @@ def test_check_templated_letter_state_during_utc(mocker, sample_letter_template)
     check_templated_letter_state()
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "Follow runbook to resolve: " \
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
