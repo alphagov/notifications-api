@@ -109,7 +109,7 @@ def test__send_data_to_service_callback_api_retries_if_request_returns_500_with_
         send_delivery_status_to_service(notification.id, encrypted_status_update=encrypted_data)
 
     assert mocked.call_count == 1
-    assert mocked.call_args[1]['queue'] == 'retry-tasks'
+    assert mocked.call_args[1]['queue'] == 'service-callbacks-retry'
 
 
 @pytest.mark.parametrize("notification_type",
