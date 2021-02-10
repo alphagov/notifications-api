@@ -214,9 +214,9 @@ def check_precompiled_letter_state():
             )
 
 
-@notify_celery.task(name='check-templated-letter-state')
+@notify_celery.task(name='check-if-letters-still-in-created')
 @statsd(namespace="tasks")
-def check_templated_letter_state():
+def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
     if len(letters) > 0:
