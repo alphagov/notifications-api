@@ -221,7 +221,7 @@ def test_post_letter_notification_international_sets_rest_of_world(
             'postcode': 'SW1A 1AA',
             'name': 'Lizzie'
         },
-        'Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,',
+        'Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / , < >',
     ),
     (
         [LETTER_TYPE, INTERNATIONAL_LETTERS],

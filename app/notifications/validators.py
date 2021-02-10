@@ -251,7 +251,7 @@ def validate_address(service, letter_data):
         )
     if address.has_invalid_characters:
         raise ValidationError(
-            message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / ,'
+            message='Address lines must not start with any of the following characters: @ ( ) = [ ] ” \\ / , < >'
         )
     if address.international:
         return address.postage
