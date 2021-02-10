@@ -14,7 +14,7 @@ from app.celery.scheduled_tasks import (
     delete_verify_codes,
     run_scheduled_jobs,
     replay_created_notifications,
-    check_precompiled_letter_state,
+    check_if_letters_still_pending_virus_check,
     check_if_letters_still_in_created,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
@@ -319,7 +319,7 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_precompiled_letter_state(mocker, sample_letter_template):
+def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
@@ -338,7 +338,7 @@ def test_check_precompiled_letter_state(mocker, sample_letter_template):
                                          created_at=datetime.utcnow() - timedelta(seconds=70000),
                                          reference='two')
 
-    check_precompiled_letter_state()
+    check_if_letters_still_pending_virus_check()
 
     id_references = sorted([(str(notification_1.id), notification_1.reference),
                             (str(notification_2.id), notification_2.reference)])

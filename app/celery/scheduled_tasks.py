@@ -192,9 +192,9 @@ def replay_created_notifications():
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
-@notify_celery.task(name='check-precompiled-letter-state')
+@notify_celery.task(name='check-if-letters-still-pending-virus-check')
 @statsd(namespace="tasks")
-def check_precompiled_letter_state():
+def check_if_letters_still_pending_virus_check():
     letters = dao_precompiled_letters_still_pending_virus_check()
 
     if len(letters) > 0:

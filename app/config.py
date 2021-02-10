@@ -289,8 +289,8 @@ class Config(object):
             'schedule': crontab(day_of_week='mon-fri', hour=9, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'check-precompiled-letter-state': {
-            'task': 'check-precompiled-letter-state',
+        'check-if-letters-still-pending-virus-check': {
+            'task': 'check-if-letters-still-pending-virus-check',
             'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
