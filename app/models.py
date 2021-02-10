@@ -515,7 +515,7 @@ class Service(db.Model, Versioned):
         uselist=False,
         backref=db.backref('services', lazy='dynamic'))
 
-    allowed_broadcast_provider = association_proxy('service_broadcast_provider_restriction', 'provider')
+    allowed_broadcast_provider = association_proxy('service_broadcast_settings', 'provider')
     broadcast_channel = association_proxy('service_broadcast_settings', 'channel')
 
     @classmethod
@@ -2543,9 +2543,6 @@ class ServiceBroadcastSettings(db.Model):
     this when the admin turns a service into a broadcast service, it inserts a row into this table and adds
     the service permission for broadcasts for the service. Once that is up and running, we then should write
     a DB migration to create rows for all broadcast services that do not have one yet in this table.
-
-    TODO: Move functionality on the ServiceBroadcastProviderRestriction into this table and remove the
-    ServiceBroadcastProviderRestriction table
     """
     __tablename__ = "service_broadcast_settings"
 
@@ -2554,6 +2551,7 @@ class ServiceBroadcastSettings(db.Model):
     channel = db.Column(
         db.String(255), db.ForeignKey('broadcast_channel_types.name'), nullable=False
     )
+    provider = db.Column(db.String, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
@@ -2566,6 +2564,8 @@ class BroadcastChannelTypes(db.Model):
 
 class ServiceBroadcastProviderRestriction(db.Model):
     """
+    TODO: Drop this table as no longer used
+
     Most services don't send broadcasts. Of those that do, most send to all broadcast providers.
     However, some services don't send to all providers. These services are test services that we or the providers
     themselves use.
