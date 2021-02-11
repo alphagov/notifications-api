@@ -28,11 +28,11 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_TYPES_COMPLETED
 )
-from app.serialised_models import SerialisedTemplate
+from app.serialised_models import SerialisedTemplate, SerialisedService
 
 
 def send_sms_to_provider(notification):
-    service = notification.service
+    service = SerialisedService.from_id(notification.service_id)
     service_id = service.id
     if not service.active:
         technical_failure(notification=notification)
@@ -42,7 +42,7 @@ def send_sms_to_provider(notification):
         provider = provider_to_use(SMS_TYPE, notification.international)
 
         template_dict = SerialisedTemplate.get_dict(template_id=notification.template_id,
-                                                    service_id=service_id,
+                                                    service_id=service.id,
                                                     version=notification.template_version)['data']
 
         template = SMSMessageTemplate(
@@ -87,7 +87,7 @@ def send_sms_to_provider(notification):
 
 
 def send_email_to_provider(notification):
-    service = notification.service
+    service = SerialisedService.from_id(notification.service_id)
     service_id = service.id
     if not service.active:
         technical_failure(notification=notification)

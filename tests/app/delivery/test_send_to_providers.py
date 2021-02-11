@@ -736,48 +736,59 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
 def test_send_sms_to_provider_should_return_template_if_found_in_redis(
         mocker, client, sample_template
 ):
-
-    from app.schemas import template_schema
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_template.service).data
     template_dict = template_schema.dump(sample_template).data
 
-    notification = create_notification(template=sample_template,
-                                       to_field= '+447700900855',
-                                       normalised_to=validate_and_format_phone_number('+447700900855'))
     mocker.patch(
         'app.redis_store.get',
         side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
             json.dumps({'data': template_dict}).encode('utf-8'),
         ],
     )
     mock_get_template = mocker.patch(
         'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
     )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
+
     mocker.patch('app.mmg_client.send_sms')
     # mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
-
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to=validate_and_format_phone_number('+447700900855'))
     send_to_providers.send_sms_to_provider(notification)
     assert mock_get_template.called is False
+    assert mock_get_service.called is False
 
 
 def test_send_email_to_provider_should_return_template_if_found_in_redis(
         mocker, client, sample_email_template
 ):
-    from app.schemas import template_schema
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_email_template.service).data
     template_dict = template_schema.dump(sample_email_template).data
 
-    notification = create_notification(template=sample_email_template,
-                                       to_field='test@example.com',
-                                       normalised_to='test@example.com')
     mocker.patch(
         'app.redis_store.get',
         side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
             json.dumps({'data': template_dict}).encode('utf-8'),
         ],
     )
     mock_get_template = mocker.patch(
         'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
     )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='test@example.com',
+                                       normalised_to='test@example.com')
 
     send_to_providers.send_email_to_provider(notification)
     assert mock_get_template.called is False
+    assert mock_get_service.called is False
