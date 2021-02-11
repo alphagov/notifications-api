@@ -28,6 +28,7 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_TYPES_COMPLETED
 )
+from app.serialised_models import SerialisedTemplate
 
 
 def send_sms_to_provider(notification):
@@ -40,10 +41,12 @@ def send_sms_to_provider(notification):
     if notification.status == 'created':
         provider = provider_to_use(SMS_TYPE, notification.international)
 
-        template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
+        template_dict = SerialisedTemplate.get_dict(template_id=notification.template_id,
+                                                    service_id=service_id,
+                                                    version=notification.template_version)['data']
 
         template = SMSMessageTemplate(
-            template_model.__dict__,
+            template_dict,
             values=notification.personalisation,
             prefix=service.name,
             show_prefix=service.prefix_sms,
@@ -92,7 +95,9 @@ def send_email_to_provider(notification):
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE)
 
-        template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
+        template_dict = SerialisedTemplate.get_dict(template_id=notification.template_id,
+                                                    service_id=service_id,
+                                                    version=notification.template_version)['data']
 
         html_email = HTMLEmailTemplate(
             template_dict,

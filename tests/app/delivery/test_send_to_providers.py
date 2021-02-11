@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -730,3 +731,53 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
         html_body=ANY,
         reply_to_address="test@test.com"
     )
+
+
+def test_send_sms_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_template
+):
+
+    from app.schemas import template_schema
+    template_dict = template_schema.dump(sample_template).data
+
+    notification = create_notification(template=sample_template,
+                                       to_field= '+447700900855',
+                                       normalised_to=validate_and_format_phone_number('+447700900855'))
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mocker.patch('app.mmg_client.send_sms')
+    # mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+
+    send_to_providers.send_sms_to_provider(notification)
+    assert mock_get_template.called is False
+
+
+def test_send_email_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_email_template
+):
+    from app.schemas import template_schema
+    template_dict = template_schema.dump(sample_email_template).data
+
+    notification = create_notification(template=sample_email_template,
+                                       to_field='test@example.com',
+                                       normalised_to='test@example.com')
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+
+    send_to_providers.send_email_to_provider(notification)
+    assert mock_get_template.called is False
