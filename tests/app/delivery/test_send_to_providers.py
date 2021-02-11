@@ -103,7 +103,9 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     mocker
 ):
     db_notification = create_notification(template=sample_sms_template_with_html,
-                                          to_field="+447234123123", personalisation={"name": "Jo"},
+                                          to_field="+447234123123",
+                                          normalised_to=validate_and_format_phone_number("+447234123123", True),
+                                          personalisation={"name": "Jo"},
                                           status='created',
                                           reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender())
 
@@ -114,7 +116,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to=db_notification.normalised_to,
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=current_app.config['FROM_NUMBER']
@@ -136,6 +138,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     db_notification = create_notification(
         template=sample_email_template_with_html,
         to_field="jo.smith@example.com",
+        normalised_to="jo.smith@example.com",
         personalisation={'name': 'Jo'}
     )
 
@@ -194,6 +197,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
     db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created',
+                                          normalised_to=validate_and_format_phone_number("+447234123123"),
                                           reply_to_text=sample_template.service.get_default_sms_sender())
 
     mocker.patch('app.mmg_client.send_sms')
@@ -212,7 +216,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to=db_notification.normalised_to,
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=current_app.config['FROM_NUMBER']
@@ -631,6 +635,7 @@ def test_should_send_sms_to_international_providers(
     notification_uk = create_notification(
         template=sample_template,
         to_field="+447234123999",
+        normalised_to=validate_and_format_phone_number("+447234123999", True),
         personalisation={"name": "Jo"},
         status='created',
         international=False,
@@ -640,6 +645,7 @@ def test_should_send_sms_to_international_providers(
     notification_international = create_notification(
         template=sample_template,
         to_field="+6011-17224412",
+        normalised_to=validate_and_format_phone_number("+6011-17224412", international=True),
         personalisation={"name": "Jo"},
         status='created',
         international=True,
@@ -723,52 +729,4 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
         body=ANY,
         html_body=ANY,
         reply_to_address="test@test.com"
-    )
-
-
-def test_send_email_to_provider_should_format_reply_to_email_address(
-        sample_email_template,
-        mocker):
-    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-
-    db_notification = create_notification(template=sample_email_template, reply_to_text="test@test.com\t")
-
-    send_to_providers.send_email_to_provider(
-        db_notification,
-    )
-
-    app.aws_ses_client.send_email.assert_called_once_with(
-        ANY,
-        ANY,
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address="test@test.com"
-    )
-
-
-def test_send_sms_to_provider_should_format_phone_number(sample_notification, mocker):
-    sample_notification.to = '+44 (7123) 123-123'
-    send_mock = mocker.patch('app.mmg_client.send_sms')
-
-    send_to_providers.send_sms_to_provider(sample_notification)
-
-    assert send_mock.call_args[1]['to'] == '447123123123'
-
-
-def test_send_email_to_provider_should_format_email_address(sample_email_notification, mocker):
-    sample_email_notification.to = 'test@example.com\t'
-    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-
-    send_to_providers.send_email_to_provider(sample_email_notification)
-
-    # to_addresses
-    send_mock.assert_called_once_with(
-        ANY,
-        # to_addresses
-        'test@example.com',
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address=ANY,
     )
