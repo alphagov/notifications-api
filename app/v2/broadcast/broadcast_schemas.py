@@ -40,7 +40,6 @@ post_broadcast_schema = {
         "content": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 1395,
         },
         "web": {
             "type": "string",

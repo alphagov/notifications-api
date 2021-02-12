@@ -33,7 +33,7 @@ notifications-python-client==5.7.1
 # PaaS
 awscli-cwlogs==1.4.6
 
-git+https://github.com/alphagov/notifications-utils.git@43.8.3#egg=notifications-utils==43.8.3
+git+https://github.com/alphagov/notifications-utils.git@43.9.0#egg=notifications-utils==43.9.0
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.9.0
