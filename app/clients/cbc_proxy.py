@@ -2,6 +2,7 @@ import json
 from abc import ABC, abstractmethod
 
 import boto3
+import botocore
 from flask import current_app
 from notifications_utils.template import non_gsm_characters
 
@@ -127,13 +128,16 @@ class CBCProxyClientBase(ABC):
 
     def _invoke_lambda(self, lambda_name, payload):
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
-        current_app.logger.info(f"Calling lambda {lambda_name}")
-        result = self._lambda_client.invoke(
-            FunctionName=lambda_name,
-            InvocationType='RequestResponse',
-            Payload=payload_bytes,
-        )
-        current_app.logger.info(f"Finished calling lambda {lambda_name}")
+        try:
+            result = self._lambda_client.invoke(
+                FunctionName=lambda_name,
+                InvocationType='RequestResponse',
+                Payload=payload_bytes,
+            )
+        except botocore.exceptions.ClientError as exc:
+            current_app.logger.exception(f'Boto ClientError calling lambda {lambda_name}')
+            success = False
+            return success
 
         if result['StatusCode'] > 299:
             current_app.logger.info(
