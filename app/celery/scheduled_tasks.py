@@ -192,9 +192,9 @@ def replay_created_notifications():
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
-@notify_celery.task(name='check-precompiled-letter-state')
+@notify_celery.task(name='check-if-letters-still-pending-virus-check')
 @statsd(namespace="tasks")
-def check_precompiled_letter_state():
+def check_if_letters_still_pending_virus_check():
     letters = dao_precompiled_letters_still_pending_virus_check()
 
     if len(letters) > 0:
@@ -214,16 +214,18 @@ def check_precompiled_letter_state():
             )
 
 
-@notify_celery.task(name='check-templated-letter-state')
+@notify_celery.task(name='check-if-letters-still-in-created')
 @statsd(namespace="tasks")
-def check_templated_letter_state():
+def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
     if len(letters) > 0:
         letter_ids = [str(letter.id) for letter in letters]
 
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: {}".format(len(letters), letter_ids)
+            "Follow runbook to resolve: " \
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+            "Notifications: {}".format(len(letters), letter_ids)
 
         current_app.logger.warning(msg)
 

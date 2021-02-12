@@ -14,8 +14,8 @@ from app.celery.scheduled_tasks import (
     delete_verify_codes,
     run_scheduled_jobs,
     replay_created_notifications,
-    check_precompiled_letter_state,
-    check_templated_letter_state,
+    check_if_letters_still_pending_virus_check,
+    check_if_letters_still_in_created,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     switch_current_sms_provider_on_slow_delivery,
@@ -319,7 +319,7 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_precompiled_letter_state(mocker, sample_letter_template):
+def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
@@ -338,7 +338,7 @@ def test_check_precompiled_letter_state(mocker, sample_letter_template):
                                          created_at=datetime.utcnow() - timedelta(seconds=70000),
                                          reference='two')
 
-    check_precompiled_letter_state()
+    check_if_letters_still_pending_virus_check()
 
     id_references = sorted([(str(notification_1.id), notification_1.reference),
                             (str(notification_2.id), notification_2.reference)])
@@ -356,7 +356,7 @@ def test_check_precompiled_letter_state(mocker, sample_letter_template):
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_templated_letter_state_during_bst(mocker, sample_letter_template):
+def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
@@ -367,10 +367,12 @@ def test_check_templated_letter_state_during_bst(mocker, sample_letter_template)
     create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 5, 28, 10, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 30, 10, 0))
 
-    check_templated_letter_state()
+    check_if_letters_still_in_created()
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "Follow runbook to resolve: " \
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
@@ -381,7 +383,7 @@ def test_check_templated_letter_state_during_bst(mocker, sample_letter_template)
 
 
 @freeze_time("2019-01-30 14:00:00")
-def test_check_templated_letter_state_during_utc(mocker, sample_letter_template):
+def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
 
@@ -392,10 +394,12 @@ def test_check_templated_letter_state_during_utc(mocker, sample_letter_template)
     create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 1, 29, 10, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 30, 10, 0))
 
-    check_templated_letter_state()
+    check_if_letters_still_in_created()
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "Follow runbook to resolve: " \
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(

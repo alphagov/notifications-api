@@ -286,13 +286,13 @@ class Config(object):
             # since we mark jobs as archived
             'options': {'queue': QueueNames.PERIODIC},
         },
-        'check-templated-letter-state': {
-            'task': 'check-templated-letter-state',
+        'check-if-letters-still-in-created': {
+            'task': 'check-if-letters-still-in-created',
             'schedule': crontab(day_of_week='mon-fri', hour=9, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'check-precompiled-letter-state': {
-            'task': 'check-precompiled-letter-state',
+        'check-if-letters-still-pending-virus-check': {
+            'task': 'check-if-letters-still-pending-virus-check',
             'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
