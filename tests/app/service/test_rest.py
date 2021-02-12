@@ -292,6 +292,38 @@ def test_get_service_by_id_returns_allowed_broadcast_provider(notify_db, admin_r
     assert json_resp['data']['allowed_broadcast_provider'] == 'ee'
 
 
+def test_get_service_by_id_for_broadcast_service_takes_channel_from_service_broadcast_settings(
+    admin_request, sample_broadcast_service
+):
+    assert sample_broadcast_service.broadcast_channel == 'severe'
+
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_broadcast_service.id)
+    assert json_resp['data']['id'] == str(sample_broadcast_service.id)
+    assert json_resp['data']['broadcast_channel'] == 'severe'
+
+
+def test_get_service_by_id_for_service_with_broadcast_permission_sets_channel_as_test_if_no_service_broadcast_settings(
+    admin_request, notify_db_session
+):
+    service = create_service(service_permissions=[BROADCAST_TYPE])
+    assert BROADCAST_TYPE in [p.permission for p in service.permissions]
+    assert service.broadcast_channel == None
+
+    json_resp = admin_request.get('service.get_service_by_id', service_id=service.id)
+    assert json_resp['data']['id'] == str(service.id)
+    assert json_resp['data']['broadcast_channel'] == 'test'
+
+
+def test_get_service_by_id_for_non_broadcast_service_sets_channel_as_none(
+    admin_request, sample_service
+):
+    assert BROADCAST_TYPE not in [p.permission for p in sample_service.permissions]
+
+    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
+    assert json_resp['data']['id'] == str(sample_service.id)
+    assert json_resp['data']['broadcast_channel'] == None
+
+
 @pytest.mark.parametrize('detailed', [True, False])
 def test_get_service_by_id_returns_organisation_type(admin_request, sample_service, detailed):
     json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id, detailed=detailed)

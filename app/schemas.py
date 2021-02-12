@@ -25,7 +25,7 @@ from notifications_utils.recipients import (
 
 from app import ma
 from app import models
-from app.models import ServicePermission
+from app.models import ServicePermission, BROADCAST_TYPE
 from app.dao.permissions_dao import permission_dao
 from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
 
@@ -242,7 +242,14 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
         return service.allowed_broadcast_provider
 
     def _get_broadcast_channel(self, service):
-        return service.broadcast_channel
+        # TODO: Once we've migrated data so that all broadcast services have `service.broadcast_channel`
+        # set then we can remove this logic and related tests and instead just return
+        # `service.broadcast_channel`. For the moment though, as we have some services with the broadcast
+        # permission that do not have a row in the service_broadcast_settings table, we need to hardcode
+        # this in here to give them a default that the admin app can use
+        if BROADCAST_TYPE in self.service_permissions(service):
+            return service.broadcast_channel if service.broadcast_channel else "test"
+        return None
 
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
