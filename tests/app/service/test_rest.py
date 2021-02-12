@@ -3872,6 +3872,7 @@ def test_set_as_broadcast_service_does_not_error_if_run_on_a_service_that_is_alr
         )
 
 
+@freeze_time('2021-02-02')
 def test_set_as_broadcast_service_sets_service_to_live_mode(
     admin_request, notify_db, sample_service, broadcast_organisation
 ):
@@ -3879,6 +3880,7 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
     notify_db.session.add(sample_service)
     notify_db.session.commit()
     assert sample_service.restricted == True
+    assert sample_service.go_live_at == None
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'live',
@@ -3892,15 +3894,43 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
     )
     assert result['data']['name'] == 'Sample service'
     assert result['data']['restricted'] == False
+    assert result['data']['go_live_at'] == '2021-02-02 00:00:00.000000'
+
+
+def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
+    admin_request, notify_db, sample_broadcast_service
+):
+    sample_broadcast_service.restricted = False
+    sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
+    notify_db.session.add(sample_broadcast_service)
+    notify_db.session.commit()
+    assert sample_broadcast_service.restricted == False
+    assert sample_broadcast_service.go_live_at is not None
+    data = {
+        'broadcast_channel': 'severe',
+        'service_mode': 'live',
+        'provider_restriction': None,
+    }
+
+    result = admin_request.post(
+        'service.set_as_broadcast_service',
+        service_id=sample_broadcast_service.id,
+        _data=data,
+    )
+    assert result['data']['name'] == 'Sample broadcast service'
+    assert result['data']['restricted'] == False
+    assert result['data']['go_live_at'] == '2021-01-01 00:00:00.000000'
 
 
 def test_set_as_broadcast_service_sets_service_to_training_mode(
     admin_request, notify_db, sample_broadcast_service
 ):
     sample_broadcast_service.restricted = False
+    sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
     notify_db.session.add(sample_broadcast_service)
     notify_db.session.commit()
     assert sample_broadcast_service.restricted == False
+    assert sample_broadcast_service.go_live_at is not None
 
     data = {
         'broadcast_channel': 'severe',
@@ -3915,6 +3945,7 @@ def test_set_as_broadcast_service_sets_service_to_training_mode(
     )
     assert result['data']['name'] == 'Sample broadcast service'
     assert result['data']['restricted'] == True
+    assert result['data']['go_live_at'] is None
 
 
 @pytest.mark.parametrize('service_mode', ["testing", ""])

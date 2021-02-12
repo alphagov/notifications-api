@@ -1116,6 +1116,14 @@ def set_as_broadcast_service(service_id):
 
     service.count_as_live = False
 
+    if data["service_mode"] == "live":
+        if service.restricted == True:
+            # Only update the go live at timestamp if this if moving from training mode
+            # to live mode, not if it's moving from one type of live mode service to another
+            service.go_live_at = datetime.utcnow()
+    else:
+        service.go_live_at = None
+
     service.restricted = True
     if data["service_mode"] == "live":
         service.restricted = False
