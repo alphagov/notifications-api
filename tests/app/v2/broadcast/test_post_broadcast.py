@@ -75,7 +75,6 @@ def test_valid_post_cap_xml_broadcast_returns_201(
         data=sample_cap_xml_documents.WAINFLEET,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
-
     assert response.status_code == 201
 
     response_json = json.loads(response.get_data(as_text=True))
@@ -161,3 +160,34 @@ def test_invalid_post_cap_xml_broadcast_returns_400(
         }],
         'status_code': 400,
     }
+
+
+@pytest.mark.parametrize('xml_document, expected_error_message', (
+    (sample_cap_xml_documents.CANCEL, (
+        'msgType Cancel is not one of [Alert]'
+    )),
+    (sample_cap_xml_documents.UPDATE, (
+        'msgType Update is not one of [Alert]'
+    )),
+))
+def test_unsupported_message_types_400(
+    client,
+    sample_broadcast_service,
+    xml_document,
+    expected_error_message,
+):
+    auth_header = create_authorization_header(service_id=sample_broadcast_service.id)
+
+    response = client.post(
+        path='/v2/broadcast',
+        data=xml_document,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert response.status_code == 400
+    assert {
+        'error': 'ValidationError',
+        'message': expected_error_message,
+    } in (
+        json.loads(response.get_data(as_text=True))['errors']
+    )
