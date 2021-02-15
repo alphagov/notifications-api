@@ -31,7 +31,6 @@ from app.dao.fact_notification_status_dao import (
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import (
     dao_get_organisation_by_service_id,
-    dao_add_service_to_organisation,
 )
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
@@ -45,11 +44,7 @@ from app.dao.service_contact_list_dao import (
     dao_get_contact_list_by_id,
     save_service_contact_list,
 )
-from app.dao.service_permissions_dao import (
-    dao_add_service_permission,
-    dao_fetch_service_permissions,
-    dao_remove_service_permission,
-)
+from app.dao.broadcast_service_dao import set_broadcast_service_type
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -81,9 +76,6 @@ from app.dao.services_dao import (
     dao_update_service,
     get_services_by_partial_name,
 )
-from app.dao.service_broadcast_settings_dao import (
-    insert_or_update_service_broadcast_settings
-)
 from app.dao.service_guest_list_dao import (
     dao_fetch_service_guest_list,
     dao_add_and_commit_guest_list_contacts,
@@ -113,15 +105,12 @@ from app.letters.utils import letter_print_day
 from app.models import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
-    BROADCAST_TYPE,
     NOTIFICATION_CANCELLED,
     Permission,
     Service,
     EmailBranding,
     LetterBranding,
-    ServiceContactList,
-    ServiceBroadcastSettings,
-    ServicePermission
+    ServiceContactList
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
 from app.schema_validation import validate
@@ -1105,32 +1094,12 @@ def set_as_broadcast_service(service_id):
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)
 
-    insert_or_update_service_broadcast_settings(
-        service, channel=data["broadcast_channel"], provider_restriction=data.get("provider_restriction")
+    set_broadcast_service_type(
+        service,
+        service_mode=data["service_mode"],
+        broadcast_channel=data["broadcast_channel"],
+        provider_restriction=data["provider_restriction"]
     )
-
-    current_service_permissions = dao_fetch_service_permissions(service.id)
-    for permission in current_service_permissions:
-        dao_remove_service_permission(service.id, permission.permission)
-    dao_add_service_permission(service.id, BROADCAST_TYPE)
-
-    service.count_as_live = False
-
-    if data["service_mode"] == "live":
-        if service.restricted == True:
-            # Only update the go live at timestamp if this if moving from training mode
-            # to live mode, not if it's moving from one type of live mode service to another
-            service.go_live_at = datetime.utcnow()
-    else:
-        service.go_live_at = None
-
-    service.restricted = True
-    if data["service_mode"] == "live":
-        service.restricted = False
-
-    dao_update_service(service)
-
-    dao_add_service_to_organisation(service, current_app.config['BROADCAST_ORGANISATION_ID'])
 
     data = service_schema.dump(service).data
     return jsonify(data=data)
