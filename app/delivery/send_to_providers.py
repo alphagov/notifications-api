@@ -15,7 +15,6 @@ from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
-from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     SMS_TYPE,
@@ -41,9 +40,9 @@ def send_sms_to_provider(notification):
     if notification.status == 'created':
         provider = provider_to_use(SMS_TYPE, notification.international)
 
-        template_dict = SerialisedTemplate.get_dict(template_id=notification.template_id,
-                                                    service_id=service.id,
-                                                    version=notification.template_version)['data']
+        template_dict = SerialisedTemplate.from_id_and_service_id(template_id=notification.template_id,
+                                                                  service_id=service_id,
+                                                                  version=notification.template_version).__dict__
 
         template = SMSMessageTemplate(
             template_dict,
@@ -95,9 +94,9 @@ def send_email_to_provider(notification):
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE)
 
-        template_dict = SerialisedTemplate.get_dict(template_id=notification.template_id,
-                                                    service_id=service_id,
-                                                    version=notification.template_version)['data']
+        template_dict = SerialisedTemplate.from_id_and_service_id(template_id=notification.template_id,
+                                                                  service_id=service_id,
+                                                                  version=notification.template_version).__dict__
 
         html_email = HTMLEmailTemplate(
             template_dict,

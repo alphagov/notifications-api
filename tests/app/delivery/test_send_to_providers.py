@@ -733,6 +733,37 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
     )
 
 
+def test_send_sms_to_provider_should_use_normalised_to(
+        mocker, client, sample_template
+):
+    send_mock = mocker.patch('app.mmg_client.send_sms')
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to='447700900855')
+    send_to_providers.send_sms_to_provider(notification)
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
+
+
+def test_send_email_to_provider_should_user_normalised_to(
+        mocker, client, sample_email_template
+):
+    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='TEST@example.com',
+                                       normalised_to='test@example.com')
+
+    send_to_providers.send_email_to_provider(notification)
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
+
+
 def test_send_sms_to_provider_should_return_template_if_found_in_redis(
         mocker, client, sample_template
 ):
@@ -754,14 +785,17 @@ def test_send_sms_to_provider_should_return_template_if_found_in_redis(
         'app.dao.services_dao.dao_fetch_service_by_id'
     )
 
-    mocker.patch('app.mmg_client.send_sms')
-    # mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+    send_mock = mocker.patch('app.mmg_client.send_sms')
     notification = create_notification(template=sample_template,
                                        to_field='+447700900855',
-                                       normalised_to=validate_and_format_phone_number('+447700900855'))
+                                       normalised_to='447700900855')
     send_to_providers.send_sms_to_provider(notification)
     assert mock_get_template.called is False
     assert mock_get_service.called is False
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
 
 
 def test_send_email_to_provider_should_return_template_if_found_in_redis(
@@ -784,11 +818,17 @@ def test_send_email_to_provider_should_return_template_if_found_in_redis(
     mock_get_service = mocker.patch(
         'app.dao.services_dao.dao_fetch_service_by_id'
     )
-    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
     notification = create_notification(template=sample_email_template,
-                                       to_field='test@example.com',
+                                       to_field='TEST@example.com',
                                        normalised_to='test@example.com')
 
     send_to_providers.send_email_to_provider(notification)
     assert mock_get_template.called is False
     assert mock_get_service.called is False
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
