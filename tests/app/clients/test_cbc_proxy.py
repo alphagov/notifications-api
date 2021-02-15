@@ -4,10 +4,11 @@ from collections import namedtuple
 from datetime import datetime
 from unittest.mock import Mock, call
 
+from botocore.exceptions import ClientError as BotoClientError
 import pytest
 
 from app.clients.cbc_proxy import (
-    CBCProxyClient, CBCProxyException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
+    CBCProxyClient, CBCProxyRetryableException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
 )
 from app.utils import DATETIME_FORMAT
 
@@ -317,6 +318,50 @@ def test_cbc_proxy_vodafone_cancel_invokes_function(mocker, cbc_proxy_vodafone):
 
 
 @pytest.mark.parametrize('cbc', ['ee', 'vodafone', 'three', 'o2'])
+def test_cbc_proxy_will_failover_to_second_lambda_if_boto_client_error(
+    mocker,
+    cbc_proxy_client,
+    cbc
+):
+    cbc_proxy = cbc_proxy_client.get_proxy(cbc)
+
+    ld_client_mock = mocker.patch.object(
+        cbc_proxy,
+        '_lambda_client',
+        create=True,
+    )
+
+    ld_client_mock.invoke.side_effect = BotoClientError({}, 'error')
+
+    with pytest.raises(CBCProxyRetryableException) as e:
+        cbc_proxy.create_and_send_broadcast(
+            identifier='my-identifier',
+            message_number='0000007b',
+            headline='my-headline',
+            description='test-description',
+            areas=EXAMPLE_AREAS,
+            sent='a-passed-through-sent-value',
+            expires='a-passed-through-expires-value',
+            channel="severe",
+        )
+
+    assert e.match(f'Lambda failed for both {cbc}-1-proxy and {cbc}-2-proxy')
+
+    assert ld_client_mock.invoke.call_args_list == [
+        call(
+            FunctionName=f'{cbc}-1-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        ),
+        call(
+            FunctionName=f'{cbc}-2-proxy',
+            InvocationType='RequestResponse',
+            Payload=mocker.ANY,
+        )
+    ]
+
+
+@pytest.mark.parametrize('cbc', ['ee', 'vodafone', 'three', 'o2'])
 def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
     mocker,
     cbc_proxy_client,
@@ -433,7 +478,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_invoke_error_and_rai
         'StatusCode': 400,
     }
 
-    with pytest.raises(CBCProxyException) as e:
+    with pytest.raises(CBCProxyRetryableException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier='my-identifier',
             message_number='0000007b',
@@ -482,7 +527,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
         }
     }
 
-    with pytest.raises(CBCProxyException) as e:
+    with pytest.raises(CBCProxyRetryableException) as e:
         cbc_proxy.create_and_send_broadcast(
             identifier='my-identifier',
             message_number='0000007b',
