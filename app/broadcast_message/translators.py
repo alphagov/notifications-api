@@ -5,6 +5,7 @@ def cap_xml_to_dict(cap_xml):
     # This function assumes that it’s being passed valid CAP XML
     cap = BeautifulSoup(cap_xml, "xml")
     return {
+        "msgType": cap.alert.msgType.text,
         "reference": cap.alert.identifier.text,
         "category": cap.alert.info.category.text,
         "expires": cap.alert.info.expires.text,

@@ -2,6 +2,7 @@ post_broadcast_schema = {
     "$schema": "http://json-schema.org/draft-07/schema",
     "type": "object",
     "required": [
+        "msgType",
         "reference",
         "category",
         "content",
@@ -52,6 +53,18 @@ post_broadcast_schema = {
                 "$ref": "#/definitions/area",
             },
         },
+        "msgType": {
+            "type": "string",
+            "enum": [
+                "Alert",
+                # The following are valid CAP but not supported by our
+                # API at the moment
+                #    "Update",
+                #    "Cancel",
+                #    "Ack",
+                #    "Error",
+            ],
+        }
     },
     "definitions": {
         "area": {
