@@ -10,6 +10,7 @@ from notifications_utils.recipients import (
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
 from app import notification_provider_clients, statsd_client, create_uuid
+from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.notifications_dao import (
     dao_update_notification
 )
@@ -196,19 +197,23 @@ def get_html_email_options(service):
             'govuk_banner': True,
             'brand_banner': False,
         }
+    if isinstance(service.email_branding, str):
+        branding = dao_get_email_branding_by_id(service.email_branding)
+    else:
+        branding = service.email_branding
 
     logo_url = get_logo_url(
         current_app.config['ADMIN_BASE_URL'],
-        service.email_branding.logo
-    ) if service.email_branding.logo else None
+        branding.logo
+    ) if branding.logo else None
 
     return {
-        'govuk_banner': service.email_branding.brand_type == BRANDING_BOTH,
-        'brand_banner': service.email_branding.brand_type == BRANDING_ORG_BANNER,
-        'brand_colour': service.email_branding.colour,
+        'govuk_banner': branding.brand_type == BRANDING_BOTH,
+        'brand_banner': branding.brand_type == BRANDING_ORG_BANNER,
+        'brand_colour': branding.colour,
         'brand_logo': logo_url,
-        'brand_text': service.email_branding.text,
-        'brand_name': service.email_branding.name,
+        'brand_text': branding.text,
+        'brand_name': branding.name,
     }
 
 

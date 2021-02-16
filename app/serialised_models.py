@@ -83,6 +83,7 @@ class SerialisedService(SerialisedModel):
         'rate_limit',
         'research_mode',
         'restricted',
+        'email_branding'
     }
 
     @classmethod
