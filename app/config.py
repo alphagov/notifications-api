@@ -534,7 +534,6 @@ class Live(Config):
     ENABLED_CBCS = {BroadcastProvider.VODAFONE}
 
 
-
 class CloudFoundryConfig(Config):
     pass
 
