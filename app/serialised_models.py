@@ -75,7 +75,6 @@ class SerialisedTemplate(SerialisedModel):
 class SerialisedService(SerialisedModel):
     ALLOWED_PROPERTIES = {
         'id',
-        'name',
         'active',
         'contact_link',
         'email_from',
@@ -84,8 +83,6 @@ class SerialisedService(SerialisedModel):
         'rate_limit',
         'research_mode',
         'restricted',
-        'prefix_sms',
-        'email_branding'
     }
 
     @classmethod
