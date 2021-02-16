@@ -3,10 +3,7 @@ from urllib import parse
 from datetime import datetime, timedelta
 from cachetools import TTLCache, cached
 from flask import current_app
-from notifications_utils.recipients import (
-    validate_and_format_phone_number,
-    validate_and_format_email_address
-)
+
 from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
 
 from app import notification_provider_clients, statsd_client, create_uuid
@@ -18,7 +15,6 @@ from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority
 )
 from app.celery.research_mode_tasks import send_sms_response, send_email_response
-from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     SMS_TYPE,
@@ -31,11 +27,12 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_TYPES_COMPLETED
 )
+from app.serialised_models import SerialisedTemplate, SerialisedService
 
 
 def send_sms_to_provider(notification):
-    service = notification.service
-
+    service = SerialisedService.from_id(notification.service_id)
+    service_id = service.id
     if not service.active:
         technical_failure(notification=notification)
         return
@@ -43,23 +40,25 @@ def send_sms_to_provider(notification):
     if notification.status == 'created':
         provider = provider_to_use(SMS_TYPE, notification.international)
 
-        template_model = dao_get_template_by_id(notification.template_id, notification.template_version)
+        template_dict = SerialisedTemplate.from_id_and_service_id(template_id=notification.template_id,
+                                                                  service_id=service_id,
+                                                                  version=notification.template_version).__dict__
 
         template = SMSMessageTemplate(
-            template_model.__dict__,
+            template_dict,
             values=notification.personalisation,
             prefix=service.name,
             show_prefix=service.prefix_sms,
         )
 
+        created_at = notification.created_at
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             update_notification_to_sending(notification, provider)
             send_sms_response(provider.get_name(), str(notification.id), notification.to)
-
         else:
             try:
                 provider.send_sms(
-                    to=validate_and_format_phone_number(notification.to, international=notification.international),
+                    to=notification.normalised_to,
                     content=str(template),
                     reference=str(notification.id),
                     sender=notification.reply_to_text
@@ -73,28 +72,31 @@ def send_sms_to_provider(notification):
                 notification.billable_units = template.fragment_count
                 update_notification_to_sending(notification, provider)
 
-        delta_seconds = (datetime.utcnow() - notification.created_at).total_seconds()
+        delta_seconds = (datetime.utcnow() - created_at).total_seconds()
         statsd_client.timing("sms.total-time", delta_seconds)
 
         if notification.key_type == KEY_TYPE_TEST:
             statsd_client.timing("sms.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("sms.live-key.total-time", delta_seconds)
-            if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
+            if str(service_id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
                 statsd_client.timing("sms.live-key.high-volume.total-time", delta_seconds)
             else:
                 statsd_client.timing("sms.live-key.not-high-volume.total-time", delta_seconds)
 
 
 def send_email_to_provider(notification):
-    service = notification.service
+    service = SerialisedService.from_id(notification.service_id)
+    service_id = service.id
     if not service.active:
         technical_failure(notification=notification)
         return
     if notification.status == 'created':
         provider = provider_to_use(EMAIL_TYPE)
 
-        template_dict = dao_get_template_by_id(notification.template_id, notification.template_version).__dict__
+        template_dict = SerialisedTemplate.from_id_and_service_id(template_id=notification.template_id,
+                                                                  service_id=service_id,
+                                                                  version=notification.template_version).__dict__
 
         html_email = HTMLEmailTemplate(
             template_dict,
@@ -107,6 +109,7 @@ def send_email_to_provider(notification):
             values=notification.personalisation
         )
 
+        created_at = notification.created_at
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
@@ -114,27 +117,24 @@ def send_email_to_provider(notification):
         else:
             from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
                                                  current_app.config['NOTIFY_EMAIL_DOMAIN'])
-
-            email_reply_to = notification.reply_to_text
-
             reference = provider.send_email(
                 from_address,
-                validate_and_format_email_address(notification.to),
+                notification.normalised_to,
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=validate_and_format_email_address(email_reply_to) if email_reply_to else None,
+                reply_to_address=notification.reply_to_text,
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)
 
-        delta_seconds = (datetime.utcnow() - notification.created_at).total_seconds()
+        delta_seconds = (datetime.utcnow() - created_at).total_seconds()
 
         if notification.key_type == KEY_TYPE_TEST:
             statsd_client.timing("email.test-key.total-time", delta_seconds)
         else:
             statsd_client.timing("email.live-key.total-time", delta_seconds)
-            if str(service.id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
+            if str(service_id) in current_app.config.get('HIGH_VOLUME_SERVICE'):
                 statsd_client.timing("email.live-key.high-volume.total-time", delta_seconds)
             else:
                 statsd_client.timing("email.live-key.not-high-volume.total-time", delta_seconds)

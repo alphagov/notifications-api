@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -103,7 +104,9 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     mocker
 ):
     db_notification = create_notification(template=sample_sms_template_with_html,
-                                          to_field="+447234123123", personalisation={"name": "Jo"},
+                                          to_field="+447234123123",
+                                          normalised_to=validate_and_format_phone_number("+447234123123", True),
+                                          personalisation={"name": "Jo"},
                                           status='created',
                                           reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender())
 
@@ -114,7 +117,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to=db_notification.normalised_to,
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=current_app.config['FROM_NUMBER']
@@ -136,6 +139,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     db_notification = create_notification(
         template=sample_email_template_with_html,
         to_field="jo.smith@example.com",
+        normalised_to="jo.smith@example.com",
         personalisation={'name': 'Jo'}
     )
 
@@ -194,6 +198,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
     db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created',
+                                          normalised_to=validate_and_format_phone_number("+447234123123"),
                                           reply_to_text=sample_template.service.get_default_sms_sender())
 
     mocker.patch('app.mmg_client.send_sms')
@@ -212,7 +217,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to=db_notification.normalised_to,
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
         sender=current_app.config['FROM_NUMBER']
@@ -631,6 +636,7 @@ def test_should_send_sms_to_international_providers(
     notification_uk = create_notification(
         template=sample_template,
         to_field="+447234123999",
+        normalised_to=validate_and_format_phone_number("+447234123999", True),
         personalisation={"name": "Jo"},
         status='created',
         international=False,
@@ -640,6 +646,7 @@ def test_should_send_sms_to_international_providers(
     notification_international = create_notification(
         template=sample_template,
         to_field="+6011-17224412",
+        normalised_to=validate_and_format_phone_number("+6011-17224412", international=True),
         personalisation={"name": "Jo"},
         status='created',
         international=True,
@@ -726,49 +733,102 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
     )
 
 
-def test_send_email_to_provider_should_format_reply_to_email_address(
-        sample_email_template,
-        mocker):
-    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-
-    db_notification = create_notification(template=sample_email_template, reply_to_text="test@test.com\t")
-
-    send_to_providers.send_email_to_provider(
-        db_notification,
-    )
-
-    app.aws_ses_client.send_email.assert_called_once_with(
-        ANY,
-        ANY,
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address="test@test.com"
-    )
-
-
-def test_send_sms_to_provider_should_format_phone_number(sample_notification, mocker):
-    sample_notification.to = '+44 (7123) 123-123'
+def test_send_sms_to_provider_should_use_normalised_to(
+        mocker, client, sample_template
+):
     send_mock = mocker.patch('app.mmg_client.send_sms')
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to='447700900855')
+    send_to_providers.send_sms_to_provider(notification)
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
 
-    send_to_providers.send_sms_to_provider(sample_notification)
 
-    assert send_mock.call_args[1]['to'] == '447123123123'
-
-
-def test_send_email_to_provider_should_format_email_address(sample_email_notification, mocker):
-    sample_email_notification.to = 'test@example.com\t'
+def test_send_email_to_provider_should_user_normalised_to(
+        mocker, client, sample_email_template
+):
     send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='TEST@example.com',
+                                       normalised_to='test@example.com')
 
-    send_to_providers.send_email_to_provider(sample_email_notification)
+    send_to_providers.send_email_to_provider(notification)
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
 
-    # to_addresses
-    send_mock.assert_called_once_with(
-        ANY,
-        # to_addresses
-        'test@example.com',
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address=ANY,
+
+def test_send_sms_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_template
+):
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_template.service).data
+    template_dict = template_schema.dump(sample_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
     )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
+
+    send_mock = mocker.patch('app.mmg_client.send_sms')
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to='447700900855')
+    send_to_providers.send_sms_to_provider(notification)
+    assert mock_get_template.called is False
+    assert mock_get_service.called is False
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
+
+
+def test_send_email_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_email_template
+):
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_email_template.service).data
+    template_dict = template_schema.dump(sample_email_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
+    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='TEST@example.com',
+                                       normalised_to='test@example.com')
+
+    send_to_providers.send_email_to_provider(notification)
+    assert mock_get_template.called is False
+    assert mock_get_service.called is False
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
