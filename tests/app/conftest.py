@@ -795,7 +795,6 @@ def mou_signed_templates(notify_db, notify_db_session):
             'MOU_SIGNER_RECEIPT_TEMPLATE_ID',
             'MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID',
             'MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID',
-            'MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID',
         ]
     }
 

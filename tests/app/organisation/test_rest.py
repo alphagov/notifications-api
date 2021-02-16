@@ -442,7 +442,6 @@ def test_post_update_organisation_set_mou_doesnt_email_if_no_signed_by(
         None,
         None,
         {
-            'MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID': 'notify-support+test@digital.cabinet-office.gov.uk',
             'MOU_SIGNER_RECEIPT_TEMPLATE_ID': 'notify@digital.cabinet-office.gov.uk',
         }
     ),
@@ -450,7 +449,6 @@ def test_post_update_organisation_set_mou_doesnt_email_if_no_signed_by(
         'Important Person',
         'important@person.com',
         {
-            'MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID': 'notify-support+test@digital.cabinet-office.gov.uk',
             'MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID': 'important@person.com',
             'MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID': 'notify@digital.cabinet-office.gov.uk',
         }
