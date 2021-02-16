@@ -40,6 +40,7 @@ def cbc_proxy_client(client, mocker):
 def cbc_proxy_ee(cbc_proxy_client):
     return cbc_proxy_client.get_proxy('ee')
 
+
 @pytest.fixture
 def cbc_proxy_vodafone(cbc_proxy_client):
     return cbc_proxy_client.get_proxy('vodafone')

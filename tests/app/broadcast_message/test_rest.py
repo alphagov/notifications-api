@@ -144,6 +144,7 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)
     assert broadcast_message.stubbed == training_mode_service
 
+
 @pytest.mark.parametrize('data, expected_errors', [
     (
         {},
@@ -624,6 +625,7 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
     mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
 
     assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
+
 
 @pytest.mark.parametrize('is_platform_admin', [True, False])
 def test_update_broadcast_message_status_rejects_approval_from_creator(

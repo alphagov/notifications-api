@@ -4,7 +4,6 @@ from datetime import datetime
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.schema import Sequence
-from celery.exceptions import MaxRetriesExceededError
 
 from app import cbc_proxy_client, db, notify_celery
 from app.clients.cbc_proxy import CBCProxyFatalException, CBCProxyRetryableException
@@ -57,7 +56,7 @@ def check_provider_message_should_send(broadcast_event, provider):
         raise CBCProxyFatalException(
             f'Cannot send broadcast_event {broadcast_event.id} ' +
             f'to provider {provider}: ' +
-            f'It is already in status technical-failure'
+            'It is already in status technical-failure'
         )
 
     if broadcast_event.transmitted_finishes_at < datetime.utcnow():
@@ -82,8 +81,8 @@ def check_provider_message_should_send(broadcast_event, provider):
                 raise CBCProxyFatalException(
                     f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
                     f'(type {prev_event.message_type}) has no provider_message for provider {provider} yet.\n' +
-                    f'You must ensure that the other event sends succesfully, then manually kick off this event ' +
-                    f'again by re-running send_broadcast_provider_message for this event and provider.'
+                    'You must ensure that the other event sends succesfully, then manually kick off this event ' +
+                    'again by re-running send_broadcast_provider_message for this event and provider.'
                 )
 
             # if there's a previous message that has started but not finished sending (whether it fatally errored or is
@@ -93,8 +92,8 @@ def check_provider_message_should_send(broadcast_event, provider):
                     f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
                     f'(type {prev_event.message_type}) has not finished sending to provider {provider} yet.\n' +
                     f'It is currently in status "{prev_provider_message.status}".\n' +
-                    f'You must ensure that the other event sends succesfully, then manually kick off this event ' +
-                    f'again by re-running send_broadcast_provider_message for this event and provider.'
+                    'You must ensure that the other event sends succesfully, then manually kick off this event ' +
+                    'again by re-running send_broadcast_provider_message for this event and provider.'
                 )
 
 
