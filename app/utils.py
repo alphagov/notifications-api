@@ -151,7 +151,7 @@ def get_dt_string_or_none(val):
 
 
 def get_uuid_string_or_none(val):
-    return str(val)  if val else None
+    return str(val) if val else None
 
 
 def format_sequential_number(sequential_number):

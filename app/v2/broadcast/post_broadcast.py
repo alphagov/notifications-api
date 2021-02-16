@@ -31,7 +31,7 @@ def create_broadcast():
 
     if not validate_xml(cap_xml, 'CAP-v1.2.xsd'):
         raise BadRequestError(
-            message=f'Request data is not valid CAP XML',
+            message='Request data is not valid CAP XML',
             status_code=400,
         )
 

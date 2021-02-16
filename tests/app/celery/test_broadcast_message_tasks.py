@@ -253,20 +253,20 @@ def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, 
     template = create_template(sample_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
-        areas={'areas': [], 'simple_polygons': [],},
+        areas={'areas': [], 'simple_polygons': [], },
         status=BroadcastStatusType.BROADCASTING
     )
     event = create_broadcast_event(broadcast_message)
 
     # an existing provider message already exists, and previously failed
-    existing_provider_message = create_broadcast_provider_message(
+    create_broadcast_provider_message(
         broadcast_event=event,
         provider='ee',
         status=BroadcastProviderMessageStatus.SENDING
     )
 
     mock_create_broadcast = mocker.patch(
-        f'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
+        'app.clients.cbc_proxy.CBCProxyEE.create_and_send_broadcast',
     )
 
     send_broadcast_provider_message(provider='ee', broadcast_event_id=str(event.id))
@@ -496,7 +496,6 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
     assert broadcast_provider_message.status == BroadcastProviderMessageStatus.SENDING
 
 
-
 @pytest.mark.parametrize('num_retries, expected_countdown', [
     (0, 1),
     (5, 32),
@@ -688,7 +687,8 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
         message_type='alert',
         sent_at=datetime(2021, 1, 1, 0, 0),
     )
-    future_event = create_broadcast_event(
+    # create a future event
+    create_broadcast_event(
         broadcast_message,
         message_type='cancel',
         sent_at=datetime(2021, 1, 1, 10, 0),

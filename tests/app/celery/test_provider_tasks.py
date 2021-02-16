@@ -57,7 +57,10 @@ def test_send_sms_should_not_switch_providers_on_non_provider_failure(
 
 
 def test_should_retry_and_log_warning_if_SmsClientResponseException_for_deliver_sms_task(sample_notification, mocker):
-    mocker.patch('app.delivery.send_to_providers.send_sms_to_provider', side_effect=SmsClientResponseException("something went wrong"))
+    mocker.patch(
+        'app.delivery.send_to_providers.send_sms_to_provider',
+        side_effect=SmsClientResponseException("something went wrong"),
+    )
     mocker.patch('app.celery.provider_tasks.deliver_sms.retry')
     mock_logger_warning = mocker.patch('app.celery.tasks.current_app.logger.warning')
 

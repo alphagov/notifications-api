@@ -224,7 +224,8 @@ def check_if_letters_still_in_created():
 
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
             "Follow runbook to resolve: " \
-            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook" \
+            "#deal-with-Letters-still-in-created. " \
             "Notifications: {}".format(len(letters), letter_ids)
 
         current_app.logger.warning(msg)

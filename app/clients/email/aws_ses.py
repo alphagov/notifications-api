@@ -2,7 +2,6 @@ import boto3
 import botocore
 from flask import current_app
 from time import monotonic
-from notifications_utils.recipients import InvalidEmailError
 
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
 from app.clients.email import EmailClient, EmailClientException, EmailClientNonRetryableException
