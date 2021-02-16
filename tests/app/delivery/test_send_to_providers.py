@@ -1,3 +1,4 @@
+import json
 import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -13,6 +14,7 @@ from app import notification_provider_clients, mmg_client, firetext_client
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
+from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     Notification,
@@ -24,13 +26,14 @@ from app.models import (
     BRANDING_BOTH,
     BRANDING_ORG_BANNER
 )
+from app.serialised_models import SerialisedService
 from tests.app.db import (
     create_service,
     create_template,
     create_notification,
     create_reply_to_email,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender
+    create_service_with_defined_sms_sender, create_email_branding
 )
 
 
@@ -105,7 +108,9 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     db_notification = create_notification(template=sample_sms_template_with_html,
                                           to_field="+447234123123", personalisation={"name": "Jo"},
                                           status='created',
-                                          reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender())
+                                          reply_to_text=sample_sms_template_with_html.service.get_default_sms_sender(),
+                                          normalised_to="447234123123"
+                                          )
 
     mocker.patch('app.mmg_client.send_sms')
 
@@ -114,7 +119,7 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
     )
 
     mmg_client.send_sms.assert_called_once_with(
-        to=validate_and_format_phone_number("+447234123123"),
+        to="447234123123",
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
         sender=current_app.config['FROM_NUMBER']
@@ -136,7 +141,8 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
     db_notification = create_notification(
         template=sample_email_template_with_html,
         to_field="jo.smith@example.com",
-        personalisation={'name': 'Jo'}
+        personalisation={'name': 'Jo'},
+        normalised_to="jo.smith@example.com",
     )
 
     mocker.patch('app.aws_ses_client.send_email', return_value='reference')
@@ -194,7 +200,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         sample_template,
         mocker):
     db_notification = create_notification(template=sample_template, to_field='+447234123123', status='created',
-                                          reply_to_text=sample_template.service.get_default_sms_sender())
+                                          reply_to_text=sample_template.service.get_default_sms_sender(),
+                                          normalised_to='447234123123')
 
     mocker.patch('app.mmg_client.send_sms')
 
@@ -634,7 +641,8 @@ def test_should_send_sms_to_international_providers(
         personalisation={"name": "Jo"},
         status='created',
         international=False,
-        reply_to_text=sample_template.service.get_default_sms_sender()
+        reply_to_text=sample_template.service.get_default_sms_sender(),
+        normalised_to="447234123999"
     )
 
     notification_international = create_notification(
@@ -643,7 +651,8 @@ def test_should_send_sms_to_international_providers(
         personalisation={"name": "Jo"},
         status='created',
         international=True,
-        reply_to_text=sample_template.service.get_default_sms_sender()
+        reply_to_text=sample_template.service.get_default_sms_sender(),
+        normalised_to='601117224412'
     )
     send_to_providers.send_sms_to_provider(
         notification_uk
@@ -726,49 +735,134 @@ def test_send_email_to_provider_uses_reply_to_from_notification(
     )
 
 
-def test_send_email_to_provider_should_format_reply_to_email_address(
-        sample_email_template,
-        mocker):
-    mocker.patch('app.aws_ses_client.send_email', return_value='reference')
-
-    db_notification = create_notification(template=sample_email_template, reply_to_text="test@test.com\t")
-
-    send_to_providers.send_email_to_provider(
-        db_notification,
-    )
-
-    app.aws_ses_client.send_email.assert_called_once_with(
-        ANY,
-        ANY,
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address="test@test.com"
-    )
-
-
-def test_send_sms_to_provider_should_format_phone_number(sample_notification, mocker):
-    sample_notification.to = '+44 (7123) 123-123'
+def test_send_sms_to_provider_should_use_normalised_to(
+        mocker, client, sample_template
+):
     send_mock = mocker.patch('app.mmg_client.send_sms')
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to='447700900855')
+    send_to_providers.send_sms_to_provider(notification)
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
 
-    send_to_providers.send_sms_to_provider(sample_notification)
 
-    assert send_mock.call_args[1]['to'] == '447123123123'
-
-
-def test_send_email_to_provider_should_format_email_address(sample_email_notification, mocker):
-    sample_email_notification.to = 'test@example.com\t'
+def test_send_email_to_provider_should_user_normalised_to(
+        mocker, client, sample_email_template
+):
     send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='TEST@example.com',
+                                       normalised_to='test@example.com')
+    print("************* start")
+    send_to_providers.send_email_to_provider(notification)
+    print("End ******************")
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
 
-    send_to_providers.send_email_to_provider(sample_email_notification)
 
-    # to_addresses
-    send_mock.assert_called_once_with(
-        ANY,
-        # to_addresses
-        'test@example.com',
-        ANY,
-        body=ANY,
-        html_body=ANY,
-        reply_to_address=ANY,
+def test_send_sms_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_template
+):
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_template.service).data
+    template_dict = template_schema.dump(sample_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
     )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
+
+    send_mock = mocker.patch('app.mmg_client.send_sms')
+    notification = create_notification(template=sample_template,
+                                       to_field='+447700900855',
+                                       normalised_to='447700900855')
+    send_to_providers.send_sms_to_provider(notification)
+    assert mock_get_template.called is False
+    assert mock_get_service.called is False
+    send_mock.assert_called_once_with(to=notification.normalised_to,
+                                      content=ANY,
+                                      reference=str(notification.id),
+                                      sender=notification.reply_to_text)
+
+
+def test_send_email_to_provider_should_return_template_if_found_in_redis(
+        mocker, client, sample_email_template
+):
+    from app.schemas import service_schema, template_schema
+    service_dict = service_schema.dump(sample_email_template.service).data
+    template_dict = template_schema.dump(sample_email_template).data
+
+    mocker.patch(
+        'app.redis_store.get',
+        side_effect=[
+            json.dumps({'data': service_dict}).encode('utf-8'),
+            json.dumps({'data': template_dict}).encode('utf-8'),
+        ],
+    )
+    mock_get_template = mocker.patch(
+        'app.dao.templates_dao.dao_get_template_by_id_and_service_id'
+    )
+    mock_get_service = mocker.patch(
+        'app.dao.services_dao.dao_fetch_service_by_id'
+    )
+    send_mock = mocker.patch('app.aws_ses_client.send_email', return_value='reference')
+    notification = create_notification(template=sample_email_template,
+                                       to_field='TEST@example.com',
+                                       normalised_to='test@example.com')
+
+    send_to_providers.send_email_to_provider(notification)
+    assert mock_get_template.called is False
+    assert mock_get_service.called is False
+    send_mock.assert_called_once_with(ANY,
+                                      notification.normalised_to,
+                                      ANY,
+                                      body=ANY,
+                                      html_body=ANY,
+                                      reply_to_address=notification.reply_to_text)
+
+
+def test_get_html_email_options_return_email_branding_from_serialised_service(
+        sample_service
+):
+    branding = create_email_branding()
+    sample_service.email_branding = branding
+    service = SerialisedService.from_id(sample_service.id)
+    email_options = get_html_email_options(service)
+    assert email_options is not None
+    assert email_options == {'govuk_banner': branding.brand_type == BRANDING_BOTH,
+                             'brand_banner': branding.brand_type == BRANDING_ORG_BANNER,
+                             'brand_colour': branding.colour,
+                             'brand_logo': get_logo_url(current_app.config['ADMIN_BASE_URL'], branding.logo),
+                             'brand_text': branding.text,
+                             'brand_name': branding.name,
+                             }
+
+
+def test_get_html_email_options_add_email_branding_from_service(sample_service):
+    branding = create_email_branding()
+    sample_service.email_branding = branding
+    email_options = get_html_email_options(sample_service)
+    assert email_options is not None
+    assert email_options == {'govuk_banner': branding.brand_type == BRANDING_BOTH,
+                             'brand_banner': branding.brand_type == BRANDING_ORG_BANNER,
+                             'brand_colour': branding.colour,
+                             'brand_logo': get_logo_url(current_app.config['ADMIN_BASE_URL'], branding.logo),
+                             'brand_text': branding.text,
+                             'brand_name': branding.name,
+                             }
