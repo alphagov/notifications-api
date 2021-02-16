@@ -306,7 +306,7 @@ def test_get_service_by_id_for_service_with_broadcast_permission_sets_channel_as
 ):
     service = create_service(service_permissions=[BROADCAST_TYPE])
     assert BROADCAST_TYPE in [p.permission for p in service.permissions]
-    assert service.broadcast_channel == None
+    assert service.broadcast_channel is None
 
     json_resp = admin_request.get('service.get_service_by_id', service_id=service.id)
     assert json_resp['data']['id'] == str(service.id)
@@ -320,7 +320,7 @@ def test_get_service_by_id_for_non_broadcast_service_sets_channel_as_none(
 
     json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
     assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['broadcast_channel'] == None
+    assert json_resp['data']['broadcast_channel'] is None
 
 
 @pytest.mark.parametrize('detailed', [True, False])
@@ -3816,7 +3816,7 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
 def test_set_as_broadcast_service_sets_count_as_live_to_false(
     admin_request, sample_service, broadcast_organisation
 ):
-    assert sample_service.count_as_live == True
+    assert sample_service.count_as_live is True
 
     data = {
         'broadcast_channel': "severe",
@@ -3828,10 +3828,10 @@ def test_set_as_broadcast_service_sets_count_as_live_to_false(
         service_id=sample_service.id,
         _data=data,
     )
-    assert result['data']['count_as_live'] == False
+    assert result['data']['count_as_live'] is False
 
     service_from_db = Service.query.filter_by(id=sample_service.id).all()[0]
-    assert service_from_db.count_as_live == False
+    assert service_from_db.count_as_live is False
 
 
 def test_set_as_broadcast_service_sets_service_org_to_broadcast_org(
@@ -3878,8 +3878,8 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
     sample_service.restricted = True
     notify_db.session.add(sample_service)
     notify_db.session.commit()
-    assert sample_service.restricted == True
-    assert sample_service.go_live_at == None
+    assert sample_service.restricted is True
+    assert sample_service.go_live_at is None
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'live',
@@ -3892,7 +3892,7 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
         _data=data,
     )
     assert result['data']['name'] == 'Sample service'
-    assert result['data']['restricted'] == False
+    assert result['data']['restricted'] is False
     assert result['data']['go_live_at'] == '2021-02-02 00:00:00.000000'
 
 
@@ -3903,7 +3903,7 @@ def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
     sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
     notify_db.session.add(sample_broadcast_service)
     notify_db.session.commit()
-    assert sample_broadcast_service.restricted == False
+    assert sample_broadcast_service.restricted is False
     assert sample_broadcast_service.go_live_at is not None
     data = {
         'broadcast_channel': 'severe',
@@ -3917,7 +3917,7 @@ def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
         _data=data,
     )
     assert result['data']['name'] == 'Sample broadcast service'
-    assert result['data']['restricted'] == False
+    assert result['data']['restricted'] is False
     assert result['data']['go_live_at'] == '2021-01-01 00:00:00.000000'
 
 
@@ -3928,7 +3928,7 @@ def test_set_as_broadcast_service_sets_service_to_training_mode(
     sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
     notify_db.session.add(sample_broadcast_service)
     notify_db.session.commit()
-    assert sample_broadcast_service.restricted == False
+    assert sample_broadcast_service.restricted is False
     assert sample_broadcast_service.go_live_at is not None
 
     data = {
@@ -3943,7 +3943,7 @@ def test_set_as_broadcast_service_sets_service_to_training_mode(
         _data=data,
     )
     assert result['data']['name'] == 'Sample broadcast service'
-    assert result['data']['restricted'] == True
+    assert result['data']['restricted'] is True
     assert result['data']['go_live_at'] is None
 
 

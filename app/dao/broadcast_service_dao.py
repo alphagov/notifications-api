@@ -26,13 +26,13 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
     # Refresh the service object as it has references to the service permissions but we don't yet
     # want to commit the permission changes incase all of this needs to rollback
     db.session.refresh(service)
-        
+
     # Set service count as live false always
     service.count_as_live = False
 
     # Set service into training mode or live mode
     if service_mode == "live":
-        if service.restricted == True:
+        if service.restricted:
             # Only update the go live at timestamp if this if moving from training mode
             # to live mode, not if it's moving from one type of live mode service to another
             service.go_live_at = datetime.utcnow()
@@ -41,7 +41,7 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
         service.restricted = True
         service.go_live_at = None
 
-    # Add service to organisation 
+    # Add service to organisation
     organisation = Organisation.query.filter_by(
         id=current_app.config['BROADCAST_ORGANISATION_ID']
     ).one()
