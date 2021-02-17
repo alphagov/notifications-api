@@ -57,39 +57,28 @@ To switch redis on you'll need to install it locally. On a OSX we've used brew f
 
 ##  To run the application
 
-First, run `scripts/bootstrap.sh` to install dependencies and create the databases.
-
-You need to run the api application and a local celery instance.
-
-There are two run scripts for running all the necessary parts.
-
 ```
+# install dependencies, etc.
+./scripts/bootstrap.sh
+
+# run the web app
 make run-flask
-```
 
-```
+# run the background tasks
 make run-celery
-```
 
-Optionally you can also run this script to run the scheduled tasks:
-
-```
+# run scheduled tasks (optional)
 make run-celery-beat
 ```
 
 ##  To test the application
 
-First, ensure that `scripts/bootstrap.sh` has been run, as it creates the test database.
-
-Then simply run
-
 ```
+# install dependencies, etc.
+./scripts/bootstrap.sh
+
 make test
 ```
-
-That will run flake8 for code analysis and our unit test suite. If you wish to run our functional tests, instructions can be found in the
-[notifications-functional-tests](https://github.com/alphagov/notifications-functional-tests) repository.
-
 
 ## To update application dependencies
 
