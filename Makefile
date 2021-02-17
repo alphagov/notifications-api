@@ -7,15 +7,6 @@ APP_VERSION_FILE = app/version.py
 GIT_BRANCH ?= $(shell git symbolic-ref --short HEAD 2> /dev/null || echo "detached")
 GIT_COMMIT ?= $(shell git rev-parse HEAD)
 
-DOCKER_BUILDER_IMAGE_NAME = govuk/notify-api-builder:master
-
-BUILD_TAG ?= notifications-api-manual
-BUILD_NUMBER ?= 0
-DEPLOY_BUILD_NUMBER ?= ${BUILD_NUMBER}
-BUILD_URL ?=
-
-DOCKER_CONTAINER_PREFIX = ${USER}-${BUILD_TAG}
-
 CF_API ?= api.cloud.service.gov.uk
 CF_ORG ?= govuk-notify
 CF_SPACE ?= ${DEPLOY_ENV}
@@ -60,46 +51,6 @@ test-requirements:
 	    && { echo "requirements.txt doesn't match requirements-app.txt."; \
 	         echo "Run 'make freeze-requirements' to update."; exit 1; } \
 || { echo "requirements.txt is up to date"; exit 0; }
-
-.PHONY: prepare-docker-build-image
-prepare-docker-build-image: generate-version-file ## Prepare the Docker builder image
-	docker build -f docker/Dockerfile \
-		--build-arg HTTP_PROXY="${HTTP_PROXY}" \
-		--build-arg HTTPS_PROXY="${HTTP_PROXY}" \
-		--build-arg NO_PROXY="${NO_PROXY}" \
-		-t ${DOCKER_BUILDER_IMAGE_NAME} \
-		.
-
-.PHONY: test-with-docker
-test-with-docker: prepare-docker-build-image create-docker-test-db ## Run tests inside a Docker container
-	@docker run -it --rm \
-		--name "${DOCKER_CONTAINER_PREFIX}-test" \
-		--link "${DOCKER_CONTAINER_PREFIX}-db:postgres" \
-		-e SQLALCHEMY_DATABASE_URI=postgresql://postgres:postgres@postgres/test_notification_api \
-		-e GIT_COMMIT=${GIT_COMMIT} \
-		-e BUILD_NUMBER=${BUILD_NUMBER} \
-		-e BUILD_URL=${BUILD_URL} \
-		-e http_proxy="${HTTP_PROXY}" \
-		-e HTTP_PROXY="${HTTP_PROXY}" \
-		-e https_proxy="${HTTPS_PROXY}" \
-		-e HTTPS_PROXY="${HTTPS_PROXY}" \
-		-e NO_PROXY="${NO_PROXY}" \
-		${DOCKER_BUILDER_IMAGE_NAME} \
-		make test
-
-.PHONY: create-docker-test-db
-create-docker-test-db: ## Start the test database in a Docker container
-	docker rm -f ${DOCKER_CONTAINER_PREFIX}-db 2> /dev/null || true
-	@docker run -d \
-		--name "${DOCKER_CONTAINER_PREFIX}-db" \
-		-e POSTGRES_PASSWORD="postgres" \
-		-e POSTGRES_DB=test_notification_api \
-		postgres:9.5
-	sleep 3
-
-.PHONY: clean-docker-containers
-clean-docker-containers: ## Clean up any remaining docker containers
-	docker rm -f $(shell docker ps -q -f "name=${DOCKER_CONTAINER_PREFIX}") 2> /dev/null || true
 
 .PHONY: clean
 clean:
