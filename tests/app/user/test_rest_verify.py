@@ -477,3 +477,21 @@ def test_user_verify_email_code_fails_if_code_already_used(admin_request, sample
     assert verify_code.code_used
     assert sample_user.logged_in_at is None
     assert sample_user.current_session_id is None
+
+
+def test_send_user_2fa_code_sends_from_number_for_international_numbers(
+        client, sample_user, mocker, sms_code_template
+):
+    sample_user.mobile_number = "601117224412"
+    auth_header = create_authorization_header()
+    mocker.patch('app.user.rest.create_secret_code', return_value='11111')
+    mocker.patch('app.user.rest.send_notification_to_queue')
+
+    resp = client.post(
+        url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
+        data=json.dumps({}),
+        headers=[('Content-Type', 'application/json'), auth_header])
+    assert resp.status_code == 204
+
+    notification = Notification.query.first()
+    assert notification.reply_to_text == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']

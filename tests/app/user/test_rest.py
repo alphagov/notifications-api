@@ -4,7 +4,7 @@ import mock
 from uuid import UUID
 from datetime import datetime
 
-from flask import url_for
+from flask import url_for, current_app
 from freezegun import freeze_time
 
 from app.models import (
@@ -308,6 +308,28 @@ def test_post_user_attribute_with_updated_by(
         mock_persist_notification.assert_called_once_with(**arguments)
     else:
         mock_persist_notification.assert_not_called()
+
+
+def test_post_user_attribute_with_updated_by_sends_notification_to_international_from_number(
+    client, mocker, sample_user, team_member_mobile_edit_template
+):
+    updater = create_user(name="Service Manago")
+    update_dict = {
+        'mobile_number': '601117224412',
+        'updated_by': str(updater.id)
+    }
+    auth_header = create_authorization_header()
+    headers = [('Content-Type', 'application/json'), auth_header]
+    mocker.patch('app.user.rest.send_notification_to_queue')
+    resp = client.post(
+        url_for('user.update_user_attribute', user_id=sample_user.id),
+        data=json.dumps(update_dict),
+        headers=headers)
+
+    assert resp.status_code == 200, resp.get_data(as_text=True)
+
+    notification = Notification.query.first()
+    assert notification.reply_to_text == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
 
 
 def test_archive_user(mocker, client, sample_user):
