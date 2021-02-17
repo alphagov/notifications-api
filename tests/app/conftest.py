@@ -14,8 +14,9 @@ from app.dao.api_key_dao import save_model_api_key
 from app.dao.invited_user_dao import save_invited_user
 from app.dao.jobs_dao import dao_create_job
 from app.dao.notifications_dao import dao_create_notification
-from app.dao.organisation_dao import dao_create_organisation
+from app.dao.organisation_dao import dao_create_organisation, dao_add_service_to_organisation
 from app.dao.services_dao import (dao_create_service, dao_add_user_to_service)
+from app.dao.broadcast_service_dao import insert_or_update_service_broadcast_settings
 from app.dao.templates_dao import dao_create_template
 from app.dao.users_dao import create_secret_code, create_user_code
 from app.history_meta import create_history
@@ -42,7 +43,7 @@ from app.models import (
     LETTER_TYPE,
     SERVICE_PERMISSION_TYPES,
     ServiceEmailReplyTo,
-    BROADCAST_TYPE
+    BROADCAST_TYPE,
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -150,7 +151,7 @@ def sample_service(notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_broadcast_service(notify_db_session):
+def sample_broadcast_service(notify_db_session, broadcast_organisation):
     user = create_user()
     service_name = 'Sample broadcast service'
     email_from = service_name.lower().replace(' ', '.')
@@ -161,12 +162,15 @@ def sample_broadcast_service(notify_db_session):
         'restricted': False,
         'email_from': email_from,
         'created_by': user,
-        'crown': True
+        'crown': True,
+        'count_as_live': False,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
         dao_create_service(service, user, service_permissions=[BROADCAST_TYPE])
+        insert_or_update_service_broadcast_settings(service, channel="severe")
+        dao_add_service_to_organisation(service, current_app.config['BROADCAST_ORGANISATION_ID'])
     else:
         if user not in service.users:
             dao_add_user_to_service(service, user)
@@ -871,6 +875,16 @@ def sample_inbound_numbers(sample_service):
 def sample_organisation(notify_db_session):
     org = Organisation(name='sample organisation')
     dao_create_organisation(org)
+    return org
+
+
+@pytest.fixture
+def broadcast_organisation(notify_db_session):
+    org = Organisation.query.get(current_app.config['BROADCAST_ORGANISATION_ID'])
+    if not org:
+        org = Organisation(id=current_app.config['BROADCAST_ORGANISATION_ID'], name='broadcast organisation')
+        dao_create_organisation(org)
+
     return org
 
 

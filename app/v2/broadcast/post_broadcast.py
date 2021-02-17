@@ -1,6 +1,7 @@
 from itertools import chain
 from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
+from notifications_utils.template import BroadcastMessageTemplate
 from app import authenticated_service, api_user
 from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.dao_utils import dao_save_object
@@ -9,7 +10,7 @@ from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
 from app.schema_validation import validate
 from app.v2.broadcast import v2_broadcast_blueprint
 from app.v2.broadcast.broadcast_schemas import post_broadcast_schema
-from app.v2.errors import BadRequestError
+from app.v2.errors import BadRequestError, ValidationError
 from app.xml_schemas import validate_xml
 
 
@@ -42,6 +43,22 @@ def create_broadcast():
     polygons = Polygons(list(chain.from_iterable((
         area['polygons'] for area in broadcast_json['areas']
     ))))
+
+    template = BroadcastMessageTemplate.from_content(
+        broadcast_json['content']
+    )
+
+    if template.content_too_long:
+        raise ValidationError(
+            message=(
+                f'description must be {template.max_content_count:,.0f} '
+                f'characters or fewer'
+            ) + (
+                ' (because it could not be GSM7 encoded)'
+                if template.non_gsm_characters else ''
+            ),
+            status_code=400,
+        )
 
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,

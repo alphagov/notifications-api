@@ -29,7 +29,9 @@ from app.dao.fact_notification_status_dao import (
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.organisation_dao import dao_get_organisation_by_service_id
+from app.dao.organisation_dao import (
+    dao_get_organisation_by_service_id,
+)
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -42,6 +44,7 @@ from app.dao.service_contact_list_dao import (
     dao_get_contact_list_by_id,
     save_service_contact_list,
 )
+from app.dao.broadcast_service_dao import set_broadcast_service_type
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -100,8 +103,13 @@ from app.errors import (
 )
 from app.letters.utils import letter_print_day
 from app.models import (
-    KEY_TYPE_NORMAL, LETTER_TYPE, NOTIFICATION_CANCELLED, Permission, Service,
-    EmailBranding, LetterBranding,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_CANCELLED,
+    Permission,
+    Service,
+    EmailBranding,
+    LetterBranding,
     ServiceContactList
 )
 from app.notifications.process_notifications import persist_notification, send_notification_to_queue
@@ -118,6 +126,7 @@ from app.service.service_senders_schema import (
     add_service_letter_contact_block_request,
     add_service_sms_sender_request
 )
+from app.service.service_broadcast_settings_schema import service_broadcast_settings_schema
 from app.service.utils import get_guest_list_objects
 from app.service.sender import send_notification_to_service_users
 from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
@@ -1070,3 +1079,27 @@ def create_contact_list(service_id):
     save_service_contact_list(list_to_save)
 
     return jsonify(list_to_save.serialize()), 201
+
+
+@service_blueprint.route('/<uuid:service_id>/set-as-broadcast-service', methods=['POST'])
+def set_as_broadcast_service(service_id):
+    """
+    This route does the following
+    - adds a service broadcast settings to define which channel broadcasts should go out on
+    - removes all current service permissions and adds the broadcast service permission
+    - sets the services `count_as_live` to false
+    - adds the service to the broadcast organisation
+    - puts the service into training mode or live mode
+    """
+    data = validate(request.get_json(), service_broadcast_settings_schema)
+    service = dao_fetch_service_by_id(service_id)
+
+    set_broadcast_service_type(
+        service,
+        service_mode=data["service_mode"],
+        broadcast_channel=data["broadcast_channel"],
+        provider_restriction=data["provider_restriction"]
+    )
+
+    data = service_schema.dump(service).data
+    return jsonify(data=data)
