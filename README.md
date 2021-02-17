@@ -17,9 +17,7 @@ To run the API you will need appropriate AWS credentials. See the [Wiki](https:/
 
 ### `environment.sh`
 
-Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment.
-
-Create a local environment.sh file containing the following:
+Creating and edit an environment.sh file.
 
 ```
 echo "
@@ -35,11 +33,14 @@ export WERKZEUG_DEBUG_PIN=off
 "> environment.sh
 ```
 
-NOTES:
+Things to change:
 
- * Replace the placeholder key and prefix values as appropriate
- * The SECRET_KEY and DANGEROUS_SALT should match those in the [notifications-admin](https://github.com/alphagov/notifications-admin) app.
- * The  unique prefix for the queue names prevents clashing with others' queues in shared amazon environment and enables filtering by queue name in the SQS interface.
+* Replace `YOUR_OWN_PREFIX` with `local_dev_<first name>`.
+* Run the following in the credentials repo to get the API keys.
+
+```
+notify-pass credentials/providers/api_keys
+```
 
 ### Postgres
 
