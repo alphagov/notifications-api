@@ -49,12 +49,6 @@ from app.models import (
 from app.cronitor import cronitor
 
 
-@notify_celery.task(bind=True, name="create-letters-pdf", max_retries=15, default_retry_delay=300)
-@statsd(namespace="tasks")
-def create_letters_pdf(self, notification_id):
-    get_pdf_for_templated_letter(notification_id)
-
-
 @notify_celery.task(bind=True, name="get-pdf-for-templated-letter", max_retries=15, default_retry_delay=300)
 @statsd(namespace="tasks")
 def get_pdf_for_templated_letter(self, notification_id):
