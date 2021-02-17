@@ -108,7 +108,7 @@ def update_user_attribute(user_id):
             if is_uk_phone_number(recipient):
                 reply_to = template.service.get_default_sms_sender()
             else:
-                reply_to = current_app.config['NOTIFY_NUMBER_SMS_SENDER']
+                reply_to = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
         else:
             return jsonify(data=user_to_update.serialize()), 200
         service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -274,7 +274,7 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
         if is_uk_phone_number(recipient):
             reply_to = template.service.get_default_sms_sender()
         else:
-            reply_to = current_app.config['NOTIFY_NUMBER_SMS_SENDER']
+            reply_to = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
     elif template.template_type == EMAIL_TYPE:
         reply_to = template.service.get_default_reply_to_email_address()
     saved_notification = persist_notification(

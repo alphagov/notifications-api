@@ -15,7 +15,7 @@ down_revision = '0345_move_broadcast_provider'
 
 SMS_SENDER_ID = 'd24b830b-57b4-4f14-bd80-02f46f8d54de'
 NOTIFY_SERVICE_ID = current_app.config['NOTIFY_SERVICE_ID']
-INBOUND_NUMBER = current_app.config['NOTIFY_NUMBER_SMS_SENDER']
+INBOUND_NUMBER = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
 
 
 def upgrade():

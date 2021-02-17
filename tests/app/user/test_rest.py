@@ -329,7 +329,7 @@ def test_post_user_attribute_with_updated_by_sends_notification_to_international
     assert resp.status_code == 200, resp.get_data(as_text=True)
 
     notification = Notification.query.first()
-    assert notification.reply_to_text == current_app.config['NOTIFY_NUMBER_SMS_SENDER']
+    assert notification.reply_to_text == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
 
 
 def test_archive_user(mocker, client, sample_user):

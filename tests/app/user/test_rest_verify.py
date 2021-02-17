@@ -494,4 +494,4 @@ def test_send_user_2fa_code_sends_from_number_for_international_numbers(
     assert resp.status_code == 204
 
     notification = Notification.query.first()
-    assert notification.reply_to_text == current_app.config['NOTIFY_NUMBER_SMS_SENDER']
+    assert notification.reply_to_text == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
