@@ -13,13 +13,11 @@ At the moment we run Python 3.6 in production. You will run into problems if you
 
 ### AWS credentials
 
-To run the API you will need appropriate AWS credentials. You should receive these from whoever administrates your AWS account. Make sure you've got both an access key id and a secret access key.
-
-Your aws credentials should be stored in a folder located at `~/.aws`. Follow [Amazon's instructions](http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html#cli-config-files) for storing them correctly.
+To run the API you will need appropriate AWS credentials. See the [Wiki](https://github.com/alphagov/notifications-manuals/wiki/aws-accounts#how-to-set-up-local-development) for more details.
 
 ### `environment.sh`
 
-Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment. Your AWS credentials should be set up for notify-tools (the development/CI AWS account).
+Creating the environment.sh file. Replace [unique-to-environment] with your something unique to the environment.
 
 Create a local environment.sh file containing the following:
 
