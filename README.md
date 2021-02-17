@@ -71,19 +71,18 @@ You need to run the api application and a local celery instance.
 There are two run scripts for running all the necessary parts.
 
 ```
-scripts/run_app.sh
+make run-flask
 ```
 
 ```
-scripts/run_celery.sh
+make run-celery
 ```
 
 Optionally you can also run this script to run the scheduled tasks:
 
 ```
-scripts/run_celery_beat.sh
+make run-celery-beat
 ```
-
 
 ##  To test the application
 

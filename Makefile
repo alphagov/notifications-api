@@ -21,6 +21,24 @@ NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
 ## DEVELOPMENT
 
+.PHONY: run-flask
+run-flask:
+	. environment.sh && flask run -p 6011
+
+.PHONY: run-celery
+run-celery:
+	. environment.sh && celery \
+		-A run_celery.notify_celery worker \
+		--pidfile="/tmp/celery.pid" \
+		--loglevel=INFO \
+		--concurrency=4
+
+.PHONY: run-celery-beat
+run-celery-beat:
+	. environment.sh && celery \
+		-A run_celery.notify_celery beat \
+		--loglevel=INFO
+
 .PHONY: help
 help:
 	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
