@@ -198,3 +198,40 @@ CANCEL = """
       </info>
     </alert>
 """
+
+WITH_PLACEHOLDER_FOR_CONTENT = """
+    <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+        <identifier>50385fcb0ab7aa447bbd46d848ce8466E</identifier>
+        <sender>www.gov.uk/environment-agency</sender>
+        <sent>2020-02-16T23:01:13-00:00</sent>
+        <status>Actual</status>
+        <msgType>Alert</msgType>
+        <source>Flood warning service</source>
+        <scope>Public</scope>
+        <references>www.gov.uk/environment-agency,4f6d28b10ab7aa447bbd46d85f1e9effE,2020-02-16T19:20:03+00:00</references>
+        <info>
+            <language>en-GB</language>
+            <category>Met</category>
+            <event>053/055 Issue Severe Flood Warning EA</event>
+            <urgency>Immediate</urgency>
+            <severity>Severe</severity>
+            <certainty>Likely</certainty>
+            <expires>2020-02-26T23:01:14-00:00</expires>
+            <senderName>Environment Agency</senderName>
+            <description>{}</description>
+            <web>https://flood-warning-information.service.gov.uk</web>
+            <contact>0345 988 1188</contact>
+            <area>
+                <areaDesc>River Steeping in Wainfleet All Saints</areaDesc>
+                <polygon>53.10569,0.24453 53.10593,0.24430 53.10601,0.24375 53.10615,0.24349 53.10629,0.24356 53.10656,0.24336 53.10697,0.24354 53.10684,0.24298 53.10694,0.24264 53.10721,0.24302 53.10752,0.24310 53.10777,0.24308 53.10805,0.24320 53.10803,0.24187 53.10776,0.24085 53.10774,0.24062 53.10702,0.24056 53.10679,0.24088 53.10658,0.24071 53.10651,0.24049 53.10656,0.24022 53.10642,0.24022 53.10632,0.24052 53.10629,0.24082 53.10612,0.24093 53.10583,0.24133 53.10564,0.24178 53.10541,0.24282 53.10569,0.24453</polygon>
+                <geocode>
+                    <valueName>TargetAreaCode</valueName>
+                    <value>053FWFSTEEP4</value>
+                </geocode>
+            </area>
+        </info>
+    </alert>
+"""
+
+LONG_GSM7 = WITH_PLACEHOLDER_FOR_CONTENT.format('a' * 1396)
+LONG_UCS2 = WITH_PLACEHOLDER_FOR_CONTENT.format('ŵ' * 616)
