@@ -784,6 +784,8 @@ def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
         Notification.key_type == KEY_TYPE_NORMAL,
     ).group_by(
         Notification.postage
+    ).order_by(
+        Notification.postage
     ).all()
     return notifications
 
