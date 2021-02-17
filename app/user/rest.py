@@ -4,6 +4,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from flask import (jsonify, request, Blueprint, current_app, abort)
+from notifications_utils.recipients import is_uk_phone_number
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
@@ -104,7 +105,10 @@ def update_user_attribute(user_id):
         elif 'mobile_number' in update_dct:
             template = dao_get_template_by_id(current_app.config['TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID'])
             recipient = user_to_update.mobile_number
-            reply_to = template.service.get_default_sms_sender()
+            if is_uk_phone_number(recipient):
+                reply_to = template.service.get_default_sms_sender()
+            else:
+                reply_to = current_app.config['NOTIFY_NUMBER_SMS_SENDER']
         else:
             return jsonify(data=user_to_update.serialize()), 200
         service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -267,7 +271,10 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
     create_user_code(user_to_send_to, secret_code, template.template_type)
     reply_to = None
     if template.template_type == SMS_TYPE:
-        reply_to = template.service.get_default_sms_sender()
+        if is_uk_phone_number(recipient):
+            reply_to = template.service.get_default_sms_sender()
+        else:
+            reply_to = current_app.config['NOTIFY_NUMBER_SMS_SENDER']
     elif template.template_type == EMAIL_TYPE:
         reply_to = template.service.get_default_reply_to_email_address()
     saved_notification = persist_notification(
