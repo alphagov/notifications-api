@@ -55,7 +55,8 @@ from app.dao.service_sms_sender_dao import (
     dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number
+    update_existing_sms_sender_with_inbound_number,
+    BLACKLISTED_SENDERS
 )
 from app.dao.services_dao import (
     dao_add_user_to_service,
@@ -786,6 +787,10 @@ def delete_service_letter_contact(service_id, letter_contact_id):
     archived_letter_contact = archive_letter_contact(service_id, letter_contact_id)
 
     return jsonify(data=archived_letter_contact.serialize()), 200
+
+@service_blueprint.route('/<uuid:service_id>/blocklist', methods=['GET'])
+def get_sender_blocklist(service_id):
+    return jsonify({"blocklist":BLACKLISTED_SENDERS})
 
 
 @service_blueprint.route('/<uuid:service_id>/sms-sender', methods=['POST'])

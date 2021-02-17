@@ -5,6 +5,8 @@ from app.dao.dao_utils import transactional
 from app.exceptions import ArchiveValidationError
 from app.models import ServiceSmsSender
 
+BLACKLISTED_SENDERS = ['GOVUK', 'NHS']
+
 
 def insert_service_sms_sender(service, sms_sender):
     """
