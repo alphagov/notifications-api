@@ -1,3 +1,4 @@
+from io import BytesIO
 import json
 import uuid
 from collections import namedtuple
@@ -380,10 +381,7 @@ def test_cbc_proxy_will_failover_to_second_lambda_if_function_error(
         {
             'StatusCode': 200,
             'FunctionError': 'Handled',
-            'Payload': {
-                "errorMessage": "",
-                "errorType": "CBCNewConnectionError"
-            }
+            'Payload': BytesIO(json.dumps({"errorMessage": "", "errorType": "CBCNewConnectionError"}).encode('utf-8')),
         },
         {
             'StatusCode': 200
@@ -522,10 +520,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
     ld_client_mock.invoke.return_value = {
         'StatusCode': 200,
         'FunctionError': 'something',
-        'Payload': {
-            'errorMessage': 'some message',
-            'errorType': 'SomeErrorType'
-        }
+        'Payload': BytesIO(json.dumps({"errorMessage": "some message", "errorType": "SomeErrorType"}).encode('utf-8')),
     }
 
     with pytest.raises(CBCProxyRetryableException) as e:

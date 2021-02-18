@@ -52,11 +52,11 @@ def check_provider_message_should_send(broadcast_event, provider):
     """
     current_provider_message = broadcast_event.get_provider_message(provider)
     # if this is the first time a task is being executed, it won't have a provider message yet
-    if current_provider_message and current_provider_message.status == BroadcastProviderMessageStatus.TECHNICAL_FAILURE:
+    if current_provider_message and current_provider_message.status != BroadcastProviderMessageStatus.SENDING:
         raise CBCProxyFatalException(
             f'Cannot send broadcast_event {broadcast_event.id} ' +
             f'to provider {provider}: ' +
-            'It is already in status technical-failure'
+            f'It is in status {current_provider_message.status}'
         )
 
     if broadcast_event.transmitted_finishes_at < datetime.utcnow():

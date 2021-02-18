@@ -381,7 +381,7 @@ def setup_sqlalchemy_events(app):
                         'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
                         'url_rule': current_task.name,  # task name
                     }
-                # anything else. migrations possibly.
+                # anything else. migrations possibly, or flask cli commands.
                 else:
                     current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
                     connection_record.info['request_data'] = {
