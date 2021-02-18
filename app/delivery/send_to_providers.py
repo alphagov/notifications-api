@@ -196,7 +196,7 @@ def get_html_email_options(service):
             'govuk_banner': True,
             'brand_banner': False,
         }
-    if isinstance(service.email_branding, str):
+    if isinstance(service, SerialisedService):
         branding = dao_get_email_branding_by_id(service.email_branding)
     else:
         branding = service.email_branding

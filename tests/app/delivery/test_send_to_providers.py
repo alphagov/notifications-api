@@ -756,9 +756,8 @@ def test_send_email_to_provider_should_user_normalised_to(
     notification = create_notification(template=sample_email_template,
                                        to_field='TEST@example.com',
                                        normalised_to='test@example.com')
-    print("************* start")
+
     send_to_providers.send_email_to_provider(notification)
-    print("End ******************")
     send_mock.assert_called_once_with(ANY,
                                       notification.normalised_to,
                                       ANY,
