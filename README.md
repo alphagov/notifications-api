@@ -44,9 +44,15 @@ notify-pass credentials/providers/api_keys
 
 ### Postgres
 
-Install [Postgres.app](http://postgresapp.com/). You will need admin on your machine to do this.
+Install [Postgres.app](http://postgresapp.com/).
 
-Choose the version with Additional Releases - you want 9.6. Once you run the app, open the sidebar, remove the default v11 server and create and initialise a v9.6 server.
+Currently the API works with PostgreSQL 11. After installation, open the Postgres app, open the sidebar, and update or replace the default server with a compatible version.
+
+**Note:** you may need to add the following directory to your PATH in order to bootstrap the app.
+
+```
+export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/11/bin/
+```
 
 ### Redis
 

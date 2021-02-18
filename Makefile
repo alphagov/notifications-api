@@ -24,7 +24,7 @@ NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 .PHONY: bootstrap
 bootstrap: generate-version-file
 	pip3 install -r requirements_for_test.txt
-	createdb notification_api
+	createdb notification_api || true
 	. environment.sh && flask db upgrade
 
 .PHONY: run-flask
