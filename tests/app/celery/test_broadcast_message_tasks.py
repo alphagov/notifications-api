@@ -701,15 +701,20 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
 
 @pytest.mark.parametrize('existing_message_status', [
     BroadcastProviderMessageStatus.SENDING,
-    BroadcastProviderMessageStatus.ACK,
-    BroadcastProviderMessageStatus.ERR,
-
+    pytest.param(
+        BroadcastProviderMessageStatus.ACK,
+        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+    ),
+    pytest.param(
+        BroadcastProviderMessageStatus.ERR,
+        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+    ),
     pytest.param(
         BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
         marks=pytest.mark.xfail(raises=CBCProxyFatalException)
     ),
 ])
-def test_check_provider_message_should_send_doesnt_raise_if_current_event_already_has_provider_message(
+def test_check_provider_message_should_send_raises_if_current_event_already_has_provider_message_not_in_sending(
     sample_template,
     existing_message_status
 ):
