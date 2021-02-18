@@ -147,7 +147,7 @@ class CBCProxyClientBase(ABC):
 
         elif 'FunctionError' in result:
             current_app.logger.info(
-                f"Error calling lambda {lambda_name} with function error { result['Payload'] }"
+                f"Error calling lambda {lambda_name} with function error { result['Payload'].read() }"
             )
             success = False
 
