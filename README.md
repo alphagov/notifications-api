@@ -28,7 +28,7 @@ export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 
 export FLASK_APP=application.py
-export FLASK_DEBUG=1
+export FLASK_ENV=development
 export WERKZEUG_DEBUG_PIN=off
 "> environment.sh
 ```
