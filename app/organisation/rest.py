@@ -208,13 +208,6 @@ def send_notifications_on_mou_signed(organisation_id):
         'on_behalf_of_name': organisation.agreement_signed_on_behalf_of_name
     }
 
-    # let notify team know something's happened
-    _send_notification(
-        current_app.config['MOU_NOTIFY_TEAM_ALERT_TEMPLATE_ID'],
-        'notify-support+{}@digital.cabinet-office.gov.uk'.format(current_app.config['NOTIFY_ENVIRONMENT']),
-        personalisation
-    )
-
     if not organisation.agreement_signed_on_behalf_of_email_address:
         signer_template_id = 'MOU_SIGNER_RECEIPT_TEMPLATE_ID'
     else:

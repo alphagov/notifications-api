@@ -377,12 +377,10 @@ def test_update_should_update_a_template(client, sample_user):
     assert update_json_resp['data']['version'] == 2
 
     assert update_json_resp['data']['created_by'] == str(sample_user.id)
-    assert [
-        template.created_by_id for template in TemplateHistory.query.all()
-    ] == [
-        service.created_by.id,
-        sample_user.id,
-    ]
+    template_created_by_users = [template.created_by_id for template in TemplateHistory.query.all()]
+    assert len(template_created_by_users) == 2
+    assert service.created_by.id in template_created_by_users
+    assert sample_user.id in template_created_by_users
 
 
 def test_should_be_able_to_archive_template(client, sample_template):
