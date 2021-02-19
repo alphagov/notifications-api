@@ -203,47 +203,6 @@ def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
     )
 
 
-@freeze_time('2020-08-01 12:00')
-@pytest.mark.parametrize('provider,provider_capitalised', [
-    ['ee', 'EE'],
-    ['three', 'Three'],
-    ['o2', 'O2'],
-    ['vodafone', 'Vodafone'],
-])
-def test_send_broadcast_provider_message_defaults_to_test_channel_if_no_service_broadcast_settings(
-    notify_db, mocker, sample_service, provider, provider_capitalised
-):
-    template = create_template(sample_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(
-        template,
-        areas={
-            'areas': ['london', 'glasgow'],
-            'simple_polygons': [
-                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
-                [[-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96]],
-            ],
-        },
-        status=BroadcastStatusType.BROADCASTING
-    )
-    event = create_broadcast_event(broadcast_message)
-    mock_create_broadcast = mocker.patch(
-        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.create_and_send_broadcast',
-    )
-
-    send_broadcast_provider_message(provider=provider, broadcast_event_id=str(event.id))
-
-    mock_create_broadcast.assert_called_once_with(
-        identifier=mocker.ANY,
-        message_number=mocker.ANY,
-        headline='GOV.UK Notify Broadcast',
-        description='this is an emergency broadcast message',
-        areas=mocker.ANY,
-        sent=mocker.ANY,
-        expires=mocker.ANY,
-        channel="test",
-    )
-
-
 def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, sample_broadcast_service):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
