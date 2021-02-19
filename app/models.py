@@ -2533,16 +2533,7 @@ class BroadcastProviderMessageNumber(db.Model):
 
 class ServiceBroadcastSettings(db.Model):
     """
-    For the moment, broadcasts services CAN have a row in this table which will configure which broadcast
-    channel they will send to. If they don't then we will assume they should send to the test channel.
-
-    There should only be one row per service in this table, and this is enforced by
-    the service_id being a primary key.
-
-    TODO: We should enforce that every broadcast service will have a row in this table. We will need to do
-    this when the admin turns a service into a broadcast service, it inserts a row into this table and adds
-    the service permission for broadcasts for the service. Once that is up and running, we then should write
-    a DB migration to create rows for all broadcast services that do not have one yet in this table.
+    Every broadcast service should have one and only one row in this table.
     """
     __tablename__ = "service_broadcast_settings"
 
