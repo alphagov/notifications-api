@@ -14,12 +14,12 @@ from app import encryption, notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import (
+    dao_get_letters_to_be_printed,
+    dao_get_notification_by_reference,
+    dao_update_notification,
+    dao_update_notifications_by_reference,
     get_notification_by_id,
     update_notification_status_by_id,
-    dao_update_notification,
-    dao_get_notification_by_reference,
-    dao_update_notifications_by_reference,
-    dao_get_letters_to_be_printed,
 )
 from app.letters.utils import get_letter_pdf_filename
 from app.errors import VirusScanError
