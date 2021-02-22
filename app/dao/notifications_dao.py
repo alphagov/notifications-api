@@ -772,6 +772,22 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     return notifications
 
 
+def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
+    notifications = db.session.query(
+        func.count(Notification.id).label('letters_count'),
+        func.sum(Notification.billable_units).label('sheets_count'),
+        Notification.postage
+    ).filter(
+        Notification.created_at < convert_bst_to_utc(print_run_deadline),
+        Notification.notification_type == LETTER_TYPE,
+        Notification.status == NOTIFICATION_CREATED,
+        Notification.key_type == KEY_TYPE_NORMAL,
+    ).group_by(
+        Notification.postage
+    ).all()
+    return notifications
+
+
 def dao_old_letters_with_created_status():
     yesterday_bst = convert_utc_to_bst(datetime.utcnow()) - timedelta(days=1)
     last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)
