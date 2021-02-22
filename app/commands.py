@@ -269,7 +269,7 @@ def backfill_processing_time(start_date, end_date):
             process_start_date.isoformat(),
             process_end_date.isoformat()
         ))
-        send_processing_time_for_start_and_end(process_start_date, process_end_date)
+        send_processing_time_for_start_and_end(process_start_date, process_end_date, process_date)
 
 
 @notify_command(name='populate-annual-billing')

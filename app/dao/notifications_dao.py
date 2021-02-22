@@ -683,9 +683,9 @@ def dao_get_notifications_by_references(references):
 def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date, end_date):
     """
     SELECT
-    count(notification_history),
+    count(notifications),
     coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)
-    FROM notification_history
+    FROM notifications
     WHERE
     created_at > 'START DATE' AND
     created_at < 'END DATE' AND
