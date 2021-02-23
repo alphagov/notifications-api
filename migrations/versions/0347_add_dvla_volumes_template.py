@@ -5,6 +5,7 @@ Revises: 0346_notify_number_sms_sender
 Create Date: 2021-02-15 15:36:34.654275
 
 """
+import os
 from datetime import datetime
 
 from alembic import op
@@ -14,6 +15,7 @@ revision = '0347_add_dvla_volumes_template'
 down_revision = '0346_notify_number_sms_sender'
 
 email_template_id = "11fad854-fd38-4a7c-bd17-805fb13dfc12"
+environment = os.environ['NOTIFY_ENVIRONMENT']
 
 
 def upgrade():
@@ -74,8 +76,9 @@ def upgrade():
 
 
 def downgrade():
-    op.execute("DELETE FROM notifications WHERE template_id = '{}'".format(email_template_id))
-    op.execute("DELETE FROM notification_history WHERE template_id = '{}'".format(email_template_id))
-    op.execute("DELETE FROM template_redacted WHERE template_id = '{}'".format(email_template_id))
-    op.execute("DELETE FROM templates_history WHERE id = '{}'".format(email_template_id))
-    op.execute("DELETE FROM templates WHERE id = '{}'".format(email_template_id))
+    if environment not in ["live", "production"]:
+        op.execute("DELETE FROM notifications WHERE template_id = '{}'".format(email_template_id))
+        op.execute("DELETE FROM notification_history WHERE template_id = '{}'".format(email_template_id))
+        op.execute("DELETE FROM template_redacted WHERE template_id = '{}'".format(email_template_id))
+        op.execute("DELETE FROM templates_history WHERE id = '{}'".format(email_template_id))
+        op.execute("DELETE FROM templates WHERE id = '{}'".format(email_template_id))
