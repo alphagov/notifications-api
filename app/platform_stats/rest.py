@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
+    fetch_billing_details_for_all_services,
     fetch_letter_costs_for_all_services,
     fetch_letter_line_items_for_all_services,
     fetch_sms_billing_for_all_services,
@@ -105,12 +106,24 @@ def get_usage_for_all_services():
     for service_id, breakdown in lb_by_service:
         combined[service_id]['letter_breakdown'] += (breakdown + '\n')
 
+    billing_details = fetch_billing_details_for_all_services()
+    for service in billing_details:
+        if service.service_id in combined:
+            combined[service.service_id].update({
+                    'purchase_order_number': service.purchase_order_number,
+                    'contact_names': service.billing_contact_names,
+                    'contact_email_addresses': service.billing_contact_email_addresses,
+                    'billing_reference': service.billing_reference
+                })
+
     # sorting first by name == '' means that blank orgs will be sorted last.
-    return jsonify(sorted(combined.values(), key=lambda x: (
+
+    result = sorted(combined.values(), key=lambda x: (
         x['organisation_name'] == '',
         x['organisation_name'],
         x['service_name']
-    )))
+    ))
+    return jsonify(result)
 
 
 def postage_description(postage):

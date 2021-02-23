@@ -126,7 +126,11 @@ def create_service(
         go_live_user=None,
         go_live_at=None,
         crown=True,
-        organisation=None
+        organisation=None,
+        purchase_order_number=None,
+        billing_contact_names=None,
+        billing_contact_email_addresses=None,
+        billing_reference=None,
 ):
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
@@ -142,7 +146,11 @@ def create_service(
             organisation=organisation,
             go_live_user=go_live_user,
             go_live_at=go_live_at,
-            crown=crown
+            crown=crown,
+            purchase_order_number=purchase_order_number,
+            billing_contact_names=billing_contact_names,
+            billing_contact_email_addresses=billing_contact_email_addresses,
+            billing_reference=billing_reference,
         )
         dao_create_service(
             service,
@@ -653,12 +661,26 @@ def create_domain(domain, organisation_id):
     return domain
 
 
-def create_organisation(name='test_org_1', active=True, organisation_type=None, domains=None, organisation_id=None):
+def create_organisation(
+    name='test_org_1',
+    active=True,
+    organisation_type=None,
+    domains=None,
+    organisation_id=None,
+    purchase_order_number=None,
+    billing_contact_names=None,
+    billing_contact_email_addresses=None,
+    billing_reference=None,
+):
     data = {
         'id': organisation_id,
         'name': name,
         'active': active,
         'organisation_type': organisation_type,
+        'purchase_order_number': purchase_order_number,
+        'billing_contact_names': billing_contact_names,
+        'billing_contact_email_addresses': billing_contact_email_addresses,
+        'billing_reference': billing_reference,
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
@@ -927,27 +949,53 @@ def set_up_usage_data(start_date):
     one_week_later = start_date + timedelta(days=7)
     one_month_later = start_date + timedelta(days=31)
 
-    service = create_service(service_name='a - with sms and letter')
+    service = create_service(
+        service_name='a - with sms and letter',
+        purchase_order_number="service purchase order number",
+        billing_contact_names="service billing contact names",
+        billing_contact_email_addresses="service@billing.contact email@addresses.gov.uk",
+        billing_reference="service billing reference"
+    )
     letter_template_1 = create_template(service=service, template_type='letter')
     sms_template_1 = create_template(service=service, template_type='sms')
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=year)
-    org = create_organisation(name="Org for {}".format(service.name))
+    org = create_organisation(
+        name="Org for {}".format(service.name),
+        purchase_order_number="org1 purchase order number",
+        billing_contact_names="org1 billing contact names",
+        billing_contact_email_addresses="org1@billing.contact email@addresses.gov.uk",
+        billing_reference="org1 billing reference"
+    )
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
 
     service_2 = create_service(service_name='b - emails')
     email_template = create_template(service=service_2, template_type='email')
-    org_2 = create_organisation(name='Org for {}'.format(service_2.name))
+    org_2 = create_organisation(
+        name='Org for {}'.format(service_2.name),
+    )
     dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
 
     service_3 = create_service(service_name='c - letters only')
     letter_template_3 = create_template(service=service_3, template_type='letter')
-    org_3 = create_organisation(name="Org for {}".format(service_3.name))
+    org_3 = create_organisation(
+        name="Org for {}".format(service_3.name),
+        purchase_order_number="org3 purchase order number",
+        billing_contact_names="org3 billing contact names",
+        billing_contact_email_addresses="org3@billing.contact email@addresses.gov.uk",
+        billing_reference="org3 billing reference"
+    )
     dao_add_service_to_organisation(service=service_3, organisation_id=org_3.id)
 
     service_4 = create_service(service_name='d - service without org')
     letter_template_4 = create_template(service=service_4, template_type='letter')
 
-    service_sms_only = create_service(service_name='b - chargeable sms')
+    service_sms_only = create_service(
+        service_name='b - chargeable sms',
+        purchase_order_number="sms purchase order number",
+        billing_contact_names="sms billing contact names",
+        billing_contact_email_addresses="sms@billing.contact email@addresses.gov.uk",
+        billing_reference="sms billing reference"
+    )
     sms_template = create_template(service=service_sms_only, template_type='sms')
     create_annual_billing(service_id=service_sms_only.id, free_sms_fragment_limit=10, financial_year_start=year)
 
