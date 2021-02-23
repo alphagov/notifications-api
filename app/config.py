@@ -179,6 +179,9 @@ class Config(object):
     MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID = 'c20206d5-bf03-4002-9a90-37d5032d9e84'
     MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID = '522b6657-5ca5-4368-a294-6b527703bd0b'
     NOTIFY_INTERNATIONAL_SMS_SENDER = '07984404008'
+    LETTERS_VOLUME_EMAIL_TEMPLATE_ID = '11fad854-fd38-4a7c-bd17-805fb13dfc12'
+    # we only need real email in Live environment (production)
+    DVLA_EMAIL_ADDRESS = 'success@simulator.amazonses.com'
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
@@ -535,6 +538,7 @@ class Live(Config):
     CRONITOR_ENABLED = True
 
     ENABLED_CBCS = {BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
+    DVLA_EMAIL_ADDRESS = os.getenv('DVLA_EMAIL_ADDRESS')
 
 
 class CloudFoundryConfig(Config):

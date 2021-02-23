@@ -1,6 +1,7 @@
 from unittest.mock import call
 
 import boto3
+from collections import namedtuple
 from datetime import datetime, timedelta
 from moto import mock_s3
 from flask import current_app
@@ -23,10 +24,13 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_error,
     replay_letters_in_error,
     sanitise_letter,
+    send_letters_volume_email_to_dvla,
     update_billable_units_for_letter,
     _move_invalid_letter_and_update_status,
 )
 from app.config import QueueNames, TaskNames
+from app.dao.notifications_dao import get_notifications
+
 from app.letters.utils import ScanErrorType
 from app.models import (
     INTERNATIONAL_LETTERS,
@@ -240,6 +244,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
 
     assert results == [
         {
+
             'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
             'Size': 2,
             'ServiceId': str(sample_letter_template.service_id)
@@ -310,7 +315,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
     "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
 ])
 def test_collate_letter_pdfs_to_be_sent(
-    notify_api, notify_db_session, mocker, time_to_run_task
+    notify_api, notify_db_session, mocker, time_to_run_task, letter_volumes_email_template
 ):
     with freeze_time("2020-02-17 18:00:00"):
         service_1 = create_service(service_name="service 1", service_id='f2fe37b0-1301-11eb-aba9-4c3275916899')
@@ -381,10 +386,17 @@ def test_collate_letter_pdfs_to_be_sent(
     ])
 
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+    mock_send_email_to_dvla = mocker.patch(
+        'app.celery.letters_pdf_tasks.send_letters_volume_email_to_dvla'
+    )
 
     with set_config_values(notify_api, {'MAX_LETTER_PDF_COUNT_PER_ZIP': 2}):
         with freeze_time(time_to_run_task):
             collate_letter_pdfs_to_be_sent()
+
+    mock_send_email_to_dvla.assert_called_once_with([
+        (1, 1, 'europe'), (1, 1, 'first'), (1, 1, 'rest-of-world'), (4, 4, 'second')
+    ])
 
     assert len(mock_celery.call_args_list) == 6
     assert mock_celery.call_args_list[0] == call(
@@ -452,6 +464,36 @@ def test_collate_letter_pdfs_to_be_sent(
         queue='process-ftp-tasks',
         compression='zlib'
     )
+
+
+def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker, letter_volumes_email_template):
+    MockVolume = namedtuple('LettersVolume', ['postage', 'letters_count', 'sheets_count'])
+    letters_volumes = [
+        MockVolume('first', 5, 7),
+        MockVolume('second', 4, 12),
+        MockVolume('europe', 1, 3),
+        MockVolume('rest-of-world', 1, 2),
+    ]
+    send_mock = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    send_letters_volume_email_to_dvla(letters_volumes)
+
+    email_to_dvla = get_notifications().all()[0]
+
+    send_mock.assert_called_once_with([str(email_to_dvla.id)], queue=QueueNames.NOTIFY)
+
+    assert str(email_to_dvla.template_id) == current_app.config['LETTERS_VOLUME_EMAIL_TEMPLATE_ID']
+    assert email_to_dvla.to == current_app.config['DVLA_EMAIL_ADDRESS']
+    assert email_to_dvla.personalisation == {
+        'total_volume': 11,
+        'first_class_volume': 5,
+        'second_class_volume': 4,
+        'international_volume': 2,
+        'total_sheets': 24,
+        'first_class_sheets': 7,
+        "second_class_sheets": 12,
+        'international_sheets': 5
+    }
 
 
 def test_group_letters_splits_on_file_size(notify_api):

@@ -14,13 +14,15 @@ from app import encryption, notify_celery
 from app.aws import s3
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import (
+    dao_get_letters_and_sheets_volume_by_postage,
+    dao_get_letters_to_be_printed,
+    dao_get_notification_by_reference,
+    dao_update_notification,
+    dao_update_notifications_by_reference,
     get_notification_by_id,
     update_notification_status_by_id,
-    dao_update_notification,
-    dao_get_notification_by_reference,
-    dao_update_notifications_by_reference,
-    dao_get_letters_to_be_printed,
 )
+from app.dao.templates_dao import dao_get_template_by_id
 from app.letters.utils import get_letter_pdf_filename
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
@@ -36,6 +38,8 @@ from app.letters.utils import (
 )
 from app.models import (
     INTERNATIONAL_LETTERS,
+    INTERNATIONAL_POSTAGE_TYPES,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
@@ -45,7 +49,9 @@ from app.models import (
     NOTIFICATION_VIRUS_SCAN_FAILED,
     POSTAGE_TYPES,
     RESOLVE_POSTAGE_FOR_FILE_NAME,
-    INTERNATIONAL_POSTAGE_TYPES)
+    Service,
+)
+
 from app.cronitor import cronitor
 
 
@@ -131,12 +137,15 @@ def collate_letter_pdfs_to_be_sent():
     print_run_deadline = print_run_date.replace(
         hour=17, minute=30, second=0, microsecond=0
     )
+    _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline)
+
     for postage in POSTAGE_TYPES:
         current_app.logger.info(f"starting collate-letter-pdfs-to-be-sent processing for postage class {postage}")
         letters_to_print = get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
 
         for i, letters in enumerate(group_letters(letters_to_print)):
             filenames = [letter['Key'] for letter in letters]
+
             service_id = letters[0]['ServiceId']
 
             hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
@@ -168,6 +177,58 @@ def collate_letter_pdfs_to_be_sent():
         current_app.logger.info(f"finished collate-letter-pdfs-to-be-sent processing for postage class {postage}")
 
     current_app.logger.info("finished collate-letter-pdfs-to-be-sent")
+
+
+def _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline):
+    letters_volumes = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline)
+    send_letters_volume_email_to_dvla(letters_volumes)
+
+
+def send_letters_volume_email_to_dvla(letters_volumes):
+    personalisation = {
+        'total_volume': 0,
+        'first_class_volume': 0,
+        'second_class_volume': 0,
+        'international_volume': 0,
+        'total_sheets': 0,
+        'first_class_sheets': 0,
+        "second_class_sheets": 0,
+        'international_sheets': 0
+    }
+    for item in letters_volumes:
+        personalisation['total_volume'] += item.letters_count
+        personalisation['total_sheets'] += item.sheets_count
+        if f"{item.postage}_class_volume" in personalisation:
+            personalisation[f"{item.postage}_class_volume"] = item.letters_count
+            personalisation[f"{item.postage}_class_sheets"] = item.sheets_count
+        else:
+            personalisation["international_volume"] += item.letters_count
+            personalisation["international_sheets"] += item.sheets_count
+
+    template = dao_get_template_by_id(current_app.config['LETTERS_VOLUME_EMAIL_TEMPLATE_ID'])
+    recipient = current_app.config['DVLA_EMAIL_ADDRESS']
+    reply_to = template.service.get_default_reply_to_email_address()
+    service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
+
+    # avoid circular imports:
+    from app.notifications.process_notifications import (
+        persist_notification,
+        send_notification_to_queue
+    )
+
+    saved_notification = persist_notification(
+        template_id=template.id,
+        template_version=template.version,
+        recipient=recipient,
+        service=service,
+        personalisation=personalisation,
+        notification_type=template.template_type,
+        api_key_id=None,
+        key_type=KEY_TYPE_NORMAL,
+        reply_to_text=reply_to
+    )
+
+    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):

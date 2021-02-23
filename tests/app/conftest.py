@@ -819,6 +819,34 @@ def create_custom_template(service, user, template_config_name, template_type, c
     return template
 
 
+@pytest.fixture(scope='function')
+def letter_volumes_email_template(notify_db,
+                                  notify_db_session):
+    service, user = notify_service(notify_db, notify_db_session)
+
+    email_template_content = '\n'.join([
+        "((total_volume)) letters (((total_sheets)) sheets) sent via Notify are coming in today''s batch. These include: ",  # noqa
+        "",
+        "((first_class_volume)) first class letters (((first_class_sheets)) sheets).",
+        "((second_class_volume)) second class letters (((second_class_sheets)) sheets).",
+        "((international_volume)) international letters (((international_sheets)) sheets).",
+        "",
+        "Thanks",
+        "",
+        "GOV.​UK Notify team",
+        "https://www.gov.uk/notify"
+    ])
+
+    return create_custom_template(
+        service=service,
+        user=user,
+        template_config_name='LETTERS_VOLUME_EMAIL_TEMPLATE_ID',
+        content=email_template_content,
+        subject="Notify letter volume for ((date)): ((total_volume)) letters, ((total_sheets)) sheets",
+        template_type='email'
+    )
+
+
 def notify_service(notify_db, notify_db_session):
     user = create_user()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
