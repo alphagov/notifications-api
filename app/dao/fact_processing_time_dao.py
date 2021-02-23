@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db
@@ -23,7 +25,8 @@ def insert_update_processing_time(processing_time):
         index_elements=[table.c.bst_date],
         set_={
             'messages_total': stmt.excluded.messages_total,
-            'messages_within_10_secs': stmt.excluded.messages_within_10_secs
+            'messages_within_10_secs': stmt.excluded.messages_within_10_secs,
+            'updated_at': datetime.utcnow()
         }
     )
     db.session.connection().execute(stmt)
