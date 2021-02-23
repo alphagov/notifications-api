@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0347_add_ft_processing_time
-Revises: 0346_notify_number_sms_sender
+Revision ID: 0348_add_ft_processing_time
+Revises: 0347_add_dvla_volumes_template
 Create Date: 2021-02-22 14:05:24.775338
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0347_add_ft_processing_time'
-down_revision = '0346_notify_number_sms_sender'
+revision = '0348_add_ft_processing_time'
+down_revision = '0347_add_dvla_volumes_template'
 
 
 def upgrade():
