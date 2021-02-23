@@ -181,10 +181,10 @@ def collate_letter_pdfs_to_be_sent():
 
 def _get_letters_and_sheets_volumes_and_send_to_dvla(print_run_deadline):
     letters_volumes = dao_get_letters_and_sheets_volume_by_postage(print_run_deadline)
-    send_letters_volume_email_to_dvla(letters_volumes)
+    send_letters_volume_email_to_dvla(letters_volumes, print_run_deadline.date())
 
 
-def send_letters_volume_email_to_dvla(letters_volumes):
+def send_letters_volume_email_to_dvla(letters_volumes, date):
     personalisation = {
         'total_volume': 0,
         'first_class_volume': 0,
@@ -193,7 +193,8 @@ def send_letters_volume_email_to_dvla(letters_volumes):
         'total_sheets': 0,
         'first_class_sheets': 0,
         "second_class_sheets": 0,
-        'international_sheets': 0
+        'international_sheets': 0,
+        'date': date.strftime("%d %B %Y")
     }
     for item in letters_volumes:
         personalisation['total_volume'] += item.letters_count

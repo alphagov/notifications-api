@@ -396,7 +396,7 @@ def test_collate_letter_pdfs_to_be_sent(
 
     mock_send_email_to_dvla.assert_called_once_with([
         (1, 1, 'europe'), (1, 1, 'first'), (1, 1, 'rest-of-world'), (4, 4, 'second')
-    ])
+    ], datetime(2020, 2, 17).date())
 
     assert len(mock_celery.call_args_list) == 6
     assert mock_celery.call_args_list[0] == call(
@@ -476,7 +476,7 @@ def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker
     ]
     send_mock = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
 
-    send_letters_volume_email_to_dvla(letters_volumes)
+    send_letters_volume_email_to_dvla(letters_volumes, datetime(2020, 2, 17).date())
 
     email_to_dvla = get_notifications().all()[0]
 
@@ -492,7 +492,8 @@ def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker
         'total_sheets': 24,
         'first_class_sheets': 7,
         "second_class_sheets": 12,
-        'international_sheets': 5
+        'international_sheets': 5,
+        'date': '17 February 2020'
     }
 
 
