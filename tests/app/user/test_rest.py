@@ -315,7 +315,7 @@ def test_post_user_attribute_with_updated_by_sends_notification_to_international
 ):
     updater = create_user(name="Service Manago")
     update_dict = {
-        'mobile_number': '601117224412',
+        'mobile_number': '+601117224412',
         'updated_by': str(updater.id)
     }
     auth_header = create_authorization_header()
