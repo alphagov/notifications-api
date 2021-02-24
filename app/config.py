@@ -515,6 +515,7 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
+    DVLA_EMAIL_ADDRESS = os.getenv('DVLA_EMAIL_ADDRESS')
 
 
 class Live(Config):
