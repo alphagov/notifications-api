@@ -4,7 +4,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from flask import (jsonify, request, Blueprint, current_app, abort)
-from notifications_utils.recipients import is_uk_phone_number
+from notifications_utils.recipients import is_uk_phone_number, use_numeric_sender
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
@@ -105,10 +105,7 @@ def update_user_attribute(user_id):
         elif 'mobile_number' in update_dct:
             template = dao_get_template_by_id(current_app.config['TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID'])
             recipient = user_to_update.mobile_number
-            if is_uk_phone_number(recipient):
-                reply_to = template.service.get_default_sms_sender()
-            else:
-                reply_to = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
+            reply_to = get_sms_reply_to_for_notify_service(recipient, template)
         else:
             return jsonify(data=user_to_update.serialize()), 200
         service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -131,6 +128,14 @@ def update_user_attribute(user_id):
 
         send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
     return jsonify(data=user_to_update.serialize()), 200
+
+
+def get_sms_reply_to_for_notify_service(recipient, template):
+    if not is_uk_phone_number(recipient) and use_numeric_sender(recipient):
+        reply_to = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
+    else:
+        reply_to = template.service.get_default_sms_sender()
+    return reply_to
 
 
 @user_blueprint.route('/<uuid:user_id>/archive', methods=['POST'])
@@ -271,10 +276,7 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
     create_user_code(user_to_send_to, secret_code, template.template_type)
     reply_to = None
     if template.template_type == SMS_TYPE:
-        if is_uk_phone_number(recipient):
-            reply_to = template.service.get_default_sms_sender()
-        else:
-            reply_to = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
+        reply_to = get_sms_reply_to_for_notify_service(recipient, template)
     elif template.template_type == EMAIL_TYPE:
         reply_to = template.service.get_default_reply_to_email_address()
     saved_notification = persist_notification(
