@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import current_app
 
 from app import db
-from app.models import ServiceBroadcastSettings, ServicePermission, Organisation, BROADCAST_TYPE
+from app.models import ServiceBroadcastSettings, ServicePermission, Organisation, BROADCAST_TYPE, EMAIL_AUTH_TYPE
 from app.dao.dao_utils import transactional
 
 
@@ -20,7 +20,11 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
 
     ServicePermission.query.filter(
         ServicePermission.service_id == service.id,
-        ServicePermission.permission != BROADCAST_TYPE
+        ServicePermission.permission != BROADCAST_TYPE,
+        # Email auth is an exception to the other service permissions (which relate to what type
+        # of notifications a service can send) where a broadcast service is allowed to have the
+        # email auth permission (but doesn't have to)
+        ServicePermission.permission != EMAIL_AUTH_TYPE
     ).delete()
 
     # Refresh the service object as it has references to the service permissions but we don't yet

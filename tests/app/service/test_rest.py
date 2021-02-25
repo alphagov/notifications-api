@@ -35,8 +35,10 @@ from app.models import (
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
     INBOUND_SMS_TYPE,
+    EMAIL_AUTH_TYPE,
     NOTIFICATION_RETURNED_LETTER,
     UPLOAD_LETTERS,
+    SERVICE_PERMISSION_TYPES,
 )
 from tests import create_authorization_header
 from tests.app.db import (
@@ -3766,13 +3768,15 @@ def test_set_as_broadcast_service_rejects_if_no_channel(
     )
 
 
-def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_permissions(
-    admin_request, sample_service, broadcast_organisation
+@pytest.mark.parametrize('starting_permissions, ending_permissions', (
+    ([], [BROADCAST_TYPE]),
+    ([EMAIL_AUTH_TYPE], [BROADCAST_TYPE, EMAIL_AUTH_TYPE]),
+    ([p for p in SERVICE_PERMISSION_TYPES if p != BROADCAST_TYPE], [BROADCAST_TYPE, EMAIL_AUTH_TYPE]),
+))
+def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_channel_permissions(
+    admin_request, broadcast_organisation, starting_permissions, ending_permissions
 ):
-    current_permissions = [p.permission for p in sample_service.permissions]
-    assert len(current_permissions) > 0
-    assert BROADCAST_TYPE not in current_permissions
-
+    sample_service = create_service(service_permissions=starting_permissions)
     data = {
         'broadcast_channel': "severe",
         'service_mode': 'training',
@@ -3784,17 +3788,25 @@ def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_p
         service_id=sample_service.id,
         _data=data,
     )
-    assert result['data']['permissions'] == [BROADCAST_TYPE]
+    assert set(result['data']['permissions']) == set(ending_permissions)
 
     permissions = ServicePermission.query.filter_by(service_id=sample_service.id).all()
-    assert [p.permission for p in permissions] == [BROADCAST_TYPE]
+    assert set([p.permission for p in permissions]) == set(ending_permissions)
 
 
+@pytest.mark.parametrize('has_email_auth, ending_permissions', (
+    (False, [BROADCAST_TYPE]),
+    (True, [BROADCAST_TYPE, EMAIL_AUTH_TYPE]),
+))
 def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_broadcast_service(
-    admin_request, sample_broadcast_service
+    admin_request, sample_broadcast_service, has_email_auth, ending_permissions
 ):
+    if has_email_auth:
+        service_permission = ServicePermission(service_id=sample_broadcast_service.id, permission=EMAIL_AUTH_TYPE)
+        sample_broadcast_service.permissions.append(service_permission)
+
     current_permissions = [p.permission for p in sample_broadcast_service.permissions]
-    assert current_permissions == [BROADCAST_TYPE]
+    assert set(current_permissions) == set(ending_permissions)
 
     data = {
         'broadcast_channel': "severe",
@@ -3807,10 +3819,10 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
         service_id=sample_broadcast_service.id,
         _data=data,
     )
-    assert result['data']['permissions'] == [BROADCAST_TYPE]
+    assert set(result['data']['permissions']) == set(ending_permissions)
 
     permissions = ServicePermission.query.filter_by(service_id=sample_broadcast_service.id).all()
-    assert [p.permission for p in permissions] == [BROADCAST_TYPE]
+    assert set([p.permission for p in permissions]) == set(ending_permissions)
 
 
 def test_set_as_broadcast_service_sets_count_as_live_to_false(
