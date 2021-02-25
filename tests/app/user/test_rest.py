@@ -1086,3 +1086,20 @@ def test_search_for_users_by_email_handles_incorrect_data_format(notify_db, clie
 
     assert response.status_code == 400
     assert json.loads(response.get_data(as_text=True))['message'] == {'email': ['Not a valid string.']}
+
+
+@pytest.mark.parametrize('number, expected_reply_to',
+                         [
+                          ("1-403-123-4567", "notify_international_sender"),
+                          ("27 123 4569 2312", "notify_international_sender"),
+                          ("30 123 4567 7890", "Notify"),
+                          ("+20 123 4567 7890", "Notify"),
+                          ])
+def test_get_sms_reply_to_for_notify_service(team_member_mobile_edit_template, number, expected_reply_to):
+    # need to import locally to avoid db session errors,
+    # if this import is with the other imports at the top of the file
+    # the imports happen in the wrong order and you'll see "dummy session" errors
+    from app.user.rest import get_sms_reply_to_for_notify_service
+    reply_to = get_sms_reply_to_for_notify_service(number, team_member_mobile_edit_template)
+    assert reply_to == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER'] \
+        if expected_reply_to == 'notify_international_sender' else current_app.config['FROM_NUMBER']
