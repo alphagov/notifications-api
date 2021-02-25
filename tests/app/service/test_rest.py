@@ -282,45 +282,22 @@ def test_get_service_by_id(admin_request, sample_service):
     }
 
 
-def test_get_service_by_id_returns_allowed_broadcast_provider(notify_db, admin_request, sample_service):
-    settings = ServiceBroadcastSettings(service=sample_service, channel="severe", provider="ee")
-    notify_db.session.add(settings)
-
-    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
-    assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['allowed_broadcast_provider'] == 'ee'
-
-
-def test_get_service_by_id_for_broadcast_service_takes_channel_from_service_broadcast_settings(
-    admin_request, sample_broadcast_service
+@pytest.mark.parametrize('broadcast_channel,allowed_broadcast_provider', (
+    ('test', None),
+    ('severe', None),
+    ('test', 'ee'),
+    ('severe', 'three'),
+))
+def test_get_service_by_id_for_broadcast_service_returns_broadcast_keys(
+    notify_db, admin_request, sample_broadcast_service, broadcast_channel, allowed_broadcast_provider
 ):
-    assert sample_broadcast_service.broadcast_channel == 'severe'
+    sample_broadcast_service.broadcast_channel = broadcast_channel
+    sample_broadcast_service.allowed_broadcast_provider = allowed_broadcast_provider
 
     json_resp = admin_request.get('service.get_service_by_id', service_id=sample_broadcast_service.id)
     assert json_resp['data']['id'] == str(sample_broadcast_service.id)
-    assert json_resp['data']['broadcast_channel'] == 'severe'
-
-
-def test_get_service_by_id_for_service_with_broadcast_permission_sets_channel_as_test_if_no_service_broadcast_settings(
-    admin_request, notify_db_session
-):
-    service = create_service(service_permissions=[BROADCAST_TYPE])
-    assert BROADCAST_TYPE in [p.permission for p in service.permissions]
-    assert service.broadcast_channel is None
-
-    json_resp = admin_request.get('service.get_service_by_id', service_id=service.id)
-    assert json_resp['data']['id'] == str(service.id)
-    assert json_resp['data']['broadcast_channel'] == 'test'
-
-
-def test_get_service_by_id_for_non_broadcast_service_sets_channel_as_none(
-    admin_request, sample_service
-):
-    assert BROADCAST_TYPE not in [p.permission for p in sample_service.permissions]
-
-    json_resp = admin_request.get('service.get_service_by_id', service_id=sample_service.id)
-    assert json_resp['data']['id'] == str(sample_service.id)
-    assert json_resp['data']['broadcast_channel'] is None
+    assert json_resp['data']['allowed_broadcast_provider'] == allowed_broadcast_provider
+    assert json_resp['data']['broadcast_channel'] == broadcast_channel
 
 
 @pytest.mark.parametrize('detailed', [True, False])

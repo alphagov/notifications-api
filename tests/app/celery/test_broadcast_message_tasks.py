@@ -10,8 +10,7 @@ from app.models import (
     BROADCAST_TYPE,
     BroadcastStatusType,
     BroadcastEventMessageType,
-    BroadcastProviderMessageStatus,
-    ServiceBroadcastSettings,
+    BroadcastProviderMessageStatus
 )
 from app.clients.cbc_proxy import CBCProxyRetryableException, CBCProxyFatalException
 from app.celery.broadcast_message_tasks import (
@@ -31,8 +30,8 @@ from tests.app.db import (
 from tests.conftest import set_config
 
 
-def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api, sample_service):
-    template = create_template(sample_service, BROADCAST_TYPE)
+def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api, sample_broadcast_service):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
 
@@ -53,12 +52,10 @@ def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
     mocker,
     notify_db,
     notify_api,
-    sample_service
+    sample_broadcast_service
 ):
-    settings = ServiceBroadcastSettings(service=sample_service, channel="test", provider="vodafone")
-    notify_db.session.add(settings)
-
-    template = create_template(sample_service, BROADCAST_TYPE)
+    sample_broadcast_service.allowed_broadcast_provider = "vodafone"
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
 
@@ -78,12 +75,10 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
     mocker,
     notify_db,
     notify_api,
-    sample_service
+    sample_broadcast_service
 ):
-    settings = ServiceBroadcastSettings(service=sample_service, channel="test", provider="three")
-    notify_db.session.add(settings)
-
-    template = create_template(sample_service, BROADCAST_TYPE)
+    sample_broadcast_service.allowed_broadcast_provider = "three"
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
 
@@ -117,9 +112,9 @@ def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_
     ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_data_correctly(
-    mocker, sample_service, provider, provider_capitalised
+    mocker, sample_broadcast_service, provider, provider_capitalised
 ):
-    template = create_template(sample_service, BROADCAST_TYPE)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
         areas={
@@ -160,7 +155,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(
         }],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
-        channel="test",
+        channel="severe",
     )
 
 
@@ -173,9 +168,10 @@ def test_send_broadcast_provider_message_sends_data_correctly(
 ])
 @pytest.mark.parametrize('channel', ['test', 'severe'])
 def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
-    notify_db, mocker, sample_service, provider, provider_capitalised, channel
+    notify_db, mocker, sample_broadcast_service, provider, provider_capitalised, channel
 ):
-    template = create_template(sample_service, BROADCAST_TYPE)
+    sample_broadcast_service.broadcast_channel = channel
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
         areas={
@@ -188,7 +184,6 @@ def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
         status=BroadcastStatusType.BROADCASTING
     )
     event = create_broadcast_event(broadcast_message)
-    notify_db.session.add(ServiceBroadcastSettings(service=sample_service, channel=channel))
 
     mock_create_broadcast = mocker.patch(
         f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.create_and_send_broadcast',
@@ -208,49 +203,8 @@ def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
     )
 
 
-@freeze_time('2020-08-01 12:00')
-@pytest.mark.parametrize('provider,provider_capitalised', [
-    ['ee', 'EE'],
-    ['three', 'Three'],
-    ['o2', 'O2'],
-    ['vodafone', 'Vodafone'],
-])
-def test_send_broadcast_provider_message_defaults_to_test_channel_if_no_service_broadcast_settings(
-    notify_db, mocker, sample_service, provider, provider_capitalised
-):
-    template = create_template(sample_service, BROADCAST_TYPE)
-    broadcast_message = create_broadcast_message(
-        template,
-        areas={
-            'areas': ['london', 'glasgow'],
-            'simple_polygons': [
-                [[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]],
-                [[-4.53, 55.72], [-3.88, 55.72], [-3.88, 55.96], [-4.53, 55.96]],
-            ],
-        },
-        status=BroadcastStatusType.BROADCASTING
-    )
-    event = create_broadcast_event(broadcast_message)
-    mock_create_broadcast = mocker.patch(
-        f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.create_and_send_broadcast',
-    )
-
-    send_broadcast_provider_message(provider=provider, broadcast_event_id=str(event.id))
-
-    mock_create_broadcast.assert_called_once_with(
-        identifier=mocker.ANY,
-        message_number=mocker.ANY,
-        headline='GOV.UK Notify Broadcast',
-        description='this is an emergency broadcast message',
-        areas=mocker.ANY,
-        sent=mocker.ANY,
-        expires=mocker.ANY,
-        channel="test",
-    )
-
-
-def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, sample_service):
-    template = create_template(sample_service, BROADCAST_TYPE)
+def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, sample_broadcast_service):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
         areas={'areas': [], 'simple_polygons': [], },
@@ -287,7 +241,7 @@ def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, 
         areas=[],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
-        channel='test',
+        channel='severe',
     )
 
 
@@ -299,10 +253,10 @@ def test_send_broadcast_provider_message_works_if_we_retried_previously(mocker, 
     ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_data_correctly_when_broadcast_message_has_no_template(
-    mocker, sample_service, provider, provider_capitalised
+    mocker, sample_broadcast_service, provider, provider_capitalised
 ):
     broadcast_message = create_broadcast_message(
-        service=sample_service,
+        service=sample_broadcast_service,
         template=None,
         content='this is an emergency broadcast message',
         areas={
@@ -332,7 +286,7 @@ def test_send_broadcast_provider_message_sends_data_correctly_when_broadcast_mes
         areas=mocker.ANY,
         sent=mocker.ANY,
         expires=mocker.ANY,
-        channel="test"
+        channel="severe"
     )
 
 
@@ -343,9 +297,9 @@ def test_send_broadcast_provider_message_sends_data_correctly_when_broadcast_mes
     ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_update_with_references(
-    mocker, sample_service, provider, provider_capitalised
+    mocker, sample_broadcast_service, provider, provider_capitalised
 ):
-    template = create_template(sample_service, BROADCAST_TYPE, content='content')
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='content')
 
     broadcast_message = create_broadcast_message(
         template,
@@ -384,7 +338,7 @@ def test_send_broadcast_provider_message_sends_update_with_references(
         ],
         sent=update_event.sent_at_as_cap_datetime_string,
         expires=update_event.transmitted_finishes_at_as_cap_datetime_string,
-        channel="test"
+        channel="severe"
     )
 
 
@@ -395,9 +349,9 @@ def test_send_broadcast_provider_message_sends_update_with_references(
     ['vodafone', 'Vodafone'],
 ])
 def test_send_broadcast_provider_message_sends_cancel_with_references(
-    mocker, sample_service, provider, provider_capitalised
+    mocker, sample_broadcast_service, provider, provider_capitalised
 ):
-    template = create_template(sample_service, BROADCAST_TYPE, content='content')
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='content')
 
     broadcast_message = create_broadcast_message(
         template,
@@ -443,8 +397,8 @@ def test_send_broadcast_provider_message_sends_cancel_with_references(
     ['o2', 'O2'],
     ['vodafone', 'Vodafone'],
 ])
-def test_send_broadcast_provider_message_errors(mocker, sample_service, provider, provider_capitalised):
-    template = create_template(sample_service, BROADCAST_TYPE)
+def test_send_broadcast_provider_message_errors(mocker, sample_broadcast_service, provider, provider_capitalised):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     broadcast_message = create_broadcast_message(
         template,
@@ -485,7 +439,7 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
         }],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
-        channel="test"
+        channel="severe"
     )
     mock_retry.assert_called_once_with(
         countdown=1,
@@ -503,11 +457,11 @@ def test_send_broadcast_provider_message_errors(mocker, sample_service, provider
 ])
 def test_send_broadcast_provider_message_delays_retry_exponentially(
     mocker,
-    sample_service,
+    sample_broadcast_service,
     num_retries,
     expected_countdown
 ):
-    template = create_template(sample_service, BROADCAST_TYPE)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
 
     broadcast_message = create_broadcast_message(template,  status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
@@ -536,7 +490,7 @@ def test_send_broadcast_provider_message_delays_retry_exponentially(
         areas=[],
         sent=event.sent_at_as_cap_datetime_string,
         expires=event.transmitted_finishes_at_as_cap_datetime_string,
-        channel='test',
+        channel='severe',
     )
     mock_retry.assert_called_once_with(
         countdown=expected_countdown,
