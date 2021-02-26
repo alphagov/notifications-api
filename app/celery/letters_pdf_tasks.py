@@ -207,7 +207,7 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
             personalisation["international_sheets"] += item.sheets_count
 
     template = dao_get_template_by_id(current_app.config['LETTERS_VOLUME_EMAIL_TEMPLATE_ID'])
-    recipient = current_app.config['DVLA_EMAIL_ADDRESS']
+    recipients = current_app.config['DVLA_EMAIL_ADDRESSES']
     reply_to = template.service.get_default_reply_to_email_address()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
@@ -216,20 +216,20 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
         persist_notification,
         send_notification_to_queue
     )
+    for recipient in recipients:
+        saved_notification = persist_notification(
+            template_id=template.id,
+            template_version=template.version,
+            recipient=recipient,
+            service=service,
+            personalisation=personalisation,
+            notification_type=template.template_type,
+            api_key_id=None,
+            key_type=KEY_TYPE_NORMAL,
+            reply_to_text=reply_to
+        )
 
-    saved_notification = persist_notification(
-        template_id=template.id,
-        template_version=template.version,
-        recipient=recipient,
-        service=service,
-        personalisation=personalisation,
-        notification_type=template.template_type,
-        api_key_id=None,
-        key_type=KEY_TYPE_NORMAL,
-        reply_to_text=reply_to
-    )
-
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):
