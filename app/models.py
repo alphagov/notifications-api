@@ -2068,6 +2068,16 @@ class FactNotificationStatus(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
+class FactProcessingTime(db.Model):
+    __tablename__ = "ft_processing_time"
+
+    bst_date = db.Column(db.Date, index=True, primary_key=True, nullable=False)
+    messages_total = db.Column(db.Integer(), nullable=False)
+    messages_within_10_secs = db.Column(db.Integer(), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+
 class Complaint(db.Model):
     __tablename__ = 'complaints'
 

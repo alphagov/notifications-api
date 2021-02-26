@@ -2,6 +2,8 @@ from datetime import timedelta
 
 from flask import current_app
 
+from app.dao.fact_processing_time_dao import insert_update_processing_time
+from app.models import FactProcessingTime
 from app.utils import get_london_midnight_in_utc
 from app.dao.notifications_dao import dao_get_total_notifications_sent_per_day_for_performance_platform
 from app import performance_platform_client
@@ -11,10 +13,10 @@ def send_processing_time_to_performance_platform(bst_date):
     start_time = get_london_midnight_in_utc(bst_date)
     end_time = get_london_midnight_in_utc(bst_date + timedelta(days=1))
 
-    send_processing_time_for_start_and_end(start_time, end_time)
+    send_processing_time_for_start_and_end(start_time, end_time, bst_date)
 
 
-def send_processing_time_for_start_and_end(start_time, end_time):
+def send_processing_time_for_start_and_end(start_time, end_time, bst_date):
     result = dao_get_total_notifications_sent_per_day_for_performance_platform(start_time, end_time)
 
     current_app.logger.info(
@@ -25,6 +27,11 @@ def send_processing_time_for_start_and_end(start_time, end_time):
 
     send_processing_time_data(start_time, 'messages-total', result.messages_total)
     send_processing_time_data(start_time, 'messages-within-10-secs', result.messages_within_10_secs)
+    insert_update_processing_time(FactProcessingTime(
+        bst_date=bst_date,
+        messages_total=result.messages_total,
+        messages_within_10_secs=result.messages_within_10_secs)
+    )
 
 
 def send_processing_time_data(start_time, status, count):
