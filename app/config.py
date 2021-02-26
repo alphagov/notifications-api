@@ -181,7 +181,7 @@ class Config(object):
     NOTIFY_INTERNATIONAL_SMS_SENDER = '07984404008'
     LETTERS_VOLUME_EMAIL_TEMPLATE_ID = '11fad854-fd38-4a7c-bd17-805fb13dfc12'
     # we only need real email in Live environment (production)
-    DVLA_EMAIL_ADDRESS = 'success@simulator.amazonses.com'
+    DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get('DVLA_EMAIL_ADDRESSES', '[]'))
 
     BROKER_URL = 'sqs://'
     BROKER_TRANSPORT_OPTIONS = {
@@ -433,6 +433,7 @@ class Development(Config):
 
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
+    DVLA_EMAIL_ADDRESSES = ['success@simulator.amazonses.com']
 
 
 class Test(Development):
@@ -481,6 +482,7 @@ class Test(Development):
     FIRETEXT_URL = 'https://example.com/firetext'
 
     CBC_PROXY_ENABLED = True
+    DVLA_EMAIL_ADDRESSES = ['success@simulator.amazonses.com', 'success+2@simulator.amazonses.com']
 
 
 class Preview(Config):
@@ -515,7 +517,6 @@ class Staging(Config):
     FROM_NUMBER = 'stage'
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
-    DVLA_EMAIL_ADDRESS = os.getenv('DVLA_EMAIL_ADDRESS')
 
 
 class Live(Config):
@@ -539,7 +540,6 @@ class Live(Config):
     CRONITOR_ENABLED = True
 
     ENABLED_CBCS = {BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
-    DVLA_EMAIL_ADDRESS = os.getenv('DVLA_EMAIL_ADDRESS')
 
 
 class CloudFoundryConfig(Config):

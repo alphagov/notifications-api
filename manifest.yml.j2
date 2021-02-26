@@ -150,7 +150,7 @@ applications:
       TEMPLATE_PREVIEW_API_HOST: '{{ TEMPLATE_PREVIEW_API_HOST }}'
       TEMPLATE_PREVIEW_API_KEY: '{{ TEMPLATE_PREVIEW_API_KEY }}'
 
-      DVLA_EMAIL_ADDRESS: '{{ DVLA_EMAIL_ADDRESS }}'
+      DVLA_EMAIL_ADDRESSES: '{{ DVLA_EMAIL_ADDRESSES | tojson  }}'
 
       {% for key, value in app.get('additional_env_vars', {}).items() %}
       {{key}}: '{{value}}'

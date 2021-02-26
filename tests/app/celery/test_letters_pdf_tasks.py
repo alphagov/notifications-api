@@ -478,23 +478,25 @@ def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker
 
     send_letters_volume_email_to_dvla(letters_volumes, datetime(2020, 2, 17).date())
 
-    email_to_dvla = get_notifications().all()[0]
-
-    send_mock.assert_called_once_with([str(email_to_dvla.id)], queue=QueueNames.NOTIFY)
-
-    assert str(email_to_dvla.template_id) == current_app.config['LETTERS_VOLUME_EMAIL_TEMPLATE_ID']
-    assert email_to_dvla.to == current_app.config['DVLA_EMAIL_ADDRESS']
-    assert email_to_dvla.personalisation == {
-        'total_volume': 11,
-        'first_class_volume': 5,
-        'second_class_volume': 4,
-        'international_volume': 2,
-        'total_sheets': 24,
-        'first_class_sheets': 7,
-        "second_class_sheets": 12,
-        'international_sheets': 5,
-        'date': '17 February 2020'
-    }
+    emails_to_dvla = get_notifications().all()
+    assert len(emails_to_dvla) == 2
+    send_mock.called = 2
+    send_mock.assert_any_call([str(emails_to_dvla[0].id)], queue=QueueNames.NOTIFY)
+    send_mock.assert_any_call([str(emails_to_dvla[1].id)], queue=QueueNames.NOTIFY)
+    for email in emails_to_dvla:
+        assert str(email.template_id) == current_app.config['LETTERS_VOLUME_EMAIL_TEMPLATE_ID']
+        assert email.to in current_app.config['DVLA_EMAIL_ADDRESSES']
+        assert email.personalisation == {
+            'total_volume': 11,
+            'first_class_volume': 5,
+            'second_class_volume': 4,
+            'international_volume': 2,
+            'total_sheets': 24,
+            'first_class_sheets': 7,
+            "second_class_sheets": 12,
+            'international_sheets': 5,
+            'date': '17 February 2020'
+        }
 
 
 def test_group_letters_splits_on_file_size(notify_api):
