@@ -539,8 +539,6 @@ class Live(Config):
 
     CRONITOR_ENABLED = True
 
-    ENABLED_CBCS = {BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
-
 
 class CloudFoundryConfig(Config):
     pass
