@@ -28,7 +28,7 @@ lxml==4.6.2
 # higher version causes build to fail
 cryptography==3.4.6
 
-notifications-python-client==5.7.1
+notifications-python-client==6.0.2
 
 # PaaS
 awscli-cwlogs==1.4.6
