@@ -6,7 +6,7 @@ celery[sqs]==3.1.26.post2 # pyup: <4
 docopt==0.6.2
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.14.0
-Flask-Migrate==2.5.3
+Flask-Migrate==2.7.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.1.2
 click-datetime==0.2
