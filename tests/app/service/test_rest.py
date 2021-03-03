@@ -973,6 +973,8 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
         (INTERNATIONAL_SMS_TYPE),
         (LETTER_TYPE),
         (INBOUND_SMS_TYPE),
+        (EMAIL_AUTH_TYPE),
+        (BROADCAST_TYPE),  # TODO: remove this ability to set broadcast permission this way
     ]
 )
 def test_add_service_permission_will_add_permission(client, service_with_no_permissions, permission_to_add):
