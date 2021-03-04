@@ -4059,3 +4059,23 @@ def test_set_as_broadcast_service_errors_if_no_mobile_provider_restriction(
         _data=data,
         _expected_status=400,
     )
+
+
+def test_set_as_broadcast_service_updates_services_history(
+    admin_request, sample_service, broadcast_organisation
+):
+    old_history_records = Service.get_history_model().query.filter_by(id=sample_service.id).all()
+    data = {
+        'broadcast_channel': 'test',
+        'service_mode': 'live',
+        'provider_restriction': None,
+    }
+
+    admin_request.post(
+        'service.set_as_broadcast_service',
+        service_id=sample_service.id,
+        _data=data,
+    )
+
+    new_history_records = Service.get_history_model().query.filter_by(id=sample_service.id).all()
+    assert len(new_history_records) == len(old_history_records) + 1
