@@ -30,3 +30,18 @@ def insert_update_processing_time(processing_time):
         }
     )
     db.session.connection().execute(stmt)
+
+
+def get_processing_time_percentage_for_date_range(start_date, end_date):
+    query = db.session.query(
+        FactProcessingTime.bst_date.cast(db.Text).label("date"),
+        FactProcessingTime.messages_total,
+        FactProcessingTime.messages_within_10_secs,
+        ((FactProcessingTime.messages_within_10_secs / FactProcessingTime.messages_total.cast(
+            db.Float)) * 100).label("percentage")
+    ).filter(
+        FactProcessingTime.bst_date >= start_date,
+        FactProcessingTime.bst_date <= end_date
+    ).order_by(FactProcessingTime.bst_date)
+
+    return query.all()

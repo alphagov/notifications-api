@@ -614,3 +614,23 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
     )
 
     return query.all()
+
+
+def get_live_services_with_organisation():
+    query = db.session.query(
+        Service.id.label("service_id"),
+        Service.name.label("service_name"),
+        Organisation.id.label("organisation_id"),
+        Organisation.name.label("organisation_name")
+    ).outerjoin(
+        Service.organisation
+    ).filter(
+        Service.count_as_live.is_(True),
+        Service.active.is_(True),
+        Service.restricted.is_(False)
+    ).order_by(
+        Organisation.name,
+        Service.name
+    )
+
+    return query.all()

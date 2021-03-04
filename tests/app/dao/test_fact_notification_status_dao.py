@@ -14,7 +14,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
     fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service,
-    get_total_sent_notifications_for_day_and_type
+    get_total_sent_notifications_for_day_and_type, get_total_notifications_for_date_range
 )
 from app.models import (
     FactNotificationStatus,
@@ -703,3 +703,27 @@ def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be
 
     results = fetch_monthly_notification_statuses_per_service(date(2019, 3, 1), date(2019, 3, 31))
     assert len(results) == 0
+
+
+def test_get_total_notifications_for_date_range(sample_service):
+    template_sms = create_template(service=sample_service, template_type='sms', template_name='a')
+    template_email = create_template(service=sample_service, template_type='email', template_name='b')
+    template_letter = create_template(service=sample_service, template_type='letter', template_name='c')
+    create_ft_notification_status(bst_date=date(2021, 3, 1),
+                                  service=template_email.service,
+                                  template=template_email,
+                                  count=15)
+    create_ft_notification_status(bst_date=date(2021, 3, 1),
+                                  service=template_sms.service,
+                                  template=template_sms,
+                                  count=20)
+    create_ft_notification_status(bst_date=date(2021, 3, 1),
+                                  service=template_letter.service,
+                                  template=template_letter,
+                                  count=3)
+
+    results = get_total_notifications_for_date_range(start_date=datetime(2021, 3, 1), end_date=datetime(2021, 3, 1))
+
+    assert len(results) == 1
+    print(type(results[0].emails))
+    assert results[0] == ("2021-03-01", 15, 20, 3)

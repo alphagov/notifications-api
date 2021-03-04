@@ -150,6 +150,7 @@ def register_blueprint(application):
     from app.organisation.rest import organisation_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
     from app.complaint.complaint_rest import complaint_blueprint
+    from app.performance_platform.rest import performance_platform_blueprint
     from app.platform_stats.rest import platform_stats_blueprint
     from app.template_folder.rest import template_folder_blueprint
     from app.letter_branding.letter_branding_rest import letter_branding_blueprint
@@ -227,6 +228,9 @@ def register_blueprint(application):
 
     complaint_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(complaint_blueprint)
+
+    performance_platform_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(performance_platform_blueprint)
 
     platform_stats_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(platform_stats_blueprint, url_prefix='/platform-stats')
