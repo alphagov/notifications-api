@@ -41,7 +41,7 @@ def test_create_invited_user(
     )
 
     json_resp = admin_request.post(
-        'invite.create_invited_user',
+        'service_invite.create_invited_user',
         service_id=sample_service.id,
         _data=data,
         _expected_status=201
@@ -102,7 +102,7 @@ def test_invited_user_for_broadcast_service_receives_broadcast_invite_email(
     )
 
     admin_request.post(
-        'invite.create_invited_user',
+        'service_invite.create_invited_user',
         service_id=sample_broadcast_service.id,
         _data=data,
         _expected_status=201
@@ -136,7 +136,7 @@ def test_create_invited_user_without_auth_type(admin_request, sample_service, mo
     }
 
     json_resp = admin_request.post(
-        'invite.create_invited_user',
+        'service_invite.create_invited_user',
         service_id=sample_service.id,
         _data=data,
         _expected_status=201
@@ -218,7 +218,7 @@ def test_get_invited_users_by_service_with_no_invites(client, notify_db, notify_
 
 def test_get_invited_user_by_service(admin_request, sample_invited_user):
     json_resp = admin_request.get(
-        'invite.get_invited_user_by_service',
+        'service_invite.get_invited_user_by_service',
         service_id=sample_invited_user.service.id,
         invited_user_id=sample_invited_user.id
     )
@@ -231,7 +231,7 @@ def test_get_invited_user_by_service_when_user_does_not_belong_to_the_service(
     fake_uuid,
 ):
     json_resp = admin_request.get(
-        'invite.get_invited_user_by_service',
+        'service_invite.get_invited_user_by_service',
         service_id=fake_uuid,
         invited_user_id=sample_invited_user.id,
         _expected_status=404

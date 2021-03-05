@@ -7,11 +7,11 @@ from app.dao.organisation_dao import dao_get_invited_organisation_user
 from app.errors import InvalidRequest, register_errors
 from app.schemas import invited_user_schema
 
-accept_invite = Blueprint('accept_invite', __name__)
-register_errors(accept_invite)
+global_invite_blueprint = Blueprint('global_invite', __name__)
+register_errors(global_invite_blueprint)
 
 
-@accept_invite.route('/<invitation_type>/<token>', methods=['GET'])
+@global_invite_blueprint.route('/<invitation_type>/<token>', methods=['GET'])
 def validate_invitation_token(invitation_type, token):
 
     max_age_seconds = 60 * 60 * 24 * current_app.config['INVITATION_EXPIRATION_DAYS']

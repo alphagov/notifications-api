@@ -136,7 +136,6 @@ def create_app(application):
 
 
 def register_blueprint(application):
-    from app.accept_invite.rest import accept_invite
     from app.authentication.auth import (
         requires_admin_auth,
         requires_auth,
@@ -147,9 +146,9 @@ def register_blueprint(application):
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
+    from app.global_invite.rest import global_invite_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
-    from app.invite.rest import invite as invite_blueprint
     from app.job.rest import job_blueprint
     from app.letter_branding.letter_branding_rest import (
         letter_branding_blueprint,
@@ -174,6 +173,9 @@ def register_blueprint(application):
     )
     from app.service.callback_rest import service_callback_blueprint
     from app.service.rest import service_blueprint
+    from app.service_invite.rest import (
+        service_invite as service_invite_blueprint,
+    )
     from app.status.healthcheck import status as status_blueprint
     from app.template.rest import template_blueprint
     from app.template_folder.rest import template_folder_blueprint
@@ -210,8 +212,8 @@ def register_blueprint(application):
     job_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(job_blueprint)
 
-    invite_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(invite_blueprint)
+    service_invite_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(service_invite_blueprint)
 
     inbound_number_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_number_blueprint)
@@ -219,8 +221,8 @@ def register_blueprint(application):
     inbound_sms_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_sms_blueprint)
 
-    accept_invite.before_request(requires_admin_auth)
-    application.register_blueprint(accept_invite, url_prefix='/invite')
+    global_invite_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(global_invite_blueprint, url_prefix='/invite')
 
     template_statistics_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_statistics_blueprint)
