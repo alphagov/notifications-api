@@ -83,3 +83,42 @@ def test_validate_invitation_token_returns_400_when_token_is_malformed(client, i
     assert json_resp['message'] == {
         'invitation': 'Something’s wrong with this link. Make sure you’ve copied the whole thing.'
     }
+
+
+def test_get_invited_user(admin_request, sample_invited_user):
+    json_resp = admin_request.get(
+        'global_invite.get_invited_user',
+        invited_user_id=sample_invited_user.id
+    )
+    assert json_resp['data']['id'] == str(sample_invited_user.id)
+    assert json_resp['data']['email_address'] == sample_invited_user.email_address
+    assert json_resp['data']['service'] == str(sample_invited_user.service_id)
+    assert json_resp['data']['permissions'] == sample_invited_user.permissions
+
+
+def test_get_invited_user_404s_if_invite_doesnt_exist(admin_request, sample_invited_user, fake_uuid):
+    json_resp = admin_request.get(
+        'global_invite.get_invited_user',
+        invited_user_id=fake_uuid,
+        _expected_status=404
+    )
+    assert json_resp['result'] == 'error'
+
+
+def test_get_invited_org_user(admin_request, sample_invited_org_user):
+    json_resp = admin_request.get(
+        'global_invite.get_invited_org_user',
+        invited_org_user_id=sample_invited_org_user.id
+    )
+    assert json_resp['data']['id'] == str(sample_invited_org_user.id)
+    assert json_resp['data']['email_address'] == sample_invited_org_user.email_address
+    assert json_resp['data']['organisation'] == str(sample_invited_org_user.organisation_id)
+
+
+def test_get_invited_org_user_404s_if_invite_doesnt_exist(admin_request, sample_invited_org_user, fake_uuid):
+    json_resp = admin_request.get(
+        'global_invite.get_invited_org_user',
+        invited_org_user_id=fake_uuid,
+        _expected_status=404
+    )
+    assert json_resp['result'] == 'error'
