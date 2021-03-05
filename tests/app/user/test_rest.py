@@ -410,6 +410,44 @@ def test_get_user_by_email_bad_url_returns_404(client, sample_user):
     assert json_resp['message'] == 'Invalid request. Email query string param required'
 
 
+def test_fetch_user_by_email(admin_request, notify_db_session):
+    user = create_user(email='foo@bar.com')
+
+    create_user(email='foo@bar.com.other_email')
+    create_user(email='other_email.foo@bar.com')
+
+    resp = admin_request.post(
+        'user.fetch_user_by_email',
+        _data={'email': user.email_address},
+        _expected_status=200
+    )
+
+    assert resp['data']['id'] == str(user.id)
+    assert resp['data']['email_address'] == user.email_address
+
+
+def test_fetch_user_by_email_not_found_returns_404(admin_request, notify_db_session):
+    create_user(email='foo@bar.com.other_email')
+
+    resp = admin_request.post(
+        'user.fetch_user_by_email',
+        _data={'email': 'doesnt@exist.com'},
+        _expected_status=404
+    )
+    assert resp['result'] == 'error'
+    assert resp['message'] == 'No result found'
+
+
+def test_fetch_user_by_email_without_email_returns_400(admin_request, notify_db_session):
+    resp = admin_request.post(
+        'user.fetch_user_by_email',
+        _data={},
+        _expected_status=400
+    )
+    assert resp['result'] == 'error'
+    assert resp['message'] == {'email': ['Missing data for required field.']}
+
+
 def test_get_user_with_permissions(client, sample_user_service_permission):
     header = create_authorization_header()
     response = client.get(url_for('user.get_user', user_id=str(sample_user_service_permission.user.id)),
