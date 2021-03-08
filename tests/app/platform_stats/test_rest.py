@@ -126,11 +126,15 @@ def test_validate_date_is_within_a_financial_year_when_input_is_not_a_date(start
     assert e.value.status_code == 400
 
 
-def test_get_usage_for_all_services(notify_db_session, admin_request):
+def test_get_data_for_billing_report(notify_db_session, admin_request):
     setup = set_up_usage_data(datetime(2019, 5, 1))
-    response = admin_request.get("platform_stats.get_usage_for_all_services",
-                                 start_date='2019-05-01',
-                                 end_date='2019-06-30')
+    response = admin_request.get(
+        "platform_stats.get_data_for_billing_report",
+        start_date='2019-05-01',
+        end_date='2019-06-30'
+    )
+
+    # we set up 5 services, but only 4 returned. service_with_emails was skipped as it had no bills to pay
     assert len(response) == 4
     assert response[0]["organisation_id"] == str(setup["org_1"].id)
     assert response[0]["service_id"] == str(setup["service_1_sms_and_letter"].id)
