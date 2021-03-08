@@ -8,6 +8,7 @@ from freezegun import freeze_time
 from moto import mock_s3
 
 from app.letters.utils import (
+    LetterPDFNotFound,
     ScanErrorType,
     find_letter_pdf_filename,
     generate_letter_pdf_filename,
@@ -60,6 +61,19 @@ def test_find_letter_pdf_filename_returns_filename(sample_notification):
     s3.put_object(Bucket=bucket_name, Key=f'{prefix}-and-then-some', Body=b'f')
 
     assert find_letter_pdf_filename(sample_notification) == f'{prefix}-and-then-some'
+
+
+@mock_s3
+def test_find_letter_pdf_filename_raises_if_not_found(sample_notification):
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
+    with pytest.raises(LetterPDFNotFound):
+        find_letter_pdf_filename(sample_notification)
 
 
 @pytest.mark.parametrize('created_at,folder', [

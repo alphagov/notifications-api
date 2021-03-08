@@ -27,7 +27,7 @@ from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
 from app.dao.dao_utils import transactional
-from app.letters.utils import find_letter_pdf_filename
+from app.letters.utils import LetterPDFNotFound, find_letter_pdf_filename
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -453,7 +453,13 @@ def _delete_letters_from_s3(
         Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED)
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
-        prefix = find_letter_pdf_filename(letter)
+        try:
+            prefix = find_letter_pdf_filename(letter)
+        except LetterPDFNotFound:
+            current_app.logger.exception(
+                "Could not delete S3 object for letter: {}".format(letter.id))
+            continue
+
         s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
         for s3_object in s3_objects:
             try:

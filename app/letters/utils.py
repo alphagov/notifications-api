@@ -37,6 +37,10 @@ def get_folder_name(created_at):
     return '{}/'.format(print_datetime.date())
 
 
+class LetterPDFNotFound(Exception):
+    pass
+
+
 def find_letter_pdf_filename(notification):
     """
     Retrieve the filename of a letter from s3 by searching for it based on a prefix.
@@ -47,7 +51,10 @@ def find_letter_pdf_filename(notification):
 
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(bucket_name)
-    item = next(x for x in bucket.objects.filter(Prefix=prefix))
+    try:
+        item = next(x for x in bucket.objects.filter(Prefix=prefix))
+    except StopIteration:
+        raise LetterPDFNotFound(f'File not found in bucket {bucket_name} with prefix {prefix}', )
     return item.key
 
 
