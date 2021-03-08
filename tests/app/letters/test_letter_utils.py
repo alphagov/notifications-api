@@ -9,10 +9,11 @@ from moto import mock_s3
 
 from app.letters.utils import (
     ScanErrorType,
+    find_letter_pdf_filename,
+    generate_letter_pdf_filename,
     get_bucket_name_and_prefix_for_notification,
     get_folder_name,
     get_letter_pdf_and_metadata,
-    get_letter_pdf_filename,
     letter_print_day,
     move_failed_pdf,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
@@ -44,6 +45,21 @@ def _sample_precompiled_letter_notification(sample_letter_notification):
 def _sample_precompiled_letter_notification_using_test_key(sample_precompiled_letter_notification):
     sample_precompiled_letter_notification.key_type = KEY_TYPE_TEST
     return sample_precompiled_letter_notification
+
+
+@mock_s3
+def test_find_letter_pdf_filename_returns_filename(sample_notification):
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
+    _, prefix = get_bucket_name_and_prefix_for_notification(sample_notification)
+    s3.put_object(Bucket=bucket_name, Key=f'{prefix}-and-then-some', Body=b'f')
+
+    assert find_letter_pdf_filename(sample_notification) == f'{prefix}-and-then-some'
 
 
 @pytest.mark.parametrize('created_at,folder', [
@@ -145,10 +161,10 @@ def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
     (True, 'C'),
     (False, 'N'),
 ])
-def test_get_letter_pdf_filename_returns_correct_filename(
+def test_generate_letter_pdf_filename_returns_correct_filename(
         notify_api, mocker, crown_flag, expected_crown_text):
     created_at = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown=crown_flag, created_at=created_at)
+    filename = generate_letter_pdf_filename(reference='foo', crown=crown_flag, created_at=created_at)
 
     assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
 
@@ -157,26 +173,30 @@ def test_get_letter_pdf_filename_returns_correct_filename(
     ('second', 2),
     ('first', 1),
 ])
-def test_get_letter_pdf_filename_returns_correct_postage_for_filename(
+def test_generate_letter_pdf_filename_returns_correct_postage_for_filename(
         notify_api, postage, expected_postage):
     created_at = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown=True, created_at=created_at, postage=postage)
+    filename = generate_letter_pdf_filename(reference='foo', crown=True, created_at=created_at, postage=postage)
 
     assert filename == '2017-12-04/NOTIFY.FOO.D.{}.C.C.20171204172900.PDF'.format(expected_postage)
 
 
-def test_get_letter_pdf_filename_returns_correct_filename_for_test_letters(
+def test_generate_letter_pdf_filename_returns_correct_filename_for_test_letters(
         notify_api, mocker):
     created_at = datetime(2017, 12, 4, 17, 29)
-    filename = get_letter_pdf_filename(reference='foo', crown='C',
-                                       created_at=created_at, ignore_folder=True)
+    filename = generate_letter_pdf_filename(
+        reference='foo',
+        crown='C',
+        created_at=created_at,
+        ignore_folder=True
+    )
 
     assert filename == 'NOTIFY.FOO.D.2.C.C.20171204172900.PDF'
 
 
-def test_get_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
+def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
     created_at = datetime(2017, 12, 4, 17, 31)
-    filename = get_letter_pdf_filename(reference='foo', crown=True, created_at=created_at)
+    filename = generate_letter_pdf_filename(reference='foo', crown=True, created_at=created_at)
 
     assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
 
@@ -223,7 +243,7 @@ def test_upload_letter_pdf_to_correct_bucket(
 
     mock_s3 = mocker.patch('app.letters.utils.s3upload')
 
-    filename = get_letter_pdf_filename(
+    filename = generate_letter_pdf_filename(
         reference=sample_letter_notification.reference,
         crown=sample_letter_notification.service.crown,
         created_at=sample_letter_notification.created_at,
@@ -250,7 +270,7 @@ def test_upload_letter_pdf_uses_postage_from_notification(
     letter_notification = create_notification(template=sample_letter_template, postage=postage)
     mock_s3 = mocker.patch('app.letters.utils.s3upload')
 
-    filename = get_letter_pdf_filename(
+    filename = generate_letter_pdf_filename(
         reference=letter_notification.reference,
         crown=letter_notification.service.crown,
         created_at=letter_notification.created_at,

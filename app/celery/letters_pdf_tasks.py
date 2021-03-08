@@ -27,9 +27,10 @@ from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
     ScanErrorType,
+    find_letter_pdf_filename,
+    generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
     get_file_names_from_error_bucket,
-    get_letter_pdf_filename,
     get_reference_from_filename,
     move_error_pdf_to_scan_bucket,
     move_failed_pdf,
@@ -58,7 +59,7 @@ from app.models import (
 def get_pdf_for_templated_letter(self, notification_id):
     try:
         notification = get_notification_by_id(notification_id, _raise=True)
-        letter_filename = get_letter_pdf_filename(
+        letter_filename = generate_letter_pdf_filename(
             reference=notification.reference,
             crown=notification.service.crown,
             created_at=notification.created_at,
@@ -235,12 +236,7 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
     letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline, postage)
     for letter in letters_awaiting_sending:
         try:
-            letter_file_name = get_letter_pdf_filename(
-                reference=letter.reference,
-                crown=letter.crown,
-                created_at=letter.created_at,
-                postage=postage
-            )
+            letter_file_name = find_letter_pdf_filename(letter)
             letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
             yield {
                 "Key": letter_file_name,
@@ -375,7 +371,7 @@ def process_sanitised_letter(self, sanitise_data):
 
         # The original filename could be wrong because we didn't know the postage.
         # Now we know if the letter is international, we can check what the filename should be.
-        upload_file_name = get_letter_pdf_filename(
+        upload_file_name = generate_letter_pdf_filename(
             reference=notification.reference,
             crown=notification.service.crown,
             created_at=notification.created_at,

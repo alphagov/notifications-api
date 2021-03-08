@@ -17,8 +17,8 @@ from app.dao.templates_dao import (
 )
 from app.dao.users_dao import get_user_by_id
 from app.letters.utils import (
+    generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
-    get_letter_pdf_filename,
     get_page_count,
     move_uploaded_pdf_to_letters_bucket,
 )
@@ -197,7 +197,7 @@ def send_pdf_letter_notification(service_id, post_data):
         postage=post_data['postage'] or template.postage,
     )
 
-    upload_filename = get_letter_pdf_filename(
+    upload_filename = generate_letter_pdf_filename(
         reference=notification.reference,
         crown=notification.service.crown,
         created_at=notification.created_at,

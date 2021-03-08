@@ -1,8 +1,10 @@
 from datetime import date, datetime, timedelta
 
+import boto3
 import pytest
 from flask import current_app
 from freezegun import freeze_time
+from moto import mock_s3
 
 from app.dao.notifications_dao import (
     delete_notifications_older_than_retention_by_type,
@@ -70,6 +72,7 @@ def test_should_delete_notifications_by_type_after_seven_days(
         expected_email_count,
         expected_letter_count
 ):
+    mocker.patch("app.dao.notifications_dao.find_letter_pdf_filename")
     mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
     email_template, letter_template, sms_template = _create_templates(sample_service)
     # create one notification a day between 1st and 10th from 11:00 to 19:00 of each type
@@ -118,6 +121,7 @@ def test_should_not_delete_notification_history(sample_service, mocker):
 
 @pytest.mark.parametrize('notification_type', ['sms', 'email', 'letter'])
 def test_delete_notifications_for_days_of_retention(sample_service, notification_type, mocker):
+    mocker.patch('app.dao.notifications_dao.find_letter_pdf_filename')
     mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
     create_test_data(notification_type, sample_service)
     assert Notification.query.count() == 9
@@ -130,19 +134,29 @@ def test_delete_notifications_for_days_of_retention(sample_service, notification
         mock_get_s3.assert_not_called()
 
 
+@mock_s3
 @freeze_time('2019-09-01 04:30')
 def test_delete_notifications_deletes_letters_from_s3(sample_letter_template, mocker):
-    mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     create_notification(template=sample_letter_template, status='delivered',
-                        reference='LETTER_REF', created_at=eight_days_ago, sent_at=eight_days_ago
-                        )
+                        reference='LETTER_REF', created_at=eight_days_ago, sent_at=eight_days_ago)
+    filename = "{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
+        str(eight_days_ago.date()),
+        eight_days_ago.strftime('%Y%m%d%H%M%S')
+    )
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b'foo')
+
     delete_notifications_older_than_retention_by_type(notification_type='letter')
-    mock_get_s3.assert_called_once_with(bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                        subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
-                                            str(eight_days_ago.date()),
-                                            eight_days_ago.strftime('%Y%m%d%H%M%S'))
-                                        )
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename)
 
 
 def test_delete_notifications_inserts_notification_history(sample_service):
@@ -234,12 +248,19 @@ def test_delete_notifications_deletes_letters_not_sent_and_in_final_state_from_t
     mock_get_s3.assert_not_called()
 
 
+@mock_s3
 @freeze_time('2020-12-24 04:30')
 @pytest.mark.parametrize('notification_status', ['delivered', 'returned-letter', 'technical-failure'])
 def test_delete_notifications_deletes_letters_sent_and_in_final_state_from_table_and_s3(
     sample_service, mocker, notification_status
 ):
-    mock_get_s3 = mocker.patch("app.dao.notifications_dao.get_s3_bucket_objects")
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
     letter_template = create_template(service=sample_service, template_type='letter')
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     create_notification(
@@ -252,17 +273,19 @@ def test_delete_notifications_deletes_letters_sent_and_in_final_state_from_table
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
 
+    filename = "{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
+        str(eight_days_ago.date()),
+        eight_days_ago.strftime('%Y%m%d%H%M%S')
+    )
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=b'foo')
+
     delete_notifications_older_than_retention_by_type('letter')
 
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
-    mock_get_s3.assert_called_once_with(
-        bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-        subfolder="{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
-            str(eight_days_ago.date()),
-            eight_days_ago.strftime('%Y%m%d%H%M%S')
-        )
-    )
+
+    with pytest.raises(s3.exceptions.NoSuchKey):
+        s3.get_object(Bucket=bucket_name, Key=filename)
 
 
 @pytest.mark.parametrize('notification_status', ['pending-virus-check', 'created', 'sending'])

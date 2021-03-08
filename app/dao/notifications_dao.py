@@ -27,7 +27,7 @@ from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
 from app.dao.dao_utils import transactional
-from app.letters.utils import get_letter_pdf_filename
+from app.letters.utils import find_letter_pdf_filename
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -453,11 +453,7 @@ def _delete_letters_from_s3(
         Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED)
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
-        prefix = get_letter_pdf_filename(reference=letter.reference,
-                                         crown=letter.service.crown,
-                                         created_at=letter.created_at,
-                                         ignore_folder=letter.key_type == KEY_TYPE_TEST,
-                                         postage=letter.postage)
+        prefix = find_letter_pdf_filename(letter)
         s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
         for s3_object in s3_objects:
             try:
@@ -758,13 +754,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     https://docs.sqlalchemy.org/en/13/orm/query.html?highlight=yield_per#sqlalchemy.orm.query.Query.yield_per
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
-    notifications = db.session.query(
-        Notification.id,
-        Notification.created_at,
-        Notification.reference,
-        Notification.service_id,
-        Service.crown,
-    ).join(
+    notifications = Notification.query.join(
         Notification.service
     ).filter(
         Notification.created_at < convert_bst_to_utc(print_run_deadline),

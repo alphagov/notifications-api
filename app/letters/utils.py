@@ -37,7 +37,27 @@ def get_folder_name(created_at):
     return '{}/'.format(print_datetime.date())
 
 
-def get_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
+def find_letter_pdf_filename(notification):
+    """
+    Retrieve the filename of a letter from s3 by searching for it based on a prefix.
+
+    Use this when retrieving existing pdfs, so that we can be more resilient if the naming convention changes.
+    """
+    bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
+
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    item = next(x for x in bucket.objects.filter(Prefix=prefix))
+    return item.key
+
+
+def generate_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
+    """
+    Generate a filename for putting a letter into s3 or sending to dvla.
+
+    We should only use this function when uploading data. If you need to get a letter or its metadata from s3
+    then use `find_letter_pdf_filename` instead.
+    """
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
         folder='' if ignore_folder else get_folder_name(created_at),
         reference=reference,
@@ -78,7 +98,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
-    upload_file_name = get_letter_pdf_filename(
+    upload_file_name = generate_letter_pdf_filename(
         reference=notification.reference,
         crown=notification.service.crown,
         created_at=notification.created_at,
