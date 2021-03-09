@@ -22,7 +22,7 @@ from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
 from app import create_uuid, db
-from app.aws.s3 import get_s3_bucket_objects, remove_s3_object
+from app.aws.s3 import remove_s3_object
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
@@ -454,19 +454,11 @@ def _delete_letters_from_s3(
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
         try:
-            prefix = find_letter_pdf_filename(letter)
-        except LetterPDFNotFound:
+            filename = find_letter_pdf_filename(letter)
+            remove_s3_object(bucket_name, filename)
+        except (ClientError, LetterPDFNotFound):
             current_app.logger.exception(
                 "Could not delete S3 object for letter: {}".format(letter.id))
-            continue
-
-        s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
-        for s3_object in s3_objects:
-            try:
-                remove_s3_object(bucket_name, s3_object['Key'])
-            except ClientError:
-                current_app.logger.exception(
-                    "Could not delete S3 object with filename: {}".format(s3_object['Key']))
 
 
 @transactional

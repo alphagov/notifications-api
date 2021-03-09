@@ -1,15 +1,10 @@
 from datetime import datetime, timedelta
-from unittest.mock import call
 
 import pytest
 import pytz
 from freezegun import freeze_time
 
-from app.aws.s3 import (
-    get_list_of_files_by_suffix,
-    get_s3_bucket_objects,
-    get_s3_file,
-)
+from app.aws.s3 import get_list_of_files_by_suffix, get_s3_file
 from tests.app.conftest import datetime_in_past
 
 
@@ -29,39 +24,6 @@ def test_get_s3_file_makes_correct_call(notify_api, mocker):
         'foo-bucket',
         'bar-file.txt'
     )
-
-
-def test_get_s3_bucket_objects_make_correct_pagination_call(notify_api, mocker):
-    paginator_mock = mocker.patch('app.aws.s3.client')
-
-    get_s3_bucket_objects('foo-bucket', subfolder='bar')
-
-    paginator_mock.assert_has_calls([
-        call().get_paginator().paginate(Bucket='foo-bucket', Prefix='bar')
-    ])
-
-
-def test_get_s3_bucket_objects_builds_objects_list_from_paginator(notify_api, mocker):
-    AFTER_SEVEN_DAYS = datetime_in_past(days=8)
-    paginator_mock = mocker.patch('app.aws.s3.client')
-    multiple_pages_s3_object = [
-        {
-            "Contents": [
-                single_s3_object_stub('bar/foo.txt', AFTER_SEVEN_DAYS),
-            ]
-        },
-        {
-            "Contents": [
-                single_s3_object_stub('bar/foo1.txt', AFTER_SEVEN_DAYS),
-            ]
-        }
-    ]
-    paginator_mock.return_value.get_paginator.return_value.paginate.return_value = multiple_pages_s3_object
-
-    bucket_objects = get_s3_bucket_objects('foo-bucket', subfolder='bar')
-
-    assert len(bucket_objects) == 2
-    assert set(bucket_objects[0].keys()) == set(['ETag', 'Key', 'LastModified'])
 
 
 @freeze_time("2018-01-11 00:00:00")

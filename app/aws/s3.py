@@ -69,22 +69,6 @@ def remove_contact_list_from_s3(service_id, contact_list_id):
     return remove_s3_object(*get_contact_list_location(service_id, contact_list_id))
 
 
-def get_s3_bucket_objects(bucket_name, subfolder=''):
-    boto_client = client('s3', current_app.config['AWS_REGION'])
-    paginator = boto_client.get_paginator('list_objects_v2')
-    page_iterator = paginator.paginate(
-        Bucket=bucket_name,
-        Prefix=subfolder
-    )
-
-    all_objects_in_bucket = []
-    for page in page_iterator:
-        if page.get('Contents'):
-            all_objects_in_bucket.extend(page['Contents'])
-
-    return all_objects_in_bucket
-
-
 def remove_s3_object(bucket_name, object_key):
     obj = get_s3_object(bucket_name, object_key)
     return obj.delete()
