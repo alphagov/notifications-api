@@ -127,7 +127,7 @@ def test_validate_date_is_within_a_financial_year_when_input_is_not_a_date(start
 
 
 def test_get_data_for_billing_report(notify_db_session, admin_request):
-    setup = set_up_usage_data(datetime(2019, 5, 1))
+    fixtures = set_up_usage_data(datetime(2019, 5, 1))
     response = admin_request.get(
         "platform_stats.get_data_for_billing_report",
         start_date='2019-05-01',
@@ -137,8 +137,8 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     # we set up 6 services, but only 4 returned. service_with_emails was skipped as it had no bills to pay,
     # and likewise the service with SMS within allowance was skipped. too.
     assert len(response) == 4
-    assert response[0]["organisation_id"] == str(setup["org_1"].id)
-    assert response[0]["service_id"] == str(setup["service_1_sms_and_letter"].id)
+    assert response[0]["organisation_id"] == str(fixtures["org_1"].id)
+    assert response[0]["service_id"] == str(fixtures["service_1_sms_and_letter"].id)
     assert response[0]["sms_cost"] == 0
     assert response[0]["sms_fragments"] == 0
     assert response[0]["letter_cost"] == 3.40
@@ -148,8 +148,8 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[0]["contact_email_addresses"] == "service@billing.contact email@addresses.gov.uk"
     assert response[0]["billing_reference"] == "service billing reference"
 
-    assert response[1]["organisation_id"] == str(setup["org_for_service_with_letters"].id)
-    assert response[1]["service_id"] == str(setup["service_with_letters"].id)
+    assert response[1]["organisation_id"] == str(fixtures["org_for_service_with_letters"].id)
+    assert response[1]["service_id"] == str(fixtures["service_with_letters"].id)
     assert response[1]["sms_cost"] == 0
     assert response[1]["sms_fragments"] == 0
     assert response[1]["letter_cost"] == 14
@@ -160,7 +160,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[1]["billing_reference"] == "org3 billing reference"
 
     assert response[2]["organisation_id"] == ""
-    assert response[2]["service_id"] == str(setup["service_with_sms_without_org"].id)
+    assert response[2]["service_id"] == str(fixtures["service_with_sms_without_org"].id)
     assert response[2]["sms_cost"] == 0.33
     assert response[2]["sms_fragments"] == 3
     assert response[2]["letter_cost"] == 0
@@ -171,7 +171,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[2]["billing_reference"] == "sms billing reference"
 
     assert response[3]["organisation_id"] == ""
-    assert response[3]["service_id"] == str(setup["service_with_letters_without_org"].id)
+    assert response[3]["service_id"] == str(fixtures["service_with_letters_without_org"].id)
     assert response[3]["sms_cost"] == 0
     assert response[3]["sms_fragments"] == 0
     assert response[3]["letter_cost"] == 24.45

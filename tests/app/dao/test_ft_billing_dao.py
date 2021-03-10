@@ -600,111 +600,118 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
-    setup = set_up_usage_data(datetime(2019, 5, 1))
+    fixtures = set_up_usage_data(datetime(2019, 5, 1))
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
 
-    assert len(results) == 2
+    assert len(results) == 3
     # organisation_name, organisation_id, service_name, service_id, free_sms_fragment_limit,
     # sms_rate, sms_remainder, sms_billable_units, chargeable_billable_units, sms_cost
     assert results[0] == (
-        setup["org_1"].name,
-        setup["org_1"].id,
-        setup["service_1_sms_and_letter"].name,
-        setup["service_1_sms_and_letter"].id,
+        fixtures["org_1"].name,
+        fixtures["org_1"].id,
+        fixtures["service_1_sms_and_letter"].name,
+        fixtures["service_1_sms_and_letter"].id,
         10, Decimal('0.11'), 8, 3, 0, Decimal('0'))
     assert results[1] == (
         None,
         None,
-        setup["service_with_sms_without_org"].name,
-        setup["service_with_sms_without_org"].id,
+        fixtures["service_with_sms_without_org"].name,
+        fixtures["service_with_sms_without_org"].id,
         10, Decimal('0.11'), 0, 3, 3, Decimal('0.33')
+    )
+    assert results[2] == (
+        None,
+        None,
+        fixtures["service_with_sms_within_allowance"].name,
+        fixtures["service_with_sms_within_allowance"].id,
+        10, Decimal('0.11'), 10, 2, 0, Decimal('0.00')
     )
 
 
 def test_fetch_letter_costs_for_all_services(notify_db_session):
-    setup = set_up_usage_data(datetime(2019, 6, 1))
+    fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 3
     assert results[0] == (
-        setup["org_1"].name, setup["org_1"].id,
-        setup["service_1_sms_and_letter"].name, setup["service_1_sms_and_letter"].id,
+        fixtures["org_1"].name, fixtures["org_1"].id,
+        fixtures["service_1_sms_and_letter"].name, fixtures["service_1_sms_and_letter"].id,
         Decimal('3.40')
     )
     assert results[1] == (
-        setup["org_for_service_with_letters"].name, setup["org_for_service_with_letters"].id,
-        setup["service_with_letters"].name, setup["service_with_letters"].id,
+        fixtures["org_for_service_with_letters"].name, fixtures["org_for_service_with_letters"].id,
+        fixtures["service_with_letters"].name, fixtures["service_with_letters"].id,
         Decimal('14.00')
     )
     assert results[2] == (
         None, None,
-        setup["service_with_letters_without_org"].name, setup["service_with_letters_without_org"].id,
+        fixtures["service_with_letters_without_org"].name, fixtures["service_with_letters_without_org"].id,
         Decimal('24.45')
     )
 
 
 def test_fetch_letter_line_items_for_all_service(notify_db_session):
-    setup = set_up_usage_data(datetime(2019, 6, 1))
+    fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
     results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 7
     assert results[0] == (
-        setup["org_1"].name, setup["org_1"].id,
-        setup["service_1_sms_and_letter"].name, setup["service_1_sms_and_letter"].id,
+        fixtures["org_1"].name, fixtures["org_1"].id,
+        fixtures["service_1_sms_and_letter"].name, fixtures["service_1_sms_and_letter"].id,
         Decimal('0.45'), 'second', 6
     )
     assert results[1] == (
-        setup["org_1"].name, setup["org_1"].id,
-        setup["service_1_sms_and_letter"].name, setup["service_1_sms_and_letter"].id,
+        fixtures["org_1"].name, fixtures["org_1"].id,
+        fixtures["service_1_sms_and_letter"].name, fixtures["service_1_sms_and_letter"].id,
         Decimal("0.35"), 'first', 2
     )
     assert results[2] == (
-        setup["org_for_service_with_letters"].name, setup["org_for_service_with_letters"].id,
-        setup["service_with_letters"].name, setup["service_with_letters"].id,
+        fixtures["org_for_service_with_letters"].name, fixtures["org_for_service_with_letters"].id,
+        fixtures["service_with_letters"].name, fixtures["service_with_letters"].id,
         Decimal("0.65"), 'second', 20
     )
     assert results[3] == (
-        setup["org_for_service_with_letters"].name, setup["org_for_service_with_letters"].id,
-        setup["service_with_letters"].name, setup["service_with_letters"].id,
+        fixtures["org_for_service_with_letters"].name, fixtures["org_for_service_with_letters"].id,
+        fixtures["service_with_letters"].name, fixtures["service_with_letters"].id,
         Decimal("0.50"), 'first', 2
     )
     assert results[4] == (
         None, None,
-        setup["service_with_letters_without_org"].name, setup["service_with_letters_without_org"].id,
+        fixtures["service_with_letters_without_org"].name, fixtures["service_with_letters_without_org"].id,
         Decimal("0.35"), 'second', 2
     )
     assert results[5] == (
         None, None,
-        setup["service_with_letters_without_org"].name, setup["service_with_letters_without_org"].id,
+        fixtures["service_with_letters_without_org"].name, fixtures["service_with_letters_without_org"].id,
         Decimal("0.50"), 'first', 1
     )
     assert results[6] == (
         None, None,
-        setup["service_with_letters_without_org"].name, setup["service_with_letters_without_org"].id,
+        fixtures["service_with_letters_without_org"].name, fixtures["service_with_letters_without_org"].id,
         Decimal("1.55"), 'international', 15
     )
 
 
 @freeze_time('2019-06-01 13:30')
 def test_fetch_usage_year_for_organisation(notify_db_session):
-    setup = set_up_usage_data(datetime(2019, 5, 1))
+    fixtures = set_up_usage_data(datetime(2019, 5, 1))
     service_with_emails_for_org = create_service(service_name='Service with emails for org')
     dao_add_service_to_organisation(
         service=service_with_emails_for_org,
-        organisation_id=setup["org_1"].id
+        organisation_id=fixtures["org_1"].id
     )
     template = create_template(service=service_with_emails_for_org, template_type='email')
     create_ft_billing(bst_date=datetime(2019, 5, 1),
                       template=template,
                       notifications_sent=1100)
-    results = fetch_usage_year_for_organisation(setup["org_1"].id, 2019)
+    results = fetch_usage_year_for_organisation(fixtures["org_1"].id, 2019)
 
     assert len(results) == 2
-    first_row = results[str(setup["service_1_sms_and_letter"].id)]
-    assert first_row['service_id'] == setup["service_1_sms_and_letter"].id
-    assert first_row['service_name'] == setup["service_1_sms_and_letter"].name
+    first_row = results[str(fixtures["service_1_sms_and_letter"].id)]
+    assert first_row['service_id'] == fixtures["service_1_sms_and_letter"].id
+    assert first_row['service_name'] == fixtures["service_1_sms_and_letter"].name
     assert first_row['free_sms_limit'] == 10
     assert first_row['sms_remainder'] == 10
     assert first_row['chargeable_billable_sms'] == 0
