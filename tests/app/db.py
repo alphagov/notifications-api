@@ -949,6 +949,7 @@ def set_up_usage_data(start_date):
     one_week_later = start_date + timedelta(days=7)
     one_month_later = start_date + timedelta(days=31)
 
+    # service with sms and letters:
     service_1_sms_and_letter = create_service(
         service_name='a - with sms and letter',
         purchase_order_number="service purchase order number",
@@ -973,6 +974,7 @@ def set_up_usage_data(start_date):
         organisation_id=org_1.id
     )
 
+    # service with emails only:
     service_with_emails = create_service(service_name='b - emails')
     email_template = create_template(service=service_with_emails, template_type='email')
     org_2 = create_organisation(
@@ -980,6 +982,7 @@ def set_up_usage_data(start_date):
     )
     dao_add_service_to_organisation(service=service_with_emails, organisation_id=org_2.id)
 
+    # service with letters:
     service_with_letters = create_service(service_name='c - letters only')
     letter_template_3 = create_template(service=service_with_letters, template_type='letter')
     org_for_service_with_letters = create_organisation(
@@ -991,9 +994,11 @@ def set_up_usage_data(start_date):
     )
     dao_add_service_to_organisation(service=service_with_letters, organisation_id=org_for_service_with_letters.id)
 
+    # service with letters, without an organisation:
     service_with_letters_without_org = create_service(service_name='d - service without org')
     letter_template_4 = create_template(service=service_with_letters_without_org, template_type='letter')
 
+    # service with chargeable SMS, without an organisation
     service_with_sms_without_org = create_service(
         service_name='b - chargeable sms',
         purchase_order_number="sms purchase order number",
@@ -1006,6 +1011,17 @@ def set_up_usage_data(start_date):
         service_id=service_with_sms_without_org.id, free_sms_fragment_limit=10, financial_year_start=year
     )
 
+    # service with SMS within free allowance
+    service_with_sms_within_allowance = create_service(
+        service_name='e - sms within allowance'
+    )
+    sms_template_2 = create_template(service=service_with_sms_within_allowance, template_type='sms')
+    create_annual_billing(
+        service_id=service_with_sms_within_allowance.id, free_sms_fragment_limit=10, financial_year_start=year
+    )
+    create_ft_billing(bst_date=one_week_later, template=sms_template_2, billable_unit=2, rate=0.11)
+
+    # all other ft billing isntances:
     create_ft_billing(bst_date=one_week_earlier, template=sms_template_1, billable_unit=2, rate=0.11)
     create_ft_billing(bst_date=start_date, template=sms_template_1, billable_unit=2, rate=0.11)
     create_ft_billing(bst_date=two_days_later, template=sms_template_1, billable_unit=1, rate=0.11)

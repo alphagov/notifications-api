@@ -134,7 +134,8 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
         end_date='2019-06-30'
     )
 
-    # we set up 5 services, but only 4 returned. service_with_emails was skipped as it had no bills to pay
+    # we set up 6 services, but only 4 returned. service_with_emails was skipped as it had no bills to pay,
+    # and likewise the service with SMS within allowance was skipped. too.
     assert len(response) == 4
     assert response[0]["organisation_id"] == str(setup["org_1"].id)
     assert response[0]["service_id"] == str(setup["service_1_sms_and_letter"].id)
