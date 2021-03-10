@@ -30,6 +30,9 @@ display_result $? 1 "Requirements check"
 flake8 .
 display_result $? 1 "Code style check"
 
+isort --check-only ./app ./tests
+display_result $? 2 "Import order check"
+
 # run with four concurrent threads
 py.test -n4 -v --maxfail=10
 display_result $? 2 "Unit tests"
