@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 import pytest
 
 from app import db
+from app.dao import fact_processing_time_dao
 from app.dao.email_branding_dao import dao_create_email_branding
 from app.dao.inbound_sms_dao import dao_create_inbound_sms
 from app.dao.invited_org_user_dao import save_invited_org_user
@@ -67,7 +68,7 @@ from app.models import (
     BroadcastEvent,
     BroadcastProvider,
     BroadcastProviderMessage,
-    BroadcastProviderMessageNumber
+    BroadcastProviderMessageNumber, FactProcessingTime
 )
 
 
@@ -750,6 +751,15 @@ def create_ft_notification_status(
     db.session.add(data)
     db.session.commit()
     return data
+
+
+def create_process_time(bst_date='2021-03-01', messages_total=35, messages_within_10_secs=34):
+    data = FactProcessingTime(
+        bst_date=bst_date,
+        messages_total=messages_total,
+        messages_within_10_secs=messages_within_10_secs
+    )
+    fact_processing_time_dao.insert_update_processing_time(data)
 
 
 def create_service_guest_list(service, email_address=None, mobile_number=None):

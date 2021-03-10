@@ -33,7 +33,7 @@ from app.dao.services_dao import (dao_add_user_to_service, dao_create_service,
                                   dao_update_service,
                                   delete_service_and_all_associated_db_objects,
                                   fetch_todays_total_message_count,
-                                  get_services_by_partial_name)
+                                  get_services_by_partial_name, get_live_services_with_organisation)
 from app.dao.users_dao import create_user_code, save_model_user
 from app.models import (EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, KEY_TYPE_NORMAL,
                         KEY_TYPE_TEAM, KEY_TYPE_TEST, LETTER_TYPE, SMS_TYPE,
@@ -1155,3 +1155,26 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
     assert len(result) == 1
     assert str(result[0].service_id) == fake_uuid
     assert result[0].permanent_failure_rate == 0.25
+
+
+def test_get_live_services_with_organisation(sample_organisation):
+    trial_service = create_service(service_name='trial service', restricted=True)
+    live_service = create_service(service_name="count as live")
+    live_service_diff_org = create_service(service_name="live service different org")
+    dont_count_as_live = create_service(service_name="dont count as live", count_as_live=False)
+    inactive_service = create_service(service_name="inactive", active=False)
+    service_without_org = create_service(service_name="no org")
+    another_org = create_organisation(name='different org', )
+
+    dao_add_service_to_organisation(trial_service, sample_organisation.id)
+    dao_add_service_to_organisation(live_service, sample_organisation.id)
+    dao_add_service_to_organisation(dont_count_as_live, sample_organisation.id)
+    dao_add_service_to_organisation(inactive_service, sample_organisation.id)
+    dao_add_service_to_organisation(live_service_diff_org, another_org.id)
+
+    services = get_live_services_with_organisation()
+    assert len(services) == 3
+    assert ([(x.service_name, x.organisation_name) for x in services]) == [
+        (live_service_diff_org.name, another_org.name),
+        (live_service.name, sample_organisation.name),
+        (service_without_org.name, None)]
