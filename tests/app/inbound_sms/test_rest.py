@@ -4,7 +4,10 @@ import pytest
 from freezegun import freeze_time
 
 from tests.app.db import (
-    create_inbound_sms, create_service, create_service_with_inbound_number, create_service_data_retention
+    create_inbound_sms,
+    create_service,
+    create_service_data_retention,
+    create_service_with_inbound_number,
 )
 
 

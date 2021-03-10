@@ -6,14 +6,17 @@ import requests_mock
 from freezegun import freeze_time
 
 from app import encryption
-from app.celery.service_callback_tasks import send_delivery_status_to_service, send_complaint_to_service
+from app.celery.service_callback_tasks import (
+    send_complaint_to_service,
+    send_delivery_status_to_service,
+)
 from app.utils import DATETIME_FORMAT
 from tests.app.db import (
     create_complaint,
     create_notification,
-    create_service_callback_api,
     create_service,
-    create_template
+    create_service_callback_api,
+    create_template,
 )
 
 

@@ -15,11 +15,11 @@ session events.
 
 """
 import datetime
+
+from sqlalchemy import Column, ForeignKeyConstraint, Integer, Table, util
 from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.orm import mapper, attributes, object_mapper
-from sqlalchemy.orm.properties import RelationshipProperty, ColumnProperty
-from sqlalchemy import Table, Column, ForeignKeyConstraint, Integer
-from sqlalchemy import util
+from sqlalchemy.orm import attributes, mapper, object_mapper
+from sqlalchemy.orm.properties import ColumnProperty, RelationshipProperty
 
 
 def col_references_table(col, table):

@@ -5,9 +5,13 @@ import pytest
 from freezegun import freeze_time
 
 from app import statsd_client
+from app.celery.process_sms_client_response_tasks import (
+    process_sms_client_response,
+)
+from app.celery.service_callback_tasks import (
+    create_delivery_status_callback_data,
+)
 from app.clients import ClientException
-from app.celery.process_sms_client_response_tasks import process_sms_client_response
-from app.celery.service_callback_tasks import create_delivery_status_callback_data
 from app.models import NOTIFICATION_TECHNICAL_FAILURE
 from tests.app.db import create_service_callback_api
 

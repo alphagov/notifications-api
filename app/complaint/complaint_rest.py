@@ -3,7 +3,10 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from app.complaint.complaint_schema import complaint_count_request
-from app.dao.complaint_dao import fetch_count_of_complaints, fetch_paginated_complaints
+from app.dao.complaint_dao import (
+    fetch_count_of_complaints,
+    fetch_paginated_complaints,
+)
 from app.errors import register_errors
 from app.schema_validation import validate
 from app.utils import pagination_links

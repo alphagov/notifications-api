@@ -1,24 +1,23 @@
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 
 import pytest
 from freezegun import freeze_time
 
 from app.models import (
     EMAIL_TYPE,
-    SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
     LETTER_TYPE,
     PRECOMPILED_TEMPLATE_NAME,
-    KEY_TYPE_TEST,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_NORMAL,
+    SMS_TYPE,
 )
-
 from tests.app.db import (
+    create_ft_notification_status,
+    create_notification,
     create_service,
     create_template,
-    create_notification,
-    create_ft_notification_status
 )
 
 

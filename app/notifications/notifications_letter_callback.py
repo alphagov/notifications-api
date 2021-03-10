@@ -1,19 +1,16 @@
 import json
-
 from functools import wraps
 
-from flask import (
-    Blueprint,
-    jsonify,
-    request,
-    current_app
-)
+from flask import Blueprint, current_app, jsonify, request
 
-from app.celery.tasks import update_letter_notifications_statuses, record_daily_sorted_counts
-from app.v2.errors import register_errors
+from app.celery.tasks import (
+    record_daily_sorted_counts,
+    update_letter_notifications_statuses,
+)
+from app.config import QueueNames
 from app.notifications.utils import autoconfirm_subscription
 from app.schema_validation import validate
-from app.config import QueueNames
+from app.v2.errors import register_errors
 
 letter_callback_blueprint = Blueprint('notifications_letter_callback', __name__)
 register_errors(letter_callback_blueprint)

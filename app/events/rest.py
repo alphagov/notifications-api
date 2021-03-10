@@ -1,13 +1,8 @@
-from flask import (
-    Blueprint,
-    jsonify,
-    request
-)
+from flask import Blueprint, jsonify, request
 
-from app.errors import register_errors
-
-from app.schemas import event_schema
 from app.dao.events_dao import dao_create_event
+from app.errors import register_errors
+from app.schemas import event_schema
 
 events = Blueprint('events', __name__, url_prefix='/events')
 register_errors(events)

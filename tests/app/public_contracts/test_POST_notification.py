@@ -1,7 +1,8 @@
 from flask import json
 
-from . import return_json_from_response, validate_v0
 from tests import create_authorization_header
+
+from . import return_json_from_response, validate_v0
 
 
 def _post_notification(client, template, url, to):

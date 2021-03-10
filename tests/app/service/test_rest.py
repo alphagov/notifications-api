@@ -1,19 +1,36 @@
 import json
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from unittest.mock import ANY
 
 import pytest
-from flask import url_for, current_app
+from flask import current_app, url_for
 from freezegun import freeze_time
 
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
-from app.dao.services_dao import dao_add_user_to_service, dao_remove_user_from_service
 from app.dao.service_user_dao import dao_get_service_user
+from app.dao.services_dao import (
+    dao_add_user_to_service,
+    dao_remove_user_from_service,
+)
 from app.dao.templates_dao import dao_redact_template
 from app.dao.users_dao import save_model_user
 from app.models import (
+    BROADCAST_TYPE,
+    EMAIL_AUTH_TYPE,
+    EMAIL_TYPE,
+    INBOUND_SMS_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    NOTIFICATION_RETURNED_LETTER,
+    SERVICE_PERMISSION_TYPES,
+    SMS_TYPE,
+    UPLOAD_LETTERS,
     EmailBranding,
     InboundNumber,
     Notification,
@@ -25,46 +42,32 @@ from app.models import (
     ServicePermission,
     ServiceSmsSender,
     User,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEAM,
-    KEY_TYPE_TEST,
-    EMAIL_TYPE,
-    SMS_TYPE,
-    LETTER_TYPE,
-    BROADCAST_TYPE,
-    INTERNATIONAL_LETTERS,
-    INTERNATIONAL_SMS_TYPE,
-    INBOUND_SMS_TYPE,
-    EMAIL_AUTH_TYPE,
-    NOTIFICATION_RETURNED_LETTER,
-    UPLOAD_LETTERS,
-    SERVICE_PERMISSION_TYPES,
 )
 from tests import create_authorization_header
 from tests.app.db import (
+    create_annual_billing,
+    create_api_key,
+    create_domain,
+    create_email_branding,
     create_ft_billing,
     create_ft_notification_status,
+    create_inbound_number,
+    create_job,
+    create_letter_branding,
+    create_letter_contact,
+    create_notification,
+    create_notification_history,
+    create_organisation,
+    create_reply_to_email,
+    create_returned_letter,
     create_service,
+    create_service_sms_sender,
+    create_service_with_defined_sms_sender,
     create_service_with_inbound_number,
     create_template,
     create_template_folder,
-    create_notification,
-    create_reply_to_email,
-    create_letter_contact,
-    create_inbound_number,
-    create_service_sms_sender,
-    create_service_with_defined_sms_sender,
-    create_letter_branding,
-    create_organisation,
-    create_domain,
-    create_email_branding,
-    create_annual_billing,
-    create_returned_letter,
-    create_notification_history,
-    create_job,
-    create_api_key
+    create_user,
 )
-from tests.app.db import create_user
 
 
 def test_get_service_list(client, service_factory):

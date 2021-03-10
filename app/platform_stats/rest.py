@@ -4,15 +4,18 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
-    fetch_sms_billing_for_all_services, fetch_letter_costs_for_all_services,
-    fetch_letter_line_items_for_all_services
+    fetch_letter_costs_for_all_services,
+    fetch_letter_line_items_for_all_services,
+    fetch_sms_billing_for_all_services,
 )
-from app.dao.fact_notification_status_dao import fetch_notification_status_totals_for_all_services
-from app.errors import register_errors, InvalidRequest
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_status_totals_for_all_services,
+)
+from app.errors import InvalidRequest, register_errors
 from app.models import UK_POSTAGE_TYPES
 from app.platform_stats.platform_stats_schema import platform_stats_request
-from app.service.statistics import format_admin_stats
 from app.schema_validation import validate
+from app.service.statistics import format_admin_stats
 from app.utils import get_london_midnight_in_utc
 
 platform_stats_blueprint = Blueprint('platform_stats', __name__)

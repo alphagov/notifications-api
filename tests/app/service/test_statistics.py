@@ -2,8 +2,8 @@ import collections
 from datetime import datetime
 from unittest.mock import Mock
 
-from freezegun import freeze_time
 import pytest
+from freezegun import freeze_time
 
 from app.service.statistics import (
     add_monthly_notification_status_stats,
@@ -11,7 +11,7 @@ from app.service.statistics import (
     create_stats_dict,
     create_zeroed_stats_dicts,
     format_admin_stats,
-    format_statistics
+    format_statistics,
 )
 
 StatsRow = collections.namedtuple('row', ('notification_type', 'status', 'count'))

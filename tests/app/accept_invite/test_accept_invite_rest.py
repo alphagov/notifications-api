@@ -1,9 +1,10 @@
 import uuid
 
 import pytest
-from flask import json, current_app
+from flask import current_app, json
 from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
+
 from tests import create_authorization_header
 
 

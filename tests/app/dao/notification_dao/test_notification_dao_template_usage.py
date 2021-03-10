@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
+
 from app.dao.notifications_dao import dao_get_last_date_template_was_used
-from tests.app.db import create_notification, create_ft_notification_status
+from tests.app.db import create_ft_notification_status, create_notification
 
 
 def test_dao_get_last_date_template_was_used_returns_bst_date_from_stats_table(

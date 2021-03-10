@@ -1,9 +1,7 @@
+import uuid
 from datetime import datetime
 
 import pytest
-
-import uuid
-
 from freezegun import freeze_time
 
 from app.models import Service

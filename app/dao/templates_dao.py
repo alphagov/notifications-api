@@ -1,23 +1,19 @@
-from datetime import datetime
 import uuid
+from datetime import datetime
 
 from flask import current_app
 from sqlalchemy import asc, desc
 
 from app import db
+from app.dao.dao_utils import VersionOptions, transactional, version_class
+from app.dao.users_dao import get_user_by_id
 from app.models import (
     LETTER_TYPE,
     SECOND_CLASS,
     Template,
     TemplateHistory,
-    TemplateRedacted
+    TemplateRedacted,
 )
-from app.dao.dao_utils import (
-    transactional,
-    version_class,
-    VersionOptions,
-)
-from app.dao.users_dao import get_user_by_id
 
 
 @transactional

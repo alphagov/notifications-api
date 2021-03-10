@@ -1,5 +1,5 @@
-from app.schema_validation.definitions import uuid
 from app.models import BroadcastStatusType
+from app.schema_validation.definitions import uuid
 
 create_broadcast_message_schema = {
     '$schema': 'http://json-schema.org/draft-04/schema#',

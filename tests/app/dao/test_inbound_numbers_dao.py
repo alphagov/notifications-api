@@ -2,15 +2,15 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.inbound_numbers_dao import (
-    dao_get_inbound_numbers,
-    dao_get_inbound_number_for_service,
+    dao_allocate_number_for_service,
     dao_get_available_inbound_numbers,
-    dao_set_inbound_number_to_service,
+    dao_get_inbound_number_for_service,
+    dao_get_inbound_numbers,
     dao_set_inbound_number_active_flag,
-    dao_allocate_number_for_service)
+    dao_set_inbound_number_to_service,
+)
 from app.models import InboundNumber
-
-from tests.app.db import create_service, create_inbound_number
+from tests.app.db import create_inbound_number, create_service
 
 
 def test_get_inbound_numbers(notify_db, notify_db_session, sample_inbound_numbers):

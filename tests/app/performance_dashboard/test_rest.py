@@ -1,5 +1,10 @@
 from datetime import date
-from tests.app.db import create_template, create_ft_notification_status, create_process_time
+
+from tests.app.db import (
+    create_ft_notification_status,
+    create_process_time,
+    create_template,
+)
 
 
 def test_performance_dashboard(sample_service, admin_request):

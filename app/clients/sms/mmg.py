@@ -1,7 +1,9 @@
 import json
 from time import monotonic
-from requests import (request, RequestException)
-from app.clients.sms import (SmsClient, SmsClientResponseException)
+
+from requests import RequestException, request
+
+from app.clients.sms import SmsClient, SmsClientResponseException
 
 mmg_response_map = {
     '2': {'status': 'permanent-failure', 'substatus': {

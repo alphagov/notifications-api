@@ -1,7 +1,11 @@
 from flask import json, url_for
 
 from tests import create_authorization_header
-from tests.app.db import create_inbound_sms, create_service_inbound_api, create_service_callback_api
+from tests.app.db import (
+    create_inbound_sms,
+    create_service_callback_api,
+    create_service_inbound_api,
+)
 
 
 def test_get_inbound_sms_returns_200(

@@ -1,43 +1,39 @@
 import uuid
+from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest.mock import call
 
 import pytest
-from collections import namedtuple
 from freezegun import freeze_time
 from mock import mock
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    check_for_missing_rows_in_completed_jobs,
+    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
+    check_if_letters_still_in_created,
+    check_if_letters_still_pending_virus_check,
     check_job_status,
     delete_invitations,
     delete_verify_codes,
-    run_scheduled_jobs,
     replay_created_notifications,
-    check_if_letters_still_pending_virus_check,
-    check_if_letters_still_in_created,
-    check_for_missing_rows_in_completed_jobs,
-    check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
+    run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
     trigger_link_tests,
 )
-from app.config import QueueNames, Config
+from app.config import Config, QueueNames
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import (
-    JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
+    JOB_STATUS_IN_PROGRESS,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
-from tests.conftest import set_config
 from tests.app import load_example_csv
-from tests.app.db import (
-    create_notification,
-    create_template,
-    create_job,
-)
+from tests.app.db import create_job, create_notification, create_template
+from tests.conftest import set_config
 
 
 def _create_slow_delivery_notification(template, provider='mmg'):

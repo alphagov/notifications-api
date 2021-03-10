@@ -5,13 +5,12 @@ import pytest
 from freezegun import freeze_time
 
 from app import db
-from app.models import Service
-from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
 from app.dao.api_key_dao import expire_api_key
+from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
 from app.dao.templates_dao import dao_update_template
-
+from app.models import Service
 from tests import create_authorization_header, unwrap_function
-from tests.app.db import create_template, create_api_key
+from tests.app.db import create_api_key, create_template
 
 
 def test_archive_only_allows_post(client, notify_db_session):

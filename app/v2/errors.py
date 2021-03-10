@@ -1,6 +1,6 @@
 import json
 
-from flask import jsonify, current_app, request
+from flask import current_app, jsonify, request
 from jsonschema import ValidationError as JsonSchemaValidationError
 from notifications_utils.recipients import InvalidEmailError
 from sqlalchemy.exc import DataError

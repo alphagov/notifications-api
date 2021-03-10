@@ -1,9 +1,12 @@
-import os
 import json
+import os
 
 import pytest
 
-from app.cloudfoundry_config import extract_cloudfoundry_config, set_config_env_vars
+from app.cloudfoundry_config import (
+    extract_cloudfoundry_config,
+    set_config_env_vars,
+)
 
 
 @pytest.fixture

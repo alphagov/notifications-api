@@ -1,11 +1,10 @@
 import pytest
-
 from flask import json
 
-from app.models import (TEMPLATE_TYPES, EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,)
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.utils import DATETIME_FORMAT
 from tests import create_authorization_header
-from tests.app.db import create_template, create_letter_contact
+from tests.app.db import create_letter_contact, create_template
 
 valid_version_params = [None, 1]
 

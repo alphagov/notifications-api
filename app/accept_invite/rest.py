@@ -1,23 +1,11 @@
-from flask import (
-    Blueprint,
-    jsonify,
-    current_app
-)
-
-from itsdangerous import SignatureExpired, BadData
-
+from flask import Blueprint, current_app, jsonify
+from itsdangerous import BadData, SignatureExpired
 from notifications_utils.url_safe_token import check_token
 
 from app.dao.invited_user_dao import get_invited_user_by_id
 from app.dao.organisation_dao import dao_get_invited_organisation_user
-
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-
+from app.errors import InvalidRequest, register_errors
 from app.schemas import invited_user_schema
-
 
 accept_invite = Blueprint('accept_invite', __name__)
 register_errors(accept_invite)

@@ -1,4 +1,5 @@
 from flask import Blueprint
+
 from app.v2.errors import register_errors
 
 v2_broadcast_blueprint = Blueprint(

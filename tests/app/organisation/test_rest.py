@@ -1,23 +1,25 @@
-from datetime import datetime
-
 import uuid
+from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
 
+from app.dao.organisation_dao import (
+    dao_add_service_to_organisation,
+    dao_add_user_to_organisation,
+)
 from app.dao.services_dao import dao_archive_service
 from app.models import Organisation
-from app.dao.organisation_dao import dao_add_service_to_organisation, dao_add_user_to_organisation
 from tests.app.db import (
+    create_annual_billing,
     create_domain,
     create_email_branding,
+    create_ft_billing,
     create_letter_branding,
     create_organisation,
     create_service,
-    create_user,
     create_template,
-    create_ft_billing,
-    create_annual_billing
+    create_user,
 )
 
 

@@ -1,27 +1,23 @@
-import pytest
-
 from datetime import datetime, timedelta
+
+import pytest
 from freezegun import freeze_time
 from sqlalchemy.sql import desc
 
-from app.models import ProviderDetails, ProviderDetailsHistory
 from app import notification_provider_clients
 from app.dao.provider_details_dao import (
+    _adjust_provider_priority,
+    _get_sms_providers_for_update,
+    dao_adjust_provider_priority_back_to_resting_points,
+    dao_get_provider_stats,
+    dao_reduce_sms_provider_priority,
+    dao_update_provider_details,
     get_alternative_sms_provider,
     get_provider_details_by_identifier,
     get_provider_details_by_notification_type,
-    dao_update_provider_details,
-    dao_get_provider_stats,
-    dao_reduce_sms_provider_priority,
-    dao_adjust_provider_priority_back_to_resting_points,
-    _adjust_provider_priority,
-    _get_sms_providers_for_update,
 )
-from tests.app.db import (
-    create_ft_billing,
-    create_service,
-    create_template,
-)
+from app.models import ProviderDetails, ProviderDetailsHistory
+from tests.app.db import create_ft_billing, create_service, create_template
 from tests.conftest import set_config
 
 

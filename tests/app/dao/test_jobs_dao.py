@@ -18,14 +18,22 @@ from app.dao.jobs_dao import (
     dao_set_scheduled_jobs_to_pending,
     dao_update_job,
     find_jobs_with_missing_rows,
-    find_missing_row_for_job
+    find_missing_row_for_job,
 )
 from app.models import (
+    EMAIL_TYPE,
+    JOB_STATUS_FINISHED,
+    LETTER_TYPE,
+    SMS_TYPE,
     Job,
-    EMAIL_TYPE, SMS_TYPE, LETTER_TYPE,
-    JOB_STATUS_FINISHED
 )
-from tests.app.db import create_job, create_service, create_template, create_notification, create_service_contact_list
+from tests.app.db import (
+    create_job,
+    create_notification,
+    create_service,
+    create_service_contact_list,
+    create_template,
+)
 
 
 def test_should_count_of_statuses_for_notifications_associated_with_job(sample_template, sample_job):

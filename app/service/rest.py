@@ -1,12 +1,7 @@
 import itertools
 from datetime import datetime
 
-from flask import (
-    jsonify,
-    request,
-    current_app,
-    Blueprint
-)
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import letter_can_be_cancelled
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
@@ -15,23 +10,24 @@ from sqlalchemy.orm.exc import NoResultFound
 from app.aws import s3
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
-from app.dao.dao_utils import dao_rollback
-from app.dao.date_util import get_financial_year
 from app.dao.api_key_dao import (
-    save_model_api_key,
+    expire_api_key,
     get_model_api_keys,
     get_unsigned_secret,
-    expire_api_key)
+    save_model_api_key,
+)
+from app.dao.broadcast_service_dao import set_broadcast_service_type
+from app.dao.dao_utils import dao_rollback
+from app.dao.date_util import get_financial_year
 from app.dao.fact_notification_status_dao import (
+    fetch_monthly_template_usage_for_service,
     fetch_notification_status_for_service_by_month,
     fetch_notification_status_for_service_for_day,
     fetch_notification_status_for_service_for_today_and_7_previous_days,
-    fetch_stats_for_all_services_by_date_range, fetch_monthly_template_usage_for_service
+    fetch_stats_for_all_services_by_date_range,
 )
 from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
-from app.dao.organisation_dao import (
-    dao_get_organisation_by_service_id,
-)
+from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
@@ -40,11 +36,10 @@ from app.dao.returned_letters_dao import (
 )
 from app.dao.service_contact_list_dao import (
     dao_archive_contact_list,
-    dao_get_contact_lists,
     dao_get_contact_list_by_id,
+    dao_get_contact_lists,
     save_service_contact_list,
 )
-from app.dao.broadcast_service_dao import set_broadcast_service_type
 from app.dao.service_data_retention_dao import (
     fetch_service_data_retention,
     fetch_service_data_retention_by_id,
@@ -52,13 +47,32 @@ from app.dao.service_data_retention_dao import (
     insert_service_data_retention,
     update_service_data_retention,
 )
+from app.dao.service_email_reply_to_dao import (
+    add_reply_to_email_address_for_service,
+    archive_reply_to_email_address,
+    dao_get_reply_to_by_id,
+    dao_get_reply_to_by_service_id,
+    update_reply_to_email_address,
+)
+from app.dao.service_guest_list_dao import (
+    dao_add_and_commit_guest_list_contacts,
+    dao_fetch_service_guest_list,
+    dao_remove_service_guest_list,
+)
+from app.dao.service_letter_contact_dao import (
+    add_letter_contact_for_service,
+    archive_letter_contact,
+    dao_get_letter_contact_by_id,
+    dao_get_letter_contacts_by_service_id,
+    update_letter_contact,
+)
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
     dao_add_sms_sender_for_service,
-    dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number
+    dao_update_service_sms_sender,
+    update_existing_sms_sender_with_inbound_number,
 )
 from app.dao.services_dao import (
     dao_add_user_to_service,
@@ -68,78 +82,71 @@ from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
     dao_fetch_live_services_data,
     dao_fetch_service_by_id,
-    dao_fetch_todays_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
-    dao_resume_service,
+    dao_fetch_todays_stats_for_service,
     dao_remove_user_from_service,
+    dao_resume_service,
     dao_suspend_service,
     dao_update_service,
     get_services_by_partial_name,
 )
-from app.dao.service_guest_list_dao import (
-    dao_fetch_service_guest_list,
-    dao_add_and_commit_guest_list_contacts,
-    dao_remove_service_guest_list
-)
-from app.dao.service_email_reply_to_dao import (
-    add_reply_to_email_address_for_service,
-    archive_reply_to_email_address,
-    dao_get_reply_to_by_id,
-    dao_get_reply_to_by_service_id,
-    update_reply_to_email_address
-)
-from app.dao.service_letter_contact_dao import (
-    archive_letter_contact,
-    dao_get_letter_contacts_by_service_id,
-    dao_get_letter_contact_by_id,
-    add_letter_contact_for_service,
-    update_letter_contact
-)
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
-from app.errors import (
-    InvalidRequest,
-    register_errors
-)
+from app.errors import InvalidRequest, register_errors
 from app.letters.utils import letter_print_day
 from app.models import (
     KEY_TYPE_NORMAL,
     LETTER_TYPE,
     NOTIFICATION_CANCELLED,
-    Permission,
-    Service,
     EmailBranding,
     LetterBranding,
-    ServiceContactList
+    Permission,
+    Service,
+    ServiceContactList,
 )
-from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue,
+)
 from app.schema_validation import validate
+from app.schemas import (
+    api_key_schema,
+    detailed_service_schema,
+    email_data_request_schema,
+    notification_with_template_schema,
+    notifications_filter_schema,
+    service_schema,
+)
 from app.service import statistics
+from app.service.send_notification import (
+    send_one_off_notification,
+    send_pdf_letter_notification,
+)
 from app.service.send_pdf_letter_schema import send_pdf_letter_request
-from app.service.service_contact_list_schema import create_service_contact_list_schema
+from app.service.sender import send_notification_to_service_users
+from app.service.service_broadcast_settings_schema import (
+    service_broadcast_settings_schema,
+)
+from app.service.service_contact_list_schema import (
+    create_service_contact_list_schema,
+)
 from app.service.service_data_retention_schema import (
     add_service_data_retention_request,
-    update_service_data_retention_request
+    update_service_data_retention_request,
 )
 from app.service.service_senders_schema import (
     add_service_email_reply_to_request,
     add_service_letter_contact_block_request,
-    add_service_sms_sender_request
+    add_service_sms_sender_request,
 )
-from app.service.service_broadcast_settings_schema import service_broadcast_settings_schema
 from app.service.utils import get_guest_list_objects
-from app.service.sender import send_notification_to_service_users
-from app.service.send_notification import send_one_off_notification, send_pdf_letter_notification
-from app.schemas import (
-    service_schema,
-    api_key_schema,
-    notification_with_template_schema,
-    notifications_filter_schema,
-    detailed_service_schema,
-    email_data_request_schema
-)
 from app.user.users_schema import post_set_permissions_schema
-from app.utils import DATE_FORMAT, DATETIME_FORMAT_NO_TIMEZONE, midnight_n_days_ago, pagination_links
+from app.utils import (
+    DATE_FORMAT,
+    DATETIME_FORMAT_NO_TIMEZONE,
+    midnight_n_days_ago,
+    pagination_links,
+)
 
 service_blueprint = Blueprint('service', __name__)
 
@@ -367,11 +374,11 @@ def remove_user_from_service(service_id, user_id):
 # tables. This is so product owner can pass stories as done
 @service_blueprint.route('/<uuid:service_id>/history', methods=['GET'])
 def get_service_history(service_id):
-    from app.models import (Service, ApiKey, TemplateHistory)
+    from app.models import ApiKey, Service, TemplateHistory
     from app.schemas import (
-        service_history_schema,
         api_key_history_schema,
-        template_history_schema
+        service_history_schema,
+        template_history_schema,
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
@@ -570,7 +577,7 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
 
 @service_blueprint.route('/<uuid:service_id>/guest-list', methods=['GET'])
 def get_guest_list(service_id):
-    from app.models import (EMAIL_TYPE, MOBILE_TYPE)
+    from app.models import EMAIL_TYPE, MOBILE_TYPE
     service = dao_fetch_service_by_id(service_id)
 
     if not service:

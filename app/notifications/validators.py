@@ -1,31 +1,45 @@
-from notifications_utils.postal_address import PostalAddress
-from sqlalchemy.orm.exc import NoResultFound
 from flask import current_app
+from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from notifications_utils.recipients import (
-    validate_and_format_phone_number,
-    validate_and_format_email_address,
-    get_international_phone_info
+from notifications_utils.clients.redis import (
+    daily_limit_cache_key,
+    rate_limit_cache_key,
 )
-from notifications_utils.clients.redis import rate_limit_cache_key, daily_limit_cache_key
+from notifications_utils.postal_address import PostalAddress
+from notifications_utils.recipients import (
+    get_international_phone_info,
+    validate_and_format_email_address,
+    validate_and_format_phone_number,
+)
+from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao import services_dao
-from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.models import (
-    INTERNATIONAL_SMS_TYPE, SMS_TYPE, EMAIL_TYPE, LETTER_TYPE,
-    KEY_TYPE_TEST, KEY_TYPE_TEAM,
-    ServicePermission,
-    INTERNATIONAL_LETTERS)
-from app.service.utils import service_allowed_to_send_to
-from app.v2.errors import TooManyRequestsError, BadRequestError, RateLimitError, ValidationError
 from app import redis_store
-from app.notifications.process_notifications import create_content_for_notification
-from app.utils import get_public_notify_type_text
+from app.dao import services_dao
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
+from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
+from app.models import (
+    EMAIL_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    SMS_TYPE,
+    ServicePermission,
+)
+from app.notifications.process_notifications import (
+    create_content_for_notification,
+)
 from app.serialised_models import SerialisedTemplate
-
-from gds_metrics.metrics import Histogram
+from app.service.utils import service_allowed_to_send_to
+from app.utils import get_public_notify_type_text
+from app.v2.errors import (
+    BadRequestError,
+    RateLimitError,
+    TooManyRequestsError,
+    ValidationError,
+)
 
 REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
     'redis_exceeded_rate_limit_duration_seconds',

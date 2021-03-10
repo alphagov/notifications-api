@@ -5,18 +5,21 @@ import pytest
 from flask import json
 from freezegun import freeze_time
 
+from app.models import EMAIL_TYPE, INBOUND_SMS_TYPE, SMS_TYPE, InboundSms
 from app.notifications.receive_notifications import (
-    format_mmg_message,
-    format_mmg_datetime,
     create_inbound_sms_object,
-    strip_leading_forty_four,
+    format_mmg_datetime,
+    format_mmg_message,
     has_inbound_sms_permissions,
+    strip_leading_forty_four,
     unescape_string,
 )
-
-from app.models import InboundSms, EMAIL_TYPE, SMS_TYPE, INBOUND_SMS_TYPE
+from tests.app.db import (
+    create_inbound_number,
+    create_service,
+    create_service_with_inbound_number,
+)
 from tests.conftest import set_config
-from tests.app.db import create_inbound_number, create_service, create_service_with_inbound_number
 
 
 def firetext_post(client, data, auth=True, password='testkey'):

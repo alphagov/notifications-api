@@ -1,9 +1,8 @@
-from flask import Blueprint
-from flask import current_app
-from flask import json
-from flask import request, jsonify
+from flask import Blueprint, current_app, json, jsonify, request
 
-from app.celery.process_sms_client_response_tasks import process_sms_client_response
+from app.celery.process_sms_client_response_tasks import (
+    process_sms_client_response,
+)
 from app.config import QueueNames
 from app.errors import InvalidRequest, register_errors
 

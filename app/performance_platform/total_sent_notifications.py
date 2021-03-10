@@ -1,5 +1,7 @@
 from app import performance_platform_client
-from app.dao.fact_notification_status_dao import get_total_sent_notifications_for_day_and_type
+from app.dao.fact_notification_status_dao import (
+    get_total_sent_notifications_for_day_and_type,
+)
 
 
 def send_total_notifications_sent_for_day_stats(start_time, notification_type, count):

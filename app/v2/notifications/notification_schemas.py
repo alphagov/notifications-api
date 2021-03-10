@@ -1,11 +1,10 @@
 from app.models import (
-    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
+    NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_TYPES,
 )
-from app.schema_validation.definitions import (uuid, personalisation)
-
+from app.schema_validation.definitions import personalisation, uuid
 
 template = {
     "$schema": "http://json-schema.org/draft-04/schema#",

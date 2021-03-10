@@ -1,24 +1,26 @@
+import json
 from calendar import monthrange
 from datetime import datetime, timedelta
-import json
 
 import pytest
 from freezegun import freeze_time
 
-from app.models import FactBilling
-from app.dao.date_util import get_current_financial_year_start_year, get_month_start_and_end_date_in_utc
+from app.billing.rest import update_free_sms_fragment_limit_data
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
+from app.dao.date_util import (
+    get_current_financial_year_start_year,
+    get_month_start_and_end_date_in_utc,
+)
+from app.models import FactBilling
+from tests import create_authorization_header
 from tests.app.db import (
+    create_annual_billing,
+    create_ft_billing,
     create_notification,
     create_rate,
-    create_annual_billing,
-    create_template,
     create_service,
-    create_ft_billing
+    create_template,
 )
-from app.billing.rest import update_free_sms_fragment_limit_data
-
-from tests import create_authorization_header
 
 APR_2016_MONTH_START = datetime(2016, 3, 31, 23, 00, 00)
 APR_2016_MONTH_END = datetime(2016, 4, 30, 22, 59, 59, 99999)

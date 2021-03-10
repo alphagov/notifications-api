@@ -1,11 +1,7 @@
 import uuid
 
-from tests.app.db import (
-    create_service_inbound_api,
-    create_service_callback_api
-)
-
-from app.models import ServiceInboundApi, ServiceCallbackApi
+from app.models import ServiceCallbackApi, ServiceInboundApi
+from tests.app.db import create_service_callback_api, create_service_inbound_api
 
 
 def test_create_service_inbound_api(admin_request, sample_service):

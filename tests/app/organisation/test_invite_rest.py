@@ -1,7 +1,6 @@
 import pytest
 
-from app.models import Notification, INVITE_PENDING
-
+from app.models import INVITE_PENDING, Notification
 from tests.app.db import create_invited_org_user
 
 

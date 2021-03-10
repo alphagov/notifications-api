@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, date
-from unittest.mock import call, patch, PropertyMock
+from datetime import date, datetime, timedelta
+from unittest.mock import PropertyMock, call, patch
 
 import pytest
 import pytz
@@ -14,6 +14,7 @@ from app.celery.nightly_tasks import (
     delete_letter_notifications_older_than_retention,
     delete_sms_notifications_older_than_retention,
     get_letter_notifications_still_sending_when_they_shouldnt_be,
+    letter_raise_alert_if_no_ack_file_for_zip,
     raise_alert_if_letter_notifications_still_sending,
     remove_letter_csv_files,
     remove_sms_email_csv_files,
@@ -21,25 +22,24 @@ from app.celery.nightly_tasks import (
     send_daily_performance_platform_stats,
     send_total_sent_notifications_to_performance_platform,
     timeout_notifications,
-    letter_raise_alert_if_no_ack_file_for_zip,
 )
-from app.celery.service_callback_tasks import create_delivery_status_callback_data
-from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
+from app.celery.service_callback_tasks import (
+    create_delivery_status_callback_data,
+)
+from app.clients.performance_platform.performance_platform_client import (
+    PerformancePlatformClient,
+)
 from app.config import QueueNames
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import (
-    LETTER_TYPE,
-    SMS_TYPE,
-    EMAIL_TYPE
-)
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 from tests.app.db import (
+    create_ft_notification_status,
+    create_job,
     create_notification,
     create_service,
-    create_template,
-    create_job,
     create_service_callback_api,
     create_service_data_retention,
-    create_ft_notification_status
+    create_template,
 )
 
 

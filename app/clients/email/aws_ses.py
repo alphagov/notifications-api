@@ -1,10 +1,15 @@
+from time import monotonic
+
 import boto3
 import botocore
 from flask import current_app
-from time import monotonic
 
 from app.clients import STATISTICS_DELIVERED, STATISTICS_FAILURE
-from app.clients.email import EmailClient, EmailClientException, EmailClientNonRetryableException
+from app.clients.email import (
+    EmailClient,
+    EmailClientException,
+    EmailClientNonRetryableException,
+)
 
 ses_response_map = {
     'Permanent': {

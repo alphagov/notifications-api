@@ -1,32 +1,28 @@
-from datetime import (
-    datetime,
-    date,
-    timedelta)
-from flask_marshmallow.fields import fields
-from marshmallow import (
-    post_load,
-    ValidationError,
-    validates,
-    validates_schema,
-    pre_load,
-    pre_dump,
-    post_dump
-)
-from marshmallow_sqlalchemy import field_for
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
+from flask_marshmallow.fields import fields
+from marshmallow import (
+    ValidationError,
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+    validates,
+    validates_schema,
+)
+from marshmallow_sqlalchemy import field_for
 from notifications_utils.recipients import (
-    validate_email_address,
     InvalidEmailError,
-    validate_phone_number,
     InvalidPhoneError,
-    validate_and_format_phone_number
+    validate_and_format_phone_number,
+    validate_email_address,
+    validate_phone_number,
 )
 
-from app import ma
-from app import models
-from app.models import ServicePermission
+from app import ma, models
 from app.dao.permissions_dao import permission_dao
+from app.models import ServicePermission
 from app.utils import DATETIME_FORMAT_NO_TIMEZONE, get_template_instance
 
 

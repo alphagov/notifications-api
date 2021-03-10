@@ -1,27 +1,33 @@
 import itertools
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 from freezegun import freeze_time
 
-from app.config import QueueNames
 from app.celery.reporting_tasks import (
     create_nightly_billing,
-    create_nightly_notification_status,
     create_nightly_billing_for_day,
+    create_nightly_notification_status,
     create_nightly_notification_status_for_day,
 )
+from app.config import QueueNames
 from app.dao.fact_billing_dao import get_rate
 from app.models import (
-    FactBilling,
-    Notification,
-    LETTER_TYPE,
     EMAIL_TYPE,
-    SMS_TYPE, FactNotificationStatus
+    LETTER_TYPE,
+    SMS_TYPE,
+    FactBilling,
+    FactNotificationStatus,
+    Notification,
 )
-
-from tests.app.db import create_service, create_template, create_notification, create_rate, create_letter_rate
+from tests.app.db import (
+    create_letter_rate,
+    create_notification,
+    create_rate,
+    create_service,
+    create_template,
+)
 
 
 def mocker_get_rate(

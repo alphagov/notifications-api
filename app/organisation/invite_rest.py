@@ -1,25 +1,24 @@
-from flask import (
-    Blueprint,
-    request,
-    jsonify,
-    current_app)
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.url_safe_token import generate_token
 
 from app.config import QueueNames
 from app.dao.invited_org_user_dao import (
-    save_invited_org_user,
     get_invited_org_user,
-    get_invited_org_users_for_organisation
+    get_invited_org_users_for_organisation,
+    save_invited_org_user,
 )
 from app.dao.templates_dao import dao_get_template_by_id
 from app.errors import register_errors
 from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL, InvitedOrganisationUser
-from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.schema_validation import validate
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue,
+)
 from app.organisation.organisation_schema import (
     post_create_invited_org_user_status_schema,
-    post_update_invited_org_user_status_schema
+    post_update_invited_org_user_status_schema,
 )
+from app.schema_validation import validate
 
 organisation_invite_blueprint = Blueprint(
     'organisation_invite', __name__,

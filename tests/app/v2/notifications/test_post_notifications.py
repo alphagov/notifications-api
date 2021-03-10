@@ -4,30 +4,31 @@ from unittest.mock import call
 
 import pytest
 from boto.exception import SQSError
+from flask import current_app, json
 
 from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
     EMAIL_TYPE,
+    INTERNATIONAL_SMS_TYPE,
     NOTIFICATION_CREATED,
     SMS_TYPE,
-    INTERNATIONAL_SMS_TYPE
+    Notification,
 )
-from flask import json, current_app
-
-from app.models import Notification
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
-from app.v2.notifications.notification_schemas import post_sms_response, post_email_response
+from app.v2.notifications.notification_schemas import (
+    post_email_response,
+    post_sms_response,
+)
 from tests import create_authorization_header
-
 from tests.app.db import (
-    create_service,
-    create_template,
+    create_api_key,
     create_reply_to_email,
+    create_service,
     create_service_sms_sender,
     create_service_with_inbound_number,
-    create_api_key
+    create_template,
 )
 from tests.conftest import set_config_values
 

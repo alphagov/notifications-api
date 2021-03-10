@@ -8,26 +8,30 @@ from datetime import datetime, timedelta
 import botocore
 import pytest
 import requests_mock
-from PyPDF2.utils import PdfReadError
 from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
+from PyPDF2.utils import PdfReadError
 
-
+from app.dao.templates_dao import (
+    dao_get_template_by_id,
+    dao_get_template_versions,
+    dao_redact_template,
+    dao_update_template,
+)
 from app.models import (
     BROADCAST_TYPE,
     EMAIL_TYPE,
     LETTER_TYPE,
     SMS_TYPE,
     Template,
-    TemplateHistory
+    TemplateHistory,
 )
-from app.dao.templates_dao import (
-    dao_get_template_by_id, dao_get_template_versions, dao_redact_template, dao_update_template
-)
-
 from tests import create_authorization_header
 from tests.app.db import (
-    create_service, create_letter_contact, create_template, create_notification,
+    create_letter_contact,
+    create_notification,
+    create_service,
+    create_template,
     create_template_folder,
 )
 from tests.conftest import set_config_values

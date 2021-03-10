@@ -1,4 +1,4 @@
-from flask import jsonify, request, url_for, current_app
+from flask import current_app, jsonify, request, url_for
 
 from app import authenticated_service
 from app.dao import inbound_sms_dao

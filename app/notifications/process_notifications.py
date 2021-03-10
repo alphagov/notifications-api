@@ -2,42 +2,37 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
-
+from gds_metrics import Histogram
 from notifications_utils.clients import redis
 from notifications_utils.recipients import (
+    format_email_address,
     get_international_phone_info,
     validate_and_format_phone_number,
-    format_email_address
 )
 from notifications_utils.template import (
+    LetterPrintTemplate,
     PlainTextEmailTemplate,
     SMSMessageTemplate,
-    LetterPrintTemplate,
 )
 
 from app import redis_store
 from app.celery import provider_tasks
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.config import QueueNames
-
-from app.models import (
-    EMAIL_TYPE,
-    KEY_TYPE_TEST,
-    SMS_TYPE,
-    LETTER_TYPE,
-    NOTIFICATION_CREATED,
-    Notification,
-    INTERNATIONAL_POSTAGE_TYPES)
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_delete_notifications_by_id,
 )
-
+from app.models import (
+    EMAIL_TYPE,
+    INTERNATIONAL_POSTAGE_TYPES,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    SMS_TYPE,
+    Notification,
+)
 from app.v2.errors import BadRequestError
-
-
-from gds_metrics import Histogram
-
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
     'redis_get_and_incr_daily_limit_duration_seconds',

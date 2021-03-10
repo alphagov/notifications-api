@@ -4,18 +4,21 @@ import uuid
 from datetime import datetime
 
 from boto.exception import SQSError
-from flask import request, jsonify, current_app, abort
-from notifications_utils.recipients import try_validate_and_format_phone_number
+from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
+from notifications_utils.recipients import try_validate_and_format_phone_number
 
 from app import (
     api_user,
     authenticated_service,
-    notify_celery,
     document_download_client,
     encryption,
+    notify_celery,
 )
-from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter, sanitise_letter
+from app.celery.letters_pdf_tasks import (
+    get_pdf_for_templated_letter,
+    sanitise_letter,
+)
 from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import save_api_email, save_api_sms
 from app.clients.document_download import DocumentDownloadError
@@ -23,27 +26,30 @@ from app.config import QueueNames, TaskNames
 from app.dao.templates_dao import get_precompiled_letter_template
 from app.letters.utils import upload_letter_pdf
 from app.models import (
-    SMS_TYPE,
     EMAIL_TYPE,
-    LETTER_TYPE,
-    PRIORITY,
     KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST,
     KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
     NOTIFICATION_CREATED,
-    NOTIFICATION_SENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    Notification)
+    NOTIFICATION_SENDING,
+    PRIORITY,
+    SMS_TYPE,
+    Notification,
+)
 from app.notifications.process_letter_notifications import (
-    create_letter_notification
+    create_letter_notification,
 )
 from app.notifications.process_notifications import (
     persist_notification,
+    send_notification_to_queue_detached,
     simulated_recipient,
-    send_notification_to_queue_detached)
+)
 from app.notifications.validators import (
     check_if_service_can_send_files_by_email,
+    check_is_message_too_long,
     check_rate_limiting,
     check_service_email_reply_to_id,
     check_service_has_permission,
@@ -51,21 +57,21 @@ from app.notifications.validators import (
     validate_address,
     validate_and_format_recipient,
     validate_template,
-    check_is_message_too_long)
+)
 from app.schema_validation import validate
 from app.utils import DATETIME_FORMAT
 from app.v2.errors import BadRequestError
+from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.create_response import (
     create_post_email_response_from_notification,
+    create_post_letter_response_from_notification,
     create_post_sms_response_from_notification,
-    create_post_letter_response_from_notification
 )
-from app.v2.notifications import v2_notification_blueprint
 from app.v2.notifications.notification_schemas import (
-    post_sms_request,
     post_email_request,
     post_letter_request,
-    post_precompiled_letter_request
+    post_precompiled_letter_request,
+    post_sms_request,
 )
 from app.v2.utils import get_valid_json
 

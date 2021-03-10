@@ -1,6 +1,9 @@
 from datetime import datetime
 
-from app.commands import backfill_performance_platform_totals, backfill_processing_time
+from app.commands import (
+    backfill_performance_platform_totals,
+    backfill_processing_time,
+)
 
 
 def test_backfill_processing_time_works_for_correct_dates(mocker, notify_api):

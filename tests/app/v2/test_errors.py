@@ -7,9 +7,10 @@ from sqlalchemy.exc import DataError
 def app_for_test():
     import flask
     from flask import Blueprint
+
+    from app import init_app
     from app.authentication.auth import AuthError
     from app.v2.errors import BadRequestError, TooManyRequestsError
-    from app import init_app
 
     app = flask.Flask(__name__)
     app.config['TESTING'] = True

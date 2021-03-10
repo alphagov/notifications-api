@@ -1,18 +1,21 @@
 from flask import current_app
 
-from app.dao.complaint_dao import save_complaint
-from app.dao.notifications_dao import dao_get_notification_or_history_by_reference
-from app.dao.service_callback_api_dao import (
-    get_service_delivery_status_callback_api_for_service, get_service_complaint_callback_api_for_service
-)
-from app.models import Complaint
 from app.celery.service_callback_tasks import (
-    send_delivery_status_to_service,
-    send_complaint_to_service,
+    create_complaint_callback_data,
     create_delivery_status_callback_data,
-    create_complaint_callback_data
+    send_complaint_to_service,
+    send_delivery_status_to_service,
 )
 from app.config import QueueNames
+from app.dao.complaint_dao import save_complaint
+from app.dao.notifications_dao import (
+    dao_get_notification_or_history_by_reference,
+)
+from app.dao.service_callback_api_dao import (
+    get_service_complaint_callback_api_for_service,
+    get_service_delivery_status_callback_api_for_service,
+)
+from app.models import Complaint
 
 
 def determine_notification_bounce_type(notification_type, ses_message):

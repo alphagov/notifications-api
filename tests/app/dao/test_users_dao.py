@@ -1,32 +1,39 @@
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
 
+import pytest
 from freezegun import freeze_time
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-import pytest
 
 from app import db
-from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
+from app.dao.service_user_dao import (
+    dao_get_service_user,
+    dao_update_service_user,
+)
 from app.dao.users_dao import (
-    save_model_user,
-    save_user_attribute,
-    get_user_by_id,
-    delete_model_user,
-    increment_failed_login_count,
-    reset_failed_login_count,
-    get_user_by_email,
-    delete_codes_older_created_more_than_a_day_ago,
-    update_user_password,
     count_user_verify_codes,
     create_secret_code,
-    user_can_be_archived,
     dao_archive_user,
+    delete_codes_older_created_more_than_a_day_ago,
+    delete_model_user,
+    get_user_by_email,
+    get_user_by_id,
+    increment_failed_login_count,
+    reset_failed_login_count,
+    save_model_user,
+    save_user_attribute,
+    update_user_password,
+    user_can_be_archived,
 )
 from app.errors import InvalidRequest
 from app.models import EMAIL_AUTH_TYPE, User, VerifyCode
-
-from tests.app.db import create_permissions, create_service, create_template_folder, create_user
+from tests.app.db import (
+    create_permissions,
+    create_service,
+    create_template_folder,
+    create_user,
+)
 
 
 @freeze_time('2020-01-28T12:00:00')

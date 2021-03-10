@@ -1,10 +1,10 @@
 import json
 import logging
-
 from time import monotonic
-from requests import request, RequestException
 
-from app.clients.sms import (SmsClient, SmsClientResponseException)
+from requests import RequestException, request
+
+from app.clients.sms import SmsClient, SmsClientResponseException
 
 logger = logging.getLogger(__name__)
 

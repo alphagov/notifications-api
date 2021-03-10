@@ -1,9 +1,10 @@
 import time
-from gds_metrics.metrics import Histogram
+
 from celery import Celery, Task
 from celery.signals import worker_process_shutdown
 from flask import g, request
-from flask.ctx import has_request_context, has_app_context
+from flask.ctx import has_app_context, has_request_context
+from gds_metrics.metrics import Histogram
 
 
 @worker_process_shutdown.connect

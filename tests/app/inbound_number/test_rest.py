@@ -1,6 +1,5 @@
 from app.dao.inbound_numbers_dao import dao_get_inbound_number_for_service
-
-from tests.app.db import create_service, create_inbound_number
+from tests.app.db import create_inbound_number, create_service
 
 
 def test_rest_get_inbound_numbers_when_none_set_returns_empty_list(admin_request):

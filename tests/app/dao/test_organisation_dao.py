@@ -6,19 +6,18 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.organisation_dao import (
-    dao_get_organisations,
+    dao_add_service_to_organisation,
+    dao_add_user_to_organisation,
+    dao_get_invited_organisation_user,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
     dao_get_organisation_services,
-    dao_update_organisation,
-    dao_add_service_to_organisation,
-    dao_get_invited_organisation_user,
+    dao_get_organisations,
     dao_get_users_for_organisation,
-    dao_add_user_to_organisation
+    dao_update_organisation,
 )
 from app.models import Organisation, Service
-
 from tests.app.db import (
     create_domain,
     create_email_branding,

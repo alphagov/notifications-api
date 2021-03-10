@@ -4,10 +4,10 @@ import pytest
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.letter_branding_dao import (
-    dao_get_all_letter_branding,
     dao_create_letter_branding,
+    dao_get_all_letter_branding,
+    dao_get_letter_branding_by_id,
     dao_update_letter_branding,
-    dao_get_letter_branding_by_id
 )
 from app.models import LetterBranding
 from tests.app.db import create_letter_branding

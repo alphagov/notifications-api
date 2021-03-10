@@ -4,17 +4,20 @@ from functools import partial
 
 import pytest
 from freezegun import freeze_time
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
-
 
 from app.dao.notifications_dao import (
     dao_create_notification,
     dao_delete_notifications_by_id,
     dao_get_last_notification_added_for_job_id,
     dao_get_letters_and_sheets_volume_by_postage,
-    dao_get_notifications_by_recipient_or_reference,
+    dao_get_letters_to_be_printed,
+    dao_get_notification_by_reference,
     dao_get_notification_count_for_job_id,
+    dao_get_notification_or_history_by_reference,
+    dao_get_notifications_by_recipient_or_reference,
+    dao_get_notifications_by_references,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
@@ -24,35 +27,32 @@ from app.dao.notifications_dao import (
     get_notifications_for_job,
     get_notifications_for_service,
     is_delivery_slow_for_providers,
+    notifications_not_yet_sent,
     update_notification_status_by_id,
     update_notification_status_by_reference,
-    dao_get_notification_by_reference,
-    dao_get_notifications_by_references,
-    dao_get_notification_or_history_by_reference,
-    notifications_not_yet_sent,
-    dao_get_letters_to_be_printed)
+)
 from app.models import (
-    Job,
-    Notification,
-    NotificationHistory,
-    NOTIFICATION_STATUS_TYPES,
-    NOTIFICATION_STATUS_TYPES_FAILED,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_PENDING,
-    NOTIFICATION_SENT,
-    NOTIFICATION_DELIVERED,
+    JOB_STATUS_IN_PROGRESS,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
-    JOB_STATUS_IN_PROGRESS
+    NOTIFICATION_DELIVERED,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES,
+    NOTIFICATION_STATUS_TYPES_FAILED,
+    NOTIFICATION_TEMPORARY_FAILURE,
+    Job,
+    Notification,
+    NotificationHistory,
 )
 from tests.app.db import (
     create_job,
     create_notification,
+    create_notification_history,
     create_service,
     create_template,
-    create_notification_history
 )
 
 

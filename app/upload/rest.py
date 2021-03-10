@@ -1,25 +1,18 @@
 from datetime import datetime
-from flask import (
-    Blueprint,
-    abort,
-    jsonify,
-    request,
-    current_app
-)
 
-from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
-from app.dao.jobs_dao import (
-    dao_get_notification_outcomes_for_job
+from flask import Blueprint, abort, current_app, jsonify, request
+
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_statuses_for_job,
 )
+from app.dao.jobs_dao import dao_get_notification_outcomes_for_job
 from app.dao.uploads_dao import (
     dao_get_uploaded_letters_by_print_date,
     dao_get_uploads_by_service_id,
 )
-from app.errors import (
-    register_errors,
-)
+from app.errors import register_errors
 from app.schemas import notification_with_template_schema
-from app.utils import pagination_links, midnight_n_days_ago
+from app.utils import midnight_n_days_ago, pagination_links
 
 upload_blueprint = Blueprint('upload', __name__, url_prefix='/service/<uuid:service_id>/upload')
 

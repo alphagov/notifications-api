@@ -1,5 +1,4 @@
-from flask import Blueprint, jsonify
-from flask import request
+from flask import Blueprint, jsonify, request
 
 from app.celery.tasks import process_returned_letters_list
 from app.config import QueueNames

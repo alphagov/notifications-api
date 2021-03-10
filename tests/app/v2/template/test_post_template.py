@@ -1,5 +1,4 @@
 import pytest
-
 from flask import json
 
 from app.models import EMAIL_TYPE, LETTER_TYPE, TEMPLATE_TYPES

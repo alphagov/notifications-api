@@ -2,15 +2,14 @@ import uuid
 
 import pytest
 from flask import json
-
-from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
-from app.v2.templates.templates_schemas import (
-    get_all_template_request,
-    get_all_template_response
-)
-from app.schema_validation import validate
 from jsonschema.exceptions import ValidationError
 
+from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
+from app.schema_validation import validate
+from app.v2.templates.templates_schemas import (
+    get_all_template_request,
+    get_all_template_response,
+)
 
 valid_json_get_all_response = [
     {

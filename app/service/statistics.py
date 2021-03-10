@@ -3,8 +3,8 @@ from datetime import datetime
 
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app.models import NOTIFICATION_STATUS_TYPES, NOTIFICATION_TYPES
 from app.dao.date_util import get_months_for_financial_year
+from app.models import NOTIFICATION_STATUS_TYPES, NOTIFICATION_TYPES
 
 
 def format_statistics(statistics):

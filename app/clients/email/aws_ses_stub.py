@@ -1,10 +1,10 @@
 import json
+from time import monotonic
 
 from flask import current_app
 from requests import request
-from time import monotonic
 
-from app.clients.email import (EmailClientException, EmailClient)
+from app.clients.email import EmailClient, EmailClientException
 
 
 class AwsSesStubClientException(EmailClientException):

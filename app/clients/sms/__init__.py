@@ -1,4 +1,4 @@
-from app.clients import (Client, ClientException)
+from app.clients import Client, ClientException
 
 
 class SmsClientResponseException(ClientException):

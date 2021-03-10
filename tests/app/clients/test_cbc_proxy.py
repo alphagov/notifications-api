@@ -1,15 +1,21 @@
-from io import BytesIO
 import json
 import uuid
 from collections import namedtuple
 from datetime import datetime
+from io import BytesIO
 from unittest.mock import Mock, call
 
-from botocore.exceptions import ClientError as BotoClientError
 import pytest
+from botocore.exceptions import ClientError as BotoClientError
 
 from app.clients.cbc_proxy import (
-    CBCProxyClient, CBCProxyRetryableException, CBCProxyEE, CBCProxyCanary, CBCProxyVodafone, CBCProxyThree, CBCProxyO2
+    CBCProxyCanary,
+    CBCProxyClient,
+    CBCProxyEE,
+    CBCProxyO2,
+    CBCProxyRetryableException,
+    CBCProxyThree,
+    CBCProxyVodafone,
 )
 from app.utils import DATETIME_FORMAT
 

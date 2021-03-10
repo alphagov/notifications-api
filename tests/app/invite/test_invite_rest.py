@@ -1,8 +1,9 @@
 import json
+
 import pytest
 from flask import current_app
 
-from app.models import Notification, SMS_AUTH_TYPE, EMAIL_AUTH_TYPE
+from app.models import EMAIL_AUTH_TYPE, SMS_AUTH_TYPE, Notification
 from tests import create_authorization_header
 from tests.app.db import create_invited_user
 

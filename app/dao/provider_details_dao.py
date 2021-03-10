@@ -1,12 +1,18 @@
 from datetime import datetime, timedelta
 
+from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
-from flask import current_app
 
-from app.dao.dao_utils import transactional
-from app.models import FactBilling, ProviderDetails, ProviderDetailsHistory, SMS_TYPE, User
 from app import db
+from app.dao.dao_utils import transactional
+from app.models import (
+    SMS_TYPE,
+    FactBilling,
+    ProviderDetails,
+    ProviderDetailsHistory,
+    User,
+)
 
 
 def get_provider_details_by_id(provider_details_id):

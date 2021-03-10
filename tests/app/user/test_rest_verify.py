@@ -1,26 +1,16 @@
 import json
 import uuid
-from datetime import (
-    datetime,
-    timedelta
-)
+from datetime import datetime, timedelta
 
 import pytest
-from flask import url_for, current_app
+from flask import current_app, url_for
 from freezegun import freeze_time
 
-from app.dao.users_dao import create_user_code
-from app.dao.services_dao import dao_update_service, dao_fetch_service_by_id
-from app.models import (
-    Notification,
-    User,
-    VerifyCode,
-    EMAIL_TYPE,
-    SMS_TYPE
-)
-from app import db
 import app.celery.tasks
-
+from app import db
+from app.dao.services_dao import dao_fetch_service_by_id, dao_update_service
+from app.dao.users_dao import create_user_code
+from app.models import EMAIL_TYPE, SMS_TYPE, Notification, User, VerifyCode
 from tests import create_authorization_header
 
 

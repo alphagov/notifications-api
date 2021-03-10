@@ -2,15 +2,14 @@ from datetime import datetime, timedelta
 
 import pytz
 from flask import url_for
-from sqlalchemy import func
-from notifications_utils.timezones import convert_utc_to_bst
 from notifications_utils.template import (
-    SMSMessageTemplate,
+    BroadcastMessageTemplate,
     HTMLEmailTemplate,
     LetterPrintTemplate,
-    BroadcastMessageTemplate,
+    SMSMessageTemplate,
 )
-
+from notifications_utils.timezones import convert_utc_to_bst
+from sqlalchemy import func
 
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
 DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -38,7 +37,7 @@ def url_with_token(data, url, config, base_url=None):
 
 
 def get_template_instance(template, values):
-    from app.models import SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, BROADCAST_TYPE
+    from app.models import BROADCAST_TYPE, EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
     return {
         SMS_TYPE: SMSMessageTemplate,
         EMAIL_TYPE: HTMLEmailTemplate,
@@ -81,7 +80,12 @@ def get_london_month_from_utc_column(column):
 
 
 def get_public_notify_type_text(notify_type, plural=False):
-    from app.models import (SMS_TYPE, BROADCAST_TYPE, UPLOAD_DOCUMENT, PRECOMPILED_LETTER)
+    from app.models import (
+        BROADCAST_TYPE,
+        PRECOMPILED_LETTER,
+        SMS_TYPE,
+        UPLOAD_DOCUMENT,
+    )
     notify_type_text = notify_type
     if notify_type == SMS_TYPE:
         notify_type_text = 'text message'

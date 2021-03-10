@@ -1,43 +1,44 @@
 import dateutil
 import pytz
-from flask import (
-    Blueprint,
-    jsonify,
-    request,
-    current_app
-)
+from flask import Blueprint, current_app, jsonify, request
 
 from app.aws.s3 import get_job_metadata_from_s3
+from app.celery.tasks import process_job
+from app.config import QueueNames
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_statuses_for_job,
+)
 from app.dao.jobs_dao import (
+    can_letter_job_be_cancelled,
+    dao_cancel_letter_job,
     dao_create_job,
-    dao_update_job,
+    dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
-    dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_notification_outcomes_for_job,
     dao_get_scheduled_job_stats,
-    dao_cancel_letter_job,
-    can_letter_job_be_cancelled
+    dao_update_job,
 )
-from app.dao.fact_notification_status_dao import fetch_notification_statuses_for_job
+from app.dao.notifications_dao import (
+    dao_get_notification_count_for_job_id,
+    get_notifications_for_job,
+)
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.notifications_dao import dao_get_notification_count_for_job_id, get_notifications_for_job
+from app.errors import InvalidRequest, register_errors
+from app.models import (
+    JOB_STATUS_CANCELLED,
+    JOB_STATUS_PENDING,
+    JOB_STATUS_SCHEDULED,
+    LETTER_TYPE,
+)
 from app.schemas import (
     job_schema,
-    unarchived_template_schema,
+    notification_with_template_schema,
     notifications_filter_schema,
-    notification_with_template_schema
+    unarchived_template_schema,
 )
-from app.celery.tasks import process_job
-from app.models import JOB_STATUS_SCHEDULED, JOB_STATUS_PENDING, JOB_STATUS_CANCELLED, LETTER_TYPE
-from app.utils import pagination_links, midnight_n_days_ago
-from app.config import QueueNames
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-
+from app.utils import midnight_n_days_ago, pagination_links
 
 job_blueprint = Blueprint('job', __name__, url_prefix='/service/<uuid:service_id>/job')
 

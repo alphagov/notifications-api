@@ -1,16 +1,16 @@
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
 from app.dao.returned_letters_dao import (
-    insert_or_update_returned_letters,
     fetch_most_recent_returned_letter,
     fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
-    fetch_returned_letters
+    fetch_returned_letters,
+    insert_or_update_returned_letters,
 )
-from app.models import ReturnedLetter, NOTIFICATION_RETURNED_LETTER
+from app.models import NOTIFICATION_RETURNED_LETTER, ReturnedLetter
 from tests.app.db import (
     create_notification,
     create_notification_history,

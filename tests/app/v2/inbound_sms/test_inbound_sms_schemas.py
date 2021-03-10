@@ -2,13 +2,12 @@ import pytest
 from flask import json, url_for
 from jsonschema.exceptions import ValidationError
 
+from app.schema_validation import validate
 from app.v2.inbound_sms.inbound_sms_schemas import (
     get_inbound_sms_request,
     get_inbound_sms_response,
-    get_inbound_sms_single_response
+    get_inbound_sms_single_response,
 )
-from app.schema_validation import validate
-
 from tests import create_authorization_header
 from tests.app.db import create_inbound_sms
 

@@ -5,10 +5,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import encryption
 from app.dao.service_callback_api_dao import (
-    save_service_callback_api,
-    reset_service_callback_api,
     get_service_callback_api,
-    get_service_delivery_status_callback_api_for_service)
+    get_service_delivery_status_callback_api_for_service,
+    reset_service_callback_api,
+    save_service_callback_api,
+)
 from app.models import ServiceCallbackApi
 from tests.app.db import create_service_callback_api
 

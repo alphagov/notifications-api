@@ -1,6 +1,5 @@
 from app.models import TEMPLATE_TYPES
-from app.schema_validation.definitions import uuid, personalisation
-
+from app.schema_validation.definitions import personalisation, uuid
 
 get_template_by_id_request = {
     "$schema": "http://json-schema.org/draft-04/schema#",

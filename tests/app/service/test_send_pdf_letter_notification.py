@@ -2,12 +2,12 @@ import uuid
 
 import pytest
 from freezegun import freeze_time
+from notifications_utils.s3 import S3ObjectNotFound
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import EMAIL_TYPE, LETTER_TYPE, UPLOAD_LETTERS
 from app.service.send_notification import send_pdf_letter_notification
 from app.v2.errors import BadRequestError, TooManyRequestsError
-from notifications_utils.s3 import S3ObjectNotFound
 from tests.app.db import create_service
 
 

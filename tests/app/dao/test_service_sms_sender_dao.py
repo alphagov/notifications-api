@@ -6,17 +6,19 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.dao.service_sms_sender_dao import (
     archive_sms_sender,
     dao_add_sms_sender_for_service,
-    dao_update_service_sms_sender,
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
-    update_existing_sms_sender_with_inbound_number)
+    dao_update_service_sms_sender,
+    update_existing_sms_sender_with_inbound_number,
+)
 from app.exceptions import ArchiveValidationError
 from app.models import ServiceSmsSender
 from tests.app.db import (
     create_inbound_number,
     create_service,
     create_service_sms_sender,
-    create_service_with_inbound_number)
+    create_service_with_inbound_number,
+)
 
 
 def test_dao_get_service_sms_senders_id(notify_db_session):

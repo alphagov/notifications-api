@@ -3,7 +3,9 @@ from datetime import datetime
 from freezegun import freeze_time
 
 from app.dao import fact_processing_time_dao
-from app.dao.fact_processing_time_dao import get_processing_time_percentage_for_date_range
+from app.dao.fact_processing_time_dao import (
+    get_processing_time_percentage_for_date_range,
+)
 from app.models import FactProcessingTime
 from tests.app.db import create_process_time
 

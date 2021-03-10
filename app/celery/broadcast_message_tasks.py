@@ -6,15 +6,21 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.schema import Sequence
 
 from app import cbc_proxy_client, db, notify_celery
-from app.clients.cbc_proxy import CBCProxyFatalException, CBCProxyRetryableException
-from app.config import QueueNames
-from app.models import BroadcastEventMessageType, BroadcastProvider, BroadcastProviderMessageStatus
-from app.dao.broadcast_message_dao import (
-    dao_get_broadcast_event_by_id,
-    create_broadcast_provider_message,
-    update_broadcast_provider_message_status
+from app.clients.cbc_proxy import (
+    CBCProxyFatalException,
+    CBCProxyRetryableException,
 )
-
+from app.config import QueueNames
+from app.dao.broadcast_message_dao import (
+    create_broadcast_provider_message,
+    dao_get_broadcast_event_by_id,
+    update_broadcast_provider_message_status,
+)
+from app.models import (
+    BroadcastEventMessageType,
+    BroadcastProvider,
+    BroadcastProviderMessageStatus,
+)
 from app.utils import format_sequential_number
 
 

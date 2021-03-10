@@ -1,14 +1,14 @@
-from unittest.mock import call
 from datetime import datetime, timedelta
+from unittest.mock import call
+
 import pytest
 import pytz
-
 from freezegun import freeze_time
 
 from app.aws.s3 import (
+    get_list_of_files_by_suffix,
     get_s3_bucket_objects,
     get_s3_file,
-    get_list_of_files_by_suffix,
 )
 from tests.app.conftest import datetime_in_past
 

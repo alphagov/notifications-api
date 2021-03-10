@@ -1,11 +1,18 @@
 from datetime import datetime
+
 from flask import current_app
-from sqlalchemy import and_, desc, func, literal, text, String
+from sqlalchemy import String, and_, desc, func, literal, text
 
 from app import db
 from app.models import (
-    Job, Notification, Template, LETTER_TYPE, JOB_STATUS_CANCELLED, JOB_STATUS_SCHEDULED,
-    NOTIFICATION_CANCELLED, ServiceDataRetention
+    JOB_STATUS_CANCELLED,
+    JOB_STATUS_SCHEDULED,
+    LETTER_TYPE,
+    NOTIFICATION_CANCELLED,
+    Job,
+    Notification,
+    ServiceDataRetention,
+    Template,
 )
 from app.utils import midnight_n_days_ago
 

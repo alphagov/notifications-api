@@ -1,8 +1,12 @@
-from . import return_json_from_response, validate_v0, validate
-from app.models import ApiKey, KEY_TYPE_NORMAL
 from app.dao.api_key_dao import save_model_api_key
-from app.v2.notifications.notification_schemas import get_notification_response, get_notifications_response
+from app.models import KEY_TYPE_NORMAL, ApiKey
+from app.v2.notifications.notification_schemas import (
+    get_notification_response,
+    get_notifications_response,
+)
 from tests import create_authorization_header
+
+from . import return_json_from_response, validate, validate_v0
 
 
 def _get_notification(client, notification, url):

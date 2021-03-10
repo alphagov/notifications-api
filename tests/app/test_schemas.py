@@ -2,7 +2,10 @@ import pytest
 from marshmallow import ValidationError
 from sqlalchemy import desc
 
-from app.dao.provider_details_dao import dao_update_provider_details, get_provider_details_by_identifier
+from app.dao.provider_details_dao import (
+    dao_update_provider_details,
+    get_provider_details_by_identifier,
+)
 from app.models import ProviderDetailsHistory
 from tests.app.db import create_api_key
 

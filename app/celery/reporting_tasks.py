@@ -9,14 +9,13 @@ from app.config import QueueNames
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
-    update_fact_billing
+    update_fact_billing,
 )
-from app.dao.fact_notification_status_dao import fetch_notification_status_for_day, update_fact_notification_status
-from app.models import (
-    SMS_TYPE,
-    EMAIL_TYPE,
-    LETTER_TYPE,
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_status_for_day,
+    update_fact_notification_status,
 )
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
 
 @notify_celery.task(name="create-nightly-billing")

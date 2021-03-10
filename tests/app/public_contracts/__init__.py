@@ -1,7 +1,7 @@
 import os
 
-from flask import json
 import jsonschema
+from flask import json
 from jsonschema import Draft4Validator
 
 

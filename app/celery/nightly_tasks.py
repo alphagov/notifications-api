@@ -1,7 +1,4 @@
-from datetime import (
-    datetime,
-    timedelta
-)
+from datetime import datetime, timedelta
 
 import pytz
 from flask import current_app
@@ -12,31 +9,33 @@ from sqlalchemy.exc import SQLAlchemyError
 from app import notify_celery, performance_platform_client, zendesk_client
 from app.aws import s3
 from app.celery.service_callback_tasks import (
-    send_delivery_status_to_service,
     create_delivery_status_callback_data,
+    send_delivery_status_to_service,
 )
 from app.config import QueueNames
+from app.cronitor import cronitor
 from app.dao.inbound_sms_dao import delete_inbound_sms_older_than_retention
 from app.dao.jobs_dao import (
+    dao_archive_job,
     dao_get_jobs_older_than_data_retention,
-    dao_archive_job
 )
 from app.dao.notifications_dao import (
     dao_timeout_notifications,
     delete_notifications_older_than_retention_by_type,
 )
-from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
+from app.dao.service_callback_api_dao import (
+    get_service_delivery_status_callback_api_for_service,
+)
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
-    Notification,
-    NOTIFICATION_SENDING,
     EMAIL_TYPE,
-    SMS_TYPE,
+    KEY_TYPE_NORMAL,
     LETTER_TYPE,
-    KEY_TYPE_NORMAL
+    NOTIFICATION_SENDING,
+    SMS_TYPE,
+    Notification,
 )
-from app.performance_platform import total_sent_notifications, processing_time
-from app.cronitor import cronitor
+from app.performance_platform import processing_time, total_sent_notifications
 from app.utils import get_london_midnight_in_utc
 
 

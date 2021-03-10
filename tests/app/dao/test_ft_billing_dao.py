@@ -1,11 +1,8 @@
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
-from datetime import datetime, timedelta, date
-
-from freezegun import freeze_time
-
 import pytest
-
+from freezegun import freeze_time
 from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db
@@ -13,31 +10,28 @@ from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
     fetch_billing_totals_for_year,
-    fetch_monthly_billing_for_year,
-    get_rate,
-    get_rates_for_billing,
-    fetch_sms_free_allowance_remainder,
-    fetch_sms_billing_for_all_services,
     fetch_letter_costs_for_all_services,
     fetch_letter_line_items_for_all_services,
-    fetch_usage_year_for_organisation
+    fetch_monthly_billing_for_year,
+    fetch_sms_billing_for_all_services,
+    fetch_sms_free_allowance_remainder,
+    fetch_usage_year_for_organisation,
+    get_rate,
+    get_rates_for_billing,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.models import (
-    FactBilling,
-    NOTIFICATION_STATUS_TYPES,
-)
+from app.models import NOTIFICATION_STATUS_TYPES, FactBilling
 from tests.app.db import (
-    create_ft_billing,
-    create_service,
-    create_template,
-    create_notification,
-    create_rate,
-    create_letter_rate,
-    create_notification_history,
     create_annual_billing,
+    create_ft_billing,
+    create_letter_rate,
+    create_notification,
+    create_notification_history,
     create_organisation,
+    create_rate,
+    create_service,
     create_service_data_retention,
+    create_template,
     set_up_usage_data,
 )
 
