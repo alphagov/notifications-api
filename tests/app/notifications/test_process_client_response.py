@@ -67,7 +67,7 @@ def test_process_sms_client_response_updates_notification_status(
     ('101', 'permanent-failure', 'Unknown Subscriber'),
     ('102', 'temporary-failure', 'Absent Subscriber'),
     (None, 'temporary-failure', None),
-    ('000', 'temporary-failure', None)
+    ('000', 'temporary-failure', 'No error reported')
 ])
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
     sample_notification,
@@ -82,7 +82,7 @@ def test_process_sms_client_response_updates_notification_status_when_called_sec
 
     process_sms_client_response('1', str(sample_notification.id), 'Firetext', detailed_status_code)
 
-    if detailed_status_code and detailed_status_code != '000':
+    if detailed_status_code:
         message = f'Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}'  # noqa
         mock_logger.assert_called_with(message)
 

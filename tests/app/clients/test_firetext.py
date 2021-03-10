@@ -9,7 +9,7 @@ from app.clients.sms.firetext import get_firetext_responses, SmsClientResponseEx
 
 
 @pytest.mark.parametrize('detailed_status_code, result', [
-    (None, ('delivered', None)), ('000', ('delivered', None))
+    (None, ('delivered', None)), ('000', ('delivered', 'No error reported'))
 ])
 def test_get_firetext_responses_should_return_correct_details_for_delivery(detailed_status_code, result):
     assert get_firetext_responses('0', detailed_status_code) == result

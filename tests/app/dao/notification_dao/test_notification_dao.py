@@ -216,7 +216,7 @@ def test_should_by_able_to_update_status_by_id_from_pending_to_delivered(sample_
 
 
 def test_should_by_able_to_update_status_by_id_from_pending_to_temporary_failure(sample_template, sample_job):
-    notification = create_notification(template=sample_template, job=sample_job, status='sending')
+    notification = create_notification(template=sample_template, job=sample_job, status='sending', sent_by='firetext')
 
     assert update_notification_status_by_id(notification_id=notification.id, status='pending')
     assert Notification.query.get(notification.id).status == 'pending'
