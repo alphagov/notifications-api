@@ -709,6 +709,19 @@ def test_get_total_notifications_for_date_range(sample_service):
     template_sms = create_template(service=sample_service, template_type='sms', template_name='a')
     template_email = create_template(service=sample_service, template_type='email', template_name='b')
     template_letter = create_template(service=sample_service, template_type='letter', template_name='c')
+    create_ft_notification_status(bst_date=date(2021, 2, 28),
+                                  service=template_email.service,
+                                  template=template_email,
+                                  count=15)
+    create_ft_notification_status(bst_date=date(2021, 2, 28),
+                                  service=template_sms.service,
+                                  template=template_sms,
+                                  count=20)
+    create_ft_notification_status(bst_date=date(2021, 2, 28),
+                                  service=template_letter.service,
+                                  template=template_letter,
+                                  count=3)
+
     create_ft_notification_status(bst_date=date(2021, 3, 1),
                                   service=template_email.service,
                                   template=template_email,
@@ -725,5 +738,4 @@ def test_get_total_notifications_for_date_range(sample_service):
     results = get_total_notifications_for_date_range(start_date=datetime(2021, 3, 1), end_date=datetime(2021, 3, 1))
 
     assert len(results) == 1
-    print(type(results[0].emails))
     assert results[0] == ("2021-03-01", 15, 20, 3)

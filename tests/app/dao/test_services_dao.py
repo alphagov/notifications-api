@@ -1178,5 +1178,3 @@ def test_get_live_services_with_organisation(sample_organisation):
         (live_service_diff_org.name, another_org.name),
         (live_service.name, sample_organisation.name),
         (service_without_org.name, None)]
-
-

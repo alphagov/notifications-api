@@ -1,11 +1,11 @@
 from datetime import datetime
-from decimal import Decimal
 
 from freezegun import freeze_time
 
 from app.dao import fact_processing_time_dao
 from app.dao.fact_processing_time_dao import get_processing_time_percentage_for_date_range
 from app.models import FactProcessingTime
+from tests.app.db import create_process_time
 
 
 def test_insert_update_processing_time(notify_db_session):
@@ -45,13 +45,21 @@ def test_insert_update_processing_time(notify_db_session):
 
 
 def test_get_processing_time_percentage_for_date_range(notify_db_session):
-    data = FactProcessingTime(
-        bst_date=datetime(2021, 2, 22).date(),
+    create_process_time(
+        bst_date='2021-02-21',
+        messages_total=5,
+        messages_within_10_secs=4
+    )
+    create_process_time(
+        bst_date='2021-02-22',
         messages_total=3,
         messages_within_10_secs=2
     )
-
-    fact_processing_time_dao.insert_update_processing_time(data)
+    create_process_time(
+        bst_date='2021-02-23',
+        messages_total=4,
+        messages_within_10_secs=3
+    )
 
     results = get_processing_time_percentage_for_date_range('2021-02-22', '2021-02-22')
 

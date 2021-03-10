@@ -443,8 +443,7 @@ def get_total_sent_notifications_for_day_and_type(day, notification_type):
 
 
 def get_total_notifications_for_date_range(start_date, end_date):
-
-    result = db.session.query(
+    query = db.session.query(
         FactNotificationStatus.bst_date.cast(db.Text).label("bst_date"),
         func.sum(case(
             [
@@ -463,14 +462,17 @@ def get_total_notifications_for_date_range(start_date, end_date):
             else_=0)).label('letters'),
     ).filter(
         FactNotificationStatus.key_type != KEY_TYPE_TEST,
-        FactNotificationStatus.bst_date >= start_date,
-        FactNotificationStatus.bst_date <= end_date
     ).group_by(
         FactNotificationStatus.bst_date
     ).order_by(
         FactNotificationStatus.bst_date
     )
-    return result.all()
+    if start_date and end_date:
+        query = query.filter(
+            FactNotificationStatus.bst_date >= start_date,
+            FactNotificationStatus.bst_date <= end_date
+        )
+    return query.all()
 
 
 def fetch_monthly_notification_statuses_per_service(start_date, end_date):
