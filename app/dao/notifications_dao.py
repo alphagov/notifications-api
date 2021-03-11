@@ -88,21 +88,21 @@ def dao_create_notification(notification):
 
 
 def _decide_permanent_temporary_failure(status, notification, detailed_status_code=None):
-    # If we get failure status from Firetext, we want to know if this is temporary or permanent failure.
-    # So we check the failure code to learn that.
-    # If there is no failure code, or we do not recognise the failure code, we do the following:
-    # if notifitcation goes form status pending to status failure, we mark it as temporary failure;
-    # if notification goes straight to status failure, we mark it as permanent failure.
-    if status == NOTIFICATION_PERMANENT_FAILURE and detailed_status_code not in [None, '000']:
-        try:
-            status, reason = get_message_status_and_reason_from_firetext_code(detailed_status_code)
-            current_app.logger.info(f'Updating notification id {notification.id} to status {status}, reason: {reason}')
-            return status
-        except KeyError:
-            current_app.logger.warning(f'Failure code {detailed_status_code} from Firetext not recognised')
-    # fallback option:
-    if notification.status == NOTIFICATION_PENDING and status == NOTIFICATION_PERMANENT_FAILURE:
-        status = NOTIFICATION_TEMPORARY_FAILURE
+    # Firetext will send us a pending status, followed by a success or failure status.
+    # When we get a failure status we need to look at the detailed_status_code to determine if the failure type
+    # is a permanent-failure or temporary-failure.
+    if notification.sent_by == 'firetext':
+        if status == NOTIFICATION_PERMANENT_FAILURE and detailed_status_code:
+            try:
+                status, reason = get_message_status_and_reason_from_firetext_code(detailed_status_code)
+                current_app.logger.info(
+                    f'Updating notification id {notification.id} to status {status}, reason: {reason}')
+                return status
+            except KeyError:
+                current_app.logger.warning(f'Failure code {detailed_status_code} from Firetext not recognised')
+        # fallback option:
+        if status == NOTIFICATION_PERMANENT_FAILURE and notification.status == NOTIFICATION_PENDING:
+            status = NOTIFICATION_TEMPORARY_FAILURE
     return status
 
 
