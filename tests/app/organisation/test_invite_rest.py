@@ -183,10 +183,15 @@ def test_update_org_invited_user_for_invalid_data_returns_400(admin_request, sam
     assert json_resp['errors'][0]['message'] == 'status garbage is not one of [pending, accepted, cancelled]'
 
 
-def test_validate_invitation_token_returns_200_when_token_valid(client, sample_invited_org_user):
+@pytest.mark.parametrize('endpoint_format_str', [
+    '/invite/organisation/{}',
+    '/invite/organisation/check/{}',
+])
+def test_validate_invitation_token_returns_200_when_token_valid(client, sample_invited_org_user, endpoint_format_str):
     token = generate_token(str(sample_invited_org_user.id), current_app.config['SECRET_KEY'],
                            current_app.config['DANGEROUS_SALT'])
-    url = '/invite/organisation/{}'.format(token)
+
+    url = endpoint_format_str.format(token)
     auth_header = create_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 

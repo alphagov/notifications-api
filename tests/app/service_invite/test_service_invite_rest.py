@@ -275,10 +275,14 @@ def test_update_invited_user_for_invalid_data_returns_400(client, sample_invited
     assert response.status_code == 400
 
 
-def test_validate_invitation_token_returns_200_when_token_valid(client, sample_invited_user):
+@pytest.mark.parametrize('endpoint_format_str', [
+    '/invite/service/{}',
+    '/invite/service/check/{}',
+])
+def test_validate_invitation_token_returns_200_when_token_valid(client, sample_invited_user, endpoint_format_str):
     token = generate_token(str(sample_invited_user.id), current_app.config['SECRET_KEY'],
                            current_app.config['DANGEROUS_SALT'])
-    url = '/invite/service/{}'.format(token)
+    url = endpoint_format_str.format(token)
     auth_header = create_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 

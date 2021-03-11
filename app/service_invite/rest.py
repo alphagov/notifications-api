@@ -100,6 +100,7 @@ def get_invited_user(invited_user_id):
 
 
 @service_invite.route('/invite/service/<token>', methods=['GET'])
+@service_invite.route('/invite/service/check/<token>', methods=['GET'])
 def validate_service_invitation_token(token):
 
     max_age_seconds = 60 * 60 * 24 * current_app.config['INVITATION_EXPIRATION_DAYS']
