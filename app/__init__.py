@@ -146,7 +146,6 @@ def register_blueprint(application):
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
-    from app.global_invite.rest import global_invite_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.job.rest import job_blueprint
@@ -215,14 +214,14 @@ def register_blueprint(application):
     service_invite_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_invite_blueprint)
 
+    organisation_invite_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(organisation_invite_blueprint)
+
     inbound_number_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_number_blueprint)
 
     inbound_sms_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(inbound_sms_blueprint)
-
-    global_invite_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(global_invite_blueprint, url_prefix='/invite')
 
     template_statistics_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_statistics_blueprint)
@@ -250,9 +249,6 @@ def register_blueprint(application):
 
     organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_blueprint, url_prefix='/organisations')
-
-    organisation_invite_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(organisation_invite_blueprint)
 
     complaint_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(complaint_blueprint)
