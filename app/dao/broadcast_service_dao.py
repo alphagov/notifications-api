@@ -3,11 +3,19 @@ from datetime import datetime
 from flask import current_app
 
 from app import db
-from app.models import ServiceBroadcastSettings, ServicePermission, Organisation, BROADCAST_TYPE, EMAIL_AUTH_TYPE
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import transactional, version_class
+from app.models import (
+    Service,
+    ServiceBroadcastSettings,
+    ServicePermission,
+    Organisation,
+    BROADCAST_TYPE,
+    EMAIL_AUTH_TYPE
+)
 
 
 @transactional
+@version_class(Service)
 def set_broadcast_service_type(service, service_mode, broadcast_channel, provider_restriction):
     insert_or_update_service_broadcast_settings(
         service, channel=broadcast_channel, provider_restriction=provider_restriction
