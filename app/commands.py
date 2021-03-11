@@ -18,9 +18,6 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db, encryption
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
-from app.celery.nightly_tasks import (
-    send_total_sent_notifications_to_performance_platform,
-)
 from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_day,
 )
@@ -36,7 +33,6 @@ from app.dao.fact_billing_dao import (
     get_service_ids_that_need_billing_populated,
     update_fact_billing,
 )
-from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
@@ -70,21 +66,13 @@ from app.models import (
     SMS_TYPE,
     Domain,
     EmailBranding,
-    FactProcessingTime,
     LetterBranding,
     Notification,
     Organisation,
     Service,
     User,
 )
-from app.performance_platform.processing_time import (
-    send_processing_time_for_start_and_end,
-)
-from app.utils import (
-    DATETIME_FORMAT,
-    get_london_midnight_in_utc,
-    get_midnight_for_day_before,
-)
+from app.utils import DATETIME_FORMAT, get_london_midnight_in_utc
 
 
 @click.group(name='command', help='Additional commands')
@@ -241,59 +229,6 @@ def fix_notification_statuses_not_in_sync():
         print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
-
-
-@notify_command()
-@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
-def backfill_performance_platform_totals(start_date, end_date):
-    """
-    Send historical total messages sent to Performance Platform.
-
-    WARNING: This does not overwrite existing data. You need to delete
-             the existing data or Performance Platform will double-count.
-    """
-
-    delta = end_date - start_date
-
-    print('Sending total messages sent for all days between {} and {}'.format(start_date, end_date))
-
-    for i in range(delta.days + 1):
-
-        process_date = start_date + timedelta(days=i)
-
-        print('Sending total messages sent for {}'.format(
-            process_date.isoformat()
-        ))
-
-        send_total_sent_notifications_to_performance_platform(process_date)
-
-
-@notify_command()
-@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
-def backfill_processing_time(start_date, end_date):
-    """
-    Send historical processing time to Performance Platform.
-    """
-
-    delta = end_date - start_date
-
-    print('Sending notification processing-time data for all days between {} and {}'.format(start_date, end_date))
-
-    for i in range(delta.days + 1):
-        # because the tz conversion funcs talk about midnight, and the midnight before last,
-        # we want to pretend we're running this from the next morning, so add one.
-        process_date = start_date + timedelta(days=i + 1)
-
-        process_start_date = get_midnight_for_day_before(process_date)
-        process_end_date = get_london_midnight_in_utc(process_date)
-
-        print('Sending notification processing-time for {} - {}'.format(
-            process_start_date.isoformat(),
-            process_end_date.isoformat()
-        ))
-        send_processing_time_for_start_and_end(process_start_date, process_end_date, process_date)
 
 
 @notify_command(name='populate-annual-billing')
@@ -951,78 +886,3 @@ def process_row_from_job(job_id, job_row_number):
             notification_id = process_row(row, template, job, job.service)
             current_app.logger.info("Process row {} for job {} created notification_id: {}".format(
                 job_row_number, job_id, notification_id))
-
-
-@notify_command(name='load-processing-time-data')
-@click.option('-f', '--file_name', required=True, help='Text file contain json data for processing time')
-def load_processing_time_data(file_name):
-    # This method loads the data from a text file that was downloaded from
-    # https://www.performance.service.gov.uk/data/govuk-notify/processing-time?flatten=true&duration=30&group_by=status&period=day&collect=count%3Asum&format=json  ## noqa
-    # The data is formatted as a json
-    # {"data": [
-    #     {
-    #       "_count": 1.0,
-    #       "_end_at": "2021-01-27T00:00:00+00:00",
-    #       "_start_at": "2021-01-26T00:00:00+00:00",
-    #       "count:sum": 4024207.0,
-    #       "status": "messages-within-10-secs"
-    #     },
-    #     {
-    #       "_count": 1.0,
-    #       "_end_at": "2021-01-27T00:00:00+00:00",
-    #       "_start_at": "2021-01-26T00:00:00+00:00",
-    #       "count:sum": 4243204.0,
-    #       "status": "messages-total"
-    #     },
-    # ]}
-    #
-    # Using the fact_processing_time_dao.insert_update_processing_time means if this method is run more than once
-    # it will not throw an exception.
-
-    file = open(file_name)
-
-    file_contents = ""
-    for line in file:
-        file_contents += line
-    data = json.loads(file_contents)
-    normalised = []
-
-    class ProcesingTimeData:
-        bst_date = datetime(1990, 1, 1).date()
-        messages_total = 0
-        messages_within_10_secs = 0
-
-        def __eq__(self, obj):
-            return isinstance(obj, ProcesingTimeData) and obj.bst_date == self.bst_date
-
-        def set_bst_date(self, value):
-            self.bst_date = value
-
-        def set_m(self, status, value):
-            if status == 'messages-total':
-                self.messages_total = value
-            elif status == 'messages-within-10-secs':
-                self.messages_within_10_secs = value
-
-    for entry in data['data']:
-        bst_date = datetime.strptime(entry['_start_at'][0:10], "%Y-%m-%d").date()
-        status = entry['status']
-        value = entry['count:sum']
-        obj = ProcesingTimeData()
-        obj.set_bst_date(bst_date)
-        if obj in normalised:
-            normalised[normalised.index(obj)].set_m(status, value)
-        else:
-            d = ProcesingTimeData()
-            d.set_bst_date(bst_date)
-            d.set_m(status, value)
-            normalised.append(d)
-    for n in normalised:
-        print(n.bst_date, n.messages_total, n.messages_within_10_secs)
-        fact_processing_time = FactProcessingTime(bst_date=n.bst_date,
-                                                  messages_total=n.messages_total,
-                                                  messages_within_10_secs=n.messages_within_10_secs
-                                                  )
-        insert_update_processing_time(fact_processing_time)
-
-    print("Done loading processing time data.")

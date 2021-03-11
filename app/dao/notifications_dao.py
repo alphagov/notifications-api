@@ -684,8 +684,11 @@ def dao_get_notifications_by_references(references):
     ).all()
 
 
-def dao_get_total_notifications_sent_per_day_for_performance_platform(start_date, end_date):
+def dao_get_notifications_processing_time_stats(start_date, end_date):
     """
+    For a given time range, returns the number of notifications sent and the number of
+    those notifications that we processed within 10 seconds
+
     SELECT
     count(notifications),
     coalesce(sum(CASE WHEN sent_at - created_at <= interval '10 seconds' THEN 1 ELSE 0 END), 0)

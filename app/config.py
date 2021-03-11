@@ -109,10 +109,6 @@ class Config(object):
     EXPIRE_CACHE_TEN_MINUTES = 600
     EXPIRE_CACHE_EIGHT_DAYS = 8 * 24 * 60 * 60
 
-    # Performance platform
-    PERFORMANCE_PLATFORM_ENABLED = False
-    PERFORMANCE_PLATFORM_URL = 'https://www.performance.service.gov.uk/data/govuk-notify/'
-
     # Zendesk
     ZENDESK_API_KEY = os.environ.get('ZENDESK_API_KEY')
 
@@ -273,11 +269,6 @@ class Config(object):
             'schedule': crontab(hour=1, minute=40),
             'options': {'queue': QueueNames.PERIODIC}
         },
-        'send-daily-performance-platform-stats': {
-            'task': 'send-daily-performance-platform-stats',
-            'schedule': crontab(hour=2, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
         'save-daily-notification-processing-time': {
             'task': 'save-daily-notification-processing-time',
             'schedule': crontab(hour=2, minute=0),
@@ -365,10 +356,6 @@ class Config(object):
     ROUTE_SECRET_KEY_2 = os.environ.get('ROUTE_SECRET_KEY_2', '')
 
     HIGH_VOLUME_SERVICE = json.loads(os.environ.get('HIGH_VOLUME_SERVICE', '[]'))
-
-    # Format is as follows:
-    # {"dataset_1": "token_1", ...}
-    PERFORMANCE_PLATFORM_ENDPOINTS = json.loads(os.environ.get('PERFORMANCE_PLATFORM_ENDPOINTS', '{}'))
 
     TEMPLATE_PREVIEW_API_HOST = os.environ.get('TEMPLATE_PREVIEW_API_HOST', 'http://localhost:6013')
     TEMPLATE_PREVIEW_API_KEY = os.environ.get('TEMPLATE_PREVIEW_API_KEY', 'my-secret-key')
@@ -537,7 +524,6 @@ class Live(Config):
     TRANSIENT_UPLOADED_LETTERS = 'production-transient-uploaded-letters'
     LETTER_SANITISE_BUCKET_NAME = 'production-letters-sanitise'
     FROM_NUMBER = 'GOVUK'
-    PERFORMANCE_PLATFORM_ENABLED = True
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
     SES_STUB_URL = None

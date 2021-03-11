@@ -6,7 +6,7 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, performance_platform_client, zendesk_client
+from app import notify_celery, zendesk_client
 from app.aws import s3
 from app.celery.service_callback_tasks import (
     create_delivery_status_callback_data,
@@ -21,7 +21,7 @@ from app.dao.jobs_dao import (
     dao_get_jobs_older_than_data_retention,
 )
 from app.dao.notifications_dao import (
-    dao_get_total_notifications_sent_per_day_for_performance_platform,
+    dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
     delete_notifications_older_than_retention_by_type,
 )
@@ -38,7 +38,6 @@ from app.models import (
     FactProcessingTime,
     Notification,
 )
-from app.performance_platform import processing_time, total_sent_notifications
 from app.utils import get_london_midnight_in_utc
 
 
@@ -155,54 +154,6 @@ def timeout_notifications():
                   "have timed out and are still in created.Notification ids: {}".format(
                       len(technical_failure_notifications), [str(x.id) for x in technical_failure_notifications])
         raise NotificationTechnicalFailureException(message)
-
-
-@notify_celery.task(name='send-daily-performance-platform-stats')
-@cronitor('send-daily-performance-platform-stats')
-@statsd(namespace="tasks")
-def send_daily_performance_platform_stats(date=None):
-    # date is a string in the format of "YYYY-MM-DD"
-    if date is None:
-        date = (datetime.utcnow() - timedelta(days=1)).date()
-    else:
-        date = datetime.strptime(date, "%Y-%m-%d").date()
-
-    if performance_platform_client.active:
-
-        send_total_sent_notifications_to_performance_platform(bst_date=date)
-        processing_time.send_processing_time_to_performance_platform(bst_date=date)
-
-
-def send_total_sent_notifications_to_performance_platform(bst_date):
-    count_dict = total_sent_notifications.get_total_sent_notifications_for_day(bst_date)
-    start_time = get_london_midnight_in_utc(bst_date)
-
-    email_sent_count = count_dict['email']
-    sms_sent_count = count_dict['sms']
-    letter_sent_count = count_dict['letter']
-
-    current_app.logger.info(
-        "Attempting to update Performance Platform for {} with {} emails, {} text messages and {} letters"
-        .format(bst_date, email_sent_count, sms_sent_count, letter_sent_count)
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'sms',
-        sms_sent_count
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'email',
-        email_sent_count
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'letter',
-        letter_sent_count
-    )
 
 
 @notify_celery.task(name="delete-inbound-sms")
@@ -336,7 +287,7 @@ def save_daily_notification_processing_time(bst_date=None):
 
     start_time = get_london_midnight_in_utc(bst_date)
     end_time = get_london_midnight_in_utc(bst_date + timedelta(days=1))
-    result = dao_get_total_notifications_sent_per_day_for_performance_platform(start_time, end_time)
+    result = dao_get_notifications_processing_time_stats(start_time, end_time)
     insert_update_processing_time(
         FactProcessingTime(
             bst_date=bst_date,
