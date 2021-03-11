@@ -2,7 +2,6 @@ from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
-from app.models import FactProcessingTime
 from app.performance_platform.processing_time import (
     send_processing_time_data,
     send_processing_time_to_performance_platform,
@@ -24,11 +23,6 @@ def test_send_processing_time_to_performance_platform_generates_correct_calls(mo
 
     send_mock.assert_any_call(datetime(2016, 10, 16, 23, 0), 'messages-total', 2)
     send_mock.assert_any_call(datetime(2016, 10, 16, 23, 0), 'messages-within-10-secs', 1)
-    persisted_to_db = FactProcessingTime.query.all()
-    assert len(persisted_to_db) == 1
-    assert persisted_to_db[0].bst_date == date(2016, 10, 17)
-    assert persisted_to_db[0].messages_total == 2
-    assert persisted_to_db[0].messages_within_10_secs == 1
 
 
 def test_send_processing_time_to_performance_platform_creates_correct_call_to_perf_platform(mocker):

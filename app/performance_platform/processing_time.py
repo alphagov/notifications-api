@@ -3,11 +3,9 @@ from datetime import timedelta
 from flask import current_app
 
 from app import performance_platform_client
-from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.notifications_dao import (
     dao_get_total_notifications_sent_per_day_for_performance_platform,
 )
-from app.models import FactProcessingTime
 from app.utils import get_london_midnight_in_utc
 
 
@@ -29,11 +27,6 @@ def send_processing_time_for_start_and_end(start_time, end_time, bst_date):
 
     send_processing_time_data(start_time, 'messages-total', result.messages_total)
     send_processing_time_data(start_time, 'messages-within-10-secs', result.messages_within_10_secs)
-    insert_update_processing_time(FactProcessingTime(
-        bst_date=bst_date,
-        messages_total=result.messages_total,
-        messages_within_10_secs=result.messages_within_10_secs)
-    )
 
 
 def send_processing_time_data(start_time, status, count):

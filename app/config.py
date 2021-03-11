@@ -278,6 +278,11 @@ class Config(object):
             'schedule': crontab(hour=2, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'save-daily-notification-processing-time': {
+            'task': 'save-daily-notification-processing-time',
+            'schedule': crontab(hour=2, minute=0),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
         'remove_sms_email_jobs': {
             'task': 'remove_sms_email_jobs',
             'schedule': crontab(hour=4, minute=0),

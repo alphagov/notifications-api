@@ -14,12 +14,14 @@ from app.celery.service_callback_tasks import (
 )
 from app.config import QueueNames
 from app.cronitor import cronitor
+from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.inbound_sms_dao import delete_inbound_sms_older_than_retention
 from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
 from app.dao.notifications_dao import (
+    dao_get_total_notifications_sent_per_day_for_performance_platform,
     dao_timeout_notifications,
     delete_notifications_older_than_retention_by_type,
 )
@@ -33,6 +35,7 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
+    FactProcessingTime,
     Notification,
 )
 from app.performance_platform import processing_time, total_sent_notifications
@@ -318,3 +321,26 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         current_app.logger.info(
             "letter ack contains zip that is not for today: {}".format(ack_file_set - zip_file_set)
         )
+
+
+@notify_celery.task(name='save-daily-notification-processing-time')
+@cronitor("save-daily-notification-processing-time")
+@statsd(namespace="tasks")
+def save_daily_notification_processing_time(bst_date=None):
+    # bst_date is a string in the format of "YYYY-MM-DD"
+    if bst_date is None:
+        # if a date is not provided, we run against yesterdays data
+        bst_date = (datetime.utcnow() - timedelta(days=1)).date()
+    else:
+        bst_date = datetime.strptime(bst_date, "%Y-%m-%d").date()
+
+    start_time = get_london_midnight_in_utc(bst_date)
+    end_time = get_london_midnight_in_utc(bst_date + timedelta(days=1))
+    result = dao_get_total_notifications_sent_per_day_for_performance_platform(start_time, end_time)
+    insert_update_processing_time(
+        FactProcessingTime(
+            bst_date=bst_date,
+            messages_total=result.messages_total,
+            messages_within_10_secs=result.messages_within_10_secs
+        )
+    )

@@ -19,6 +19,7 @@ from app.celery.nightly_tasks import (
     remove_letter_csv_files,
     remove_sms_email_csv_files,
     s3,
+    save_daily_notification_processing_time,
     send_daily_performance_platform_stats,
     send_total_sent_notifications_to_performance_platform,
     timeout_notifications,
@@ -31,7 +32,7 @@ from app.clients.performance_platform.performance_platform_client import (
 )
 from app.config import QueueNames
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, FactProcessingTime
 from tests.app.db import (
     create_ft_notification_status,
     create_job,
@@ -439,3 +440,77 @@ def test_letter_not_raise_alert_if_no_files_do_not_cause_error(mocker, notify_db
     letter_raise_alert_if_no_ack_file_for_zip()
 
     assert mock_file_list.call_count == 2
+
+
+@freeze_time('2021-01-18T02:00')
+@pytest.mark.parametrize('date_provided', [None, '2021-1-17'])
+def test_save_daily_notification_processing_time(mocker, sample_template, date_provided):
+    # notification created too early to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 16, 23, 59),
+        sent_at=datetime(2021, 1, 16, 23, 59) + timedelta(seconds=5)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 17, 00, 00),
+        sent_at=datetime(2021, 1, 17, 00, 00) + timedelta(seconds=5)
+    )
+    # notification counted but not sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 17, 23, 59),
+        sent_at=datetime(2021, 1, 17, 23, 59) + timedelta(seconds=15)
+    )
+    # notification created too late to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 18, 00, 00),
+        sent_at=datetime(2021, 1, 18, 00, 00) + timedelta(seconds=5)
+    )
+
+    save_daily_notification_processing_time(date_provided)
+
+    persisted_to_db = FactProcessingTime.query.all()
+    assert len(persisted_to_db) == 1
+    assert persisted_to_db[0].bst_date == date(2021, 1, 17)
+    assert persisted_to_db[0].messages_total == 2
+    assert persisted_to_db[0].messages_within_10_secs == 1
+
+
+@freeze_time('2021-04-18T02:00')
+@pytest.mark.parametrize('date_provided', [None, '2021-4-17'])
+def test_save_daily_notification_processing_time_when_in_bst(mocker, sample_template, date_provided):
+    # notification created too early to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 16, 22, 59),
+        sent_at=datetime(2021, 4, 16, 22, 59) + timedelta(seconds=15)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 16, 23, 00),
+        sent_at=datetime(2021, 4, 16, 23, 00) + timedelta(seconds=5)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 17, 22, 59),
+        sent_at=datetime(2021, 4, 17, 22, 59) + timedelta(seconds=5)
+    )
+    # notification created too late to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 17, 23, 00),
+        sent_at=datetime(2021, 4, 17, 23, 00) + timedelta(seconds=15)
+    )
+
+    save_daily_notification_processing_time(date_provided)
+
+    persisted_to_db = FactProcessingTime.query.all()
+    assert len(persisted_to_db) == 1
+    assert persisted_to_db[0].bst_date == date(2021, 4, 17)
+    assert persisted_to_db[0].messages_total == 2
+    assert persisted_to_db[0].messages_within_10_secs == 2
