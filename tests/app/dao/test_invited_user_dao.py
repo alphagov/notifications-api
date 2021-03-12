@@ -7,8 +7,8 @@ from sqlalchemy.orm.exc import NoResultFound
 from app import db
 from app.dao.invited_user_dao import (
     delete_invitations_created_more_than_two_days_ago,
-    get_invited_user,
     get_invited_user_by_id,
+    get_invited_user_by_service_and_id,
     get_invited_users_for_service,
     save_invited_user,
 )
@@ -65,7 +65,7 @@ def test_create_invited_user_sets_default_folder_permissions_of_empty_list(
 
 
 def test_get_invited_user_by_service_and_id(notify_db, notify_db_session, sample_invited_user):
-    from_db = get_invited_user(sample_invited_user.service.id, sample_invited_user.id)
+    from_db = get_invited_user_by_service_and_id(sample_invited_user.service.id, sample_invited_user.id)
     assert from_db == sample_invited_user
 
 
@@ -78,7 +78,7 @@ def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sam
     unknown_id = uuid.uuid4()
 
     with pytest.raises(NoResultFound) as e:
-        get_invited_user(sample_service.id, unknown_id)
+        get_invited_user_by_service_and_id(sample_service.id, unknown_id)
     assert 'No row was found for one()' in str(e.value)
 
 

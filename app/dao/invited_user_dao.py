@@ -9,7 +9,7 @@ def save_invited_user(invited_user):
     db.session.commit()
 
 
-def get_invited_user(service_id, invited_user_id):
+def get_invited_user_by_service_and_id(service_id, invited_user_id):
     return InvitedUser.query.filter_by(service_id=service_id, id=invited_user_id).one()
 
 

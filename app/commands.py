@@ -570,7 +570,7 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
     #  platform_admin
     #  view_activity
     # "send_texts,send_emails,send_letters,view_activity"
-    from app.invite.rest import create_invited_user
+    from app.service_invite.rest import create_invited_user
     file = open(file_name)
     for email_address in file:
         data = {
