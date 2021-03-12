@@ -1,35 +1,33 @@
 import pytest
-
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError
 
 from app import encryption
 from app.models import (
-    ServiceGuestList,
-    Notification,
-    SMS_TYPE,
-    MOBILE_TYPE,
     EMAIL_TYPE,
+    MOBILE_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_PENDING,
     NOTIFICATION_FAILED,
+    NOTIFICATION_PENDING,
+    NOTIFICATION_SENDING,
     NOTIFICATION_STATUS_LETTER_ACCEPTED,
     NOTIFICATION_STATUS_LETTER_RECEIVED,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TECHNICAL_FAILURE,
-    PRECOMPILED_TEMPLATE_NAME
+    PRECOMPILED_TEMPLATE_NAME,
+    SMS_TYPE,
+    Notification,
+    ServiceGuestList,
 )
-
 from tests.app.db import (
-    create_notification,
-    create_service,
     create_inbound_number,
-    create_reply_to_email,
     create_letter_contact,
+    create_notification,
+    create_reply_to_email,
+    create_service,
     create_template,
-    create_template_folder
+    create_template_folder,
 )
 
 

@@ -1,49 +1,48 @@
+import datetime
 import itertools
 import uuid
-import datetime
-from flask import url_for, current_app
 
-from sqlalchemy.ext.declarative import declared_attr
-from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.schema import Sequence
-from sqlalchemy.dialects.postgresql import (
-    UUID,
-    JSON,
-    JSONB,
-)
-from sqlalchemy.orm.collections import attribute_mapped_collection
-from sqlalchemy import UniqueConstraint, CheckConstraint, Index, String, and_, func
+from flask import current_app, url_for
 from notifications_utils.columns import Columns
+from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.recipients import (
+    InvalidEmailError,
+    InvalidPhoneError,
+    try_validate_and_format_phone_number,
     validate_email_address,
     validate_phone_number,
-    try_validate_and_format_phone_number,
-    InvalidPhoneError,
-    InvalidEmailError
 )
-from notifications_utils.letter_timings import get_letter_timings
 from notifications_utils.template import (
+    BroadcastMessageTemplate,
+    LetterPrintTemplate,
     PlainTextEmailTemplate,
     SMSMessageTemplate,
-    LetterPrintTemplate,
-    BroadcastMessageTemplate,
 )
 from notifications_utils.timezones import convert_utc_to_bst
-
-from app.hashing import (
-    hashpw,
-    check_hash
+from sqlalchemy import (
+    CheckConstraint,
+    Index,
+    String,
+    UniqueConstraint,
+    and_,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSON, JSONB, UUID
+from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm.collections import attribute_mapped_collection
+from sqlalchemy.schema import Sequence
+
 from app import db, encryption
+from app.hashing import check_hash, hashpw
+from app.history_meta import Versioned
 from app.utils import (
     DATETIME_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
     get_dt_string_or_none,
     get_uuid_string_or_none,
 )
-
-from app.history_meta import Versioned
 
 SMS_TYPE = 'sms'
 EMAIL_TYPE = 'email'
@@ -2437,7 +2436,9 @@ class BroadcastEvent(db.Model):
         Return the full provider_message object rather than just an identifier, since the different providers expect
         reference to contain different things - let the cbc_proxy work out what information is relevant.
         """
-        from app.dao.broadcast_message_dao import get_earlier_events_for_broadcast_event
+        from app.dao.broadcast_message_dao import (
+            get_earlier_events_for_broadcast_event,
+        )
         earlier_events = [
             event for event in get_earlier_events_for_broadcast_event(self.id)
         ]

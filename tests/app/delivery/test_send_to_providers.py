@@ -10,30 +10,31 @@ from notifications_utils.recipients import validate_and_format_phone_number
 from requests import HTTPError
 
 import app
-from app import notification_provider_clients, mmg_client, firetext_client
+from app import firetext_client, mmg_client, notification_provider_clients
 from app.dao import notifications_dao
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
-    Notification,
-    EmailBranding,
-    KEY_TYPE_NORMAL,
-    KEY_TYPE_TEST,
-    KEY_TYPE_TEAM,
-    BRANDING_ORG,
     BRANDING_BOTH,
-    BRANDING_ORG_BANNER
+    BRANDING_ORG,
+    BRANDING_ORG_BANNER,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    EmailBranding,
+    Notification,
 )
 from app.serialised_models import SerialisedService
 from tests.app.db import (
-    create_service,
-    create_template,
+    create_email_branding,
     create_notification,
     create_reply_to_email,
+    create_service,
     create_service_sms_sender,
-    create_service_with_defined_sms_sender, create_email_branding
+    create_service_with_defined_sms_sender,
+    create_template,
 )
 
 
@@ -208,7 +209,10 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     version_on_notification = sample_template.version
 
     # Change the template
-    from app.dao.templates_dao import dao_update_template, dao_get_template_by_id
+    from app.dao.templates_dao import (
+        dao_get_template_by_id,
+        dao_update_template,
+    )
     sample_template.content = sample_template.content + " another version of the template"
     dao_update_template(sample_template)
     t = dao_get_template_by_id(sample_template.id)

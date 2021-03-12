@@ -1,29 +1,32 @@
 
-from flask import abort, Blueprint, jsonify, request, current_app
+from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
 from app.dao.fact_billing_dao import fetch_usage_year_for_organisation
 from app.dao.organisation_dao import (
-    dao_create_organisation,
-    dao_get_organisations,
-    dao_get_organisation_by_id,
-    dao_get_organisation_by_email_address,
-    dao_get_organisation_services,
-    dao_update_organisation,
     dao_add_service_to_organisation,
+    dao_add_user_to_organisation,
+    dao_create_organisation,
+    dao_get_organisation_by_email_address,
+    dao_get_organisation_by_id,
+    dao_get_organisation_services,
+    dao_get_organisations,
     dao_get_users_for_organisation,
-    dao_add_user_to_organisation
+    dao_update_organisation,
 )
-from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.errors import register_errors, InvalidRequest
-from app.models import Organisation, KEY_TYPE_NORMAL
-from app.notifications.process_notifications import persist_notification, send_notification_to_queue
+from app.dao.templates_dao import dao_get_template_by_id
+from app.errors import InvalidRequest, register_errors
+from app.models import KEY_TYPE_NORMAL, Organisation
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue,
+)
 from app.organisation.organisation_schema import (
     post_create_organisation_schema,
-    post_update_organisation_schema,
     post_link_service_to_organisation_schema,
+    post_update_organisation_schema,
 )
 from app.schema_validation import validate
 

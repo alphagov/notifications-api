@@ -1,11 +1,10 @@
 
-from app.dao.date_util import get_current_financial_year_start_year
-
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
     dao_get_free_sms_fragment_limit_for_year,
     dao_update_annual_billing_for_future_years,
 )
+from app.dao.date_util import get_current_financial_year_start_year
 from tests.app.db import create_annual_billing
 
 

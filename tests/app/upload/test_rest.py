@@ -1,9 +1,14 @@
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
-from app.models import LETTER_TYPE, JOB_STATUS_FINISHED, JOB_STATUS_PENDING
-from tests.app.db import create_job, create_notification, create_template, create_ft_notification_status
+from app.models import JOB_STATUS_FINISHED, JOB_STATUS_PENDING, LETTER_TYPE
+from tests.app.db import (
+    create_ft_notification_status,
+    create_job,
+    create_notification,
+    create_template,
+)
 from tests.conftest import set_config
 
 

@@ -5,10 +5,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import encryption
 from app.dao.service_inbound_api_dao import (
-    save_service_inbound_api,
-    reset_service_inbound_api,
     get_service_inbound_api,
-    get_service_inbound_api_for_service)
+    get_service_inbound_api_for_service,
+    reset_service_inbound_api,
+    save_service_inbound_api,
+)
 from app.models import ServiceInboundApi
 from tests.app.db import create_service_inbound_api
 

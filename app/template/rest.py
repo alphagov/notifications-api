@@ -2,42 +2,44 @@ import base64
 from io import BytesIO
 
 import botocore
-from PyPDF2.utils import PdfReadError
-from flask import (
-    Blueprint,
-    current_app,
-    jsonify,
-    request)
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
 from notifications_utils.template import SMSMessageTemplate
+from PyPDF2.utils import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.template_folder_dao import dao_get_template_folder_by_id_and_service_id
+from app.dao.template_folder_dao import (
+    dao_get_template_folder_by_id_and_service_id,
+)
 from app.dao.templates_dao import (
-    dao_update_template,
     dao_create_template,
-    dao_redact_template,
-    dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
-    dao_get_template_versions,
-    dao_update_template_reply_to,
     dao_get_template_by_id,
+    dao_get_template_by_id_and_service_id,
+    dao_get_template_versions,
+    dao_redact_template,
+    dao_update_template,
+    dao_update_template_reply_to,
     get_precompiled_letter_template,
 )
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
+from app.errors import InvalidRequest, register_errors
 from app.letters.utils import get_letter_pdf_and_metadata
-from app.models import SMS_TYPE, Template, SECOND_CLASS, LETTER_TYPE
-from app.notifications.validators import service_has_permission, check_reply_to
+from app.models import LETTER_TYPE, SECOND_CLASS, SMS_TYPE, Template
+from app.notifications.validators import check_reply_to, service_has_permission
 from app.schema_validation import validate
-from app.schemas import (template_schema, template_schema_no_detail, template_history_schema)
-from app.template.template_schemas import post_create_template_schema, post_update_template_schema
+from app.schemas import (
+    template_history_schema,
+    template_schema,
+    template_schema_no_detail,
+)
+from app.template.template_schemas import (
+    post_create_template_schema,
+    post_update_template_schema,
+)
 from app.utils import get_public_notify_type_text
 
 template_blueprint = Blueprint('template', __name__, url_prefix='/service/<uuid:service_id>/template')

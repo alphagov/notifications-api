@@ -1,6 +1,5 @@
 from app.schema_validation.definitions import uuid
 
-
 get_inbound_sms_request = {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "description": "schema for query parameters allowed when getting list of received text messages",

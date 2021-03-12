@@ -3,20 +3,22 @@ from itertools import product
 
 from freezegun import freeze_time
 
+from app import db
 from app.dao.inbound_sms_dao import (
-    dao_get_inbound_sms_for_service,
     dao_count_inbound_sms_for_service,
-    delete_inbound_sms_older_than_retention,
     dao_get_inbound_sms_by_id,
+    dao_get_inbound_sms_for_service,
     dao_get_paginated_inbound_sms_for_service_for_public_api,
     dao_get_paginated_most_recent_inbound_sms_by_user_number_for_service,
+    delete_inbound_sms_older_than_retention,
 )
-
 from app.models import InboundSmsHistory
-from app import db
-
+from tests.app.db import (
+    create_inbound_sms,
+    create_service,
+    create_service_data_retention,
+)
 from tests.conftest import set_config
-from tests.app.db import create_inbound_sms, create_service, create_service_data_retention
 
 
 def test_get_all_inbound_sms(sample_service):

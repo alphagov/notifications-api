@@ -5,68 +5,67 @@ from unittest.mock import Mock, call
 
 import pytest
 import requests_mock
-from freezegun import freeze_time
-from requests import RequestException
-from sqlalchemy.exc import SQLAlchemyError
 from celery.exceptions import Retry
+from freezegun import freeze_time
+from notifications_utils.columns import Row
 from notifications_utils.template import (
     LetterPrintTemplate,
     PlainTextEmailTemplate,
     SMSMessageTemplate,
 )
-from notifications_utils.columns import Row
+from requests import RequestException
+from sqlalchemy.exc import SQLAlchemyError
 
 from app import encryption
-from app.celery import provider_tasks
-from app.celery import tasks
+from app.celery import provider_tasks, tasks
 from app.celery.tasks import (
-    process_job,
-    process_row,
-    save_sms,
-    save_email,
-    save_letter,
+    get_recipient_csv_and_template_and_sender_id,
     process_incomplete_job,
     process_incomplete_jobs,
-    s3,
-    send_inbound_sms_to_service,
+    process_job,
     process_returned_letters_list,
-    get_recipient_csv_and_template_and_sender_id,
+    process_row,
+    s3,
     save_api_email,
-    save_api_sms
+    save_api_sms,
+    save_email,
+    save_letter,
+    save_sms,
+    send_inbound_sms_to_service,
 )
 from app.config import QueueNames
 from app.dao import jobs_dao, service_email_reply_to_dao, service_sms_sender_dao
 from app.models import (
+    EMAIL_TYPE,
+    JOB_STATUS_ERROR,
+    JOB_STATUS_FINISHED,
+    JOB_STATUS_IN_PROGRESS,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_CREATED,
+    SMS_TYPE,
     Job,
     Notification,
     NotificationHistory,
-    EMAIL_TYPE,
-    KEY_TYPE_NORMAL,
-    JOB_STATUS_FINISHED,
-    JOB_STATUS_ERROR,
-    JOB_STATUS_IN_PROGRESS,
-    LETTER_TYPE,
-    SMS_TYPE,
     ReturnedLetter,
-    NOTIFICATION_CREATED)
+)
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import DATETIME_FORMAT
-
 from tests.app import load_example_csv
-
 from tests.app.db import (
+    create_api_key,
     create_inbound_sms,
     create_job,
     create_letter_contact,
     create_notification,
-    create_service_inbound_api,
+    create_notification_history,
+    create_reply_to_email,
     create_service,
+    create_service_inbound_api,
+    create_service_with_defined_sms_sender,
     create_template,
     create_user,
-    create_reply_to_email,
-    create_service_with_defined_sms_sender,
-    create_notification_history,
-    create_api_key)
+)
 from tests.conftest import set_config_values
 
 
@@ -754,7 +753,10 @@ def test_save_email_should_use_template_version_from_job_not_latest(sample_email
     notification = _notification_json(sample_email_template, 'my_email@my_email.com')
     version_on_notification = sample_email_template.version
     # Change the template
-    from app.dao.templates_dao import dao_update_template, dao_get_template_by_id
+    from app.dao.templates_dao import (
+        dao_get_template_by_id,
+        dao_update_template,
+    )
     sample_email_template.content = sample_email_template.content + " another version of the template"
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     dao_update_template(sample_email_template)

@@ -1,9 +1,9 @@
-import pytest
-
-from flask import json
 from itertools import product
 
-from app.models import TEMPLATE_TYPES, EMAIL_TYPE
+import pytest
+from flask import json
+
+from app.models import EMAIL_TYPE, TEMPLATE_TYPES
 from tests import create_authorization_header
 from tests.app.db import create_template
 

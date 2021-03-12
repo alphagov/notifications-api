@@ -2,17 +2,16 @@ import uuid
 
 import pytest
 from flask import json
-
-from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
-from app.v2.template.template_schemas import (
-    get_template_by_id_response,
-    get_template_by_id_request,
-    post_template_preview_request,
-    post_template_preview_response
-)
-from app.schema_validation import validate
 from jsonschema.exceptions import ValidationError
 
+from app.models import EMAIL_TYPE, SMS_TYPE, TEMPLATE_TYPES
+from app.schema_validation import validate
+from app.v2.template.template_schemas import (
+    get_template_by_id_request,
+    get_template_by_id_response,
+    post_template_preview_request,
+    post_template_preview_response,
+)
 
 valid_json_get_response = {
     'id': str(uuid.uuid4()),

@@ -1,5 +1,6 @@
-import requests
 from functools import wraps
+
+import requests
 from flask import current_app
 
 

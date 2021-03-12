@@ -1,17 +1,14 @@
 from flask import Blueprint, jsonify, request
 
-from app.schemas import provider_details_schema, provider_details_history_schema
 from app.dao.provider_details_dao import (
-    get_provider_details_by_id,
-    dao_update_provider_details,
     dao_get_provider_stats,
-    dao_get_provider_versions
+    dao_get_provider_versions,
+    dao_update_provider_details,
+    get_provider_details_by_id,
 )
 from app.dao.users_dao import get_user_by_id
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
+from app.errors import InvalidRequest, register_errors
+from app.schemas import provider_details_history_schema, provider_details_schema
 
 provider_details = Blueprint('provider_details', __name__)
 register_errors(provider_details)

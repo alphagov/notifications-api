@@ -1,27 +1,21 @@
-from flask import (
-    Blueprint,
-    jsonify,
-    request,
-    current_app
-)
+from flask import Blueprint, current_app, jsonify, request
+from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 from app import api_user, authenticated_service
 from app.config import QueueNames
-from app.dao import (
-    notifications_dao
-)
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
+from app.dao import notifications_dao
+from app.errors import InvalidRequest, register_errors
 from app.models import (
-    EMAIL_TYPE, SMS_TYPE,
-    KEY_TYPE_TEAM, PRIORITY,
-    LETTER_TYPE)
+    EMAIL_TYPE,
+    KEY_TYPE_TEAM,
+    LETTER_TYPE,
+    PRIORITY,
+    SMS_TYPE,
+)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
-    simulated_recipient
+    simulated_recipient,
 )
 from app.notifications.validators import (
     check_if_service_can_send_to_number,
@@ -31,14 +25,12 @@ from app.notifications.validators import (
 )
 from app.schemas import (
     email_notification_schema,
-    sms_template_notification_schema,
     notification_with_personalisation_schema,
-    notifications_filter_schema
+    notifications_filter_schema,
+    sms_template_notification_schema,
 )
 from app.service.utils import service_allowed_to_send_to
-from app.utils import pagination_links, get_public_notify_type_text
-
-from notifications_utils import SMS_CHAR_COUNT_LIMIT
+from app.utils import get_public_notify_type_text, pagination_links
 
 notifications = Blueprint('notifications', __name__)
 

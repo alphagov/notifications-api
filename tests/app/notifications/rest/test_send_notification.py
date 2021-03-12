@@ -1,34 +1,42 @@
 import random
 import string
-import pytest
 
-from flask import (json, current_app)
+import pytest
+from flask import current_app, json
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
 from app.dao import notifications_dao
-from app.models import (
-    SMS_TYPE, EMAIL_TYPE,
-    ApiKey, KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, Notification, NotificationHistory
-)
-from app.dao.templates_dao import dao_get_all_templates_for_service, dao_update_template
-from app.dao.services_dao import dao_update_service
 from app.dao.api_key_dao import save_model_api_key
+from app.dao.services_dao import dao_update_service
+from app.dao.templates_dao import (
+    dao_get_all_templates_for_service,
+    dao_update_template,
+)
 from app.errors import InvalidRequest
-from app.models import Template
+from app.models import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    SMS_TYPE,
+    ApiKey,
+    Notification,
+    NotificationHistory,
+    Template,
+)
 from app.service.send_notification import send_one_off_notification
 from app.v2.errors import RateLimitError
-
 from tests import create_authorization_header
 from tests.app.db import (
     create_api_key,
     create_notification,
+    create_reply_to_email,
     create_service,
     create_service_guest_list,
     create_template,
-    create_reply_to_email,
 )
 
 

@@ -1,6 +1,6 @@
 import json
+from collections import defaultdict, namedtuple
 from datetime import datetime
-from collections import namedtuple, defaultdict
 
 from flask import current_app
 from notifications_utils.columns import Columns
@@ -8,36 +8,28 @@ from notifications_utils.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
-from requests import (
-    HTTPError,
-    request,
-    RequestException
-)
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from requests import HTTPError, RequestException, request
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app import (
-    create_uuid,
-    create_random_identifier,
-    encryption,
-    notify_celery,
-)
+from app import create_random_identifier, create_uuid, encryption, notify_celery
 from app.aws import s3
-from app.celery import provider_tasks, letters_pdf_tasks, research_mode_tasks
+from app.celery import letters_pdf_tasks, provider_tasks, research_mode_tasks
 from app.config import QueueNames
-from app.dao.daily_sorted_letter_dao import dao_create_or_update_daily_sorted_letter
+from app.dao.daily_sorted_letter_dao import (
+    dao_create_or_update_daily_sorted_letter,
+)
 from app.dao.inbound_sms_dao import dao_get_inbound_sms_by_id
-from app.dao.jobs_dao import (
-    dao_update_job,
-    dao_get_job_by_id,
-)
+from app.dao.jobs_dao import dao_get_job_by_id, dao_update_job
 from app.dao.notifications_dao import (
-    get_notification_by_id,
-    dao_update_notifications_by_reference,
     dao_get_last_notification_added_for_job_id,
-    update_notification_status_by_reference,
     dao_get_notification_or_history_by_reference,
+    dao_update_notifications_by_reference,
+    get_notification_by_id,
+    update_notification_status_by_reference,
 )
-from app.dao.provider_details_dao import get_provider_details_by_notification_type
+from app.dao.provider_details_dao import (
+    get_provider_details_by_notification_type,
+)
 from app.dao.returned_letters_dao import insert_or_update_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
@@ -56,16 +48,16 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_SENDING,
-    NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_RETURNED_LETTER,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
     DailySortedLetter,
 )
 from app.notifications.process_notifications import persist_notification
-from app.service.utils import service_allowed_to_send_to
 from app.serialised_models import SerialisedService, SerialisedTemplate
+from app.service.utils import service_allowed_to_send_to
 from app.utils import DATETIME_FORMAT
 
 

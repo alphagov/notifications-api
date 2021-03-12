@@ -1,11 +1,11 @@
-from contextlib import contextmanager
 import os
+from contextlib import contextmanager
 
-from flask import Flask
-from alembic.command import upgrade
-from alembic.config import Config
 import pytest
 import sqlalchemy
+from alembic.command import upgrade
+from alembic.config import Config
+from flask import Flask
 
 from app import create_app, db
 from app.dao.provider_details_dao import get_provider_details_by_identifier

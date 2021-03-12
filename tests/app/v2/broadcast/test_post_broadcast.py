@@ -1,10 +1,14 @@
-import pytest
-
-from flask import json
-from tests import create_authorization_header
 from unittest.mock import ANY
+
+import pytest
+from flask import json
+
+from app.dao.broadcast_message_dao import (
+    dao_get_broadcast_message_by_id_and_service_id,
+)
+from tests import create_authorization_header
+
 from . import sample_cap_xml_documents
-from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_id_and_service_id
 
 
 def test_broadcast_for_service_without_permission_returns_400(

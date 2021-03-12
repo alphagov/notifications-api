@@ -1,25 +1,33 @@
 import json
-import pytest
-import mock
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
 
-from flask import url_for, current_app
+import mock
+import pytest
+from flask import current_app, url_for
 from freezegun import freeze_time
 
+from app.dao.permissions_dao import default_service_permissions
+from app.dao.service_user_dao import (
+    dao_get_service_user,
+    dao_update_service_user,
+)
 from app.models import (
-    User,
-    Permission,
+    EMAIL_AUTH_TYPE,
     MANAGE_SETTINGS,
     MANAGE_TEMPLATES,
-    Notification,
     SMS_AUTH_TYPE,
-    EMAIL_AUTH_TYPE
+    Notification,
+    Permission,
+    User,
 )
-from app.dao.permissions_dao import default_service_permissions
-from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
 from tests import create_authorization_header
-from tests.app.db import create_service, create_template_folder, create_organisation, create_user
+from tests.app.db import (
+    create_organisation,
+    create_service,
+    create_template_folder,
+    create_user,
+)
 
 
 def test_get_user_list(admin_request, sample_service):

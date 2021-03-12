@@ -1,27 +1,26 @@
 import datetime
 import uuid
+from collections import namedtuple
 
 import pytest
 from boto3.exceptions import Boto3Error
-from sqlalchemy.exc import SQLAlchemyError
 from freezegun import freeze_time
-from collections import namedtuple
-
-from app.models import (
-    Notification,
-    NotificationHistory,
-    LETTER_TYPE
+from notifications_utils.recipients import (
+    validate_and_format_email_address,
+    validate_and_format_phone_number,
 )
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models import LETTER_TYPE, Notification, NotificationHistory
 from app.notifications.process_notifications import (
     create_content_for_notification,
     persist_notification,
     send_notification_to_queue,
-    simulated_recipient
+    simulated_recipient,
 )
 from app.serialised_models import SerialisedTemplate
-from notifications_utils.recipients import validate_and_format_phone_number, validate_and_format_email_address
 from app.v2.errors import BadRequestError
-from tests.app.db import create_service, create_template, create_api_key
+from tests.app.db import create_api_key, create_service, create_template
 
 
 def test_create_content_for_notification_passes(sample_email_template):

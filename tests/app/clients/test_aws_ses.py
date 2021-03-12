@@ -1,10 +1,15 @@
+from unittest.mock import ANY, Mock
+
 import botocore
 import pytest
-from unittest.mock import Mock, ANY
 
 from app import aws_ses_client
 from app.clients.email import EmailClientNonRetryableException
-from app.clients.email.aws_ses import get_aws_responses, AwsSesClientException, AwsSesClientThrottlingSendRateException
+from app.clients.email.aws_ses import (
+    AwsSesClientException,
+    AwsSesClientThrottlingSendRateException,
+    get_aws_responses,
+)
 
 
 def test_should_return_correct_details_for_delivery():

@@ -1,25 +1,25 @@
 from datetime import datetime
 
+import pytest
 from freezegun import freeze_time
 from sqlalchemy.orm.exc import NoResultFound
-import pytest
 
 from app.dao.templates_dao import (
     dao_create_template,
-    dao_get_template_by_id_and_service_id,
     dao_get_all_templates_for_service,
-    dao_update_template,
+    dao_get_template_by_id_and_service_id,
     dao_get_template_versions,
-    dao_redact_template, dao_update_template_reply_to
+    dao_redact_template,
+    dao_update_template,
+    dao_update_template_reply_to,
 )
 from app.models import (
     Template,
     TemplateFolder,
     TemplateHistory,
-    TemplateRedacted
+    TemplateRedacted,
 )
-
-from tests.app.db import create_template, create_letter_contact
+from tests.app.db import create_letter_contact, create_template
 
 
 @pytest.mark.parametrize('template_type, subject', [

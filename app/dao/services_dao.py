@@ -1,18 +1,14 @@
 import uuid
 from datetime import date, datetime, timedelta
 
-from sqlalchemy.sql.expression import asc, case, and_, func
-from sqlalchemy.orm import joinedload
-from sqlalchemy import cast, Float
 from flask import current_app
+from sqlalchemy import Float, cast
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
+from app.dao.dao_utils import VersionOptions, transactional, version_class
 from app.dao.date_util import get_current_financial_year
-from app.dao.dao_utils import (
-    transactional,
-    version_class,
-    VersionOptions,
-)
 from app.dao.email_branding_dao import dao_get_email_branding_by_name
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
@@ -20,6 +16,17 @@ from app.dao.service_sms_sender_dao import insert_service_sms_sender
 from app.dao.service_user_dao import dao_get_service_user
 from app.dao.template_folder_dao import dao_get_valid_template_folders_by_id
 from app.models import (
+    CROWN_ORGANISATION_TYPES,
+    EMAIL_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    NHS_ORGANISATION_TYPES,
+    NON_CROWN_ORGANISATION_TYPES,
+    NOTIFICATION_PERMANENT_FAILURE,
+    SMS_TYPE,
+    UPLOAD_LETTERS,
     AnnualBilling,
     ApiKey,
     FactBilling,
@@ -31,27 +38,16 @@ from app.models import (
     Organisation,
     Permission,
     Service,
+    ServiceContactList,
+    ServiceEmailReplyTo,
+    ServiceLetterContact,
     ServicePermission,
     ServiceSmsSender,
-    ServiceEmailReplyTo,
-    ServiceContactList,
-    ServiceLetterContact,
     Template,
     TemplateHistory,
     TemplateRedacted,
     User,
     VerifyCode,
-    CROWN_ORGANISATION_TYPES,
-    EMAIL_TYPE,
-    INTERNATIONAL_SMS_TYPE,
-    KEY_TYPE_TEST,
-    NHS_ORGANISATION_TYPES,
-    NON_CROWN_ORGANISATION_TYPES,
-    NOTIFICATION_PERMANENT_FAILURE,
-    SMS_TYPE,
-    LETTER_TYPE,
-    UPLOAD_LETTERS,
-    INTERNATIONAL_LETTERS
 )
 from app.utils import (
     email_address_is_nhs,

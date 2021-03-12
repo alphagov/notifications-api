@@ -1,6 +1,8 @@
 import json
-from datetime import (datetime, date)
+from datetime import date, datetime
+
 from flask import url_for
+
 from app.dao.templates_dao import dao_update_template
 from tests import create_authorization_header
 from tests.app.db import create_letter_contact

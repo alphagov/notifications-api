@@ -1,6 +1,6 @@
-from app.models import ProviderRates, ProviderDetails
 from app import db
 from app.dao.dao_utils import transactional
+from app.models import ProviderDetails, ProviderRates
 
 
 @transactional

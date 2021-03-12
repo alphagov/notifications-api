@@ -6,7 +6,8 @@ from jsonschema import ValidationError
 
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
-    update_service_callback_api_schema)
+    update_service_callback_api_schema,
+)
 
 
 def test_service_callback_api_schema_validates():

@@ -1,14 +1,14 @@
-import pytest
 import uuid
-
 from datetime import datetime, timedelta
+
+import pytest
 
 from app.models import ServiceContactList
 from tests.app.db import (
     create_job,
+    create_service,
     create_service_contact_list,
     create_service_data_retention,
-    create_service,
     create_template,
 )
 

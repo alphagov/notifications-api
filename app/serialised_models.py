@@ -11,7 +11,6 @@ from notifications_utils.serialised_model import (
 from werkzeug.utils import cached_property
 
 from app import db, redis_store
-
 from app.dao.api_key_dao import get_model_api_keys
 from app.dao.services_dao import dao_fetch_service_by_id
 

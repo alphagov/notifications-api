@@ -1,7 +1,6 @@
-from flask import current_app
-
-from boto3 import client, resource
 import botocore
+from boto3 import client, resource
+from flask import current_app
 
 FILE_LOCATION_STRUCTURE = 'service-{}-notify/{}.csv'
 

@@ -1,35 +1,28 @@
-from flask import (
-    Blueprint,
-    jsonify,
-    request,
-)
+from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.errors import (
-    register_errors,
-    InvalidRequest
+from app.dao.service_callback_api_dao import (
+    delete_service_callback_api,
+    get_service_callback_api,
+    reset_service_callback_api,
+    save_service_callback_api,
 )
+from app.dao.service_inbound_api_dao import (
+    delete_service_inbound_api,
+    get_service_inbound_api,
+    reset_service_inbound_api,
+    save_service_inbound_api,
+)
+from app.errors import InvalidRequest, register_errors
 from app.models import (
-    ServiceInboundApi,
-    ServiceCallbackApi,
     DELIVERY_STATUS_CALLBACK_TYPE,
+    ServiceCallbackApi,
+    ServiceInboundApi,
 )
 from app.schema_validation import validate
 from app.service.service_callback_api_schema import (
     create_service_callback_api_schema,
-    update_service_callback_api_schema
-)
-from app.dao.service_inbound_api_dao import (
-    save_service_inbound_api,
-    get_service_inbound_api,
-    reset_service_inbound_api,
-    delete_service_inbound_api,
-)
-from app.dao.service_callback_api_dao import (
-    save_service_callback_api,
-    get_service_callback_api,
-    reset_service_callback_api,
-    delete_service_callback_api,
+    update_service_callback_api_schema,
 )
 
 service_callback_blueprint = Blueprint('service_callback', __name__, url_prefix='/service/<uuid:service_id>')

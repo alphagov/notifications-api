@@ -1,15 +1,19 @@
 from datetime import datetime, timedelta
+
 from freezegun import freeze_time
 
-from app.dao.uploads_dao import dao_get_uploads_by_service_id, dao_get_uploaded_letters_by_print_date
-from app.models import LETTER_TYPE, JOB_STATUS_IN_PROGRESS
+from app.dao.uploads_dao import (
+    dao_get_uploaded_letters_by_print_date,
+    dao_get_uploads_by_service_id,
+)
+from app.models import JOB_STATUS_IN_PROGRESS, LETTER_TYPE
 from tests.app.db import (
     create_job,
-    create_service,
-    create_service_data_retention,
-    create_service_contact_list,
-    create_template,
     create_notification,
+    create_service,
+    create_service_contact_list,
+    create_service_data_retention,
+    create_template,
 )
 
 

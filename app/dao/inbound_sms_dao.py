@@ -1,11 +1,17 @@
 from flask import current_app
-from sqlalchemy import desc, and_
-from sqlalchemy.orm import aliased
+from sqlalchemy import and_, desc
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import aliased
 
 from app import db
 from app.dao.dao_utils import transactional
-from app.models import InboundSms, InboundSmsHistory, Service, ServiceDataRetention, SMS_TYPE
+from app.models import (
+    SMS_TYPE,
+    InboundSms,
+    InboundSmsHistory,
+    Service,
+    ServiceDataRetention,
+)
 from app.utils import midnight_n_days_ago
 
 

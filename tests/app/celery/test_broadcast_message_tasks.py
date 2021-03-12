@@ -1,18 +1,11 @@
 import uuid
 from datetime import datetime
-from unittest.mock import call, ANY
+from unittest.mock import ANY, call
 
-from freezegun import freeze_time
-from celery.exceptions import Retry
 import pytest
+from celery.exceptions import Retry
+from freezegun import freeze_time
 
-from app.models import (
-    BROADCAST_TYPE,
-    BroadcastStatusType,
-    BroadcastEventMessageType,
-    BroadcastProviderMessageStatus
-)
-from app.clients.cbc_proxy import CBCProxyRetryableException, CBCProxyFatalException
 from app.celery.broadcast_message_tasks import (
     check_provider_message_should_send,
     get_retry_delay,
@@ -20,12 +13,21 @@ from app.celery.broadcast_message_tasks import (
     send_broadcast_provider_message,
     trigger_link_test,
 )
-
+from app.clients.cbc_proxy import (
+    CBCProxyFatalException,
+    CBCProxyRetryableException,
+)
+from app.models import (
+    BROADCAST_TYPE,
+    BroadcastEventMessageType,
+    BroadcastProviderMessageStatus,
+    BroadcastStatusType,
+)
 from tests.app.db import (
-    create_template,
-    create_broadcast_message,
     create_broadcast_event,
-    create_broadcast_provider_message
+    create_broadcast_message,
+    create_broadcast_provider_message,
+    create_template,
 )
 from tests.conftest import set_config
 

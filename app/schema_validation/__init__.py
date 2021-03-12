@@ -2,10 +2,14 @@ import json
 from datetime import datetime, timedelta
 from uuid import UUID
 
-from iso8601 import iso8601, ParseError
-from jsonschema import (Draft7Validator, ValidationError, FormatChecker)
-from notifications_utils.recipients import (validate_phone_number, validate_email_address, InvalidPhoneError,
-                                            InvalidEmailError)
+from iso8601 import ParseError, iso8601
+from jsonschema import Draft7Validator, FormatChecker, ValidationError
+from notifications_utils.recipients import (
+    InvalidEmailError,
+    InvalidPhoneError,
+    validate_email_address,
+    validate_phone_number,
+)
 
 format_checker = FormatChecker()
 

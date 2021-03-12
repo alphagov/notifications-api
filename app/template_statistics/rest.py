@@ -1,10 +1,11 @@
 from flask import Blueprint, jsonify, request
 
+from app.dao.fact_notification_status_dao import (
+    fetch_notification_status_for_service_for_today_and_7_previous_days,
+)
 from app.dao.notifications_dao import dao_get_last_date_template_was_used
 from app.dao.templates_dao import dao_get_template_by_id_and_service_id
-from app.dao.fact_notification_status_dao import fetch_notification_status_for_service_for_today_and_7_previous_days
-
-from app.errors import register_errors, InvalidRequest
+from app.errors import InvalidRequest, register_errors
 from app.utils import DATETIME_FORMAT
 
 template_statistics = Blueprint('template_statistics',

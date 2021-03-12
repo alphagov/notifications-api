@@ -1,57 +1,61 @@
 import functools
+from datetime import datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
-from datetime import (
-    datetime,
-    timedelta,
-)
 
 from botocore.exceptions import ClientError
 from flask import current_app
-from notifications_utils.international_billing_rates import INTERNATIONAL_BILLING_RATES
+from notifications_utils.international_billing_rates import (
+    INTERNATIONAL_BILLING_RATES,
+)
 from notifications_utils.recipients import (
-    validate_and_format_email_address,
     InvalidEmailError,
-    try_validate_and_format_phone_number
+    try_validate_and_format_phone_number,
+    validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import (desc, func, asc, and_, or_)
+from sqlalchemy import and_, asc, desc, func, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
-from app import db, create_uuid
-from app.aws.s3 import remove_s3_object, get_s3_bucket_objects
+from app import create_uuid, db
+from app.aws.s3 import get_s3_bucket_objects, remove_s3_object
+from app.clients.sms.firetext import (
+    get_message_status_and_reason_from_firetext_code,
+)
 from app.dao.dao_utils import transactional
 from app.letters.utils import get_letter_pdf_filename
 from app.models import (
-    FactNotificationStatus,
-    Notification,
-    NotificationHistory,
-    ProviderDetails,
+    EMAIL_TYPE,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
-    NOTIFICATION_SENDING,
     NOTIFICATION_PENDING,
     NOTIFICATION_PENDING_VIRUS_CHECK,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_TEMPORARY_FAILURE,
     NOTIFICATION_PERMANENT_FAILURE,
+    NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
-    EMAIL_TYPE,
-    ServiceDataRetention,
+    FactNotificationStatus,
+    Notification,
+    NotificationHistory,
+    ProviderDetails,
     Service,
+    ServiceDataRetention,
 )
-from app.utils import get_london_midnight_in_utc
-from app.utils import midnight_n_days_ago, escape_special_characters
-from app.clients.sms.firetext import get_message_status_and_reason_from_firetext_code
+from app.utils import (
+    escape_special_characters,
+    get_london_midnight_in_utc,
+    midnight_n_days_ago,
+)
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):

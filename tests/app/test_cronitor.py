@@ -1,10 +1,9 @@
 from urllib import parse
 
-import requests
 import pytest
+import requests
 
 from app.cronitor import cronitor
-
 from tests.conftest import set_config_values
 
 

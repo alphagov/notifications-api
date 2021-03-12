@@ -1,22 +1,29 @@
-import pytest
 from datetime import datetime
 
-import dateutil
 import boto3
+import dateutil
+import pytest
 from flask import current_app
 from freezegun import freeze_time
 from moto import mock_s3
 
 from app.letters.utils import (
+    ScanErrorType,
     get_bucket_name_and_prefix_for_notification,
-    get_letter_pdf_filename,
+    get_folder_name,
     get_letter_pdf_and_metadata,
+    get_letter_pdf_filename,
     letter_print_day,
+    move_failed_pdf,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
     upload_letter_pdf,
-    ScanErrorType, move_failed_pdf, get_folder_name
 )
-from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEST, PRECOMPILED_TEMPLATE_NAME, NOTIFICATION_VALIDATION_FAILED
+from app.models import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEST,
+    NOTIFICATION_VALIDATION_FAILED,
+    PRECOMPILED_TEMPLATE_NAME,
+)
 from tests.app.db import create_notification
 
 FROZEN_DATE_TIME = "2018-03-14 17:00:00"

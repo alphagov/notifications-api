@@ -1,34 +1,33 @@
-from datetime import datetime, timedelta, time, date
+from datetime import date, datetime, time, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from sqlalchemy import Date, Integer, and_, desc, func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import func, desc, Date, Integer, and_
 from sqlalchemy.sql.expression import case, literal
 
 from app import db
 from app.dao.date_util import (
     get_financial_year,
-    get_financial_year_for_datetime
+    get_financial_year_for_datetime,
 )
 from app.dao.organisation_dao import dao_get_organisation_live_services
-
 from app.models import (
-    FactBilling,
-    Service,
+    EMAIL_TYPE,
+    INTERNATIONAL_POSTAGE_TYPES,
     KEY_TYPE_TEST,
     LETTER_TYPE,
-    SMS_TYPE,
-    Rate,
-    LetterRate,
-    NotificationHistory,
-    EMAIL_TYPE,
+    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
     NOTIFICATION_STATUS_TYPES_BILLABLE_SMS,
     NOTIFICATION_STATUS_TYPES_SENT_EMAILS,
-    NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
+    SMS_TYPE,
     AnnualBilling,
+    FactBilling,
+    LetterRate,
+    NotificationHistory,
     Organisation,
-    INTERNATIONAL_POSTAGE_TYPES,
+    Rate,
+    Service,
 )
 from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
 

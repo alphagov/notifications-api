@@ -2,11 +2,13 @@ from datetime import timedelta
 
 from flask import current_app
 
+from app import performance_platform_client
 from app.dao.fact_processing_time_dao import insert_update_processing_time
+from app.dao.notifications_dao import (
+    dao_get_total_notifications_sent_per_day_for_performance_platform,
+)
 from app.models import FactProcessingTime
 from app.utils import get_london_midnight_in_utc
-from app.dao.notifications_dao import dao_get_total_notifications_sent_per_day_for_performance_platform
-from app import performance_platform_client
 
 
 def send_processing_time_to_performance_platform(bst_date):

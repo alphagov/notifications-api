@@ -3,7 +3,6 @@ from flask import json
 from freezegun import freeze_time
 
 from app.models import ProviderDetails, ProviderDetailsHistory
-
 from tests import create_authorization_header
 from tests.app.db import create_ft_billing
 

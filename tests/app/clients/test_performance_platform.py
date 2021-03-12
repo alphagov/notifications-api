@@ -1,8 +1,10 @@
+import pytest
 import requests
 import requests_mock
-import pytest
 
-from app.clients.performance_platform.performance_platform_client import PerformancePlatformClient
+from app.clients.performance_platform.performance_platform_client import (
+    PerformancePlatformClient,
+)
 
 
 @pytest.fixture(scope='function')

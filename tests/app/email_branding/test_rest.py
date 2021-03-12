@@ -1,6 +1,6 @@
 import pytest
 
-from app.models import EmailBranding, BRANDING_ORG
+from app.models import BRANDING_ORG, EmailBranding
 from tests.app.db import create_email_branding
 
 

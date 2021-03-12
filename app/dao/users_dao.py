@@ -1,16 +1,16 @@
-from random import (SystemRandom)
-from datetime import (datetime, timedelta)
 import uuid
+from datetime import datetime, timedelta
+from random import SystemRandom
 
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from app import db
+from app.dao.dao_utils import transactional
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
-from app.dao.dao_utils import transactional
 from app.errors import InvalidRequest
-from app.models import (EMAIL_AUTH_TYPE, User, VerifyCode)
+from app.models import EMAIL_AUTH_TYPE, User, VerifyCode
 from app.utils import escape_special_characters, get_archived_db_column_value
 
 

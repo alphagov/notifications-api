@@ -1,5 +1,6 @@
-from lxml import etree
 from pathlib import Path
+
+from lxml import etree
 
 
 def validate_xml(document, schema_file_name):

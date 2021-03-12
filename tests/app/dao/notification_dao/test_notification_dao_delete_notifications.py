@@ -1,23 +1,21 @@
-from datetime import (
-    datetime,
-    date,
-    timedelta
-)
+from datetime import date, datetime, timedelta
+
 import pytest
 from flask import current_app
 from freezegun import freeze_time
 
 from app.dao.notifications_dao import (
     delete_notifications_older_than_retention_by_type,
-    insert_notification_history_delete_notifications
+    insert_notification_history_delete_notifications,
 )
 from app.models import Notification, NotificationHistory
 from tests.app.db import (
-    create_template,
     create_notification,
-    create_service_data_retention,
+    create_notification_history,
     create_service,
-    create_notification_history)
+    create_service_data_retention,
+    create_template,
+)
 
 
 def create_test_data(notification_type, sample_service, days_of_retention=3):

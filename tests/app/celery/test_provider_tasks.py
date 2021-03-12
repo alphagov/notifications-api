@@ -4,10 +4,13 @@ from celery.exceptions import MaxRetriesExceededError
 
 import app
 from app.celery import provider_tasks
-from app.celery.provider_tasks import deliver_sms, deliver_email
-from app.clients.sms import SmsClientResponseException
+from app.celery.provider_tasks import deliver_email, deliver_sms
 from app.clients.email import EmailClientNonRetryableException
-from app.clients.email.aws_ses import AwsSesClientException, AwsSesClientThrottlingSendRateException
+from app.clients.email.aws_ses import (
+    AwsSesClientException,
+    AwsSesClientThrottlingSendRateException,
+)
+from app.clients.sms import SmsClientResponseException
 from app.exceptions import NotificationTechnicalFailureException
 
 

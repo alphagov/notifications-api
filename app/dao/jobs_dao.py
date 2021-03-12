@@ -2,33 +2,30 @@ import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
-from notifications_utils.letter_timings import letter_can_be_cancelled, CANCELLABLE_JOB_LETTER_STATUSES
-from sqlalchemy import (
-    asc,
-    desc,
-    func,
-    and_
+from notifications_utils.letter_timings import (
+    CANCELLABLE_JOB_LETTER_STATUSES,
+    letter_can_be_cancelled,
 )
+from sqlalchemy import and_, asc, desc, func
 
 from app import db
 from app.dao.dao_utils import transactional
 from app.dao.templates_dao import dao_get_template_by_id
-from app.utils import midnight_n_days_ago
-
 from app.models import (
-    Job,
+    JOB_STATUS_CANCELLED,
     JOB_STATUS_FINISHED,
     JOB_STATUS_PENDING,
     JOB_STATUS_SCHEDULED,
     LETTER_TYPE,
-    Notification,
-    Template,
-    ServiceDataRetention,
-    NOTIFICATION_CREATED,
     NOTIFICATION_CANCELLED,
-    JOB_STATUS_CANCELLED,
-    FactNotificationStatus
+    NOTIFICATION_CREATED,
+    FactNotificationStatus,
+    Job,
+    Notification,
+    ServiceDataRetention,
+    Template,
 )
+from app.utils import midnight_n_days_ago
 
 
 def dao_get_notification_outcomes_for_job(service_id, job_id):

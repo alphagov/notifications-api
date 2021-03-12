@@ -1,17 +1,16 @@
+import json
 import random
 from datetime import datetime, timedelta
-import json
 
 from flask import current_app
-from requests import request, HTTPError
-
 from notifications_utils.s3 import s3upload
+from requests import HTTPError, request
 
 from app import notify_celery
 from app.aws.s3 import file_exists
-from app.models import SMS_TYPE
-from app.config import QueueNames
 from app.celery.process_ses_receipts_tasks import process_ses_results
+from app.config import QueueNames
+from app.models import SMS_TYPE
 
 temp_fail = "7700900003"
 perm_fail = "7700900002"

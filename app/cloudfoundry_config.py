@@ -3,8 +3,8 @@ Extracts cloudfoundry config from its json and populates the environment variabl
 on local/aws boxes
 """
 
-import os
 import json
+import os
 
 
 def extract_cloudfoundry_config():

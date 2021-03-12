@@ -1,54 +1,51 @@
+from unittest.mock import ANY
+
 import pytest
-from freezegun import freeze_time
 from flask import current_app
+from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
 from app.dao import templates_dao
-from app.models import (
-    EMAIL_TYPE,
-    INTERNATIONAL_LETTERS,
-    LETTER_TYPE,
-    SMS_TYPE,
+from app.models import EMAIL_TYPE, INTERNATIONAL_LETTERS, LETTER_TYPE, SMS_TYPE
+from app.notifications.process_notifications import (
+    create_content_for_notification,
 )
-from app.notifications.process_notifications import create_content_for_notification
 from app.notifications.validators import (
-    check_is_message_too_long,
     check_if_service_can_send_files_by_email,
+    check_is_message_too_long,
     check_notification_content_is_not_empty,
-    check_service_over_daily_message_limit,
-    check_template_is_for_notification_type,
-    check_template_is_active,
-    check_service_over_api_rate_limit,
-    check_service_email_reply_to_id,
-    check_service_sms_sender_id,
-    check_service_letter_contact_id,
     check_reply_to,
+    check_service_email_reply_to_id,
+    check_service_letter_contact_id,
+    check_service_over_api_rate_limit,
+    check_service_over_daily_message_limit,
+    check_service_sms_sender_id,
+    check_template_is_active,
+    check_template_is_for_notification_type,
     service_can_send_to_recipient,
     validate_address,
     validate_and_format_recipient,
     validate_template,
 )
-from app.serialised_models import SerialisedService, SerialisedTemplate, SerialisedAPIKeyCollection
+from app.serialised_models import (
+    SerialisedAPIKeyCollection,
+    SerialisedService,
+    SerialisedTemplate,
+)
 from app.utils import get_template_instance
-
-from app.v2.errors import (
-    BadRequestError,
-    TooManyRequestsError,
-    RateLimitError)
-
-from tests.conftest import set_config
+from app.v2.errors import BadRequestError, RateLimitError, TooManyRequestsError
 from tests.app.db import (
     create_api_key,
     create_letter_contact,
     create_notification,
     create_reply_to_email,
     create_service,
-    create_service_sms_sender,
     create_service_guest_list,
+    create_service_sms_sender,
     create_template,
 )
-from unittest.mock import ANY
+from tests.conftest import set_config
 
 
 # all of these tests should have redis enabled (except where we specifically disable it)

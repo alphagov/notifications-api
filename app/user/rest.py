@@ -3,57 +3,68 @@ import uuid
 from datetime import datetime
 from urllib.parse import urlencode
 
-from flask import (jsonify, request, Blueprint, current_app, abort)
-from notifications_utils.recipients import is_uk_phone_number, use_numeric_sender
+from flask import Blueprint, abort, current_app, jsonify, request
+from notifications_utils.recipients import (
+    is_uk_phone_number,
+    use_numeric_sender,
+)
 from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
+from app.dao.permissions_dao import permission_dao
+from app.dao.service_user_dao import (
+    dao_get_service_user,
+    dao_update_service_user,
+)
+from app.dao.services_dao import dao_fetch_service_by_id
+from app.dao.template_folder_dao import (
+    dao_get_template_folder_by_id_and_service_id,
+)
+from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import (
-    get_user_by_id,
-    save_model_user,
+    count_user_verify_codes,
+    create_secret_code,
     create_user_code,
+    dao_archive_user,
+    get_user_and_accounts,
+    get_user_by_email,
+    get_user_by_id,
     get_user_code,
-    use_user_code,
+    get_users_by_partial_email,
     increment_failed_login_count,
     reset_failed_login_count,
-    get_user_by_email,
-    get_users_by_partial_email,
-    create_secret_code,
+    save_model_user,
     save_user_attribute,
     update_user_password,
-    count_user_verify_codes,
-    get_user_and_accounts,
-    dao_archive_user,
+    use_user_code,
 )
-from app.dao.permissions_dao import permission_dao
-from app.dao.service_user_dao import dao_get_service_user, dao_update_service_user
-from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.template_folder_dao import dao_get_template_folder_by_id_and_service_id
-from app.models import KEY_TYPE_NORMAL, Permission, Service, SMS_TYPE, EMAIL_TYPE
+from app.errors import InvalidRequest, register_errors
+from app.models import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    SMS_TYPE,
+    Permission,
+    Service,
+)
 from app.notifications.process_notifications import (
     persist_notification,
-    send_notification_to_queue
-)
-from app.schemas import (
-    email_data_request_schema,
-    partial_email_data_request_schema,
-    create_user_schema,
-    user_update_schema_load_json,
-    user_update_password_schema_load_json
-)
-from app.errors import (
-    register_errors,
-    InvalidRequest
-)
-from app.utils import url_with_token
-from app.user.users_schema import (
-    post_verify_code_schema,
-    post_send_user_sms_code_schema,
-    post_send_user_email_code_schema,
-    post_set_permissions_schema,
+    send_notification_to_queue,
 )
 from app.schema_validation import validate
+from app.schemas import (
+    create_user_schema,
+    email_data_request_schema,
+    partial_email_data_request_schema,
+    user_update_password_schema_load_json,
+    user_update_schema_load_json,
+)
+from app.user.users_schema import (
+    post_send_user_email_code_schema,
+    post_send_user_sms_code_schema,
+    post_set_permissions_schema,
+    post_verify_code_schema,
+)
+from app.utils import url_with_token
 
 user_blueprint = Blueprint('user', __name__)
 register_errors(user_blueprint)

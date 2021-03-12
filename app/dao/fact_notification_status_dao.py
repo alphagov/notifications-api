@@ -1,36 +1,36 @@
-from datetime import datetime, timedelta, time
+from datetime import datetime, time, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc
-from sqlalchemy import case, func, Date
+from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.sql.expression import literal, extract
+from sqlalchemy.sql.expression import extract, literal
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
+from app.dao.dao_utils import transactional
 from app.models import (
-    FactNotificationStatus,
     KEY_TYPE_TEST,
-    Notification,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_FAILED,
     NOTIFICATION_PENDING,
+    NOTIFICATION_PERMANENT_FAILURE,
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
-    NOTIFICATION_PERMANENT_FAILURE,
+    FactNotificationStatus,
+    Notification,
     Service,
     Template,
 )
-from app.dao.dao_utils import transactional
 from app.utils import (
     get_london_midnight_in_utc,
-    midnight_n_days_ago,
     get_london_month_from_utc_column,
     get_notification_table_to_use,
+    midnight_n_days_ago,
 )
 
 

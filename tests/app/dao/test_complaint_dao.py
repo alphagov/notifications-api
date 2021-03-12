@@ -1,5 +1,4 @@
 import uuid
-
 from datetime import datetime, timedelta
 
 from app.dao.complaint_dao import (
@@ -9,7 +8,12 @@ from app.dao.complaint_dao import (
     save_complaint,
 )
 from app.models import Complaint
-from tests.app.db import create_service, create_template, create_notification, create_complaint
+from tests.app.db import (
+    create_complaint,
+    create_notification,
+    create_service,
+    create_template,
+)
 
 
 def test_fetch_paginated_complaints(mocker, sample_email_notification):

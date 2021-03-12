@@ -1,11 +1,16 @@
-from datetime import date
 import json
+from datetime import date
 
 from flask import url_for
 from freezegun import freeze_time
 
 from tests import create_authorization_header
-from tests.app.db import create_complaint, create_service, create_template, create_notification
+from tests.app.db import (
+    create_complaint,
+    create_notification,
+    create_service,
+    create_template,
+)
 
 
 def test_get_all_complaints_returns_complaints_for_multiple_services(client, notify_db_session):

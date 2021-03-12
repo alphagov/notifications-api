@@ -2,11 +2,7 @@ import json
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
-from requests import (
-    HTTPError,
-    request,
-    RequestException
-)
+from requests import HTTPError, RequestException, request
 
 from app import encryption, notify_celery
 from app.config import QueueNames

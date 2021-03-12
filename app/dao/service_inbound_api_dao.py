@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app import db, create_uuid
+from app import create_uuid, db
 from app.dao.dao_utils import transactional, version_class
 from app.models import ServiceInboundApi
 

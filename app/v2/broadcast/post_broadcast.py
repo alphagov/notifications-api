@@ -1,12 +1,14 @@
 from itertools import chain
+
 from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
-from app import authenticated_service, api_user
+
+from app import api_user, authenticated_service
 from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.dao_utils import dao_save_object
-from app.notifications.validators import check_service_has_permission
 from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
+from app.notifications.validators import check_service_has_permission
 from app.schema_validation import validate
 from app.v2.broadcast import v2_broadcast_blueprint
 from app.v2.broadcast.broadcast_schemas import post_broadcast_schema

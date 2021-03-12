@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import func, desc
+from sqlalchemy import desc, func
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db

@@ -2,9 +2,10 @@ from datetime import date, datetime, timedelta
 
 from freezegun import freeze_time
 
-from app.dao.notifications_dao import dao_get_total_notifications_sent_per_day_for_performance_platform
+from app.dao.notifications_dao import (
+    dao_get_total_notifications_sent_per_day_for_performance_platform,
+)
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST
-
 from tests.app.db import create_notification
 
 BEGINNING_OF_DAY = date(2016, 10, 18)

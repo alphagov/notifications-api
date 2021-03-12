@@ -1,7 +1,7 @@
-from app.models import LETTER_TYPE
-from app.models import Notification
-from app.models import NOTIFICATION_CREATED
-from app.notifications.process_letter_notifications import create_letter_notification
+from app.models import LETTER_TYPE, NOTIFICATION_CREATED, Notification
+from app.notifications.process_letter_notifications import (
+    create_letter_notification,
+)
 from app.serialised_models import SerialisedTemplate
 
 

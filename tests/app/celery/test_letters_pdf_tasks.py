@@ -1,58 +1,55 @@
+from collections import namedtuple
+from datetime import datetime, timedelta
 from unittest.mock import call
 
 import boto3
-from collections import namedtuple
-from datetime import datetime, timedelta
-from moto import mock_s3
-from flask import current_app
-from freezegun import freeze_time
 import pytest
 from botocore.exceptions import ClientError
 from celery.exceptions import MaxRetriesExceededError
+from flask import current_app
+from freezegun import freeze_time
+from moto import mock_s3
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import encryption
-from app.errors import VirusScanError
-from app.exceptions import NotificationTechnicalFailureException
 from app.celery.letters_pdf_tasks import (
+    _move_invalid_letter_and_update_status,
     collate_letter_pdfs_to_be_sent,
     get_key_and_size_of_letters_to_be_sent_to_print,
     get_pdf_for_templated_letter,
     group_letters,
     process_sanitised_letter,
-    process_virus_scan_failed,
     process_virus_scan_error,
+    process_virus_scan_failed,
     replay_letters_in_error,
     sanitise_letter,
     send_letters_volume_email_to_dvla,
     update_billable_units_for_letter,
-    _move_invalid_letter_and_update_status,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import get_notifications
-
+from app.errors import VirusScanError
+from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import ScanErrorType
 from app.models import (
     INTERNATIONAL_LETTERS,
     KEY_TYPE_NORMAL,
     KEY_TYPE_TEST,
     LETTER_TYPE,
-    Notification,
     NOTIFICATION_CREATED,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
+    Notification,
 )
-
 from tests.app.db import (
     create_letter_branding,
     create_notification,
     create_service,
-    create_template
+    create_template,
 )
-
 from tests.conftest import set_config_values
 
 

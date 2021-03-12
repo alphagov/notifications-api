@@ -1,4 +1,4 @@
-from app.clients import ClientException, Client
+from app.clients import Client, ClientException
 
 
 class EmailClientException(ClientException):

@@ -8,50 +8,88 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
-from app.dao.inbound_numbers_dao import (dao_get_available_inbound_numbers,
-                                         dao_set_inbound_number_active_flag,
-                                         dao_set_inbound_number_to_service)
+from app.dao.inbound_numbers_dao import (
+    dao_get_available_inbound_numbers,
+    dao_set_inbound_number_active_flag,
+    dao_set_inbound_number_to_service,
+)
 from app.dao.organisation_dao import dao_add_service_to_organisation
-from app.dao.service_permissions_dao import (dao_add_service_permission,
-                                             dao_remove_service_permission)
-from app.dao.service_user_dao import (dao_get_service_user,
-                                      dao_update_service_user)
-from app.dao.services_dao import (dao_add_user_to_service, dao_create_service,
-                                  dao_fetch_active_users_for_service,
-                                  dao_fetch_all_services,
-                                  dao_fetch_all_services_by_user,
-                                  dao_fetch_live_services_data,
-                                  dao_fetch_service_by_id,
-                                  dao_fetch_service_by_inbound_number,
-                                  dao_fetch_stats_for_service,
-                                  dao_fetch_todays_stats_for_all_services,
-                                  dao_fetch_todays_stats_for_service,
-                                  dao_find_services_sending_to_tv_numbers,
-                                  dao_find_services_with_high_failure_rates,
-                                  dao_remove_user_from_service,
-                                  dao_resume_service, dao_suspend_service,
-                                  dao_update_service,
-                                  delete_service_and_all_associated_db_objects,
-                                  fetch_todays_total_message_count,
-                                  get_services_by_partial_name, get_live_services_with_organisation)
+from app.dao.service_permissions_dao import (
+    dao_add_service_permission,
+    dao_remove_service_permission,
+)
+from app.dao.service_user_dao import (
+    dao_get_service_user,
+    dao_update_service_user,
+)
+from app.dao.services_dao import (
+    dao_add_user_to_service,
+    dao_create_service,
+    dao_fetch_active_users_for_service,
+    dao_fetch_all_services,
+    dao_fetch_all_services_by_user,
+    dao_fetch_live_services_data,
+    dao_fetch_service_by_id,
+    dao_fetch_service_by_inbound_number,
+    dao_fetch_stats_for_service,
+    dao_fetch_todays_stats_for_all_services,
+    dao_fetch_todays_stats_for_service,
+    dao_find_services_sending_to_tv_numbers,
+    dao_find_services_with_high_failure_rates,
+    dao_remove_user_from_service,
+    dao_resume_service,
+    dao_suspend_service,
+    dao_update_service,
+    delete_service_and_all_associated_db_objects,
+    fetch_todays_total_message_count,
+    get_live_services_with_organisation,
+    get_services_by_partial_name,
+)
 from app.dao.users_dao import create_user_code, save_model_user
-from app.models import (EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, KEY_TYPE_NORMAL,
-                        KEY_TYPE_TEAM, KEY_TYPE_TEST, LETTER_TYPE, SMS_TYPE,
-                        UPLOAD_LETTERS,
-                        ApiKey, InvitedUser, Job, Notification,
-                        NotificationHistory, Organisation, Permission, Service,
-                        ServicePermission, ServiceUser, Template,
-                        TemplateHistory, User, VerifyCode,
-                        user_folder_permissions, INTERNATIONAL_LETTERS)
-from tests.app.db import (create_annual_billing, create_api_key,
-                          create_email_branding, create_ft_billing,
-                          create_inbound_number, create_invited_user,
-                          create_letter_branding, create_notification,
-                          create_notification_history, create_organisation,
-                          create_service,
-                          create_service_with_defined_sms_sender,
-                          create_service_with_inbound_number, create_template,
-                          create_template_folder, create_user)
+from app.models import (
+    EMAIL_TYPE,
+    INTERNATIONAL_LETTERS,
+    INTERNATIONAL_SMS_TYPE,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
+    KEY_TYPE_TEST,
+    LETTER_TYPE,
+    SMS_TYPE,
+    UPLOAD_LETTERS,
+    ApiKey,
+    InvitedUser,
+    Job,
+    Notification,
+    NotificationHistory,
+    Organisation,
+    Permission,
+    Service,
+    ServicePermission,
+    ServiceUser,
+    Template,
+    TemplateHistory,
+    User,
+    VerifyCode,
+    user_folder_permissions,
+)
+from tests.app.db import (
+    create_annual_billing,
+    create_api_key,
+    create_email_branding,
+    create_ft_billing,
+    create_inbound_number,
+    create_invited_user,
+    create_letter_branding,
+    create_notification,
+    create_notification_history,
+    create_organisation,
+    create_service,
+    create_service_with_defined_sms_sender,
+    create_service_with_inbound_number,
+    create_template,
+    create_template_folder,
+    create_user,
+)
 
 
 def test_create_service(notify_db_session):

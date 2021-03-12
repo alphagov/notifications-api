@@ -1,20 +1,19 @@
-from flask import (
-    Blueprint,
-    request,
-    jsonify,
-    current_app)
+from flask import Blueprint, current_app, jsonify, request
 
 from app.config import QueueNames
 from app.dao.invited_user_dao import (
-    save_invited_user,
     get_invited_user,
-    get_invited_users_for_service
+    get_invited_users_for_service,
+    save_invited_user,
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.models import BROADCAST_TYPE, EMAIL_TYPE, KEY_TYPE_NORMAL, Service
-from app.notifications.process_notifications import persist_notification, send_notification_to_queue
-from app.schemas import invited_user_schema
 from app.errors import register_errors
+from app.models import BROADCAST_TYPE, EMAIL_TYPE, KEY_TYPE_NORMAL, Service
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue,
+)
+from app.schemas import invited_user_schema
 
 invite = Blueprint('invite', __name__, url_prefix='/service/<service_id>/invite')
 

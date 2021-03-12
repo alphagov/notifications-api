@@ -1,12 +1,18 @@
 from datetime import datetime
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify, request
 
-from app.dao.fact_notification_status_dao import get_total_notifications_for_date_range
-from app.dao.fact_processing_time_dao import get_processing_time_percentage_for_date_range
+from app.dao.fact_notification_status_dao import (
+    get_total_notifications_for_date_range,
+)
+from app.dao.fact_processing_time_dao import (
+    get_processing_time_percentage_for_date_range,
+)
 from app.dao.services_dao import get_live_services_with_organisation
 from app.errors import register_errors
-from app.performance_dashboard.performance_dashboard_schema import performance_dashboard_request
+from app.performance_dashboard.performance_dashboard_schema import (
+    performance_dashboard_request,
+)
 from app.schema_validation import validate
 
 performance_dashboard_blueprint = Blueprint('performance_dashboard', __name__, url_prefix='/performance-dashboard')

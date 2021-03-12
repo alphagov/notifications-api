@@ -1,9 +1,8 @@
 import base64
 import json
 
-from flask import current_app
 import requests
-
+from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
 

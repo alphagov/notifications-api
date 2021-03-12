@@ -1,17 +1,16 @@
-from datetime import datetime, date
+from datetime import date, datetime
 
 import pytest
 from freezegun import freeze_time
 
+from app.models import Notification, NotificationHistory
 from app.utils import (
     format_sequential_number,
     get_london_midnight_in_utc,
     get_midnight_for_day_before,
     get_notification_table_to_use,
-    midnight_n_days_ago
+    midnight_n_days_ago,
 )
-from app.models import Notification, NotificationHistory
-
 from tests.app.db import create_service_data_retention
 
 

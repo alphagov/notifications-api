@@ -1,13 +1,12 @@
-from datetime import datetime, date
+from datetime import date, datetime
 
 from freezegun import freeze_time
 
 from app.performance_platform.total_sent_notifications import (
+    get_total_sent_notifications_for_day,
     send_total_notifications_sent_for_day_stats,
-    get_total_sent_notifications_for_day
 )
-
-from tests.app.db import create_template, create_ft_notification_status
+from tests.app.db import create_ft_notification_status, create_template
 
 
 def test_send_total_notifications_sent_for_day_stats_stats_creates_correct_call(mocker, client):

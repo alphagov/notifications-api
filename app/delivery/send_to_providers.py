@@ -1,33 +1,39 @@
 import random
-from urllib import parse
 from datetime import datetime, timedelta
+from urllib import parse
+
 from cachetools import TTLCache, cached
 from flask import current_app
-from notifications_utils.template import HTMLEmailTemplate, PlainTextEmailTemplate, SMSMessageTemplate
+from notifications_utils.template import (
+    HTMLEmailTemplate,
+    PlainTextEmailTemplate,
+    SMSMessageTemplate,
+)
 
-from app import notification_provider_clients, statsd_client, create_uuid
+from app import create_uuid, notification_provider_clients, statsd_client
+from app.celery.research_mode_tasks import (
+    send_email_response,
+    send_sms_response,
+)
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
-from app.dao.notifications_dao import (
-    dao_update_notification
-)
+from app.dao.notifications_dao import dao_update_notification
 from app.dao.provider_details_dao import (
+    dao_reduce_sms_provider_priority,
     get_provider_details_by_notification_type,
-    dao_reduce_sms_provider_priority
 )
-from app.celery.research_mode_tasks import send_sms_response, send_email_response
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
-    SMS_TYPE,
-    KEY_TYPE_TEST,
     BRANDING_BOTH,
     BRANDING_ORG_BANNER,
     EMAIL_TYPE,
-    NOTIFICATION_TECHNICAL_FAILURE,
-    NOTIFICATION_SENT,
+    KEY_TYPE_TEST,
     NOTIFICATION_SENDING,
-    NOTIFICATION_STATUS_TYPES_COMPLETED
+    NOTIFICATION_SENT,
+    NOTIFICATION_STATUS_TYPES_COMPLETED,
+    NOTIFICATION_TECHNICAL_FAILURE,
+    SMS_TYPE,
 )
-from app.serialised_models import SerialisedTemplate, SerialisedService
+from app.serialised_models import SerialisedService, SerialisedTemplate
 
 
 def send_sms_to_provider(notification):

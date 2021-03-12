@@ -1,16 +1,16 @@
 from app import db
 from app.dao import DAOClass
 from app.models import (
-    Permission,
-    MANAGE_USERS,
-    MANAGE_TEMPLATES,
+    MANAGE_API_KEYS,
     MANAGE_SETTINGS,
-    SEND_TEXTS,
+    MANAGE_TEMPLATES,
+    MANAGE_USERS,
     SEND_EMAILS,
     SEND_LETTERS,
-    MANAGE_API_KEYS,
-    VIEW_ACTIVITY)
-
+    SEND_TEXTS,
+    VIEW_ACTIVITY,
+    Permission,
+)
 
 # Default permissions for a service
 default_service_permissions = [

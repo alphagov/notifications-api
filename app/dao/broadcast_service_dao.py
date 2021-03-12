@@ -5,12 +5,12 @@ from flask import current_app
 from app import db
 from app.dao.dao_utils import transactional, version_class
 from app.models import (
+    BROADCAST_TYPE,
+    EMAIL_AUTH_TYPE,
+    Organisation,
     Service,
     ServiceBroadcastSettings,
     ServicePermission,
-    Organisation,
-    BROADCAST_TYPE,
-    EMAIL_AUTH_TYPE
 )
 
 

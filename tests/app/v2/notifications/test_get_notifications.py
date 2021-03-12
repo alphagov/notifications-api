@@ -1,13 +1,11 @@
 import datetime
+
 import pytest
 from flask import json, url_for
 
 from app.utils import DATETIME_FORMAT
 from tests import create_authorization_header
-from tests.app.db import (
-    create_notification,
-    create_template,
-)
+from tests.app.db import create_notification, create_template
 
 
 @pytest.mark.parametrize('billable_units, provider', [

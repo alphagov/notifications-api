@@ -1,18 +1,16 @@
 import json
 import uuid
-from datetime import datetime, timedelta, date
+from datetime import date, datetime, timedelta
 from unittest.mock import ANY
 
-from freezegun import freeze_time
 import pytest
 import pytz
+from freezegun import freeze_time
 
 import app.celery.tasks
 from app.dao.templates_dao import dao_update_template
-from app.models import JOB_STATUS_TYPES, JOB_STATUS_PENDING
-
+from app.models import JOB_STATUS_PENDING, JOB_STATUS_TYPES
 from tests import create_authorization_header
-from tests.conftest import set_config
 from tests.app.db import (
     create_ft_notification_status,
     create_job,
@@ -21,6 +19,7 @@ from tests.app.db import (
     create_service_contact_list,
     create_template,
 )
+from tests.conftest import set_config
 
 
 def test_get_job_with_invalid_service_id_returns404(client, sample_service):

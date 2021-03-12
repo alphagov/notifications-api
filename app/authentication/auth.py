@@ -1,15 +1,21 @@
-from flask import request, _request_ctx_stack, current_app, g
-from notifications_python_client.authentication import decode_jwt_token, get_token_issuer
+from flask import _request_ctx_stack, current_app, g, request
+from gds_metrics import Histogram
+from notifications_python_client.authentication import (
+    decode_jwt_token,
+    get_token_issuer,
+)
 from notifications_python_client.errors import (
-    TokenDecodeError, TokenExpiredError, TokenIssuerError, TokenAlgorithmError, TokenError
+    TokenAlgorithmError,
+    TokenDecodeError,
+    TokenError,
+    TokenExpiredError,
+    TokenIssuerError,
 )
 from notifications_utils import request_helper
 from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
-from gds_metrics import Histogram
 
 from app.serialised_models import SerialisedService
-
 
 GENERAL_TOKEN_ERROR_MESSAGE = 'Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header'  # noqa
 

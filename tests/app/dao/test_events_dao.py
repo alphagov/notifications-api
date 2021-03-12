@@ -1,6 +1,5 @@
 
 from app.dao.events_dao import dao_create_event
-
 from app.models import Event
 
 

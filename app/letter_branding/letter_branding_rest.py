@@ -1,15 +1,17 @@
 from celery import current_app
+from flask import Blueprint, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
-from flask import Blueprint, jsonify, request
-
 from app.dao.letter_branding_dao import (
-    dao_get_all_letter_branding, dao_create_letter_branding,
+    dao_create_letter_branding,
+    dao_get_all_letter_branding,
+    dao_get_letter_branding_by_id,
     dao_update_letter_branding,
-    dao_get_letter_branding_by_id
 )
 from app.errors import register_errors
-from app.letter_branding.letter_branding_schema import post_letter_branding_schema
+from app.letter_branding.letter_branding_schema import (
+    post_letter_branding_schema,
+)
 from app.models import LetterBranding
 from app.schema_validation import validate
 

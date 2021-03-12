@@ -1,15 +1,11 @@
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy import func, or_
+
 from app import db
+from app.dao.dao_utils import transactional, version_class
 from app.models import ApiKey
-
-from app.dao.dao_utils import (
-    transactional,
-    version_class
-)
-
-from sqlalchemy import or_, func
 
 
 @transactional

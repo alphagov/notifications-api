@@ -8,7 +8,8 @@ from app.dao.service_email_reply_to_dao import (
     archive_reply_to_email_address,
     dao_get_reply_to_by_id,
     dao_get_reply_to_by_service_id,
-    update_reply_to_email_address)
+    update_reply_to_email_address,
+)
 from app.errors import InvalidRequest
 from app.exceptions import ArchiveValidationError
 from app.models import ServiceEmailReplyTo

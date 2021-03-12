@@ -1,29 +1,31 @@
-import jwt
-import uuid
 import time
+import uuid
 from datetime import datetime
-from tests.conftest import set_config_values
-
-import pytest
-from flask import json, current_app, request
-from freezegun import freeze_time
-from notifications_python_client.authentication import create_jwt_token
 from unittest.mock import call
 
+import jwt
+import pytest
+from flask import current_app, json, request
+from freezegun import freeze_time
+from notifications_python_client.authentication import create_jwt_token
+
 from app import api_user
+from app.authentication.auth import (
+    GENERAL_TOKEN_ERROR_MESSAGE,
+    AuthError,
+    requires_admin_auth,
+    requires_auth,
+)
 from app.dao.api_key_dao import (
-    get_unsigned_secrets,
-    save_model_api_key,
-    get_unsigned_secret,
     expire_api_key,
     get_model_api_keys,
+    get_unsigned_secret,
+    get_unsigned_secrets,
+    save_model_api_key,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-
-from app.models import ApiKey, KEY_TYPE_NORMAL
-from app.authentication.auth import AuthError, requires_admin_auth, requires_auth, GENERAL_TOKEN_ERROR_MESSAGE
-
-from tests.conftest import set_config
+from app.models import KEY_TYPE_NORMAL, ApiKey
+from tests.conftest import set_config, set_config_values
 
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])

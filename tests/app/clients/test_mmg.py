@@ -5,8 +5,7 @@ from requests.exceptions import ConnectTimeout, ReadTimeout
 
 from app import mmg_client
 from app.clients.sms import SmsClientResponseException
-
-from app.clients.sms.mmg import get_mmg_responses, MMGClientResponseException
+from app.clients.sms.mmg import MMGClientResponseException, get_mmg_responses
 
 
 @pytest.mark.parametrize('detailed_status_code, result', [

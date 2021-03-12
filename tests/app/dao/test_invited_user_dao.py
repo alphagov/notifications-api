@@ -1,20 +1,18 @@
-from datetime import datetime, timedelta
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
-
-from app.models import InvitedUser
-
 from app.dao.invited_user_dao import (
-    save_invited_user,
+    delete_invitations_created_more_than_two_days_ago,
     get_invited_user,
-    get_invited_users_for_service,
     get_invited_user_by_id,
-    delete_invitations_created_more_than_two_days_ago
+    get_invited_users_for_service,
+    save_invited_user,
 )
+from app.models import InvitedUser
 from tests.app.db import create_invited_user
 
 

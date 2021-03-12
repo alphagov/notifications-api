@@ -1,29 +1,35 @@
 import csv
 import functools
+import itertools
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 import click
 import flask
-import itertools
 from click_datetime import Datetime as click_dt
 from flask import current_app, json
 from notifications_utils.recipients import RecipientCSV
+from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
-from notifications_utils.statsd_decorators import statsd
 
 from app import db, encryption
 from app.aws import s3
-from app.celery.tasks import record_daily_sorted_counts, process_row
-from app.celery.nightly_tasks import send_total_sent_notifications_to_performance_platform
-from app.celery.service_callback_tasks import send_delivery_status_to_service
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
-from app.celery.reporting_tasks import create_nightly_notification_status_for_day
+from app.celery.nightly_tasks import (
+    send_total_sent_notifications_to_performance_platform,
+)
+from app.celery.reporting_tasks import (
+    create_nightly_notification_status_for_day,
+)
+from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
-from app.dao.annual_billing_dao import dao_create_or_update_annual_billing_for_year
+from app.dao.annual_billing_dao import (
+    dao_create_or_update_annual_billing_for_year,
+)
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
@@ -32,36 +38,53 @@ from app.dao.fact_billing_dao import (
 )
 from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.jobs_dao import dao_get_job_by_id
-from app.dao.organisation_dao import dao_get_organisation_by_email_address, dao_add_service_to_organisation
-
-from app.dao.provider_rates_dao import create_provider_rates as dao_create_provider_rates
-from app.dao.service_callback_api_dao import get_service_delivery_status_callback_api_for_service
+from app.dao.organisation_dao import (
+    dao_add_service_to_organisation,
+    dao_get_organisation_by_email_address,
+)
+from app.dao.provider_rates_dao import (
+    create_provider_rates as dao_create_provider_rates,
+)
+from app.dao.service_callback_api_dao import (
+    get_service_delivery_status_callback_api_for_service,
+)
 from app.dao.services_dao import (
-    delete_service_and_all_associated_db_objects,
     dao_fetch_all_services_by_user,
     dao_fetch_all_services_created_by_user,
     dao_fetch_service_by_id,
-    dao_update_service
+    dao_update_service,
+    delete_service_and_all_associated_db_objects,
 )
 from app.dao.templates_dao import dao_get_template_by_id
-from app.dao.users_dao import delete_model_user, delete_user_verify_codes, get_user_by_email
+from app.dao.users_dao import (
+    delete_model_user,
+    delete_user_verify_codes,
+    get_user_by_email,
+)
 from app.models import (
-    PROVIDERS,
-    NOTIFICATION_CREATED,
-    KEY_TYPE_TEST,
-    SMS_TYPE,
     EMAIL_TYPE,
+    KEY_TYPE_TEST,
     LETTER_TYPE,
-    User,
+    NOTIFICATION_CREATED,
+    PROVIDERS,
+    SMS_TYPE,
+    Domain,
+    EmailBranding,
+    FactProcessingTime,
+    LetterBranding,
     Notification,
     Organisation,
-    Domain,
     Service,
-    EmailBranding,
-    LetterBranding, FactProcessingTime,
+    User,
 )
-from app.performance_platform.processing_time import send_processing_time_for_start_and_end
-from app.utils import DATETIME_FORMAT, get_london_midnight_in_utc, get_midnight_for_day_before
+from app.performance_platform.processing_time import (
+    send_processing_time_for_start_and_end,
+)
+from app.utils import (
+    DATETIME_FORMAT,
+    get_london_midnight_in_utc,
+    get_midnight_for_day_before,
+)
 
 
 @click.group(name='command', help='Additional commands')

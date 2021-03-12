@@ -1,7 +1,8 @@
 import urllib
 
 from flask import current_app
-from notifications_utils.s3 import S3ObjectNotFound, s3download as utils_s3download
+from notifications_utils.s3 import S3ObjectNotFound
+from notifications_utils.s3 import s3download as utils_s3download
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import create_random_identifier
@@ -9,32 +10,36 @@ from app.config import QueueNames
 from app.dao.notifications_dao import _update_notification_status
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.notifications.validators import (
-    check_service_has_permission,
-    check_service_over_daily_message_limit,
-    validate_and_format_recipient,
-    validate_template,
-    validate_address)
-from app.notifications.process_notifications import (
-    persist_notification,
-    send_notification_to_queue
-)
-from app.models import (
-    KEY_TYPE_NORMAL,
-    PRIORITY,
-    SMS_TYPE,
-    EMAIL_TYPE,
-    LETTER_TYPE,
-    NOTIFICATION_DELIVERED,
-)
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.dao.templates_dao import dao_get_template_by_id_and_service_id, get_precompiled_letter_template
+from app.dao.templates_dao import (
+    dao_get_template_by_id_and_service_id,
+    get_precompiled_letter_template,
+)
 from app.dao.users_dao import get_user_by_id
 from app.letters.utils import (
     get_billable_units_for_letter_page_count,
     get_letter_pdf_filename,
     get_page_count,
     move_uploaded_pdf_to_letters_bucket,
+)
+from app.models import (
+    EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
+    LETTER_TYPE,
+    NOTIFICATION_DELIVERED,
+    PRIORITY,
+    SMS_TYPE,
+)
+from app.notifications.process_notifications import (
+    persist_notification,
+    send_notification_to_queue,
+)
+from app.notifications.validators import (
+    check_service_has_permission,
+    check_service_over_daily_message_limit,
+    validate_address,
+    validate_and_format_recipient,
+    validate_template,
 )
 from app.v2.errors import BadRequestError
 
