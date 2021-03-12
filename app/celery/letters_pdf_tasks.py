@@ -119,6 +119,7 @@ def update_billable_units_for_letter(self, notification_id, page_count):
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')
 @cronitor("collate-letter-pdfs-to-be-sent")
+@statsd(namespace="tasks")
 def collate_letter_pdfs_to_be_sent():
     """
     Finds all letters which are still waiting to be sent to DVLA for printing
@@ -284,6 +285,7 @@ def group_letters(letter_pdfs):
 
 
 @notify_celery.task(bind=True, name='sanitise-letter', max_retries=15, default_retry_delay=300)
+@statsd(namespace="tasks")
 def sanitise_letter(self, filename):
     try:
         reference = get_reference_from_filename(filename)
@@ -322,6 +324,7 @@ def sanitise_letter(self, filename):
 
 
 @notify_celery.task(bind=True, name='process-sanitised-letter', max_retries=15, default_retry_delay=300)
+@statsd(namespace="tasks")
 def process_sanitised_letter(self, sanitise_data):
     letter_details = encryption.decrypt(sanitise_data)
 
@@ -436,6 +439,7 @@ def _move_invalid_letter_and_update_status(
 
 
 @notify_celery.task(name='process-virus-scan-failed')
+@statsd(namespace="tasks")
 def process_virus_scan_failed(filename):
     move_failed_pdf(filename, ScanErrorType.FAILURE)
     reference = get_reference_from_filename(filename)
@@ -455,6 +459,7 @@ def process_virus_scan_failed(filename):
 
 
 @notify_celery.task(name='process-virus-scan-error')
+@statsd(namespace="tasks")
 def process_virus_scan_error(filename):
     move_failed_pdf(filename, ScanErrorType.ERROR)
     reference = get_reference_from_filename(filename)
