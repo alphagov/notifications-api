@@ -2,13 +2,7 @@ from sqlalchemy.sql.expression import func
 
 from app import db
 from app.dao.dao_utils import VersionOptions, transactional, version_class
-from app.models import (
-    Domain,
-    InvitedOrganisationUser,
-    Organisation,
-    Service,
-    User,
-)
+from app.models import Domain, Organisation, Service, User
 
 
 def dao_get_organisations():
@@ -123,10 +117,6 @@ def dao_add_service_to_organisation(service, organisation_id):
     service.crown = organisation.crown
 
     db.session.add(service)
-
-
-def dao_get_invited_organisation_user(user_id):
-    return InvitedOrganisationUser.query.filter_by(id=user_id).one()
 
 
 def dao_get_users_for_organisation(organisation_id):

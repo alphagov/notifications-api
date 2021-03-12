@@ -8,7 +8,6 @@ from app import db
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
-    dao_get_invited_organisation_user,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
@@ -273,16 +272,6 @@ def test_get_organisation_by_service_id(sample_service, sample_organisation):
 
     assert organisation_1 == sample_organisation
     assert organisation_2 == another_org
-
-
-def test_dao_get_invited_organisation_user(sample_invited_org_user):
-    invited_org_user = dao_get_invited_organisation_user(sample_invited_org_user.id)
-    assert invited_org_user == sample_invited_org_user
-
-
-def test_dao_get_invited_organisation_user_returns_none(notify_db):
-    with pytest.raises(expected_exception=SQLAlchemyError):
-        dao_get_invited_organisation_user(uuid.uuid4())
 
 
 def test_dao_get_users_for_organisation(sample_organisation):
