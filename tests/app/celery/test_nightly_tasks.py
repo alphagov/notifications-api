@@ -1,5 +1,5 @@
 from datetime import date, datetime, timedelta
-from unittest.mock import PropertyMock, call, patch
+from unittest.mock import call
 
 import pytest
 import pytz
@@ -19,21 +19,16 @@ from app.celery.nightly_tasks import (
     remove_letter_csv_files,
     remove_sms_email_csv_files,
     s3,
-    send_daily_performance_platform_stats,
-    send_total_sent_notifications_to_performance_platform,
+    save_daily_notification_processing_time,
     timeout_notifications,
 )
 from app.celery.service_callback_tasks import (
     create_delivery_status_callback_data,
 )
-from app.clients.performance_platform.performance_platform_client import (
-    PerformancePlatformClient,
-)
 from app.config import QueueNames
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, FactProcessingTime
 from tests.app.db import (
-    create_ft_notification_status,
     create_job,
     create_notification,
     create_service,
@@ -231,55 +226,6 @@ def test_timeout_notifications_sends_status_update_to_service(client, sample_tem
     mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
-def test_send_daily_performance_stats_calls_does_not_send_if_inactive(client, mocker):
-    send_mock = mocker.patch(
-        'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
-
-    with patch.object(
-            PerformancePlatformClient,
-            'active',
-            new_callable=PropertyMock
-    ) as mock_active:
-        mock_active.return_value = False
-        send_daily_performance_platform_stats()
-
-    assert send_mock.call_count == 0
-
-
-@freeze_time("2016-06-11 02:00:00")
-def test_send_total_sent_notifications_to_performance_platform_calls_with_correct_totals(
-        notify_db_session,
-        sample_template,
-        sample_email_template,
-        mocker
-):
-    perf_mock = mocker.patch(
-        'app.celery.nightly_tasks.total_sent_notifications.send_total_notifications_sent_for_day_stats')  # noqa
-
-    today = date(2016, 6, 11)
-    create_ft_notification_status(bst_date=today, template=sample_template)
-    create_ft_notification_status(bst_date=today, template=sample_email_template)
-
-    # Create some notifications for the day before
-    yesterday = date(2016, 6, 10)
-    create_ft_notification_status(bst_date=yesterday, template=sample_template, count=2)
-    create_ft_notification_status(bst_date=yesterday, template=sample_email_template, count=3)
-
-    with patch.object(
-            PerformancePlatformClient,
-            'active',
-            new_callable=PropertyMock
-    ) as mock_active:
-        mock_active.return_value = True
-        send_total_sent_notifications_to_performance_platform(yesterday)
-
-        perf_mock.assert_has_calls([
-            call(datetime(2016, 6, 9, 23, 0), 'sms', 2),
-            call(datetime(2016, 6, 9, 23, 0), 'email', 3),
-            call(datetime(2016, 6, 9, 23, 0), 'letter', 0)
-        ])
-
-
 def test_should_call_delete_inbound_sms(notify_api, mocker):
     mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_older_than_retention')
     delete_inbound_sms()
@@ -439,3 +385,77 @@ def test_letter_not_raise_alert_if_no_files_do_not_cause_error(mocker, notify_db
     letter_raise_alert_if_no_ack_file_for_zip()
 
     assert mock_file_list.call_count == 2
+
+
+@freeze_time('2021-01-18T02:00')
+@pytest.mark.parametrize('date_provided', [None, '2021-1-17'])
+def test_save_daily_notification_processing_time(mocker, sample_template, date_provided):
+    # notification created too early to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 16, 23, 59),
+        sent_at=datetime(2021, 1, 16, 23, 59) + timedelta(seconds=5)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 17, 00, 00),
+        sent_at=datetime(2021, 1, 17, 00, 00) + timedelta(seconds=5)
+    )
+    # notification counted but not sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 17, 23, 59),
+        sent_at=datetime(2021, 1, 17, 23, 59) + timedelta(seconds=15)
+    )
+    # notification created too late to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 1, 18, 00, 00),
+        sent_at=datetime(2021, 1, 18, 00, 00) + timedelta(seconds=5)
+    )
+
+    save_daily_notification_processing_time(date_provided)
+
+    persisted_to_db = FactProcessingTime.query.all()
+    assert len(persisted_to_db) == 1
+    assert persisted_to_db[0].bst_date == date(2021, 1, 17)
+    assert persisted_to_db[0].messages_total == 2
+    assert persisted_to_db[0].messages_within_10_secs == 1
+
+
+@freeze_time('2021-04-18T02:00')
+@pytest.mark.parametrize('date_provided', [None, '2021-4-17'])
+def test_save_daily_notification_processing_time_when_in_bst(mocker, sample_template, date_provided):
+    # notification created too early to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 16, 22, 59),
+        sent_at=datetime(2021, 4, 16, 22, 59) + timedelta(seconds=15)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 16, 23, 00),
+        sent_at=datetime(2021, 4, 16, 23, 00) + timedelta(seconds=5)
+    )
+    # notification counted and sent within 10 seconds
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 17, 22, 59),
+        sent_at=datetime(2021, 4, 17, 22, 59) + timedelta(seconds=5)
+    )
+    # notification created too late to be counted
+    create_notification(
+        sample_template,
+        created_at=datetime(2021, 4, 17, 23, 00),
+        sent_at=datetime(2021, 4, 17, 23, 00) + timedelta(seconds=15)
+    )
+
+    save_daily_notification_processing_time(date_provided)
+
+    persisted_to_db = FactProcessingTime.query.all()
+    assert len(persisted_to_db) == 1
+    assert persisted_to_db[0].bst_date == date(2021, 4, 17)
+    assert persisted_to_db[0].messages_total == 2
+    assert persisted_to_db[0].messages_within_10_secs == 2

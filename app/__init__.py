@@ -35,9 +35,6 @@ from app.clients.cbc_proxy import CBCProxyClient
 from app.clients.document_download import DocumentDownloadClient
 from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
-from app.clients.performance_platform.performance_platform_client import (
-    PerformancePlatformClient,
-)
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
 
@@ -66,7 +63,6 @@ encryption = Encryption()
 zendesk_client = ZendeskClient()
 statsd_client = StatsdClient()
 redis_store = RedisClient()
-performance_platform_client = PerformancePlatformClient()
 cbc_proxy_client = CBCProxyClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
@@ -117,7 +113,6 @@ def create_app(application):
     notify_celery.init_app(application)
     encryption.init_app(application)
     redis_store.init_app(application)
-    performance_platform_client.init_app(application)
     document_download_client.init_app(application)
 
     cbc_proxy_client.init_app(application)

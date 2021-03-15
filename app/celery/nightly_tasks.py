@@ -6,7 +6,7 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, performance_platform_client, zendesk_client
+from app import notify_celery, zendesk_client
 from app.aws import s3
 from app.celery.service_callback_tasks import (
     create_delivery_status_callback_data,
@@ -14,12 +14,14 @@ from app.celery.service_callback_tasks import (
 )
 from app.config import QueueNames
 from app.cronitor import cronitor
+from app.dao.fact_processing_time_dao import insert_update_processing_time
 from app.dao.inbound_sms_dao import delete_inbound_sms_older_than_retention
 from app.dao.jobs_dao import (
     dao_archive_job,
     dao_get_jobs_older_than_data_retention,
 )
 from app.dao.notifications_dao import (
+    dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
     delete_notifications_older_than_retention_by_type,
 )
@@ -33,9 +35,9 @@ from app.models import (
     LETTER_TYPE,
     NOTIFICATION_SENDING,
     SMS_TYPE,
+    FactProcessingTime,
     Notification,
 )
-from app.performance_platform import processing_time, total_sent_notifications
 from app.utils import get_london_midnight_in_utc
 
 
@@ -154,54 +156,6 @@ def timeout_notifications():
         raise NotificationTechnicalFailureException(message)
 
 
-@notify_celery.task(name='send-daily-performance-platform-stats')
-@cronitor('send-daily-performance-platform-stats')
-@statsd(namespace="tasks")
-def send_daily_performance_platform_stats(date=None):
-    # date is a string in the format of "YYYY-MM-DD"
-    if date is None:
-        date = (datetime.utcnow() - timedelta(days=1)).date()
-    else:
-        date = datetime.strptime(date, "%Y-%m-%d").date()
-
-    if performance_platform_client.active:
-
-        send_total_sent_notifications_to_performance_platform(bst_date=date)
-        processing_time.send_processing_time_to_performance_platform(bst_date=date)
-
-
-def send_total_sent_notifications_to_performance_platform(bst_date):
-    count_dict = total_sent_notifications.get_total_sent_notifications_for_day(bst_date)
-    start_time = get_london_midnight_in_utc(bst_date)
-
-    email_sent_count = count_dict['email']
-    sms_sent_count = count_dict['sms']
-    letter_sent_count = count_dict['letter']
-
-    current_app.logger.info(
-        "Attempting to update Performance Platform for {} with {} emails, {} text messages and {} letters"
-        .format(bst_date, email_sent_count, sms_sent_count, letter_sent_count)
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'sms',
-        sms_sent_count
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'email',
-        email_sent_count
-    )
-
-    total_sent_notifications.send_total_notifications_sent_for_day_stats(
-        start_time,
-        'letter',
-        letter_sent_count
-    )
-
-
 @notify_celery.task(name="delete-inbound-sms")
 @cronitor("delete-inbound-sms")
 @statsd(namespace="tasks")
@@ -318,3 +272,26 @@ def letter_raise_alert_if_no_ack_file_for_zip():
         current_app.logger.info(
             "letter ack contains zip that is not for today: {}".format(ack_file_set - zip_file_set)
         )
+
+
+@notify_celery.task(name='save-daily-notification-processing-time')
+@cronitor("save-daily-notification-processing-time")
+@statsd(namespace="tasks")
+def save_daily_notification_processing_time(bst_date=None):
+    # bst_date is a string in the format of "YYYY-MM-DD"
+    if bst_date is None:
+        # if a date is not provided, we run against yesterdays data
+        bst_date = (datetime.utcnow() - timedelta(days=1)).date()
+    else:
+        bst_date = datetime.strptime(bst_date, "%Y-%m-%d").date()
+
+    start_time = get_london_midnight_in_utc(bst_date)
+    end_time = get_london_midnight_in_utc(bst_date + timedelta(days=1))
+    result = dao_get_notifications_processing_time_stats(start_time, end_time)
+    insert_update_processing_time(
+        FactProcessingTime(
+            bst_date=bst_date,
+            messages_total=result.messages_total,
+            messages_within_10_secs=result.messages_within_10_secs
+        )
+    )
