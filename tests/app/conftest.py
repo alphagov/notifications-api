@@ -594,6 +594,7 @@ def mock_firetext_client(mocker):
     current_app = mocker.Mock(config={
         'FIRETEXT_URL': 'https://example.com/firetext',
         'FIRETEXT_API_KEY': 'foo',
+        'FIRETEXT_INTERNATIONAL_API_KEY': 'international',
         'FROM_NUMBER': 'bar'
     })
     client.init_app(current_app, statsd_client)
