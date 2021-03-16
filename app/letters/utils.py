@@ -186,16 +186,7 @@ def get_file_names_from_error_bucket():
 
 
 def get_letter_pdf_and_metadata(notification):
-    bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
-
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket(bucket_name)
-    item = next(x for x in bucket.objects.filter(Prefix=prefix))
-
-    obj = s3.Object(
-        bucket_name=bucket_name,
-        key=item.key
-    ).get()
+    obj = find_letter_pdf_in_s3(notification).get()
     return obj["Body"].read(), obj["Metadata"]
 
 
