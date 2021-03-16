@@ -22,12 +22,11 @@ from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
 from app import create_uuid, db
-from app.aws.s3 import remove_s3_object
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
 from app.dao.dao_utils import transactional
-from app.letters.utils import LetterPDFNotFound, find_letter_pdf_filename
+from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -440,7 +439,6 @@ def _move_notifications_to_notification_history(notification_type, service_id, d
 def _delete_letters_from_s3(
         notification_type, service_id, date_to_delete_from, query_limit
 ):
-    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
     letters_to_delete_from_s3 = db.session.query(
         Notification
     ).filter(
@@ -454,8 +452,8 @@ def _delete_letters_from_s3(
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
         try:
-            filename = find_letter_pdf_filename(letter)
-            remove_s3_object(bucket_name, filename)
+            letter_pdf = find_letter_pdf_in_s3(letter)
+            letter_pdf.delete()
         except (ClientError, LetterPDFNotFound):
             current_app.logger.exception(
                 "Could not delete S3 object for letter: {}".format(letter.id))

@@ -28,7 +28,7 @@ from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import (
     LetterPDFNotFound,
     ScanErrorType,
-    find_letter_pdf_filename,
+    find_letter_pdf_in_s3,
     generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
     get_file_names_from_error_bucket,
@@ -237,11 +237,10 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
     letters_awaiting_sending = dao_get_letters_to_be_printed(print_run_deadline, postage)
     for letter in letters_awaiting_sending:
         try:
-            letter_file_name = find_letter_pdf_filename(letter)
-            letter_head = s3.head_s3_object(current_app.config['LETTERS_PDF_BUCKET_NAME'], letter_file_name)
+            letter_pdf = find_letter_pdf_in_s3(letter)
             yield {
-                "Key": letter_file_name,
-                "Size": letter_head['ContentLength'],
+                "Key": letter_pdf.key,
+                "Size": letter_pdf.size,
                 "ServiceId": str(letter.service_id)
             }
         except (BotoClientError, LetterPDFNotFound) as e:

@@ -41,12 +41,7 @@ class LetterPDFNotFound(Exception):
     pass
 
 
-def find_letter_pdf_filename(notification):
-    """
-    Retrieve the filename of a letter from s3 by searching for it based on a prefix.
-
-    Use this when retrieving existing pdfs, so that we can be more resilient if the naming convention changes.
-    """
+def find_letter_pdf_in_s3(notification):
     bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
 
     s3 = boto3.resource('s3')
@@ -55,16 +50,10 @@ def find_letter_pdf_filename(notification):
         item = next(x for x in bucket.objects.filter(Prefix=prefix))
     except StopIteration:
         raise LetterPDFNotFound(f'File not found in bucket {bucket_name} with prefix {prefix}', )
-    return item.key
+    return item
 
 
 def generate_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
-    """
-    Generate a filename for putting a letter into s3 or sending to dvla.
-
-    We should only use this function when uploading data. If you need to get a letter or its metadata from s3
-    then use `find_letter_pdf_filename` instead.
-    """
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
         folder='' if ignore_folder else get_folder_name(created_at),
         reference=reference,
