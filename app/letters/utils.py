@@ -37,7 +37,23 @@ def get_folder_name(created_at):
     return '{}/'.format(print_datetime.date())
 
 
-def get_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
+class LetterPDFNotFound(Exception):
+    pass
+
+
+def find_letter_pdf_in_s3(notification):
+    bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
+
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(bucket_name)
+    try:
+        item = next(x for x in bucket.objects.filter(Prefix=prefix))
+    except StopIteration:
+        raise LetterPDFNotFound(f'File not found in bucket {bucket_name} with prefix {prefix}', )
+    return item
+
+
+def generate_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
         folder='' if ignore_folder else get_folder_name(created_at),
         reference=reference,
@@ -78,7 +94,7 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
     current_app.logger.info("PDF Letter {} reference {} created at {}, {} bytes".format(
         notification.id, notification.reference, notification.created_at, len(pdf_data)))
 
-    upload_file_name = get_letter_pdf_filename(
+    upload_file_name = generate_letter_pdf_filename(
         reference=notification.reference,
         crown=notification.service.crown,
         created_at=notification.created_at,
@@ -170,16 +186,7 @@ def get_file_names_from_error_bucket():
 
 
 def get_letter_pdf_and_metadata(notification):
-    bucket_name, prefix = get_bucket_name_and_prefix_for_notification(notification)
-
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket(bucket_name)
-    item = next(x for x in bucket.objects.filter(Prefix=prefix))
-
-    obj = s3.Object(
-        bucket_name=bucket_name,
-        key=item.key
-    ).get()
+    obj = find_letter_pdf_in_s3(notification).get()
     return obj["Body"].read(), obj["Metadata"]
 
 

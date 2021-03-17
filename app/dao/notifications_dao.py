@@ -22,12 +22,11 @@ from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
 from app import create_uuid, db
-from app.aws.s3 import get_s3_bucket_objects, remove_s3_object
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
 from app.dao.dao_utils import transactional
-from app.letters.utils import get_letter_pdf_filename
+from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -440,7 +439,6 @@ def _move_notifications_to_notification_history(notification_type, service_id, d
 def _delete_letters_from_s3(
         notification_type, service_id, date_to_delete_from, query_limit
 ):
-    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
     letters_to_delete_from_s3 = db.session.query(
         Notification
     ).filter(
@@ -453,18 +451,12 @@ def _delete_letters_from_s3(
         Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED)
     ).limit(query_limit).all()
     for letter in letters_to_delete_from_s3:
-        prefix = get_letter_pdf_filename(reference=letter.reference,
-                                         crown=letter.service.crown,
-                                         created_at=letter.created_at,
-                                         ignore_folder=letter.key_type == KEY_TYPE_TEST,
-                                         postage=letter.postage)
-        s3_objects = get_s3_bucket_objects(bucket_name=bucket_name, subfolder=prefix)
-        for s3_object in s3_objects:
-            try:
-                remove_s3_object(bucket_name, s3_object['Key'])
-            except ClientError:
-                current_app.logger.exception(
-                    "Could not delete S3 object with filename: {}".format(s3_object['Key']))
+        try:
+            letter_pdf = find_letter_pdf_in_s3(letter)
+            letter_pdf.delete()
+        except (ClientError, LetterPDFNotFound):
+            current_app.logger.exception(
+                "Could not delete S3 object for letter: {}".format(letter.id))
 
 
 @transactional
@@ -758,13 +750,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     https://docs.sqlalchemy.org/en/13/orm/query.html?highlight=yield_per#sqlalchemy.orm.query.Query.yield_per
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
-    notifications = db.session.query(
-        Notification.id,
-        Notification.created_at,
-        Notification.reference,
-        Notification.service_id,
-        Service.crown,
-    ).join(
+    notifications = Notification.query.join(
         Notification.service
     ).filter(
         Notification.created_at < convert_bst_to_utc(print_run_deadline),

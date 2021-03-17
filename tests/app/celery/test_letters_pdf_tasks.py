@@ -68,8 +68,8 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         letter_branding = create_letter_branding(name=branding_name, filename=logo_filename)
         sample_letter_notification.service.letter_branding = letter_branding
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
-    mock_get_letter_pdf_filename = mocker.patch(
-        'app.celery.letters_pdf_tasks.get_letter_pdf_filename',
+    mock_generate_letter_pdf_filename = mocker.patch(
+        'app.celery.letters_pdf_tasks.generate_letter_pdf_filename',
         return_value='LETTER.PDF'
     )
     get_pdf_for_templated_letter(sample_letter_notification.id)
@@ -96,7 +96,7 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
         queue=QueueNames.SANITISE_LETTERS
     )
 
-    mock_get_letter_pdf_filename.assert_called_once_with(
+    mock_generate_letter_pdf_filename.assert_called_once_with(
         reference=sample_letter_notification.reference,
         crown=True,
         created_at=sample_letter_notification.created_at,
@@ -112,7 +112,7 @@ def test_get_pdf_for_templated_letter_non_existent_notification(notify_db_sessio
 
 def test_get_pdf_for_templated_letter_retries_upon_error(mocker, sample_letter_notification):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
-    mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
+    mocker.patch('app.celery.letters_pdf_tasks.generate_letter_pdf_filename', return_value='LETTER.PDF')
     mock_retry = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.retry')
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.exception')
 
@@ -127,7 +127,7 @@ def test_get_pdf_for_templated_letter_retries_upon_error(mocker, sample_letter_n
 
 def test_get_pdf_for_templated_letter_sets_technical_failure_max_retries(mocker, sample_letter_notification):
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task', side_effect=Exception())
-    mocker.patch('app.celery.letters_pdf_tasks.get_letter_pdf_filename', return_value='LETTER.PDF')
+    mocker.patch('app.celery.letters_pdf_tasks.generate_letter_pdf_filename', return_value='LETTER.PDF')
     mock_retry = mocker.patch(
         'app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.retry', side_effect=MaxRetriesExceededError)
     mock_update_noti = mocker.patch('app.celery.letters_pdf_tasks.update_notification_status_by_id')
@@ -170,8 +170,16 @@ def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mo
     mock_logger.assert_not_called()
 
 
+@mock_s3
 @freeze_time('2020-02-17 18:00:00')
 def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sample_letter_template):
+    pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF', Body=b'1'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', Body=b'22'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF', Body=b'333'),
+
     # second class
     create_notification(
         template=sample_letter_template,
@@ -218,23 +226,8 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         key_type=KEY_TYPE_TEST
     )
 
-    mock_s3 = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
-        {'ContentLength': 2},
-        {'ContentLength': 1},
-        {'ContentLength': 3},
-    ])
-
     results = list(
         get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
-    )
-
-    assert mock_s3.call_count == 3
-    mock_s3.assert_has_calls(
-        [
-            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF'),
-            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'),
-            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'),
-        ]
     )
 
     assert len(results) == 3
@@ -243,26 +236,33 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
         {
 
             'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-            'Size': 2,
+            'Size': 3,
             'ServiceId': str(sample_letter_template.service_id)
         },
         {
             'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
-            'Size': 1,
+            'Size': 2,
             'ServiceId': str(sample_letter_template.service_id)
         },
         {
             'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
-            'Size': 3,
+            'Size': 1,
             'ServiceId': str(sample_letter_template.service_id)
         },
     ]
 
 
+@mock_s3
 @freeze_time('2020-02-17 18:00:00')
-def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
+def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     notify_api, mocker, sample_letter_template
 ):
+    pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', Body=b'12'),
+    # no object for ref1
+
     create_notification(
         template=sample_letter_template,
         status='created',
@@ -276,28 +276,9 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
         reference='ref1',
         created_at=(datetime.now() - timedelta(hours=3))
     )
-    error_response = {
-        'Error': {
-            'Code': 'FileNotFound',
-            'Message': 'some error message from amazon',
-            'Type': 'Sender'
-        }
-    }
-    mock_head_s3_object = mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
-        {'ContentLength': 2},
-        ClientError(error_response, "File not found")
-    ])
 
     results = list(
         get_key_and_size_of_letters_to_be_sent_to_print(datetime.now() - timedelta(minutes=30), postage='second')
-    )
-
-    assert mock_head_s3_object.call_count == 2
-    mock_head_s3_object.assert_has_calls(
-        [
-            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'),
-            call(current_app.config['LETTERS_PDF_BUCKET_NAME'], '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'),
-        ]
     )
 
     assert results == [{
@@ -307,6 +288,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_catches_exception(
     ]
 
 
+@mock_s3
 @pytest.mark.parametrize('time_to_run_task', [
     "2020-02-17 18:00:00",  # after 5:30pm
     "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
@@ -372,15 +354,25 @@ def test_collate_letter_pdfs_to_be_sent(
             created_at=(datetime.now() - timedelta(hours=2))
         )
 
-    mocker.patch('app.celery.tasks.s3.head_s3_object', side_effect=[
-        {'ContentLength': 1},
-        {'ContentLength': 1},
-        {'ContentLength': 2},
-        {'ContentLength': 1},
-        {'ContentLength': 3},
-        {'ContentLength': 1},
-        {'ContentLength': 1},
-    ])
+    bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(
+        Bucket=bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
+    filenames = [
+        '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.C.20200217140000.PDF',
+        '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+        '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
+        '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
+        '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF',
+        '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.C.20200213180000.PDF',
+        '2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'
+    ]
+
+    for filename in filenames:
+        s3.put_object(Bucket=bucket_name, Key=filename, Body=b'f')
 
     mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
     mock_send_email_to_dvla = mocker.patch(
