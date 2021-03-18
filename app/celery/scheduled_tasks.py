@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.statsd_decorators import statsd
-from sqlalchemy import and_
+from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import cbc_proxy_client, notify_celery, zendesk_client
@@ -48,6 +48,7 @@ from app.models import (
     EMAIL_TYPE,
     JOB_STATUS_ERROR,
     JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING,
     SMS_TYPE,
     Job,
 )
@@ -132,19 +133,31 @@ def check_job_status():
     select
     from jobs
     where job_status == 'in progress'
-    and template_type in ('sms', 'email')
-    and scheduled_at or created_at is older that 30 minutes.
+    and processing started between 30 and 35 minutes ago
+    OR where the job_status == 'pending'
+    and the job scheduled_for timestamp is between 30 and 35 minutes ago.
     if any results then
-        raise error
+        update the job_status to 'error'
         process the rows in the csv that are missing (in another task) just do the check here.
     """
     thirty_minutes_ago = datetime.utcnow() - timedelta(minutes=30)
     thirty_five_minutes_ago = datetime.utcnow() - timedelta(minutes=35)
 
-    jobs_not_complete_after_30_minutes = Job.query.filter(
+    incomplete_in_progress_jobs = Job.query.filter(
         Job.job_status == JOB_STATUS_IN_PROGRESS,
-        and_(thirty_five_minutes_ago < Job.processing_started, Job.processing_started < thirty_minutes_ago)
-    ).order_by(Job.processing_started).all()
+        between(Job.processing_started, thirty_five_minutes_ago, thirty_minutes_ago)
+    )
+    incomplete_pending_jobs = Job.query.filter(
+        Job.job_status == JOB_STATUS_PENDING,
+        Job.scheduled_for.isnot(None),
+        between(Job.scheduled_for, thirty_five_minutes_ago, thirty_minutes_ago)
+    )
+
+    jobs_not_complete_after_30_minutes = incomplete_in_progress_jobs.union(
+        incomplete_pending_jobs
+    ).order_by(
+        Job.processing_started, Job.scheduled_for
+    ).all()
 
     # temporarily mark them as ERROR so that they don't get picked up by future check_job_status tasks
     # if they haven't been re-processed in time.

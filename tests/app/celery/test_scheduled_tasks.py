@@ -28,6 +28,7 @@ from app.models import (
     JOB_STATUS_ERROR,
     JOB_STATUS_FINISHED,
     JOB_STATUS_IN_PROGRESS,
+    JOB_STATUS_PENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
 )
@@ -170,6 +171,39 @@ def test_check_job_status_task_calls_process_incomplete_jobs_when_scheduled_job_
     )
 
 
+def test_check_job_status_task_calls_process_incomplete_jobs_for_pending_scheduled_jobs(
+    mocker, sample_template
+):
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
+    job = create_job(template=sample_template, notification_count=3,
+                     created_at=datetime.utcnow() - timedelta(hours=2),
+                     scheduled_for=datetime.utcnow() - timedelta(minutes=31),
+                     job_status=JOB_STATUS_PENDING)
+
+    check_job_status()
+
+    mock_celery.assert_called_once_with(
+        [[str(job.id)]],
+        queue=QueueNames.JOBS
+    )
+
+
+def test_check_job_status_task_does_not_call_process_incomplete_jobs_for_non_scheduled_pending_jobs(
+    mocker,
+    sample_template,
+):
+    mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(hours=2),
+        job_status=JOB_STATUS_PENDING
+    )
+    check_job_status()
+
+    assert not mock_celery.called
+
+
 def test_check_job_status_task_calls_process_incomplete_jobs_for_multiple_jobs(mocker, sample_template):
     mock_celery = mocker.patch('app.celery.tasks.process_incomplete_jobs.apply_async')
     job = create_job(template=sample_template, notification_count=3,
@@ -207,9 +241,16 @@ def test_check_job_status_task_only_sends_old_tasks(mocker, sample_template):
         processing_started=datetime.utcnow() - timedelta(minutes=29),
         job_status=JOB_STATUS_IN_PROGRESS
     )
+    create_job(
+        template=sample_template,
+        notification_count=3,
+        created_at=datetime.utcnow() - timedelta(minutes=50),
+        scheduled_for=datetime.utcnow() - timedelta(minutes=29),
+        job_status=JOB_STATUS_PENDING
+    )
     check_job_status()
 
-    # job 2 not in celery task
+    # jobs 2 and 3 were created less than 30 minutes ago, so are not sent to Celery task
     mock_celery.assert_called_once_with(
         [[str(job.id)]],
         queue=QueueNames.JOBS
