@@ -171,18 +171,6 @@ def test_get_bucket_name_and_prefix_for_notification_invalid_notification():
         get_bucket_name_and_prefix_for_notification(None)
 
 
-@pytest.mark.parametrize('crown_flag,expected_crown_text', [
-    (True, 'C'),
-    (False, 'N'),
-])
-def test_generate_letter_pdf_filename_returns_correct_filename(
-        notify_api, mocker, crown_flag, expected_crown_text):
-    created_at = datetime(2017, 12, 4, 17, 29)
-    filename = generate_letter_pdf_filename(reference='foo', crown=crown_flag, created_at=created_at)
-
-    assert filename == '2017-12-04/NOTIFY.FOO.D.2.C.{}.20171204172900.PDF'.format(expected_crown_text)
-
-
 @pytest.mark.parametrize('postage,expected_postage', [
     ('second', 2),
     ('first', 1),
@@ -190,9 +178,9 @@ def test_generate_letter_pdf_filename_returns_correct_filename(
 def test_generate_letter_pdf_filename_returns_correct_postage_for_filename(
         notify_api, postage, expected_postage):
     created_at = datetime(2017, 12, 4, 17, 29)
-    filename = generate_letter_pdf_filename(reference='foo', crown=True, created_at=created_at, postage=postage)
+    filename = generate_letter_pdf_filename(reference='foo', created_at=created_at, postage=postage)
 
-    assert filename == '2017-12-04/NOTIFY.FOO.D.{}.C.C.20171204172900.PDF'.format(expected_postage)
+    assert filename == '2017-12-04/NOTIFY.FOO.D.{}.C.20171204172900.PDF'.format(expected_postage)
 
 
 def test_generate_letter_pdf_filename_returns_correct_filename_for_test_letters(
@@ -200,25 +188,24 @@ def test_generate_letter_pdf_filename_returns_correct_filename_for_test_letters(
     created_at = datetime(2017, 12, 4, 17, 29)
     filename = generate_letter_pdf_filename(
         reference='foo',
-        crown='C',
         created_at=created_at,
         ignore_folder=True
     )
 
-    assert filename == 'NOTIFY.FOO.D.2.C.C.20171204172900.PDF'
+    assert filename == 'NOTIFY.FOO.D.2.C.20171204172900.PDF'
 
 
 def test_generate_letter_pdf_filename_returns_tomorrows_filename(notify_api, mocker):
     created_at = datetime(2017, 12, 4, 17, 31)
-    filename = generate_letter_pdf_filename(reference='foo', crown=True, created_at=created_at)
+    filename = generate_letter_pdf_filename(reference='foo', created_at=created_at)
 
-    assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.C.20171204173100.PDF'
+    assert filename == '2017-12-05/NOTIFY.FOO.D.2.C.20171204173100.PDF'
 
 
 @mock_s3
 @pytest.mark.parametrize('bucket_config_name,filename_format', [
-    ('TEST_LETTERS_BUCKET_NAME', 'NOTIFY.FOO.D.2.C.C.%Y%m%d%H%M%S.PDF'),
-    ('LETTERS_PDF_BUCKET_NAME', '%Y-%m-%d/NOTIFY.FOO.D.2.C.C.%Y%m%d%H%M%S.PDF')
+    ('TEST_LETTERS_BUCKET_NAME', 'NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF'),
+    ('LETTERS_PDF_BUCKET_NAME', '%Y-%m-%d/NOTIFY.FOO.D.2.C.%Y%m%d%H%M%S.PDF')
 ])
 @freeze_time(FROZEN_DATE_TIME)
 def test_get_letter_pdf_gets_pdf_from_correct_bucket(
@@ -259,7 +246,6 @@ def test_upload_letter_pdf_to_correct_bucket(
 
     filename = generate_letter_pdf_filename(
         reference=sample_letter_notification.reference,
-        crown=sample_letter_notification.service.crown,
         created_at=sample_letter_notification.created_at,
         ignore_folder=is_precompiled_letter
     )
@@ -286,7 +272,6 @@ def test_upload_letter_pdf_uses_postage_from_notification(
 
     filename = generate_letter_pdf_filename(
         reference=letter_notification.reference,
-        crown=letter_notification.service.crown,
         created_at=letter_notification.created_at,
         ignore_folder=False,
         postage=letter_notification.postage
