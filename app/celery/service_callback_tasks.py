@@ -26,6 +26,12 @@ def send_delivery_status_to_service(
         "sent_at": status_update['notification_sent_at'],
         "notification_type": status_update['notification_type']
     }
+    # TODO: set the template_id and template_version keys when data dict is created once this change has
+    # been deployed long enough for all tasks to have those keys in status_update
+    if status_update.get("template_id"):
+        data["template_id"] = status_update['template_id']
+        data["template_version"] = status_update['template_version']
+
     _send_data_to_service_callback_api(
         self,
         data,
@@ -121,6 +127,8 @@ def create_delivery_status_callback_data(notification, service_callback_api):
         "notification_type": notification.notification_type,
         "service_callback_api_url": service_callback_api.url,
         "service_callback_api_bearer_token": service_callback_api.bearer_token,
+        "template_id": str(notification.template_id),
+        "template_version": notification.template_version,
     }
     return encryption.encrypt(data)
 

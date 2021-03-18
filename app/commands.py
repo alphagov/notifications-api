@@ -15,13 +15,16 @@ from notifications_utils.template import SMSMessageTemplate
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app import db, encryption
+from app import db
 from app.aws import s3
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_day,
 )
-from app.celery.service_callback_tasks import send_delivery_status_to_service
+from app.celery.service_callback_tasks import (
+    create_delivery_status_callback_data,
+    send_delivery_status_to_service,
+)
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.dao.annual_billing_dao import (
@@ -72,7 +75,7 @@ from app.models import (
     Service,
     User,
 )
-from app.utils import DATETIME_FORMAT, get_london_midnight_in_utc
+from app.utils import get_london_midnight_in_utc
 
 
 @click.group(name='command', help='Additional commands')
@@ -322,19 +325,7 @@ def replay_service_callbacks(file_name, service_id):
         raise Exception("Some notifications for the given references were not found")
 
     for n in notifications:
-        data = {
-            "notification_id": str(n.id),
-            "notification_client_reference": n.client_reference,
-            "notification_to": n.to,
-            "notification_status": n.status,
-            "notification_created_at": n.created_at.strftime(DATETIME_FORMAT),
-            "notification_updated_at": n.updated_at.strftime(DATETIME_FORMAT),
-            "notification_sent_at": n.sent_at.strftime(DATETIME_FORMAT),
-            "notification_type": n.notification_type,
-            "service_callback_api_url": callback_api.url,
-            "service_callback_api_bearer_token": callback_api.bearer_token,
-        }
-        encrypted_status_update = encryption.encrypt(data)
+        encrypted_status_update = create_delivery_status_callback_data(n, callback_api)
         send_delivery_status_to_service.apply_async([str(n.id), encrypted_status_update],
                                                     queue=QueueNames.CALLBACKS)
 
