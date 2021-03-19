@@ -100,7 +100,8 @@ def test_send_one_off_notification_calls_persist_correctly_for_sms(
         created_by_id=str(service.created_by_id),
         reply_to_text='testing',
         reference=None,
-        postage=None
+        postage=None,
+        client_reference=None
     )
 
 
@@ -161,7 +162,8 @@ def test_send_one_off_notification_calls_persist_correctly_for_email(
         created_by_id=str(service.created_by_id),
         reply_to_text=None,
         reference=None,
-        postage=None
+        postage=None,
+        client_reference=None
     )
 
 
@@ -210,7 +212,8 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
         created_by_id=str(service.created_by_id),
         reply_to_text=None,
         reference='this-is-random-in-real-life',
-        postage='first'
+        postage='first',
+        client_reference=None
     )
 
 

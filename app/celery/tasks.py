@@ -58,7 +58,7 @@ from app.models import (
 from app.notifications.process_notifications import persist_notification
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import DATETIME_FORMAT
+from app.utils import DATETIME_FORMAT, get_reference_from_personalisation
 
 
 @notify_celery.task(name="process-job")
@@ -383,6 +383,7 @@ def save_letter(
             job_row_number=notification['row_number'],
             notification_id=notification_id,
             reference=create_random_identifier(),
+            client_reference=get_reference_from_personalisation(notification['personalisation']),
             reply_to_text=template.reply_to_text,
             status=status
         )

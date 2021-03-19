@@ -121,7 +121,7 @@ def persist_notification(
         created_at=notification_created_at,
         job_id=job_id,
         job_row_number=job_row_number,
-        client_reference=client_reference or _get_reference_from_personalisation(personalisation),
+        client_reference=client_reference,
         reference=reference,
         created_by_id=created_by_id,
         status=status,
@@ -157,12 +157,6 @@ def persist_notification(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
         )
     return notification
-
-
-def _get_reference_from_personalisation(personalisation):
-    if personalisation:
-        return personalisation.get("reference")
-    return None
 
 
 def send_notification_to_queue_detached(

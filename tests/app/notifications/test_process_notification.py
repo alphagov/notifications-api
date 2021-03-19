@@ -96,42 +96,6 @@ def test_persist_notification_creates_and_save_to_db(sample_template, sample_api
     assert notification_from_db.reply_to_text == sample_template.service.get_default_sms_sender()
 
 
-@pytest.mark.parametrize('client_reference,personalisation,expected_client_reference', [
-    ('clientref1', {}, 'clientref1'),
-    ('clientref1', {'reference': 'ref2'}, 'clientref1'),
-    (None, {'reference': 'ref2'}, 'ref2'),
-    (None, {'foo': 'bar'}, None),
-])
-def test_persist_notification_sets_client_reference_correctly(
-    sample_letter_template, sample_api_key, client_reference, personalisation, expected_client_reference
-):
-
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 0
-    notification = persist_notification(
-        template_id=sample_letter_template.id,
-        template_version=sample_letter_template.version,
-        recipient='3 Somerset House',
-        service=sample_letter_template.service,
-        personalisation=personalisation,
-        notification_type='letter',
-        api_key_id=sample_api_key.id,
-        key_type=sample_api_key.key_type,
-        reference="ref",
-        client_reference=client_reference,
-    )
-
-    assert Notification.query.get(notification.id) is not None
-
-    notification_from_db = Notification.query.one()
-
-    assert notification_from_db.id == notification.id
-    assert notification_from_db.template_id == notification.template_id
-    assert notification_from_db.notification_type == notification.notification_type
-    assert notification_from_db.reference == notification.reference
-    assert notification_from_db.client_reference == expected_client_reference
-
-
 def test_persist_notification_throws_exception_when_missing_template(sample_api_key):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 0

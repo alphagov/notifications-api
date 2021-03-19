@@ -160,3 +160,9 @@ def get_uuid_string_or_none(val):
 
 def format_sequential_number(sequential_number):
     return format(sequential_number, "x").zfill(8)
+
+
+def get_reference_from_personalisation(personalisation):
+    if personalisation:
+        return personalisation.get("reference")
+    return None
