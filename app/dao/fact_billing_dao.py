@@ -683,3 +683,20 @@ def fetch_usage_year_for_organisation(organisation_id, year):
         service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
 
     return service_with_usage
+
+
+def fetch_billing_details_for_all_services():
+    billing_details = db.session.query(
+        Service.id.label('service_id'),
+        func.coalesce(Service.purchase_order_number, Organisation.purchase_order_number).label('purchase_order_number'),
+        func.coalesce(Service.billing_contact_names, Organisation.billing_contact_names).label('billing_contact_names'),
+        func.coalesce(
+            Service.billing_contact_email_addresses,
+            Organisation.billing_contact_email_addresses
+        ).label('billing_contact_email_addresses'),
+        func.coalesce(Service.billing_reference, Organisation.billing_reference).label('billing_reference'),
+    ).outerjoin(
+        Service.organisation
+    ).all()
+
+    return billing_details

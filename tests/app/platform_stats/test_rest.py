@@ -126,39 +126,56 @@ def test_validate_date_is_within_a_financial_year_when_input_is_not_a_date(start
     assert e.value.status_code == 400
 
 
-def test_get_usage_for_all_services(notify_db_session, admin_request):
-    org, org_2, service, service_2, service_3, service_sms_only, \
-        org_with_emails, service_with_emails = set_up_usage_data(datetime(2019, 5, 1))
-    response = admin_request.get("platform_stats.get_usage_for_all_services",
-                                 start_date='2019-05-01',
-                                 end_date='2019-06-30')
+def test_get_data_for_billing_report(notify_db_session, admin_request):
+    fixtures = set_up_usage_data(datetime(2019, 5, 1))
+    response = admin_request.get(
+        "platform_stats.get_data_for_billing_report",
+        start_date='2019-05-01',
+        end_date='2019-06-30'
+    )
+
+    # we set up 6 services, but only 4 returned. service_with_emails was skipped as it had no bills to pay,
+    # and likewise the service with SMS within allowance was skipped. too.
     assert len(response) == 4
-    assert response[0]["organisation_id"] == str(org.id)
-    assert response[0]["service_id"] == str(service.id)
+    assert response[0]["organisation_id"] == str(fixtures["org_1"].id)
+    assert response[0]["service_id"] == str(fixtures["service_1_sms_and_letter"].id)
     assert response[0]["sms_cost"] == 0
     assert response[0]["sms_fragments"] == 0
     assert response[0]["letter_cost"] == 3.40
     assert response[0]["letter_breakdown"] == "6 second class letters at 45p\n2 first class letters at 35p\n"
+    assert response[0]["purchase_order_number"] == "service purchase order number"
+    assert response[0]["contact_names"] == "service billing contact names"
+    assert response[0]["contact_email_addresses"] == "service@billing.contact email@addresses.gov.uk"
+    assert response[0]["billing_reference"] == "service billing reference"
 
-    assert response[1]["organisation_id"] == str(org_2.id)
-    assert response[1]["service_id"] == str(service_2.id)
+    assert response[1]["organisation_id"] == str(fixtures["org_for_service_with_letters"].id)
+    assert response[1]["service_id"] == str(fixtures["service_with_letters"].id)
     assert response[1]["sms_cost"] == 0
     assert response[1]["sms_fragments"] == 0
     assert response[1]["letter_cost"] == 14
     assert response[1]["letter_breakdown"] == "20 second class letters at 65p\n2 first class letters at 50p\n"
+    assert response[1]["purchase_order_number"] == "org3 purchase order number"
+    assert response[1]["contact_names"] == "org3 billing contact names"
+    assert response[1]["contact_email_addresses"] == "org3@billing.contact email@addresses.gov.uk"
+    assert response[1]["billing_reference"] == "org3 billing reference"
 
     assert response[2]["organisation_id"] == ""
-    assert response[2]["service_id"] == str(service_sms_only.id)
+    assert response[2]["service_id"] == str(fixtures["service_with_sms_without_org"].id)
     assert response[2]["sms_cost"] == 0.33
     assert response[2]["sms_fragments"] == 3
     assert response[2]["letter_cost"] == 0
     assert response[2]["letter_breakdown"] == ""
+    assert response[2]["purchase_order_number"] == "sms purchase order number"
+    assert response[2]["contact_names"] == "sms billing contact names"
+    assert response[2]["contact_email_addresses"] == "sms@billing.contact email@addresses.gov.uk"
+    assert response[2]["billing_reference"] == "sms billing reference"
 
     assert response[3]["organisation_id"] == ""
-    assert response[3]["service_id"] == str(service_3.id)
+    assert response[3]["service_id"] == str(fixtures["service_with_letters_without_org"].id)
     assert response[3]["sms_cost"] == 0
     assert response[3]["sms_fragments"] == 0
     assert response[3]["letter_cost"] == 24.45
     assert response[3]["letter_breakdown"] == (
         "2 second class letters at 35p\n1 first class letters at 50p\n15 international letters at £1.55\n"
     )
+    assert response[3]["purchase_order_number"] is None
