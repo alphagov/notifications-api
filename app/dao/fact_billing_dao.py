@@ -455,6 +455,8 @@ def get_rate(
     if notification_type == LETTER_TYPE:
         if letter_page_count == 0:
             return 0
+        # if crown is not set default to true, this is okay because the rates are the same for both crown and non-crown.
+        crown = crown or True
         return next(
             r.rate
             for r in letter_rates if (
