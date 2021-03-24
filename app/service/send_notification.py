@@ -81,12 +81,16 @@ def send_one_off_notification(service_id, post_data):
         allow_guest_list_recipients=False,
     )
     postage = None
+    client_reference = None
     if template.template_type == LETTER_TYPE:
         # Validate address and set postage to europe|rest-of-world if international letter,
         # otherwise persist_notification with use template postage
         postage = validate_address(service, personalisation)
         if not postage:
             postage = template.postage
+        from app.utils import get_reference_from_personalisation
+        client_reference = get_reference_from_personalisation(personalisation)
+
     validate_created_by(service, post_data['created_by'])
 
     sender_id = post_data.get('sender_id', None)
@@ -108,7 +112,8 @@ def send_one_off_notification(service_id, post_data):
         created_by_id=post_data['created_by'],
         reply_to_text=reply_to,
         reference=create_one_off_reference(template.template_type),
-        postage=postage
+        postage=postage,
+        client_reference=client_reference
     )
 
     queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None

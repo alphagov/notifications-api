@@ -108,6 +108,7 @@ def send_notification(notification_type):
 
     if notification_type == SMS_TYPE:
         check_if_service_can_send_to_number(authenticated_service, notification_form['to'])
+
     # Do not persist or send notification to the queue if it is a simulated recipient
     simulated = simulated_recipient(notification_form['to'], notification_type)
     notification_model = persist_notification(template_id=template.id,
@@ -120,7 +121,7 @@ def send_notification(notification_type):
                                               api_key_id=api_user.id,
                                               key_type=api_user.key_type,
                                               simulated=simulated,
-                                              reply_to_text=template.reply_to_text
+                                              reply_to_text=template.reply_to_text,
                                               )
     if not simulated:
         queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None

@@ -1070,6 +1070,38 @@ def test_save_letter_saves_letter_to_database_with_correct_postage(
     assert notification_db.international == expected_international
 
 
+@pytest.mark.parametrize('reference_paceholder,', [None, 'ref2'])
+def test_save_letter_saves_letter_to_database_with_correct_client_reference(
+    mocker, notify_db_session, reference_paceholder
+):
+    service = create_service(service_permissions=[LETTER_TYPE])
+    template = create_template(service=service, template_type=LETTER_TYPE)
+    letter_job = create_job(template=template)
+
+    personalisation = {'addressline1': 'Foo', 'addressline2': 'Bar', 'postcode': 'SW1A 1AA'}
+    if reference_paceholder:
+        personalisation['reference'] = reference_paceholder
+
+    mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
+    notification_json = _notification_json(
+        template=letter_job.template,
+        to='Foo',
+        personalisation=personalisation,
+        job_id=letter_job.id,
+        row_number=1
+    )
+    notification_id = uuid.uuid4()
+    save_letter(
+        letter_job.service_id,
+        notification_id,
+        encryption.encrypt(notification_json),
+    )
+
+    notification_db = Notification.query.one()
+    assert notification_db.id == notification_id
+    assert notification_db.client_reference == reference_paceholder
+
+
 def test_save_letter_saves_letter_to_database_with_formatted_postcode(mocker, notify_db_session):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service=service, template_type=LETTER_TYPE)
