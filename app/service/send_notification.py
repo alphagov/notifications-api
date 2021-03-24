@@ -199,7 +199,6 @@ def send_pdf_letter_notification(service_id, post_data):
 
     upload_filename = generate_letter_pdf_filename(
         reference=notification.reference,
-        crown=notification.service.crown,
         created_at=notification.created_at,
         ignore_folder=False,
         postage=notification.postage

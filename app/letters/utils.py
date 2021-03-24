@@ -25,7 +25,7 @@ class ScanErrorType(Enum):
 
 
 LETTERS_PDF_FILE_LOCATION_STRUCTURE = \
-    '{folder}NOTIFY.{reference}.{duplex}.{letter_class}.{colour}.{crown}.{date}.pdf'
+    '{folder}NOTIFY.{reference}.{duplex}.{letter_class}.{colour}.{date}.pdf'
 
 PRECOMPILED_BUCKET_PREFIX = '{folder}NOTIFY.{reference}'
 
@@ -53,14 +53,13 @@ def find_letter_pdf_in_s3(notification):
     return item
 
 
-def generate_letter_pdf_filename(reference, crown, created_at, ignore_folder=False, postage=SECOND_CLASS):
+def generate_letter_pdf_filename(reference, created_at, ignore_folder=False, postage=SECOND_CLASS):
     upload_file_name = LETTERS_PDF_FILE_LOCATION_STRUCTURE.format(
         folder='' if ignore_folder else get_folder_name(created_at),
         reference=reference,
         duplex="D",
         letter_class=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
         colour="C",
-        crown="C" if crown else "N",
         date=created_at.strftime('%Y%m%d%H%M%S')
     ).upper()
     return upload_file_name
@@ -85,7 +84,7 @@ def get_bucket_name_and_prefix_for_notification(notification):
 
 
 def get_reference_from_filename(filename):
-    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.C.20180113120000.PDF'
+    # filename looks like '2018-01-13/NOTIFY.ABCDEF1234567890.D.2.C.20180113120000.PDF'
     filename_parts = filename.split('.')
     return filename_parts[1]
 
@@ -96,7 +95,6 @@ def upload_letter_pdf(notification, pdf_data, precompiled=False):
 
     upload_file_name = generate_letter_pdf_filename(
         reference=notification.reference,
-        crown=notification.service.crown,
         created_at=notification.created_at,
         ignore_folder=precompiled or notification.key_type == KEY_TYPE_TEST,
         postage=notification.postage

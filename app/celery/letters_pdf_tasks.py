@@ -62,7 +62,6 @@ def get_pdf_for_templated_letter(self, notification_id):
         notification = get_notification_by_id(notification_id, _raise=True)
         letter_filename = generate_letter_pdf_filename(
             reference=notification.reference,
-            crown=notification.service.crown,
             created_at=notification.created_at,
             ignore_folder=notification.key_type == KEY_TYPE_TEST,
             postage=notification.postage
@@ -373,7 +372,6 @@ def process_sanitised_letter(self, sanitise_data):
         # Now we know if the letter is international, we can check what the filename should be.
         upload_file_name = generate_letter_pdf_filename(
             reference=notification.reference,
-            crown=notification.service.crown,
             created_at=notification.created_at,
             ignore_folder=True,
             postage=notification.postage

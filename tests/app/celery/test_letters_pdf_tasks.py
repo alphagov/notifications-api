@@ -98,7 +98,6 @@ def test_get_pdf_for_templated_letter_happy_path(mocker, sample_letter_notificat
 
     mock_generate_letter_pdf_filename.assert_called_once_with(
         reference=sample_letter_notification.reference,
-        crown=True,
         created_at=sample_letter_notification.created_at,
         ignore_folder=False,
         postage='second'
@@ -176,9 +175,9 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
-    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF', Body=b'1'),
-    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', Body=b'22'),
-    s3.put_object(Bucket=pdf_bucket, Key='2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF', Body=b'333'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF', Body=b'1'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF', Body=b'22'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF', Body=b'333'),
 
     # second class
     create_notification(
@@ -235,17 +234,17 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
     assert results == [
         {
 
-            'Key': '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
+            'Key': '2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF',
             'Size': 3,
             'ServiceId': str(sample_letter_template.service_id)
         },
         {
-            'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
+            'Key': '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF',
             'Size': 2,
             'ServiceId': str(sample_letter_template.service_id)
         },
         {
-            'Key': '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
+            'Key': '2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF',
             'Size': 1,
             'ServiceId': str(sample_letter_template.service_id)
         },
@@ -260,7 +259,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
-    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF', Body=b'12'),
+    s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF', Body=b'12'),
     # no object for ref1
 
     create_notification(
@@ -282,7 +281,7 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     )
 
     assert results == [{
-        'Key': '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
+        'Key': '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF',
         'Size': 2,
         'ServiceId': str(sample_letter_template.service_id)}
     ]
@@ -362,13 +361,13 @@ def test_collate_letter_pdfs_to_be_sent(
     )
 
     filenames = [
-        '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.C.20200217140000.PDF',
-        '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-        '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF',
-        '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF',
-        '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF',
-        '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.C.20200213180000.PDF',
-        '2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'
+        '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF',
+        '2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF',
+        '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF',
+        '2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF',
+        '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF',
+        '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF',
+        '2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF'
     ]
 
     for filename in filenames:
@@ -392,9 +391,9 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.C.20200217140000.PDF'
+                '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.1.001.kHh01fdUxT9iEIYUt5Wx.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -402,8 +401,8 @@ def test_collate_letter_pdfs_to_be_sent(
     assert mock_celery.call_args_list[1] == call(
         name='zip-and-send-letter-pdfs',
         kwargs={
-            'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.C.20200217160000.PDF'],
-            'upload_filename': f'NOTIFY.2020-02-17.2.001.MezXnKP3IvNZEoMsSlVo.{service_2.id}.ZIP'
+            'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF'],
+            'upload_filename': f'NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -412,10 +411,10 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-16/NOTIFY.REF2.D.2.C.C.20200215180000.PDF',
-                '2020-02-17/NOTIFY.REF1.D.2.C.C.20200217150000.PDF'
+                '2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF',
+                '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.002.k3x_WqC5KhB6e2DWv9Ma.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -424,9 +423,9 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-17/NOTIFY.REF0.D.2.C.C.20200217160000.PDF'
+                '2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.003.J85cUw-FWlKuAIOcwdLS.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -435,9 +434,9 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.C.20200214180000.PDF'
+                '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.E.001.4YajCZzgzIl7zf8bjWK2.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -446,9 +445,9 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': [
-                '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.C.20200213180000.PDF',
+                '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF',
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.N.001.eSvP8Ph6EBKhh3k7BSA2.{letter_template_1.service_id}.ZIP'
+            'upload_filename': f'NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4.{letter_template_1.service_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -727,42 +726,42 @@ def test_sanitise_letter_puts_letter_into_technical_failure_if_max_retries_excee
         'LETTERS_PDF_BUCKET_NAME',
         NOTIFICATION_CREATED,
         'first',
-        '2018-07-01/NOTIFY.FOO.D.1.C.C.20180701120000.PDF'
+        '2018-07-01/NOTIFY.FOO.D.1.C.20180701120000.PDF'
     ),
     (
         KEY_TYPE_NORMAL,
         'LETTERS_PDF_BUCKET_NAME',
         NOTIFICATION_CREATED,
         'second',
-        '2018-07-01/NOTIFY.FOO.D.2.C.C.20180701120000.PDF'
+        '2018-07-01/NOTIFY.FOO.D.2.C.20180701120000.PDF'
     ),
     (
         KEY_TYPE_NORMAL,
         'LETTERS_PDF_BUCKET_NAME',
         NOTIFICATION_CREATED,
         'europe',
-        '2018-07-01/NOTIFY.FOO.D.E.C.C.20180701120000.PDF'
+        '2018-07-01/NOTIFY.FOO.D.E.C.20180701120000.PDF'
     ),
     (
         KEY_TYPE_NORMAL,
         'LETTERS_PDF_BUCKET_NAME',
         NOTIFICATION_CREATED,
         'rest-of-world',
-        '2018-07-01/NOTIFY.FOO.D.N.C.C.20180701120000.PDF'
+        '2018-07-01/NOTIFY.FOO.D.N.C.20180701120000.PDF'
     ),
     (
         KEY_TYPE_TEST,
         'TEST_LETTERS_BUCKET_NAME',
         NOTIFICATION_DELIVERED,
         'second',
-        'NOTIFY.FOO.D.2.C.C.20180701120000.PDF',
+        'NOTIFY.FOO.D.2.C.20180701120000.PDF',
     ),
     (
         KEY_TYPE_TEST,
         'TEST_LETTERS_BUCKET_NAME',
         NOTIFICATION_DELIVERED,
         'first',
-        'NOTIFY.FOO.D.1.C.C.20180701120000.PDF',
+        'NOTIFY.FOO.D.1.C.20180701120000.PDF',
     ),
 ])
 def test_process_sanitised_letter_with_valid_letter(
@@ -774,7 +773,7 @@ def test_process_sanitised_letter_with_valid_letter(
     destination_filename,
 ):
     # We save the letter as if it's 2nd class initially, and the task changes the filename to have the correct postage
-    filename = 'NOTIFY.FOO.D.2.C.C.20180701120000.PDF'
+    filename = 'NOTIFY.FOO.D.2.C.20180701120000.PDF'
 
     scan_bucket_name = current_app.config['LETTERS_SCAN_BUCKET_NAME']
     template_preview_bucket_name = current_app.config['LETTER_SANITISE_BUCKET_NAME']

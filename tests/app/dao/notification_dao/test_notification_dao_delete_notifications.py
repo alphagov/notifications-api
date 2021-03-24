@@ -144,7 +144,7 @@ def test_delete_notifications_deletes_letters_from_s3(sample_letter_template, mo
     eight_days_ago = datetime.utcnow() - timedelta(days=8)
     create_notification(template=sample_letter_template, status='delivered',
                         reference='LETTER_REF', created_at=eight_days_ago, sent_at=eight_days_ago)
-    filename = "{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
+    filename = "{}/NOTIFY.LETTER_REF.D.2.C.{}.PDF".format(
         str(eight_days_ago.date()),
         eight_days_ago.strftime('%Y%m%d%H%M%S')
     )
@@ -268,7 +268,7 @@ def test_delete_notifications_deletes_letters_sent_and_in_final_state_from_table
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
 
-    filename = "{}/NOTIFY.LETTER_REF.D.2.C.C.{}.PDF".format(
+    filename = "{}/NOTIFY.LETTER_REF.D.2.C.{}.PDF".format(
         str(eight_days_ago.date()),
         eight_days_ago.strftime('%Y%m%d%H%M%S')
     )
