@@ -20,8 +20,7 @@ from tests.app.db import (
 )
 
 
-@pytest.mark.parametrize("notification_type",
-                         ["email", "letter", "sms"])
+@pytest.mark.parametrize("notification_type", ["email", "sms"])
 def test_send_delivery_status_to_service_post_https_request_to_service_with_encrypted_data(
         notify_db_session, notification_type):
 
@@ -49,7 +48,9 @@ def test_send_delivery_status_to_service_post_https_request_to_service_with_encr
         "created_at": datestr.strftime(DATETIME_FORMAT),
         "completed_at": datestr.strftime(DATETIME_FORMAT),
         "sent_at": datestr.strftime(DATETIME_FORMAT),
-        "notification_type": notification_type
+        "notification_type": notification_type,
+        "template_id": str(template.id),
+        "template_version": 1
     }
 
     assert request_mock.call_count == 1
@@ -90,8 +91,7 @@ def test_send_complaint_to_service_posts_https_request_to_service_with_encrypted
         assert request_mock.request_history[0].headers["Authorization"] == "Bearer {}".format(callback_api.bearer_token)
 
 
-@pytest.mark.parametrize("notification_type",
-                         ["email", "letter", "sms"])
+@pytest.mark.parametrize("notification_type", ["email", "sms"])
 def test__send_data_to_service_callback_api_retries_if_request_returns_500_with_encrypted_data(
         notify_db_session, mocker, notification_type
 ):
@@ -115,8 +115,7 @@ def test__send_data_to_service_callback_api_retries_if_request_returns_500_with_
     assert mocked.call_args[1]['queue'] == 'service-callbacks-retry'
 
 
-@pytest.mark.parametrize("notification_type",
-                         ["email", "letter", "sms"])
+@pytest.mark.parametrize("notification_type", ["email", "sms"])
 def test__send_data_to_service_callback_api_does_not_retry_if_request_returns_404_with_encrypted_data(
         notify_db_session,
         mocker,
@@ -185,6 +184,8 @@ def _set_up_data_for_status_update(callback_api, notification):
         "notification_type": notification.notification_type,
         "service_callback_api_url": callback_api.url,
         "service_callback_api_bearer_token": callback_api.bearer_token,
+        "template_id": str(notification.template_id),
+        "template_version": notification.template_version,
     }
     encrypted_status_update = encryption.encrypt(data)
     return encrypted_status_update
