@@ -247,7 +247,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
 
 
 def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, sample_user):
-    for _ in range(10):
+    for _ in range(5):
         verify_code = VerifyCode(
             code_type='sms',
             _code=12345,
@@ -257,14 +257,14 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
         )
         db.session.add(verify_code)
         db.session.commit()
-    assert VerifyCode.query.count() == 10
+    assert VerifyCode.query.count() == 5
     auth_header = create_admin_authorization_header()
     resp = client.post(
         url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
-    assert VerifyCode.query.count() == 10
+    assert VerifyCode.query.count() == 5
 
 
 def test_send_new_user_email_verification(client,
