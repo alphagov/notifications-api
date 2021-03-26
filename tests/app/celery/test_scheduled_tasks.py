@@ -1,4 +1,3 @@
-import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest.mock import call
@@ -598,39 +597,6 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
         subject="[test] High failure rates for sms spotted for services",
         ticket_type='incident'
     )
-
-
-def test_send_canary_to_cbc_proxy_invokes_cbc_proxy_client(
-    mocker,
-    notify_api
-):
-    mock_send_canary = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyCanary.send_canary',
-    )
-
-    scheduled_tasks.send_canary_to_cbc_proxy()
-
-    assert mock_send_canary.called is True
-    # the 0th argument of the call to send_canary
-    identifier = mock_send_canary.mock_calls[0][1][0]
-
-    try:
-        uuid.UUID(identifier)
-    except BaseException:
-        pytest.fail(f"{identifier} is not a valid uuid")
-
-
-def test_send_canary_to_cbc_proxy_does_nothing_if_cbc_proxy_disabled(
-    mocker, notify_api
-):
-    mock_send_canary = mocker.patch(
-        'app.clients.cbc_proxy.CBCProxyCanary.send_canary',
-    )
-
-    with set_config(notify_api, 'CBC_PROXY_ENABLED', False):
-        scheduled_tasks.send_canary_to_cbc_proxy()
-
-    assert mock_send_canary.called is False
 
 
 def test_trigger_link_tests_calls_for_all_providers(

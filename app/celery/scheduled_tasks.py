@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, timedelta
 
 from flask import current_app
@@ -6,7 +5,7 @@ from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import cbc_proxy_client, notify_celery, zendesk_client
+from app import notify_celery, zendesk_client
 from app.celery.broadcast_message_tasks import trigger_link_test
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
@@ -314,15 +313,6 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
                 message=message,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
-
-
-@notify_celery.task(name='send-canary-to-cbc-proxy')
-def send_canary_to_cbc_proxy():
-    if current_app.config['CBC_PROXY_ENABLED']:
-        identifier = str(uuid.uuid4())
-        message = f"Sending a canary message to CBC proxy with ID {identifier}"
-        current_app.logger.info(message)
-        cbc_proxy_client.get_proxy('canary').send_canary(identifier)
 
 
 @notify_celery.task(name='trigger-link-tests')
