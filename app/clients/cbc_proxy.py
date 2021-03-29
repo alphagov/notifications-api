@@ -48,7 +48,6 @@ class CBCProxyClient:
 
     def get_proxy(self, provider):
         proxy_classes = {
-            'canary': CBCProxyCanary,
             BroadcastProvider.EE: CBCProxyEE,
             BroadcastProvider.THREE: CBCProxyThree,
             BroadcastProvider.O2: CBCProxyO2,
@@ -80,12 +79,6 @@ class CBCProxyClientBase(ABC):
 
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
-
-    def send_canary(
-        self,
-        identifier,
-    ):
-        pass
 
     def send_link_test(
         self,
@@ -160,26 +153,6 @@ class CBCProxyClientBase(ABC):
         if non_gsm_characters(content):
             return self.LANGUAGE_WELSH
         return self.LANGUAGE_ENGLISH
-
-
-class CBCProxyCanary(CBCProxyClientBase):
-    """
-    The canary is a lambda which tests notify's connectivity to the Cell Broadcast AWS infrastructure. It calls the
-    canary, a specific lambda that does not open a vpn or connect to a provider but just responds from within AWS.
-    """
-    lambda_name = 'canary'
-    # we don't need a failover lambda for the canary as it doesn't actually make calls out to a CBC
-    # so we just reuse the normal one in case of a failover scenario
-    failover_lambda_name = 'canary'
-
-    LANGUAGE_ENGLISH = None
-    LANGUAGE_WELSH = None
-
-    def send_canary(
-        self,
-        identifier,
-    ):
-        self._invoke_lambda(self.lambda_name, payload={'identifier': identifier})
 
 
 class CBCProxyOne2ManyClient(CBCProxyClientBase):

@@ -9,7 +9,6 @@ import pytest
 from botocore.exceptions import ClientError as BotoClientError
 
 from app.clients.cbc_proxy import (
-    CBCProxyCanary,
     CBCProxyClient,
     CBCProxyEE,
     CBCProxyO2,
@@ -58,7 +57,6 @@ def cbc_proxy_vodafone(cbc_proxy_client):
     ('three', CBCProxyThree),
     ('o2', CBCProxyO2),
     ('vodafone', CBCProxyVodafone),
-    ('canary', CBCProxyCanary),
 ])
 def test_cbc_proxy_client_returns_correct_client(provider_name, expected_provider_class):
     mock_lambda = Mock()
@@ -555,38 +553,6 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
             Payload=mocker.ANY,
         )
     ]
-
-
-def test_cbc_proxy_send_canary_invokes_function(mocker, cbc_proxy_client):
-    identifier = str(uuid.uuid4())
-
-    canary_client = cbc_proxy_client.get_proxy('canary')
-
-    ld_client_mock = mocker.patch.object(
-        canary_client,
-        '_lambda_client',
-        create=True,
-    )
-
-    ld_client_mock.invoke.return_value = {
-        'StatusCode': 200,
-    }
-
-    canary_client.send_canary(
-        identifier=identifier,
-    )
-
-    ld_client_mock.invoke.assert_called_once_with(
-        FunctionName='canary',
-        InvocationType='RequestResponse',
-        Payload=mocker.ANY,
-    )
-
-    kwargs = ld_client_mock.invoke.mock_calls[0][-1]
-    payload_bytes = kwargs['Payload']
-    payload = json.loads(payload_bytes)
-
-    assert payload['identifier'] == identifier
 
 
 @pytest.mark.parametrize('cbc', ['ee', 'three', 'o2'])
