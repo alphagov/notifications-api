@@ -24,13 +24,10 @@ def send_delivery_status_to_service(
         "created_at": status_update['notification_created_at'],
         "completed_at": status_update['notification_updated_at'],
         "sent_at": status_update['notification_sent_at'],
-        "notification_type": status_update['notification_type']
+        "notification_type": status_update['notification_type'],
+        "template_id": status_update['template_id'],
+        "template_version": status_update['template_version']
     }
-    # TODO: set the template_id and template_version keys when data dict is created once this change has
-    # been deployed long enough for all tasks to have those keys in status_update
-    if status_update.get("template_id"):
-        data["template_id"] = status_update['template_id']
-        data["template_version"] = status_update['template_version']
 
     _send_data_to_service_callback_api(
         self,
