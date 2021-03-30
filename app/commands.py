@@ -891,7 +891,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
 def populate_annual_billing_with_defaults(year, missing_services_only):
     """
     Add or update annual billing with free allowance defaults for all active services.
-    DEFAULT_FREE_SMS_FRAGMENT_LIMITS is the new free allowances for the financial year starting 2021.
+    The default free allowance limits are in: app/dao/annual_billing_dao.py:57.
 
     If missing_services_only is true then only add rows for services that do not have annual billing for that year yet.
     This is useful to prevent overriding any services that have a free allowance that is not the default.

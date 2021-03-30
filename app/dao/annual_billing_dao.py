@@ -90,6 +90,10 @@ def set_default_free_allowance_for_service(service, year_start=None):
     }
     if not year_start:
         year_start = get_current_financial_year_start_year()
+    if year_start < 2020:
+        year_start = 2020
+    if year_start > 2021:
+        year_start = 2021
     if service.organisation_type:
         free_allowance = default_free_sms_fragment_limits[service.organisation_type][year_start]
     else:

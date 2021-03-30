@@ -199,14 +199,6 @@ def create_service_with_defined_sms_sender(
     return service
 
 
-def create_service_with_organisation(org_type):
-    service = create_service(service_name=f'{org_type} service')
-    org = create_organisation(name=f'{org_type} org', organisation_type=org_type)
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-
-    return service
-
-
 def create_template(
         service,
         template_type=SMS_TYPE,

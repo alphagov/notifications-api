@@ -9,7 +9,7 @@ from app.dao.annual_billing_dao import (
 )
 from app.dao.date_util import get_current_financial_year_start_year
 from app.models import AnnualBilling
-from tests.app.db import create_annual_billing, create_service_with_organisation
+from tests.app.db import create_annual_billing, create_service
 
 
 def test_dao_update_free_sms_fragment_limit(notify_db_session, sample_service):
@@ -65,10 +65,12 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
                           ('school_or_college', 2020, 25000),
                           ('other', 2020, 25000),
                           (None, 2020, 25000),
+                          ('central', 2019, 250000),
+                          ('school_or_college', 2022, 10000)
                           ])
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
 
-    service = create_service_with_organisation(org_type=org_type)
+    service = create_service(organisation_type=org_type)
 
     set_default_free_allowance_for_service(service=service, year_start=year)
 
