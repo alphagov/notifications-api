@@ -885,7 +885,7 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
 @notify_command(name='populate-annual-billing-with-defaults')
 @click.option('-y', '--year', required=True, type=int,
               help="""The year to populate the annual billing data for, i.e. 2021""")
-@click.option('-m', '--missing-services-only', default=False, type=bool,
+@click.option('-m', '--missing-services-only', default=True, type=bool,
               help="""If true then only populate services missing from annual billing for the year.
                       If false populate the default values for all active services.""")
 def populate_annual_billing_with_defaults(year, missing_services_only):
