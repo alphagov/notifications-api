@@ -11,7 +11,7 @@ git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd
 Flask==1.1.2
 click-datetime==0.2
 eventlet==0.30.2
-gunicorn==20.0.4
+gunicorn==20.1.0
 iso8601==0.1.14
 itsdangerous==1.1.0
 jsonschema==3.2.0
