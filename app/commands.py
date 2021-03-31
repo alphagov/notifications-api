@@ -12,6 +12,7 @@ from flask import current_app, json
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
+from sqlalchemy import and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -29,6 +30,7 @@ from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
+    set_default_free_allowance_for_service,
 )
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
@@ -67,6 +69,7 @@ from app.models import (
     NOTIFICATION_CREATED,
     PROVIDERS,
     SMS_TYPE,
+    AnnualBilling,
     Domain,
     EmailBranding,
     LetterBranding,
@@ -232,36 +235,6 @@ def fix_notification_statuses_not_in_sync():
         print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
-
-
-@notify_command(name='populate-annual-billing')
-@click.option('-y', '--year', required=True, type=int,
-              help="""The year to populate the annual billing data for, i.e. 2019""")
-def populate_annual_billing(year):
-    """
-    add annual_billing for given year.
-    """
-    sql = """
-        Select id from services where active = true
-        except
-        select service_id
-        from annual_billing
-        where financial_year_start = :year
-    """
-    services_without_annual_billing = db.session.execute(sql, {"year": year})
-    for row in services_without_annual_billing:
-        latest_annual_billing = """
-            Select free_sms_fragment_limit
-            from annual_billing
-            where service_id = :service_id
-            order by financial_year_start desc limit 1
-        """
-        free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
-        free_allowance = [x[0]for x in free_allowance_rows]
-        print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
-        dao_create_or_update_annual_billing_for_year(service_id=row.id,
-                                                     free_sms_fragment_limit=free_allowance[0],
-                                                     financial_year_start=int(year))
 
 
 @notify_command(name='list-routes')
@@ -877,3 +850,67 @@ def process_row_from_job(job_id, job_row_number):
             notification_id = process_row(row, template, job, job.service)
             current_app.logger.info("Process row {} for job {} created notification_id: {}".format(
                 job_row_number, job_id, notification_id))
+
+
+@notify_command(name='populate-annual-billing-with-the-previous-years-allowance')
+@click.option('-y', '--year', required=True, type=int,
+              help="""The year to populate the annual billing data for, i.e. 2019""")
+def populate_annual_billing_with_the_previous_years_allowance(year):
+    """
+    add annual_billing for given year.
+    """
+    sql = """
+        Select id from services where active = true
+        except
+        select service_id
+        from annual_billing
+        where financial_year_start = :year
+    """
+    services_without_annual_billing = db.session.execute(sql, {"year": year})
+    for row in services_without_annual_billing:
+        latest_annual_billing = """
+            Select free_sms_fragment_limit
+            from annual_billing
+            where service_id = :service_id
+            order by financial_year_start desc limit 1
+        """
+        free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
+        free_allowance = [x[0]for x in free_allowance_rows]
+        print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
+        dao_create_or_update_annual_billing_for_year(service_id=row.id,
+                                                     free_sms_fragment_limit=free_allowance[0],
+                                                     financial_year_start=int(year))
+
+
+@notify_command(name='populate-annual-billing-with-defaults')
+@click.option('-y', '--year', required=True, type=int,
+              help="""The year to populate the annual billing data for, i.e. 2021""")
+@click.option('-m', '--missing-services-only', default=True, type=bool,
+              help="""If true then only populate services missing from annual billing for the year.
+                      If false populate the default values for all active services.""")
+def populate_annual_billing_with_defaults(year, missing_services_only):
+    """
+    Add or update annual billing with free allowance defaults for all active services.
+    The default free allowance limits are in: app/dao/annual_billing_dao.py:57.
+
+    If missing_services_only is true then only add rows for services that do not have annual billing for that year yet.
+    This is useful to prevent overriding any services that have a free allowance that is not the default.
+
+    If missing_services_only is false then add or update annual billing for all active services.
+    This is useful to ensure all services start the new year with the correct annual billing.
+    """
+    if missing_services_only:
+        active_services = Service.query.filter(
+            Service.active
+        ).outerjoin(
+            AnnualBilling, and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == year)
+        ).filter(
+            AnnualBilling.id == None  # noqa
+        ).all()
+    else:
+        active_services = Service.query.filter(
+            Service.active
+        ).all()
+
+    for service in active_services:
+        set_default_free_allowance_for_service(service, year)
