@@ -36,6 +36,7 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api,
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
+    mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
 
     mock_send_broadcast_provider_message = mocker.patch(
         'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
@@ -48,6 +49,9 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api,
         call(kwargs={'broadcast_event_id': event.id, 'provider': 'ee'}, queue='broadcast-tasks'),
         call(kwargs={'broadcast_event_id': event.id, 'provider': 'vodafone'}, queue='broadcast-tasks')
     ]
+
+    # we're on test env so this isn't called
+    assert mock_create_ticket.called is False
 
 
 def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
@@ -104,6 +108,50 @@ def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_
         send_broadcast_event(event_id)
 
     assert mock_send_broadcast_provider_message.apply_async.called is False
+
+
+def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broadcast_service):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(
+        template,
+        status=BroadcastStatusType.BROADCASTING,
+        areas={'areas': ['wd20-S13002775', 'wd20-S13002773'], 'simple_polygons': []},
+    )
+    event = create_broadcast_event(broadcast_message)
+    mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
+
+    mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_provider_message')
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'production'):
+        send_broadcast_event(event.id)
+
+    assert mock_create_ticket.call_count == 1
+    zendesk_args = mock_create_ticket.call_args[1]
+    assert zendesk_args['p1'] is True
+    assert zendesk_args['ticket_type'] == 'incident'
+
+    assert str(broadcast_message.id) in zendesk_args['message']
+    assert 'channel severe' in zendesk_args['message']
+    assert "areas ['wd20-S13002775', 'wd20-S13002773']" in zendesk_args['message']
+    # the start of the content from the broadcast template
+    assert "Dear Sir/Madam" in zendesk_args['message']
+
+
+def test_send_broadcast_event_doesnt_create_zendesk_on_staging(mocker, notify_api, sample_broadcast_service):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
+    event = create_broadcast_event(broadcast_message)
+    mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
+
+    mock_send_broadcast_provider_message = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'staging'):
+        send_broadcast_event(event.id)
+
+    assert mock_send_broadcast_provider_message.apply_async.called is True
+    assert mock_create_ticket.called is False
 
 
 @freeze_time('2020-08-01 12:00')

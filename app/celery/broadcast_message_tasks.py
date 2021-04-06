@@ -5,7 +5,7 @@ from flask import current_app
 from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.schema import Sequence
 
-from app import cbc_proxy_client, db, notify_celery
+from app import cbc_proxy_client, db, notify_celery, zendesk_client
 from app.clients.cbc_proxy import (
     CBCProxyFatalException,
     CBCProxyRetryableException,
@@ -111,6 +111,30 @@ def send_broadcast_event(broadcast_event_id):
         return
 
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
+
+    if current_app.config['NOTIFY_ENVIRONMENT'] == 'production':
+        broadcast_message = broadcast_event.broadcast_message
+        # raise a P1 to alert team that broadcast is going out.
+        message = '\n'.join([
+            'Broadcast Sent',
+            '',
+            f'https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}',  # noqa
+            '',
+            f'This broacast has been sent on channel {broadcast_message.service.broadcast_channel}.',
+            f'This broadcast is targeted at areas {broadcast_message.areas.get("areas")}.',
+            ''
+            f'This broadcast\'s content starts "{broadcast_message.content[:100]}"'
+            '',
+            'If this alert is not expected refer to the runbook for instructions.',
+            'https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs',
+        ])
+        zendesk_client.create_ticket(
+            subject="Live broadcast sent",
+            message=message,
+            ticket_type=zendesk_client.TYPE_INCIDENT,
+            p1=True,
+        )
+
     for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
             kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
