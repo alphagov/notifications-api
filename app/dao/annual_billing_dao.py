@@ -53,7 +53,7 @@ def dao_get_all_free_sms_fragment_limit(service_id):
     ).order_by(AnnualBilling.financial_year_start).all()
 
 
-def set_default_free_allowance_for_service(service, year_start=None):
+def set_default_free_allowance_for_service(service, year_start=None, commit=True):
     default_free_sms_fragment_limits = {
         'central': {
             2020: 250_000,
@@ -90,6 +90,7 @@ def set_default_free_allowance_for_service(service, year_start=None):
     }
     if not year_start:
         year_start = get_current_financial_year_start_year()
+    # handle cases where the year is less than 2020 or greater than 2021
     if year_start < 2020:
         year_start = 2020
     if year_start > 2021:
