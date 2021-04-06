@@ -91,3 +91,21 @@ def test_set_default_free_allowance_for_service_using_correct_year(sample_servic
         25000,
         2020
     )
+
+
+@freeze_time('2021-04-01 14:02:00')
+def test_set_default_free_allowance_for_service_updates_existing_year(sample_service):
+    set_default_free_allowance_for_service(service=sample_service, year_start=None)
+    annual_billing = AnnualBilling.query.all()
+    assert not sample_service.organisation_type
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 10000
+
+    sample_service.organisation_type = 'central'
+
+    set_default_free_allowance_for_service(service=sample_service, year_start=None)
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].service_id == sample_service.id
+    assert annual_billing[0].free_sms_fragment_limit == 150000
