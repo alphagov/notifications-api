@@ -214,7 +214,7 @@ def _create_broadcast_event(broadcast_message):
 
     dao_save_object(event)
 
-    if not broadcast_message.stubbed or current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+    if not broadcast_message.stubbed:
         send_broadcast_event.apply_async(
             kwargs={'broadcast_event_id': str(event.id)},
             queue=QueueNames.BROADCASTS
