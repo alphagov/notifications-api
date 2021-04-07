@@ -4,7 +4,6 @@ from celery import Celery, Task
 from celery.signals import worker_process_shutdown
 from flask import g, request
 from flask.ctx import has_app_context, has_request_context
-from gds_metrics.metrics import Histogram
 
 
 @worker_process_shutdown.connect
@@ -20,12 +19,6 @@ def log_on_worker_shutdown(sender, signal, pid, exitcode, **kwargs):
 
 
 def make_task(app):
-    SQS_APPLY_ASYNC_DURATION_SECONDS = Histogram(
-        'sqs_apply_async_duration_seconds',
-        'Time taken to put task on queue',
-        ['task_name']
-    )
-
     class NotifyTask(Task):
         abstract = True
         start = None
@@ -60,8 +53,7 @@ def make_task(app):
             elif has_app_context() and 'request_id' in g:
                 kwargs['request_id'] = g.request_id
 
-            with SQS_APPLY_ASYNC_DURATION_SECONDS.labels(self.name).time():
-                return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
+            return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
 
     return NotifyTask
 
