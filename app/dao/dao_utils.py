@@ -4,6 +4,19 @@ from functools import wraps
 from app import db
 from app.history_meta import create_history
 
+def nested_transactional(func):
+    @wraps(func)
+    def commit_or_rollback(*args, **kwargs):
+        try:
+            db.session.begin_nested()
+            res = func(*args, **kwargs)
+            db.session.commit()
+            return res
+        except Exception:
+            db.session.rollback()
+            raise
+
+    return commit_or_rollback
 
 def transactional(func):
     @wraps(func)

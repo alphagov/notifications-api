@@ -254,18 +254,16 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    dao_create_service(valid_service, user)
+    from app import db
 
-    # Need to do the annual billing update in a separate transaction because the both the
-    # dao_add_service_to_organisation and set_default_free_allowance_for_service are wrapped in a transaction.
-    # Catch and report an error if the annual billing doesn't happen - but don't rollback the service update.
     try:
+        db.session.begin_nested()
+        dao_create_service(valid_service, user)
         set_default_free_allowance_for_service(valid_service, year_start=None)
-    except SQLAlchemyError:
-        # No need to worry about key errors because service.organisation_type has a foreign key to organisation_types
-        current_app.logger.exception(
-            f"Exception caught when trying to insert annual billing creating a service {valid_service.id} "
-            f"for organisation_type {valid_service.organisation_type}")
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
     return jsonify(data=service_schema.dump(valid_service).data), 201
 

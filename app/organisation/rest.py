@@ -119,17 +119,15 @@ def link_service_to_organisation(organisation_id):
     service = dao_fetch_service_by_id(data['service_id'])
     service.organisation = None
 
-    dao_add_service_to_organisation(service, organisation_id)
-    # Need to do the annual billing update in a separate transaction because the both the
-    # dao_add_service_to_organisation and set_default_free_allowance_for_service are wrapped in a transaction.
-    # Catch and report an error if the annual billing doesn't happen - but don't rollback the service update.
+    from app import db
+
     try:
+        dao_add_service_to_organisation(service, organisation_id)
         set_default_free_allowance_for_service(service, year_start=None)
-    except SQLAlchemyError:
-        # No need to worry about key errors because service.organisation_type has a foreign key to organisation_types
-        current_app.logger.exception(
-            f"Exception caught when trying to update annual billing when the organisation "
-            f"changed for service: {service.id} to organisation: {organisation_id}")
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
     return '', 204
 

@@ -83,6 +83,8 @@ def get_free_sms_fragment_limit(service_id):
                 annual_billing = dao_create_or_update_annual_billing_for_year(service_id,
                                                                               annual_billing.free_sms_fragment_limit,
                                                                               financial_year_start)
+                from app import db
+                db.session.commit()
 
     return jsonify(annual_billing.serialize_free_sms_items()), 200
 
