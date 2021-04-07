@@ -24,7 +24,7 @@ def make_task(app):
         start = None
 
         def on_success(self, retval, task_id, args, kwargs):
-            elapsed_time = time.time() - self.start
+            elapsed_time = time.monotonic() - self.start
             app.logger.info(
                 "{task_name} took {time}".format(
                     task_name=self.name, time="{0:.4f}".format(elapsed_time)
@@ -39,7 +39,7 @@ def make_task(app):
         def __call__(self, *args, **kwargs):
             # ensure task has flask context to access config, logger, etc
             with app.app_context():
-                self.start = time.time()
+                self.start = time.monotonic()
                 # Remove 'request_id' from the kwargs (so the task doesn't get an unexpected kwarg), then add it to g
                 # so that it gets logged
                 g.request_id = kwargs.pop('request_id', None)
