@@ -25,29 +25,44 @@ def make_task(app):
 
         def on_success(self, retval, task_id, args, kwargs):
             elapsed_time = time.monotonic() - self.start
+            delivery_info = self.request.delivery_info or {}
+            queue_name = delivery_info.get('routing_key', 'none')
+
             app.logger.info(
-                "{task_name} took {time}".format(
-                    task_name=self.name, time="{0:.4f}".format(elapsed_time)
+                "Celery task {task_name} (queue: {queue_name}) took {time}".format(
+                    task_name=self.name,
+                    queue_name=queue_name,
+                    time="{0:.4f}".format(elapsed_time)
                 )
             )
 
         def on_failure(self, exc, task_id, args, kwargs, einfo):
-            # ensure task will log exceptions to correct handlers
-            app.logger.exception('Celery task: {} failed'.format(self.name))
+            delivery_info = self.request.delivery_info or {}
+            queue_name = delivery_info.get('routing_key', 'none')
+
+            app.logger.exception(
+                "Celery task {task_name} (queue: {queue_name}) failed".format(
+                    task_name=self.name,
+                    queue_name=queue_name,
+                )
+            )
+
             super().on_failure(exc, task_id, args, kwargs, einfo)
 
         def __call__(self, *args, **kwargs):
             # ensure task has flask context to access config, logger, etc
             with app.app_context():
                 self.start = time.monotonic()
-                # Remove 'request_id' from the kwargs (so the task doesn't get an unexpected kwarg), then add it to g
-                # so that it gets logged
+                # Remove piggyback values from kwargs
+                # Add 'request_id' to 'g' so that it gets logged
                 g.request_id = kwargs.pop('request_id', None)
+
                 return super().__call__(*args, **kwargs)
 
         def apply_async(self, args=None, kwargs=None, task_id=None, producer=None,
                         link=None, link_error=None, **options):
             kwargs = kwargs or {}
+
             if has_request_context() and hasattr(request, 'request_id'):
                 kwargs['request_id'] = request.request_id
             elif has_app_context() and 'request_id' in g:
