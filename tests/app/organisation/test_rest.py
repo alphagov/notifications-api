@@ -585,7 +585,7 @@ def test_post_link_service_to_organisation_missing_payload(
 def test_link_service_to_organisation_updates_service_if_annual_billing_update_fails(
         mocker, admin_request, sample_service, sample_organisation
 ):
-    mocker.patch('app.dao.annual_billing_dao.set_default_free_allowance_for_service', raises=SQLAlchemyError)
+    mocker.patch('app.organisation.rest.set_default_free_allowance_for_service', raises=SQLAlchemyError)
     data = {
         'service_id': str(sample_service.id)
     }
@@ -596,6 +596,7 @@ def test_link_service_to_organisation_updates_service_if_annual_billing_update_f
         _expected_status=204
     )
     assert sample_service.organisation_id == sample_organisation.id
+    assert len(AnnualBilling.query.all()) == 0
 
 
 def test_rest_get_organisation_services(

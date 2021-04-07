@@ -4,12 +4,13 @@ from datetime import datetime
 from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import letter_can_be_cancelled
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.aws import s3
 from app.config import QueueNames
 from app.dao import fact_notification_status_dao, notifications_dao
+from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.api_key_dao import (
     expire_api_key,
     get_model_api_keys,
@@ -254,6 +255,17 @@ def create_service():
     valid_service = Service.from_json(data)
 
     dao_create_service(valid_service, user)
+
+    # Need to do the annual billing update in a separate transaction because the both the
+    # dao_add_service_to_organisation and set_default_free_allowance_for_service are wrapped in a transaction.
+    # Catch and report an error if the annual billing doesn't happen - but don't rollback the service update.
+    try:
+        set_default_free_allowance_for_service(valid_service, year_start=None)
+    except SQLAlchemyError:
+        # No need to worry about key errors because service.organisation_type has a foreign key to organisation_types
+        current_app.logger.exception(
+            f"Exception caught when trying to insert annual billing creating a service {valid_service.id} "
+            f"for organisation_type {valid_service.organisation_type}")
 
     return jsonify(data=service_schema.dump(valid_service).data), 201
 
