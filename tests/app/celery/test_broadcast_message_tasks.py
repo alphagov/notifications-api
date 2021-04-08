@@ -122,7 +122,7 @@ def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broa
 
     mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_provider_message')
 
-    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'production'):
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
         send_broadcast_event(event.id)
 
     assert mock_create_ticket.call_count == 1
