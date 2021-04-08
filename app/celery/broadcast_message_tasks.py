@@ -112,7 +112,10 @@ def send_broadcast_event(broadcast_event_id):
 
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    if current_app.config['NOTIFY_ENVIRONMENT'] == 'production':
+    if (
+        current_app.config['NOTIFY_ENVIRONMENT'] == 'live' and
+        broadcast_event.message_type == BroadcastEventMessageType.ALERT
+    ):
         broadcast_message = broadcast_event.broadcast_message
         # raise a P1 to alert team that broadcast is going out.
         message = '\n'.join([

@@ -122,7 +122,7 @@ def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broa
 
     mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_provider_message')
 
-    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'production'):
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
         send_broadcast_event(event.id)
 
     assert mock_create_ticket.call_count == 1
@@ -135,6 +135,25 @@ def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broa
     assert "areas ['wd20-S13002775', 'wd20-S13002773']" in zendesk_args['message']
     # the start of the content from the broadcast template
     assert "Dear Sir/Madam" in zendesk_args['message']
+
+
+def test_send_broadcast_event_doesnt_p1_when_cancelling(mocker, notify_api, sample_broadcast_service):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(
+        template,
+        status=BroadcastStatusType.BROADCASTING,
+        areas={'areas': ['wd20-S13002775', 'wd20-S13002773'], 'simple_polygons': []},
+    )
+    create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
+    cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
+    mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
+
+    mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_provider_message')
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
+        send_broadcast_event(cancel_event.id)
+
+    assert mock_create_ticket.called is False
 
 
 def test_send_broadcast_event_doesnt_create_zendesk_on_staging(mocker, notify_api, sample_broadcast_service):
