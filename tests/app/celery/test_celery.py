@@ -83,3 +83,36 @@ def test_call_exports_request_id_from_kwargs(mocker, celery_task):
     # this would fail if the kwarg was passed through unexpectedly
     celery_task(request_id='1234')
     assert g.request_id == '1234'
+
+
+def test_apply_async_injects_global_request_id_into_kwargs(mocker, celery_task):
+    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+    g.request_id = '1234'
+    celery_task.apply_async()
+
+    super_apply.assert_called_with(
+        None,
+        {'request_id': '1234'},
+        None,
+        None,
+        None,
+        None
+    )
+
+
+def test_apply_async_injects_id_into_kwargs_from_request(mocker, notify_api, celery_task):
+    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+    request_id_header = notify_api.config['NOTIFY_TRACE_ID_HEADER']
+    request_headers = {request_id_header: '1234'}
+
+    with notify_api.test_request_context(headers=request_headers):
+        celery_task.apply_async()
+
+    super_apply.assert_called_with(
+        None,
+        {'request_id': '1234'},
+        None,
+        None,
+        None,
+        None
+    )
