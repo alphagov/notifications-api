@@ -1,13 +1,15 @@
 import uuid
 
 import pytest
+from flask import g
 from freezegun import freeze_time
 
 from app import notify_celery
 
 
+# requiring notify_api ensures notify_celery.init_app has been called
 @pytest.fixture(scope='session')
-def celery_task():
+def celery_task(notify_api):
     @notify_celery.task(name=uuid.uuid4(), base=notify_celery.task_cls)
     def test_task(delivery_info=None): pass
     return test_task
@@ -74,3 +76,10 @@ def test_failure_queue_when_applied_synchronously(mocker, notify_api, celery_tas
 
     statsd.assert_called_once_with(f'celery.none.{celery_task.name}.failure')
     logger.assert_called_once_with(f'Celery task {celery_task.name} (queue: none) failed')
+
+
+def test_call_exports_request_id_from_kwargs(mocker, celery_task):
+    g = mocker.patch('app.celery.celery.g')
+    # this would fail if the kwarg was passed through unexpectedly
+    celery_task(request_id='1234')
+    assert g.request_id == '1234'
