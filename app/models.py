@@ -2557,6 +2557,9 @@ class ServiceBroadcastSettings(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
+    allowed_broadcast_areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
+    requested_allowed_broadcast_areas = db.Column(JSONB(none_as_null=True), nullable=True)
+
 
 class BroadcastChannelTypes(db.Model):
     __tablename__ = 'broadcast_channel_types'
