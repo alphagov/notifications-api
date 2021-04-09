@@ -365,10 +365,9 @@ class Config(object):
 
     AWS_REGION = 'eu-west-1'
 
+    CBC_PROXY_ENABLED = True
     CBC_PROXY_AWS_ACCESS_KEY_ID = os.environ.get('CBC_PROXY_AWS_ACCESS_KEY_ID', '')
     CBC_PROXY_AWS_SECRET_ACCESS_KEY = os.environ.get('CBC_PROXY_AWS_SECRET_ACCESS_KEY', '')
-
-    CBC_PROXY_ENABLED = bool(CBC_PROXY_AWS_ACCESS_KEY_ID)
 
     ENABLED_CBCS = {BroadcastProvider.EE, BroadcastProvider.THREE, BroadcastProvider.O2, BroadcastProvider.VODAFONE}
 
@@ -419,6 +418,8 @@ class Development(Config):
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ['success@simulator.amazonses.com']
+
+    CBC_PROXY_ENABLED = False
 
 
 class Test(Development):
