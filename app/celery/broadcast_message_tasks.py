@@ -106,10 +106,6 @@ def check_provider_message_should_send(broadcast_event, provider):
 @notify_celery.task(name="send-broadcast-event")
 @statsd(namespace="tasks")
 def send_broadcast_event(broadcast_event_id):
-    if not current_app.config['CBC_PROXY_ENABLED']:
-        current_app.logger.info(f'CBC Proxy disabled, not sending broadcast_event {broadcast_event_id}')
-        return
-
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
     if (
@@ -149,6 +145,13 @@ def send_broadcast_event(broadcast_event_id):
 @notify_celery.task(bind=True, name="send-broadcast-provider-message", max_retries=None)
 @statsd(namespace="tasks")
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
+    if not current_app.config['CBC_PROXY_ENABLED']:
+        current_app.logger.info(
+            "CBC Proxy disabled, not sending broadcast_provider_message for "
+            f"broadcast_event_id {broadcast_event_id} with provider {provider}"
+        )
+        return
+
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
     check_provider_message_should_send(broadcast_event, provider)

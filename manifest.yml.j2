@@ -65,7 +65,11 @@
   'notify-delivery-worker-retry-tasks': {},
   'notify-delivery-worker-internal': {},
   'notify-delivery-worker-broadcasts': {
+    'additional_env_vars': {
       'CELERYD_PREFETCH_MULTIPLIER': 1,
+      'CBC_PROXY_AWS_ACCESS_KEY_ID': CBC_PROXY_AWS_ACCESS_KEY_ID,
+      'CBC_PROXY_AWS_SECRET_ACCESS_KEY': CBC_PROXY_AWS_SECRET_ACCESS_KEY,
+    }
   },
   'notify-delivery-worker-receipts': {},
   'notify-delivery-worker-service-callbacks': {'disk_quota': '2G'},
@@ -124,11 +128,6 @@ applications:
       NOTIFICATION_QUEUE_PREFIX: '{{ NOTIFICATION_QUEUE_PREFIX }}'
       AWS_ACCESS_KEY_ID: '{{ AWS_ACCESS_KEY_ID }}'
       AWS_SECRET_ACCESS_KEY: '{{ AWS_SECRET_ACCESS_KEY }}'
-
-      {% if CBC_PROXY_AWS_ACCESS_KEY_ID is defined %}
-      CBC_PROXY_AWS_ACCESS_KEY_ID: '{{ CBC_PROXY_AWS_ACCESS_KEY_ID }}'
-      CBC_PROXY_AWS_SECRET_ACCESS_KEY: '{{ CBC_PROXY_AWS_SECRET_ACCESS_KEY }}'
-      {% endif %}
 
       STATSD_HOST: "notify-statsd-exporter-{{ environment }}.apps.internal"
 
