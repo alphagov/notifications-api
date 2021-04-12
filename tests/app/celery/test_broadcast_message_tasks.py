@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from unittest.mock import ANY, call
+from unittest.mock import ANY, Mock, call
 
 import pytest
 from celery.exceptions import Retry
@@ -94,18 +94,6 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
 
     with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
         send_broadcast_event(event.id)
-
-    assert mock_send_broadcast_provider_message.apply_async.called is False
-
-
-def test_send_broadcast_event_does_nothing_if_cbc_proxy_disabled(mocker, notify_api):
-    mock_send_broadcast_provider_message = mocker.patch(
-        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
-    )
-
-    event_id = uuid.uuid4()
-    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']), set_config(notify_api, 'CBC_PROXY_ENABLED', False):
-        send_broadcast_event(event_id)
 
     assert mock_send_broadcast_provider_message.apply_async.called is False
 
@@ -747,3 +735,18 @@ def test_check_provider_message_should_send_raises_if_current_event_already_has_
     create_broadcast_provider_message(current_event, provider='ee', status=existing_message_status)
 
     check_provider_message_should_send(current_event, 'ee')
+
+
+def test_send_broadcast_provider_message_does_nothing_if_cbc_proxy_disabled(mocker, notify_api, sample_template):
+    mock_proxy_client_getter = mocker.patch(
+        'app.celery.broadcast_message_tasks.cbc_proxy_client',
+    )
+    mock_client = Mock()
+    mock_proxy_client_getter.get_proxy.return_value = mock_client
+
+    broadcast_message = create_broadcast_message(sample_template)
+    broadcast_event = create_broadcast_event(broadcast_message, message_type='alert')
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']), set_config(notify_api, 'CBC_PROXY_ENABLED', False):
+        send_broadcast_provider_message(broadcast_event.id, 'ee')
+
+    assert mock_client.create_and_send_broadcast.called is False
