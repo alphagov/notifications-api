@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import iso8601
 from celery.exceptions import Retry
 from flask import current_app, json
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery, statsd_client
@@ -20,7 +19,6 @@ from app.notifications.notifications_ses_callback import (
 
 
 @notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def process_ses_results(self, response):
     try:
         ses_message = json.loads(response['Message'])

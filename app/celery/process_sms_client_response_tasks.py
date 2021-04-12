@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from notifications_utils.template import SMSMessageTemplate
 
 from app import notify_celery, statsd_client
@@ -28,7 +27,6 @@ sms_response_mapper = {
 
 
 @notify_celery.task(bind=True, name="process-sms-client-response", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def process_sms_client_response(self, status, provider_reference, client_name, detailed_status_code=None):
     # validate reference
     try:

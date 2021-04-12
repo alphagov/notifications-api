@@ -6,7 +6,6 @@ from flask import current_app
 from notifications_utils.columns import Columns
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
-from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
 from requests import HTTPError, RequestException, request
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -62,7 +61,6 @@ from app.utils import DATETIME_FORMAT, get_reference_from_personalisation
 
 
 @notify_celery.task(name="process-job")
-@statsd(namespace="tasks")
 def process_job(job_id, sender_id=None):
     start = datetime.utcnow()
     job = dao_get_job_by_id(job_id)
@@ -176,7 +174,6 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def save_sms(self,
              service_id,
              notification_id,
@@ -235,7 +232,6 @@ def save_sms(self,
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def save_email(self,
                service_id,
                notification_id,
@@ -287,14 +283,12 @@ def save_email(self,
 
 
 @notify_celery.task(bind=True, name="save-api-email", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def save_api_email(self, encrypted_notification):
 
     save_api_email_or_sms(self, encrypted_notification)
 
 
 @notify_celery.task(bind=True, name="save-api-sms", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def save_api_sms(self, encrypted_notification):
     save_api_email_or_sms(self, encrypted_notification)
 
@@ -344,7 +338,6 @@ def save_api_email_or_sms(self, encrypted_notification):
 
 
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def save_letter(
         self,
         service_id,
@@ -407,7 +400,6 @@ def save_letter(
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
-@statsd(namespace="tasks")
 def update_letter_notifications_to_sent_to_dvla(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
     provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
@@ -426,7 +418,6 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-to-error')
-@statsd(namespace="tasks")
 def update_letter_notifications_to_error(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
 
@@ -462,7 +453,6 @@ def handle_exception(task, notification, notification_id, exc):
 
 
 @notify_celery.task(bind=True, name='update-letter-notifications-statuses')
-@statsd(namespace="tasks")
 def update_letter_notifications_statuses(self, filename):
     notification_updates = parse_dvla_file(filename)
 
@@ -479,7 +469,6 @@ def update_letter_notifications_statuses(self, filename):
 
 
 @notify_celery.task(bind=True, name="record-daily-sorted-counts")
-@statsd(namespace="tasks")
 def record_daily_sorted_counts(self, filename):
     sorted_letter_counts = defaultdict(int)
     notification_updates = parse_dvla_file(filename)
@@ -566,7 +555,6 @@ def check_billable_units(notification_update):
 
 
 @notify_celery.task(bind=True, name="send-inbound-sms", max_retries=5, default_retry_delay=300)
-@statsd(namespace="tasks")
 def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
     inbound_api = get_service_inbound_api_for_service(service_id=service_id)
     if not inbound_api:
@@ -621,7 +609,6 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
 
 
 @notify_celery.task(name='process-incomplete-jobs')
-@statsd(namespace="tasks")
 def process_incomplete_jobs(job_ids):
     jobs = [dao_get_job_by_id(job_id) for job_id in job_ids]
 
@@ -658,7 +645,6 @@ def process_incomplete_job(job_id):
 
 
 @notify_celery.task(name='process-returned-letters-list')
-@statsd(namespace="tasks")
 def process_returned_letters_list(notification_references):
     updated, updated_history = dao_update_notifications_by_reference(
         notification_references,

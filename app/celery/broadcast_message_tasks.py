@@ -2,7 +2,6 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.schema import Sequence
 
 from app import cbc_proxy_client, db, notify_celery, zendesk_client
@@ -104,7 +103,6 @@ def check_provider_message_should_send(broadcast_event, provider):
 
 
 @notify_celery.task(name="send-broadcast-event")
-@statsd(namespace="tasks")
 def send_broadcast_event(broadcast_event_id):
     if not current_app.config['CBC_PROXY_ENABLED']:
         current_app.logger.info(f'CBC Proxy disabled, not sending broadcast_event {broadcast_event_id}')
@@ -147,7 +145,6 @@ def send_broadcast_event(broadcast_event_id):
 
 # max_retries=None: retry forever
 @notify_celery.task(bind=True, name="send-broadcast-provider-message", max_retries=None)
-@statsd(namespace="tasks")
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
