@@ -233,7 +233,7 @@ def test_add_service_to_organisation(sample_service, sample_organisation):
     sample_organisation.crown = False
 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
-
+    db.session.commit()
     assert len(sample_organisation.services) == 1
     assert sample_organisation.services[0].id == sample_service.id
 

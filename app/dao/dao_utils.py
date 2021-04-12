@@ -18,6 +18,23 @@ def transactional(func):
     return commit_or_rollback
 
 
+def nested_transactional(func):
+    # This creates a save point for the nested transaction.
+    # You must manage the commit or rollback from outer most call of the nested of the transactions.
+    @wraps(func)
+    def commit_or_rollback(*args, **kwargs):
+        try:
+            db.session.begin_nested()
+            res = func(*args, **kwargs)
+            db.session.commit()
+            return res
+        except Exception:
+            db.session.rollback()
+            raise
+
+    return commit_or_rollback
+
+
 class VersionOptions():
 
     def __init__(self, model_class, history_class=None, must_write_history=True):
