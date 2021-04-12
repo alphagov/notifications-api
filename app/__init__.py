@@ -110,7 +110,7 @@ def create_app(application):
     email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
     notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
-    notify_celery.init_app(application)
+    notify_celery.init_app(application, statsd_client)
     encryption.init_app(application)
     redis_store.init_app(application)
     document_download_client.init_app(application)
