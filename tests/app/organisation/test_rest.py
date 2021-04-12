@@ -505,12 +505,52 @@ def test_post_link_service_to_organisation(admin_request, sample_service):
         organisation_id=organisation.id,
         _expected_status=204
     )
-
     assert len(organisation.services) == 1
     assert sample_service.organisation_type == 'central'
+
+
+def test_post_link_service_to_organisation_inserts_annual_billing(admin_request, sample_service):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+    organisation = create_organisation(organisation_type='central')
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=organisation.id,
+        _expected_status=204
+    )
+
     annual_billing = AnnualBilling.query.all()
     assert len(annual_billing) == 1
     assert annual_billing[0].free_sms_fragment_limit == 150000
+
+
+def test_post_link_service_to_organisation_rollback_service_if_annual_billing_update_fails(
+        admin_request, sample_service, mocker
+):
+    mocker.patch('app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year',
+                 side_effect=SQLAlchemyError)
+    data = {
+        'service_id': str(sample_service.id)
+    }
+    assert not sample_service.organisation_type
+
+    organisation = create_organisation(organisation_type='central')
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        admin_request.post(
+                'organisation.link_service_to_organisation',
+                _data=data,
+                organisation_id=organisation.id,
+                _expected_status=404
+            )
+    assert not sample_service.organisation_type
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
 
 
 def test_post_link_service_to_another_org(
@@ -580,23 +620,6 @@ def test_post_link_service_to_organisation_missing_payload(
         organisation_id=str(sample_organisation.id),
         _expected_status=400
     )
-
-
-def test_link_service_to_organisation_updates_service_if_annual_billing_update_fails(
-        mocker, admin_request, sample_service, sample_organisation
-):
-    mocker.patch('app.organisation.rest.set_default_free_allowance_for_service', raises=SQLAlchemyError)
-    data = {
-        'service_id': str(sample_service.id)
-    }
-    admin_request.post(
-        'organisation.link_service_to_organisation',
-        organisation_id=str(sample_organisation.id),
-        _data=data,
-        _expected_status=204
-    )
-    assert sample_service.organisation_id == sample_organisation.id
-    assert len(AnnualBilling.query.all()) == 0
 
 
 def test_rest_get_organisation_services(

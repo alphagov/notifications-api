@@ -503,10 +503,10 @@ def test_create_service_should_create_annual_billing_for_service(
     assert len(annual_billing) == 1
 
 
-def test_create_service_should_create_service_if_annual_billing_query_fails(
+def test_create_service_should_raise_exception_and_not_create_service_if_annual_billing_query_fails(
     admin_request, sample_user, mocker
 ):
-    mocker.patch('app.service.rest.set_default_free_allowance_for_service', raises=SQLAlchemyError)
+    mocker.patch('app.service.rest.set_default_free_allowance_for_service', side_effect=SQLAlchemyError)
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
@@ -517,11 +517,12 @@ def test_create_service_should_create_service_if_annual_billing_query_fails(
         'created_by': str(sample_user.id)
     }
     assert len(AnnualBilling.query.all()) == 0
-    admin_request.post('service.create_service', _data=data, _expected_status=201)
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        admin_request.post('service.create_service', _data=data)
 
     annual_billing = AnnualBilling.query.all()
     assert len(annual_billing) == 0
-    assert len(Service.query.filter(Service.name == 'created service').all()) == 1
+    assert len(Service.query.filter(Service.name == 'created service').all()) == 0
 
 
 def test_create_service_inherits_branding_from_organisation(
