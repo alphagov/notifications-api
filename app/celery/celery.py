@@ -73,16 +73,15 @@ def make_task(app, statsd_client):
 
                 return super().__call__(*args, **kwargs)
 
-        def apply_async(self, args=None, kwargs=None, task_id=None, producer=None,
-                        link=None, link_error=None, **options):
-            kwargs = kwargs or {}
+        def apply_async(self, *args, **kwargs):
+            kwargs['kwargs'] = kwargs.get('kwargs', {})
 
             if has_request_context() and hasattr(request, 'request_id'):
-                kwargs['request_id'] = request.request_id
+                kwargs['kwargs']['request_id'] = request.request_id
             elif has_app_context() and 'request_id' in g:
-                kwargs['request_id'] = g.request_id
+                kwargs['kwargs']['request_id'] = g.request_id
 
-            return super().apply_async(args, kwargs, task_id, producer, link, link_error, **options)
+            return super().apply_async(*args, **kwargs)
 
     return NotifyTask
 
