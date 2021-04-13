@@ -1,8 +1,23 @@
 import itertools
+from contextlib import contextmanager
 from functools import wraps
 
 from app import db
 from app.history_meta import create_history
+
+
+@contextmanager
+def nested_transaction():
+    try:
+        db.session.begin_nested()
+        yield
+        db.session.commit()
+
+        if not db.session.registry().transaction.nested:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 def transactional(func):
@@ -10,28 +25,14 @@ def transactional(func):
     def commit_or_rollback(*args, **kwargs):
         try:
             res = func(*args, **kwargs)
-            db.session.commit()
+
+            if not db.session.registry().transaction.nested:
+                db.session.commit()
+
             return res
         except Exception:
             db.session.rollback()
             raise
-    return commit_or_rollback
-
-
-def nested_transactional(func):
-    # This creates a save point for the nested transaction.
-    # You must manage the commit or rollback from outer most call of the nested of the transactions.
-    @wraps(func)
-    def commit_or_rollback(*args, **kwargs):
-        try:
-            db.session.begin_nested()
-            res = func(*args, **kwargs)
-            db.session.commit()
-            return res
-        except Exception:
-            db.session.rollback()
-            raise
-
     return commit_or_rollback
 
 

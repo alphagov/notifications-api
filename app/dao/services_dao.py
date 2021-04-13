@@ -7,12 +7,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
-from app.dao.dao_utils import (
-    VersionOptions,
-    nested_transactional,
-    transactional,
-    version_class,
-)
+from app.dao.dao_utils import VersionOptions, transactional, version_class
 from app.dao.date_util import get_current_financial_year
 from app.dao.email_branding_dao import dao_get_email_branding_by_name
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
@@ -289,7 +284,7 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
     ).one()
 
 
-@nested_transactional
+@transactional
 @version_class(Service)
 def dao_create_service(
     service,

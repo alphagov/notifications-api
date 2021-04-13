@@ -506,7 +506,7 @@ def test_create_service_should_create_annual_billing_for_service(
 def test_create_service_should_create_service_if_annual_billing_query_fails(
     admin_request, sample_user, mocker
 ):
-    mocker.patch('app.service.rest.set_default_free_allowance_for_service', raises=SQLAlchemyError)
+    mocker.patch('app.service.rest.set_default_free_allowance_for_service', side_effect=SQLAlchemyError)
     data = {
         'name': 'created service',
         'user_id': str(sample_user.id),
