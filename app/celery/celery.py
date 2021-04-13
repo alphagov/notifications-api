@@ -18,7 +18,7 @@ def log_on_worker_shutdown(sender, signal, pid, exitcode, **kwargs):
         notify_celery._app.logger.info('worker shutdown: PID: {} Exitcode: {}'.format(pid, exitcode))
 
 
-def make_task(app, statsd_client):
+def make_task(app):
     class NotifyTask(Task):
         abstract = True
         start = None
@@ -36,7 +36,7 @@ def make_task(app, statsd_client):
                 )
             )
 
-            statsd_client.timing(
+            app.statsd_client.timing(
                 "celery.{queue_name}.{task_name}.success".format(
                     task_name=self.name,
                     queue_name=queue_name
@@ -54,7 +54,7 @@ def make_task(app, statsd_client):
                 )
             )
 
-            statsd_client.incr(
+            app.statsd_client.incr(
                 "celery.{queue_name}.{task_name}.failure".format(
                     task_name=self.name,
                     queue_name=queue_name
@@ -88,11 +88,11 @@ def make_task(app, statsd_client):
 
 class NotifyCelery(Celery):
 
-    def init_app(self, app, statsd_client):
+    def init_app(self, app):
         super().__init__(
             app.import_name,
             broker=app.config['BROKER_URL'],
-            task_cls=make_task(app, statsd_client),
+            task_cls=make_task(app),
         )
 
         self.conf.update(app.config)
