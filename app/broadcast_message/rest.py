@@ -190,16 +190,19 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
 
 def _create_broadcast_event(broadcast_message):
     """
-    Creates a broadcast event, stores it in the database, and triggers the task to send the CAP XML off
+    If the service is live and the broadcast message is not stubbed, creates a broadcast event, stores it in the
+    database, and triggers the task to send the CAP XML off.
     """
-    if not broadcast_message.stubbed:
+    service = broadcast_message.service
+
+    if not broadcast_message.stubbed and not service.restricted:
         msg_types = {
             BroadcastStatusType.BROADCASTING: BroadcastEventMessageType.ALERT,
             BroadcastStatusType.CANCELLED: BroadcastEventMessageType.CANCEL,
         }
 
         event = BroadcastEvent(
-            service=broadcast_message.service,
+            service=service,
             broadcast_message=broadcast_message,
             message_type=msg_types[broadcast_message.status],
             transmitted_content={"body": broadcast_message.content},
@@ -218,4 +221,12 @@ def _create_broadcast_event(broadcast_message):
         send_broadcast_event.apply_async(
             kwargs={'broadcast_event_id': str(event.id)},
             queue=QueueNames.BROADCASTS
+        )
+    elif broadcast_message.stubbed != service.restricted:
+        # It's possible for a service to create a broadcast in trial mode, and then approve it after the
+        # service is live (or vice versa). We don't think it's safe to send such broadcasts, as the service
+        # has changed since they were created. Log an error instead.
+        current_app.logger.error(
+            f'Broadcast event not created. Stubbed status of broadcast message was {broadcast_message.stubbed}'
+            f' but service was {"in trial mode" if service.restricted else "live"}'
         )
