@@ -880,7 +880,6 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
         dao_create_or_update_annual_billing_for_year(service_id=row.id,
                                                      free_sms_fragment_limit=free_allowance[0],
                                                      financial_year_start=int(year))
-        db.session.commit()
 
 
 @notify_command(name='populate-annual-billing-with-defaults')
@@ -915,4 +914,3 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
 
     for service in active_services:
         set_default_free_allowance_for_service(service, year)
-        db.session.commit()

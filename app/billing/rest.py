@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, request
 
-from app import db
 from app.billing.billing_schemas import (
     create_or_update_free_sms_fragment_limit_schema,
     serialize_ft_billing_remove_emails,
@@ -84,7 +83,6 @@ def get_free_sms_fragment_limit(service_id):
                 annual_billing = dao_create_or_update_annual_billing_for_year(service_id,
                                                                               annual_billing.free_sms_fragment_limit,
                                                                               financial_year_start)
-                db.session.commit()
 
     return jsonify(annual_billing.serialize_free_sms_items()), 200
 
@@ -120,4 +118,3 @@ def update_free_sms_fragment_limit_data(service_id, free_sms_fragment_limit, fin
             free_sms_fragment_limit,
             financial_year_start
         )
-    db.session.commit()

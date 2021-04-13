@@ -1,12 +1,12 @@
 from flask import current_app
 
 from app import db
-from app.dao.dao_utils import nested_transactional, transactional
+from app.dao.dao_utils import transactional
 from app.dao.date_util import get_current_financial_year_start_year
 from app.models import AnnualBilling
 
 
-@nested_transactional
+@transactional
 def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start):
     result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 

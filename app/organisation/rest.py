@@ -1,10 +1,10 @@
 
 from flask import Blueprint, abort, current_app, jsonify, request
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 
-from app import db
 from app.config import QueueNames
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
+from app.dao.dao_utils import nested_transaction
 from app.dao.fact_billing_dao import fetch_usage_year_for_organisation
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
@@ -120,13 +120,9 @@ def link_service_to_organisation(organisation_id):
     service = dao_fetch_service_by_id(data['service_id'])
     service.organisation = None
 
-    try:
+    with nested_transaction():
         dao_add_service_to_organisation(service, organisation_id)
         set_default_free_allowance_for_service(service, year_start=None)
-        db.session.commit()
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        raise e
 
     return '', 204
 
