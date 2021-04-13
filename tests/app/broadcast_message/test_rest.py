@@ -591,16 +591,9 @@ def test_update_broadcast_message_status_updates_details_but_does_not_queue_task
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
 
-    assert len(bm.events) == 1
-    alert_event = bm.events[0]
-
+    # The broadcast can be approved, but does not create a broadcast_event in the database or put a task on the queue
+    assert len(bm.events) == 0
     assert len(mock_task.mock_calls) == 0
-
-    assert alert_event.service_id == sample_broadcast_service.id
-    assert alert_event.transmitted_areas == bm.areas
-    assert alert_event.message_type == BroadcastEventMessageType.ALERT
-    assert alert_event.transmitted_finishes_at == bm.finishes_at
-    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
 def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
