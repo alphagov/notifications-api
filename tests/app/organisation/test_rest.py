@@ -497,8 +497,7 @@ def test_post_link_service_to_organisation(admin_request, sample_service):
         'service_id': str(sample_service.id)
     }
     organisation = create_organisation(organisation_type='central')
-    assert len(organisation.services) == 0
-    assert len(AnnualBilling.query.all()) == 0
+
     admin_request.post(
         'organisation.link_service_to_organisation',
         _data=data,
@@ -545,8 +544,7 @@ def test_post_link_service_to_organisation_rollback_service_if_annual_billing_up
         admin_request.post(
                 'organisation.link_service_to_organisation',
                 _data=data,
-                organisation_id=organisation.id,
-                _expected_status=404
+                organisation_id=organisation.id
             )
     assert not sample_service.organisation_type
     assert len(organisation.services) == 0

@@ -4,7 +4,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import (
     Job,
     Notification,
@@ -28,7 +28,7 @@ def _get_notification_ids_for_references(references):
     return notification_ids + notification_history_ids
 
 
-@transactional
+@autocommit
 def insert_or_update_returned_letters(references):
     data = _get_notification_ids_for_references(references)
     for row in data:

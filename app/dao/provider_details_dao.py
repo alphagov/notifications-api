@@ -5,7 +5,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import asc, desc, func
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import (
     SMS_TYPE,
     FactBilling,
@@ -75,7 +75,7 @@ def _get_sms_providers_for_update(time_threshold):
     return q
 
 
-@transactional
+@autocommit
 def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     """
     Will reduce a chosen sms provider's priority, and increase the other provider's priority by 10 points each.
@@ -101,7 +101,7 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     _adjust_provider_priority(increased_provider, increased_provider_priority)
 
 
-@transactional
+@autocommit
 def dao_adjust_provider_priority_back_to_resting_points():
     """
     Provided that neither SMS provider has been modified in the last hour, move both providers by 10 percentage points
@@ -135,7 +135,7 @@ def get_provider_details_by_notification_type(notification_type, supports_intern
     return ProviderDetails.query.filter(*filters).order_by(asc(ProviderDetails.priority)).all()
 
 
-@transactional
+@autocommit
 def dao_update_provider_details(provider_details):
     _update_provider_details_without_commit(provider_details)
 

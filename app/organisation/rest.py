@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import QueueNames
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
-from app.dao.dao_utils import nested_transaction
+from app.dao.dao_utils import transaction
 from app.dao.fact_billing_dao import fetch_usage_year_for_organisation
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
@@ -120,7 +120,7 @@ def link_service_to_organisation(organisation_id):
     service = dao_fetch_service_by_id(data['service_id'])
     service.organisation = None
 
-    with nested_transaction():
+    with transaction():
         dao_add_service_to_organisation(service, organisation_id)
         set_default_free_allowance_for_service(service, year_start=None)
 

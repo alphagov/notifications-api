@@ -25,7 +25,7 @@ from app import create_uuid, db
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
 from app.models import (
     EMAIL_TYPE,
@@ -79,7 +79,7 @@ def dao_get_last_date_template_was_used(template_id, service_id):
     return last_date
 
 
-@transactional
+@autocommit
 def dao_create_notification(notification):
     if not notification.id:
         # need to populate defaulted fields before we create the notification history object
@@ -123,7 +123,7 @@ def _update_notification_status(notification, status, detailed_status_code=None)
     return notification
 
 
-@transactional
+@autocommit
 def update_notification_status_by_id(notification_id, status, sent_by=None, detailed_status_code=None):
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
@@ -159,7 +159,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
     )
 
 
-@transactional
+@autocommit
 def update_notification_status_by_reference(reference, status):
     # this is used to update letters and emails
     notification = Notification.query.filter(Notification.reference == reference).first()
@@ -181,7 +181,7 @@ def update_notification_status_by_reference(reference, status):
     )
 
 
-@transactional
+@autocommit
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     db.session.add(notification)
@@ -339,7 +339,7 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
     return deleted
 
 
-@transactional
+@autocommit
 def insert_notification_history_delete_notifications(
     notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
 ):
@@ -459,7 +459,7 @@ def _delete_letters_from_s3(
                 "Could not delete S3 object for letter: {}".format(letter.id))
 
 
-@transactional
+@autocommit
 def dao_delete_notifications_by_id(notification_id):
     db.session.query(Notification).filter(
         Notification.id == notification_id
@@ -569,7 +569,7 @@ def is_delivery_slow_for_providers(
     return slow_providers
 
 
-@transactional
+@autocommit
 def dao_update_notifications_by_reference(references, update_dict):
     updated_count = Notification.query.filter(
         Notification.reference.in_(references)

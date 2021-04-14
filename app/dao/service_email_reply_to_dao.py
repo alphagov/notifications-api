@@ -1,7 +1,7 @@
 from sqlalchemy import desc
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.errors import InvalidRequest
 from app.exceptions import ArchiveValidationError
 from app.models import ServiceEmailReplyTo
@@ -28,7 +28,7 @@ def dao_get_reply_to_by_id(service_id, reply_to_id):
     return reply_to
 
 
-@transactional
+@autocommit
 def add_reply_to_email_address_for_service(service_id, email_address, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
@@ -41,7 +41,7 @@ def add_reply_to_email_address_for_service(service_id, email_address, is_default
     return new_reply_to
 
 
-@transactional
+@autocommit
 def update_reply_to_email_address(service_id, reply_to_id, email_address, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
@@ -57,7 +57,7 @@ def update_reply_to_email_address(service_id, reply_to_id, email_address, is_def
     return reply_to_update
 
 
-@transactional
+@autocommit
 def archive_reply_to_email_address(service_id, reply_to_id):
     reply_to_archive = ServiceEmailReplyTo.query.filter_by(
         id=reply_to_id,

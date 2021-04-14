@@ -6,7 +6,7 @@ from app import db
 from app.history_meta import create_history
 
 
-def transactional(func):
+def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         try:
@@ -23,7 +23,7 @@ def transactional(func):
 
 
 @contextmanager
-def nested_transaction():
+def transaction():
     try:
         db.session.begin_nested()
         yield
@@ -93,7 +93,7 @@ def dao_rollback():
     db.session.rollback()
 
 
-@transactional
+@autocommit
 def dao_save_object(obj):
     # add/update object in db
     db.session.add(obj)

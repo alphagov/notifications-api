@@ -2,7 +2,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
 
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.dao.service_user_dao import (
     dao_get_active_service_users,
     dao_get_service_user,
@@ -104,7 +104,7 @@ def delete_template_folder(service_id, template_folder_id):
 
 @template_folder_blueprint.route('/contents', methods=['POST'])
 @template_folder_blueprint.route('/<uuid:target_template_folder_id>/contents', methods=['POST'])
-@transactional
+@autocommit
 def move_to_template_folder(service_id, target_template_folder_id=None):
     data = request.get_json()
 

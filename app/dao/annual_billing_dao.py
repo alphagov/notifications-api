@@ -1,12 +1,12 @@
 from flask import current_app
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.dao.date_util import get_current_financial_year_start_year
 from app.models import AnnualBilling
 
 
-@transactional
+@autocommit
 def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_limit, financial_year_start):
     result = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 
@@ -25,7 +25,7 @@ def dao_get_annual_billing(service_id):
     ).order_by(AnnualBilling.financial_year_start).all()
 
 
-@transactional
+@autocommit
 def dao_update_annual_billing_for_future_years(service_id, free_sms_fragment_limit, financial_year_start):
     AnnualBilling.query.filter(
         AnnualBilling.service_id == service_id,

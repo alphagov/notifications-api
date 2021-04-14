@@ -9,7 +9,7 @@ from notifications_utils.letter_timings import (
 from sqlalchemy import and_, asc, desc, func
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import (
     JOB_STATUS_CANCELLED,
@@ -183,7 +183,7 @@ def dao_get_jobs_older_than_data_retention(notification_types):
     return jobs
 
 
-@transactional
+@autocommit
 def dao_cancel_letter_job(job):
     number_of_notifications_cancelled = Notification.query.filter(
         Notification.job_id == job.id

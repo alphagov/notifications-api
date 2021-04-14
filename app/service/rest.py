@@ -18,7 +18,7 @@ from app.dao.api_key_dao import (
     save_model_api_key,
 )
 from app.dao.broadcast_service_dao import set_broadcast_service_type
-from app.dao.dao_utils import dao_rollback, nested_transaction
+from app.dao.dao_utils import dao_rollback, transaction
 from app.dao.date_util import get_financial_year
 from app.dao.fact_notification_status_dao import (
     fetch_monthly_template_usage_for_service,
@@ -254,7 +254,7 @@ def create_service():
     # unpack valid json into service object
     valid_service = Service.from_json(data)
 
-    with nested_transaction():
+    with transaction():
         dao_create_service(valid_service, user)
         set_default_free_allowance_for_service(service=valid_service, year_start=None)
 

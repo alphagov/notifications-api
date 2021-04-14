@@ -4,11 +4,11 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, or_
 
 from app import db
-from app.dao.dao_utils import transactional, version_class
+from app.dao.dao_utils import autocommit, version_class
 from app.models import ApiKey
 
 
-@transactional
+@autocommit
 @version_class(ApiKey)
 def save_model_api_key(api_key):
     if not api_key.id:
@@ -17,7 +17,7 @@ def save_model_api_key(api_key):
     db.session.add(api_key)
 
 
-@transactional
+@autocommit
 @version_class(ApiKey)
 def expire_api_key(service_id, api_key_id):
     api_key = ApiKey.query.filter_by(id=api_key_id, service_id=service_id).one()
