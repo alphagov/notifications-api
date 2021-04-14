@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from notifications_utils.timezones import convert_utc_to_bst
 
 from app import notify_celery
@@ -20,7 +19,6 @@ from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
 @notify_celery.task(name="create-nightly-billing")
 @cronitor("create-nightly-billing")
-@statsd(namespace="tasks")
 def create_nightly_billing(day_start=None):
     current_app.logger.info("create-nightly-billing task: started")
     # day_start is a datetime.date() object. e.g.
@@ -43,7 +41,6 @@ def create_nightly_billing(day_start=None):
 
 
 @notify_celery.task(name="create-nightly-billing-for-day")
-@statsd(namespace="tasks")
 def create_nightly_billing_for_day(process_day):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info(
@@ -69,7 +66,6 @@ def create_nightly_billing_for_day(process_day):
 
 @notify_celery.task(name="create-nightly-notification-status")
 @cronitor("create-nightly-notification-status")
-@statsd(namespace="tasks")
 def create_nightly_notification_status():
     current_app.logger.info("create-nightly-notification-status task: started")
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
@@ -100,7 +96,6 @@ def create_nightly_notification_status():
 
 
 @notify_celery.task(name="create-nightly-notification-status-for-day")
-@statsd(namespace="tasks")
 def create_nightly_notification_status_for_day(process_day, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info(

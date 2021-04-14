@@ -1,5 +1,4 @@
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import notify_celery
@@ -15,7 +14,6 @@ from app.models import NOTIFICATION_TECHNICAL_FAILURE
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
-@statsd(namespace="tasks")
 def deliver_sms(self, notification_id):
     try:
         current_app.logger.info("Start sending SMS for notification id: {}".format(notification_id))
@@ -46,7 +44,6 @@ def deliver_sms(self, notification_id):
 
 
 @notify_celery.task(bind=True, name="deliver_email", max_retries=48, default_retry_delay=300)
-@statsd(namespace="tasks")
 def deliver_email(self, notification_id):
     try:
         current_app.logger.info("Start sending email for notification id: {}".format(notification_id))

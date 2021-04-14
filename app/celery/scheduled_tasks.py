@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 
 from flask import current_app
-from notifications_utils.statsd_decorators import statsd
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -55,7 +54,6 @@ from app.notifications.process_notifications import send_notification_to_queue
 
 
 @notify_celery.task(name="run-scheduled-jobs")
-@statsd(namespace="tasks")
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
@@ -67,7 +65,6 @@ def run_scheduled_jobs():
 
 
 @notify_celery.task(name="delete-verify-codes")
-@statsd(namespace="tasks")
 def delete_verify_codes():
     try:
         start = datetime.utcnow()
@@ -81,7 +78,6 @@ def delete_verify_codes():
 
 
 @notify_celery.task(name="delete-invitations")
-@statsd(namespace="tasks")
 def delete_invitations():
     try:
         start = datetime.utcnow()
@@ -96,7 +92,6 @@ def delete_invitations():
 
 
 @notify_celery.task(name='switch-current-sms-provider-on-slow-delivery')
-@statsd(namespace="tasks")
 def switch_current_sms_provider_on_slow_delivery():
     """
     Reduce provider's priority if at least 30% of notifications took more than four minutes to be delivered
@@ -119,13 +114,11 @@ def switch_current_sms_provider_on_slow_delivery():
 
 
 @notify_celery.task(name='tend-providers-back-to-middle')
-@statsd(namespace='tasks')
 def tend_providers_back_to_middle():
     dao_adjust_provider_priority_back_to_resting_points()
 
 
 @notify_celery.task(name='check-job-status')
-@statsd(namespace="tasks")
 def check_job_status():
     """
     every x minutes do this check
@@ -175,7 +168,6 @@ def check_job_status():
 
 
 @notify_celery.task(name='replay-created-notifications')
-@statsd(namespace="tasks")
 def replay_created_notifications():
     # if the notification has not be send after 1 hour, then try to resend.
     resend_created_notifications_older_than = (60 * 60)
@@ -209,7 +201,6 @@ def replay_created_notifications():
 
 
 @notify_celery.task(name='check-if-letters-still-pending-virus-check')
-@statsd(namespace="tasks")
 def check_if_letters_still_pending_virus_check():
     letters = dao_precompiled_letters_still_pending_virus_check()
 
@@ -231,7 +222,6 @@ def check_if_letters_still_pending_virus_check():
 
 
 @notify_celery.task(name='check-if-letters-still-in-created')
-@statsd(namespace="tasks")
 def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
@@ -268,7 +258,6 @@ def check_for_missing_rows_in_completed_jobs():
 
 
 @notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
-@statsd(namespace="tasks")
 def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     start_date = (datetime.utcnow() - timedelta(days=1))
     end_date = datetime.utcnow()
