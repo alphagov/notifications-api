@@ -75,3 +75,13 @@ def insert_or_update_service_broadcast_settings(service, channel, provider_restr
         service.service_broadcast_settings.channel = channel
         service.service_broadcast_settings.provider = provider_restriction
         db.session.add(service.service_broadcast_settings)
+
+
+def insert_or_update_requested_allowed_broadcast_areas(service, requested_allowed_broadcast_areas):
+    service.service_broadcast_settings.requested_allowed_broadcast_areas = requested_allowed_broadcast_areas
+    db.session.add(service.service_broadcast_settings)
+
+
+def insert_or_update_allowed_broadcast_areas(service):
+    service.service_broadcast_settings.allowed_broadcast_areas = service.service_broadcast_settings.requested_allowed_broadcast_areas  # noqa
+    db.session.add(service.service_broadcast_settings)
