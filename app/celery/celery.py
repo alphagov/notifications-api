@@ -73,15 +73,15 @@ def make_task(app):
 
                 return super().__call__(*args, **kwargs)
 
-        def apply_async(self, *args, **kwargs):
-            kwargs['kwargs'] = kwargs.get('kwargs', {})
+        def apply_async(self, args=None, kwargs=None, **other_kwargs):
+            kwargs = kwargs or {}
 
             if has_request_context() and hasattr(request, 'request_id'):
-                kwargs['kwargs']['request_id'] = request.request_id
+                kwargs['request_id'] = request.request_id
             elif has_app_context() and 'request_id' in g:
-                kwargs['kwargs']['request_id'] = g.request_id
+                kwargs['request_id'] = g.request_id
 
-            return super().apply_async(*args, **kwargs)
+            return super().apply_async(args, kwargs, **other_kwargs)
 
     return NotifyTask
 
