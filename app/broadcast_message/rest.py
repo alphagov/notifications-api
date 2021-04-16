@@ -190,32 +190,43 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
 
 def _create_broadcast_event(broadcast_message):
     """
-    Creates a broadcast event, stores it in the database, and triggers the task to send the CAP XML off
+    If the service is live and the broadcast message is not stubbed, creates a broadcast event, stores it in the
+    database, and triggers the task to send the CAP XML off.
     """
-    msg_types = {
-        BroadcastStatusType.BROADCASTING: BroadcastEventMessageType.ALERT,
-        BroadcastStatusType.CANCELLED: BroadcastEventMessageType.CANCEL,
-    }
+    service = broadcast_message.service
 
-    event = BroadcastEvent(
-        service=broadcast_message.service,
-        broadcast_message=broadcast_message,
-        message_type=msg_types[broadcast_message.status],
-        transmitted_content={"body": broadcast_message.content},
-        transmitted_areas=broadcast_message.areas,
-        # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it include
-        # a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar
-        transmitted_sender='notifications.service.gov.uk',
+    if not broadcast_message.stubbed and not service.restricted:
+        msg_types = {
+            BroadcastStatusType.BROADCASTING: BroadcastEventMessageType.ALERT,
+            BroadcastStatusType.CANCELLED: BroadcastEventMessageType.CANCEL,
+        }
 
-        # TODO: Should this be set to now? Or the original starts_at?
-        transmitted_starts_at=broadcast_message.starts_at,
-        transmitted_finishes_at=broadcast_message.finishes_at,
-    )
+        event = BroadcastEvent(
+            service=service,
+            broadcast_message=broadcast_message,
+            message_type=msg_types[broadcast_message.status],
+            transmitted_content={"body": broadcast_message.content},
+            transmitted_areas=broadcast_message.areas,
+            # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it
+            # include a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar
+            transmitted_sender='notifications.service.gov.uk',
 
-    dao_save_object(event)
+            # TODO: Should this be set to now? Or the original starts_at?
+            transmitted_starts_at=broadcast_message.starts_at,
+            transmitted_finishes_at=broadcast_message.finishes_at,
+        )
 
-    if not broadcast_message.stubbed:
+        dao_save_object(event)
+
         send_broadcast_event.apply_async(
             kwargs={'broadcast_event_id': str(event.id)},
             queue=QueueNames.BROADCASTS
+        )
+    elif broadcast_message.stubbed != service.restricted:
+        # It's possible for a service to create a broadcast in trial mode, and then approve it after the
+        # service is live (or vice versa). We don't think it's safe to send such broadcasts, as the service
+        # has changed since they were created. Log an error instead.
+        current_app.logger.error(
+            f'Broadcast event not created. Stubbed status of broadcast message was {broadcast_message.stubbed}'
+            f' but service was {"in trial mode" if service.restricted else "live"}'
         )

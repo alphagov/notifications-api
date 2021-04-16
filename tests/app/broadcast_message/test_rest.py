@@ -1,5 +1,4 @@
 import uuid
-from unittest.mock import ANY
 
 import pytest
 from freezegun import freeze_time
@@ -562,22 +561,31 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
-def test_update_broadcast_message_status_updates_details_but_does_not_queue_task_for_stubbed_broadcast_message(
+@pytest.mark.parametrize('broadcast_message_stubbed, service_restricted_before_approval', [
+    (True, True),
+    (True, False),
+    (False, True),
+])
+def test_update_broadcast_message_status_updates_details_but_does_not_queue_task_if_bm_is_stubbed_or_service_not_live(
     admin_request,
     sample_broadcast_service,
-    mocker
+    mocker,
+    broadcast_message_stubbed,
+    service_restricted_before_approval,
 ):
-    sample_broadcast_service.restricted = True
+    sample_broadcast_service.restricted = broadcast_message_stubbed
     t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
-        stubbed=True
+        stubbed=broadcast_message_stubbed
     )
     approver = create_user(email='approver@gov.uk')
     sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    sample_broadcast_service.restricted = service_restricted_before_approval
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message_status',
@@ -591,16 +599,9 @@ def test_update_broadcast_message_status_updates_details_but_does_not_queue_task
     assert response['approved_at'] is not None
     assert response['approved_by_id'] == str(approver.id)
 
-    assert len(bm.events) == 1
-    alert_event = bm.events[0]
-
+    # The broadcast can be approved, but does not create a broadcast_event in the database or put a task on the queue
+    assert len(bm.events) == 0
     assert len(mock_task.mock_calls) == 0
-
-    assert alert_event.service_id == sample_broadcast_service.id
-    assert alert_event.transmitted_areas == bm.areas
-    assert alert_event.message_type == BroadcastEventMessageType.ALERT
-    assert alert_event.transmitted_finishes_at == bm.finishes_at
-    assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
 def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
@@ -714,7 +715,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     assert response['approved_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['approved_by_id'] == str(t.created_by_id)
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': ANY}, queue='broadcast-tasks')
+    assert not mock_task.called
 
 
 def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_service(
