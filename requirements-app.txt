@@ -27,7 +27,7 @@ beautifulsoup4==4.9.3
 lxml==4.6.3
 # higher version causes build to fail on PaaS due to lack of Rust
 # see https://github.com/pyca/cryptography/issues/5810
-cryptography<3.4
+cryptography<3.4 # pyup: <3.4
 
 notifications-python-client==6.0.2
 
