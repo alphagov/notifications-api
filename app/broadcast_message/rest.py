@@ -176,6 +176,9 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     validate(data, update_broadcast_message_status_schema)
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
+    if not broadcast_message.service.active:
+        raise InvalidRequest("Updating broadcast message is not allowed: service is inactive ", 403)
+
     new_status = data['status']
     updating_user = get_user_by_id(data['created_by'])
 

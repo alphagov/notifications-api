@@ -604,6 +604,22 @@ def test_update_broadcast_message_status_updates_details_but_does_not_queue_task
     assert len(mock_task.mock_calls) == 0
 
 
+def test_update_broadcast_message_status_aborts_if_service_is_suspended(
+    admin_request,
+    sample_broadcast_service,
+):
+    bm = create_broadcast_message(service=sample_broadcast_service, content='test')
+    sample_broadcast_service.active = False
+
+    admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.BROADCASTING, 'created_by': str(uuid.uuid4())},
+        service_id=sample_broadcast_service.id,
+        broadcast_message_id=bm.id,
+        _expected_status=403
+    )
+
+
 def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
     admin_request,
     sample_broadcast_service,
