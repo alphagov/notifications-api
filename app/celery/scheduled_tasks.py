@@ -226,13 +226,10 @@ def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
     if len(letters) > 0:
-        letter_ids = [str(letter.id) for letter in letters]
-
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
             "Follow runbook to resolve: " \
             "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook" \
-            "#deal-with-Letters-still-in-created. " \
-            "Notifications: {}".format(len(letters), letter_ids)
+            "#deal-with-Letters-still-in-created.".format(len(letters))
 
         current_app.logger.warning(msg)
 
