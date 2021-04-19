@@ -1,6 +1,6 @@
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import ServiceUser, User
 
 
@@ -21,6 +21,6 @@ def dao_get_service_users_by_user_id(user_id):
     return ServiceUser.query.filter_by(user_id=user_id).all()
 
 
-@transactional
+@autocommit
 def dao_update_service_user(service_user):
     db.session.add(service_user)

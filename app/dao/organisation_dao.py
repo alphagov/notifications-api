@@ -1,7 +1,7 @@
 from sqlalchemy.sql.expression import func
 
 from app import db
-from app.dao.dao_utils import VersionOptions, transactional, version_class
+from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.models import Domain, Organisation, Service, User
 
 
@@ -55,12 +55,12 @@ def dao_get_organisation_by_service_id(service_id):
     return Organisation.query.join(Organisation.services).filter_by(id=service_id).first()
 
 
-@transactional
+@autocommit
 def dao_create_organisation(organisation):
     db.session.add(organisation)
 
 
-@transactional
+@autocommit
 def dao_update_organisation(organisation_id, **kwargs):
 
     domains = kwargs.pop('domains', None)
@@ -105,7 +105,7 @@ def _update_organisation_services(organisation, attribute, only_where_none=True)
         db.session.add(service)
 
 
-@transactional
+@autocommit
 @version_class(Service)
 def dao_add_service_to_organisation(service, organisation_id):
     organisation = Organisation.query.filter_by(
@@ -130,7 +130,7 @@ def dao_get_users_for_organisation(organisation_id):
     ).order_by(User.created_at).all()
 
 
-@transactional
+@autocommit
 def dao_add_user_to_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     user = User.query.filter_by(id=user_id).one()

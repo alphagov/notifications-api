@@ -1,7 +1,7 @@
 import uuid
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import (
     BroadcastEvent,
     BroadcastMessage,
@@ -43,7 +43,7 @@ def get_earlier_events_for_broadcast_event(broadcast_event_id):
     ).all()
 
 
-@transactional
+@autocommit
 def create_broadcast_provider_message(broadcast_event, provider):
     broadcast_provider_message_id = uuid.uuid4()
     provider_message = BroadcastProviderMessage(
@@ -63,6 +63,6 @@ def create_broadcast_provider_message(broadcast_event, provider):
     return provider_message
 
 
-@transactional
+@autocommit
 def update_broadcast_provider_message_status(broadcast_provider_message, *, status):
     broadcast_provider_message.status = status

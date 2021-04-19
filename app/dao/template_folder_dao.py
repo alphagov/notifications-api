@@ -1,5 +1,5 @@
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import TemplateFolder
 
 
@@ -14,16 +14,16 @@ def dao_get_valid_template_folders_by_id(folder_ids):
     return TemplateFolder.query.filter(TemplateFolder.id.in_(folder_ids)).all()
 
 
-@transactional
+@autocommit
 def dao_create_template_folder(template_folder):
     db.session.add(template_folder)
 
 
-@transactional
+@autocommit
 def dao_update_template_folder(template_folder):
     db.session.add(template_folder)
 
 
-@transactional
+@autocommit
 def dao_delete_template_folder(template_folder):
     db.session.delete(template_folder)

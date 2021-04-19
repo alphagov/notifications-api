@@ -1,11 +1,11 @@
 from datetime import datetime
 
 from app import create_uuid, db
-from app.dao.dao_utils import transactional, version_class
+from app.dao.dao_utils import autocommit, version_class
 from app.models import ServiceInboundApi
 
 
-@transactional
+@autocommit
 @version_class(ServiceInboundApi)
 def save_service_inbound_api(service_inbound_api):
     service_inbound_api.id = create_uuid()
@@ -13,7 +13,7 @@ def save_service_inbound_api(service_inbound_api):
     db.session.add(service_inbound_api)
 
 
-@transactional
+@autocommit
 @version_class(ServiceInboundApi)
 def reset_service_inbound_api(service_inbound_api, updated_by_id, url=None, bearer_token=None):
     if url:
@@ -35,6 +35,6 @@ def get_service_inbound_api_for_service(service_id):
     return ServiceInboundApi.query.filter_by(service_id=service_id).first()
 
 
-@transactional
+@autocommit
 def delete_service_inbound_api(service_inbound_api):
     db.session.delete(service_inbound_api)

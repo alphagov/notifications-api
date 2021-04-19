@@ -1,21 +1,39 @@
 import itertools
+from contextlib import contextmanager
 from functools import wraps
 
 from app import db
 from app.history_meta import create_history
 
 
-def transactional(func):
+def autocommit(func):
     @wraps(func)
     def commit_or_rollback(*args, **kwargs):
         try:
             res = func(*args, **kwargs)
-            db.session.commit()
+
+            if not db.session.registry().transaction.nested:
+                db.session.commit()
+
             return res
         except Exception:
             db.session.rollback()
             raise
     return commit_or_rollback
+
+
+@contextmanager
+def transaction():
+    try:
+        db.session.begin_nested()
+        yield
+        db.session.commit()
+
+        if not db.session.registry().transaction.nested:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        raise
 
 
 class VersionOptions():
@@ -75,7 +93,7 @@ def dao_rollback():
     db.session.rollback()
 
 
-@transactional
+@autocommit
 def dao_save_object(obj):
     # add/update object in db
     db.session.add(obj)

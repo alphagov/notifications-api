@@ -1,7 +1,7 @@
 from sqlalchemy import desc
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.exceptions import ArchiveValidationError
 from app.models import ServiceSmsSender
 
@@ -32,7 +32,7 @@ def dao_get_sms_senders_by_service_id(service_id):
     ).order_by(desc(ServiceSmsSender.is_default)).all()
 
 
-@transactional
+@autocommit
 def dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_number_id=None):
     old_default = _get_existing_default(service_id=service_id)
     if is_default:
@@ -51,7 +51,7 @@ def dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_n
     return new_sms_sender
 
 
-@transactional
+@autocommit
 def dao_update_service_sms_sender(service_id, service_sms_sender_id, is_default, sms_sender=None):
     old_default = _get_existing_default(service_id)
     if is_default:
@@ -68,7 +68,7 @@ def dao_update_service_sms_sender(service_id, service_sms_sender_id, is_default,
     return sms_sender_to_update
 
 
-@transactional
+@autocommit
 def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sender, inbound_number_id):
     service_sms_sender.sms_sender = sms_sender
     service_sms_sender.inbound_number_id = inbound_number_id
@@ -76,7 +76,7 @@ def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sende
     return service_sms_sender
 
 
-@transactional
+@autocommit
 def archive_sms_sender(service_id, sms_sender_id):
     sms_sender_to_archive = ServiceSmsSender.query.filter_by(
         id=sms_sender_id,

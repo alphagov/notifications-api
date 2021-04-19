@@ -1,9 +1,9 @@
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import ProviderDetails, ProviderRates
 
 
-@transactional
+@autocommit
 def create_provider_rates(provider_identifier, valid_from, rate):
     provider = ProviderDetails.query.filter_by(identifier=provider_identifier).one()
 

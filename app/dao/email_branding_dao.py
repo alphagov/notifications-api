@@ -1,5 +1,5 @@
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import EmailBranding
 
 
@@ -15,12 +15,12 @@ def dao_get_email_branding_by_name(email_branding_name):
     return EmailBranding.query.filter_by(name=email_branding_name).first()
 
 
-@transactional
+@autocommit
 def dao_create_email_branding(email_branding):
     db.session.add(email_branding)
 
 
-@transactional
+@autocommit
 def dao_update_email_branding(email_branding, **kwargs):
     for key, value in kwargs.items():
         setattr(email_branding, key, value or None)

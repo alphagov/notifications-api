@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.dao.permissions_dao import permission_dao
 from app.dao.service_user_dao import dao_get_service_users_by_user_id
 from app.errors import InvalidRequest
@@ -146,7 +146,7 @@ def get_user_and_accounts(user_id):
     ).one()
 
 
-@transactional
+@autocommit
 def dao_archive_user(user):
     if not user_can_be_archived(user):
         msg = "User can’t be removed from a service - check all services have another team member with manage_settings"

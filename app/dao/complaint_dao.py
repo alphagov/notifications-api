@@ -4,12 +4,12 @@ from flask import current_app
 from sqlalchemy import desc
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import Complaint
 from app.utils import get_london_midnight_in_utc
 
 
-@transactional
+@autocommit
 def save_complaint(complaint):
     db.session.add(complaint)
 

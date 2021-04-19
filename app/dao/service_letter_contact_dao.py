@@ -1,7 +1,7 @@
 from sqlalchemy import desc
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import ServiceLetterContact, Template
 
 
@@ -30,7 +30,7 @@ def dao_get_letter_contact_by_id(service_id, letter_contact_id):
     return letter_contact
 
 
-@transactional
+@autocommit
 def add_letter_contact_for_service(service_id, contact_block, is_default):
     old_default = _get_existing_default(service_id)
     if is_default:
@@ -45,7 +45,7 @@ def add_letter_contact_for_service(service_id, contact_block, is_default):
     return new_letter_contact
 
 
-@transactional
+@autocommit
 def update_letter_contact(service_id, letter_contact_id, contact_block, is_default):
     old_default = _get_existing_default(service_id)
     # if we want to make this the default, ensure there are no other existing defaults
@@ -59,7 +59,7 @@ def update_letter_contact(service_id, letter_contact_id, contact_block, is_defau
     return letter_contact_update
 
 
-@transactional
+@autocommit
 def archive_letter_contact(service_id, letter_contact_id):
     letter_contact_to_archive = ServiceLetterContact.query.filter_by(
         id=letter_contact_id,

@@ -6,6 +6,7 @@ from unittest.mock import ANY
 import pytest
 from flask import current_app, url_for
 from freezegun import freeze_time
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.dao.service_sms_sender_dao import dao_get_sms_senders_by_service_id
@@ -31,6 +32,7 @@ from app.models import (
     SERVICE_PERMISSION_TYPES,
     SMS_TYPE,
     UPLOAD_LETTERS,
+    AnnualBilling,
     EmailBranding,
     InboundNumber,
     Notification,
@@ -480,6 +482,47 @@ def test_create_service_with_domain_sets_organisation(
         assert json_resp['data']['organisation'] == str(org.id)
     else:
         assert json_resp['data']['organisation'] is None
+
+
+def test_create_service_should_create_annual_billing_for_service(
+    admin_request, sample_user
+):
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id)
+    }
+    assert len(AnnualBilling.query.all()) == 0
+    admin_request.post('service.create_service', _data=data, _expected_status=201)
+
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+
+
+def test_create_service_should_raise_exception_and_not_create_service_if_annual_billing_query_fails(
+    admin_request, sample_user, mocker
+):
+    mocker.patch('app.service.rest.set_default_free_allowance_for_service', side_effect=SQLAlchemyError)
+    data = {
+        'name': 'created service',
+        'user_id': str(sample_user.id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': 'created.service',
+        'created_by': str(sample_user.id)
+    }
+    assert len(AnnualBilling.query.all()) == 0
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        admin_request.post('service.create_service', _data=data)
+
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 0
+    assert len(Service.query.filter(Service.name == 'created service').all()) == 0
 
 
 def test_create_service_inherits_branding_from_organisation(

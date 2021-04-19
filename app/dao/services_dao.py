@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql.expression import and_, asc, case, func
 
 from app import db
-from app.dao.dao_utils import VersionOptions, transactional, version_class
+from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.date_util import get_current_financial_year
 from app.dao.email_branding_dao import dao_get_email_branding_by_name
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
@@ -247,7 +247,7 @@ def dao_fetch_all_services_created_by_user(user_id):
     return query.all()
 
 
-@transactional
+@autocommit
 @version_class(
     VersionOptions(ApiKey, must_write_history=False),
     VersionOptions(Service),
@@ -284,7 +284,7 @@ def dao_fetch_service_by_id_and_user(service_id, user_id):
     ).one()
 
 
-@transactional
+@autocommit
 @version_class(Service)
 def dao_create_service(
     service,
@@ -338,7 +338,7 @@ def dao_create_service(
     db.session.add(service)
 
 
-@transactional
+@autocommit
 @version_class(Service)
 def dao_update_service(service):
     db.session.add(service)
@@ -507,7 +507,7 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
     return query.all()
 
 
-@transactional
+@autocommit
 @version_class(
     VersionOptions(ApiKey, must_write_history=False),
     VersionOptions(Service),
@@ -526,7 +526,7 @@ def dao_suspend_service(service_id):
     service.active = False
 
 
-@transactional
+@autocommit
 @version_class(Service)
 def dao_resume_service(service_id):
     service = Service.query.get(service_id)

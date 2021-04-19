@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import current_app
 
 from app import db
-from app.dao.dao_utils import transactional, version_class
+from app.dao.dao_utils import autocommit, version_class
 from app.models import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
@@ -14,7 +14,7 @@ from app.models import (
 )
 
 
-@transactional
+@autocommit
 @version_class(Service)
 def set_broadcast_service_type(service, service_mode, broadcast_channel, provider_restriction):
     insert_or_update_service_broadcast_settings(

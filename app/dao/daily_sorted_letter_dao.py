@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import DailySortedLetter
 
 
@@ -13,7 +13,7 @@ def dao_get_daily_sorted_letter_by_billing_day(billing_day):
     ).first()
 
 
-@transactional
+@autocommit
 def dao_create_or_update_daily_sorted_letter(new_daily_sorted_letter):
     '''
     This uses the Postgres upsert to avoid race conditions when two threads try and insert

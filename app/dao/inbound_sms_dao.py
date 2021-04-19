@@ -4,7 +4,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import aliased
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import (
     SMS_TYPE,
     InboundSms,
@@ -15,7 +15,7 @@ from app.models import (
 from app.utils import midnight_n_days_ago
 
 
-@transactional
+@autocommit
 def dao_create_inbound_sms(inbound_sms):
     db.session.add(inbound_sms)
 
@@ -113,7 +113,7 @@ def _delete_inbound_sms(datetime_to_delete_from, query_filter):
     return deleted
 
 
-@transactional
+@autocommit
 def delete_inbound_sms_older_than_retention():
     current_app.logger.info('Deleting inbound sms for services with flexible data retention')
 

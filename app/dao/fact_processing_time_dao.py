@@ -3,11 +3,11 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import FactProcessingTime
 
 
-@transactional
+@autocommit
 def insert_update_processing_time(processing_time):
     '''
     This uses the Postgres upsert to avoid race conditions when two threads try and insert

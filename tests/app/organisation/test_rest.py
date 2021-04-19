@@ -3,13 +3,14 @@ from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service
-from app.models import Organisation
+from app.models import AnnualBilling, Organisation
 from tests.app.db import (
     create_annual_billing,
     create_domain,
@@ -491,19 +492,63 @@ def test_post_update_organisation_set_mou_emails_signed_by(
         }
 
 
-def test_post_link_service_to_organisation(admin_request, sample_service, sample_organisation):
+def test_post_link_service_to_organisation(admin_request, sample_service):
     data = {
         'service_id': str(sample_service.id)
     }
+    organisation = create_organisation(organisation_type='central')
 
     admin_request.post(
         'organisation.link_service_to_organisation',
         _data=data,
-        organisation_id=sample_organisation.id,
+        organisation_id=organisation.id,
+        _expected_status=204
+    )
+    assert len(organisation.services) == 1
+    assert sample_service.organisation_type == 'central'
+
+
+def test_post_link_service_to_organisation_inserts_annual_billing(admin_request, sample_service):
+    data = {
+        'service_id': str(sample_service.id)
+    }
+    organisation = create_organisation(organisation_type='central')
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
+    admin_request.post(
+        'organisation.link_service_to_organisation',
+        _data=data,
+        organisation_id=organisation.id,
         _expected_status=204
     )
 
-    assert len(sample_organisation.services) == 1
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].free_sms_fragment_limit == 150000
+
+
+def test_post_link_service_to_organisation_rollback_service_if_annual_billing_update_fails(
+        admin_request, sample_service, mocker
+):
+    mocker.patch('app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year',
+                 side_effect=SQLAlchemyError)
+    data = {
+        'service_id': str(sample_service.id)
+    }
+    assert not sample_service.organisation_type
+
+    organisation = create_organisation(organisation_type='central')
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
+    with pytest.raises(expected_exception=SQLAlchemyError):
+        admin_request.post(
+                'organisation.link_service_to_organisation',
+                _data=data,
+                organisation_id=organisation.id
+            )
+    assert not sample_service.organisation_type
+    assert len(organisation.services) == 0
+    assert len(AnnualBilling.query.all()) == 0
 
 
 def test_post_link_service_to_another_org(
@@ -511,7 +556,8 @@ def test_post_link_service_to_another_org(
     data = {
         'service_id': str(sample_service.id)
     }
-
+    assert len(sample_organisation.services) == 0
+    assert not sample_service.organisation_type
     admin_request.post(
         'organisation.link_service_to_organisation',
         _data=data,
@@ -520,8 +566,9 @@ def test_post_link_service_to_another_org(
     )
 
     assert len(sample_organisation.services) == 1
+    assert not sample_service.organisation_type
 
-    new_org = create_organisation()
+    new_org = create_organisation(organisation_type='central')
     admin_request.post(
         'organisation.link_service_to_organisation',
         _data=data,
@@ -530,6 +577,10 @@ def test_post_link_service_to_another_org(
     )
     assert not sample_organisation.services
     assert len(new_org.services) == 1
+    assert sample_service.organisation_type == 'central'
+    annual_billing = AnnualBilling.query.all()
+    assert len(annual_billing) == 1
+    assert annual_billing[0].free_sms_fragment_limit == 150000
 
 
 def test_post_link_service_to_organisation_nonexistent_organisation(

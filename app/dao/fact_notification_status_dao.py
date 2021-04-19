@@ -8,7 +8,7 @@ from sqlalchemy.sql.expression import extract, literal
 from sqlalchemy.types import DateTime, Integer
 
 from app import db
-from app.dao.dao_utils import transactional
+from app.dao.dao_utils import autocommit
 from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CANCELLED,
@@ -83,7 +83,7 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
     return query.all()
 
 
-@transactional
+@autocommit
 def update_fact_notification_status(data, process_day, notification_type):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
