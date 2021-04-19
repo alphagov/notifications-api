@@ -748,6 +748,31 @@ def test_check_provider_message_should_send_raises_if_service_is_suspended(
     assert 'service is suspended' in str(exc.value)
 
 
+def test_check_provider_message_should_send_raises_if_service_is_not_live(
+    sample_broadcast_service,
+):
+    sample_broadcast_service.restricted = True
+    broadcast_message = create_broadcast_message(service=sample_broadcast_service, content='test')
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        check_provider_message_should_send(current_event, 'ee')
+
+    assert 'service is not live' in str(exc.value)
+
+
+def test_check_provider_message_should_send_raises_if_message_is_stubbed(
+    sample_template,
+):
+    broadcast_message = create_broadcast_message(sample_template, stubbed=True)
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        check_provider_message_should_send(current_event, 'ee')
+
+    assert 'message is stubbed' in str(exc.value)
+
+
 def test_send_broadcast_provider_message_does_nothing_if_cbc_proxy_disabled(mocker, notify_api, sample_template):
     mock_proxy_client_getter = mocker.patch(
         'app.celery.broadcast_message_tasks.cbc_proxy_client',

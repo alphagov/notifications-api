@@ -62,6 +62,18 @@ def check_provider_message_should_send(broadcast_event, provider):
             f'to provider {provider}: the service is suspended'
         )
 
+    if broadcast_event.service.restricted:
+        raise BroadcastIntegrityError(
+            f'Cannot send broadcast_event {broadcast_event.id} ' +
+            f'to provider {provider}: the service is not live'
+        )
+
+    if broadcast_event.broadcast_message.stubbed:
+        raise BroadcastIntegrityError(
+            f'Cannot send broadcast_event {broadcast_event.id} ' +
+            f'to provider {provider}: the broadcast message is stubbed'
+        )
+
     current_provider_message = broadcast_event.get_provider_message(provider)
     # if this is the first time a task is being executed, it won't have a provider message yet
     if current_provider_message and current_provider_message.status != BroadcastProviderMessageStatus.SENDING:
