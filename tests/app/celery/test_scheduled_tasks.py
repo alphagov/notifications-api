@@ -396,8 +396,8 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
-    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
-    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 30))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 17, 29))
     create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 5, 28, 10, 0))
@@ -407,8 +407,7 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
         "Follow runbook to resolve: " \
-        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
-        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
@@ -423,8 +422,8 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
     mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
 
-    noti_1 = create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
-    noti_2 = create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
+    create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
+    create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 30))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 18, 29))
     create_notification(template=sample_letter_template, status='delivered', created_at=datetime(2019, 1, 29, 10, 0))
@@ -434,8 +433,7 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
 
     message = "2 letters were created before 17.30 yesterday and still have 'created' status. " \
         "Follow runbook to resolve: " \
-        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created. " \
-        "Notifications: ['{}', '{}']".format(noti_1.id, noti_2.id)
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
