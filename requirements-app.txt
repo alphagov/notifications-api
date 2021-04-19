@@ -10,12 +10,12 @@ Flask-Migrate==2.7.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
 Flask==1.1.2
 click-datetime==0.2
-eventlet==0.30.1
-gunicorn==20.0.4
+eventlet==0.30.2
+gunicorn==20.1.0
 iso8601==0.1.14
 itsdangerous==1.1.0
 jsonschema==3.2.0
-marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.1 # marshmallow v3 throws errors
+marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.8.6
 PyJWT==2.0.1
@@ -27,7 +27,7 @@ beautifulsoup4==4.9.3
 lxml==4.6.3
 # higher version causes build to fail on PaaS due to lack of Rust
 # see https://github.com/pyca/cryptography/issues/5810
-cryptography<3.4
+cryptography<3.4 # pyup: <3.4
 
 notifications-python-client==6.0.2
 
@@ -37,5 +37,5 @@ awscli-cwlogs==1.4.6
 git+https://github.com/alphagov/notifications-utils.git@44.1.0#egg=notifications-utils==44.1.0
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
-prometheus-client==0.9.0
+prometheus-client==0.10.1
 gds-metrics==0.2.4
