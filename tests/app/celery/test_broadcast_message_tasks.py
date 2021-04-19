@@ -8,7 +8,7 @@ from freezegun import freeze_time
 
 from app.celery.broadcast_message_tasks import (
     BroadcastIntegrityError,
-    check_provider_message_should_send,
+    check_event_makes_sense_in_sequence,
     get_retry_delay,
     send_broadcast_event,
     send_broadcast_provider_message,
@@ -600,14 +600,14 @@ def test_get_retry_delay_has_capped_backoff(retry_count, expected_delay):
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
+def test_check_event_makes_sense_in_sequence_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(
         broadcast_message,
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 12, 1),
     )
-    check_provider_message_should_send(current_event, 'ee')
+    check_event_makes_sense_in_sequence(current_event, 'ee')
 
 
 @freeze_time('2021-01-01 12:00')
@@ -688,7 +688,7 @@ def test_send_broadcast_provider_message_raises_if_older_event_hasnt_started_sen
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acked_yet(sample_template):
+def test_check_event_makes_sense_in_sequence_doesnt_raise_if_newer_event_not_acked_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     # event approved at midnight
     current_event = create_broadcast_event(
@@ -705,7 +705,7 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
 
     # this doesn't raise, because the alert event got an ack. The cancel doesn't have an event yet
     # but this task is only interested in the current task (the update) so doesn't worry about that
-    check_provider_message_should_send(current_event, 'ee')
+    check_event_makes_sense_in_sequence(current_event, 'ee')
 
 
 @pytest.mark.parametrize('existing_message_status', [

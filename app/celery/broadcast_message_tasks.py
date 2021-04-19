@@ -37,25 +37,7 @@ def get_retry_delay(retry_count):
     return min(delay, 240)
 
 
-def check_provider_message_should_send(broadcast_event, provider):
-    """
-    If any previous event hasn't sent yet for that provider, then we shouldn't send the current event. Instead, fail and
-    raise a P1 - so that a notify team member can assess the state of the previous messages, and if necessary, can
-    replay the `send_broadcast_provider_message` task if the previous message has now been sent.
-
-    Note: This is called before the new broadcast_provider_message is created.
-
-    # Help, I've come across this code following a pagerduty alert, what should I do?
-
-    1. Find the failing broadcast_provider_message associated with the previous event that caused this to trip.
-    2. If that provider message is still failing to send, fix the issue causing that. The task to send that previous
-       message might still be retrying in the background - look for logs related to that task.
-    3. If that provider message has sent succesfully, you might need to send this task off depending on context. This
-       might not always be true though, for example, it may not be necessary to send a cancel if the original alert has
-       already expired.
-    4. If you need to re-send this task off again, you'll need to run the following command on paas:
-       `send_broadcast_provider_message.apply_async(args=(broadcast_event_id, provider), queue=QueueNames.BROADCASTS)`
-    """
+def check_event_is_authorised_to_be_sent(broadcast_event, provider):
     if not broadcast_event.service.active:
         raise BroadcastIntegrityError(
             f'Cannot send broadcast_event {broadcast_event.id} ' +
@@ -74,6 +56,26 @@ def check_provider_message_should_send(broadcast_event, provider):
             f'to provider {provider}: the broadcast message is stubbed'
         )
 
+
+def check_event_makes_sense_in_sequence(broadcast_event, provider):
+    """
+    If any previous event hasn't sent yet for that provider, then we shouldn't send the current event. Instead, fail and
+    raise a P1 - so that a notify team member can assess the state of the previous messages, and if necessary, can
+    replay the `send_broadcast_provider_message` task if the previous message has now been sent.
+
+    Note: This is called before the new broadcast_provider_message is created.
+
+    # Help, I've come across this code following a pagerduty alert, what should I do?
+
+    1. Find the failing broadcast_provider_message associated with the previous event that caused this to trip.
+    2. If that provider message is still failing to send, fix the issue causing that. The task to send that previous
+       message might still be retrying in the background - look for logs related to that task.
+    3. If that provider message has sent succesfully, you might need to send this task off depending on context. This
+       might not always be true though, for example, it may not be necessary to send a cancel if the original alert has
+       already expired.
+    4. If you need to re-send this task off again, you'll need to run the following command on paas:
+       `send_broadcast_provider_message.apply_async(args=(broadcast_event_id, provider), queue=QueueNames.BROADCASTS)`
+    """
     current_provider_message = broadcast_event.get_provider_message(provider)
     # if this is the first time a task is being executed, it won't have a provider message yet
     if current_provider_message and current_provider_message.status != BroadcastProviderMessageStatus.SENDING:
@@ -168,7 +170,8 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
 
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    check_provider_message_should_send(broadcast_event, provider)
+    check_event_is_authorised_to_be_sent(broadcast_event, provider)
+    check_event_makes_sense_in_sequence(broadcast_event, provider)
 
     # the broadcast_provider_message may already exist if we retried previously
     broadcast_provider_message = broadcast_event.get_provider_message(provider)
