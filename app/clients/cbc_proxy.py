@@ -26,10 +26,6 @@ from app.utils import DATETIME_FORMAT, format_sequential_number
 #    the preceeding Alert message in the previous_provider_messages field
 
 
-class CBCProxyFatalException(Exception):
-    pass
-
-
 class CBCProxyRetryableException(Exception):
     pass
 

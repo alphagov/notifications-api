@@ -5,10 +5,7 @@ from flask import current_app
 from sqlalchemy.schema import Sequence
 
 from app import cbc_proxy_client, db, notify_celery, zendesk_client
-from app.clients.cbc_proxy import (
-    CBCProxyFatalException,
-    CBCProxyRetryableException,
-)
+from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.config import QueueNames
 from app.dao.broadcast_message_dao import (
     create_broadcast_provider_message,
@@ -21,6 +18,10 @@ from app.models import (
     BroadcastProviderMessageStatus,
 )
 from app.utils import format_sequential_number
+
+
+class BroadcastIntegrityError(Exception):
+    pass
 
 
 def get_retry_delay(retry_count):
@@ -58,16 +59,14 @@ def check_provider_message_should_send(broadcast_event, provider):
     current_provider_message = broadcast_event.get_provider_message(provider)
     # if this is the first time a task is being executed, it won't have a provider message yet
     if current_provider_message and current_provider_message.status != BroadcastProviderMessageStatus.SENDING:
-        raise CBCProxyFatalException(
+        raise BroadcastIntegrityError(
             f'Cannot send broadcast_event {broadcast_event.id} ' +
             f'to provider {provider}: ' +
             f'It is in status {current_provider_message.status}'
         )
 
     if broadcast_event.transmitted_finishes_at < datetime.utcnow():
-        # TODO: This should be a different kind of exception to distinguish "We should know something went wrong, but
-        # no immediate action" from "We need to fix this immediately"
-        raise CBCProxyFatalException(
+        raise BroadcastIntegrityError(
             f'Cannot send broadcast_event {broadcast_event.id} ' +
             f'to provider {provider}: ' +
             f'The expiry time of {broadcast_event.transmitted_finishes_at} has already passed'
@@ -83,7 +82,7 @@ def check_provider_message_should_send(broadcast_event, provider):
 
             # the previous message hasn't even got round to running `send_broadcast_provider_message` yet.
             if not prev_provider_message:
-                raise CBCProxyFatalException(
+                raise BroadcastIntegrityError(
                     f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
                     f'(type {prev_event.message_type}) has no provider_message for provider {provider} yet.\n' +
                     'You must ensure that the other event sends succesfully, then manually kick off this event ' +
@@ -93,7 +92,7 @@ def check_provider_message_should_send(broadcast_event, provider):
             # if there's a previous message that has started but not finished sending (whether it fatally errored or is
             # currently retrying)
             if prev_provider_message.status != BroadcastProviderMessageStatus.ACK:
-                raise CBCProxyFatalException(
+                raise BroadcastIntegrityError(
                     f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
                     f'(type {prev_event.message_type}) has not finished sending to provider {provider} yet.\n' +
                     f'It is currently in status "{prev_provider_message.status}".\n' +

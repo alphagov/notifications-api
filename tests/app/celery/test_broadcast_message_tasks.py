@@ -7,16 +7,14 @@ from celery.exceptions import Retry
 from freezegun import freeze_time
 
 from app.celery.broadcast_message_tasks import (
+    BroadcastIntegrityError,
     check_provider_message_should_send,
     get_retry_delay,
     send_broadcast_event,
     send_broadcast_provider_message,
     trigger_link_test,
 )
-from app.clients.cbc_proxy import (
-    CBCProxyFatalException,
-    CBCProxyRetryableException,
-)
+from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.models import (
     BROADCAST_TYPE,
     BroadcastEventMessageType,
@@ -620,7 +618,7 @@ def test_check_provider_message_should_send_raises_if_event_has_expired(sample_t
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 11, 59),
     )
-    with pytest.raises(CBCProxyFatalException) as exc:
+    with pytest.raises(BroadcastIntegrityError) as exc:
         check_provider_message_should_send(current_event, 'ee')
     assert 'The expiry time of 2021-01-01 11:59:00 has already passed' in str(exc.value)
 
@@ -651,7 +649,7 @@ def test_check_provider_message_should_send_raises_if_older_event_still_sending(
     create_broadcast_provider_message(past_still_sending_event, provider='ee', status=BroadcastProviderMessageStatus.SENDING)  # noqa
 
     # we havent sent the previous update yet - it's still in sending - so don't try and send this one.
-    with pytest.raises(CBCProxyFatalException) as exc:
+    with pytest.raises(BroadcastIntegrityError) as exc:
         check_provider_message_should_send(current_event, 'ee')
 
     assert f'Previous event {past_still_sending_event.id} (type update) has not finished sending to provider ee' in str(exc.value)  # noqa
@@ -683,7 +681,7 @@ def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_
     create_broadcast_provider_message(past_succesful_event, provider='ee', status=BroadcastProviderMessageStatus.ACK)
 
     # we shouldn't send the update now, because a previous event is still stuck in sending
-    with pytest.raises(CBCProxyFatalException) as exc:
+    with pytest.raises(BroadcastIntegrityError) as exc:
         check_provider_message_should_send(current_event, 'ee')
 
     assert f'Previous event {past_still_sending_event.id} (type update) has no provider_message for provider ee' in str(exc.value)  # noqa
@@ -714,15 +712,15 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
     BroadcastProviderMessageStatus.SENDING,
     pytest.param(
         BroadcastProviderMessageStatus.ACK,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+        marks=pytest.mark.xfail(raises=BroadcastIntegrityError)
     ),
     pytest.param(
         BroadcastProviderMessageStatus.ERR,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+        marks=pytest.mark.xfail(raises=BroadcastIntegrityError)
     ),
     pytest.param(
         BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
+        marks=pytest.mark.xfail(raises=BroadcastIntegrityError)
     ),
 ])
 def test_check_provider_message_should_send_raises_if_current_event_already_has_provider_message_not_in_sending(
