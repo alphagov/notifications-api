@@ -236,6 +236,6 @@ def trigger_link_test(provider):
         sequence = Sequence('broadcast_provider_message_number_seq')
         sequential_number = db.session.connection().execute(sequence)
         formatted_seq_number = format_sequential_number(sequential_number)
-    message = f"Sending a link test to CBC proxy for provider {provider} with ID {identifier}"
+    message = f"Sending a link test to CBC proxy for provider {provider}. Identifier in payload is {identifier}"
     current_app.logger.info(message)
     cbc_proxy_client.get_proxy(provider).send_link_test(identifier, formatted_seq_number)
