@@ -163,8 +163,8 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
         formatted_message_number = format_sequential_number(broadcast_provider_message.message_number)
 
     current_app.logger.info(
-        f'invoking cbc proxy to send '
-        f'broadcast_event {broadcast_event.reference} '
+        f'Invoking cbc proxy to send broadcast_provider_message with ID of {broadcast_provider_message.id} '
+        f'and broadcast_event ID of {broadcast_event_id} '
         f'msgType {broadcast_event.message_type}'
     )
 
@@ -215,8 +215,8 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
     except CBCProxyRetryableException as exc:
         delay = get_retry_delay(self.request.retries)
         current_app.logger.exception(
-            f'Retrying send_broadcast_provider_message for broadcast_event {broadcast_event_id} and ' +
-            f'provider {provider} in {delay} seconds'
+            f'Retrying send_broadcast_provider_message for broadcast event {broadcast_event_id}, '
+            f'provider message {broadcast_provider_message.id}, provider {provider} in {delay} seconds'
         )
 
         self.retry(
