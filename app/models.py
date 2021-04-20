@@ -579,6 +579,9 @@ class AnnualBilling(db.Model):
     UniqueConstraint('financial_year_start', 'service_id', name='ix_annual_billing_service_id')
     service = db.relationship(Service, backref=db.backref("annual_billing", uselist=True))
 
+    __table_args__ = (UniqueConstraint(
+        'service_id', 'financial_year_start', name='uix_service_id_financial_year_start'),)
+
     def serialize_free_sms_items(self):
         return {
             'free_sms_fragment_limit': self.free_sms_fragment_limit,

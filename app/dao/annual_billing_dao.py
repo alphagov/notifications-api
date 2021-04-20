@@ -102,7 +102,7 @@ def set_default_free_allowance_for_service(service, year_start=None):
                                 f"{default_free_sms_fragment_limits['other'][year_start]}")
         free_allowance = default_free_sms_fragment_limits['other'][year_start]
 
-    dao_create_or_update_annual_billing_for_year(
+    return dao_create_or_update_annual_billing_for_year(
         service.id,
         free_allowance,
         year_start
