@@ -488,13 +488,20 @@ def test_update_broadcast_message_status_doesnt_let_you_update_other_things(admi
     }]
 
 
-def test_update_broadcast_message_status_stores_cancelled_by_and_cancelled_at(
-    admin_request, sample_broadcast_service, mocker
+@pytest.mark.parametrize('user_is_platform_admin', [True, False])
+def test_update_broadcast_message_allows_service_user_and_platform_admin_to_cancel(
+    admin_request, sample_broadcast_service, mocker, user_is_platform_admin
 ):
+    """
+    Only platform admins and users belonging to that service should be able to cancel broadcasts.
+    """
     t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
-    sample_broadcast_service.users.append(canceller)
+    if user_is_platform_admin:
+        canceller.platform_admin = True
+    else:
+        sample_broadcast_service.users.append(canceller)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     response = admin_request.post(
@@ -737,7 +744,7 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
     )
 
     assert mock_task.called is False
-    assert 'cannot approve broadcast' in response['message']
+    assert 'cannot update broadcast' in response['message']
 
 
 @pytest.mark.parametrize('current_status, new_status', [

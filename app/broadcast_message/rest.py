@@ -43,10 +43,12 @@ def _parse_nullable_datetime(dt):
 
 def _update_broadcast_message(broadcast_message, new_status, updating_user):
     if updating_user not in broadcast_message.service.users:
-        raise InvalidRequest(
-            f'User {updating_user.id} cannot approve broadcast_message {broadcast_message.id} from other service',
-            status_code=400
-        )
+        #  we allow platform admins to cancel broadcasts
+        if not (new_status == BroadcastStatusType.CANCELLED and updating_user.platform_admin):
+            raise InvalidRequest(
+                f'User {updating_user.id} cannot update broadcast_message {broadcast_message.id} from other service',
+                status_code=400
+            )
 
     if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
         raise InvalidRequest(
