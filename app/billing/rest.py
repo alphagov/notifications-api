@@ -7,16 +7,17 @@ from app.billing.billing_schemas import (
 )
 from app.dao.annual_billing_dao import (
     dao_create_or_update_annual_billing_for_year,
-    dao_get_all_free_sms_fragment_limit,
     dao_get_free_sms_fragment_limit_for_year,
     dao_update_annual_billing_for_future_years,
+    set_default_free_allowance_for_service,
 )
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.fact_billing_dao import (
     fetch_billing_totals_for_year,
     fetch_monthly_billing_for_year,
 )
-from app.errors import InvalidRequest, register_errors
+from app.errors import register_errors
+from app.models import Service
 from app.schema_validation import validate
 
 billing_blueprint = Blueprint(
@@ -62,27 +63,14 @@ def get_free_sms_fragment_limit(service_id):
     annual_billing = dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start)
 
     if annual_billing is None:
-        # An entry does not exist in annual_billing table for that service and year. If it is a past year,
-        # we return the oldest entry.
-        # If it is the current or future years, we create an entry in the db table using the newest record,
-        # and return that number.  If all fails, we return InvalidRequest.
-        sms_list = dao_get_all_free_sms_fragment_limit(service_id)
+        service = Service.query.get(service_id)
+        # An entry does not exist in annual_billing table for that service and year.
+        # Set the annual billing to the default free allowance based on the organisation type of the service.
 
-        if not sms_list:
-            raise InvalidRequest('no free-sms-fragment-limit entry for service {} in DB'.format(service_id), 404)
-        else:
-            if financial_year_start is None:
-                financial_year_start = get_current_financial_year_start_year()
-
-            if int(financial_year_start) < get_current_financial_year_start_year():
-                # return the earliest historical entry
-                annual_billing = sms_list[0]   # The oldest entry
-            else:
-                annual_billing = sms_list[-1]  # The newest entry
-
-                annual_billing = dao_create_or_update_annual_billing_for_year(service_id,
-                                                                              annual_billing.free_sms_fragment_limit,
-                                                                              financial_year_start)
+        annual_billing = set_default_free_allowance_for_service(
+            service=service,
+            year_start=int(financial_year_start) if financial_year_start else None
+        )
 
     return jsonify(annual_billing.serialize_free_sms_items()), 200
 
