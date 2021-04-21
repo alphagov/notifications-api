@@ -68,7 +68,8 @@ def send_sms_to_provider(notification):
                     to=notification.normalised_to,
                     content=str(template),
                     reference=str(notification.id),
-                    sender=notification.reply_to_text
+                    sender=notification.reply_to_text,
+                    international=notification.international
                 )
             except Exception as e:
                 notification.billable_units = template.fragment_count

@@ -123,7 +123,8 @@ def test_should_send_personalised_template_to_correct_sms_provider_and_persist(
         to="447234123123",
         content="Sample service: Hello Jo\nHere is <em>some HTML</em> & entities",
         reference=str(db_notification.id),
-        sender=current_app.config['FROM_NUMBER']
+        sender=current_app.config['FROM_NUMBER'],
+        international=False
     )
 
     notification = Notification.query.filter_by(id=db_notification.id).one()
@@ -158,7 +159,7 @@ def test_should_send_personalised_template_to_correct_email_provider_and_persist
         'Jo <em>some HTML</em>',
         body='Hello Jo\nThis is an email from GOV.\u200bUK with <em>some HTML</em>\n',
         html_body=ANY,
-        reply_to_address=None
+        reply_to_address=None,
     )
 
     assert '<!DOCTYPE html' in app.aws_ses_client.send_email.call_args[1]['html_body']
@@ -185,7 +186,7 @@ def test_should_not_send_email_message_when_service_is_inactive_notifcation_is_i
 
 
 @pytest.mark.parametrize("client_send", ["app.mmg_client.send_sms", "app.firetext_client.send_sms"])
-def test_should_not_send_sms_message_when_service_is_inactive_notifcation_is_in_tech_failure(
+def test_should_not_send_sms_message_when_service_is_inactive_notification_is_in_tech_failure(
         sample_service, sample_notification, mocker, client_send):
     sample_service.active = False
     send_mock = mocker.patch(client_send, return_value='reference')
@@ -226,7 +227,8 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         to=validate_and_format_phone_number("+447234123123"),
         content="Sample service: This is a template:\nwith a newline",
         reference=str(db_notification.id),
-        sender=current_app.config['FROM_NUMBER']
+        sender=current_app.config['FROM_NUMBER'],
+        international=False
     )
 
     persisted_notification = notifications_dao.get_notification_by_id(db_notification.id)
@@ -324,7 +326,8 @@ def test_should_send_sms_with_downgraded_content(notify_db_session, mocker):
         to=ANY,
         content=gsm_message,
         reference=ANY,
-        sender=ANY
+        sender=ANY,
+        international=False
     )
 
 
@@ -345,7 +348,8 @@ def test_send_sms_should_use_service_sms_sender(
         to=ANY,
         content=ANY,
         reference=ANY,
-        sender=sms_sender.sms_sender
+        sender=sms_sender.sms_sender,
+        international=False
     )
 
 
@@ -666,7 +670,8 @@ def test_should_send_sms_to_international_providers(
         to="447234123999",
         content=ANY,
         reference=str(notification_uk.id),
-        sender=current_app.config['FROM_NUMBER']
+        sender=current_app.config['FROM_NUMBER'],
+        international=False
     )
 
     send_to_providers.send_sms_to_provider(
@@ -677,7 +682,8 @@ def test_should_send_sms_to_international_providers(
         to="601117224412",
         content=ANY,
         reference=str(notification_international.id),
-        sender=current_app.config['FROM_NUMBER']
+        sender=current_app.config['FROM_NUMBER'],
+        international=True
     )
 
     assert notification_uk.status == 'sending'
@@ -715,6 +721,7 @@ def test_should_handle_sms_sender_and_prefix_message(
         sender=expected_sender,
         to=ANY,
         reference=ANY,
+        international=False
     )
 
 
@@ -750,7 +757,8 @@ def test_send_sms_to_provider_should_use_normalised_to(
     send_mock.assert_called_once_with(to=notification.normalised_to,
                                       content=ANY,
                                       reference=str(notification.id),
-                                      sender=notification.reply_to_text)
+                                      sender=notification.reply_to_text,
+                                      international=False)
 
 
 def test_send_email_to_provider_should_user_normalised_to(
@@ -801,7 +809,8 @@ def test_send_sms_to_provider_should_return_template_if_found_in_redis(
     send_mock.assert_called_once_with(to=notification.normalised_to,
                                       content=ANY,
                                       reference=str(notification.id),
-                                      sender=notification.reply_to_text)
+                                      sender=notification.reply_to_text,
+                                      international=False)
 
 
 def test_send_email_to_provider_should_return_template_if_found_in_redis(

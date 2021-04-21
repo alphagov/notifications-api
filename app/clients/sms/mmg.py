@@ -97,7 +97,7 @@ class MMGClient(SmsClient):
     def get_name(self):
         return self.name
 
-    def send_sms(self, to, content, reference, multi=True, sender=None):
+    def send_sms(self, to, content, reference, international, multi=True, sender=None):
         data = {
             "reqType": "BULK",
             "MSISDN": to,

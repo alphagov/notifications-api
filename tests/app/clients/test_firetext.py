@@ -47,7 +47,7 @@ def test_send_sms_successful_returns_firetext_response(mocker, mock_firetext_cli
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
-        response = mock_firetext_client.send_sms(to, content, reference)
+        response = mock_firetext_client.send_sms(to, content, reference, False)
 
     response_json = response.json()
     assert response.status_code == 200
@@ -65,7 +65,7 @@ def test_send_sms_calls_firetext_correctly(mocker, mock_firetext_client):
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
-        mock_firetext_client.send_sms(to, content, reference)
+        mock_firetext_client.send_sms(to, content, reference, False)
 
     assert request_mock.call_count == 1
     assert request_mock.request_history[0].url == 'https://example.com/firetext'
@@ -75,6 +75,30 @@ def test_send_sms_calls_firetext_correctly(mocker, mock_firetext_client):
     assert request_args['apiKey'][0] == 'foo'
     assert request_args['from'][0] == 'bar'
     assert request_args['to'][0] == '447234567890'
+    assert request_args['message'][0] == content
+    assert request_args['reference'][0] == reference
+
+
+def test_send_sms_calls_firetext_correctly_for_international(mocker, mock_firetext_client):
+    to = '+607234567890'
+    content = 'my message'
+    reference = 'my reference'
+    response_dict = {
+        'code': 0,
+    }
+
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
+        mock_firetext_client.send_sms(to, content, reference, True)
+
+    assert request_mock.call_count == 1
+    assert request_mock.request_history[0].url == 'https://example.com/firetext'
+    assert request_mock.request_history[0].method == 'POST'
+
+    request_args = parse_qs(request_mock.request_history[0].text)
+    assert request_args['apiKey'][0] == 'international'
+    assert request_args['from'][0] == 'bar'
+    assert request_args['to'][0] == '607234567890'
     assert request_args['message'][0] == content
     assert request_args['reference'][0] == reference
 
@@ -90,7 +114,7 @@ def test_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
 
     with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
-        mock_firetext_client.send_sms(to, content, reference)
+        mock_firetext_client.send_sms(to, content, reference, False)
 
     assert exc.value.status_code == 200
     assert '"description": "Some kind of error"' in exc.value.text
@@ -103,7 +127,7 @@ def test_send_sms_raises_if_firetext_rejects_with_unexpected_data(mocker, mock_f
 
     with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=400)
-        mock_firetext_client.send_sms(to, content, reference)
+        mock_firetext_client.send_sms(to, content, reference, False)
 
     assert exc.value.status_code == 400
     assert exc.value.text == '{"something": "gone bad"}'
@@ -121,7 +145,7 @@ def test_send_sms_override_configured_shortcode_with_sender(mocker, mock_firetex
 
     with requests_mock.Mocker() as request_mock:
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
-        mock_firetext_client.send_sms(to, content, reference, sender=sender)
+        mock_firetext_client.send_sms(to, content, reference, False, sender=sender)
 
     request_args = parse_qs(request_mock.request_history[0].text)
     assert request_args['from'][0] == 'fromservice'
@@ -132,7 +156,7 @@ def test_send_sms_raises_if_firetext_rejects_with_connect_timeout(rmock, mock_fi
 
     with pytest.raises(FiretextClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/firetext', exc=ConnectTimeout)
-        mock_firetext_client.send_sms(to, content, reference)
+        mock_firetext_client.send_sms(to, content, reference, False)
 
     assert exc.value.status_code == 504
     assert exc.value.text == 'Gateway Time-out'
@@ -143,7 +167,7 @@ def test_send_sms_raises_if_firetext_rejects_with_read_timeout(rmock, mock_firet
 
     with pytest.raises(FiretextClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/firetext', exc=ReadTimeout)
-        mock_firetext_client.send_sms(to, content, reference)
+        mock_firetext_client.send_sms(to, content, reference, False)
 
     assert exc.value.status_code == 504
     assert exc.value.text == 'Gateway Time-out'
