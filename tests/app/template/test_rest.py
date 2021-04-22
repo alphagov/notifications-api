@@ -731,14 +731,24 @@ def test_should_return_404_if_no_templates_for_service_with_id(client, sample_se
     assert json_resp['message'] == 'No result found'
 
 
-def test_create_400_for_over_limit_content(client, notify_api, sample_user, sample_service, fake_uuid):
+@pytest.mark.parametrize('template_type', (
+    SMS_TYPE, BROADCAST_TYPE,
+))
+def test_create_400_for_over_limit_content(
+    client,
+    notify_api,
+    sample_user,
+    fake_uuid,
+    template_type,
+):
+    sample_service = create_service(service_permissions=[template_type])
     content = ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(SMS_CHAR_COUNT_LIMIT + 1))
     data = {
         'name': 'too big template',
-        'template_type': SMS_TYPE,
+        'template_type': template_type,
         'content': content,
         'service': str(sample_service.id),
-        'created_by': str(sample_user.id)
+        'created_by': str(sample_service.created_by.id)
     }
     data = json.dumps(data)
     auth_header = create_authorization_header()
