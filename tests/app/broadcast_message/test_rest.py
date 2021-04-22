@@ -192,6 +192,40 @@ def test_create_broadcast_message_400s_if_json_schema_fails_validation(
     assert response['errors'] == expected_errors
 
 
+@pytest.mark.parametrize('content, expected_status, expected_errors', (
+    ('a', 201, None),
+    ('a' * 1_395, 201, None),
+    ('a\r\n' * 697, 201, None),  # 1,394 chars – new lines normalised to \n
+    ('a' * 1_396, 400, (
+        'Content must be 1,395 characters or fewer'
+    )),
+    ('ŵ' * 615, 201, None),
+    ('ŵ' * 616, 400, (
+        'Content must be 615 characters or fewer '
+        '(because it could not be GSM7 encoded)'
+    )),
+))
+def test_create_broadcast_message_400s_if_content_too_long(
+    admin_request,
+    sample_broadcast_service,
+    content,
+    expected_status,
+    expected_errors,
+):
+    response = admin_request.post(
+        'broadcast_message.create_broadcast_message',
+        service_id=sample_broadcast_service.id,
+        _data={
+            'service_id': str(sample_broadcast_service.id),
+            'created_by': str(sample_broadcast_service.created_by_id),
+            'reference': 'abc123',
+            'content': content,
+        },
+        _expected_status=expected_status,
+    )
+    assert response.get('message') == expected_errors
+
+
 @freeze_time('2020-01-01')
 def test_create_broadcast_message_can_be_created_from_content(admin_request, sample_broadcast_service):
     response = admin_request.post(

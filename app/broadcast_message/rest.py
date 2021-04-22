@@ -2,6 +2,7 @@ from datetime import datetime
 
 import iso8601
 from flask import Blueprint, current_app, jsonify, request
+from notifications_utils.template import BroadcastMessageTemplate
 
 from app.broadcast_message.broadcast_message_schema import (
     create_broadcast_message_schema,
@@ -116,6 +117,19 @@ def create_broadcast_message(service_id):
         reference = None
     else:
         template, content, reference = None, data['content'], data['reference']
+        temporary_template = BroadcastMessageTemplate.from_content(content)
+        if temporary_template.content_too_long:
+            raise InvalidRequest(
+                (
+                    f'Content must be '
+                    f'{temporary_template.max_content_count:,.0f} '
+                    f'characters or fewer'
+                ) + (
+                    ' (because it could not be GSM7 encoded)'
+                    if temporary_template.non_gsm_characters else ''
+                ),
+                status_code=400,
+            )
 
     broadcast_message = BroadcastMessage(
         service_id=service.id,
