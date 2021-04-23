@@ -372,7 +372,7 @@ def test_get_template_version_returns_none_for_hidden_templates(sample_service):
 def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service, fake_uuid):
     with pytest.raises(NoResultFound) as e:
         dao_get_template_by_id_and_service_id(template_id=fake_uuid, service_id=sample_service.id)
-    assert 'No row was found for one' in str(e.value)
+    assert 'No row was found when one was required' in str(e.value)
 
 
 def test_create_template_creates_a_history_record_with_current_data(sample_service, sample_user):
