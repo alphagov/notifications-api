@@ -5,7 +5,10 @@ import botocore
 from flask import Blueprint, current_app, jsonify, request
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 from notifications_utils.pdf import extract_page_from_pdf
-from notifications_utils.template import SMSMessageTemplate
+from notifications_utils.template import (
+    BroadcastMessageTemplate,
+    SMSMessageTemplate,
+)
 from PyPDF2.utils import PdfReadError
 from requests import post as requests_post
 from sqlalchemy.orm.exc import NoResultFound
@@ -28,7 +31,13 @@ from app.dao.templates_dao import (
 )
 from app.errors import InvalidRequest, register_errors
 from app.letters.utils import get_letter_pdf_and_metadata
-from app.models import LETTER_TYPE, SECOND_CLASS, SMS_TYPE, Template
+from app.models import (
+    BROADCAST_TYPE,
+    LETTER_TYPE,
+    SECOND_CLASS,
+    SMS_TYPE,
+    Template,
+)
 from app.notifications.validators import check_reply_to, service_has_permission
 from app.schema_validation import validate
 from app.schemas import (
@@ -48,10 +57,13 @@ register_errors(template_blueprint)
 
 
 def _content_count_greater_than_limit(content, template_type):
-    if template_type != SMS_TYPE:
-        return False
-    template = SMSMessageTemplate({'content': content, 'template_type': template_type})
-    return template.is_message_too_long()
+    if template_type == SMS_TYPE:
+        template = SMSMessageTemplate({'content': content, 'template_type': template_type})
+        return template.is_message_too_long()
+    if template_type == BROADCAST_TYPE:
+        template = BroadcastMessageTemplate({'content': content, 'template_type': template_type})
+        return template.is_message_too_long()
+    return False
 
 
 def validate_parent_folder(template_json):
