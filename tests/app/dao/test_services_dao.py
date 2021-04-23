@@ -509,7 +509,7 @@ def test_dao_fetch_live_services_data(sample_user):
 def test_get_service_by_id_returns_none_if_no_service(notify_db):
     with pytest.raises(NoResultFound) as e:
         dao_fetch_service_by_id(str(uuid.uuid4()))
-    assert 'No row was found for one()' in str(e.value)
+    assert 'No row was found when one was required' in str(e.value)
 
 
 def test_get_service_by_id_returns_service(notify_db_session):
