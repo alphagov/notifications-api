@@ -20,6 +20,9 @@ from app.models import (
     Job,
     Notification,
 )
+from app.notifications.process_letter_notifications import (
+    create_letter_notification,
+)
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_letter_response
@@ -671,6 +674,31 @@ def test_post_precompiled_letter_notification_returns_201(
 
     resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference', 'postage': expected_postage}
+
+
+def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is_not_persisted(
+    client, notify_user, mocker
+):
+    sample_service = create_service(service_permissions=['letter'])
+    persist_letter_mock = mocker.patch('app.v2.notifications.post_notifications.create_letter_notification',
+                                       side_effect=create_letter_notification)
+    s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf', side_effect=Exception())
+    mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+    data = {
+        "reference": "letter-reference",
+        "content": "bGV0dGVyLWNvbnRlbnQ="
+    }
+
+    auth_header = create_authorization_header(service_id=sample_service.id)
+    with pytest.raises(expected_exception=Exception):
+        client.post(
+            path="v2/notifications/letter",
+            data=json.dumps(data),
+            headers=[('Content-Type', 'application/json'), auth_header])
+
+    assert s3mock.called
+    assert persist_letter_mock.called
+    assert Notification.query.count() == 0
 
 
 def test_post_letter_notification_throws_error_for_invalid_postage(client, notify_user, mocker):

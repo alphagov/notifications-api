@@ -23,6 +23,7 @@ from app.celery.research_mode_tasks import create_fake_letter_response_file
 from app.celery.tasks import save_api_email, save_api_sms
 from app.clients.document_download import DocumentDownloadError
 from app.config import QueueNames, TaskNames
+from app.dao.dao_utils import transaction
 from app.dao.templates_dao import get_precompiled_letter_template
 from app.letters.utils import upload_letter_pdf
 from app.models import (
@@ -412,20 +413,20 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
     except ValueError:
         raise BadRequestError(message='Cannot decode letter content (invalid base64 encoding)', status_code=400)
 
-    notification = create_letter_notification(letter_data=letter_data,
-                                              service=service,
-                                              template=template,
-                                              api_key=api_key,
-                                              status=status,
-                                              reply_to_text=reply_to_text)
+    with transaction():
+        notification = create_letter_notification(letter_data=letter_data,
+                                                  service=service,
+                                                  template=template,
+                                                  api_key=api_key,
+                                                  status=status,
+                                                  reply_to_text=reply_to_text)
+        filename = upload_letter_pdf(notification, letter_content, precompiled=True)
 
     resp = {
         'id': notification.id,
         'reference': notification.client_reference,
         'postage': notification.postage
     }
-
-    filename = upload_letter_pdf(notification, letter_content, precompiled=True)
 
     current_app.logger.info('Calling task scan-file for {}'.format(filename))
 
