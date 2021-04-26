@@ -150,9 +150,12 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
         [(FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international")], else_=FactBilling.postage
     ).label("postage")
 
-    postage_order = case(((formatted_postage == "second", 1),
-                          (formatted_postage == "first", 2),
-                          (formatted_postage == "international", 3)))
+    postage_order = case(
+            (formatted_postage == "second", 1),
+            (formatted_postage == "first", 2),
+            (formatted_postage == "international", 3),
+            else_=0  # assumes never get 0 as a result
+    )
 
     query = db.session.query(
         Organisation.name.label("organisation_name"),

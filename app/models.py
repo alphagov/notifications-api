@@ -199,8 +199,6 @@ class ServiceUser(db.Model):
         UniqueConstraint('user_id', 'service_id', name='uix_user_to_service'),
     )
 
-    user = db.relationship('User')
-
 
 user_to_organisation = db.Table(
     'user_to_organisation',
@@ -671,7 +669,6 @@ class ServicePermission(db.Model):
                            primary_key=True, index=True, nullable=False)
     permission = db.Column(db.String(255), db.ForeignKey('service_permission_types.name'),
                            index=True, primary_key=True, nullable=False)
-    service = db.relationship("Service")
     created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     service_permission_types = db.relationship(
