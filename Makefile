@@ -22,17 +22,17 @@ NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 ## DEVELOPMENT
 
 .PHONY: bootstrap
-bootstrap: generate-version-file
+bootstrap: generate-version-file ## Set up everything to run the app
 	pip3 install -r requirements_for_test.txt
 	createdb notification_api || true
 	. environment.sh && flask db upgrade
 
 .PHONY: run-flask
-run-flask:
+run-flask: ## Run flask
 	. environment.sh && flask run -p 6011
 
 .PHONY: run-celery
-run-celery:
+run-celery: ## Run celery
 	. environment.sh && celery \
 		-A run_celery.notify_celery worker \
 		--pidfile="/tmp/celery.pid" \
@@ -40,7 +40,7 @@ run-celery:
 		--concurrency=4
 
 .PHONY: run-celery-beat
-run-celery-beat:
+run-celery-beat: ## Run celery beat
 	. environment.sh && celery \
 		-A run_celery.notify_celery beat \
 		--loglevel=INFO
@@ -167,7 +167,7 @@ check-if-migrations-to-run:
 	@echo $(shell python3 scripts/check_if_new_migration.py)
 
 .PHONY: cf-deploy-failwhale
-cf-deploy-failwhale:  #
+cf-deploy-failwhale:
 	$(if ${CF_SPACE},,$(error Must target space, eg `make preview cf-deploy-failwhale`))
 	cd ./paas-failwhale; cf push notify-api-failwhale -f manifest.yml
 
