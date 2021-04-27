@@ -411,6 +411,27 @@ def test_should_be_able_to_archive_template(client, sample_template):
     assert Template.query.first().archived
 
 
+def test_should_be_able_to_archive_template_should_remove_template_folders(
+        client, sample_service
+):
+    template_folder = create_template_folder(service=sample_service)
+    template = create_template(service=sample_service, folder=template_folder)
+
+    data = {
+        'archived': True,
+    }
+
+    client.post(
+        f'/service/{sample_service.id}/template/{template.id}',
+        headers=[('Content-Type', 'application/json'),  create_authorization_header()],
+        data=json.dumps(data)
+    )
+
+    updated_template = Template.query.get(template.id)
+    assert updated_template.archived
+    assert not updated_template.folder
+
+
 def test_get_precompiled_template_for_service(
     client,
     notify_user,
