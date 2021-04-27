@@ -85,33 +85,33 @@ def test_call_exports_request_id_from_kwargs(mocker, celery_task):
     assert g.request_id == '1234'
 
 
-def test_apply_async_injects_global_request_id_into_kwargs(mocker, celery_task):
-    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+def test_send_task_injects_global_request_id_into_kwargs(mocker, notify_api):
+    super_apply = mocker.patch('celery.Celery.send_task')
     g.request_id = '1234'
-    celery_task.apply_async()
-    super_apply.assert_called_with(None, {'request_id': '1234'})
+    notify_celery.send_task('some-task')
+    super_apply.assert_called_with('some-task', None, {'request_id': '1234'})
 
 
-def test_apply_async_inject_request_id_with_other_kwargs(mocker, celery_task):
-    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+def test_send_task_injects_request_id_with_other_kwargs(mocker, notify_api):
+    super_apply = mocker.patch('celery.Celery.send_task')
     g.request_id = '1234'
-    celery_task.apply_async(kwargs={'something': 'else'})
-    super_apply.assert_called_with(None, {'request_id': '1234', 'something': 'else'})
+    notify_celery.send_task('some-task', kwargs={'something': 'else'})
+    super_apply.assert_called_with('some-task', None, {'request_id': '1234', 'something': 'else'})
 
 
-def test_apply_async_inject_request_id_with_positional_args(mocker, celery_task):
-    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+def test_send_task_injects_request_id_with_positional_args(mocker, notify_api):
+    super_apply = mocker.patch('celery.Celery.send_task')
     g.request_id = '1234'
-    celery_task.apply_async(['args'], {'something': 'else'})
-    super_apply.assert_called_with(['args'], {'request_id': '1234', 'something': 'else'})
+    notify_celery.send_task('some-task', ['args'], {'kw': 'args'})
+    super_apply.assert_called_with('some-task', ['args'], {'request_id': '1234', 'kw': 'args'})
 
 
-def test_apply_async_injects_id_into_kwargs_from_request(mocker, notify_api, celery_task):
-    super_apply = mocker.patch('celery.app.task.Task.apply_async')
+def test_send_task_injects_id_into_kwargs_from_request(mocker, notify_api):
+    super_apply = mocker.patch('celery.Celery.send_task')
     request_id_header = notify_api.config['NOTIFY_TRACE_ID_HEADER']
     request_headers = {request_id_header: '1234'}
 
     with notify_api.test_request_context(headers=request_headers):
-        celery_task.apply_async()
+        notify_celery.send_task('some-task')
 
-    super_apply.assert_called_with(None, {'request_id': '1234'})
+    super_apply.assert_called_with('some-task', None, {'request_id': '1234'})
