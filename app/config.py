@@ -288,7 +288,7 @@ class Config(object):
         },
         'check-if-letters-still-in-created': {
             'task': 'check-if-letters-still-in-created',
-            'schedule': crontab(day_of_week='mon-fri', hour=9, minute=0),
+            'schedule': crontab(day_of_week='mon-fri', hour=7, minute=0),
             'options': {'queue': QueueNames.PERIODIC}
         },
         'check-if-letters-still-pending-virus-check': {
