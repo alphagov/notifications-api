@@ -9,13 +9,9 @@ def dao_get_service_user(user_id, service_id):
 
 
 def dao_get_active_service_users(service_id):
-    query = db.session.query(
-        ServiceUser
-    ).join(
-        User, User.id == ServiceUser.user_id
-    ).filter(
-        User.state == 'active',
-        ServiceUser.service_id == service_id
+    query = ServiceUser.query.join(ServiceUser.user).filter(
+        ServiceUser.service_id == service_id,
+        User.state == 'active'
     )
 
     return query.all()

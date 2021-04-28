@@ -405,7 +405,7 @@ def set_permissions(user_id, service_id):
     # TODO fix security hole, how do we verify that the user
     # who is making this request has permission to make the request.
     service_user = dao_get_service_user(user_id, service_id)
-    user = get_user_by_id(user_id)
+    user = service_user.user
     service = dao_fetch_service_by_id(service_id=service_id)
 
     data = request.get_json()
