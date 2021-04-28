@@ -7,16 +7,14 @@ from celery.exceptions import Retry
 from freezegun import freeze_time
 
 from app.celery.broadcast_message_tasks import (
-    check_provider_message_should_send,
+    BroadcastIntegrityError,
+    check_event_makes_sense_in_sequence,
     get_retry_delay,
     send_broadcast_event,
     send_broadcast_provider_message,
     trigger_link_test,
 )
-from app.clients.cbc_proxy import (
-    CBCProxyFatalException,
-    CBCProxyRetryableException,
-)
+from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.models import (
     BROADCAST_TYPE,
     BroadcastEventMessageType,
@@ -602,31 +600,31 @@ def test_get_retry_delay_has_capped_backoff(retry_count, expected_delay):
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
+def test_check_event_makes_sense_in_sequence_doesnt_raise_if_event_hasnt_expired_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(
         broadcast_message,
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 12, 1),
     )
-    check_provider_message_should_send(current_event, 'ee')
+    check_event_makes_sense_in_sequence(current_event, 'ee')
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_raises_if_event_has_expired(sample_template):
+def test_send_broadcast_provider_message_raises_if_event_has_expired(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(
         broadcast_message,
         transmitted_starts_at=datetime(2021, 1, 1, 0, 0),
         transmitted_finishes_at=datetime(2021, 1, 1, 11, 59),
     )
-    with pytest.raises(CBCProxyFatalException) as exc:
-        check_provider_message_should_send(current_event, 'ee')
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
     assert 'The expiry time of 2021-01-01 11:59:00 has already passed' in str(exc.value)
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_raises_if_older_event_still_sending(sample_template):
+def test_send_broadcast_provider_message_raises_if_older_event_still_sending(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     # event approved at midnight
     past_succesful_event = create_broadcast_event(
@@ -651,14 +649,14 @@ def test_check_provider_message_should_send_raises_if_older_event_still_sending(
     create_broadcast_provider_message(past_still_sending_event, provider='ee', status=BroadcastProviderMessageStatus.SENDING)  # noqa
 
     # we havent sent the previous update yet - it's still in sending - so don't try and send this one.
-    with pytest.raises(CBCProxyFatalException) as exc:
-        check_provider_message_should_send(current_event, 'ee')
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
 
     assert f'Previous event {past_still_sending_event.id} (type update) has not finished sending to provider ee' in str(exc.value)  # noqa
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_sending_yet(sample_template):
+def test_send_broadcast_provider_message_raises_if_older_event_hasnt_started_sending_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     # event approved at midnight
     past_succesful_event = create_broadcast_event(
@@ -683,14 +681,14 @@ def test_check_provider_message_should_send_raises_if_older_event_hasnt_started_
     create_broadcast_provider_message(past_succesful_event, provider='ee', status=BroadcastProviderMessageStatus.ACK)
 
     # we shouldn't send the update now, because a previous event is still stuck in sending
-    with pytest.raises(CBCProxyFatalException) as exc:
-        check_provider_message_should_send(current_event, 'ee')
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
 
     assert f'Previous event {past_still_sending_event.id} (type update) has no provider_message for provider ee' in str(exc.value)  # noqa
 
 
 @freeze_time('2021-01-01 12:00')
-def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acked_yet(sample_template):
+def test_check_event_makes_sense_in_sequence_doesnt_raise_if_newer_event_not_acked_yet(sample_template):
     broadcast_message = create_broadcast_message(sample_template)
     # event approved at midnight
     current_event = create_broadcast_event(
@@ -707,34 +705,64 @@ def test_check_provider_message_should_send_doesnt_raise_if_newer_event_not_acke
 
     # this doesn't raise, because the alert event got an ack. The cancel doesn't have an event yet
     # but this task is only interested in the current task (the update) so doesn't worry about that
-    check_provider_message_should_send(current_event, 'ee')
+    check_event_makes_sense_in_sequence(current_event, 'ee')
 
 
 @pytest.mark.parametrize('existing_message_status', [
-    BroadcastProviderMessageStatus.SENDING,
-    pytest.param(
-        BroadcastProviderMessageStatus.ACK,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
-    ),
-    pytest.param(
-        BroadcastProviderMessageStatus.ERR,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
-    ),
-    pytest.param(
-        BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
-        marks=pytest.mark.xfail(raises=CBCProxyFatalException)
-    ),
+    BroadcastProviderMessageStatus.ACK,
+    BroadcastProviderMessageStatus.ERR,
+    BroadcastProviderMessageStatus.TECHNICAL_FAILURE,
 ])
-def test_check_provider_message_should_send_raises_if_current_event_already_has_provider_message_not_in_sending(
+def test_send_broadcast_provider_message_raises_if_current_event_already_has_provider_message_not_in_sending(
     sample_template,
     existing_message_status
 ):
     broadcast_message = create_broadcast_message(sample_template)
     current_event = create_broadcast_event(broadcast_message, message_type='alert')
-
     create_broadcast_provider_message(current_event, provider='ee', status=existing_message_status)
 
-    check_provider_message_should_send(current_event, 'ee')
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
+
+    assert f'in status {existing_message_status}' in str(exc.value)
+
+
+def test_send_broadcast_provider_message_raises_if_service_is_suspended(
+    sample_broadcast_service,
+):
+    sample_broadcast_service.active = False
+    broadcast_message = create_broadcast_message(service=sample_broadcast_service, content='test')
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
+
+    assert 'service is suspended' in str(exc.value)
+
+
+def test_send_broadcast_provider_message_raises_if_service_is_not_live(
+    sample_broadcast_service,
+):
+    sample_broadcast_service.restricted = True
+    broadcast_message = create_broadcast_message(service=sample_broadcast_service, content='test')
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
+
+    assert 'service is not live' in str(exc.value)
+
+
+def test_send_broadcast_provider_message_raises_if_message_is_stubbed(
+    sample_template,
+):
+    broadcast_message = create_broadcast_message(sample_template, stubbed=True)
+    current_event = create_broadcast_event(broadcast_message, message_type='alert')
+
+    with pytest.raises(BroadcastIntegrityError) as exc:
+        send_broadcast_provider_message(current_event.id, 'ee')
+
+    assert 'message is stubbed' in str(exc.value)
 
 
 def test_send_broadcast_provider_message_does_nothing_if_cbc_proxy_disabled(mocker, notify_api, sample_template):
