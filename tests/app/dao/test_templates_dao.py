@@ -13,12 +13,7 @@ from app.dao.templates_dao import (
     dao_update_template,
     dao_update_template_reply_to,
 )
-from app.models import (
-    Template,
-    TemplateFolder,
-    TemplateHistory,
-    TemplateRedacted,
-)
+from app.models import Template, TemplateHistory, TemplateRedacted
 from tests.app.db import create_letter_contact, create_template
 
 
@@ -93,35 +88,6 @@ def test_update_template(sample_service, sample_user):
     created.name = 'new name'
     dao_update_template(created)
     assert dao_get_all_templates_for_service(sample_service.id)[0].name == 'new name'
-
-
-def test_update_template_in_a_folder_to_archived(sample_service, sample_user):
-    template_data = {
-        'name': 'Sample Template',
-        'template_type': "sms",
-        'content': "Template content",
-        'service': sample_service,
-        'created_by': sample_user
-    }
-    template = Template(**template_data)
-
-    template_folder_data = {
-        'name': 'My Folder',
-        'service_id': sample_service.id,
-    }
-    template_folder = TemplateFolder(**template_folder_data)
-
-    template.folder = template_folder
-    dao_create_template(template)
-
-    template.archived = True
-    dao_update_template(template)
-
-    template_folder = TemplateFolder.query.one()
-    archived_template = Template.query.one()
-
-    assert template_folder
-    assert not archived_template.folder
 
 
 def test_dao_update_template_reply_to_none_to_some(sample_service, sample_user):
@@ -372,7 +338,7 @@ def test_get_template_version_returns_none_for_hidden_templates(sample_service):
 def test_get_template_by_id_and_service_returns_none_if_no_template(sample_service, fake_uuid):
     with pytest.raises(NoResultFound) as e:
         dao_get_template_by_id_and_service_id(template_id=fake_uuid, service_id=sample_service.id)
-    assert 'No row was found for one' in str(e.value)
+    assert 'No row was found when one was required' in str(e.value)
 
 
 def test_create_template_creates_a_history_record_with_current_data(sample_service, sample_user):

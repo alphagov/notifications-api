@@ -71,7 +71,13 @@ def dao_count_inbound_sms_for_service(service_id, limit_days):
 def _insert_inbound_sms_history(subquery, query_limit=10000):
     offset = 0
     inbound_sms_query = db.session.query(
-        *[x.name for x in InboundSmsHistory.__table__.c]
+        InboundSms.id,
+        InboundSms.created_at,
+        InboundSms.service_id,
+        InboundSms.notify_number,
+        InboundSms.provider_date,
+        InboundSms.provider_reference,
+        InboundSms.provider
     ).filter(InboundSms.id.in_(subquery))
     inbound_sms_count = inbound_sms_query.count()
 
