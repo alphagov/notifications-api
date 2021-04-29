@@ -37,7 +37,7 @@ def cloudfoundry_environ(os_environ, cloudfoundry_config):
 def test_extract_cloudfoundry_config_populates_other_vars(cloudfoundry_environ):
     extract_cloudfoundry_config()
 
-    assert os.environ['SQLALCHEMY_DATABASE_URI'] == 'postgres uri'
+    assert os.environ['SQLALCHEMY_DATABASE_URI'] == 'postgresql uri'
     assert os.environ['NOTIFY_ENVIRONMENT'] == '🚀🌌'
     assert os.environ['NOTIFY_LOG_PATH'] == '/home/vcap/logs/app.log'
 
