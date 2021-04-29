@@ -204,9 +204,10 @@ def test_should_allow_valid_token(client, sample_api_key, scheme):
     assert response.status_code == 200
 
 
-def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sample_api_key):
+@pytest.mark.parametrize('service_id', ['not-a-valid-id', 1234])
+def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sample_api_key, service_id):
     token = create_jwt_token(secret=get_unsigned_secrets(sample_api_key.service_id)[0],
-                             client_id=str('not-a-valid-id'))
+                             client_id=service_id)
     response = client.get(
         '/notifications',
         headers={'Authorization': "Bearer {}".format(token)}
@@ -491,5 +492,5 @@ def test_should_cache_service_and_api_key_lookups(mocker, client, sample_api_key
         call(str(sample_api_key.service_id))
     ]
     assert mock_get_service.call_args_list == [
-        call(str(sample_api_key.service_id))
+        call(sample_api_key.service_id)
     ]

@@ -1,3 +1,5 @@
+import uuid
+
 from flask import _request_ctx_stack, current_app, g, request
 from gds_metrics import Histogram
 from notifications_python_client.authentication import (
@@ -12,7 +14,6 @@ from notifications_python_client.errors import (
     TokenIssuerError,
 )
 from notifications_utils import request_helper
-from sqlalchemy.exc import DataError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.serialised_models import SerialisedService
@@ -99,10 +100,13 @@ def requires_auth():
     issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
     try:
-        with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
-            service = SerialisedService.from_id(issuer)
-    except DataError:
+        service_id = uuid.UUID(issuer)
+    except Exception:
         raise AuthError("Invalid token: service id is not the right data type", 403)
+
+    try:
+        with AUTH_DB_CONNECTION_DURATION_SECONDS.time():
+            service = SerialisedService.from_id(service_id)
     except NoResultFound:
         raise AuthError("Invalid token: service not found", 403)
 
