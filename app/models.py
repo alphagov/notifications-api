@@ -2553,13 +2553,19 @@ class ServiceBroadcastSettings(db.Model):
     channel = db.Column(
         db.String(255), db.ForeignKey('broadcast_channel_types.name'), nullable=False
     )
-    provider = db.Column(db.String, nullable=True)
+    provider = db.Column(db.String, db.ForeignKey('broadcast_provider_types.name'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class BroadcastChannelTypes(db.Model):
     __tablename__ = 'broadcast_channel_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class BroadcastProviderTypes(db.Model):
+    __tablename__ = 'broadcast_provider_types'
 
     name = db.Column(db.String(255), primary_key=True)
 
