@@ -1,9 +1,5 @@
-Generic single-database configuration.
+See https://flask-alembic.readthedocs.io/en/stable/.
 
-flask db migrate to generate migration script.
+You can run `flask db` for a list of the available commands.
 
-flask db upgrade to upgrade db with script.
-
-flask db downgrade to rollback db changes.
-
-flask db current to show current script.
+Note that we manually rename the auto-generated files so the prefix is a sequential number instead of a SHA. This means the files are listed in order, so it's easier to navigate the migration history.
