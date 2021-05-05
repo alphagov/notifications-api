@@ -563,7 +563,7 @@ def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500)
     ).all()
 
 
-def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=100):
+def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=1000):
     subquery = db.session.query(
         func.count(Notification.id).label('total_count'),
         Notification.service_id.label('service_id')
