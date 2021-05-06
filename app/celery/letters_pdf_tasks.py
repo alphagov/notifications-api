@@ -143,15 +143,17 @@ def collate_letter_pdfs_to_be_sent():
             filenames = [letter['Key'] for letter in letters]
 
             service_id = letters[0]['ServiceId']
+            organisation_id = letters[0]['OrganisationId']
 
             hash = urlsafe_b64encode(sha512(''.join(filenames).encode()).digest())[:20].decode()
             # eg NOTIFY.2018-12-31.001.Wjrui5nAvObjPd-3GEL-.ZIP
-            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.ZIP'.format(
+            dvla_filename = 'NOTIFY.{date}.{postage}.{num:03}.{hash}.{service_id}.{organisation_id}.ZIP'.format(
                 date=print_run_deadline.strftime("%Y-%m-%d"),
                 postage=RESOLVE_POSTAGE_FOR_FILE_NAME[postage],
                 num=i + 1,
                 hash=hash,
-                service_id=service_id
+                service_id=service_id,
+                organisation_id=organisation_id
             )
 
             current_app.logger.info(
@@ -236,7 +238,8 @@ def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage)
             yield {
                 "Key": letter_pdf.key,
                 "Size": letter_pdf.size,
-                "ServiceId": str(letter.service_id)
+                "ServiceId": str(letter.service_id),
+                "OrganisationId": str(letter.service.organisation_id)
             }
         except (BotoClientError, LetterPDFNotFound) as e:
             current_app.logger.exception(
