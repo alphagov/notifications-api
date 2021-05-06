@@ -64,7 +64,7 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
     db.session.add(service)
 
 
-def insert_or_update_service_broadcast_settings(service, channel, provider_restriction=None):
+def insert_or_update_service_broadcast_settings(service, channel, provider_restriction="all"):
     if not service.service_broadcast_settings:
         settings = ServiceBroadcastSettings()
         settings.service = service

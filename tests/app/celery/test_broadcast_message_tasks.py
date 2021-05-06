@@ -30,7 +30,14 @@ from tests.app.db import (
 from tests.conftest import set_config
 
 
-def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api, sample_broadcast_service):
+@pytest.mark.parametrize('available_provider', [None, 'all'])
+def test_send_broadcast_event_queues_up_for_active_providers(
+    mocker,
+    notify_api,
+    sample_broadcast_service,
+    available_provider,
+):
+    sample_broadcast_service.allowed_broadcast_provider = available_provider
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)

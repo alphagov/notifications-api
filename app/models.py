@@ -560,7 +560,8 @@ class Service(db.Model, Versioned):
 
     def get_available_broadcast_providers(self):
         # There may be future checks here if we add, for example, platform admin level provider killswitches.
-        if self.allowed_broadcast_provider:
+        # NOTE: We are in the middle of changing the value for all allowed_broadcast_provider from `None`to "all"
+        if self.allowed_broadcast_provider and self.allowed_broadcast_provider != ALL_BROADCAST_PROVIDERS:
             return [x for x in current_app.config['ENABLED_CBCS'] if x == self.allowed_broadcast_provider]
         else:
             return current_app.config['ENABLED_CBCS']
@@ -2486,6 +2487,9 @@ class BroadcastProvider:
     O2 = 'o2'
 
     PROVIDERS = [EE, VODAFONE, THREE, O2]
+
+
+ALL_BROADCAST_PROVIDERS = 'all'
 
 
 class BroadcastProviderMessageStatus:
