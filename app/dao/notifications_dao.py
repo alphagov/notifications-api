@@ -750,9 +750,7 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     https://docs.sqlalchemy.org/en/13/orm/query.html?highlight=yield_per#sqlalchemy.orm.query.Query.yield_per
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
-    notifications = Notification.query.join(
-        Notification.service
-    ).filter(
+    notifications = Notification.query.filter(
         Notification.created_at < convert_bst_to_utc(print_run_deadline),
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,

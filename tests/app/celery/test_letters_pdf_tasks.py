@@ -1,3 +1,4 @@
+import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest.mock import call
@@ -47,6 +48,7 @@ from app.models import (
 from tests.app.db import (
     create_letter_branding,
     create_notification,
+    create_organisation,
     create_service,
     create_template,
 )
@@ -171,13 +173,20 @@ def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mo
 
 @mock_s3
 @freeze_time('2020-02-17 18:00:00')
-def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sample_letter_template):
+def test_get_key_and_size_of_letters_to_be_sent_to_print(
+    notify_api,
+    mocker,
+    sample_letter_template,
+    sample_organisation,
+):
     pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
     s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF', Body=b'1'),
     s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF', Body=b'22'),
     s3.put_object(Bucket=pdf_bucket, Key='2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF', Body=b'333'),
+
+    sample_letter_template.service.organisation = sample_organisation
 
     # second class
     create_notification(
@@ -236,17 +245,20 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
 
             'Key': '2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF',
             'Size': 3,
-            'ServiceId': str(sample_letter_template.service_id)
+            'ServiceId': str(sample_letter_template.service_id),
+            'OrganisationId': str(sample_organisation.id)
         },
         {
             'Key': '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF',
             'Size': 2,
-            'ServiceId': str(sample_letter_template.service_id)
+            'ServiceId': str(sample_letter_template.service_id),
+            'OrganisationId': str(sample_organisation.id)
         },
         {
             'Key': '2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF',
             'Size': 1,
-            'ServiceId': str(sample_letter_template.service_id)
+            'ServiceId': str(sample_letter_template.service_id),
+            'OrganisationId': str(sample_organisation.id)
         },
     ]
 
@@ -254,13 +266,15 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print(notify_api, mocker, sam
 @mock_s3
 @freeze_time('2020-02-17 18:00:00')
 def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
-    notify_api, mocker, sample_letter_template
+    notify_api, mocker, sample_letter_template, sample_organisation
 ):
     pdf_bucket = current_app.config['LETTERS_PDF_BUCKET_NAME']
     s3 = boto3.client('s3', region_name='eu-west-1')
     s3.create_bucket(Bucket=pdf_bucket, CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'})
     s3.put_object(Bucket=pdf_bucket, Key='2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF', Body=b'12'),
     # no object for ref1
+
+    sample_letter_template.service.organisation = sample_organisation
 
     create_notification(
         template=sample_letter_template,
@@ -283,7 +297,8 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     assert results == [{
         'Key': '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF',
         'Size': 2,
-        'ServiceId': str(sample_letter_template.service_id)}
+        'ServiceId': str(sample_letter_template.service_id),
+        'OrganisationId': str(sample_organisation.id)}
     ]
 
 
@@ -293,10 +308,11 @@ def test_get_key_and_size_of_letters_to_be_sent_to_print_handles_file_not_found(
     "2020-02-18 02:00:00",  # the next day after midnight, before 5:30pm we expect the same results
 ])
 def test_collate_letter_pdfs_to_be_sent(
-    notify_api, notify_db_session, mocker, time_to_run_task, letter_volumes_email_template
+    notify_api, mocker, time_to_run_task, sample_organisation
 ):
     with freeze_time("2020-02-17 18:00:00"):
         service_1 = create_service(service_name="service 1", service_id='f2fe37b0-1301-11eb-aba9-4c3275916899')
+        service_1.organisation = sample_organisation
         letter_template_1 = create_template(service_1, template_type=LETTER_TYPE)
         # second class
         create_notification(
@@ -343,8 +359,12 @@ def test_collate_letter_pdfs_to_be_sent(
             postage="rest-of-world"
         )
 
-        # different service second class
-        service_2 = create_service(service_name="service 2", service_id='3a5cea08-29fd-4bb9-b582-8dedd928b149')
+        # different service second class, belonging to a different organisation
+        org_2_id = uuid.uuid4()
+        organisation_two = create_organisation('Org 2', organisation_id=org_2_id)
+        service_2 = create_service(service_name="service 2",
+                                   service_id='3a5cea08-29fd-4bb9-b582-8dedd928b149',
+                                   organisation=organisation_two)
         letter_template_2 = create_template(service_2, template_type=LETTER_TYPE)
         create_notification(
             template=letter_template_2,
@@ -393,7 +413,8 @@ def test_collate_letter_pdfs_to_be_sent(
             'filenames_to_zip': [
                 '2020-02-17/NOTIFY.FIRST_CLASS.D.1.C.20200217140000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl.{letter_template_1.service_id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.1.001.sO6RKzPyNrkxrR8OLonl.{letter_template_1.service_id}.{sample_organisation.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -402,7 +423,8 @@ def test_collate_letter_pdfs_to_be_sent(
         name='zip-and-send-letter-pdfs',
         kwargs={
             'filenames_to_zip': ['2020-02-17/NOTIFY.ANOTHER_SERVICE.D.2.C.20200217160000.PDF'],
-            'upload_filename': f'NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.2.001.bGS-FKKV0QHcOUZgacEu.{service_2.id}.{org_2_id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -414,7 +436,8 @@ def test_collate_letter_pdfs_to_be_sent(
                 '2020-02-16/NOTIFY.REF2.D.2.C.20200215180000.PDF',
                 '2020-02-17/NOTIFY.REF1.D.2.C.20200217150000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK.{letter_template_1.service_id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.2.002.AmmswUYqPToXwlSZiFyK.{letter_template_1.service_id}.{sample_organisation.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -425,7 +448,8 @@ def test_collate_letter_pdfs_to_be_sent(
             'filenames_to_zip': [
                 '2020-02-17/NOTIFY.REF0.D.2.C.20200217160000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv.{letter_template_1.service_id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.2.003.36PwhyI9lFKjzbPiWxwv.{letter_template_1.service_id}.{sample_organisation.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -436,7 +460,8 @@ def test_collate_letter_pdfs_to_be_sent(
             'filenames_to_zip': [
                 '2020-02-15/NOTIFY.INTERNATIONAL.D.E.C.20200214180000.PDF'
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1.{letter_template_1.service_id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.E.001.lDBwqhnG__URJeGz3tH1.{letter_template_1.service_id}.{sample_organisation.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
@@ -447,7 +472,8 @@ def test_collate_letter_pdfs_to_be_sent(
             'filenames_to_zip': [
                 '2020-02-14/NOTIFY.INTERNATIONAL.D.N.C.20200213180000.PDF',
             ],
-            'upload_filename': f'NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4.{letter_template_1.service_id}.ZIP'
+            'upload_filename':
+            f'NOTIFY.2020-02-17.N.001.ZE7k_jm7Bg5sYwLswkr4.{letter_template_1.service_id}.{sample_organisation.id}.ZIP'
         },
         queue='process-ftp-tasks',
         compression='zlib'
