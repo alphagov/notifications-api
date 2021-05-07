@@ -2592,3 +2592,21 @@ class ServiceBroadcastProviderRestriction(db.Model):
     provider = db.Column(db.String, nullable=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+
+class WebauthnCredential(db.Model):
+    """
+    A table that stores data for registered webauthn credentials.
+    """
+    __tablename__ = "webauthn_credential"
+
+    credential_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    aaguid = db.Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    public_key = db.Column(db.String, nullable=False)
+
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), primary_key=True, nullable=False)
+
+    registration_response = db.Column(JSONB(none_as_null=True), nullable=False, default={})
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
