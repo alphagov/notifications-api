@@ -120,7 +120,8 @@ def notify_db_session(notify_db, sms_providers):
                             "broadcast_status_type",
                             "invite_status_type",
                             "service_callback_type",
-                            "broadcast_channel_types"]:
+                            "broadcast_channel_types",
+                            "broadcast_provider_types"]:
             notify_db.engine.execute(tbl.delete())
     notify_db.session.commit()
 

@@ -560,7 +560,8 @@ class Service(db.Model, Versioned):
 
     def get_available_broadcast_providers(self):
         # There may be future checks here if we add, for example, platform admin level provider killswitches.
-        if self.allowed_broadcast_provider:
+        # NOTE: We are in the middle of changing the value for all allowed_broadcast_provider from `None`to "all"
+        if self.allowed_broadcast_provider and self.allowed_broadcast_provider != ALL_BROADCAST_PROVIDERS:
             return [x for x in current_app.config['ENABLED_CBCS'] if x == self.allowed_broadcast_provider]
         else:
             return current_app.config['ENABLED_CBCS']
@@ -2488,6 +2489,9 @@ class BroadcastProvider:
     PROVIDERS = [EE, VODAFONE, THREE, O2]
 
 
+ALL_BROADCAST_PROVIDERS = 'all'
+
+
 class BroadcastProviderMessageStatus:
     TECHNICAL_FAILURE = 'technical-failure'  # Couldn’t send (cbc proxy 5xx/4xx)
     SENDING = 'sending'  # Sent to cbc, awaiting response
@@ -2553,13 +2557,19 @@ class ServiceBroadcastSettings(db.Model):
     channel = db.Column(
         db.String(255), db.ForeignKey('broadcast_channel_types.name'), nullable=False
     )
-    provider = db.Column(db.String, nullable=True)
+    provider = db.Column(db.String, db.ForeignKey('broadcast_provider_types.name'), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
 
 
 class BroadcastChannelTypes(db.Model):
     __tablename__ = 'broadcast_channel_types'
+
+    name = db.Column(db.String(255), primary_key=True)
+
+
+class BroadcastProviderTypes(db.Model):
+    __tablename__ = 'broadcast_provider_types'
 
     name = db.Column(db.String(255), primary_key=True)
 

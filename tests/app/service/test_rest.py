@@ -290,6 +290,8 @@ def test_get_service_by_id(admin_request, sample_service):
 
 
 @pytest.mark.parametrize('broadcast_channel,allowed_broadcast_provider', (
+    ('test', 'all'),
+    ('severe', 'all'),
     ('test', None),
     ('severe', None),
     ('test', 'ee'),
@@ -4018,7 +4020,7 @@ def test_set_as_broadcast_service_rejects_if_no_service_mode(
     )
 
 
-@pytest.mark.parametrize('provider', [None, "three", "ee", "vodafone", "o2"])
+@pytest.mark.parametrize('provider', [None, "all", "three", "ee", "vodafone", "o2"])
 def test_set_as_broadcast_service_sets_mobile_provider_restriction(
     admin_request, sample_service, broadcast_organisation, provider
 ):
