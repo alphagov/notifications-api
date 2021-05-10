@@ -2600,13 +2600,18 @@ class WebauthnCredential(db.Model):
     """
     __tablename__ = "webauthn_credential"
 
-    credential_id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    aaguid = db.Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
-    public_key = db.Column(db.String, nullable=False)
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
 
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), primary_key=True, nullable=False)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    user = db.relationship(User, backref=db.backref("webauthn_credentials"))
 
-    registration_response = db.Column(JSONB(none_as_null=True), nullable=False, default={})
+    name = db.Column(db.String, nullable=False)
+
+    # base64 encoded CBOR. used for logging in. https://w3c.github.io/webauthn/#sctn-attested-credential-data
+    credential_data = db.Column(db.String, nullable=False)
+
+    # base64 encoded CBOR. used for auditing. https://www.w3.org/TR/webauthn-2/#authenticatorattestationresponse
+    registration_response = db.Column(db.String, nullable=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
