@@ -178,12 +178,16 @@ def register_blueprint(application):
     )
     from app.upload.rest import upload_blueprint
     from app.user.rest import user_blueprint
+    from app.webauthn.rest import webauthn_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_blueprint, url_prefix='/service')
 
     user_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(user_blueprint, url_prefix='/user')
+
+    webauthn_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(webauthn_blueprint)
 
     template_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_blueprint)

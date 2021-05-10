@@ -2615,3 +2615,14 @@ class WebauthnCredential(db.Model):
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'user_id': str(self.user_id),
+            'name': self.name,
+            'credential_data': self.credential_data,
+            'registration_response': self.registration_response,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': get_dt_string_or_none(self.updated_at),
+        }
