@@ -111,13 +111,12 @@ def create_broadcast_message(service_id):
         template = dao_get_template_by_id_and_service_id(
             template_id, data['service_id']
         )
-        content = template._as_utils_template_with_personalisation(
+        content = str(template._as_utils_template_with_personalisation(
             personalisation
-        ).content_with_placeholders_filled_in
+        ))
         reference = None
     else:
-        template, content, reference = None, data['content'], data['reference']
-        temporary_template = BroadcastMessageTemplate.from_content(content)
+        temporary_template = BroadcastMessageTemplate.from_content(data['content'])
         if temporary_template.content_too_long:
             raise InvalidRequest(
                 (
@@ -130,6 +129,9 @@ def create_broadcast_message(service_id):
                 ),
                 status_code=400,
             )
+        template = None
+        content = str(temporary_template)
+        reference = data['reference']
 
     broadcast_message = BroadcastMessage(
         service_id=service.id,

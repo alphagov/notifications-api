@@ -130,7 +130,11 @@ def test_get_broadcast_messages_for_service(admin_request, sample_broadcast_serv
 @pytest.mark.parametrize('training_mode_service', [True, False])
 def test_create_broadcast_message(admin_request, sample_broadcast_service, training_mode_service):
     sample_broadcast_service.restricted = training_mode_service
-    t = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    t = create_template(
+        sample_broadcast_service,
+        BROADCAST_TYPE,
+        content='Some content\r\n€ŷŵ~\r\n‘’“”—–-',
+    )
 
     response = admin_request.post(
         'broadcast_message.create_broadcast_message',
@@ -149,6 +153,7 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
     assert response['areas'] == []
+    assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)
     assert broadcast_message.stubbed == training_mode_service
@@ -231,7 +236,7 @@ def test_create_broadcast_message_can_be_created_from_content(admin_request, sam
     response = admin_request.post(
         'broadcast_message.create_broadcast_message',
         _data={
-            'content': 'Some tailor made broadcast content',
+            'content': 'Some content\r\n€ŷŵ~\r\n‘’“”—–-',
             'reference': 'abc123',
             'service_id': str(sample_broadcast_service.id),
             'created_by': str(sample_broadcast_service.created_by_id),
@@ -239,7 +244,7 @@ def test_create_broadcast_message_can_be_created_from_content(admin_request, sam
         service_id=sample_broadcast_service.id,
         _expected_status=201
     )
-    assert response['content'] == 'Some tailor made broadcast content'
+    assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
     assert response['reference'] == 'abc123'
     assert response['template_id'] is None
 
