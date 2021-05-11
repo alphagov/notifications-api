@@ -2622,7 +2622,6 @@ class WebauthnCredential(db.Model):
             'user_id': str(self.user_id),
             'name': self.name,
             'credential_data': self.credential_data,
-            'registration_response': self.registration_response,
             'created_at': self.created_at.strftime(DATETIME_FORMAT),
             'updated_at': get_dt_string_or_none(self.updated_at),
         }

@@ -24,7 +24,6 @@ def test_get_webauthn_credentials_returns_all_credentials_for_user(admin_request
         'user_id': str(me.id),
         'name': '1',
         'credential_data': 'ABC123',
-        'registration_response': 'DEF456',
         'created_at': ANY,
         'updated_at': None
     }
