@@ -292,8 +292,10 @@ def test_get_service_by_id(admin_request, sample_service):
 @pytest.mark.parametrize('broadcast_channel,allowed_broadcast_provider', (
     ('test', 'all'),
     ('severe', 'all'),
+    ('government', 'all'),
     ('test', 'ee'),
     ('severe', 'three'),
+    ('government', 'vodafone'),
 ))
 def test_get_service_by_id_for_broadcast_service_returns_broadcast_keys(
     notify_db, admin_request, sample_broadcast_service, broadcast_channel, allowed_broadcast_provider
@@ -3709,7 +3711,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]['uploaded_letter_file_name'] == 'filename.pdf'
 
 
-@pytest.mark.parametrize('channel', ["test", "severe"])
+@pytest.mark.parametrize('channel', ["test", "severe", "government"])
 def test_set_as_broadcast_service_sets_broadcast_channel(
     admin_request, sample_service, broadcast_organisation, channel
 ):
@@ -3759,7 +3761,7 @@ def test_set_as_broadcast_service_updates_channel_for_broadcast_service(
     assert records[0].channel == "test"
 
 
-@pytest.mark.parametrize('channel', ["government", "extreme", "exercise", "random", ""])
+@pytest.mark.parametrize('channel', ["extreme", "exercise", "random", ""])
 def test_set_as_broadcast_service_rejects_unknown_channels(
     admin_request, sample_service, broadcast_organisation, channel
 ):
