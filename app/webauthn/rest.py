@@ -45,6 +45,10 @@ def update_webauthn_credential(user_id, webauthn_credential_id):
 
     webauthn_credential = dao_get_webauthn_credential_by_id(webauthn_credential_id)
 
+    user = get_user_by_id(user_id)
+
+    check_credential_belongs_to_user(webauthn_credential.user_id, user.id)
+
     dao_update_webauthn_credential_name(webauthn_credential, data['name'])
 
     return jsonify(data=webauthn_credential.serialize()), 200
@@ -55,8 +59,7 @@ def delete_webauthn_credential(user_id, webauthn_credential_id):
     webauthn_credential = dao_get_webauthn_credential_by_id(webauthn_credential_id)
     user = get_user_by_id(user_id)
 
-    if webauthn_credential.user_id != user.id:
-        raise InvalidRequest('Webauthn credential does not belong to this user', status_code=400)
+    check_credential_belongs_to_user(webauthn_credential.user_id, user.id)
 
     if len(user.webauthn_credentials) == 1:
         raise InvalidRequest('Cannot delete last remaining webauthn credential for user', status_code=400)
@@ -64,3 +67,8 @@ def delete_webauthn_credential(user_id, webauthn_credential_id):
     dao_delete_webauthn_credential(webauthn_credential)
 
     return '', 204
+
+
+def check_credential_belongs_to_user(credential_user_id, user_id):
+    if credential_user_id != user_id:
+        raise InvalidRequest('Webauthn credential does not belong to this user', status_code=400)
