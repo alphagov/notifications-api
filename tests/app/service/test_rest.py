@@ -292,8 +292,6 @@ def test_get_service_by_id(admin_request, sample_service):
 @pytest.mark.parametrize('broadcast_channel,allowed_broadcast_provider', (
     ('test', 'all'),
     ('severe', 'all'),
-    ('test', None),
-    ('severe', None),
     ('test', 'ee'),
     ('severe', 'three'),
 ))
@@ -3719,7 +3717,7 @@ def test_set_as_broadcast_service_sets_broadcast_channel(
     data = {
         'broadcast_channel': channel,
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3744,7 +3742,7 @@ def test_set_as_broadcast_service_updates_channel_for_broadcast_service(
     data = {
         'broadcast_channel': "test",
         'service_mode': 'training',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3768,7 +3766,7 @@ def test_set_as_broadcast_service_rejects_unknown_channels(
     data = {
         'broadcast_channel': channel,
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     admin_request.post(
@@ -3784,7 +3782,7 @@ def test_set_as_broadcast_service_rejects_if_no_channel(
 ):
     data = {
         'service_mode': 'training',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     admin_request.post(
@@ -3807,7 +3805,7 @@ def test_set_as_broadcast_service_gives_broadcast_permission_and_removes_other_c
     data = {
         'broadcast_channel': "severe",
         'service_mode': 'training',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3838,7 +3836,7 @@ def test_set_as_broadcast_service_maintains_broadcast_permission_for_existing_br
     data = {
         'broadcast_channel': "severe",
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3860,7 +3858,7 @@ def test_set_as_broadcast_service_sets_count_as_live_to_false(
     data = {
         'broadcast_channel': "severe",
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
     result = admin_request.post(
         'service.set_as_broadcast_service',
@@ -3881,7 +3879,7 @@ def test_set_as_broadcast_service_sets_service_org_to_broadcast_org(
     data = {
         'broadcast_channel': "severe",
         'service_mode': 'training',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
     result = admin_request.post(
         'service.set_as_broadcast_service',
@@ -3900,7 +3898,7 @@ def test_set_as_broadcast_service_does_not_error_if_run_on_a_service_that_is_alr
     data = {
         'broadcast_channel': "severe",
         'service_mode': "live",
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
     for _ in range(2):
         admin_request.post(
@@ -3922,7 +3920,7 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3947,7 +3945,7 @@ def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3973,7 +3971,7 @@ def test_set_as_broadcast_service_sets_service_to_training_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': 'training',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     result = admin_request.post(
@@ -3993,7 +3991,7 @@ def test_set_as_broadcast_service_rejects_unknown_service_mode(
     data = {
         'broadcast_channel': 'severe',
         'service_mode': service_mode,
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     admin_request.post(
@@ -4009,7 +4007,7 @@ def test_set_as_broadcast_service_rejects_if_no_service_mode(
 ):
     data = {
         'broadcast_channel': 'severe',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     admin_request.post(
@@ -4020,7 +4018,7 @@ def test_set_as_broadcast_service_rejects_if_no_service_mode(
     )
 
 
-@pytest.mark.parametrize('provider', [None, "all", "three", "ee", "vodafone", "o2"])
+@pytest.mark.parametrize('provider', ["all", "three", "ee", "vodafone", "o2"])
 def test_set_as_broadcast_service_sets_mobile_provider_restriction(
     admin_request, sample_service, broadcast_organisation, provider
 ):
@@ -4045,7 +4043,7 @@ def test_set_as_broadcast_service_sets_mobile_provider_restriction(
     assert records[0].provider == provider
 
 
-@pytest.mark.parametrize('provider', [None, "vodafone"])
+@pytest.mark.parametrize('provider', ["all", "vodafone"])
 def test_set_as_broadcast_service_updates_mobile_provider_restriction(
     admin_request, notify_db, sample_broadcast_service, provider
 ):
@@ -4116,7 +4114,7 @@ def test_set_as_broadcast_service_updates_services_history(
     data = {
         'broadcast_channel': 'test',
         'service_mode': 'live',
-        'provider_restriction': None,
+        'provider_restriction': "all",
     }
 
     admin_request.post(
