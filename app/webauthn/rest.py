@@ -4,7 +4,7 @@ from app.dao.users_dao import get_user_by_id
 from app.dao.webauthn_credential_dao import (
     dao_create_webauthn_credential,
     dao_delete_webauthn_credential,
-    dao_get_webauthn_credential_by_id,
+    dao_get_webauthn_credential_by_user_and_id,
     dao_update_webauthn_credential_name,
 )
 from app.errors import InvalidRequest, register_errors
@@ -43,11 +43,7 @@ def update_webauthn_credential(user_id, webauthn_credential_id):
     data = request.get_json()
     validate(data, post_update_webauthn_credential_schema)
 
-    webauthn_credential = dao_get_webauthn_credential_by_id(webauthn_credential_id)
-
-    user = get_user_by_id(user_id)
-
-    check_credential_belongs_to_user(webauthn_credential.user_id, user.id)
+    webauthn_credential = dao_get_webauthn_credential_by_user_and_id(user_id, webauthn_credential_id)
 
     dao_update_webauthn_credential_name(webauthn_credential, data['name'])
 
@@ -56,19 +52,13 @@ def update_webauthn_credential(user_id, webauthn_credential_id):
 
 @webauthn_blueprint.route('/<uuid:webauthn_credential_id>', methods=['DELETE'])
 def delete_webauthn_credential(user_id, webauthn_credential_id):
-    webauthn_credential = dao_get_webauthn_credential_by_id(webauthn_credential_id)
+    webauthn_credential = dao_get_webauthn_credential_by_user_and_id(user_id, webauthn_credential_id)
     user = get_user_by_id(user_id)
 
-    check_credential_belongs_to_user(webauthn_credential.user_id, user.id)
-
     if len(user.webauthn_credentials) == 1:
+        # TODO: Only raise an error if user has auth type webauthn_auth
         raise InvalidRequest('Cannot delete last remaining webauthn credential for user', status_code=400)
 
     dao_delete_webauthn_credential(webauthn_credential)
 
     return '', 204
-
-
-def check_credential_belongs_to_user(credential_user_id, user_id):
-    if credential_user_id != user_id:
-        raise InvalidRequest('Webauthn credential does not belong to this user', status_code=400)
