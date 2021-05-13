@@ -74,6 +74,7 @@ from app.models import (
     Template,
     TemplateFolder,
     User,
+    WebauthnCredential,
 )
 
 
@@ -1202,3 +1203,22 @@ def create_broadcast_provider_message(
         db.session.add(provider_message_number)
         db.session.commit()
     return provider_message
+
+
+def create_webauthn_credential(
+    user,
+    name='my key',
+    *,
+    credential_data='ABC123',
+    registration_response='DEF456',
+):
+    webauthn_credential = WebauthnCredential(
+        user=user,
+        name=name,
+        credential_data=credential_data,
+        registration_response=registration_response
+    )
+
+    db.session.add(webauthn_credential)
+    db.session.commit()
+    return webauthn_credential

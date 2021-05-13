@@ -2592,3 +2592,36 @@ class ServiceBroadcastProviderRestriction(db.Model):
     provider = db.Column(db.String, nullable=False)
 
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+
+
+class WebauthnCredential(db.Model):
+    """
+    A table that stores data for registered webauthn credentials.
+    """
+    __tablename__ = "webauthn_credential"
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, nullable=False, default=uuid.uuid4)
+
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=False)
+    user = db.relationship(User, backref=db.backref("webauthn_credentials"))
+
+    name = db.Column(db.String, nullable=False)
+
+    # base64 encoded CBOR. used for logging in. https://w3c.github.io/webauthn/#sctn-attested-credential-data
+    credential_data = db.Column(db.String, nullable=False)
+
+    # base64 encoded CBOR. used for auditing. https://www.w3.org/TR/webauthn-2/#authenticatorattestationresponse
+    registration_response = db.Column(db.String, nullable=False)
+
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+
+    def serialize(self):
+        return {
+            'id': str(self.id),
+            'user_id': str(self.user_id),
+            'name': self.name,
+            'credential_data': self.credential_data,
+            'created_at': self.created_at.strftime(DATETIME_FORMAT),
+            'updated_at': get_dt_string_or_none(self.updated_at),
+        }
