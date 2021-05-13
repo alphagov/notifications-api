@@ -16,11 +16,11 @@ def upgrade():
     op.execute("INSERT INTO auth_type VALUES ('webauthn_auth')")
 
     op.drop_constraint('ck_users_mobile_or_email_auth', 'users', type_=None, schema=None)
-    op.create_check_constraint(
-        'ck_user_has_mobile_or_other_auth',
-        'users',
-        "auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null"
-    )
+    op.execute("""
+        ALTER TABLE users ADD CONSTRAINT "ck_user_has_mobile_or_other_auth"
+        CHECK (auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null)
+        NOT VALID
+    """)
     # ### end Alembic commands ###
 
 
@@ -30,11 +30,11 @@ def downgrade():
     op.execute("UPDATE invited_users SET auth_type = 'sms_auth' WHERE auth_type = 'webauthn_auth'")
 
     op.drop_constraint('ck_user_has_mobile_or_other_auth', 'users', type_=None, schema=None)
-    op.create_check_constraint(
-        'ck_users_mobile_or_email_auth',
-        'users',
-        "auth_type = 'email_auth' or mobile_number is not null"
-    )
+    op.execute("""
+        ALTER TABLE users ADD CONSTRAINT "ck_users_mobile_or_email_auth"
+        CHECK (auth_type = 'email_auth' or mobile_number is not null)
+        NOT VALID
+    """)
 
     op.execute("DELETE FROM auth_type WHERE name = 'webauthn_auth'")
     # ### end Alembic commands ###
