@@ -10,7 +10,14 @@ import app.celery.tasks
 from app import db
 from app.dao.services_dao import dao_fetch_service_by_id, dao_update_service
 from app.dao.users_dao import create_user_code
-from app.models import EMAIL_TYPE, SMS_TYPE, Notification, User, VerifyCode
+from app.models import (
+    EMAIL_TYPE,
+    SMS_TYPE,
+    USER_AUTH_TYPES,
+    Notification,
+    User,
+    VerifyCode,
+)
 from tests import create_authorization_header
 
 
@@ -338,8 +345,8 @@ def test_reset_failed_login_count_returns_404_when_user_does_not_exist(client):
     assert resp.status_code == 404
 
 
-# we send sms_auth users email code to validate their email access
-@pytest.mark.parametrize('auth_type', ['email_auth', 'sms_auth'])
+# we send sms_auth users and webauthn_auth users email code to validate their email access
+@pytest.mark.parametrize('auth_type', USER_AUTH_TYPES)
 @pytest.mark.parametrize('data, expected_auth_url', (
     (
         {},
@@ -415,8 +422,8 @@ def test_send_email_code_returns_404_for_bad_input_data(admin_request):
 
 
 @freeze_time('2016-01-01T12:00:00')
-# we send sms_auth users email code to validate their email access
-@pytest.mark.parametrize('auth_type', ['email_auth', 'sms_auth'])
+# we send sms_auth and webauthn_auth users email code to validate their email access
+@pytest.mark.parametrize('auth_type', USER_AUTH_TYPES)
 def test_user_verify_email_code(admin_request, sample_user, auth_type):
     sample_user.logged_in_at = datetime.utcnow() - timedelta(days=1)
     sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)

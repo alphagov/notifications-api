@@ -61,7 +61,8 @@ TEMPLATE_PROCESS_TYPE = [NORMAL, PRIORITY]
 
 SMS_AUTH_TYPE = 'sms_auth'
 EMAIL_AUTH_TYPE = 'email_auth'
-USER_AUTH_TYPE = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE]
+WEBAUTHN_AUTH_TYPE = 'webauthn_auth'
+USER_AUTH_TYPES = [SMS_AUTH_TYPE, EMAIL_AUTH_TYPE, WEBAUTHN_AUTH_TYPE]
 
 DELIVERY_STATUS_CALLBACK_TYPE = 'delivery_status'
 COMPLAINT_CALLBACK_TYPE = 'complaint'
@@ -124,7 +125,7 @@ class User(db.Model):
     )
 
     # either email auth or a mobile number must be provided
-    CheckConstraint("auth_type = 'email_auth' or mobile_number is not null")
+    CheckConstraint("auth_type in ('email_auth', 'webauthn_auth') or mobile_number is not null")
 
     services = db.relationship(
         'Service',
