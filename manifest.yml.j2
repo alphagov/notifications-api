@@ -103,6 +103,7 @@ applications:
       - logit-ssl-syslog-drain
       {% if CF_APP == 'notify-api' %}
       - notify-prometheus
+      - notify-splunk
       {% endif %}
 
     env:
