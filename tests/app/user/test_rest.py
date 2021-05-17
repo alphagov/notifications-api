@@ -1,6 +1,6 @@
+import uuid
 import json
 from datetime import datetime
-from uuid import UUID
 
 import mock
 import pytest
@@ -278,7 +278,7 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
         },
         recipient='newuser@mail.com', reply_to_text='notify@gov.uk',
         service=mock.ANY,
-        template_id=UUID('c73f1d71-4049-46d5-a647-d013bdeca3f0'), template_version=1
+        template_id=uuid.UUID('c73f1d71-4049-46d5-a647-d013bdeca3f0'), template_version=1
     )),
     ('mobile_number', '+4407700900460', dict(
         api_key_id=None, key_type='normal', notification_type='sms',
@@ -287,7 +287,7 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
             'email address': 'notify@digital.cabinet-office.gov.uk'
         },
         recipient='+4407700900460', reply_to_text='testing', service=mock.ANY,
-        template_id=UUID('8a31520f-4751-4789-8ea1-fe54496725eb'), template_version=1
+        template_id=uuid.UUID('8a31520f-4751-4789-8ea1-fe54496725eb'), template_version=1
     ))
 ])
 def test_post_user_attribute_with_updated_by(
@@ -1149,3 +1149,68 @@ def test_get_sms_reply_to_for_notify_service(team_member_mobile_edit_template, n
     reply_to = get_sms_reply_to_for_notify_service(number, team_member_mobile_edit_template)
     assert reply_to == current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER'] \
         if expected_reply_to == 'notify_international_sender' else current_app.config['FROM_NUMBER']
+
+
+@freeze_time('2020-01-01 11:00')
+def test_verify_webauthn_login_resets_login_if_succesful(admin_request, sample_user):
+    sample_user.failed_login_count = 1
+
+    assert sample_user.current_session_id is None
+    assert sample_user.logged_in_at is None
+
+    admin_request.post(
+        'user.verify_webauthn_login_for_user',
+        user_id=sample_user.id,
+        _data={'successful': True},
+        _expected_status=204
+    )
+
+    assert sample_user.current_session_id is not None
+    assert sample_user.failed_login_count == 0
+    assert sample_user.logged_in_at == datetime(2020, 1, 1, 11, 0)
+
+
+def test_verify_webauthn_login_returns_204_when_not_successful(admin_request, sample_user):
+    # when unsuccessful this endpoint is used to bump the failed count. the endpoint still worked
+    # properly so should return 204 (no content).
+    sample_user.failed_login_count = 1
+
+    assert sample_user.current_session_id is None
+    assert sample_user.logged_in_at is None
+
+    admin_request.post(
+        'user.verify_webauthn_login_for_user',
+        user_id=sample_user.id,
+        _data={'successful': False},
+        _expected_status=204
+    )
+
+    assert sample_user.current_session_id is None
+    assert sample_user.failed_login_count == 2
+    assert sample_user.logged_in_at is None
+
+
+def test_verify_webauthn_login_raises_403_if_max_login_count_exceeded(admin_request, sample_user):
+    # when unsuccessful this endpoint is used to bump the failed count. the endpoint still worked
+    # properly so should return 204 (no content).
+    sample_user.failed_login_count = 10
+
+    admin_request.post(
+        'user.verify_webauthn_login_for_user',
+        user_id=sample_user.id,
+        _data={'successful': True},
+        _expected_status=403
+    )
+
+    assert sample_user.current_session_id is None
+    assert sample_user.failed_login_count == 10
+    assert sample_user.logged_in_at is None
+
+
+def test_verify_webauthn_login_raises_400_if_schema_invalid(admin_request):
+    admin_request.post(
+        'user.verify_webauthn_login_for_user',
+        user_id=uuid.uuid4(),
+        _data={'successful': 'True'},
+        _expected_status=400
+    )

@@ -11,6 +11,18 @@ post_verify_code_schema = {
 }
 
 
+post_verify_webauthn_schema = {
+    '$schema': 'http://json-schema.org/draft-04/schema#',
+    'description': 'POST schema for verifying a webauthn login attempt',
+    'type': 'object',
+    'properties': {
+        'successful': {'type': 'boolean'}
+    },
+    'required': ['successful'],
+    'additionalProperties': False
+}
+
+
 post_send_user_email_code_schema = {
     '$schema': 'http://json-schema.org/draft-04/schema#',
     'description': (
