@@ -63,6 +63,7 @@ from app.user.users_schema import (
     post_send_user_sms_code_schema,
     post_set_permissions_schema,
     post_verify_code_schema,
+    post_verify_webauthn_schema,
 )
 from app.utils import url_with_token
 
@@ -223,6 +224,32 @@ def verify_user_code(user_id):
     save_model_user(user_to_verify)
 
     use_user_code(code.id)
+    return jsonify({}), 204
+
+
+@user_blueprint.route('/<uuid:user_id>/verify/webauthn-login', methods=['POST'])
+def verify_webauthn_login_for_user(user_id):
+    """
+    webauthn logins are already verified on the admin app but we still need to
+    check the max login count and set up a session id etc here.
+    """
+    data = request.get_json()
+    validate(data, post_verify_webauthn_schema)
+
+    user = get_user_by_id(user_id=user_id)
+    successful = data['successful']
+
+    if user.failed_login_count >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
+        raise InvalidRequest("Maximum login count exceeded", status_code=403)
+
+    if successful:
+        user.current_session_id = str(uuid.uuid4())
+        user.logged_in_at = datetime.utcnow()
+        user.failed_login_count = 0
+        save_model_user(user)
+    else:
+        increment_failed_login_count(user)
+
     return jsonify({}), 204
 
 
