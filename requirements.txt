@@ -10,12 +10,12 @@ Flask-Bcrypt==0.7.1
 flask-marshmallow==0.14.0
 Flask-Migrate==2.7.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
-Flask==1.1.2
+Flask==2.0.1
 click-datetime==0.2
 eventlet==0.30.2 # pyup: ignore # 0.31 breaks Gunicorn
 gunicorn==20.1.0
 iso8601==0.1.14
-itsdangerous==1.1.0
+itsdangerous==2.0.1
 jsonschema==3.2.0
 marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
@@ -36,30 +36,29 @@ notifications-python-client==6.0.2
 # PaaS
 awscli-cwlogs==1.4.6
 
-git+https://github.com/alphagov/notifications-utils.git@44.2.1#egg=notifications-utils==44.2.1
+git+https://github.com/alphagov/notifications-utils.git@44.2.2#egg=notifications-utils==44.2.2
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
 prometheus-client==0.10.1
 gds-metrics==0.2.4
 
 ## The following requirements were added by pip freeze:
-alembic==1.6.3
+alembic==1.6.4
 amqp==1.4.9
 anyjson==0.3.3
 attrs==21.2.0
-awscli==1.19.78
+awscli==1.19.82
 bcrypt==3.2.0
 billiard==3.3.0.23
 bleach==3.3.0
 blinker==1.4
 boto==2.49.0
-boto3==1.17.78
-botocore==1.20.78
+boto3==1.17.82
+botocore==1.20.82
 certifi==2020.12.5
 chardet==4.0.0
 click==8.0.1
 colorama==0.4.3
-dataclasses==0.8
 dnspython==1.16.0
 docutils==0.15.2
 flask-redis==0.4.0
@@ -67,7 +66,6 @@ geojson==2.5.0
 govuk-bank-holidays==0.8
 greenlet==1.1.0
 idna==2.10
-importlib-metadata==4.0.1
 Jinja2==3.0.1
 jmespath==0.10.0
 kombu==3.0.37
@@ -96,8 +94,6 @@ six==1.16.0
 smartypants==2.0.1
 soupsieve==2.2.1
 statsd==3.3.0
-typing-extensions==3.10.0.0
-urllib3==1.26.4
+urllib3==1.26.5
 webencodings==0.5.1
 Werkzeug==2.0.1
-zipp==3.4.1
