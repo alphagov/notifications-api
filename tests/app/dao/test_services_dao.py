@@ -874,6 +874,24 @@ def test_fetch_stats_for_today_only_includes_today(notify_db_session):
     assert stats['created'] == 1
 
 
+def test_fetch_stats_for_today_only_includes_today_in_bst(notify_db_session):
+    template = create_template(service=create_service())
+    # two created email, one failed email, and one created sms with freeze_time('2001-03-27T23:59:00'):
+    # just before midnight yesterday in UTC create_notification(template=template, to_field='1', status='delivered')
+    with freeze_time('2001-03-27T23:01:00'):
+        # just after midnight yesterday in UTC
+        create_notification(template=template, to_field='2', status='failed')
+    with freeze_time('2001-03-28T12:00:00'):
+        # right_now, we have entered BST at this point but had not for the previous two notifications
+        create_notification(template=template, to_field='3', status='created')
+        stats = dao_fetch_todays_stats_for_service(template.service_id)
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+    assert stats['created'] == 1
+
+
 @pytest.mark.parametrize('created_at, limit_days, rows_returned', [
     ('Sunday 8th July 2018 12:00', 7, 0),
     ('Sunday 8th July 2018 22:59', 7, 0),
