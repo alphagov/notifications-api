@@ -356,7 +356,7 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
 
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_template):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
     create_notification(template=sample_letter_template,
@@ -393,7 +393,7 @@ def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_templa
 
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
     mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
 
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
@@ -419,7 +419,7 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
 @freeze_time("2019-01-30 14:00:00")
 def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
     mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
 
     create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))

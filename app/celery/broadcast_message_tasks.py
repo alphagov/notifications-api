@@ -150,6 +150,7 @@ def send_broadcast_event(broadcast_event_id):
             ticket_type=zendesk_client.TYPE_INCIDENT,
             p1=True,
         )
+        current_app.logger.error(message)
 
     for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
