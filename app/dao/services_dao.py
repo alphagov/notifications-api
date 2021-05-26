@@ -431,10 +431,8 @@ def dao_fetch_stats_for_service(service_id, limit_days):
 def dao_fetch_todays_stats_for_service(service_id):
     today = date.today()
     start_date = get_london_midnight_in_utc(today)
-    end_date = get_london_midnight_in_utc(today + timedelta(days=1))
     return _stats_for_service_query(service_id).filter(
-        Notification.created_at >= start_date,
-        Notification.created_at < end_date
+        Notification.created_at >= start_date
     ).all()
 
 
