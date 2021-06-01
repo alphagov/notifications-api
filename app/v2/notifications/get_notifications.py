@@ -55,7 +55,7 @@ def get_pdf_for_notification(notification_id):
     except Exception:
         raise PDFNotReadyError()
 
-    return send_file(path_or_file=BytesIO(pdf_data), mimetype='application/pdf')
+    return send_file(filename_or_fp=BytesIO(pdf_data), mimetype='application/pdf')
 
 
 @v2_notification_blueprint.route("", methods=['GET'])
