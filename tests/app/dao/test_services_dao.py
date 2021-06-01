@@ -874,15 +874,17 @@ def test_fetch_stats_for_today_only_includes_today(notify_db_session):
     assert stats['created'] == 1
 
 
-def test_fetch_stats_for_today_only_includes_today_in_bst(notify_db_session):
+def test_fetch_stats_for_today_only_includes_today_when_clocks_spring_forward(notify_db_session):
     template = create_template(service=create_service())
-    # two created email, one failed email, and one created sms with freeze_time('2001-03-27T23:59:00'):
-    # just before midnight yesterday in UTC create_notification(template=template, to_field='1', status='delivered')
-    with freeze_time('2001-03-27T23:01:00'):
-        # just after midnight yesterday in UTC
+    with freeze_time('2021-03-27T23:59:59'):
+        # just before midnight yesterday in UTC -- not included
+        create_notification(template=template, to_field='1', status='permanent-failure')
+    with freeze_time('2021-03-28T00:01:00'):
+        # just after midnight yesterday in UTC -- included
         create_notification(template=template, to_field='2', status='failed')
-    with freeze_time('2001-03-28T12:00:00'):
-        # right_now, we have entered BST at this point but had not for the previous two notifications
+    with freeze_time('2021-03-28T12:00:00'):
+        # we have entered BST at this point but had not for the previous two notifications --included
+        # collect stats for this timestamp
         create_notification(template=template, to_field='3', status='created')
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
@@ -890,6 +892,73 @@ def test_fetch_stats_for_today_only_includes_today_in_bst(notify_db_session):
     assert 'delivered' not in stats
     assert stats['failed'] == 1
     assert stats['created'] == 1
+    assert not stats.get('permanent-failure')
+    assert not stats.get('temporary-failure')
+
+
+def test_fetch_stats_for_today_only_includes_today_during_bst(notify_db_session):
+    template = create_template(service=create_service())
+    with freeze_time('2021-03-28T22:59:59'):
+        # just before midnight BST -- not included
+        create_notification(template=template, to_field='1', status='permanent-failure')
+    with freeze_time('2021-03-28T23:00:01'):
+        # just after midnight BST -- included
+        create_notification(template=template, to_field='2', status='failed')
+    with freeze_time('2021-03-29T12:00:00'):
+        # well after midnight BST -- included
+        # collect stats for this timestamp
+        create_notification(template=template, to_field='3', status='created')
+        stats = dao_fetch_todays_stats_for_service(template.service_id)
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+    assert stats['created'] == 1
+    assert not stats.get('permanent-failure')
+
+
+def test_fetch_stats_for_today_only_includes_today_when_clocks_fall_back(notify_db_session):
+    template = create_template(service=create_service())
+    with freeze_time('2021-10-30T22:59:59'):
+        # just before midnight BST -- not included
+        create_notification(template=template, to_field='1', status='permanent-failure')
+    with freeze_time('2021-10-31T23:00:01'):
+        # just after midnight BST -- included
+        create_notification(template=template, to_field='2', status='failed')
+    # clocks go back to UTC on 31 October at 2am
+    with freeze_time('2021-10-31T12:00:00'):
+        # well after midnight -- included
+        # collect stats for this timestamp
+        create_notification(template=template, to_field='3', status='created')
+        stats = dao_fetch_todays_stats_for_service(template.service_id)
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+    assert stats['created'] == 1
+    assert not stats.get('permanent-failure')
+
+
+def test_fetch_stats_for_today_only_includes_during_utc(notify_db_session):
+    template = create_template(service=create_service())
+    with freeze_time('2021-10-30T12:59:59'):
+        # just before midnight UTC -- not included
+        create_notification(template=template, to_field='1', status='permanent-failure')
+    with freeze_time('2021-10-31T00:00:01'):
+        # just after midnight UTC -- included
+        create_notification(template=template, to_field='2', status='failed')
+    # clocks go back to UTC on 31 October at 2am
+    with freeze_time('2021-10-31T12:00:00'):
+        # well after midnight -- included
+        # collect stats for this timestamp
+        create_notification(template=template, to_field='3', status='created')
+        stats = dao_fetch_todays_stats_for_service(template.service_id)
+
+    stats = {row.status: row.count for row in stats}
+    assert 'delivered' not in stats
+    assert stats['failed'] == 1
+    assert stats['created'] == 1
+    assert not stats.get('permanent-failure')
 
 
 @pytest.mark.parametrize('created_at, limit_days, rows_returned', [
