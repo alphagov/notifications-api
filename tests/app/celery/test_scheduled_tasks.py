@@ -1,10 +1,10 @@
-import unittest.mock as mock
 from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest.mock import call
 
 import pytest
 from freezegun import freeze_time
+from mock import mock
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (

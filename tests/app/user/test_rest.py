@@ -1,8 +1,8 @@
 import json
-import unittest.mock as mock
 import uuid
 from datetime import datetime
 
+import mock
 import pytest
 from flask import current_app, url_for
 from freezegun import freeze_time

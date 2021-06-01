@@ -273,34 +273,48 @@ def register_blueprint(application):
 
 def register_v2_blueprints(application):
     from app.authentication.auth import requires_auth
-    from app.v2.broadcast.post_broadcast import v2_broadcast_blueprint
-    from app.v2.inbound_sms.get_inbound_sms import v2_inbound_sms_blueprint
-    from app.v2.notifications import (  # noqa
-        get_notifications,
-        post_notifications,
-        v2_notification_blueprint,
+    from app.v2.broadcast.post_broadcast import (
+        v2_broadcast_blueprint as post_broadcast,
     )
-    from app.v2.template import (  # noqa
-        get_template,
-        post_template,
-        v2_template_blueprint,
+    from app.v2.inbound_sms.get_inbound_sms import (
+        v2_inbound_sms_blueprint as get_inbound_sms,
     )
-    from app.v2.templates.get_templates import v2_templates_blueprint
+    from app.v2.notifications.get_notifications import (
+        v2_notification_blueprint as get_notifications,
+    )
+    from app.v2.notifications.post_notifications import (
+        v2_notification_blueprint as post_notifications,
+    )
+    from app.v2.template.get_template import (
+        v2_template_blueprint as get_template,
+    )
+    from app.v2.template.post_template import (
+        v2_template_blueprint as post_template,
+    )
+    from app.v2.templates.get_templates import (
+        v2_templates_blueprint as get_templates,
+    )
 
-    v2_notification_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_notification_blueprint)
+    post_notifications.before_request(requires_auth)
+    application.register_blueprint(post_notifications)
 
-    v2_template_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_template_blueprint)
+    get_notifications.before_request(requires_auth)
+    application.register_blueprint(get_notifications)
 
-    v2_templates_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_templates_blueprint)
+    get_templates.before_request(requires_auth)
+    application.register_blueprint(get_templates)
 
-    v2_inbound_sms_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_inbound_sms_blueprint)
+    get_template.before_request(requires_auth)
+    application.register_blueprint(get_template)
 
-    v2_broadcast_blueprint.before_request(requires_auth)
-    application.register_blueprint(v2_broadcast_blueprint)
+    post_template.before_request(requires_auth)
+    application.register_blueprint(post_template)
+
+    get_inbound_sms.before_request(requires_auth)
+    application.register_blueprint(get_inbound_sms)
+
+    post_broadcast.before_request(requires_auth)
+    application.register_blueprint(post_broadcast)
 
 
 def init_app(app):
