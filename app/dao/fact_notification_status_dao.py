@@ -154,23 +154,25 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         FactNotificationStatus.bst_date >= start_date,
         FactNotificationStatus.key_type != KEY_TYPE_TEST
     )
+    if str(service_id) in (current_app.config['HIGH_VOLUME_SERVICE']):
+        all_stats_table = stats_for_7_days.subquery()
+    else:
+        stats_for_today = db.session.query(
+            Notification.notification_type.cast(db.Text),
+            Notification.status,
+            *([Notification.template_id] if by_template else []),
+            func.count().label('count')
+        ).filter(
+            Notification.created_at >= get_london_midnight_in_utc(now),
+            Notification.service_id == service_id,
+            Notification.key_type != KEY_TYPE_TEST
+        ).group_by(
+            Notification.notification_type,
+            *([Notification.template_id] if by_template else []),
+            Notification.status
+        )
 
-    stats_for_today = db.session.query(
-        Notification.notification_type.cast(db.Text),
-        Notification.status,
-        *([Notification.template_id] if by_template else []),
-        func.count().label('count')
-    ).filter(
-        Notification.created_at >= get_london_midnight_in_utc(now),
-        Notification.service_id == service_id,
-        Notification.key_type != KEY_TYPE_TEST
-    ).group_by(
-        Notification.notification_type,
-        *([Notification.template_id] if by_template else []),
-        Notification.status
-    )
-
-    all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
+        all_stats_table = stats_for_7_days.union_all(stats_for_today).subquery()
 
     query = db.session.query(
         *([
