@@ -211,14 +211,13 @@ def check_if_letters_still_pending_virus_check():
             https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
             Notifications: {}""".format(len(letters), sorted(letter_ids))
 
-        current_app.logger.warning(msg)
-
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             zendesk_client.create_ticket(
                 subject="[{}] Letters still pending virus check".format(current_app.config['NOTIFY_ENVIRONMENT']),
                 message=msg,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+            current_app.logger.error(msg)
 
 
 @notify_celery.task(name='check-if-letters-still-in-created')
@@ -227,11 +226,9 @@ def check_if_letters_still_in_created():
 
     if len(letters) > 0:
         msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
-            "Follow runbook to resolve: " \
-            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook" \
-            "#deal-with-Letters-still-in-created.".format(len(letters))
-
-        current_app.logger.warning(msg)
+              "Follow runbook to resolve: " \
+              "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook" \
+              "#deal-with-Letters-still-in-created.".format(len(letters))
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             zendesk_client.create_ticket(
@@ -239,6 +236,7 @@ def check_if_letters_still_in_created():
                 message=msg,
                 ticket_type=zendesk_client.TYPE_INCIDENT
             )
+            current_app.logger.error(msg)
 
 
 @notify_celery.task(name='check-for-missing-rows-in-completed-jobs')
