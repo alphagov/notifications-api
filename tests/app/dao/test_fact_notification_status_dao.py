@@ -251,22 +251,8 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     )
 
     assert len(results) == 4
-
-    assert results[0].notification_type == 'email'
-    assert results[0].status == 'delivered'
-    assert results[0].count == 4
-
-    assert results[1].notification_type == 'letter'
-    assert results[1].status == 'delivered'
-    assert results[1].count == 5
-
-    assert results[2].notification_type == 'sms'
-    assert results[2].status == 'created'
-    assert results[2].count == 3
-
-    assert results[3].notification_type == 'sms'
-    assert results[3].status == 'delivered'
-    assert results[3].count == 19
+    assert sorted(results, key=lambda x: (x.notification_type, x.status, x.count)) == \
+           [('email', 'delivered', 4), ('letter', 'delivered', 5), ('sms', 'created', 3), ('sms', 'delivered', 19)]
 
 
 @freeze_time('2018-10-31T18:00:00')
@@ -283,7 +269,7 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days_for
     create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
     create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
     create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
-
+    # notifications created today will not be included in the resultset
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
     create_notification(sms_template_2, created_at=datetime(2018, 10, 31, 11, 0, 0))
     create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
@@ -301,22 +287,8 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days_for
         )
 
     assert len(results) == 4
-
-    assert results[0].notification_type == 'email'
-    assert results[0].status == 'delivered'
-    assert results[0].count == 3
-
-    assert results[1].notification_type == 'letter'
-    assert results[1].status == 'delivered'
-    assert results[1].count == 5
-
-    assert results[2].notification_type == 'sms'
-    assert results[2].status == 'created'
-    assert results[2].count == 1
-
-    assert results[3].notification_type == 'sms'
-    assert results[3].status == 'delivered'
-    assert results[3].count == 18
+    assert sorted(results, key=lambda x: (x.notification_type, x.status, x.count)) == \
+           [('email', 'delivered', 3), ('letter', 'delivered', 5), ('sms', 'created', 1), ('sms', 'delivered', 18)]
 
 
 @freeze_time('2018-10-31T18:00:00')

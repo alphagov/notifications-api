@@ -155,6 +155,9 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
         FactNotificationStatus.key_type != KEY_TYPE_TEST
     )
     if str(service_id) in (current_app.config['HIGH_VOLUME_SERVICE']):
+        # As a temporary measure we are not including today's totals for high volume service. This will allow the
+        # services to view the dashboard and /notification pages more easily. There is a story to try to resolve the
+        # query performance, https://www.pivotaltracker.com/story/show/178330973
         all_stats_table = stats_for_7_days.subquery()
     else:
         stats_for_today = db.session.query(
