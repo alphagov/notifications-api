@@ -3,6 +3,7 @@ from uuid import UUID
 
 import mock
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 
 from app.dao.fact_notification_status_dao import (
@@ -44,6 +45,7 @@ from tests.app.db import (
     create_service_data_retention,
     create_template,
 )
+from tests.conftest import set_config_values
 
 
 def test_update_fact_notification_status(notify_db_session):
@@ -249,22 +251,44 @@ def test_fetch_notification_status_for_service_for_today_and_7_previous_days(not
     )
 
     assert len(results) == 4
+    assert sorted(results, key=lambda x: (x.notification_type, x.status, x.count)) == \
+           [('email', 'delivered', 4), ('letter', 'delivered', 5), ('sms', 'created', 3), ('sms', 'delivered', 19)]
 
-    assert results[0].notification_type == 'email'
-    assert results[0].status == 'delivered'
-    assert results[0].count == 4
 
-    assert results[1].notification_type == 'letter'
-    assert results[1].status == 'delivered'
-    assert results[1].count == 5
+@freeze_time('2018-10-31T18:00:00')
+def test_fetch_notification_status_for_service_for_today_and_7_previous_days_for_high_volume_service(
+        notify_api, notify_db_session
+):
+    service_1 = create_service(service_name='service_1')
+    sms_template = create_template(service=service_1, template_type=SMS_TYPE)
+    sms_template_2 = create_template(service=service_1, template_type=SMS_TYPE)
+    email_template = create_template(service=service_1, template_type=EMAIL_TYPE)
 
-    assert results[2].notification_type == 'sms'
-    assert results[2].status == 'created'
-    assert results[2].count == 3
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, count=10)
+    create_ft_notification_status(date(2018, 10, 24), 'sms', service_1, count=8)
+    create_ft_notification_status(date(2018, 10, 29), 'sms', service_1, notification_status='created')
+    create_ft_notification_status(date(2018, 10, 29), 'email', service_1, count=3)
+    create_ft_notification_status(date(2018, 10, 26), 'letter', service_1, count=5)
+    # notifications created today will not be included in the resultset
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template_2, created_at=datetime(2018, 10, 31, 11, 0, 0))
+    create_notification(sms_template, created_at=datetime(2018, 10, 31, 12, 0, 0), status='delivered')
+    create_notification(email_template, created_at=datetime(2018, 10, 31, 13, 0, 0), status='delivered')
 
-    assert results[3].notification_type == 'sms'
-    assert results[3].status == 'delivered'
-    assert results[3].count == 19
+    # too early, shouldn't be included
+    create_notification(service_1.templates[0], created_at=datetime(2018, 10, 30, 12, 0, 0), status='delivered')
+    with set_config_values(current_app, {
+        'HIGH_VOLUME_SERVICE': [str(service_1.id)],
+
+    }):
+        results = sorted(
+            fetch_notification_status_for_service_for_today_and_7_previous_days(service_1.id),
+            key=lambda x: (x.notification_type, x.status)
+        )
+
+    assert len(results) == 4
+    assert sorted(results, key=lambda x: (x.notification_type, x.status, x.count)) == \
+           [('email', 'delivered', 3), ('letter', 'delivered', 5), ('sms', 'created', 1), ('sms', 'delivered', 18)]
 
 
 @freeze_time('2018-10-31T18:00:00')
