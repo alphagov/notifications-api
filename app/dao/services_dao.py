@@ -429,8 +429,10 @@ def dao_fetch_stats_for_service(service_id, limit_days):
 
 
 def dao_fetch_todays_stats_for_service(service_id):
+    today = date.today()
+    start_date = get_london_midnight_in_utc(today)
     return _stats_for_service_query(service_id).filter(
-        func.date(Notification.created_at) == date.today()
+        Notification.created_at >= start_date
     ).all()
 
 
