@@ -227,11 +227,19 @@ def verify_user_code(user_id):
     return jsonify({}), 204
 
 
+# TODO: Remove the "verify" endpoint once admin no longer points at it
+@user_blueprint.route('/<uuid:user_id>/complete/webauthn-login', methods=['POST'])
 @user_blueprint.route('/<uuid:user_id>/verify/webauthn-login', methods=['POST'])
-def verify_webauthn_login_for_user(user_id):
+def complete_login_after_webauthn_authentication_attempt(user_id):
     """
-    webauthn logins are already verified on the admin app but we still need to
-    check the max login count and set up a session id etc here.
+    complete login after a webauthn authentication. There's nothing webauthn specific in this code
+    but the sms/email flows do this as part of `verify_user_code` above and this is the equivalent spot in the
+    webauthn flow.
+
+    If the authentication was successful, we've already confirmed the user holds the right security key,
+    but we still need to check the max login count and set up a current_session_id and last_logged_in_at here.
+
+    If the authentication was unsuccessful then we just bump the failed_login_count in the db.
     """
     data = request.get_json()
     validate(data, post_verify_webauthn_schema)
