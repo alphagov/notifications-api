@@ -290,9 +290,11 @@ def test_get_service_by_id(admin_request, sample_service):
 
 
 @pytest.mark.parametrize('broadcast_channel,allowed_broadcast_provider', (
+    ('operator', 'all'),
     ('test', 'all'),
     ('severe', 'all'),
     ('government', 'all'),
+    ('operator', 'o2'),
     ('test', 'ee'),
     ('severe', 'three'),
     ('government', 'vodafone'),
@@ -3711,7 +3713,7 @@ def test_get_returned_letter(admin_request, sample_letter_template):
     assert response[4]['uploaded_letter_file_name'] == 'filename.pdf'
 
 
-@pytest.mark.parametrize('channel', ["test", "severe", "government"])
+@pytest.mark.parametrize('channel', ["operator", "test", "severe", "government"])
 def test_set_as_broadcast_service_sets_broadcast_channel(
     admin_request, sample_service, broadcast_organisation, channel
 ):
