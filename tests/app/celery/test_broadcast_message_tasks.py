@@ -221,7 +221,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(
     ['o2', 'O2'],
     ['vodafone', 'Vodafone'],
 ])
-@pytest.mark.parametrize('channel', ['test', 'severe', 'government'])
+@pytest.mark.parametrize('channel', ['operator', 'test', 'severe', 'government'])
 def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
     notify_db, mocker, sample_broadcast_service, provider, provider_capitalised, channel
 ):
