@@ -14,11 +14,16 @@ down_revision = '0357_validate_constraint'
 
 
 def upgrade():
-    op.drop_index('ix_scheduled_notifications_notification_id', table_name='scheduled_notifications')
+    # drop index concurrently will drop the index without locking out concurrent
+    # selects, inserts, updates, and deletes on the index's table namely on notifications
+    # First we need to issue a commit to clear the transaction block.
+    op.execute('COMMIT')
+    op.execute('DROP INDEX CONCURRENTLY ix_scheduled_notifications_notification_id')
     op.drop_table('scheduled_notifications')
 
 
 def downgrade():
+    # I've intentionally removed adding the index back from the downgrade method
     op.create_table('scheduled_notifications',
                     sa.Column('id', postgresql.UUID(), autoincrement=False, nullable=False),
                     sa.Column('notification_id', postgresql.UUID(), autoincrement=False, nullable=False),
@@ -28,5 +33,3 @@ def downgrade():
                                             name='scheduled_notifications_notification_id_fkey'),
                     sa.PrimaryKeyConstraint('id', name='scheduled_notifications_pkey')
                     )
-    op.create_index('ix_scheduled_notifications_notification_id', 'scheduled_notifications', ['notification_id'],
-                    unique=False)
