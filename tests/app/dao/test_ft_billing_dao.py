@@ -10,7 +10,7 @@ from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
     fetch_billing_totals_for_year,
-    fetch_letter_costs_for_all_services,
+    fetch_letter_costs_and_totals_for_all_services,
     fetch_letter_line_items_for_all_services,
     fetch_monthly_billing_for_year,
     fetch_sms_billing_for_all_services,
@@ -628,26 +628,26 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
     )
 
 
-def test_fetch_letter_costs_for_all_services(notify_db_session):
+def test_fetch_letter_costs_and_totals_for_all_services(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_letter_costs_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    results = fetch_letter_costs_and_totals_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 3
     assert results[0] == (
         fixtures["org_1"].name, fixtures["org_1"].id,
         fixtures["service_1_sms_and_letter"].name, fixtures["service_1_sms_and_letter"].id,
-        Decimal('3.40')
+        8, Decimal('3.40')
     )
     assert results[1] == (
         fixtures["org_for_service_with_letters"].name, fixtures["org_for_service_with_letters"].id,
         fixtures["service_with_letters"].name, fixtures["service_with_letters"].id,
-        Decimal('14.00')
+        22, Decimal('14.00')
     )
     assert results[2] == (
         None, None,
         fixtures["service_with_letters_without_org"].name, fixtures["service_with_letters_without_org"].id,
-        Decimal('24.45')
+        18, Decimal('24.45')
     )
 
 

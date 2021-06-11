@@ -141,6 +141,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[0]["service_id"] == str(fixtures["service_1_sms_and_letter"].id)
     assert response[0]["sms_cost"] == 0
     assert response[0]["sms_fragments"] == 0
+    assert response[0]["total_letters"] == 8
     assert response[0]["letter_cost"] == 3.40
     assert response[0]["letter_breakdown"] == "6 second class letters at 45p\n2 first class letters at 35p\n"
     assert response[0]["purchase_order_number"] == "service purchase order number"
@@ -152,6 +153,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[1]["service_id"] == str(fixtures["service_with_letters"].id)
     assert response[1]["sms_cost"] == 0
     assert response[1]["sms_fragments"] == 0
+    assert response[1]["total_letters"] == 22
     assert response[1]["letter_cost"] == 14
     assert response[1]["letter_breakdown"] == "20 second class letters at 65p\n2 first class letters at 50p\n"
     assert response[1]["purchase_order_number"] == "org3 purchase order number"
@@ -163,6 +165,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[2]["service_id"] == str(fixtures["service_with_sms_without_org"].id)
     assert response[2]["sms_cost"] == 0.33
     assert response[2]["sms_fragments"] == 3
+    assert response[2]["total_letters"] == 0
     assert response[2]["letter_cost"] == 0
     assert response[2]["letter_breakdown"] == ""
     assert response[2]["purchase_order_number"] == "sms purchase order number"
@@ -174,6 +177,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[3]["service_id"] == str(fixtures["service_with_letters_without_org"].id)
     assert response[3]["sms_cost"] == 0
     assert response[3]["sms_fragments"] == 0
+    assert response[3]["total_letters"] == 18
     assert response[3]["letter_cost"] == 24.45
     assert response[3]["letter_breakdown"] == (
         "2 second class letters at 35p\n1 first class letters at 50p\n15 international letters at £1.55\n"

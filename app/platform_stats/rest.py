@@ -5,7 +5,7 @@ from flask import Blueprint, jsonify, request
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_billing_details_for_all_services,
-    fetch_letter_costs_for_all_services,
+    fetch_letter_costs_and_totals_for_all_services,
     fetch_letter_line_items_for_all_services,
     fetch_sms_billing_for_all_services,
 )
@@ -67,7 +67,7 @@ def get_data_for_billing_report():
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
     sms_costs = fetch_sms_billing_for_all_services(start_date, end_date)
-    letter_costs = fetch_letter_costs_for_all_services(start_date, end_date)
+    letter_overview = fetch_letter_costs_and_totals_for_all_services(start_date, end_date)
     letter_breakdown = fetch_letter_line_items_for_all_services(start_date, end_date)
 
     lb_by_service = [
@@ -85,26 +85,31 @@ def get_data_for_billing_report():
                 "service_name": s.service_name,
                 "sms_cost": float(s.sms_cost),
                 "sms_fragments": s.chargeable_billable_sms,
+                "total_letters": 0,
                 "letter_cost": 0,
                 "letter_breakdown": ""
             }
             combined[s.service_id] = entry
 
-    for letter_cost in letter_costs:
-        if letter_cost.service_id in combined:
-            combined[letter_cost.service_id].update({'letter_cost': float(letter_cost.letter_cost)})
+    for data in letter_overview:
+        if data.service_id in combined:
+            combined[data.service_id].update(
+                {'total_letters': data.total_letters, 'letter_cost': float(data.letter_cost)}
+            )
+
         else:
             letter_entry = {
-                "organisation_id": str(letter_cost.organisation_id) if letter_cost.organisation_id else "",
-                "organisation_name": letter_cost.organisation_name or "",
-                "service_id": str(letter_cost.service_id),
-                "service_name": letter_cost.service_name,
+                "organisation_id": str(data.organisation_id) if data.organisation_id else "",
+                "organisation_name": data.organisation_name or "",
+                "service_id": str(data.service_id),
+                "service_name": data.service_name,
                 "sms_cost": 0,
                 "sms_fragments": 0,
-                "letter_cost": float(letter_cost.letter_cost),
+                "total_letters": data.total_letters,
+                "letter_cost": float(data.letter_cost),
                 "letter_breakdown": ""
             }
-            combined[letter_cost.service_id] = letter_entry
+            combined[data.service_id] = letter_entry
     for service_id, breakdown in lb_by_service:
         combined[service_id]['letter_breakdown'] += (breakdown + '\n')
 
