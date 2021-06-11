@@ -114,12 +114,13 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_letter_costs_for_all_services(start_date, end_date):
+def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
+        func.sum(FactBilling.notifications_sent).label("total_letters"),
         func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
     ).select_from(
         Service
