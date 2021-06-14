@@ -985,8 +985,23 @@ def test_fetch_stats_should_not_gather_notifications_older_than_7_days(
 
 
 def test_dao_fetch_todays_total_message_count_returns_count_for_today(notify_db_session):
-    notification = create_notification(template=create_template(service=create_service()))
+    template = create_template(service=create_service())
+    notification = create_notification(template=template)
+    # don't include notifications earlier than today
+    create_notification(template=template, created_at=datetime.utcnow()-timedelta(days=2))
     assert fetch_todays_total_message_count(notification.service.id) == 1
+
+
+def test_dao_fetch_todays_total_message_count_returns_count_for_all_notification_type_and_selected_service(
+        notify_db_session
+):
+    service = create_service()
+    different_service = create_service(service_name='different service')
+    create_notification(template=create_template(service=service))
+    create_notification(template=create_template(service=service, template_type='email'))
+    create_notification(template=create_template(service=service, template_type='letter'))
+    create_notification(template=create_template(service=different_service))
+    assert fetch_todays_total_message_count(service.id) == 3
 
 
 def test_dao_fetch_todays_total_message_count_returns_0_when_no_messages_for_today(notify_db,

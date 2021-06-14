@@ -437,15 +437,13 @@ def dao_fetch_todays_stats_for_service(service_id):
 
 
 def fetch_todays_total_message_count(service_id):
+    start_date = get_london_midnight_in_utc(date.today())
     result = db.session.query(
         func.count(Notification.id).label('count')
     ).filter(
         Notification.service_id == service_id,
         Notification.key_type != KEY_TYPE_TEST,
-        func.date(Notification.created_at) == date.today()
-    ).group_by(
-        Notification.notification_type,
-        Notification.status,
+        Notification.created_at >= start_date
     ).first()
     return 0 if result is None else result.count
 
