@@ -103,6 +103,8 @@ applications:
       - logit-ssl-syslog-drain
       {% if CF_APP == 'notify-api' %}
       - notify-prometheus
+      {% endif %}
+      {% if CF_APP == 'notify-api' or CF_APP == 'notify-delivery-worker-broadcasts' %}
       - notify-splunk
       {% endif %}
 
