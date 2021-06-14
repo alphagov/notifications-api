@@ -1412,16 +1412,16 @@ class Notification(db.Model):
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False)
     job = db.relationship('Job', backref=db.backref('notifications', lazy='dynamic'))
     job_row_number = db.Column(db.Integer, nullable=True)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False)
     service = db.relationship('Service')
     template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
     template_version = db.Column(db.Integer, nullable=False)
     template = db.relationship('TemplateHistory')
-    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), unique=False)
     api_key = db.relationship('ApiKey')
-    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
+    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
-    notification_type = db.Column(notification_types, index=True, nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
     created_at = db.Column(
         db.DateTime,
         index=True,
@@ -1441,9 +1441,8 @@ class Notification(db.Model):
         onupdate=datetime.datetime.utcnow)
     status = db.Column(
         'notification_status',
-        db.String,
+        db.Text,
         db.ForeignKey('notification_status_types.name'),
-        index=True,
         nullable=True,
         default='created',
         key='status'  # http://docs.sqlalchemy.org/en/latest/core/metadata.html#sqlalchemy.schema.Column
@@ -1456,7 +1455,7 @@ class Notification(db.Model):
 
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
+    rate_multiplier = db.Column(db.Numeric(asdecimal=False), nullable=True)
 
     created_by = db.relationship('User')
     created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), nullable=True)
@@ -1472,6 +1471,7 @@ class Notification(db.Model):
             ['template_id', 'template_version'],
             ['templates_history.id', 'templates_history.version'],
         ),
+        UniqueConstraint('job_id', 'job_row_number', name='uq_notifications_job_row_number'),
         {}
     )
 
@@ -1688,24 +1688,23 @@ class NotificationHistory(db.Model, HistoryModel):
     job_id = db.Column(UUID(as_uuid=True), db.ForeignKey('jobs.id'), index=True, unique=False)
     job = db.relationship('Job')
     job_row_number = db.Column(db.Integer, nullable=True)
-    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), index=True, unique=False)
+    service_id = db.Column(UUID(as_uuid=True), db.ForeignKey('services.id'), unique=False)
     service = db.relationship('Service')
-    template_id = db.Column(UUID(as_uuid=True), index=True, unique=False)
+    template_id = db.Column(UUID(as_uuid=True), unique=False)
     template_version = db.Column(db.Integer, nullable=False)
-    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), index=True, unique=False)
+    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), unique=False)
     api_key = db.relationship('ApiKey')
-    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), index=True, unique=False, nullable=False)
+    key_type = db.Column(db.String, db.ForeignKey('key_types.name'), unique=False, nullable=False)
     billable_units = db.Column(db.Integer, nullable=False, default=0)
-    notification_type = db.Column(notification_types, index=True, nullable=False)
-    created_at = db.Column(db.DateTime, index=True, unique=False, nullable=False)
+    notification_type = db.Column(notification_types, nullable=False)
+    created_at = db.Column(db.DateTime, unique=False, nullable=False)
     sent_at = db.Column(db.DateTime, index=False, unique=False, nullable=True)
     sent_by = db.Column(db.String, nullable=True)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     status = db.Column(
         'notification_status',
-        db.String,
+        db.Text,
         db.ForeignKey('notification_status_types.name'),
-        index=True,
         nullable=True,
         default='created',
         key='status'  # http://docs.sqlalchemy.org/en/latest/core/metadata.html#sqlalchemy.schema.Column
@@ -1713,9 +1712,9 @@ class NotificationHistory(db.Model, HistoryModel):
     reference = db.Column(db.String, nullable=True, index=True)
     client_reference = db.Column(db.String, nullable=True)
 
-    international = db.Column(db.Boolean, nullable=False, default=False)
+    international = db.Column(db.Boolean, nullable=True, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
-    rate_multiplier = db.Column(db.Float(asdecimal=False), nullable=True)
+    rate_multiplier = db.Column(db.Numeric(asdecimal=False), nullable=True)
 
     created_by_id = db.Column(UUID(as_uuid=True), nullable=True)
 
@@ -1740,6 +1739,30 @@ class NotificationHistory(db.Model, HistoryModel):
     def update_from_original(self, original):
         super().update_from_original(original)
         self.status = original.status
+
+
+# Indexes for notification_history and notifications to improve performance of fetch queries.
+Index(
+    'ix_notification_history_service_id_composite',
+    NotificationHistory.service_id,
+    NotificationHistory.key_type,
+    NotificationHistory.notification_type,
+    NotificationHistory.created_at
+)
+Index(
+    'ix_notifications_notification_type_composite',
+    Notification.notification_type,
+    Notification.status,
+    Notification.created_at
+)
+Index('ix_notifications_service_created_at', Notification.service_id, Notification.created_at)
+Index(
+    "ix_notifications_service_id_composite",
+    Notification.service_id,
+    Notification.notification_type,
+    Notification.status,
+    Notification.created_at
+)
 
 
 class ScheduledNotification(db.Model):
