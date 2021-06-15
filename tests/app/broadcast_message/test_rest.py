@@ -804,10 +804,31 @@ def test_update_broadcast_message_status_rejects_approval_from_user_not_on_that_
 
 @pytest.mark.parametrize('current_status, new_status', [
     (BroadcastStatusType.DRAFT, BroadcastStatusType.DRAFT),
-    (BroadcastStatusType.BROADCASTING, BroadcastStatusType.PENDING_APPROVAL),
-    (BroadcastStatusType.COMPLETED, BroadcastStatusType.BROADCASTING),
-    (BroadcastStatusType.CANCELLED, BroadcastStatusType.DRAFT),
     (BroadcastStatusType.DRAFT, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.DRAFT, BroadcastStatusType.CANCELLED),
+
+    (BroadcastStatusType.PENDING_APPROVAL, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.PENDING_APPROVAL, BroadcastStatusType.CANCELLED),
+    (BroadcastStatusType.PENDING_APPROVAL, BroadcastStatusType.COMPLETED),
+
+    (BroadcastStatusType.REJECTED, BroadcastStatusType.REJECTED),
+    (BroadcastStatusType.REJECTED, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.REJECTED, BroadcastStatusType.CANCELLED),
+    (BroadcastStatusType.REJECTED, BroadcastStatusType.COMPLETED),
+
+    (BroadcastStatusType.BROADCASTING, BroadcastStatusType.DRAFT),
+    (BroadcastStatusType.BROADCASTING, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.BROADCASTING, BroadcastStatusType.BROADCASTING),
+
+    (BroadcastStatusType.COMPLETED, BroadcastStatusType.DRAFT),
+    (BroadcastStatusType.COMPLETED, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.COMPLETED, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.COMPLETED, BroadcastStatusType.CANCELLED),
+
+    (BroadcastStatusType.CANCELLED, BroadcastStatusType.DRAFT),
+    (BroadcastStatusType.CANCELLED, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.CANCELLED, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.CANCELLED, BroadcastStatusType.COMPLETED),
 ])
 def test_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
     admin_request,
