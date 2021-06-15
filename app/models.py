@@ -1577,6 +1577,7 @@ class Notification(db.Model):
             },
             'letter': {
                 'technical-failure': 'Technical failure',
+                'permanent-failure': 'Permanent failure',
                 'sending': 'Accepted',
                 'created': 'Accepted',
                 'delivered': 'Received',

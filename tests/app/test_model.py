@@ -124,6 +124,7 @@ def test_notification_for_csv_returns_correct_job_row_number(sample_job):
     ('letter', 'created', 'Accepted'),
     ('letter', 'sending', 'Accepted'),
     ('letter', 'technical-failure', 'Technical failure'),
+    ('letter', 'permanent-failure', 'Permanent failure'),
     ('letter', 'delivered', 'Received')
 ])
 def test_notification_for_csv_returns_formatted_status(
