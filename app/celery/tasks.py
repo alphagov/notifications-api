@@ -71,6 +71,10 @@ def process_job(job_id, sender_id=None):
 
     service = job.service
 
+    job.job_status = JOB_STATUS_IN_PROGRESS
+    job.processing_started = start
+    dao_update_job(job)
+
     if not service.active:
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
@@ -80,10 +84,6 @@ def process_job(job_id, sender_id=None):
 
     if __sending_limits_for_job_exceeded(service, job, job_id):
         return
-
-    job.job_status = JOB_STATUS_IN_PROGRESS
-    job.processing_started = start
-    dao_update_job(job)
 
     recipient_csv, template, sender_id = get_recipient_csv_and_template_and_sender_id(job)
 
