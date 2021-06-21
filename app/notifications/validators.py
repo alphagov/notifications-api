@@ -63,8 +63,9 @@ def check_service_over_daily_message_limit(key_type, service):
         cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
-            service_stats = services_dao.fetch_todays_total_message_count(service.id)
-            redis_store.set(cache_key, service_stats, ex=3600)
+            # first message of the day, set the cache to 0 and the expiry to 24 hours
+            service_stats = 0
+            redis_store.set(cache_key, service_stats, ex=86400)
         if int(service_stats) >= service.message_limit:
             current_app.logger.info(
                 "service {} has been rate limited for daily use sent {} limit {}".format(

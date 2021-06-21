@@ -150,8 +150,7 @@ def persist_notification(
         dao_create_notification(notification)
         # Only keep track of the daily limit for trial mode services.
         if service.restricted and key_type != KEY_TYPE_TEST:
-            if redis_store.get(redis.daily_limit_cache_key(service.id)):
-                redis_store.incr(redis.daily_limit_cache_key(service.id))
+            redis_store.incr(redis.daily_limit_cache_key(service.id))
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
