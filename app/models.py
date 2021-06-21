@@ -1472,7 +1472,20 @@ class Notification(db.Model):
             ['templates_history.id', 'templates_history.version'],
         ),
         UniqueConstraint('job_id', 'job_row_number', name='uq_notifications_job_row_number'),
-        {}
+        Index(
+            'ix_notifications_notification_type_composite',
+            'notification_type',
+            'status',
+            'created_at'
+        ),
+        Index('ix_notifications_service_created_at', 'service_id', 'created_at'),
+        Index(
+            "ix_notifications_service_id_composite",
+            'service_id',
+            'notification_type',
+            'status',
+            'created_at'
+        )
     )
 
     @property
@@ -1727,7 +1740,13 @@ class NotificationHistory(db.Model, HistoryModel):
             ['template_id', 'template_version'],
             ['templates_history.id', 'templates_history.version'],
         ),
-        {}
+        Index(
+            'ix_notification_history_service_id_composite',
+            'service_id',
+            'key_type',
+            'notification_type',
+            'created_at'
+        )
     )
 
     @classmethod
@@ -1739,30 +1758,6 @@ class NotificationHistory(db.Model, HistoryModel):
     def update_from_original(self, original):
         super().update_from_original(original)
         self.status = original.status
-
-
-# Indexes for notification_history and notifications to improve performance of fetch queries.
-Index(
-    'ix_notification_history_service_id_composite',
-    NotificationHistory.service_id,
-    NotificationHistory.key_type,
-    NotificationHistory.notification_type,
-    NotificationHistory.created_at
-)
-Index(
-    'ix_notifications_notification_type_composite',
-    Notification.notification_type,
-    Notification.status,
-    Notification.created_at
-)
-Index('ix_notifications_service_created_at', Notification.service_id, Notification.created_at)
-Index(
-    "ix_notifications_service_id_composite",
-    Notification.service_id,
-    Notification.notification_type,
-    Notification.status,
-    Notification.created_at
-)
 
 
 class ScheduledNotification(db.Model):
