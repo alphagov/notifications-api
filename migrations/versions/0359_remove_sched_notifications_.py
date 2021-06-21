@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0358_remove_sched_notifications
-Revises: 0357_validate_constraint
+Revision ID: 0359_remove_sched_notifications
+Revises: 0358_operator_channel
 Create Date: 2021-06-07 09:09:06.376862
 
 """
@@ -9,8 +9,8 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = '0358_remove_sched_notifications'
-down_revision = '0357_validate_constraint'
+revision = '0359_remove_sched_notifications'
+down_revision = '0358_operator_channel'
 
 
 def upgrade():
