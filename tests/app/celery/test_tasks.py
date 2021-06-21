@@ -160,6 +160,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits(
     mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
                  return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=8)
 
     process_job(job.id)
 
@@ -181,6 +182,7 @@ def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(
     mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
                  return_value=(load_example_csv('sms'), {'sender_id': None}))
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=2)
 
     process_job(job.id)
 
@@ -200,6 +202,7 @@ def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(noti
 
     mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3')
     mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=2)
 
     process_job(job.id)
 
@@ -232,6 +235,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db_session,
     mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
+    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=0)
 
     process_job(job.id)
 

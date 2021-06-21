@@ -33,7 +33,6 @@ from app.dao.returned_letters_dao import insert_or_update_returned_letters
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_inbound_api_dao import get_service_inbound_api_for_service
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
-from app.dao.services_dao import fetch_todays_total_message_count
 from app.dao.templates_dao import dao_get_template_by_id
 from app.exceptions import DVLAException, NotificationTechnicalFailureException
 from app.models import (
@@ -55,6 +54,7 @@ from app.models import (
     DailySortedLetter,
 )
 from app.notifications.process_notifications import persist_notification
+from app.notifications.validators import get_service_daily_limit_cache_value
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
 from app.utils import DATETIME_FORMAT, get_reference_from_personalisation
@@ -159,8 +159,8 @@ def process_row(row, template, job, service, sender_id=None):
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
-    total_sent = fetch_todays_total_message_count(service.id)
-
+    total_sent = get_service_daily_limit_cache_value(KEY_TYPE_NORMAL, service)
+    print(total_sent)
     if total_sent + job.notification_count > service.message_limit:
         job.job_status = 'sending limits exceeded'
         job.processing_finished = datetime.utcnow()

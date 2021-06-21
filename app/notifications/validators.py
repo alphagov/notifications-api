@@ -14,7 +14,6 @@ from notifications_utils.recipients import (
 from sqlalchemy.orm.exc import NoResultFound
 
 from app import redis_store
-from app.dao import services_dao
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
@@ -63,8 +62,9 @@ def check_service_over_daily_message_limit(key_type, service):
         cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
         if not service_stats:
-            service_stats = services_dao.fetch_todays_total_message_count(service.id)
-            redis_store.set(cache_key, service_stats, ex=3600)
+            # first message of the day, set the cache to 0 and the expiry to 24 hours
+            service_stats = 0
+            redis_store.set(cache_key, service_stats, ex=86400)
         if int(service_stats) >= service.message_limit:
             current_app.logger.info(
                 "service {} has been rate limited for daily use sent {} limit {}".format(
@@ -73,10 +73,24 @@ def check_service_over_daily_message_limit(key_type, service):
             raise TooManyRequestsError(service.message_limit)
 
 
+def get_service_daily_limit_cache_value(key_type, service):
+    if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
+        cache_key = daily_limit_cache_key(service.id)
+        service_stats = redis_store.get(cache_key)
+        if not service_stats:
+            # first message of the day, set the cache to 0 and the expiry to 24 hours
+            service_stats = 0
+            redis_store.set(cache_key, service_stats, ex=86400)
+            return 0
+        else:
+            return int(service_stats)
+    else:
+        return 0
+
+
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key)
-    # Reduce queries to the notifications table
-    # check_service_over_daily_message_limit(api_key.key_type, service)
+    check_service_over_daily_message_limit(api_key.key_type, service)
 
 
 def check_template_is_for_notification_type(notification_type, template_type):

@@ -148,10 +148,8 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        # Only keep track of the daily limit for trial mode services.
-        if service.restricted and key_type != KEY_TYPE_TEST:
-            if redis_store.get(redis.daily_limit_cache_key(service.id)):
-                redis_store.incr(redis.daily_limit_cache_key(service.id))
+        if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
+            redis_store.incr(redis.daily_limit_cache_key(service.id))
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
