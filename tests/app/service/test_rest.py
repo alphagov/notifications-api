@@ -4128,3 +4128,43 @@ def test_set_as_broadcast_service_updates_services_history(
 
     new_history_records = Service.get_history_model().query.filter_by(id=sample_service.id).all()
     assert len(new_history_records) == len(old_history_records) + 1
+
+
+def test_set_as_broadcast_service_removes_user_permissions(
+    admin_request,
+    broadcast_organisation,
+    sample_service,
+    sample_service_full_permissions,
+    sample_invited_user,
+):
+    service_user = sample_service.users[0]
+
+    # make the user a member of a second service
+    dao_add_user_to_service(
+        sample_service_full_permissions,
+        service_user,
+        permissions=[
+            Permission(service_id=sample_service_full_permissions.id,
+                       user_id=service_user.id,
+                       permission='send_emails')
+        ]
+    )
+    assert len(service_user.get_permissions(service_id=sample_service.id)) == 8
+    assert len(sample_invited_user.get_permissions()) == 3
+
+    admin_request.post(
+        'service.set_as_broadcast_service',
+        service_id=sample_service.id,
+        _data={
+            'broadcast_channel': 'test',
+            'service_mode': 'live',
+            'provider_restriction': 'ee'
+        }
+    )
+
+    # The user permissions for the broadcast service get removed
+    assert len(service_user.get_permissions(service_id=sample_service.id)) == 0
+    # Permissions for users invited to the broadcast service get removed
+    assert sample_invited_user.permissions == ''
+    # Permissions for other services remain
+    assert len(service_user.get_permissions(service_id=sample_service_full_permissions.id)) == 1
