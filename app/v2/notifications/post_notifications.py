@@ -211,7 +211,7 @@ def process_sms_or_email_notification(
         template_with_content=template_with_content
     )
 
-    if service.id in current_app.config.get('HIGH_VOLUME_SERVICE') \
+    if service.high_volume \
         and api_user.key_type == KEY_TYPE_NORMAL \
             and notification_type in [EMAIL_TYPE, SMS_TYPE]:
         # Put service with high volumes of notifications onto a queue
