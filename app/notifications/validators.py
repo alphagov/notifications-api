@@ -61,7 +61,7 @@ def check_service_over_daily_message_limit(key_type, service):
     if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
         cache_key = daily_limit_cache_key(service.id)
         service_stats = redis_store.get(cache_key)
-        if not service_stats:
+        if service_stats is None:
             # first message of the day, set the cache to 0 and the expiry to 24 hours
             service_stats = 0
             redis_store.set(cache_key, service_stats, ex=86400)

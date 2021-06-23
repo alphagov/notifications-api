@@ -202,6 +202,7 @@ def test_persist_notification_increments_cache_for_trial_service(
     service = create_service(restricted=True)
     template = create_template(service=service)
     api_key = create_api_key(service=service)
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
     with set_config(notify_api, 'REDIS_ENABLED', True):
         persist_notification(
@@ -224,6 +225,7 @@ def test_persist_notification_increments_cache_live_service(
     service = create_service(restricted=False)
     template = create_template(service=service)
     api_key = create_api_key(service=service)
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
     mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
     with set_config(notify_api, 'REDIS_ENABLED', True):
         persist_notification(
