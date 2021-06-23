@@ -955,9 +955,24 @@ def get_monthly_notification_data_by_service():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
 
-    result = fact_notification_status_dao.fetch_monthly_notification_statuses_per_service(start_date, end_date)
+    rows = fact_notification_status_dao.fetch_monthly_notification_statuses_per_service(start_date, end_date)
 
-    return jsonify(result)
+    serialized_results = [
+        [
+            str(row.date_created),
+            str(row.service_id),
+            row.service_name,
+            row.notification_type,
+            row.count_sending,
+            row.count_delivered,
+            row.count_technical_failure,
+            row.count_temporary_failure,
+            row.count_permanent_failure,
+            row.count_sent,
+        ]
+        for row in rows
+    ]
+    return jsonify(serialized_results)
 
 
 def check_request_args(request):
