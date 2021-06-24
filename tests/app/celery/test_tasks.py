@@ -51,6 +51,7 @@ from app.models import (
 )
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.utils import DATETIME_FORMAT
+from app.v2.errors import TooManyRequestsError
 from tests.app import load_example_csv
 from tests.app.db import (
     create_api_key,
@@ -150,68 +151,6 @@ def test_should_process_sms_job_with_sender_id(sample_job, mocker, fake_uuid):
     )
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_should_not_process_sms_job_if_would_exceed_send_limits(
-    notify_db_session, mocker
-):
-    service = create_service(message_limit=9)
-    template = create_template(service=service)
-    job = create_job(template=template, notification_count=10, original_file_name='multiple_sms.csv')
-    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
-                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
-    mocker.patch('app.celery.tasks.process_row')
-    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=8)
-
-    process_job(job.id)
-
-    job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_and_metadata_from_s3.called is False
-    assert tasks.process_row.called is False
-
-
-def test_should_not_process_sms_job_if_would_exceed_send_limits_inc_today(
-    notify_db_session, mocker
-):
-    service = create_service(message_limit=1)
-    template = create_template(service=service)
-    job = create_job(template=template)
-
-    create_notification(template=template, job=job)
-
-    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
-                 return_value=(load_example_csv('sms'), {'sender_id': None}))
-    mocker.patch('app.celery.tasks.process_row')
-    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=2)
-
-    process_job(job.id)
-
-    job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_and_metadata_from_s3.called is False
-    assert tasks.process_row.called is False
-
-
-@pytest.mark.parametrize('template_type', ['sms', 'email'])
-def test_should_not_process_email_job_if_would_exceed_send_limits_inc_today(notify_db_session, template_type, mocker):
-    service = create_service(message_limit=1)
-    template = create_template(service=service, template_type=template_type)
-    job = create_job(template=template)
-
-    create_notification(template=template, job=job)
-
-    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3')
-    mocker.patch('app.celery.tasks.process_row')
-    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=2)
-
-    process_job(job.id)
-
-    job = jobs_dao.dao_get_job_by_id(job.id)
-    assert job.job_status == 'sending limits exceeded'
-    assert s3.get_job_and_metadata_from_s3.called is False
-    assert tasks.process_row.called is False
-
-
 def test_should_not_process_job_if_already_pending(sample_template, mocker):
     job = create_job(template=sample_template, job_status='scheduled')
 
@@ -224,8 +163,28 @@ def test_should_not_process_job_if_already_pending(sample_template, mocker):
     assert tasks.process_row.called is False
 
 
-def test_should_process_email_job_if_exactly_on_send_limits(notify_db_session,
-                                                            mocker):
+def test_should_not_process_if_send_limit_is_exceeded(
+    notify_api, notify_db_session, mocker
+):
+    service = create_service(message_limit=9)
+    template = create_template(service=service)
+    job = create_job(template=template, notification_count=10, original_file_name='multiple_sms.csv')
+    mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                 return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
+    mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.check_service_over_daily_message_limit',
+                 side_effect=TooManyRequestsError("exceeded limit"))
+    process_job(job.id)
+
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.job_status == 'sending limits exceeded'
+    assert s3.get_job_and_metadata_from_s3.called is False
+    assert tasks.process_row.called is False
+
+
+def test_should_process_job_if_send_limits_are_not_exceeded(
+        notify_api, notify_db_session, mocker
+):
     service = create_service(message_limit=10)
     template = create_template(service=service, template_type='email')
     job = create_job(template=template, notification_count=10)
@@ -235,8 +194,7 @@ def test_should_process_email_job_if_exactly_on_send_limits(notify_db_session,
     mocker.patch('app.celery.tasks.save_email.apply_async')
     mocker.patch('app.encryption.encrypt', return_value="something_encrypted")
     mocker.patch('app.celery.tasks.create_uuid', return_value="uuid")
-    mocker.patch('app.celery.tasks.get_service_daily_limit_cache_value', return_value=0)
-
+    mocker.patch('app.celery.tasks.check_service_over_daily_message_limit', return_value=0)
     process_job(job.id)
 
     s3.get_job_and_metadata_from_s3.assert_called_once_with(

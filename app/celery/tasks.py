@@ -54,10 +54,11 @@ from app.models import (
     DailySortedLetter,
 )
 from app.notifications.process_notifications import persist_notification
-from app.notifications.validators import get_service_daily_limit_cache_value
+from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
 from app.utils import DATETIME_FORMAT, get_reference_from_personalisation
+from app.v2.errors import TooManyRequestsError
 
 
 @notify_celery.task(name="process-job")
@@ -159,9 +160,10 @@ def process_row(row, template, job, service, sender_id=None):
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
-    total_sent = get_service_daily_limit_cache_value(KEY_TYPE_NORMAL, service)
-    print(total_sent)
-    if total_sent + job.notification_count > service.message_limit:
+    try:
+        check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
+        return False
+    except TooManyRequestsError:
         job.job_status = 'sending limits exceeded'
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
@@ -170,7 +172,6 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
                 job_id, job.notification_count, service.message_limit)
         )
         return True
-    return False
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)

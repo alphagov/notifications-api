@@ -113,49 +113,6 @@ def test_persist_notification_throws_exception_when_missing_template(sample_api_
     assert NotificationHistory.query.count() == 0
 
 
-def test_cache_is_not_incremented_on_failure_to_persist_notification(notify_api, sample_api_key, mocker):
-    mocked_redis = mocker.patch('app.redis_store.incr')
-    with pytest.raises(SQLAlchemyError):
-        with set_config(notify_api, 'REDIS_ENABLED', True):
-            persist_notification(template_id=None,
-                                 template_version=None,
-                                 recipient='+447111111111',
-                                 service=sample_api_key.service,
-                                 personalisation=None,
-                                 notification_type='sms',
-                                 api_key_id=sample_api_key.id,
-                                 key_type=sample_api_key.key_type)
-    mocked_redis.assert_not_called()
-
-
-def test_persist_notification_does_not_increment_cache_if_test_key(
-        notify_api, sample_template, sample_job, mocker, sample_test_api_key
-):
-    daily_limit_cache = mocker.patch('app.notifications.process_notifications.redis_store.incr')
-
-    assert Notification.query.count() == 0
-    assert NotificationHistory.query.count() == 0
-
-    with set_config(notify_api, 'REDIS_ENABLED', True):
-        persist_notification(
-            template_id=sample_template.id,
-            template_version=sample_template.version,
-            recipient='+447111111111',
-            service=sample_template.service,
-            personalisation={},
-            notification_type='sms',
-            api_key_id=sample_test_api_key.id,
-            key_type=sample_test_api_key.key_type,
-            job_id=sample_job.id,
-            job_row_number=100,
-            reference="ref",
-        )
-
-        assert Notification.query.count() == 1
-
-        assert not daily_limit_cache.called
-
-
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert Notification.query.count() == 0
@@ -195,11 +152,55 @@ def test_persist_notification_with_optionals(sample_job, sample_api_key):
     assert not persisted_notification.reply_to_text
 
 
-@freeze_time("2016-01-01 11:09:00.061258")
-def test_persist_notification_increments_cache_for_trial_service(
-        notify_api, notify_db_session, mocker
+def test_persist_notification_cache_is_not_incremented_on_failure_to_create_notification(
+        notify_api, sample_api_key, mocker
 ):
-    service = create_service(restricted=True)
+    mocked_redis = mocker.patch('app.redis_store.incr')
+    with pytest.raises(SQLAlchemyError):
+        persist_notification(template_id=None,
+                             template_version=None,
+                             recipient='+447111111111',
+                             service=sample_api_key.service,
+                             personalisation=None,
+                             notification_type='sms',
+                             api_key_id=sample_api_key.id,
+                             key_type=sample_api_key.key_type)
+    mocked_redis.assert_not_called()
+
+
+def test_persist_notification_does_not_increment_cache_if_test_key(
+        notify_api, sample_template, sample_job, mocker, sample_test_api_key
+):
+    daily_limit_cache = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 0
+    with set_config(notify_api, 'REDIS_ENABLED', True):
+        persist_notification(
+            template_id=sample_template.id,
+            template_version=sample_template.version,
+            recipient='+447111111111',
+            service=sample_template.service,
+            personalisation={},
+            notification_type='sms',
+            api_key_id=sample_test_api_key.id,
+            key_type=sample_test_api_key.key_type,
+            job_id=sample_job.id,
+            job_row_number=100,
+            reference="ref",
+        )
+
+    assert Notification.query.count() == 1
+
+    assert not daily_limit_cache.called
+
+
+@pytest.mark.parametrize('restricted_service', [True, False])
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_increments_cache_for_trial_or_live_service(
+        notify_api, notify_db_session, mocker, restricted_service
+):
+    service = create_service(restricted=restricted_service)
     template = create_template(service=service)
     api_key = create_api_key(service=service)
     mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
@@ -219,14 +220,16 @@ def test_persist_notification_increments_cache_for_trial_service(
         mock_incr.assert_called_once_with(str(service.id) + "-2016-01-01-count", )
 
 
-def test_persist_notification_increments_cache_live_service(
-    notify_api, notify_db_session, mocker
+@pytest.mark.parametrize('restricted_service', [True, False])
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
+        notify_api, notify_db_session, mocker, restricted_service
 ):
-    service = create_service(restricted=False)
+    service = create_service(restricted=restricted_service)
     template = create_template(service=service)
     api_key = create_api_key(service=service)
-    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=1)
-    mock_incr = mocker.patch('app.notifications.process_notifications.redis_store.incr')
+    mocker.patch('app.notifications.process_notifications.redis_store.get', return_value=None)
+    mock_set = mocker.patch('app.notifications.process_notifications.redis_store.set')
     with set_config(notify_api, 'REDIS_ENABLED', True):
         persist_notification(
             template_id=template.id,
@@ -239,7 +242,7 @@ def test_persist_notification_increments_cache_live_service(
             key_type=api_key.key_type,
             reference="ref2")
 
-        assert mock_incr.called
+        mock_set.assert_called_once_with(str(service.id) + "-2016-01-01-count", 1, ex=86400)
 
 
 @pytest.mark.parametrize((
