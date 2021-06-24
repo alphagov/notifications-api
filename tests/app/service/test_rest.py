@@ -3512,22 +3512,21 @@ def test_cancel_notification_for_service_updates_letter_if_still_time_to_cancel(
     assert response['status'] == 'cancelled'
 
 
-def test_get_monthly_notification_data_by_service(mocker, admin_request):
-    dao_mock = mocker.patch(
-        'app.service.rest.fact_notification_status_dao.fetch_monthly_notification_statuses_per_service',
-        return_value=[])
-
-    start_date = '2019-01-01'
-    end_date = '2019-06-17'
-
+def test_get_monthly_notification_data_by_service(sample_service, admin_request):
+    create_ft_notification_status(date(2019, 4, 17), notification_type='letter', service=sample_service,
+                                  notification_status='delivered')
+    create_ft_notification_status(date(2019, 3, 5), notification_type='email', service=sample_service,
+                                  notification_status='sending', count=4)
     response = admin_request.get(
         'service.get_monthly_notification_data_by_service',
-        start_date=start_date,
-        end_date=end_date
+        start_date='2019-01-01',
+        end_date='2019-06-17'
     )
 
-    dao_mock.assert_called_once_with(start_date, end_date)
-    assert response == []
+    assert response == [
+        ['2019-03-01', str(sample_service.id), 'Sample service', 'email', 4, 0, 0, 0, 0, 0],
+        ['2019-04-01', str(sample_service.id), 'Sample service', 'letter', 0, 1, 0, 0, 0, 0],
+    ]
 
 
 @freeze_time('2019-12-11 13:30')
