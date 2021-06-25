@@ -4,7 +4,6 @@ from flask import current_app
 from app.dao.services_dao import dao_add_user_to_service
 from app.models import EMAIL_TYPE, SMS_TYPE, Notification
 from app.service.sender import send_notification_to_service_users
-from tests.app.conftest import notify_service as create_notify_service
 from tests.app.db import create_service, create_template, create_user
 
 
@@ -13,15 +12,13 @@ from tests.app.db import create_service, create_template, create_user
     SMS_TYPE
 ])
 def test_send_notification_to_service_users_persists_notifications_correctly(
-    notify_db,
-    notify_db_session,
+    notify_service,
     notification_type,
     sample_service,
     mocker
 ):
     mocker.patch('app.service.sender.send_notification_to_queue')
 
-    notify_service, _ = create_notify_service(notify_db, notify_db_session)
     user = sample_service.users[0]
     template = create_template(sample_service, template_type=notification_type)
     send_notification_to_service_users(service_id=sample_service.id, template_id=template.id)
@@ -39,14 +36,12 @@ def test_send_notification_to_service_users_persists_notifications_correctly(
 
 
 def test_send_notification_to_service_users_sends_to_queue(
-    notify_db,
-    notify_db_session,
+    notify_service,
     sample_service,
     mocker
 ):
     send_mock = mocker.patch('app.service.sender.send_notification_to_queue')
 
-    create_notify_service(notify_db, notify_db_session)
     template = create_template(sample_service, template_type=EMAIL_TYPE)
     send_notification_to_service_users(service_id=sample_service.id, template_id=template.id)
 
@@ -55,15 +50,13 @@ def test_send_notification_to_service_users_sends_to_queue(
 
 
 def test_send_notification_to_service_users_includes_user_fields_in_personalisation(
-    notify_db,
-    notify_db_session,
+    notify_service,
     sample_service,
     mocker
 ):
     persist_mock = mocker.patch('app.service.sender.persist_notification')
     mocker.patch('app.service.sender.send_notification_to_queue')
 
-    create_notify_service(notify_db, notify_db_session)
     user = sample_service.users[0]
 
     template = create_template(sample_service, template_type=EMAIL_TYPE)
@@ -84,13 +77,10 @@ def test_send_notification_to_service_users_includes_user_fields_in_personalisat
 
 
 def test_send_notification_to_service_users_sends_to_active_users_only(
-    notify_db,
-    notify_db_session,
+    notify_service,
     mocker
 ):
     mocker.patch('app.service.sender.send_notification_to_queue')
-
-    create_notify_service(notify_db, notify_db_session)
 
     first_active_user = create_user(email='foo@bar.com', state='active')
     second_active_user = create_user(email='foo1@bar.com', state='active')
