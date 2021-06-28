@@ -182,6 +182,25 @@ def test_should_not_process_if_send_limit_is_exceeded(
     assert tasks.process_row.called is False
 
 
+def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
+    notify_api, notify_db_session, mocker
+):
+    service = create_service(message_limit=9)
+    template = create_template(service=service)
+    job = create_job(template=template, notification_count=10, original_file_name='multiple_sms.csv')
+    mock_s3 = mocker.patch('app.celery.tasks.s3.get_job_and_metadata_from_s3',
+                           return_value=(load_example_csv('multiple_sms'), {'sender_id': None}))
+    mock_process_row = mocker.patch('app.celery.tasks.process_row')
+    mocker.patch('app.celery.tasks.check_service_over_daily_message_limit',
+                 return_value=0)
+    process_job(job.id)
+
+    job = jobs_dao.dao_get_job_by_id(job.id)
+    assert job.job_status == 'sending limits exceeded'
+    mock_s3.assert_not_called()
+    mock_process_row.assert_not_called()
+
+
 def test_should_process_job_if_send_limits_are_not_exceeded(
         notify_api, notify_db_session, mocker
 ):

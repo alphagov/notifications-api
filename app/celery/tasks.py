@@ -161,8 +161,11 @@ def process_row(row, template, job, service, sender_id=None):
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
     try:
-        check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
-        return False
+        total_sent = check_service_over_daily_message_limit(KEY_TYPE_NORMAL, service)
+        if total_sent + job.notification_count > service.message_limit:
+            raise TooManyRequestsError(service.message_limit)
+        else:
+            return False
     except TooManyRequestsError:
         job.job_status = 'sending limits exceeded'
         job.processing_finished = datetime.utcnow()

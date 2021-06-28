@@ -65,8 +65,7 @@ def test_check_service_message_limit_in_cache_under_message_limit_passes(
     mock_set = mocker.patch('app.notifications.validators.redis_store.set')
     check_service_over_daily_message_limit(key_type, serialised_service)
     mock_get.assert_called_once_with(f'{serialised_service.id}-{datetime.utcnow().strftime("%Y-%m-%d")}-count')
-    assert mock_get.called
-    assert not mock_set.called
+    mock_set.assert_not_called()
 
 
 def test_check_service_over_daily_message_limit_should_not_interact_with_cache_for_test_key(sample_service, mocker):
@@ -74,7 +73,6 @@ def test_check_service_over_daily_message_limit_should_not_interact_with_cache_f
     mock_get = mocker.patch('app.notifications.validators.redis_store.get', side_effect=[None])
     serialised_service = SerialisedService.from_id(sample_service.id)
     check_service_over_daily_message_limit('test', serialised_service)
-    app.notifications.validators.redis_store.assert_not_called
     mock_get.assert_not_called()
 
 
@@ -105,7 +103,7 @@ def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(n
 
 @pytest.mark.parametrize('key_type', ['team', 'normal'])
 def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, notify_db_session):
-    service = create_service(restricted=True, message_limit=4)
+    service = create_service(message_limit=4)
     mocker.patch('app.redis_store.get', return_value=5)
 
     with pytest.raises(TooManyRequestsError) as e:
