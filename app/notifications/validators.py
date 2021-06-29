@@ -74,7 +74,7 @@ def check_service_over_daily_message_limit(key_type, service):
                 service.id, int(service_stats), service.message_limit)
         )
         raise TooManyRequestsError(service.message_limit)
-    return service_stats
+    return int(service_stats)
 
 
 def check_rate_limiting(service, api_key):
