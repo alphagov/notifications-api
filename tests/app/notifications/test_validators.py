@@ -61,7 +61,7 @@ def test_check_service_message_limit_in_cache_under_message_limit_passes(
         sample_service,
         mocker):
     serialised_service = SerialisedService.from_id(sample_service.id)
-    mock_get = mocker.patch('app.notifications.validators.redis_store.get', return_value=1)
+    mock_get = mocker.patch('app.notifications.validators.redis_store.get', return_value="1")
     mock_set = mocker.patch('app.notifications.validators.redis_store.set')
     service_stats = check_service_over_daily_message_limit(key_type, serialised_service)
     assert service_stats == 1
@@ -107,7 +107,7 @@ def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(n
 @pytest.mark.parametrize('key_type', ['team', 'normal'])
 def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, notify_db_session):
     service = create_service(message_limit=4)
-    mocker.patch('app.redis_store.get', return_value=5)
+    mocker.patch('app.redis_store.get', return_value="5")
 
     with pytest.raises(TooManyRequestsError) as e:
         check_service_over_daily_message_limit(key_type, service)
