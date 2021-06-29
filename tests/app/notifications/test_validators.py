@@ -63,7 +63,8 @@ def test_check_service_message_limit_in_cache_under_message_limit_passes(
     serialised_service = SerialisedService.from_id(sample_service.id)
     mock_get = mocker.patch('app.notifications.validators.redis_store.get', return_value=1)
     mock_set = mocker.patch('app.notifications.validators.redis_store.set')
-    check_service_over_daily_message_limit(key_type, serialised_service)
+    service_stats = check_service_over_daily_message_limit(key_type, serialised_service)
+    assert service_stats == 1
     mock_get.assert_called_once_with(f'{serialised_service.id}-{datetime.utcnow().strftime("%Y-%m-%d")}-count')
     mock_set.assert_not_called()
 
@@ -72,7 +73,8 @@ def test_check_service_over_daily_message_limit_should_not_interact_with_cache_f
     mocker.patch('app.notifications.validators.redis_store')
     mock_get = mocker.patch('app.notifications.validators.redis_store.get', side_effect=[None])
     serialised_service = SerialisedService.from_id(sample_service.id)
-    check_service_over_daily_message_limit('test', serialised_service)
+    service_stats = check_service_over_daily_message_limit('test', serialised_service)
+    assert service_stats == 0
     mock_get.assert_not_called()
 
 
@@ -86,18 +88,19 @@ def test_check_service_over_daily_message_limit_should_set_cache_value_as_zero_i
     serialised_service = SerialisedService.from_id(sample_service.id)
     with freeze_time("2016-01-01 12:00:00.000000"):
         mocker.patch('app.notifications.validators.redis_store.set')
-        check_service_over_daily_message_limit(key_type, serialised_service)
+        service_stats = check_service_over_daily_message_limit(key_type, serialised_service)
         app.notifications.validators.redis_store.set.assert_called_with(
             str(sample_service.id) + "-2016-01-01-count", 0, ex=86400
         )
+        assert service_stats == 0
 
 
 def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(notify_api, sample_service, mocker):
     serialised_service = SerialisedService.from_id(sample_service.id)
     with set_config(notify_api, 'REDIS_ENABLED', False):
         mock_cache_key = mocker.patch('notifications_utils.clients.redis.daily_limit_cache_key')
-        check_service_over_daily_message_limit('normal', serialised_service)
-
+        service_stats = check_service_over_daily_message_limit('normal', serialised_service)
+        assert service_stats == 0
         assert mock_cache_key.method_calls == []
 
 
