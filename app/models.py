@@ -145,6 +145,9 @@ class User(db.Model):
         if self.platform_admin:
             return True
 
+        if self.auth_type == 'webauthn_auth':
+            return True
+
         return any(
             str(service.organisation_id) == current_app.config['BROADCAST_ORGANISATION_ID'] or
             str(service.id) == current_app.config['NOTIFY_SERVICE_ID']

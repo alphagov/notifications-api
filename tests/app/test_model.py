@@ -344,9 +344,19 @@ def test_template_folder_is_parent(sample_service):
 
 
 @pytest.mark.parametrize('is_platform_admin', (False, True))
-def test_user_can_use_webauthn_returns_false(sample_user, is_platform_admin):
+def test_user_can_use_webauthn_if_platform_admin(sample_user, is_platform_admin):
     sample_user.platform_admin = is_platform_admin
     assert sample_user.can_use_webauthn == is_platform_admin
+
+
+@pytest.mark.parametrize(('auth_type', 'can_use_webauthn'), [
+    ('email_auth', False),
+    ('sms_auth', False),
+    ('webauthn_auth', True)
+])
+def test_user_can_use_webauthn_if_they_login_with_it(sample_user, auth_type, can_use_webauthn):
+    sample_user.auth_type = auth_type
+    assert sample_user.can_use_webauthn == can_use_webauthn
 
 
 def test_user_can_use_webauthn_if_in_broadcast_org(sample_broadcast_service):
