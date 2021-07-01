@@ -602,12 +602,10 @@ def mock_firetext_client(mocker):
 
 
 @pytest.fixture(scope='function')
-def sms_code_template(notify_db,
-                      notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def sms_code_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='SMS_CODE_TEMPLATE_ID',
         content='((verify_code))',
         template_type='sms'
@@ -615,11 +613,10 @@ def sms_code_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def email_2fa_code_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def email_2fa_code_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='EMAIL_2FA_TEMPLATE_ID',
         content=(
             'Hi ((name)),'
@@ -633,12 +630,10 @@ def email_2fa_code_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def email_verification_template(notify_db,
-                                notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def email_verification_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='NEW_USER_EMAIL_VERIFICATION_TEMPLATE_ID',
         content='((user_name)) use ((url)) to complete registration',
         template_type='email'
@@ -646,12 +641,11 @@ def email_verification_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def invitation_email_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def invitation_email_template(notify_service):
     content = '((user_name)) is invited to Notify by ((service_name)) ((url)) to complete registration',
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='INVITATION_EMAIL_TEMPLATE_ID',
         content=content,
         subject='Invitation to ((service_name))',
@@ -660,12 +654,11 @@ def invitation_email_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def broadcast_invitation_email_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def broadcast_invitation_email_template(notify_service):
     content = '((user_name)) is invited to broadcast Notify by ((service_name)) ((url)) to complete registration',
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='BROADCAST_INVITATION_EMAIL_TEMPLATE_ID',
         content=content,
         subject='Invitation to ((service_name))',
@@ -674,12 +667,10 @@ def broadcast_invitation_email_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def org_invite_email_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def org_invite_email_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='ORGANISATION_INVITATION_EMAIL_TEMPLATE_ID',
         content='((user_name)) ((organisation_name)) ((url))',
         subject='Invitation to ((organisation_name))',
@@ -688,13 +679,10 @@ def org_invite_email_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def password_reset_email_template(notify_db,
-                                  notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def password_reset_email_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='PASSWORD_RESET_TEMPLATE_ID',
         content='((user_name)) you can reset password by clicking ((url))',
         subject='Reset your password',
@@ -703,12 +691,10 @@ def password_reset_email_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def verify_reply_to_address_email_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def verify_reply_to_address_email_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='REPLY_TO_EMAIL_ADDRESS_VERIFICATION_TEMPLATE_ID',
         content="Hi,This address has been provided as the reply-to email address so we are verifying if it's working",
         subject='Your GOV.UK Notify reply-to email address',
@@ -717,12 +703,10 @@ def verify_reply_to_address_email_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def team_member_email_edit_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def team_member_email_edit_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='TEAM_MEMBER_EDIT_EMAIL_TEMPLATE_ID',
         content='Hi ((name)) ((servicemanagername)) changed your email to ((email address))',
         subject='Your GOV.UK Notify email address has changed',
@@ -731,12 +715,10 @@ def team_member_email_edit_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def team_member_mobile_edit_template(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def team_member_mobile_edit_template(notify_service):
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='TEAM_MEMBER_EDIT_MOBILE_TEMPLATE_ID',
         content='Your mobile number was changed by ((servicemanagername)).',
         template_type='sms'
@@ -744,14 +726,12 @@ def team_member_mobile_edit_template(notify_db, notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def already_registered_template(notify_db,
-                                notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def already_registered_template(notify_service):
     content = """Sign in here: ((signin_url)) If you’ve forgotten your password,
                           you can reset it here: ((forgot_password_url)) feedback:((feedback_url))"""
     return create_custom_template(
-        service=service, user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='ALREADY_REGISTERED_EMAIL_TEMPLATE_ID',
         content=content,
         template_type='email'
@@ -759,17 +739,15 @@ def already_registered_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def change_email_confirmation_template(notify_db,
-                                       notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def change_email_confirmation_template(notify_service):
     content = """Hi ((name)),
               Click this link to confirm your new email address:
               ((url))
               If you didn’t try to change the email address for your GOV.UK Notify account, let us know here:
               ((feedback_url))"""
     template = create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID',
         content=content,
         template_type='email'
@@ -778,15 +756,14 @@ def change_email_confirmation_template(notify_db,
 
 
 @pytest.fixture(scope='function')
-def mou_signed_templates(notify_db, notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
+def mou_signed_templates(notify_service):
     import importlib
     alembic_script = importlib.import_module('migrations.versions.0298_add_mou_signed_receipt')
 
     return {
         config_name: create_custom_template(
-            service,
-            user,
+            notify_service,
+            notify_service.users[0],
             config_name,
             'email',
             content='\n'.join(
@@ -826,10 +803,7 @@ def create_custom_template(service, user, template_config_name, template_type, c
 
 
 @pytest.fixture(scope='function')
-def letter_volumes_email_template(notify_db,
-                                  notify_db_session):
-    service, user = notify_service(notify_db, notify_db_session)
-
+def letter_volumes_email_template(notify_service):
     email_template_content = '\n'.join([
         "((total_volume)) letters (((total_sheets)) sheets) sent via Notify are coming in today''s batch. These include: ",  # noqa
         "",
@@ -844,8 +818,8 @@ def letter_volumes_email_template(notify_db,
     ])
 
     return create_custom_template(
-        service=service,
-        user=user,
+        service=notify_service,
+        user=notify_service.users[0],
         template_config_name='LETTERS_VOLUME_EMAIL_TEMPLATE_ID',
         content=email_template_content,
         subject="Notify letter volume for ((date)): ((total_volume)) letters, ((total_sheets)) sheets",
@@ -853,6 +827,7 @@ def letter_volumes_email_template(notify_db,
     )
 
 
+@pytest.fixture
 def notify_service(notify_db, notify_db_session):
     user = create_user()
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -881,7 +856,7 @@ def notify_service(notify_db, notify_db_session):
         db.session.add(reply_to)
         db.session.commit()
 
-    return service, user
+    return service
 
 
 @pytest.fixture(scope='function')

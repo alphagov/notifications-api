@@ -140,6 +140,20 @@ class User(db.Model):
     def password(self):
         raise AttributeError("Password not readable")
 
+    @property
+    def can_use_webauthn(self):
+        if self.platform_admin:
+            return True
+
+        if self.auth_type == 'webauthn_auth':
+            return True
+
+        return any(
+            str(service.organisation_id) == current_app.config['BROADCAST_ORGANISATION_ID'] or
+            str(service.id) == current_app.config['NOTIFY_SERVICE_ID']
+            for service in self.services
+        )
+
     @password.setter
     def password(self, password):
         self._password = hashpw(password)
@@ -179,6 +193,7 @@ class User(db.Model):
             'permissions': self.get_permissions(),
             'platform_admin': self.platform_admin,
             'services': [x.id for x in self.services if x.active],
+            'can_use_webauthn': self.can_use_webauthn,
             'state': self.state,
         }
 
