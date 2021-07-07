@@ -1870,6 +1870,10 @@ SEND_LETTERS = 'send_letters'
 MANAGE_API_KEYS = 'manage_api_keys'
 PLATFORM_ADMIN = 'platform_admin'
 VIEW_ACTIVITY = 'view_activity'
+CREATE_BROADCASTS = 'create_broadcasts'
+APPROVE_BROADCASTS = 'approve_broadcasts'
+CANCEL_BROADCASTS = 'cancel_broadcasts'
+REJECT_BROADCASTS = 'reject_broadcasts'
 
 # List of permissions
 PERMISSION_LIST = [
@@ -1881,7 +1885,12 @@ PERMISSION_LIST = [
     SEND_LETTERS,
     MANAGE_API_KEYS,
     PLATFORM_ADMIN,
-    VIEW_ACTIVITY]
+    VIEW_ACTIVITY,
+    CREATE_BROADCASTS,
+    APPROVE_BROADCASTS,
+    CANCEL_BROADCASTS,
+    REJECT_BROADCASTS,
+]
 
 
 class Permission(db.Model):
