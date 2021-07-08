@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
+from unittest import mock
 from uuid import UUID
 
-import mock
 import pytest
 from freezegun import freeze_time
 
