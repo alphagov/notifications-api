@@ -1115,6 +1115,7 @@ def set_as_broadcast_service(service_id):
     - sets the services `count_as_live` to false
     - adds the service to the broadcast organisation
     - puts the service into training mode or live mode
+    - removes all permissions from current users and invited users
     """
     data = validate(request.get_json(), service_broadcast_settings_schema)
     service = dao_fetch_service_by_id(service_id)

@@ -7,7 +7,10 @@ from app.dao.dao_utils import autocommit, version_class
 from app.models import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
+    INVITE_PENDING,
+    InvitedUser,
     Organisation,
+    Permission,
     Service,
     ServiceBroadcastSettings,
     ServicePermission,
@@ -52,6 +55,13 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
     else:
         service.restricted = True
         service.go_live_at = None
+
+    # Remove all user permissions for the service users and invited users
+    Permission.query.filter_by(service_id=service.id).delete()
+    InvitedUser.query.filter_by(
+        service_id=service.id,
+        status=INVITE_PENDING
+    ).update({'permissions': ''})
 
     # Add service to organisation
     organisation = Organisation.query.filter_by(
