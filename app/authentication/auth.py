@@ -1,6 +1,6 @@
 import uuid
 
-from flask import _request_ctx_stack, current_app, g, request
+from flask import current_app, g, request
 from gds_metrics import Histogram
 from notifications_python_client.authentication import (
     decode_jwt_token,
@@ -140,8 +140,8 @@ def requires_auth():
             raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
 
         g.service_id = service.id
-        _request_ctx_stack.top.authenticated_service = service
-        _request_ctx_stack.top.api_user = api_key
+        g.api_user = api_key
+        g.authenticated_service = service
 
         current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
             service.id,

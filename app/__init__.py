@@ -7,7 +7,6 @@ from time import monotonic
 
 from celery import current_task
 from flask import (
-    _request_ctx_stack,
     current_app,
     g,
     has_request_context,
@@ -69,8 +68,8 @@ metrics = GDSMetrics()
 
 notification_provider_clients = NotificationProviderClients()
 
-api_user = LocalProxy(lambda: _request_ctx_stack.top.api_user)
-authenticated_service = LocalProxy(lambda: _request_ctx_stack.top.authenticated_service)
+api_user = LocalProxy(lambda: g.api_user)
+authenticated_service = LocalProxy(lambda: g.authenticated_service)
 
 CONCURRENT_REQUESTS = Gauge(
     'concurrent_web_request_count',
