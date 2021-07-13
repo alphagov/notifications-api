@@ -86,7 +86,7 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
                 e
             )
         )
-        if not isinstance(e, HTTPError) or e.response.status_code >= 500:
+        if not isinstance(e, HTTPError) or e.response.status_code >= 500 or e.response.status_code == 429:
             try:
                 self.retry(queue=QueueNames.CALLBACKS_RETRY)
             except self.MaxRetriesExceededError:

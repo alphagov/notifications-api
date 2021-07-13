@@ -92,8 +92,12 @@ def test_send_complaint_to_service_posts_https_request_to_service_with_encrypted
 
 
 @pytest.mark.parametrize("notification_type", ["email", "sms"])
-def test__send_data_to_service_callback_api_retries_if_request_returns_500_with_encrypted_data(
-        notify_db_session, mocker, notification_type
+@pytest.mark.parametrize('status_code', [429, 500, 503])
+def test__send_data_to_service_callback_api_retries_if_request_returns_error_code_with_encrypted_data(
+        notify_db_session,
+        mocker,
+        notification_type,
+        status_code
 ):
     callback_api, template = _set_up_test_data(notification_type, "delivery_status")
     datestr = datetime(2017, 6, 20)
@@ -108,7 +112,7 @@ def test__send_data_to_service_callback_api_retries_if_request_returns_500_with_
     with requests_mock.Mocker() as request_mock:
         request_mock.post(callback_api.url,
                           json={},
-                          status_code=500)
+                          status_code=status_code)
         send_delivery_status_to_service(notification.id, encrypted_status_update=encrypted_data)
 
     assert mocked.call_count == 1
