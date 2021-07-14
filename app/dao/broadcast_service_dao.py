@@ -8,6 +8,7 @@ from app.models import (
     BROADCAST_TYPE,
     EMAIL_AUTH_TYPE,
     INVITE_PENDING,
+    VIEW_ACTIVITY,
     InvitedUser,
     Organisation,
     Permission,
@@ -56,12 +57,15 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
         service.restricted = True
         service.go_live_at = None
 
-    # Remove all user permissions for the service users and invited users
-    Permission.query.filter_by(service_id=service.id).delete()
+    # Remove all user permissions apart from view_activity for the service users and invited users
+    Permission.query.filter(
+        Permission.service_id == service.id,
+        Permission.permission != VIEW_ACTIVITY
+    ).delete()
     InvitedUser.query.filter_by(
         service_id=service.id,
         status=INVITE_PENDING
-    ).update({'permissions': ''})
+    ).update({'permissions': VIEW_ACTIVITY})
 
     # Add service to organisation
     organisation = Organisation.query.filter_by(

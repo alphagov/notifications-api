@@ -4162,9 +4162,11 @@ def test_set_as_broadcast_service_removes_user_permissions(
         }
     )
 
-    # The user permissions for the broadcast service get removed
-    assert len(service_user.get_permissions(service_id=sample_service.id)) == 0
-    # Permissions for users invited to the broadcast service get removed
-    assert sample_invited_user.permissions == ''
+    # The user permissions for the broadcast service (apart from 'view_activity') get removed
+    assert service_user.get_permissions(service_id=sample_service.id) == ['view_activity']
+
+    # Permissions for users invited to the broadcast service (apart from 'view_activity') get removed
+    assert sample_invited_user.permissions == 'view_activity'
+
     # Permissions for other services remain
-    assert len(service_user.get_permissions(service_id=sample_service_full_permissions.id)) == 1
+    assert service_user.get_permissions(service_id=sample_service_full_permissions.id) == ['send_emails']
