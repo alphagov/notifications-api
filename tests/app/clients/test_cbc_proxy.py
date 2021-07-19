@@ -82,6 +82,14 @@ def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy_ee):
     assert secret == 'cbc-proxy-aws-secret-access-key'
 
 
+def test_cbc_proxy_send_link_tests(mocker, cbc_proxy_ee):
+    mock_send_link_test = mocker.patch.object(cbc_proxy_ee, '_send_link_test')
+    cbc_proxy_ee.send_link_tests()
+
+    mock_send_link_test.assert_any_call(cbc_proxy_ee.lambda_name)
+    mock_send_link_test.assert_any_call(cbc_proxy_ee.failover_lambda_name)
+
+
 @pytest.mark.parametrize('description, expected_language', (
     ('my-description', 'en-GB'),
     ('mŷ-description', 'cy-GB'),
@@ -560,7 +568,7 @@ def test_cbc_proxy_create_and_send_tries_failover_lambda_on_function_error_and_r
 def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_client, cbc):
     cbc_proxy = cbc_proxy_client.get_proxy(cbc)
 
-    identifier = str(uuid.uuid4())
+    mocker.patch('app.clients.cbc_proxy.uuid.uuid4', return_value=123)
 
     ld_client_mock = mocker.patch.object(
         cbc_proxy,
@@ -572,8 +580,8 @@ def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_
         'StatusCode': 200,
     }
 
-    cbc_proxy.send_link_test(
-        identifier=identifier,
+    cbc_proxy._send_link_test(
+        lambda_name=f'{cbc}-1-proxy'
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -586,14 +594,14 @@ def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_
     payload_bytes = kwargs['Payload']
     payload = json.loads(payload_bytes)
 
-    assert payload['identifier'] == identifier
+    assert payload['identifier'] == '123'
     assert payload['message_type'] == 'test'
     assert 'message_number' not in payload
     assert payload['message_format'] == 'cap'
 
 
 def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vodafone):
-    identifier = str(uuid.uuid4())
+    mocker.patch('app.clients.cbc_proxy.uuid.uuid4', return_value=123)
 
     db.session.connection().execute(
         'ALTER SEQUENCE broadcast_provider_message_number_seq RESTART WITH 1'
@@ -609,8 +617,8 @@ def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vo
         'StatusCode': 200,
     }
 
-    cbc_proxy_vodafone.send_link_test(
-        identifier=identifier,
+    cbc_proxy_vodafone._send_link_test(
+        lambda_name='vodafone-1-proxy'
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -623,7 +631,7 @@ def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vo
     payload_bytes = kwargs['Payload']
     payload = json.loads(payload_bytes)
 
-    assert payload['identifier'] == identifier
+    assert payload['identifier'] == '123'
     assert payload['message_type'] == 'test'
     assert payload['message_number'] == '00000001'
     assert payload['message_format'] == 'ibag'

@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 
 from flask import current_app
@@ -250,5 +249,4 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
 
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
-    identifier = str(uuid.uuid4())
-    cbc_proxy_client.get_proxy(provider).send_link_test(identifier)
+    cbc_proxy_client.get_proxy(provider).send_link_tests()

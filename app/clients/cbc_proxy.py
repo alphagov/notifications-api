@@ -1,4 +1,5 @@
 import json
+import uuid
 from abc import ABC, abstractmethod
 
 import boto3
@@ -77,11 +78,11 @@ class CBCProxyClientBase(ABC):
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
 
-    def send_link_test(
-        self,
-        identifier,
-    ):
-        pass
+    def send_link_tests(self):
+        self._send_link_test(self.lambda_name)
+        self._send_link_test(self.failover_lambda_name)
+
+    def _send_link_test(self): pass
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -159,9 +160,9 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'
 
-    def send_link_test(
+    def _send_link_test(
         self,
-        identifier,
+        lambda_name,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
@@ -169,11 +170,11 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
         """
         payload = {
             'message_type': 'test',
-            'identifier': identifier,
+            'identifier': str(uuid.uuid4()),
             'message_format': 'cap'
         }
 
-        self._invoke_lambda(lambda_name=self.lambda_name, payload=payload)
+        self._invoke_lambda(lambda_name=lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -234,9 +235,9 @@ class CBCProxyVodafone(CBCProxyClientBase):
     LANGUAGE_ENGLISH = 'English'
     LANGUAGE_WELSH = 'Welsh'
 
-    def send_link_test(
+    def _send_link_test(
         self,
-        identifier,
+        lambda_name,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
@@ -249,12 +250,12 @@ class CBCProxyVodafone(CBCProxyClientBase):
 
         payload = {
             'message_type': 'test',
-            'identifier': identifier,
+            'identifier': str(uuid.uuid4()),
             'message_number': formatted_seq_number,
             'message_format': 'ibag'
         }
 
-        self._invoke_lambda(lambda_name=self.lambda_name, payload=payload)
+        self._invoke_lambda(lambda_name=lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, message_number, headline, description, areas, sent, expires, channel

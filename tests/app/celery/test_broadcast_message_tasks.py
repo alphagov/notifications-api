@@ -566,10 +566,8 @@ def test_trigger_link_tests_invokes_cbc_proxy_client(
         f'app.clients.cbc_proxy.CBCProxy{provider_capitalised}.send_link_test',
     )
 
-    mocker.patch('app.celery.broadcast_message_tasks.uuid.uuid4', return_value=123)
-
     trigger_link_test(provider)
-    assert mock_send_link_test.called_once_with('123')
+    assert mock_send_link_test.called_once()
 
 
 @pytest.mark.parametrize('retry_count, expected_delay', [
