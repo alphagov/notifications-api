@@ -169,7 +169,7 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
             'message_format': 'cap'
         }
 
-        self._invoke_lambda_with_failover(payload=payload)
+        self._invoke_lambda(lambda_name=self.lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -250,7 +250,7 @@ class CBCProxyVodafone(CBCProxyClientBase):
             'message_format': 'ibag'
         }
 
-        self._invoke_lambda_with_failover(payload=payload)
+        self._invoke_lambda(lambda_name=self.lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, message_number, headline, description, areas, sent, expires, channel
