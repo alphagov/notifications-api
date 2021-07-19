@@ -249,4 +249,4 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
 
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
-    cbc_proxy_client.get_proxy(provider).send_link_tests()
+    cbc_proxy_client.get_proxy(provider).send_link_test()

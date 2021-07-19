@@ -82,9 +82,9 @@ def test_cbc_proxy_lambda_client_has_correct_keys(cbc_proxy_ee):
     assert secret == 'cbc-proxy-aws-secret-access-key'
 
 
-def test_cbc_proxy_send_link_tests(mocker, cbc_proxy_ee):
+def test_cbc_proxy_send_link_test(mocker, cbc_proxy_ee):
     mock_send_link_test = mocker.patch.object(cbc_proxy_ee, '_send_link_test')
-    cbc_proxy_ee.send_link_tests()
+    cbc_proxy_ee.send_link_test()
 
     mock_send_link_test.assert_any_call(cbc_proxy_ee.lambda_name)
     mock_send_link_test.assert_any_call(cbc_proxy_ee.failover_lambda_name)

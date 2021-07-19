@@ -78,11 +78,14 @@ class CBCProxyClientBase(ABC):
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
 
-    def send_link_tests(self):
+    def send_link_test(self):
         self._send_link_test(self.lambda_name)
         self._send_link_test(self.failover_lambda_name)
 
-    def _send_link_test(self): pass
+    def _send_link_test(
+        self,
+        lambda_name,
+    ): pass
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
