@@ -8,6 +8,7 @@ from freezegun import freeze_time
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
+    auto_expire_broadcast_messages,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
     check_if_letters_still_in_created,
@@ -30,9 +31,15 @@ from app.models import (
     JOB_STATUS_PENDING,
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
+    BroadcastStatusType,
 )
 from tests.app import load_example_csv
-from tests.app.db import create_job, create_notification, create_template
+from tests.app.db import (
+    create_broadcast_message,
+    create_job,
+    create_notification,
+    create_template,
+)
 from tests.conftest import set_config
 
 
@@ -624,3 +631,27 @@ def test_trigger_link_does_nothing_if_cbc_proxy_disabled(
         trigger_link_tests()
 
     assert mock_trigger_link_test.called is False
+
+
+@freeze_time('2021-07-19 15:50')
+@pytest.mark.parametrize('status, finishes_at, final_status', [
+    (BroadcastStatusType.BROADCASTING, '2021-07-19 16:00', BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.BROADCASTING, '2021-07-19 15:40', BroadcastStatusType.COMPLETED),
+    (BroadcastStatusType.BROADCASTING, None, BroadcastStatusType.BROADCASTING),
+    (BroadcastStatusType.PENDING_APPROVAL, None, BroadcastStatusType.PENDING_APPROVAL),
+    (BroadcastStatusType.CANCELLED, '2021-07-19 15:40', BroadcastStatusType.CANCELLED),
+])
+def test_auto_expire_broadcast_messages(
+    status,
+    finishes_at,
+    final_status,
+    sample_template
+):
+    message = create_broadcast_message(
+        status=status,
+        finishes_at=finishes_at,
+        template=sample_template,
+    )
+
+    auto_expire_broadcast_messages()
+    assert message.status == final_status
