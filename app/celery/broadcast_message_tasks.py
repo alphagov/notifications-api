@@ -2,9 +2,8 @@ import uuid
 from datetime import datetime
 
 from flask import current_app
-from sqlalchemy.schema import Sequence
 
-from app import cbc_proxy_client, db, notify_celery, zendesk_client
+from app import cbc_proxy_client, notify_celery, zendesk_client
 from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.config import QueueNames
 from app.dao.broadcast_message_dao import (
@@ -252,11 +251,6 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
     identifier = str(uuid.uuid4())
-    formatted_seq_number = None
-    if provider == BroadcastProvider.VODAFONE:
-        sequence = Sequence('broadcast_provider_message_number_seq')
-        sequential_number = db.session.connection().execute(sequence)
-        formatted_seq_number = format_sequential_number(sequential_number)
     message = f"Sending a link test to CBC proxy for provider {provider}. Identifier in payload is {identifier}"
     current_app.logger.info(message)
-    cbc_proxy_client.get_proxy(provider).send_link_test(identifier, formatted_seq_number)
+    cbc_proxy_client.get_proxy(provider).send_link_test(identifier)

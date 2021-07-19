@@ -5,6 +5,7 @@ import boto3
 import botocore
 from flask import current_app
 from notifications_utils.template import non_gsm_characters
+from sqlalchemy.schema import Sequence
 
 from app.config import BroadcastProvider
 from app.utils import DATETIME_FORMAT, format_sequential_number
@@ -79,7 +80,6 @@ class CBCProxyClientBase(ABC):
     def send_link_test(
         self,
         identifier,
-        sequential_number
     ):
         pass
 
@@ -158,7 +158,6 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
     def send_link_test(
         self,
         identifier,
-        sequential_number=None,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
@@ -234,16 +233,20 @@ class CBCProxyVodafone(CBCProxyClientBase):
     def send_link_test(
         self,
         identifier,
-        sequential_number,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
         test.
         """
+        from app import db
+        sequence = Sequence('broadcast_provider_message_number_seq')
+        sequential_number = db.session.connection().execute(sequence)
+        formatted_seq_number = format_sequential_number(sequential_number)
+
         payload = {
             'message_type': 'test',
             'identifier': identifier,
-            'message_number': sequential_number,
+            'message_number': formatted_seq_number,
             'message_format': 'ibag'
         }
 

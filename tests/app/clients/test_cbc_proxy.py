@@ -8,6 +8,7 @@ from unittest.mock import Mock, call
 import pytest
 from botocore.exceptions import ClientError as BotoClientError
 
+from app import db
 from app.clients.cbc_proxy import (
     CBCProxyClient,
     CBCProxyEE,
@@ -573,7 +574,6 @@ def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_
 
     cbc_proxy.send_link_test(
         identifier=identifier,
-        sequential_number='0000007b',
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -595,6 +595,10 @@ def test_cbc_proxy_one_2_many_send_link_test_invokes_function(mocker, cbc_proxy_
 def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vodafone):
     identifier = str(uuid.uuid4())
 
+    db.session.connection().execute(
+        'ALTER SEQUENCE broadcast_provider_message_number_seq RESTART WITH 1'
+    )
+
     ld_client_mock = mocker.patch.object(
         cbc_proxy_vodafone,
         '_lambda_client',
@@ -607,7 +611,6 @@ def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vo
 
     cbc_proxy_vodafone.send_link_test(
         identifier=identifier,
-        sequential_number='0000007b',
     )
 
     ld_client_mock.invoke.assert_called_once_with(
@@ -622,5 +625,5 @@ def test_cbc_proxy_vodafone_send_link_test_invokes_function(mocker, cbc_proxy_vo
 
     assert payload['identifier'] == identifier
     assert payload['message_type'] == 'test'
-    assert payload['message_number'] == '0000007b'
+    assert payload['message_number'] == '00000001'
     assert payload['message_format'] == 'ibag'
