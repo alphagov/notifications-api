@@ -251,6 +251,4 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
 @notify_celery.task(name='trigger-link-test')
 def trigger_link_test(provider):
     identifier = str(uuid.uuid4())
-    message = f"Sending a link test to CBC proxy for provider {provider}. Identifier in payload is {identifier}"
-    current_app.logger.info(message)
     cbc_proxy_client.get_proxy(provider).send_link_test(identifier)
