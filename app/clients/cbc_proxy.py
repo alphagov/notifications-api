@@ -1,10 +1,12 @@
 import json
+import uuid
 from abc import ABC, abstractmethod
 
 import boto3
 import botocore
 from flask import current_app
 from notifications_utils.template import non_gsm_characters
+from sqlalchemy.schema import Sequence
 
 from app.config import BroadcastProvider
 from app.utils import DATETIME_FORMAT, format_sequential_number
@@ -76,12 +78,14 @@ class CBCProxyClientBase(ABC):
     def __init__(self, lambda_client):
         self._lambda_client = lambda_client
 
-    def send_link_test(
+    def send_link_test(self):
+        self._send_link_test(self.lambda_name)
+        self._send_link_test(self.failover_lambda_name)
+
+    def _send_link_test(
         self,
-        identifier,
-        sequential_number
-    ):
-        pass
+        lambda_name,
+    ): pass
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -118,6 +122,10 @@ class CBCProxyClientBase(ABC):
     def _invoke_lambda(self, lambda_name, payload):
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
         try:
+            current_app.logger.info(
+                f"Calling lambda {lambda_name} with payload {str(payload)[:1000]}"
+            )
+
             result = self._lambda_client.invoke(
                 FunctionName=lambda_name,
                 InvocationType='RequestResponse',
@@ -155,10 +163,9 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
     LANGUAGE_ENGLISH = 'en-GB'
     LANGUAGE_WELSH = 'cy-GB'
 
-    def send_link_test(
+    def _send_link_test(
         self,
-        identifier,
-        sequential_number=None,
+        lambda_name,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
@@ -166,11 +173,11 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
         """
         payload = {
             'message_type': 'test',
-            'identifier': identifier,
+            'identifier': str(uuid.uuid4()),
             'message_format': 'cap'
         }
 
-        self._invoke_lambda_with_failover(payload=payload)
+        self._invoke_lambda(lambda_name=lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -231,23 +238,27 @@ class CBCProxyVodafone(CBCProxyClientBase):
     LANGUAGE_ENGLISH = 'English'
     LANGUAGE_WELSH = 'Welsh'
 
-    def send_link_test(
+    def _send_link_test(
         self,
-        identifier,
-        sequential_number,
+        lambda_name,
     ):
         """
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
         test.
         """
+        from app import db
+        sequence = Sequence('broadcast_provider_message_number_seq')
+        sequential_number = db.session.connection().execute(sequence)
+        formatted_seq_number = format_sequential_number(sequential_number)
+
         payload = {
             'message_type': 'test',
-            'identifier': identifier,
-            'message_number': sequential_number,
+            'identifier': str(uuid.uuid4()),
+            'message_number': formatted_seq_number,
             'message_format': 'ibag'
         }
 
-        self._invoke_lambda_with_failover(payload=payload)
+        self._invoke_lambda(lambda_name=lambda_name, payload=payload)
 
     def create_and_send_broadcast(
         self, identifier, message_number, headline, description, areas, sent, expires, channel
