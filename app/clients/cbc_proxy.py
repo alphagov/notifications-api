@@ -123,7 +123,7 @@ class CBCProxyClientBase(ABC):
         payload_bytes = bytes(json.dumps(payload), encoding='utf8')
         try:
             current_app.logger.info(
-                f"Calling lambda {lambda_name} for link test with payload {payload}"
+                f"Calling lambda {lambda_name} with payload {payload}"
             )
 
             result = self._lambda_client.invoke(
