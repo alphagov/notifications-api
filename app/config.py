@@ -323,6 +323,11 @@ class Config(object):
             'schedule': timedelta(minutes=15),
             'options': {'queue': QueueNames.PERIODIC}
         },
+        'auto-expire-broadcast-messages': {
+            'task': 'auto-expire-broadcast-messages',
+            'schedule': timedelta(minutes=5),
+            'options': {'queue': QueueNames.PERIODIC}
+        },
     }
     CELERY_QUEUES = []
 

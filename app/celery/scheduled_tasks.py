@@ -4,7 +4,7 @@ from flask import current_app
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, zendesk_client
+from app import db, notify_celery, zendesk_client
 from app.celery.broadcast_message_tasks import trigger_link_test
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
 from app.celery.tasks import (
@@ -48,6 +48,8 @@ from app.models import (
     JOB_STATUS_IN_PROGRESS,
     JOB_STATUS_PENDING,
     SMS_TYPE,
+    BroadcastMessage,
+    BroadcastStatusType,
     Job,
 )
 from app.notifications.process_notifications import send_notification_to_queue
@@ -304,3 +306,16 @@ def trigger_link_tests():
     if current_app.config['CBC_PROXY_ENABLED']:
         for cbc_name in current_app.config['ENABLED_CBCS']:
             trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.BROADCASTS)
+
+
+@notify_celery.task(name='auto-expire-broadcast-messages')
+def auto_expire_broadcast_messages():
+    expired_broadcasts = BroadcastMessage.query.filter(
+        BroadcastMessage.finishes_at <= datetime.now(),
+        BroadcastMessage.status == BroadcastStatusType.BROADCASTING,
+    )
+
+    for broadcast in expired_broadcasts:
+        broadcast.status = BroadcastStatusType.COMPLETED
+
+    db.session.commit()
