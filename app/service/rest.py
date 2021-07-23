@@ -2,7 +2,10 @@ import itertools
 from datetime import datetime
 
 from flask import Blueprint, current_app, jsonify, request
-from notifications_utils.letter_timings import letter_can_be_cancelled
+from notifications_utils.letter_timings import (
+    letter_can_be_cancelled,
+    too_late_to_cancel_letter,
+)
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
@@ -473,9 +476,17 @@ def cancel_notification_for_service(service_id, notification_id):
         raise InvalidRequest('Notification cannot be cancelled - only letters can be cancelled', status_code=400)
     elif not letter_can_be_cancelled(notification.status, notification.created_at):
         print_day = letter_print_day(notification.created_at)
-
+        if too_late_to_cancel_letter(notification.created_at):
+            message = "It’s too late to cancel this letter. Printing started {} at 5.30pm".format(print_day)
+        elif notification.status == 'cancelled':
+            message = "This letter has already been cancelled."
+        else:
+            message = (
+                f"We could not cancel this letter. "
+                f"Letter status: {notification.status}, created_at: {notification.created_at}"
+            )
         raise InvalidRequest(
-            "It’s too late to cancel this letter. Printing started {} at 5.30pm".format(print_day),
+            message,
             status_code=400)
 
     updated_notification = notifications_dao.update_notification_status_by_id(
