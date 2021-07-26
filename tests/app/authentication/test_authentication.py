@@ -116,8 +116,8 @@ def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_a
 
 
 def test_admin_auth_should_not_allow_request_with_no_iat(client):
-    iss = current_app.config['ADMIN_CLIENT_USER_NAME']
-    secret = current_app.config['API_INTERNAL_SECRETS'][0]
+    client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
@@ -126,7 +126,7 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client):
     }
 
     claims = {
-        'iss': iss
+        'iss': client_id,
         # 'iat': not provided
     }
 
@@ -135,12 +135,12 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client):
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_admin_auth()
-    assert exc.value.short_message == "Unauthorized: admin authentication token not found"
+    assert exc.value.short_message == "Unauthorized: API authentication token not found"
 
 
 def test_admin_auth_should_not_allow_request_with_old_iat(client):
-    iss = current_app.config['ADMIN_CLIENT_USER_NAME']
-    secret = current_app.config['API_INTERNAL_SECRETS'][0]
+    client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = {
@@ -149,7 +149,7 @@ def test_admin_auth_should_not_allow_request_with_old_iat(client):
     }
 
     claims = {
-        'iss': iss,
+        'iss': client_id,
         'iat': int(time.time()) - 60
     }
 
@@ -224,24 +224,24 @@ def test_should_allow_valid_token_for_request_with_path_params_for_public_url(cl
 
 
 def test_should_allow_valid_token_for_request_with_path_params_for_admin_url(client):
-    token = create_jwt_token(
-        current_app.config['API_INTERNAL_SECRETS'][0], current_app.config['ADMIN_CLIENT_USER_NAME']
-    )
+    client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
+
+    token = create_jwt_token(secret, client_id)
     response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 200
 
 
 def test_should_allow_valid_token_for_request_with_path_params_for_admin_url_with_second_secret(client):
-    with set_config(client.application, 'API_INTERNAL_SECRETS', ["secret1", "secret2"]):
-        token = create_jwt_token(
-            current_app.config['API_INTERNAL_SECRETS'][0], current_app.config['ADMIN_CLIENT_USER_NAME']
-        )
+    client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    new_secrets = {client_id: ["secret1", "secret2"]}
+
+    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
+        token = create_jwt_token("secret1", client_id)
         response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
         assert response.status_code == 200
 
-        token = create_jwt_token(
-            current_app.config['API_INTERNAL_SECRETS'][1], current_app.config['ADMIN_CLIENT_USER_NAME']
-        )
+        token = create_jwt_token("secret2", client_id)
         response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
         assert response.status_code == 200
 
@@ -317,35 +317,35 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
 
 
 def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
-    api_secret = current_app.config.get('API_INTERNAL_SECRETS')[0]
-    api_service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
-    token = create_jwt_token(
-        secret=api_secret,
-        client_id=api_service_id
-    )
-    with set_config(client.application, 'API_INTERNAL_SECRETS', []):
+    client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
+    secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
+    token = create_jwt_token(secret, client_id)
+    new_secrets = {client_id: []}
+
+    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
         response = client.get(
             '/service',
             headers={'Authorization': 'Bearer {}'.format(token)})
+
     assert response.status_code == 401
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Unauthorized: admin authentication token not found"]}
+    assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
 
 
 def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
-    api_secret = current_app.config.get('API_INTERNAL_SECRETS')[0]
-    token = create_jwt_token(
-        secret=api_secret,
-        client_id=current_app.config.get('ADMIN_CLIENT_USER_NAME')
-    )
-    current_app.config['API_INTERNAL_SECRETS'][0] = 'something-wrong'
-    response = client.get(
-        '/service',
-        headers={'Authorization': 'Bearer {}'.format(token)})
+    client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
+    secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
+    token = create_jwt_token(secret, client_id)
+    new_secrets = {client_id:  ['something-wrong']}
+
+    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
+        response = client.get(
+            '/service',
+            headers={'Authorization': 'Bearer {}'.format(token)})
+
     assert response.status_code == 401
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Unauthorized: admin authentication token not found"]}
-    current_app.config['API_INTERNAL_SECRETS'][0] = api_secret
+    assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
 
 
 def test_authentication_returns_error_when_service_doesnt_exit(
@@ -450,9 +450,9 @@ def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_valu
     (False, 'wrong_key', 200),
 ])
 def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
-    token = create_jwt_token(
-        current_app.config['API_INTERNAL_SECRETS'][0], current_app.config['ADMIN_CLIENT_USER_NAME']
-    )
+    client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
+    secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
+    token = create_jwt_token(secret, client_id)
 
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
