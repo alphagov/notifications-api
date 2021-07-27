@@ -28,6 +28,12 @@ from app.models import KEY_TYPE_NORMAL, ApiKey
 from tests.conftest import set_config, set_config_values
 
 
+def create_custom_jwt_token(headers=None, payload=None, key=None):
+    # code copied from notifications_python_client.authentication.py::create_jwt_token
+    headers = headers or {"typ": 'JWT', "alg": 'HS256'}
+    return jwt.encode(payload=payload, key=key or str(uuid.uuid4()), headers=headers)
+
+
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
 def test_should_not_allow_request_with_no_token(client, auth_fn):
     request.headers = {}
@@ -54,18 +60,9 @@ def test_should_not_allow_request_with_incorrect_token(client, auth_fn):
 
 @pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
 def test_should_not_allow_request_with_no_iss(client, auth_fn):
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS256'
-    }
-
-    claims = {
-        # 'iss': not provided
-        'iat': int(time.time())
-    }
-
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
+    token = create_custom_jwt_token(
+        payload={'iat': int(time.time())}
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -73,20 +70,10 @@ def test_should_not_allow_request_with_no_iss(client, auth_fn):
     assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
-def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
-    iss = str(sample_api_key.service_id)
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS256'
-    }
-
-    claims = {
-        'iss': iss
-        # 'iat': not provided
-    }
-
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
+def test_should_not_allow_request_with_no_iat(client, sample_api_key):
+    token = create_custom_jwt_token(
+        payload={'iss': str(sample_api_key.service_id)}
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -95,19 +82,10 @@ def test_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
 
 
 def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
-    iss = str(sample_api_key.service_id)
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS512'
-    }
-
-    claims = {
-        'iss': iss,
-        'iat': int(time.time())
-    }
-
-    token = jwt.encode(payload=claims, key=str(uuid.uuid4()), headers=headers)
+    token = create_custom_jwt_token(
+        headers={"typ": 'JWT', "alg": 'HS512'},
+        payload={'iss': str(sample_api_key.service_id), 'iat': int(time.time())}
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -119,18 +97,10 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS256'
-    }
-
-    claims = {
-        'iss': client_id,
-        # 'iat': not provided
-    }
-
-    token = jwt.encode(payload=claims, key=secret, headers=headers)
+    token = create_custom_jwt_token(
+        payload={'iss': client_id},
+        key=secret
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -142,18 +112,10 @@ def test_admin_auth_should_not_allow_request_with_old_iat(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
-    # code copied from notifications_python_client.authentication.py::create_jwt_token
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS256'
-    }
-
-    claims = {
-        'iss': client_id,
-        'iat': int(time.time()) - 60
-    }
-
-    token = jwt.encode(payload=claims, key=secret, headers=headers)
+    token = create_custom_jwt_token(
+        payload={'iss': client_id, 'iat': int(time.time()) - 60},
+        key=secret
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
@@ -162,21 +124,16 @@ def test_admin_auth_should_not_allow_request_with_old_iat(client):
 
 
 def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
-    iss = str(sample_api_key.service_id)
     key = get_unsigned_secrets(sample_api_key.service_id)[0]
 
-    headers = {
-        "typ": 'JWT',
-        "alg": 'HS256'
-    }
-
-    claims = {
-        'iss': iss,
-        'iat': int(time.time()),
-        'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
-    }
-
-    token = jwt.encode(payload=claims, key=key, headers=headers)
+    token = create_custom_jwt_token(
+        payload={
+            'iss': str(sample_api_key.service_id),
+            'iat': int(time.time()),
+            'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
+        },
+        key=key
+    )
 
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
