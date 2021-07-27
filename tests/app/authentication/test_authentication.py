@@ -134,7 +134,7 @@ def test_requires_admin_auth_should_not_allow_request_with_no_iat(
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_admin_auth()
-    assert exc.value.short_message == "Unauthorized: API authentication token not found"
+    assert exc.value.short_message == "Invalid token: API key not found"
 
 
 def test_requires_admin_auth_should_not_allow_request_with_old_iat(
@@ -150,7 +150,7 @@ def test_requires_admin_auth_should_not_allow_request_with_old_iat(
     request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
         requires_admin_auth()
-    assert exc.value.short_message == "Invalid token: expired, check that your system clock is accurate"
+    assert exc.value.short_message == "Error: Your system clock must be accurate to within 30 seconds"
 
 
 def test_requires_auth_should_not_allow_request_with_extra_claims(
@@ -342,9 +342,9 @@ def test_requires_admin_auth_returns_error_with_no_secrets(
             '/service',
             headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
 
-    assert response.status_code == 401
+    assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
+    assert error_message['message'] == {"token": ["Invalid token: API key not found"]}
 
 
 def test_requires_admin_auth_returns_error_when_secret_is_invalid(
@@ -359,9 +359,9 @@ def test_requires_admin_auth_returns_error_when_secret_is_invalid(
             '/service',
             headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
 
-    assert response.status_code == 401
+    assert response.status_code == 403
     error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
+    assert error_message['message'] == {"token": ["Invalid token: API key not found"]}
 
 
 def test_requires_auth_returns_error_when_service_doesnt_exist(

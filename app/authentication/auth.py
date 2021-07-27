@@ -49,6 +49,13 @@ class AuthError(Exception):
         }
 
 
+class InternalApiKey():
+    def __init__(self, client_id, secret):
+        self.secret = secret
+        self.id = client_id
+        self.expiry_date = None
+
+
 def get_auth_token(req):
     auth_header = req.headers.get('Authorization', None)
     if not auth_header:
@@ -81,23 +88,13 @@ def requires_internal_auth(expected_client_id):
     if client_id != expected_client_id:
         raise AuthError("Unauthorized: not allowed to perform this action", 401)
 
+    api_keys = [
+        InternalApiKey(client_id, secret)
+        for secret in current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id]
+    ]
+
+    _decode_jwt_token(auth_token, api_keys, client_id)
     g.service_id = client_id
-    secrets = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id]
-
-    for secret in secrets:
-        try:
-            decode_jwt_token(auth_token, secret)
-            return
-        except TokenExpiredError:
-            raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
-        except TokenDecodeError:
-            # TODO: Change this so it doesn't also catch `TokenIssuerError` or `TokenIssuedAtError` exceptions
-            # (which are children of `TokenDecodeError`) as these should cause an auth error immediately rather
-            # than continue on to check the next admin client secret
-            continue
-
-    # Either there are no admin client secrets or their token didn't match one of them so error
-    raise AuthError("Unauthorized: API authentication token not found", 401)
 
 
 def requires_auth():
@@ -123,15 +120,23 @@ def requires_auth():
     if not service.active:
         raise AuthError("Invalid token: service is archived", 403, service_id=service.id)
 
-    for api_key in service.api_keys:
+    api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
+
+    g.api_user = api_key
+    g.service_id = service_id
+    g.authenticated_service = service
+
+
+def _decode_jwt_token(auth_token, api_keys, service_id=None):
+    for api_key in api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
         except TokenExpiredError:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenAlgorithmError:
             err_msg = "Invalid token: algorithm used is not HS256"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenDecodeError:
             # we attempted to validate the token but it failed meaning it was not signed using this api key.
             # Let's try the next one
@@ -141,25 +146,22 @@ def requires_auth():
             continue
         except TokenError:
             # General error when trying to decode and validate the token
-            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service_id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
-
-        g.service_id = service.id
-        g.api_user = api_key
-        g.authenticated_service = service
+            raise AuthError("Invalid token: API key revoked", 403, service_id=service_id, api_key_id=api_key.id)
 
         current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-            service.id,
+            service_id,
             api_key.id,
             request.headers.get('User-Agent'),
             request.base_url
         ))
-        return
+
+        return api_key
     else:
         # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: API key not found", 403, service_id=service.id)
+        raise AuthError("Invalid token: API key not found", 403, service_id=service_id)
 
 
 def __get_token_issuer(auth_token):
