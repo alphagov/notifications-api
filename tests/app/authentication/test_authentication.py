@@ -70,7 +70,7 @@ def test_should_not_allow_request_with_no_iss(client, auth_fn):
     assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
-def test_should_not_allow_request_with_no_iat(client, sample_api_key):
+def test_requires_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
     token = create_custom_jwt_token(
         payload={'iss': str(sample_api_key.service_id)}
     )
@@ -81,7 +81,7 @@ def test_should_not_allow_request_with_no_iat(client, sample_api_key):
     assert exc.value.short_message == 'Invalid token: API key not found'
 
 
-def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
+def test_requires_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
     token = create_custom_jwt_token(
         headers={"typ": 'JWT', "alg": 'HS512'},
         payload={'iss': str(sample_api_key.service_id), 'iat': int(time.time())}
@@ -93,7 +93,7 @@ def test_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_a
     assert exc.value.short_message == 'Invalid token: algorithm used is not HS256'
 
 
-def test_admin_auth_should_not_allow_request_with_no_iat(client):
+def test_requires_admin_auth_should_not_allow_request_with_no_iat(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
@@ -108,7 +108,7 @@ def test_admin_auth_should_not_allow_request_with_no_iat(client):
     assert exc.value.short_message == "Unauthorized: API authentication token not found"
 
 
-def test_admin_auth_should_not_allow_request_with_old_iat(client):
+def test_requires_admin_auth_should_not_allow_request_with_old_iat(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
@@ -123,7 +123,7 @@ def test_admin_auth_should_not_allow_request_with_old_iat(client):
     assert exc.value.short_message == "Invalid token: expired, check that your system clock is accurate"
 
 
-def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
+def test_requires_auth_should_not_allow_request_with_extra_claims(client, sample_api_key):
     key = get_unsigned_secrets(sample_api_key.service_id)[0]
 
     token = create_custom_jwt_token(
@@ -141,7 +141,7 @@ def test_auth_should_not_allow_request_with_extra_claims(client, sample_api_key)
     assert exc.value.short_message == GENERAL_TOKEN_ERROR_MESSAGE
 
 
-def test_should_not_allow_invalid_secret(client, sample_api_key):
+def test_requires_auth_should_not_allow_invalid_secret(client, sample_api_key):
     token = create_jwt_token(
         secret="not-so-secret",
         client_id=str(sample_api_key.service_id))
@@ -155,14 +155,14 @@ def test_should_not_allow_invalid_secret(client, sample_api_key):
 
 
 @pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
-def test_should_allow_valid_token(client, sample_api_key, scheme):
+def test_requires_auth_should_allow_valid_token(client, sample_api_key, scheme):
     token = __create_token(sample_api_key.service_id)
     response = client.get('/notifications', headers={'Authorization': '{} {}'.format(scheme, token)})
     assert response.status_code == 200
 
 
 @pytest.mark.parametrize('service_id', ['not-a-valid-id', 1234])
-def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sample_api_key, service_id):
+def test_requires_auth_should_not_allow_service_id_with_the_wrong_data_type(client, sample_api_key, service_id):
     token = create_jwt_token(secret=get_unsigned_secrets(sample_api_key.service_id)[0],
                              client_id=service_id)
     response = client.get(
@@ -174,13 +174,13 @@ def test_should_not_allow_service_id_that_is_not_the_wrong_data_type(client, sam
     assert data['message'] == {"token": ['Invalid token: service id is not the right data type']}
 
 
-def test_should_allow_valid_token_for_request_with_path_params_for_public_url(client, sample_api_key):
+def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for_public_url(client, sample_api_key):
     token = __create_token(sample_api_key.service_id)
     response = client.get('/notifications', headers={'Authorization': 'Bearer {}'.format(token)})
     assert response.status_code == 200
 
 
-def test_should_allow_valid_token_for_request_with_path_params_for_admin_url(client):
+def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
 
@@ -189,7 +189,7 @@ def test_should_allow_valid_token_for_request_with_path_params_for_admin_url(cli
     assert response.status_code == 200
 
 
-def test_should_allow_valid_token_for_request_with_path_params_for_admin_url_with_second_secret(client):
+def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params_with_second_secret(client):
     client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
     new_secrets = {client_id: ["secret1", "secret2"]}
 
@@ -203,7 +203,7 @@ def test_should_allow_valid_token_for_request_with_path_params_for_admin_url_wit
         assert response.status_code == 200
 
 
-def test_should_allow_valid_token_when_service_has_multiple_keys(client, sample_api_key):
+def test_requires_auth_should_allow_valid_token_when_service_has_multiple_keys(client, sample_api_key):
     data = {'service': sample_api_key.service,
             'name': 'some key name',
             'created_by': sample_api_key.created_by,
@@ -218,7 +218,7 @@ def test_should_allow_valid_token_when_service_has_multiple_keys(client, sample_
     assert response.status_code == 200
 
 
-def test_authentication_passes_when_service_has_multiple_keys_some_expired(
+def test_requires_auth_passes_when_service_has_multiple_keys_some_expired(
         client,
         sample_api_key):
     expired_key_data = {'service': sample_api_key.service,
@@ -245,8 +245,9 @@ def test_authentication_passes_when_service_has_multiple_keys_some_expired(
     assert response.status_code == 200
 
 
-def test_authentication_returns_token_expired_when_service_uses_expired_key_and_has_multiple_keys(client,
-                                                                                                  sample_api_key):
+def test_requires_auth_returns_token_expired_when_service_uses_expired_key_and_has_multiple_keys(
+    client, sample_api_key
+):
     expired_key = {'service': sample_api_key.service,
                    'name': 'expired_key',
                    'created_by': sample_api_key.created_by,
@@ -273,7 +274,7 @@ def test_authentication_returns_token_expired_when_service_uses_expired_key_and_
     assert exc.value.api_key_id == expired_api_key.id
 
 
-def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
+def test_requires_admin_auth_returns_error_with_no_secrets(client):
     client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
     token = create_jwt_token(secret, client_id)
@@ -289,7 +290,7 @@ def test_authentication_returns_error_when_admin_client_has_no_secrets(client):
     assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
 
 
-def test_authentication_returns_error_when_admin_client_secret_is_invalid(client):
+def test_requires_admin_auth_returns_error_when_secret_is_invalid(client):
     client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
     token = create_jwt_token(secret, client_id)
@@ -305,7 +306,7 @@ def test_authentication_returns_error_when_admin_client_secret_is_invalid(client
     assert error_message['message'] == {"token": ["Unauthorized: API authentication token not found"]}
 
 
-def test_authentication_returns_error_when_service_doesnt_exit(
+def test_requires_auth_returns_error_when_service_doesnt_exit(
     client,
     sample_api_key
 ):
@@ -323,7 +324,7 @@ def test_authentication_returns_error_when_service_doesnt_exit(
     assert error_message['message'] == {'token': ['Invalid token: service not found']}
 
 
-def test_authentication_returns_error_when_service_inactive(client, sample_api_key):
+def test_requires_auth_returns_error_when_service_inactive(client, sample_api_key):
     sample_api_key.service.active = False
     token = create_jwt_token(secret=str(sample_api_key.id), client_id=str(sample_api_key.service_id))
 
@@ -334,9 +335,9 @@ def test_authentication_returns_error_when_service_inactive(client, sample_api_k
     assert error_message['message'] == {'token': ['Invalid token: service is archived']}
 
 
-def test_authentication_returns_error_when_service_has_no_secrets(client,
-                                                                  sample_service,
-                                                                  fake_uuid):
+def test_requires_auth_returns_error_when_service_has_no_secrets(
+    client, sample_service, fake_uuid
+):
     token = create_jwt_token(
         secret=fake_uuid,
         client_id=str(sample_service.id))
@@ -359,8 +360,9 @@ def test_should_attach_the_current_api_key_to_current_app(notify_api, sample_ser
         assert str(api_user.id) == str(sample_api_key.id)
 
 
-def test_should_return_403_when_token_is_expired(client,
-                                                 sample_api_key):
+def test_requires_auth_return_403_when_token_is_expired(
+    client, sample_api_key
+):
     with freeze_time('2001-01-01T12:00:00'):
         token = __create_token(sample_api_key.service_id)
     with freeze_time('2001-01-01T12:00:40'):
@@ -377,13 +379,13 @@ def __create_token(service_id):
                             client_id=str(service_id))
 
 
-@pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
-    (True, 'key_1', 200),
-    (True, 'wrong_key', 200),
-    (False, 'key_1', 200),
-    (False, 'wrong_key', 200),
+@pytest.mark.parametrize('check_proxy_header,header_value', [
+    (True, 'key_1'),
+    (True, 'wrong_key'),
+    (False, 'key_1'),
+    (False, 'wrong_key'),
 ])
-def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
+def test_requires_no_auth_proxy_key(notify_api, check_proxy_header, header_value):
     with set_config_values(notify_api, {
         'ROUTE_SECRET_KEY_1': 'key_1',
         'ROUTE_SECRET_KEY_2': '',
@@ -397,7 +399,7 @@ def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_valu
                     ('X-Custom-Forwarder', header_value),
                 ]
             )
-        assert response.status_code == expected_status
+        assert response.status_code == 200
 
 
 @pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
@@ -406,7 +408,7 @@ def test_proxy_key_non_auth_endpoint(notify_api, check_proxy_header, header_valu
     (False, 'key_1', 200),
     (False, 'wrong_key', 200),
 ])
-def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header_value, expected_status):
+def test_requires_admin_auth_proxy_key(notify_api, check_proxy_header, header_value, expected_status):
     client_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
     secret = current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id][0]
     token = create_jwt_token(secret, client_id)
@@ -428,8 +430,7 @@ def test_proxy_key_on_admin_auth_endpoint(notify_api, check_proxy_header, header
         assert response.status_code == expected_status
 
 
-def test_should_cache_service_and_api_key_lookups(mocker, client, sample_api_key):
-
+def test_requires_auth_should_cache_service_and_api_key_lookups(mocker, client, sample_api_key):
     mock_get_api_keys = mocker.patch(
         'app.serialised_models.get_model_api_keys',
         wraps=get_model_api_keys,
