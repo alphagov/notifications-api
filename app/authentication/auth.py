@@ -56,19 +56,6 @@ class InternalApiKey():
         self.expiry_date = None
 
 
-def get_auth_token(req):
-    auth_header = req.headers.get('Authorization', None)
-    if not auth_header:
-        raise AuthError('Unauthorized: authentication token must be provided', 401)
-
-    auth_scheme = auth_header[:7].title()
-
-    if auth_scheme != 'Bearer ':
-        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
-
-    return auth_header[7:]
-
-
 def requires_no_auth():
     pass
 
@@ -82,8 +69,8 @@ def requires_internal_auth(expected_client_id):
         raise TypeError("Unknown client_id for internal auth")
 
     request_helper.check_proxy_header_before_request()
-    auth_token = get_auth_token(request)
-    client_id = __get_token_issuer(auth_token)
+    auth_token = _get_auth_token(request)
+    client_id = _get_token_issuer(auth_token)
 
     if client_id != expected_client_id:
         raise AuthError("Unauthorized: not allowed to perform this action", 401)
@@ -100,8 +87,8 @@ def requires_internal_auth(expected_client_id):
 def requires_auth():
     request_helper.check_proxy_header_before_request()
 
-    auth_token = get_auth_token(request)
-    issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
+    auth_token = _get_auth_token(request)
+    issuer = _get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
     try:
         service_id = uuid.UUID(issuer)
@@ -164,7 +151,20 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
         raise AuthError("Invalid token: API key not found", 403, service_id=service_id)
 
 
-def __get_token_issuer(auth_token):
+def _get_auth_token(req):
+    auth_header = req.headers.get('Authorization', None)
+    if not auth_header:
+        raise AuthError('Unauthorized: authentication token must be provided', 401)
+
+    auth_scheme = auth_header[:7].title()
+
+    if auth_scheme != 'Bearer ':
+        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
+
+    return auth_header[7:]
+
+
+def _get_token_issuer(auth_token):
     try:
         issuer = get_token_issuer(auth_token)
     except TokenIssuerError:

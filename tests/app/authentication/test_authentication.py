@@ -13,6 +13,8 @@ from app import api_user
 from app.authentication.auth import (
     GENERAL_TOKEN_ERROR_MESSAGE,
     AuthError,
+    _get_auth_token,
+    _get_token_issuer,
     requires_admin_auth,
     requires_auth,
 )
@@ -62,39 +64,40 @@ def admin_jwt_token(admin_jwt_client_id, admin_jwt_secret):
     return create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
 
 
-@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
-def test_should_not_allow_request_with_no_token(client, auth_fn):
+def test_get_auth_token_should_not_allow_request_with_no_token(client):
     request.headers = {}
     with pytest.raises(AuthError) as exc:
-        auth_fn()
+        _get_auth_token(request)
     assert exc.value.short_message == 'Unauthorized: authentication token must be provided'
 
 
-@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
-def test_should_not_allow_request_with_incorrect_header(client, auth_fn):
+def test_get_auth_token_should_not_allow_request_with_incorrect_header(client):
     request.headers = {'Authorization': 'Basic 1234'}
     with pytest.raises(AuthError) as exc:
-        auth_fn()
+        _get_auth_token(request)
     assert exc.value.short_message == 'Unauthorized: authentication bearer scheme must be used'
 
 
-@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
-def test_should_not_allow_request_with_incorrect_token(client, auth_fn):
-    request.headers = {'Authorization': 'Bearer 1234'}
+@pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
+def test_get_auth_token_should_allow_valid_token(client, scheme):
+    token = create_jwt_token(client_id='something', secret='secret')
+    request.headers={'Authorization': '{} {}'.format(scheme, token)}
+    assert _get_auth_token(request) == token
+
+
+def test_get_token_issuer_should_not_allow_request_with_incorrect_token(client):
     with pytest.raises(AuthError) as exc:
-        auth_fn()
+        _get_token_issuer("Bearer 1234")
     assert exc.value.short_message == GENERAL_TOKEN_ERROR_MESSAGE
 
 
-@pytest.mark.parametrize('auth_fn', [requires_auth, requires_admin_auth])
-def test_should_not_allow_request_with_no_iss(client, auth_fn):
+def test_get_token_issuer_should_not_allow_request_with_no_iss(client):
     token = create_custom_jwt_token(
         payload={'iat': int(time.time())}
     )
 
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        auth_fn()
+        _get_token_issuer(token)
     assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
@@ -184,21 +187,6 @@ def test_requires_auth_should_not_allow_invalid_secret(client, sample_api_key):
     assert response.status_code == 403
     data = json.loads(response.get_data())
     assert data['message'] == {"token": ['Invalid token: API key not found']}
-
-
-@pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
-def test_requires_auth_should_allow_valid_token(
-    client,
-    sample_api_key,
-    service_jwt_secret,
-    scheme,
-):
-    token = create_jwt_token(
-        client_id=str(sample_api_key.service_id),
-        secret=service_jwt_secret,
-    )
-    response = client.get('/notifications', headers={'Authorization': '{} {}'.format(scheme, token)})
-    assert response.status_code == 200
 
 
 @pytest.mark.parametrize('service_id', ['not-a-valid-id', 1234])
