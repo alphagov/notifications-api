@@ -1,33 +1,27 @@
 import time
 import uuid
-from datetime import datetime
 from unittest.mock import call
 
 import jwt
 import pytest
 from flask import current_app, json, request
-from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
 from app.authentication.auth import (
     GENERAL_TOKEN_ERROR_MESSAGE,
     AuthError,
+    _decode_jwt_token,
     _get_auth_token,
     _get_token_issuer,
-    requires_admin_auth,
-    requires_auth,
 )
 from app.dao.api_key_dao import (
     expire_api_key,
     get_model_api_keys,
-    get_unsigned_secret,
     get_unsigned_secrets,
-    save_model_api_key,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.models import KEY_TYPE_NORMAL, ApiKey
-from tests.conftest import set_config, set_config_values
+from tests.conftest import set_config_values
 
 
 def create_custom_jwt_token(headers=None, payload=None, key=None):
@@ -50,17 +44,9 @@ def service_jwt_token(sample_api_key, service_jwt_secret):
 
 
 @pytest.fixture
-def admin_jwt_client_id():
-    return current_app.config['ADMIN_CLIENT_USER_NAME']
-
-
-@pytest.fixture
-def admin_jwt_secret(admin_jwt_client_id):
-    return current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
-
-
-@pytest.fixture
-def admin_jwt_token(admin_jwt_client_id, admin_jwt_secret):
+def admin_jwt_token():
+    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    admin_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
     return create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
 
 
@@ -81,7 +67,7 @@ def test_get_auth_token_should_not_allow_request_with_incorrect_header(client):
 @pytest.mark.parametrize('scheme', ['bearer', 'Bearer'])
 def test_get_auth_token_should_allow_valid_token(client, scheme):
     token = create_jwt_token(client_id='something', secret='secret')
-    request.headers={'Authorization': '{} {}'.format(scheme, token)}
+    request.headers = {'Authorization': '{} {}'.format(scheme, token)}
     assert _get_auth_token(request) == token
 
 
@@ -101,92 +87,131 @@ def test_get_token_issuer_should_not_allow_request_with_no_iss(client):
     assert exc.value.short_message == 'Invalid token: iss field not provided'
 
 
-def test_requires_auth_should_not_allow_request_with_no_iat(client, sample_api_key):
-    token = create_custom_jwt_token(
-        payload={'iss': str(sample_api_key.service_id)}
-    )
-
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
-    with pytest.raises(AuthError) as exc:
-        requires_auth()
-    assert exc.value.short_message == 'Invalid token: API key not found'
-
-
-def test_requires_auth_should_not_allow_request_with_non_hs256_algorithm(client, sample_api_key):
+def test_decode_jwt_token_should_not_allow_non_hs256_algorithm(client, sample_api_key):
     token = create_custom_jwt_token(
         headers={"typ": 'JWT', "alg": 'HS512'},
-        payload={'iss': str(sample_api_key.service_id), 'iat': int(time.time())}
+        payload={},
     )
 
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        requires_auth()
+        _decode_jwt_token(token, [sample_api_key])
     assert exc.value.short_message == 'Invalid token: algorithm used is not HS256'
 
 
-def test_requires_admin_auth_should_not_allow_request_with_no_iat(
+def test_decode_jwt_token_should_not_allow_no_iat(
     client,
-    admin_jwt_client_id,
-    admin_jwt_secret,
+    sample_api_key,
 ):
     token = create_custom_jwt_token(
-        payload={'iss': admin_jwt_client_id},
-        key=admin_jwt_secret
+        payload={'iss': 'something'}
     )
 
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        requires_admin_auth()
+        _decode_jwt_token(token, [sample_api_key])
     assert exc.value.short_message == "Invalid token: API key not found"
 
 
-def test_requires_admin_auth_should_not_allow_request_with_old_iat(
+def test_decode_jwt_token_should_not_allow_old_iat(
     client,
-    admin_jwt_client_id,
-    admin_jwt_secret,
+    sample_api_key,
 ):
     token = create_custom_jwt_token(
-        payload={'iss': admin_jwt_client_id, 'iat': int(time.time()) - 60},
-        key=admin_jwt_secret
+        payload={'iss': 'something', 'iat': int(time.time()) - 60},
+        key=sample_api_key.secret,
     )
 
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        requires_admin_auth()
+        _decode_jwt_token(token, [sample_api_key])
     assert exc.value.short_message == "Error: Your system clock must be accurate to within 30 seconds"
 
 
-def test_requires_auth_should_not_allow_request_with_extra_claims(
+def test_decode_jwt_token_should_not_allow_extra_claims(
     client,
     sample_api_key,
-    service_jwt_secret,
 ):
     token = create_custom_jwt_token(
         payload={
-            'iss': str(sample_api_key.service_id),
+            'iss': 'something',
             'iat': int(time.time()),
             'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
         },
-        key=service_jwt_secret,
+        key=sample_api_key.secret,
     )
 
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
     with pytest.raises(AuthError) as exc:
-        requires_auth()
+        _decode_jwt_token(token, [sample_api_key])
     assert exc.value.short_message == GENERAL_TOKEN_ERROR_MESSAGE
 
 
-def test_requires_auth_should_not_allow_invalid_secret(client, sample_api_key):
+def test_decode_jwt_token_should_not_allow_invalid_secret(
+    client,
+    sample_api_key
+):
     token = create_jwt_token(
         secret="not-so-secret",
-        client_id=str(sample_api_key.service_id))
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': "Bearer {}".format(token)}
+        client_id=str(sample_api_key.service_id)
     )
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: API key not found']}
+
+    with pytest.raises(AuthError) as exc:
+        _decode_jwt_token(token, [sample_api_key])
+    assert exc.value.short_message == 'Invalid token: API key not found'
+
+
+def test_decode_jwt_token_should_allow_multiple_api_keys(
+    client,
+    sample_api_key,
+    sample_test_api_key,
+):
+    token = create_jwt_token(
+        secret=sample_test_api_key.secret,
+        client_id=str(sample_test_api_key.service_id),
+    )
+
+    # successful if no error is raised
+    _decode_jwt_token(token, [sample_api_key, sample_test_api_key])
+
+
+def test_decode_jwt_token_should_allow_some_expired_keys(
+    client,
+    sample_api_key,
+    sample_test_api_key,
+):
+    expire_api_key(sample_api_key.service_id, sample_api_key.id)
+
+    token = create_jwt_token(
+        secret=sample_test_api_key.secret,
+        client_id=str(sample_test_api_key.service_id),
+    )
+
+    # successful if no error is raised
+    _decode_jwt_token(token, [sample_api_key, sample_test_api_key])
+
+
+def test_decode_jwt_token_errors_when_all_api_keys_are_expired(
+    client,
+    sample_api_key,
+    sample_test_api_key,
+):
+    expire_api_key(sample_api_key.service_id, sample_api_key.id)
+    expire_api_key(sample_test_api_key.service_id, sample_test_api_key.id)
+
+    token = create_jwt_token(
+        secret=sample_test_api_key.secret,
+        client_id=str(sample_test_api_key.service_id),
+    )
+
+    with pytest.raises(AuthError) as exc:
+        _decode_jwt_token(token, [sample_api_key, sample_test_api_key], service_id='1234')
+
+    assert exc.value.short_message == 'Invalid token: API key revoked'
+    assert exc.value.service_id == '1234'
+    assert exc.value.api_key_id == sample_test_api_key.id
+
+
+def test_decode_jwt_token_returns_error_with_no_secrets(client):
+    with pytest.raises(AuthError) as exc:
+        _decode_jwt_token('token', [])
+    assert exc.value.short_message == "Invalid token: API key not found"
 
 
 @pytest.mark.parametrize('service_id', ['not-a-valid-id', 1234])
@@ -224,134 +249,6 @@ def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_para
     assert response.status_code == 200
 
 
-def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params_with_second_secret(
-    client,
-    admin_jwt_client_id,
-):
-    new_secrets = {admin_jwt_client_id: ["secret1", "secret2"]}
-
-    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
-        token = create_jwt_token("secret1", admin_jwt_client_id)
-        response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
-        assert response.status_code == 200
-
-        token = create_jwt_token("secret2", admin_jwt_client_id)
-        response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(token)})
-        assert response.status_code == 200
-
-
-def test_requires_auth_should_allow_valid_token_when_service_has_multiple_keys(
-    client,
-    sample_api_key,
-    service_jwt_token,
-):
-    data = {'service': sample_api_key.service,
-            'name': 'some key name',
-            'created_by': sample_api_key.created_by,
-            'key_type': KEY_TYPE_NORMAL
-            }
-    api_key = ApiKey(**data)
-    save_model_api_key(api_key)
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': 'Bearer {}'.format(service_jwt_token)})
-    assert response.status_code == 200
-
-
-def test_requires_auth_passes_when_service_has_multiple_keys_some_expired(
-    client,
-    sample_api_key,
-):
-    expired_key_data = {'service': sample_api_key.service,
-                        'name': 'expired_key',
-                        'expiry_date': datetime.utcnow(),
-                        'created_by': sample_api_key.created_by,
-                        'key_type': KEY_TYPE_NORMAL
-                        }
-    expired_key = ApiKey(**expired_key_data)
-    save_model_api_key(expired_key)
-    another_key = {'service': sample_api_key.service,
-                   'name': 'another_key',
-                   'created_by': sample_api_key.created_by,
-                   'key_type': KEY_TYPE_NORMAL
-                   }
-    api_key = ApiKey(**another_key)
-    save_model_api_key(api_key)
-    token = create_jwt_token(
-        client_id=str(sample_api_key.service_id),
-        secret=get_unsigned_secret(api_key.id)
-    )
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': 'Bearer {}'.format(token)})
-    assert response.status_code == 200
-
-
-def test_requires_auth_returns_token_expired_when_service_uses_expired_key_and_has_multiple_keys(
-    client,
-    sample_api_key
-):
-    expired_key = {'service': sample_api_key.service,
-                   'name': 'expired_key',
-                   'created_by': sample_api_key.created_by,
-                   'key_type': KEY_TYPE_NORMAL
-                   }
-    expired_api_key = ApiKey(**expired_key)
-    save_model_api_key(expired_api_key)
-    another_key = {'service': sample_api_key.service,
-                   'name': 'another_key',
-                   'created_by': sample_api_key.created_by,
-                   'key_type': KEY_TYPE_NORMAL
-                   }
-    api_key = ApiKey(**another_key)
-    save_model_api_key(api_key)
-    token = create_jwt_token(
-        client_id=str(sample_api_key.service_id),
-        secret=get_unsigned_secret(expired_api_key.id)
-    )
-    expire_api_key(service_id=sample_api_key.service_id, api_key_id=expired_api_key.id)
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
-    with pytest.raises(AuthError) as exc:
-        requires_auth()
-    assert exc.value.short_message == 'Invalid token: API key revoked'
-    assert exc.value.service_id == str(expired_api_key.service_id)
-    assert exc.value.api_key_id == expired_api_key.id
-
-
-def test_requires_admin_auth_returns_error_with_no_secrets(
-    client,
-    admin_jwt_client_id,
-    admin_jwt_token,
-):
-    new_secrets = {admin_jwt_client_id: []}
-
-    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
-        response = client.get(
-            '/service',
-            headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
-
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Invalid token: API key not found"]}
-
-
-def test_requires_admin_auth_returns_error_when_secret_is_invalid(
-    client,
-    admin_jwt_client_id,
-    admin_jwt_token,
-):
-    new_secrets = {admin_jwt_client_id:  ['something-wrong']}
-
-    with set_config(client.application, 'INTERNAL_CLIENT_API_KEYS', new_secrets):
-        response = client.get(
-            '/service',
-            headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
-
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {"token": ["Invalid token: API key not found"]}
-
-
 def test_requires_auth_returns_error_when_service_doesnt_exist(
     client,
     sample_api_key
@@ -383,20 +280,6 @@ def test_requires_auth_returns_error_when_service_inactive(
     assert error_message['message'] == {'token': ['Invalid token: service is archived']}
 
 
-def test_requires_auth_returns_error_when_service_has_no_secrets(
-    client, sample_service, fake_uuid
-):
-    token = create_jwt_token(
-        secret=fake_uuid,
-        client_id=str(sample_service.id))
-
-    request.headers = {'Authorization': 'Bearer {}'.format(token)}
-    with pytest.raises(AuthError) as exc:
-        requires_auth()
-    assert exc.value.short_message == 'Invalid token: service has no API keys'
-    assert exc.value.service_id == str(sample_service.id)
-
-
 def test_should_attach_the_current_api_key_to_current_app(
     notify_api,
     sample_service,
@@ -410,25 +293,6 @@ def test_should_attach_the_current_api_key_to_current_app(
         )
         assert response.status_code == 200
         assert str(api_user.id) == str(sample_api_key.id)
-
-
-def test_requires_auth_return_403_when_token_is_expired(
-    client,
-    sample_api_key,
-    service_jwt_secret,
-):
-    with freeze_time('2001-01-01T12:00:00'):
-        token = create_jwt_token(
-            client_id=str(sample_api_key.service_id),
-            secret=service_jwt_secret,
-        )
-    with freeze_time('2001-01-01T12:00:40'):
-        with pytest.raises(AuthError) as exc:
-            request.headers = {'Authorization': 'Bearer {}'.format(token)}
-            requires_auth()
-    assert exc.value.short_message == 'Error: Your system clock must be accurate to within 30 seconds'
-    assert exc.value.service_id == str(sample_api_key.service_id)
-    assert str(exc.value.api_key_id) == str(sample_api_key.id)
 
 
 @pytest.mark.parametrize('check_proxy_header,header_value', [
