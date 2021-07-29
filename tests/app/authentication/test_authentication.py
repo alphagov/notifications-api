@@ -298,6 +298,28 @@ def test_requires_auth_should_attach_the_current_api_key_to_current_app(
     assert str(api_user.id) == str(sample_api_key.id)
 
 
+def test_requires_auth_should_cache_service_and_api_key_lookups(
+    mocker,
+    client,
+    service_jwt_token
+):
+    mock_get_api_keys = mocker.patch(
+        'app.serialised_models.get_model_api_keys',
+        wraps=get_model_api_keys,
+    )
+    mock_get_service = mocker.patch(
+        'app.serialised_models.dao_fetch_service_by_id',
+        wraps=dao_fetch_service_by_id,
+    )
+
+    request.headers = {'Authorization': f'Bearer {service_jwt_token}'}
+    requires_auth()
+    requires_auth()  # second request
+
+    mock_get_api_keys.assert_called_once()
+    mock_get_service.assert_called_once()
+
+
 def test_requires_internal_auth_checks_proxy_key(
     client,
     mocker,
@@ -336,25 +358,3 @@ def test_requires_internal_auth_sets_global_variables(
     request.headers = {'Authorization': 'Bearer {}'.format(internal_jwt_token)}
     requires_my_internal_app_auth()
     assert g.service_id == 'my-internal-app'
-
-
-def test_requires_auth_should_cache_service_and_api_key_lookups(
-    mocker,
-    client,
-    service_jwt_token
-):
-    mock_get_api_keys = mocker.patch(
-        'app.serialised_models.get_model_api_keys',
-        wraps=get_model_api_keys,
-    )
-    mock_get_service = mocker.patch(
-        'app.serialised_models.dao_fetch_service_by_id',
-        wraps=dao_fetch_service_by_id,
-    )
-
-    request.headers = {'Authorization': f'Bearer {service_jwt_token}'}
-    requires_auth()
-    requires_auth()  # second request
-
-    mock_get_api_keys.assert_called_once()
-    mock_get_service.assert_called_once()
