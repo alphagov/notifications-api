@@ -50,6 +50,22 @@ def admin_jwt_token():
     return create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
 
 
+def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for_public_url(
+    client,
+    service_jwt_token,
+):
+    response = client.get('/notifications', headers={'Authorization': 'Bearer {}'.format(service_jwt_token)})
+    assert response.status_code == 200
+
+
+def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(
+    client,
+    admin_jwt_token
+):
+    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
+    assert response.status_code == 200
+
+
 def test_get_auth_token_should_not_allow_request_with_no_token(client):
     request.headers = {}
     with pytest.raises(AuthError) as exc:
@@ -231,22 +247,6 @@ def test_requires_auth_should_not_allow_service_id_with_the_wrong_data_type(
     assert response.status_code == 403
     data = json.loads(response.get_data())
     assert data['message'] == {"token": ['Invalid token: service id is not the right data type']}
-
-
-def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for_public_url(
-    client,
-    service_jwt_token,
-):
-    response = client.get('/notifications', headers={'Authorization': 'Bearer {}'.format(service_jwt_token)})
-    assert response.status_code == 200
-
-
-def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(
-    client,
-    admin_jwt_token
-):
-    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
-    assert response.status_code == 200
 
 
 def test_requires_auth_returns_error_when_service_doesnt_exist(
