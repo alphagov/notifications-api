@@ -295,29 +295,6 @@ def test_should_attach_the_current_api_key_to_current_app(
         assert str(api_user.id) == str(sample_api_key.id)
 
 
-@pytest.mark.parametrize('check_proxy_header,header_value', [
-    (True, 'key_1'),
-    (True, 'wrong_key'),
-    (False, 'key_1'),
-    (False, 'wrong_key'),
-])
-def test_requires_no_auth_proxy_key(notify_api, check_proxy_header, header_value):
-    with set_config_values(notify_api, {
-        'ROUTE_SECRET_KEY_1': 'key_1',
-        'ROUTE_SECRET_KEY_2': '',
-        'CHECK_PROXY_HEADER': check_proxy_header,
-    }):
-
-        with notify_api.test_client() as client:
-            response = client.get(
-                path='/_status',
-                headers=[
-                    ('X-Custom-Forwarder', header_value),
-                ]
-            )
-        assert response.status_code == 200
-
-
 @pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
     (True, 'key_1', 200),
     (True, 'wrong_key', 403),
