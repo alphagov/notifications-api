@@ -6,7 +6,7 @@ import pytest
 from flask import current_app, g, request
 from notifications_python_client.authentication import create_jwt_token
 
-from app import api_user
+from app import db
 from app.authentication.auth import (
     GENERAL_TOKEN_ERROR_MESSAGE,
     AuthError,
@@ -288,14 +288,28 @@ def test_requires_auth_returns_error_when_service_inactive(
     assert exc.value.short_message == 'Invalid token: service is archived'
 
 
-def test_requires_auth_should_attach_the_current_api_key_to_current_app(
+def test_requires_auth_should_assign_global_variables(
     client,
     sample_api_key,
     service_jwt_token,
 ):
     request.headers = {'Authorization': 'Bearer {}'.format(service_jwt_token)}
     requires_auth()
-    assert str(api_user.id) == str(sample_api_key.id)
+    assert g.api_user.id == sample_api_key.id
+    assert g.service_id == sample_api_key.service_id
+    assert g.authenticated_service.id == str(sample_api_key.service_id)
+
+
+def test_requires_auth_errors_if_service_has_no_api_keys(
+    client,
+    sample_api_key,
+    service_jwt_token,
+):
+    db.session.delete(sample_api_key)
+    request.headers = {'Authorization': 'Bearer {}'.format(service_jwt_token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: service has no API keys'
 
 
 def test_requires_auth_should_cache_service_and_api_key_lookups(
