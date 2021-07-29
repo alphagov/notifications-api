@@ -4170,3 +4170,25 @@ def test_set_as_broadcast_service_removes_user_permissions(
 
     # Permissions for other services remain
     assert service_user.get_permissions(service_id=sample_service_full_permissions.id) == ['send_emails']
+
+
+def test_set_as_broadcast_service_revokes_api_keys(
+    admin_request,
+    broadcast_organisation,
+    sample_service,
+    sample_service_full_permissions,
+):
+    api_key_1 = create_api_key(service=sample_service)
+    api_key_2 = create_api_key(service=sample_service_full_permissions)
+
+    admin_request.post(
+        'service.set_as_broadcast_service',
+        service_id=sample_service.id,
+        _data={
+            'broadcast_channel': 'government',
+            'service_mode': 'live',
+            'provider_restriction': 'all',
+        }
+    )
+    assert api_key_1.expiry_date < datetime.utcnow()
+    assert api_key_2.expiry_date is None
