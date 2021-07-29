@@ -1,10 +1,9 @@
 import time
 import uuid
-from unittest.mock import call
 
 import jwt
 import pytest
-from flask import current_app, json, request
+from flask import current_app, request
 from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
@@ -14,6 +13,7 @@ from app.authentication.auth import (
     _decode_jwt_token,
     _get_auth_token,
     _get_token_issuer,
+    requires_auth,
 )
 from app.dao.api_key_dao import (
     expire_api_key,
@@ -240,13 +240,11 @@ def test_requires_auth_should_not_allow_service_id_with_the_wrong_data_type(
         client_id=service_id,
         secret=service_jwt_secret,
     )
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': "Bearer {}".format(token)}
-    )
-    assert response.status_code == 403
-    data = json.loads(response.get_data())
-    assert data['message'] == {"token": ['Invalid token: service id is not the right data type']}
+
+    request.headers = {'Authorization': "Bearer {}".format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: service id is not the right data type'
 
 
 def test_requires_auth_returns_error_when_service_doesnt_exist(
@@ -256,15 +254,13 @@ def test_requires_auth_returns_error_when_service_doesnt_exist(
     # get service ID and secret the wrong way around
     token = create_jwt_token(
         secret=str(sample_api_key.service_id),
-        client_id=str(sample_api_key.id))
-
-    response = client.get(
-        '/notifications',
-        headers={'Authorization': 'Bearer {}'.format(token)}
+        client_id=str(sample_api_key.id),
     )
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {'token': ['Invalid token: service not found']}
+
+    request.headers = {'Authorization': 'Bearer {}'.format(token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: service not found'
 
 
 def test_requires_auth_returns_error_when_service_inactive(
@@ -273,26 +269,21 @@ def test_requires_auth_returns_error_when_service_inactive(
     service_jwt_token,
 ):
     sample_api_key.service.active = False
-    response = client.get('/notifications', headers={'Authorization': 'Bearer {}'.format(service_jwt_token)})
 
-    assert response.status_code == 403
-    error_message = json.loads(response.get_data())
-    assert error_message['message'] == {'token': ['Invalid token: service is archived']}
+    request.headers = {'Authorization': 'Bearer {}'.format(service_jwt_token)}
+    with pytest.raises(AuthError) as exc:
+        requires_auth()
+    assert exc.value.short_message == 'Invalid token: service is archived'
 
 
-def test_should_attach_the_current_api_key_to_current_app(
-    notify_api,
-    sample_service,
+def test_requires_auth_should_attach_the_current_api_key_to_current_app(
+    client,
     sample_api_key,
     service_jwt_token,
 ):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        response = client.get(
-            '/notifications',
-            headers={'Authorization': 'Bearer {}'.format(service_jwt_token)}
-        )
-        assert response.status_code == 200
-        assert str(api_user.id) == str(sample_api_key.id)
+    request.headers = {'Authorization': 'Bearer {}'.format(service_jwt_token)}
+    requires_auth()
+    assert str(api_user.id) == str(sample_api_key.id)
 
 
 @pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
@@ -328,7 +319,6 @@ def test_requires_admin_auth_proxy_key(
 def test_requires_auth_should_cache_service_and_api_key_lookups(
     mocker,
     client,
-    sample_api_key,
     service_jwt_token
 ):
     mock_get_api_keys = mocker.patch(
@@ -340,14 +330,9 @@ def test_requires_auth_should_cache_service_and_api_key_lookups(
         wraps=dao_fetch_service_by_id,
     )
 
-    for _ in range(5):
-        client.get('/notifications', headers={
-            'Authorization': f'Bearer {service_jwt_token}'
-        })
+    request.headers = {'Authorization': f'Bearer {service_jwt_token}'}
+    requires_auth()
+    requires_auth()  # second request
 
-    assert mock_get_api_keys.call_args_list == [
-        call(str(sample_api_key.service_id))
-    ]
-    assert mock_get_service.call_args_list == [
-        call(sample_api_key.service_id)
-    ]
+    mock_get_api_keys.assert_called_once()
+    mock_get_service.assert_called_once()
