@@ -61,7 +61,7 @@ def service_jwt_token(sample_api_key, service_jwt_secret):
     )
 
 
-def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for_public_url(
+def test_requires_auth_should_allow_valid_token_for_request(
     client,
     service_jwt_token,
 ):
@@ -69,8 +69,8 @@ def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for
     assert response.status_code == 200
 
 
-def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(client):
-    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+def test_requires_admin_auth_should_allow_valid_token_for_request(client):
+    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_ID']
     admin_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
     admin_jwt_token = create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
 

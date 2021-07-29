@@ -88,10 +88,10 @@ class Config(object):
     API_INTERNAL_SECRETS = json.loads(os.environ.get('API_INTERNAL_SECRETS', '[]'))
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
-    ADMIN_CLIENT_USER_NAME = 'notify-admin'
+    ADMIN_CLIENT_ID = 'notify-admin'
 
     INTERNAL_CLIENT_API_KEYS = {
-        ADMIN_CLIENT_USER_NAME: API_INTERNAL_SECRETS
+        ADMIN_CLIENT_ID: API_INTERNAL_SECRETS
     }
 
     # encyption secret/salt
@@ -406,7 +406,7 @@ class Development(Config):
     LETTER_SANITISE_BUCKET_NAME = 'development-letters-sanitise'
 
     INTERNAL_CLIENT_API_KEYS = {
-        Config.ADMIN_CLIENT_USER_NAME: ['dev-notify-secret-key']
+        Config.ADMIN_CLIENT_ID: ['dev-notify-secret-key']
     }
 
     SECRET_KEY = 'dev-notify-secret-key'
