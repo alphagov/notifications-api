@@ -3,7 +3,7 @@ import uuid
 
 import jwt
 import pytest
-from flask import current_app, request
+from flask import current_app, g, request
 from notifications_python_client.authentication import create_jwt_token
 
 from app import api_user
@@ -14,6 +14,7 @@ from app.authentication.auth import (
     _get_auth_token,
     _get_token_issuer,
     requires_auth,
+    requires_internal_auth,
 )
 from app.dao.api_key_dao import (
     expire_api_key,
@@ -22,6 +23,23 @@ from app.dao.api_key_dao import (
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from tests.conftest import set_config_values
+
+
+@pytest.fixture
+def internal_jwt_token(notify_api):
+    with set_config_values(notify_api, {
+        'INTERNAL_CLIENT_API_KEYS': {
+            'my-internal-app': ['my-internal-app-secret'],
+        }
+    }):
+        yield create_jwt_token(
+            client_id='my-internal-app',
+            secret='my-internal-app-secret'
+        )
+
+
+def requires_my_internal_app_auth():
+    requires_internal_auth('my-internal-app')
 
 
 def create_custom_jwt_token(headers=None, payload=None, key=None):
@@ -43,13 +61,6 @@ def service_jwt_token(sample_api_key, service_jwt_secret):
     )
 
 
-@pytest.fixture
-def admin_jwt_token():
-    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
-    admin_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
-    return create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
-
-
 def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for_public_url(
     client,
     service_jwt_token,
@@ -58,10 +69,11 @@ def test_requires_auth_should_allow_valid_token_for_request_with_path_params_for
     assert response.status_code == 200
 
 
-def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(
-    client,
-    admin_jwt_token
-):
+def test_requires_admin_auth_should_allow_valid_token_for_request_with_path_params(client):
+    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_USER_NAME']
+    admin_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
+    admin_jwt_token = create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
+
     response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
     assert response.status_code == 200
 
@@ -286,34 +298,44 @@ def test_requires_auth_should_attach_the_current_api_key_to_current_app(
     assert str(api_user.id) == str(sample_api_key.id)
 
 
-@pytest.mark.parametrize('check_proxy_header,header_value,expected_status', [
-    (True, 'key_1', 200),
-    (True, 'wrong_key', 403),
-    (False, 'key_1', 200),
-    (False, 'wrong_key', 200),
-])
-def test_requires_admin_auth_proxy_key(
-    notify_api,
-    check_proxy_header,
-    header_value,
-    expected_status,
-    admin_jwt_token,
+def test_requires_internal_auth_checks_proxy_key(
+    client,
+    mocker,
+    internal_jwt_token,
 ):
-    with set_config_values(notify_api, {
-        'ROUTE_SECRET_KEY_1': 'key_1',
-        'ROUTE_SECRET_KEY_2': '',
-        'CHECK_PROXY_HEADER': check_proxy_header,
-    }):
+    proxy_check_mock = mocker.patch(
+        'app.authentication.auth.request_helper.check_proxy_header_before_request'
+    )
 
-        with notify_api.test_client() as client:
-            response = client.get(
-                path='/service',
-                headers=[
-                    ('X-Custom-Forwarder', header_value),
-                    ('Authorization', 'Bearer {}'.format(admin_jwt_token))
-                ]
-            )
-        assert response.status_code == expected_status
+    request.headers = {'Authorization': 'Bearer {}'.format(internal_jwt_token)}
+    requires_my_internal_app_auth()
+    proxy_check_mock.assert_called_once()
+
+
+def test_requires_internal_auth_errors_for_unknown_app(client):
+    with pytest.raises(TypeError) as exc:
+        requires_internal_auth('another-app')
+    assert str(exc.value) == 'Unknown client_id for internal auth'
+
+
+def test_requires_internal_auth_errors_for_api_app_mismatch(
+    client,
+    internal_jwt_token,
+    service_jwt_token
+):
+    request.headers = {'Authorization': 'Bearer {}'.format(service_jwt_token)}
+    with pytest.raises(AuthError) as exc:
+        requires_my_internal_app_auth()
+    assert exc.value.short_message == 'Unauthorized: not allowed to perform this action'
+
+
+def test_requires_internal_auth_sets_global_variables(
+    client,
+    internal_jwt_token,
+):
+    request.headers = {'Authorization': 'Bearer {}'.format(internal_jwt_token)}
+    requires_my_internal_app_auth()
+    assert g.service_id == 'my-internal-app'
 
 
 def test_requires_auth_should_cache_service_and_api_key_lookups(
