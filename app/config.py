@@ -89,6 +89,7 @@ class Config(object):
 
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = 'notify-admin'
+    GOVUK_ALERTS_CLIENT_ID = 'govuk-alerts'
 
     INTERNAL_CLIENT_API_KEYS = {
         ADMIN_CLIENT_ID: API_INTERNAL_SECRETS
@@ -406,7 +407,8 @@ class Development(Config):
     LETTER_SANITISE_BUCKET_NAME = 'development-letters-sanitise'
 
     INTERNAL_CLIENT_API_KEYS = {
-        Config.ADMIN_CLIENT_ID: ['dev-notify-secret-key']
+        Config.ADMIN_CLIENT_ID: ['dev-notify-secret-key'],
+        Config.GOVUK_ALERTS_CLIENT_ID: ['govuk-alerts-secret-key']
     }
 
     SECRET_KEY = 'dev-notify-secret-key'

@@ -78,6 +78,15 @@ def test_requires_admin_auth_should_allow_valid_token_for_request(client):
     assert response.status_code == 200
 
 
+def test_requires_govuk_alerts_auth_should_allow_valid_token_for_request(client):
+    govuk_alerts_jwt_client_id = current_app.config['GOVUK_ALERTS_CLIENT_ID']
+    govuk_alerts_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][govuk_alerts_jwt_client_id][0]
+    govuk_alerts_jwt_token = create_jwt_token(govuk_alerts_jwt_secret, govuk_alerts_jwt_client_id)
+
+    response = client.get('/v2/govuk-alerts', headers={'Authorization': 'Bearer {}'.format(govuk_alerts_jwt_token)})
+    assert response.status_code == 200
+
+
 def test_get_auth_token_should_not_allow_request_with_no_token(client):
     request.headers = {}
     with pytest.raises(AuthError) as exc:
