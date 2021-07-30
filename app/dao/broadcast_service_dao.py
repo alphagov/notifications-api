@@ -70,7 +70,8 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
 
     # Revoke any API keys to avoid a regular API key being used to send alerts
     ApiKey.query.filter_by(
-        service_id=service.id
+        service_id=service.id,
+        expiry_date=None,
     ).update({
         ApiKey.expiry_date: datetime.utcnow()
     })
