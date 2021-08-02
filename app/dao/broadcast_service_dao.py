@@ -9,6 +9,7 @@ from app.models import (
     EMAIL_AUTH_TYPE,
     INVITE_PENDING,
     VIEW_ACTIVITY,
+    ApiKey,
     InvitedUser,
     Organisation,
     Permission,
@@ -66,6 +67,14 @@ def set_broadcast_service_type(service, service_mode, broadcast_channel, provide
         service_id=service.id,
         status=INVITE_PENDING
     ).update({'permissions': VIEW_ACTIVITY})
+
+    # Revoke any API keys to avoid a regular API key being used to send alerts
+    ApiKey.query.filter_by(
+        service_id=service.id,
+        expiry_date=None,
+    ).update({
+        ApiKey.expiry_date: datetime.utcnow()
+    })
 
     # Add service to organisation
     organisation = Organisation.query.filter_by(

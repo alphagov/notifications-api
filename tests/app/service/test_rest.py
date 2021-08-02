@@ -4170,3 +4170,36 @@ def test_set_as_broadcast_service_removes_user_permissions(
 
     # Permissions for other services remain
     assert service_user.get_permissions(service_id=sample_service_full_permissions.id) == ['send_emails']
+
+
+@freeze_time('2021-12-21')
+def test_set_as_broadcast_service_revokes_api_keys(
+    admin_request,
+    broadcast_organisation,
+    sample_service,
+    sample_service_full_permissions,
+):
+    api_key_1 = create_api_key(service=sample_service)
+    api_key_2 = create_api_key(service=sample_service)
+    api_key_3 = create_api_key(service=sample_service_full_permissions)
+
+    api_key_2.expiry_date = datetime.utcnow() - timedelta(days=365)
+
+    admin_request.post(
+        'service.set_as_broadcast_service',
+        service_id=sample_service.id,
+        _data={
+            'broadcast_channel': 'government',
+            'service_mode': 'live',
+            'provider_restriction': 'all',
+        }
+    )
+
+    # This key should have a new expiry date
+    assert api_key_1.expiry_date.isoformat().startswith('2021-12-21')
+
+    # This key keeps its old expiry date
+    assert api_key_2.expiry_date.isoformat().startswith('2020-12-21')
+
+    # This key is from a different service
+    assert api_key_3.expiry_date is None
