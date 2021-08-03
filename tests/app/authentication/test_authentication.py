@@ -42,10 +42,10 @@ def requires_my_internal_app_auth():
     requires_internal_auth('my-internal-app')
 
 
-def create_custom_jwt_token(headers=None, payload=None, key=None):
+def create_custom_jwt_token(headers=None, payload=None, secret=None):
     # code copied from notifications_python_client.authentication.py::create_jwt_token
     headers = headers or {"typ": 'JWT', "alg": 'HS256'}
-    return jwt.encode(payload=payload, key=key or str(uuid.uuid4()), headers=headers)
+    return jwt.encode(payload=payload, key=secret or str(uuid.uuid4()), headers=headers)
 
 
 @pytest.fixture
@@ -154,7 +154,7 @@ def test_decode_jwt_token_should_not_allow_old_iat(
 ):
     token = create_custom_jwt_token(
         payload={'iss': 'something', 'iat': int(time.time()) - 60},
-        key=sample_api_key.secret,
+        secret=sample_api_key.secret,
     )
 
     with pytest.raises(AuthError) as exc:
@@ -172,7 +172,7 @@ def test_decode_jwt_token_should_not_allow_extra_claims(
             'iat': int(time.time()),
             'aud': 'notifications.service.gov.uk'  # extra claim that we don't support
         },
-        key=sample_api_key.secret,
+        secret=sample_api_key.secret,
     )
 
     with pytest.raises(AuthError) as exc:
