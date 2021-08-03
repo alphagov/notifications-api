@@ -3445,6 +3445,7 @@ def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_i
     notification_status,
 ):
     sample_letter_notification.status = notification_status
+    sample_letter_notification.created_at = datetime.now()
 
     response = admin_request.post(
         'service.cancel_notification_for_service',
@@ -3452,7 +3453,13 @@ def test_cancel_notification_for_service_raises_invalid_request_when_letter_is_i
         notification_id=sample_letter_notification.id,
         _expected_status=400
     )
-    assert response['message'] == 'It’s too late to cancel this letter. Printing started today at 5.30pm'
+    if notification_status == 'cancelled':
+        assert response['message'] == 'This letter has already been cancelled.'
+    else:
+        assert response['message'] == (
+            f"We could not cancel this letter. "
+            f"Letter status: {notification_status}, created_at: 2018-07-07 12:00:00"
+        )
     assert response['result'] == 'error'
 
 
