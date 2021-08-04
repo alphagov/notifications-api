@@ -49,55 +49,50 @@ class AuthError(Exception):
         }
 
 
-def get_auth_token(req):
-    auth_header = req.headers.get('Authorization', None)
-    if not auth_header:
-        raise AuthError('Unauthorized: authentication token must be provided', 401)
-
-    auth_scheme = auth_header[:7].title()
-
-    if auth_scheme != 'Bearer ':
-        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
-
-    return auth_header[7:]
+class InternalApiKey():
+    def __init__(self, client_id, secret):
+        self.secret = secret
+        self.id = client_id
+        self.expiry_date = None
 
 
 def requires_no_auth():
     pass
 
 
+def requires_govuk_alerts_auth():
+    requires_internal_auth(current_app.config.get('GOVUK_ALERTS_CLIENT_ID'))
+
+
 def requires_admin_auth():
+    requires_internal_auth(current_app.config.get('ADMIN_CLIENT_ID'))
+
+
+def requires_internal_auth(expected_client_id):
+    if expected_client_id not in current_app.config.get('INTERNAL_CLIENT_API_KEYS'):
+        raise TypeError("Unknown client_id for internal auth")
+
     request_helper.check_proxy_header_before_request()
+    auth_token = _get_auth_token(request)
+    client_id = _get_token_issuer(auth_token)
 
-    auth_token = get_auth_token(request)
-    client = __get_token_issuer(auth_token)
+    if client_id != expected_client_id:
+        raise AuthError("Unauthorized: not allowed to perform this action", 401)
 
-    if client == current_app.config.get('ADMIN_CLIENT_USER_NAME'):
-        g.service_id = current_app.config.get('ADMIN_CLIENT_USER_NAME')
+    api_keys = [
+        InternalApiKey(client_id, secret)
+        for secret in current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id]
+    ]
 
-        for secret in current_app.config.get('API_INTERNAL_SECRETS'):
-            try:
-                decode_jwt_token(auth_token, secret)
-                return
-            except TokenExpiredError:
-                raise AuthError("Invalid token: expired, check that your system clock is accurate", 403)
-            except TokenDecodeError:
-                # TODO: Change this so it doesn't also catch `TokenIssuerError` or `TokenIssuedAtError` exceptions
-                # (which are children of `TokenDecodeError`) as these should cause an auth error immediately rather
-                # than continue on to check the next admin client secret
-                continue
-
-        # Either there are no admin client secrets or their token didn't match one of them so error
-        raise AuthError("Unauthorized: admin authentication token not found", 401)
-    else:
-        raise AuthError('Unauthorized: admin authentication token required', 401)
+    _decode_jwt_token(auth_token, api_keys, client_id)
+    g.service_id = client_id
 
 
 def requires_auth():
     request_helper.check_proxy_header_before_request()
 
-    auth_token = get_auth_token(request)
-    issuer = __get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
+    auth_token = _get_auth_token(request)
+    issuer = _get_token_issuer(auth_token)  # ie the `iss` claim which should be a service ID
 
     try:
         service_id = uuid.UUID(issuer)
@@ -116,15 +111,23 @@ def requires_auth():
     if not service.active:
         raise AuthError("Invalid token: service is archived", 403, service_id=service.id)
 
-    for api_key in service.api_keys:
+    api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
+
+    g.api_user = api_key
+    g.service_id = service_id
+    g.authenticated_service = service
+
+
+def _decode_jwt_token(auth_token, api_keys, service_id=None):
+    for api_key in api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
         except TokenExpiredError:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenAlgorithmError:
             err_msg = "Invalid token: algorithm used is not HS256"
-            raise AuthError(err_msg, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenDecodeError:
             # we attempted to validate the token but it failed meaning it was not signed using this api key.
             # Let's try the next one
@@ -134,28 +137,38 @@ def requires_auth():
             continue
         except TokenError:
             # General error when trying to decode and validate the token
-            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service.id, api_key_id=api_key.id)
+            raise AuthError(GENERAL_TOKEN_ERROR_MESSAGE, 403, service_id=service_id, api_key_id=api_key.id)
 
         if api_key.expiry_date:
-            raise AuthError("Invalid token: API key revoked", 403, service_id=service.id, api_key_id=api_key.id)
-
-        g.service_id = service.id
-        g.api_user = api_key
-        g.authenticated_service = service
+            raise AuthError("Invalid token: API key revoked", 403, service_id=service_id, api_key_id=api_key.id)
 
         current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-            service.id,
+            service_id,
             api_key.id,
             request.headers.get('User-Agent'),
             request.base_url
         ))
-        return
+
+        return api_key
     else:
         # service has API keys, but none matching the one the user provided
-        raise AuthError("Invalid token: API key not found", 403, service_id=service.id)
+        raise AuthError("Invalid token: API key not found", 403, service_id=service_id)
 
 
-def __get_token_issuer(auth_token):
+def _get_auth_token(req):
+    auth_header = req.headers.get('Authorization', None)
+    if not auth_header:
+        raise AuthError('Unauthorized: authentication token must be provided', 401)
+
+    auth_scheme = auth_header[:7].title()
+
+    if auth_scheme != 'Bearer ':
+        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
+
+    return auth_header[7:]
+
+
+def _get_token_issuer(auth_token):
     try:
         issuer = get_token_issuer(auth_token)
     except TokenIssuerError:

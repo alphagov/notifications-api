@@ -271,9 +271,15 @@ def register_blueprint(application):
 
 
 def register_v2_blueprints(application):
-    from app.authentication.auth import requires_auth
+    from app.authentication.auth import (
+        requires_auth,
+        requires_govuk_alerts_auth,
+    )
     from app.v2.broadcast.post_broadcast import (
         v2_broadcast_blueprint as post_broadcast,
+    )
+    from app.v2.govuk_alerts.get_broadcasts import (
+        v2_govuk_alerts_blueprint as get_broadcasts,
     )
     from app.v2.inbound_sms.get_inbound_sms import (
         v2_inbound_sms_blueprint as get_inbound_sms,
@@ -314,6 +320,9 @@ def register_v2_blueprints(application):
 
     post_broadcast.before_request(requires_auth)
     application.register_blueprint(post_broadcast)
+
+    get_broadcasts.before_request(requires_govuk_alerts_auth)
+    application.register_blueprint(get_broadcasts)
 
 
 def init_app(app):
