@@ -8,28 +8,31 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.models import KEY_TYPE_NORMAL, ApiKey
 
 
-def create_authorization_header(service_id=None, key_type=KEY_TYPE_NORMAL):
-    if service_id:
-        client_id = str(service_id)
-        secrets = ApiKey.query.filter_by(service_id=service_id, key_type=key_type).all()
-        if secrets:
-            secret = secrets[0].secret
-        else:
-            service = dao_fetch_service_by_id(service_id)
-            data = {
-                'service': service,
-                'name': uuid.uuid4(),
-                'created_by': service.created_by,
-                'key_type': key_type
-            }
-            api_key = ApiKey(**data)
-            save_model_api_key(api_key)
-            secret = api_key.secret
+def create_service_authorization_header(service_id, key_type=KEY_TYPE_NORMAL):
+    client_id = str(service_id)
+    secrets = ApiKey.query.filter_by(service_id=service_id, key_type=key_type).all()
 
+    if secrets:
+        secret = secrets[0].secret
     else:
-        client_id = current_app.config['ADMIN_CLIENT_ID']
-        secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
+        service = dao_fetch_service_by_id(service_id)
+        data = {
+            'service': service,
+            'name': uuid.uuid4(),
+            'created_by': service.created_by,
+            'key_type': key_type
+        }
+        api_key = ApiKey(**data)
+        save_model_api_key(api_key)
+        secret = api_key.secret
 
+    token = create_jwt_token(secret=secret, client_id=client_id)
+    return 'Authorization', 'Bearer {}'.format(token)
+
+
+def create_admin_authorization_header():
+    client_id = current_app.config['ADMIN_CLIENT_ID']
+    secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][client_id][0]
     token = create_jwt_token(secret=secret, client_id=client_id)
     return 'Authorization', 'Bearer {}'.format(token)
 

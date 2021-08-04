@@ -5,13 +5,13 @@ from app.dao.service_guest_list_dao import (
     dao_add_and_commit_guest_list_contacts,
 )
 from app.models import EMAIL_TYPE, MOBILE_TYPE, ServiceGuestList
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 
 
 def test_get_guest_list_returns_data(client, sample_service_guest_list):
     service_id = sample_service_guest_list.service_id
 
-    response = client.get(f'service/{service_id}/guest-list', headers=[create_authorization_header()])
+    response = client.get(f'service/{service_id}/guest-list', headers=[create_admin_authorization_header()])
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {
         'email_addresses': [sample_service_guest_list.recipient],
@@ -26,7 +26,9 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
         ServiceGuestList.from_string(sample_service.id, MOBILE_TYPE, '+1800-555-555'),
     ])
 
-    response = client.get('service/{}/guest-list'.format(sample_service.id), headers=[create_authorization_header()])
+    response = client.get(
+        'service/{}/guest-list'.format(sample_service.id), headers=[create_admin_authorization_header()]
+    )
     assert response.status_code == 200
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['email_addresses'] == ['service@example.com']
@@ -36,7 +38,7 @@ def test_get_guest_list_separates_emails_and_phones(client, sample_service):
 def test_get_guest_list_404s_with_unknown_service_id(client):
     path = 'service/{}/guest-list'.format(uuid.uuid4())
 
-    response = client.get(path, headers=[create_authorization_header()])
+    response = client.get(path, headers=[create_admin_authorization_header()])
     assert response.status_code == 404
     json_resp = json.loads(response.get_data(as_text=True))
     assert json_resp['result'] == 'error'
@@ -46,7 +48,7 @@ def test_get_guest_list_404s_with_unknown_service_id(client):
 def test_get_guest_list_returns_no_data(client, sample_service):
     path = 'service/{}/guest-list'.format(sample_service.id)
 
-    response = client.get(path, headers=[create_authorization_header()])
+    response = client.get(path, headers=[create_admin_authorization_header()])
 
     assert response.status_code == 200
     assert json.loads(response.get_data(as_text=True)) == {'email_addresses': [], 'phone_numbers': []}
@@ -61,7 +63,7 @@ def test_update_guest_list_replaces_old_guest_list(client, sample_service_guest_
     response = client.put(
         f'service/{sample_service_guest_list.service_id}/guest-list',
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()]
     )
 
     assert response.status_code == 204
@@ -81,7 +83,7 @@ def test_update_guest_list_doesnt_remove_old_guest_list_if_error(client, sample_
     response = client.put(
         'service/{}/guest-list'.format(sample_service_guest_list.service_id),
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()]
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()]
     )
 
     assert response.status_code == 400

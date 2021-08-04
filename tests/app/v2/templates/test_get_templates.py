@@ -4,7 +4,7 @@ import pytest
 from flask import json
 
 from app.models import EMAIL_TYPE, TEMPLATE_TYPES
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_template
 
 
@@ -19,7 +19,7 @@ def test_get_all_templates_returns_200(client, sample_service):
         for name, tmp_type in product(('A', 'B', 'C'), TEMPLATE_TYPES)
     ]
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.get(path='/v2/templates',
                           headers=[('Content-Type', 'application/json'), auth_header])
@@ -51,7 +51,7 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
         for i in range(3)
     ]
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.get(path='/v2/templates?type={}'.format(tmp_type),
                           headers=[('Content-Type', 'application/json'), auth_header])
@@ -83,7 +83,7 @@ def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_ser
         if other_type != tmp_type:
             templates.append(create_template(sample_service, template_type=other_type))
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.get(path='/v2/templates?type={}'.format(tmp_type),
                           headers=[('Content-Type', 'application/json'), auth_header])
@@ -96,7 +96,7 @@ def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_ser
 
 
 def test_get_all_templates_for_invalid_type_returns_400(client, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     invalid_type = 'coconut'
 

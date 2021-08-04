@@ -9,7 +9,7 @@ from app.dao.api_key_dao import save_model_api_key
 from app.dao.notifications_dao import dao_update_notification
 from app.dao.templates_dao import dao_update_template
 from app.models import KEY_TYPE_NORMAL, KEY_TYPE_TEAM, KEY_TYPE_TEST, ApiKey
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_api_key, create_notification
 
 
@@ -28,7 +28,7 @@ def test_get_notification_by_id(
     if type == 'letter':
         notification_to_get = sample_letter_notification
 
-    auth_header = create_authorization_header(service_id=notification_to_get.service_id)
+    auth_header = create_service_authorization_header(service_id=notification_to_get.service_id)
     response = client.get(
         '/notifications/{}'.format(notification_to_get.id),
         headers=[auth_header])
@@ -55,7 +55,7 @@ def test_get_notification_by_invalid_id(client, sample_notification, sample_emai
         notification_to_get = sample_email_notification
     if type == 'sms':
         notification_to_get = sample_notification
-    auth_header = create_authorization_header(service_id=notification_to_get.service_id)
+    auth_header = create_service_authorization_header(service_id=notification_to_get.service_id)
 
     response = client.get(
         '/notifications/{}'.format(id),
@@ -65,7 +65,7 @@ def test_get_notification_by_invalid_id(client, sample_notification, sample_emai
 
 
 def test_get_notifications_empty_result(client, sample_api_key):
-    auth_header = create_authorization_header(service_id=sample_api_key.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_api_key.service_id)
 
     response = client.get(
         path='/notifications/{}'.format(uuid.uuid4()),
@@ -133,7 +133,7 @@ def test_get_notification_from_different_api_key_of_same_type_succeeds(client, s
 
 
 def test_get_all_notifications(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
 
     response = client.get(
         '/notifications',
@@ -299,7 +299,7 @@ def test_get_all_notifications_newest_first(client, sample_email_template):
     notification_2 = create_notification(template=sample_email_template)
     notification_3 = create_notification(template=sample_email_template)
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications',
@@ -314,7 +314,7 @@ def test_get_all_notifications_newest_first(client, sample_email_template):
 
 
 def test_should_reject_invalid_page_param(client, sample_email_template):
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?page=invalid',
@@ -331,7 +331,7 @@ def test_valid_page_size_param(notify_api, sample_email_template):
         create_notification(sample_email_template)
         create_notification(sample_email_template)
         with notify_api.test_client() as client:
-            auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+            auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
             response = client.get(
                 '/notifications?page=1&page_size=1',
@@ -348,7 +348,7 @@ def test_invalid_page_size_param(client, sample_email_template):
     create_notification(sample_email_template)
     create_notification(sample_email_template)
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?page=1&page_size=invalid',
@@ -370,7 +370,7 @@ def test_should_return_pagination_links(client, sample_email_template):
         notification_2 = create_notification(sample_email_template)
         create_notification(sample_email_template)
 
-        auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+        auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
         response = client.get(
             '/notifications?page=2',
@@ -389,7 +389,7 @@ def test_should_return_pagination_links(client, sample_email_template):
 
 
 def test_get_all_notifications_returns_empty_list(client, sample_api_key):
-    auth_header = create_authorization_header(service_id=sample_api_key.service.id)
+    auth_header = create_service_authorization_header(service_id=sample_api_key.service.id)
 
     response = client.get(
         '/notifications',
@@ -404,7 +404,7 @@ def test_filter_by_template_type(client, sample_template, sample_email_template)
     create_notification(sample_template)
     create_notification(sample_email_template)
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?template_type=sms',
@@ -422,7 +422,7 @@ def test_filter_by_multiple_template_types(client,
     create_notification(sample_template)
     create_notification(sample_email_template)
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?template_type=sms&template_type=email',
@@ -438,7 +438,7 @@ def test_filter_by_status(client, sample_email_template):
     create_notification(sample_email_template, status="delivered")
     create_notification(sample_email_template)
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?status=delivered',
@@ -454,7 +454,7 @@ def test_filter_by_multiple_statuses(client, sample_email_template):
     create_notification(sample_email_template, status="delivered")
     create_notification(sample_email_template, status='sending')
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?status=delivered&status=sending',
@@ -472,7 +472,7 @@ def test_filter_by_status_and_template_type(client, sample_template, sample_emai
     create_notification(sample_email_template)
     create_notification(sample_email_template, status="delivered")
 
-    auth_header = create_authorization_header(service_id=sample_email_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
 
     response = client.get(
         '/notifications?template_type=email&status=delivered',
@@ -489,7 +489,7 @@ def test_get_notification_by_id_returns_merged_template_content(client, sample_t
 
     sample_notification = create_notification(sample_template_with_placeholders, personalisation={"name": "world"})
 
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
 
     response = client.get(
         '/notifications/{}'.format(sample_notification.id),
@@ -510,7 +510,7 @@ def test_get_notification_by_id_returns_merged_template_content_for_email(
         sample_email_template_with_placeholders,
         personalisation={"name": "world"}
     )
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
 
     response = client.get(
         '/notifications/{}'.format(sample_notification.id),
@@ -530,7 +530,7 @@ def test_get_notifications_for_service_returns_merged_template_content(client, s
     with freeze_time('2001-01-01T12:00:01'):
         create_notification(sample_template_with_placeholders, personalisation={"name": "merged with second"})
 
-    auth_header = create_authorization_header(service_id=sample_template_with_placeholders.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_template_with_placeholders.service_id)
 
     response = client.get(
         path='/notifications',
@@ -554,7 +554,7 @@ def test_get_notification_selects_correct_template_for_personalisation(client,
 
     create_notification(sample_template, personalisation={"name": "foo"})
 
-    auth_header = create_authorization_header(service_id=sample_template.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_template.service_id)
 
     response = client.get(path='/notifications', headers=[auth_header])
 

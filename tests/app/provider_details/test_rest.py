@@ -3,7 +3,7 @@ from flask import json
 from freezegun import freeze_time
 
 from app.models import ProviderDetails, ProviderDetailsHistory
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 from tests.app.db import create_ft_billing
 
 
@@ -17,13 +17,13 @@ def test_get_provider_details_returns_all_providers(admin_request, notify_db_ses
 def test_get_provider_details_by_id(client, notify_db):
     response = client.get(
         '/provider-details',
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))['provider_details']
 
     provider_resp = client.get(
         '/provider-details/{}'.format(json_resp[0]['id']),
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
 
     provider = json.loads(provider_resp.get_data(as_text=True))['provider_details']
@@ -36,7 +36,7 @@ def test_get_provider_contains_correct_fields(client, sample_template):
 
     response = client.get(
         '/provider-details',
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))['provider_details']
     allowed_keys = {
@@ -54,7 +54,7 @@ def test_should_be_able_to_update_priority(client, restore_provider_details):
 
     update_resp = client.post(
         '/provider-details/{}'.format(provider.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=json.dumps({
             'priority': 5
         })
@@ -71,7 +71,7 @@ def test_should_be_able_to_update_status(client, restore_provider_details):
 
     update_resp_1 = client.post(
         '/provider-details/{}'.format(provider.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=json.dumps({
             'active': False
         })
@@ -93,7 +93,7 @@ def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider
 
     resp = client.post(
         '/provider-details/{}'.format(provider.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=json.dumps({field: value})
     )
     resp_json = json.loads(resp.get_data(as_text=True))
@@ -107,7 +107,7 @@ def test_get_provider_versions_contains_correct_fields(client, notify_db):
     provider = ProviderDetailsHistory.query.first()
     response = client.get(
         '/provider-details/{}/versions'.format(provider.id),
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))['data']
     allowed_keys = {
@@ -123,7 +123,7 @@ def test_update_provider_should_store_user_id(client, restore_provider_details, 
 
     update_resp_1 = client.post(
         '/provider-details/{}'.format(provider.id),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=json.dumps({
             'created_by': sample_user.id,
             'active': False

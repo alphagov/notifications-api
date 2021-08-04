@@ -1,6 +1,6 @@
 from flask import json
 
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 
 from . import return_json_from_response, validate_v0
 
@@ -11,7 +11,7 @@ def _post_notification(client, template, url, to):
         'template': str(template.id)
     }
 
-    auth_header = create_authorization_header(service_id=template.service_id)
+    auth_header = create_service_authorization_header(service_id=template.service_id)
 
     return client.post(
         path=url,

@@ -2,7 +2,7 @@ import pytest
 from flask import json
 
 from app.models import EMAIL_TYPE, LETTER_TYPE, TEMPLATE_TYPES
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_template
 
 valid_personalisation = {
@@ -83,7 +83,7 @@ def test_valid_post_template_returns_200(
         subject=subject,
         content=content)
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/template/{}/preview'.format(template.id),
@@ -128,7 +128,7 @@ def test_email_and_letter_templates_not_rendered_into_content(
         ),
     )
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/template/{}/preview'.format(template.id),
@@ -149,7 +149,7 @@ def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
         template_type=tmp_type,
         content='Dear ((Name)), Hello ((Missing)). Yours Truly, The Government.')
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/template/{}/preview'.format(template.id),
@@ -165,7 +165,7 @@ def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
 
 
 def test_post_template_with_non_existent_template_id_returns_404(client, fake_uuid, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.post(
         path='/v2/template/{}/preview'.format(fake_uuid),
@@ -193,7 +193,7 @@ def test_post_template_returns_200_without_personalisation(client, sample_templa
         path='/v2/template/{}/preview'.format(sample_template.id),
         data=None,
         headers=[('Content-Type', 'application/json'),
-                 create_authorization_header(service_id=sample_template.service_id)]
+                 create_service_authorization_header(service_id=sample_template.service_id)]
     )
     assert response.status_code == 200
 
@@ -202,7 +202,7 @@ def test_post_template_returns_200_without_personalisation_and_missing_content_h
     response = client.post(
         path='/v2/template/{}/preview'.format(sample_template.id),
         data=None,
-        headers=[create_authorization_header(service_id=sample_template.service_id)]
+        headers=[create_service_authorization_header(service_id=sample_template.service_id)]
     )
     assert response.status_code == 200
 
@@ -213,7 +213,7 @@ def test_post_template_returns_200_without_personalisation_as_valid_json_and_mis
     response = client.post(
         path='/v2/template/{}/preview'.format(sample_template.id),
         data=json.dumps(None),
-        headers=[create_authorization_header(service_id=sample_template.service_id)]
+        headers=[create_service_authorization_header(service_id=sample_template.service_id)]
     )
     assert response.status_code == 200
 
@@ -222,6 +222,6 @@ def test_post_template_returns_200_with_valid_json_and_missing_content_header(cl
     response = client.post(
         path='/v2/template/{}/preview'.format(sample_template.id),
         data=json.dumps(valid_personalisation),
-        headers=[create_authorization_header(service_id=sample_template.service_id)]
+        headers=[create_service_authorization_header(service_id=sample_template.service_id)]
     )
     assert response.status_code == 200

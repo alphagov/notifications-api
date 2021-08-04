@@ -3,7 +3,7 @@ from flask import json
 
 from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, TEMPLATE_TYPES
 from app.utils import DATETIME_FORMAT
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_letter_contact, create_template
 
 valid_version_params = [None, 1]
@@ -24,7 +24,7 @@ def test_get_template_by_id_returns_200(
         letter_contact_block_id = letter_contact_block.id
 
     template = create_template(sample_service, template_type=tmp_type, contact_block_id=(letter_contact_block_id))
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     version_path = '/version/{}'.format(version) if version else ''
 
@@ -94,7 +94,7 @@ def test_get_template_by_id_returns_placeholders(
     expected_personalisation,
 ):
     template = create_template(sample_service, **create_template_args)
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     version_path = '/version/{}'.format(version) if version else ''
 
@@ -122,7 +122,7 @@ def test_get_letter_template_by_id_returns_placeholders(
         content="((letter_content))",
         reply_to=contact_block.id,
     )
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     version_path = '/version/{}'.format(version) if version else ''
 
@@ -144,7 +144,7 @@ def test_get_letter_template_by_id_returns_placeholders(
 
 
 def test_get_template_with_non_existent_template_id_returns_404(client, fake_uuid, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     response = client.get(path='/v2/template/{}'.format(fake_uuid),
                           headers=[('Content-Type', 'application/json'), auth_header])
@@ -169,7 +169,7 @@ def test_get_template_with_non_existent_template_id_returns_404(client, fake_uui
 def test_get_template_with_non_existent_version_returns_404(client, sample_service, tmp_type):
     template = create_template(sample_service, template_type=tmp_type)
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
 
     invalid_version = template.version + 1
 
