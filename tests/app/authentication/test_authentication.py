@@ -22,6 +22,11 @@ from app.dao.api_key_dao import (
     get_unsigned_secrets,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
+from tests import (
+    create_admin_authorization_header,
+    create_internal_authorization_header,
+    create_service_authorization_header,
+)
 from tests.conftest import set_config_values
 
 
@@ -61,29 +66,22 @@ def service_jwt_token(sample_api_key, service_jwt_secret):
     )
 
 
-def test_requires_auth_should_allow_valid_token_for_request(
-    client,
-    service_jwt_token,
-):
-    response = client.get('/notifications', headers={'Authorization': 'Bearer {}'.format(service_jwt_token)})
+def test_requires_auth_should_allow_valid_token_for_request(client, sample_api_key):
+    header = create_service_authorization_header(sample_api_key.service_id)
+    response = client.get('/notifications', headers=[header])
     assert response.status_code == 200
 
 
 def test_requires_admin_auth_should_allow_valid_token_for_request(client):
-    admin_jwt_client_id = current_app.config['ADMIN_CLIENT_ID']
-    admin_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][admin_jwt_client_id][0]
-    admin_jwt_token = create_jwt_token(admin_jwt_secret, admin_jwt_client_id)
-
-    response = client.get('/service', headers={'Authorization': 'Bearer {}'.format(admin_jwt_token)})
+    header = create_admin_authorization_header()
+    response = client.get('/service', headers=[header])
     assert response.status_code == 200
 
 
 def test_requires_govuk_alerts_auth_should_allow_valid_token_for_request(client):
-    govuk_alerts_jwt_client_id = current_app.config['GOVUK_ALERTS_CLIENT_ID']
-    govuk_alerts_jwt_secret = current_app.config['INTERNAL_CLIENT_API_KEYS'][govuk_alerts_jwt_client_id][0]
-    govuk_alerts_jwt_token = create_jwt_token(govuk_alerts_jwt_secret, govuk_alerts_jwt_client_id)
-
-    response = client.get('/v2/govuk-alerts', headers={'Authorization': 'Bearer {}'.format(govuk_alerts_jwt_token)})
+    jwt_client_id = current_app.config['GOVUK_ALERTS_CLIENT_ID']
+    header = create_internal_authorization_header(jwt_client_id)
+    response = client.get('/v2/govuk-alerts', headers=[header])
     assert response.status_code == 200
 
 
