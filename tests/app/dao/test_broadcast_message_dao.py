@@ -1,13 +1,18 @@
 from datetime import datetime
+from flask import current_app
 
 from app.dao.broadcast_message_dao import (
     create_broadcast_provider_message,
+    dao_get_all_broadcast_messages,
     get_earlier_events_for_broadcast_event,
 )
+from app.dao.broadcast_service_dao import insert_or_update_service_broadcast_settings
 from app.models import BROADCAST_TYPE, BroadcastEventMessageType
+
 from tests.app.db import (
     create_broadcast_event,
     create_broadcast_message,
+    create_service,
     create_template,
 )
 
@@ -65,3 +70,53 @@ def test_create_broadcast_provider_message_creates_in_correct_state(sample_broad
     assert broadcast_provider_message.broadcast_event_id == broadcast_event.id
     assert broadcast_provider_message.created_at is not None
     assert broadcast_provider_message.updated_at is None
+
+
+def test_dao_get_all_broadcast_messages(sample_broadcast_service):
+    template_1 = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    # older message, should appear second in list
+    broadcast_message_1 = create_broadcast_message(
+        template_1,
+        starts_at=datetime(2021, 6, 15, 12, 0, 0),
+        status='cancelled')
+
+    service_2 = create_service(
+        service_name="broadcast service 2",
+        service_permissions=[BROADCAST_TYPE]
+    )
+    insert_or_update_service_broadcast_settings(service_2, channel="severe")
+
+    template_2 = create_template(service_2, BROADCAST_TYPE)
+    # newer message, should appear first in list
+    broadcast_message_2 = create_broadcast_message(
+        template_2,
+        stubbed=False,
+        status='broadcasting',
+        starts_at=datetime(2021, 6, 20, 12, 0, 0),
+    )
+
+    # broadcast_message_stubbed
+    create_broadcast_message(
+        template_2,
+        stubbed=True,
+        status='broadcasting',
+        starts_at=datetime(2021, 6, 15, 12, 0, 0),
+    )
+    # broadcast_message_old
+    create_broadcast_message(
+        template_2,
+        stubbed=False,
+        status='completed',
+        starts_at=datetime(2021, 5, 20, 12, 0, 0),
+    )
+    # broadcast_message_rejected
+    create_broadcast_message(
+        template_2,
+        stubbed=False,
+        status='rejected',
+        starts_at=datetime(2021, 6, 15, 12, 0, 0),
+    )
+
+    broadcast_messages = dao_get_all_broadcast_messages()
+    assert len(broadcast_messages) == 2
+    assert broadcast_messages == [broadcast_message_2, broadcast_message_1]
