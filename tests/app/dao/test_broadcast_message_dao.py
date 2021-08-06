@@ -5,9 +5,10 @@ from app.dao.broadcast_message_dao import (
     dao_get_all_broadcast_messages,
     get_earlier_events_for_broadcast_event,
 )
-from app.dao.broadcast_service_dao import insert_or_update_service_broadcast_settings
+from app.dao.broadcast_service_dao import (
+    insert_or_update_service_broadcast_settings,
+)
 from app.models import BROADCAST_TYPE, BroadcastEventMessageType
-
 from tests.app.db import (
     create_broadcast_event,
     create_broadcast_message,

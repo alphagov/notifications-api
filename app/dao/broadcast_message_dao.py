@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+
 from sqlalchemy import desc
 
 from app import db
@@ -12,7 +13,7 @@ from app.models import (
     BroadcastProviderMessageNumber,
     BroadcastProviderMessageStatus,
     BroadcastStatusType,
-    ServiceBroadcastSettings
+    ServiceBroadcastSettings,
 )
 
 
