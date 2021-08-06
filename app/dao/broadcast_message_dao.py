@@ -11,7 +11,8 @@ from app.models import (
     BroadcastProviderMessage,
     BroadcastProviderMessageNumber,
     BroadcastProviderMessageStatus,
-    BroadcastStatusType
+    BroadcastStatusType,
+    ServiceBroadcastSettings
 )
 
 
@@ -33,7 +34,20 @@ def dao_get_broadcast_messages_for_service(service_id):
 
 
 def dao_get_all_broadcast_messages():
-    return BroadcastMessage.query.filter(
+    return db.session.query(
+        BroadcastMessage.id,
+        BroadcastMessage.reference,
+        ServiceBroadcastSettings.channel,
+        BroadcastMessage.content,
+        BroadcastMessage.areas,
+        BroadcastMessage.status,
+        BroadcastMessage.starts_at,
+        BroadcastMessage.finishes_at,
+        BroadcastMessage.approved_at,
+        BroadcastMessage.cancelled_at,
+    ).join(
+        ServiceBroadcastSettings, ServiceBroadcastSettings.service_id == BroadcastMessage.service_id
+    ).filter(
         BroadcastMessage.starts_at >= datetime(2021, 5, 25, 0, 0, 0),
         BroadcastMessage.stubbed == False,  # noqa
         BroadcastMessage.status.in_(BroadcastStatusType.LIVE_STATUSES)

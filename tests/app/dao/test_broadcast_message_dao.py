@@ -1,5 +1,4 @@
 from datetime import datetime
-from flask import current_app
 
 from app.dao.broadcast_message_dao import (
     create_broadcast_provider_message,
@@ -119,4 +118,13 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
 
     broadcast_messages = dao_get_all_broadcast_messages()
     assert len(broadcast_messages) == 2
-    assert broadcast_messages == [broadcast_message_2, broadcast_message_1]
+    assert broadcast_messages == [
+        (
+            broadcast_message_2.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
+            {'areas': [], 'simple_polygons': []}, 'broadcasting', datetime(2021, 6, 20, 12, 0),
+            None, None, None),
+        (
+            broadcast_message_1.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
+            {'areas': [], 'simple_polygons': []}, 'cancelled', datetime(2021, 6, 15, 12, 0),
+            None, None, None)
+    ]
