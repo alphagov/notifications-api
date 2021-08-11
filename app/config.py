@@ -84,16 +84,13 @@ class Config(object):
     # URL of api app (on AWS this is the internal api endpoint)
     API_HOST_NAME = os.getenv('API_HOST_NAME')
 
-    # LEGACY: replacing with INTERNAL_CLIENT_API_KEYS
-    API_INTERNAL_SECRETS = json.loads(os.environ.get('API_INTERNAL_SECRETS', '[]'))
-
     # secrets that internal apps, such as the admin app or document download, must use to authenticate with the API
     ADMIN_CLIENT_ID = 'notify-admin'
     GOVUK_ALERTS_CLIENT_ID = 'govuk-alerts'
 
-    INTERNAL_CLIENT_API_KEYS = {
-        ADMIN_CLIENT_ID: API_INTERNAL_SECRETS
-    }
+    INTERNAL_CLIENT_API_KEYS = json.loads(
+        os.environ.get('INTERNAL_CLIENT_API_KEYS', '{}')
+    )
 
     # encyption secret/salt
     SECRET_KEY = os.getenv('SECRET_KEY')
