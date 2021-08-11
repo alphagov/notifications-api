@@ -1,6 +1,6 @@
 from flask import json, url_for
 
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import (
     create_inbound_sms,
     create_service_callback_api,
@@ -18,7 +18,7 @@ def test_get_inbound_sms_returns_200(
         create_inbound_sms(service=sample_service, user_number='07700900113')
     ]
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/received-text-messages',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -47,7 +47,7 @@ def test_get_inbound_sms_returns_200_when_service_has_callbacks(
         url="https://inbound.example.com",
     )
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/received-text-messages',
         headers=[('Content-Type', 'application/json'), auth_header],
@@ -69,7 +69,7 @@ def test_get_inbound_sms_generate_page_links(client, sample_service, mocker):
 
     reversed_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         url_for('v2_inbound_sms.get_inbound_sms'),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -102,7 +102,7 @@ def test_get_next_inbound_sms_will_get_correct_inbound_sms_list(client, sample_s
     ]
     reversed_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path=url_for('v2_inbound_sms.get_inbound_sms', older_than=reversed_inbound_sms[1].id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -129,7 +129,7 @@ def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(client, 
         {"API_PAGE_SIZE": 1}
     )
 
-    auth_header = create_authorization_header(service_id=inbound_sms.service.id)
+    auth_header = create_service_authorization_header(service_id=inbound_sms.service.id)
     response = client.get(
         path=url_for('v2_inbound_sms.get_inbound_sms', older_than=inbound_sms.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -148,7 +148,7 @@ def test_get_next_inbound_sms_at_end_will_return_empty_inbound_sms_list(client, 
 def test_get_inbound_sms_for_no_inbound_sms_returns_empty_list(
         client, sample_service
 ):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/received-text-messages',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -164,7 +164,7 @@ def test_get_inbound_sms_for_no_inbound_sms_returns_empty_list(
 
 
 def test_get_inbound_sms_with_invalid_query_string_returns_400(client, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/received-text-messages?user_number=447700900000',
         headers=[('Content-Type', 'application/json'), auth_header])

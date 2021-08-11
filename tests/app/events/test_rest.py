@@ -1,6 +1,6 @@
 import json
 
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 
 
 def test_create_event(notify_api):
@@ -11,7 +11,7 @@ def test_create_event(notify_api):
                 'data': {'something': 'random', 'in_fact': 'could be anything'}
             }
             path = '/events'
-            auth_header = create_authorization_header()
+            auth_header = create_admin_authorization_header()
             headers = [('Content-Type', 'application/json'), auth_header]
             response = client.post(
                 path,

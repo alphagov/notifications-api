@@ -10,7 +10,7 @@ from freezegun import freeze_time
 import app.celery.tasks
 from app.dao.templates_dao import dao_update_template
 from app.models import JOB_STATUS_PENDING, JOB_STATUS_TYPES
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 from tests.app.db import (
     create_ft_notification_status,
     create_job,
@@ -24,7 +24,7 @@ from tests.conftest import set_config
 
 def test_get_job_with_invalid_service_id_returns404(client, sample_service):
     path = '/service/{}/job'.format(sample_service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 200
     resp_json = json.loads(response.get_data(as_text=True))
@@ -34,7 +34,7 @@ def test_get_job_with_invalid_service_id_returns404(client, sample_service):
 def test_get_job_with_invalid_job_id_returns404(client, sample_template):
     service_id = sample_template.service.id
     path = '/service/{}/job/{}'.format(service_id, "bad-id")
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404
     resp_json = json.loads(response.get_data(as_text=True))
@@ -45,7 +45,7 @@ def test_get_job_with_invalid_job_id_returns404(client, sample_template):
 def test_get_job_with_unknown_id_returns404(client, sample_template, fake_uuid):
     service_id = sample_template.service.id
     path = '/service/{}/job/{}'.format(service_id, fake_uuid)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(path, headers=[auth_header])
     assert response.status_code == 404
     resp_json = json.loads(response.get_data(as_text=True))
@@ -59,7 +59,7 @@ def test_cancel_job(client, sample_scheduled_job):
     job_id = str(sample_scheduled_job.id)
     service_id = sample_scheduled_job.service.id
     path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.post(path, headers=[auth_header])
     assert response.status_code == 200
     resp_json = json.loads(response.get_data(as_text=True))
@@ -72,7 +72,7 @@ def test_cant_cancel_normal_job(client, sample_job, mocker):
     service_id = sample_job.service.id
     mock_update = mocker.patch('app.dao.jobs_dao.dao_update_job')
     path = '/service/{}/job/{}/cancel'.format(service_id, job_id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.post(path, headers=[auth_header])
     assert response.status_code == 404
     assert mock_update.call_count == 0
@@ -144,7 +144,7 @@ def test_create_unscheduled_job(client, sample_template, mocker, fake_uuid):
         'created_by': str(sample_template.created_by.id),
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     response = client.post(
@@ -185,7 +185,7 @@ def test_create_unscheduled_job_with_sender_id_in_metadata(client, sample_templa
         'created_by': str(sample_template.created_by.id),
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     response = client.post(
@@ -217,7 +217,7 @@ def test_create_scheduled_job(client, sample_template, mocker, fake_uuid):
         'scheduled_for': scheduled_date,
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     response = client.post(
@@ -265,7 +265,7 @@ def test_create_job_with_contact_list_id(
     response = client.post(
         f'/service/{sample_template.service_id}/job',
         data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()])
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
     resp_json = response.get_json()
     assert response.status_code == 201
     assert resp_json['data']['contact_list_id'] == str(contact_list.id)
@@ -275,7 +275,7 @@ def test_create_job_with_contact_list_id(
 def test_create_job_returns_403_if_service_is_not_active(client, fake_uuid, sample_service, mocker):
     sample_service.active = False
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.post('/service/{}/job'.format(sample_service.id),
                            data="",
                            headers=[('Content-Type', 'application/json'), auth_header])
@@ -299,7 +299,7 @@ def test_create_job_returns_400_if_file_is_invalid(
     extra_metadata,
 ):
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     metadata = dict(
         template_id=str(sample_template.id),
         original_file_name='thisisatest.csv',
@@ -334,7 +334,7 @@ def test_create_job_returns_403_if_letter_template_type_and_service_in_trial(
         'created_by': str(sample_trial_letter_template.created_by.id),
     }
     mock_job_dao = mocker.patch("app.dao.jobs_dao.dao_create_job")
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.post('/service/{}/job'.format(sample_trial_letter_template.service.id),
                            data=json.dumps(data),
                            headers=[('Content-Type', 'application/json'), auth_header])
@@ -362,7 +362,7 @@ def test_should_not_create_scheduled_job_more_then_96_hours_in_the_future(client
         'scheduled_for': scheduled_date,
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     response = client.post(
@@ -395,7 +395,7 @@ def test_should_not_create_scheduled_job_in_the_past(client, sample_template, mo
         'scheduled_for': scheduled_date
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     response = client.post(
@@ -419,7 +419,7 @@ def test_create_job_returns_400_if_missing_id(client, sample_template, mocker):
     })
     data = {}
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     response = client.post(
         path,
@@ -444,7 +444,7 @@ def test_create_job_returns_400_if_missing_data(client, sample_template, mocker,
         'valid': 'True',
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     response = client.post(
         path,
@@ -469,7 +469,7 @@ def test_create_job_returns_404_if_template_does_not_exist(client, sample_servic
         'id': fake_uuid,
     }
     path = '/service/{}/job'.format(sample_service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     response = client.post(
         path,
@@ -492,7 +492,7 @@ def test_create_job_returns_404_if_missing_service(client, sample_template, mock
     random_id = str(uuid.uuid4())
     data = {}
     path = '/service/{}/job'.format(random_id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     response = client.post(
         path,
@@ -519,7 +519,7 @@ def test_create_job_returns_400_if_archived_template(client, sample_template, mo
         'valid': 'True',
     }
     path = '/service/{}/job'.format(sample_template.service.id)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     response = client.post(
         path,

@@ -21,7 +21,7 @@ from app.models import (
     Permission,
     User,
 )
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 from tests.app.db import (
     create_organisation,
     create_service,
@@ -115,7 +115,7 @@ def test_post_user(client, notify_db, notify_db_session):
         "permissions": {},
         "auth_type": EMAIL_AUTH_TYPE
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
         url_for('user.create_user'),
@@ -160,7 +160,7 @@ def test_post_user_missing_attribute_email(client, notify_db, notify_db_session)
         "failed_login_count": 0,
         "permissions": {}
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
         url_for('user.create_user'),
@@ -186,7 +186,7 @@ def test_create_user_missing_attribute_password(client, notify_db, notify_db_ses
         "failed_login_count": 0,
         "permissions": {}
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
         url_for('user.create_user'),
@@ -257,7 +257,7 @@ def test_post_user_attribute(client, sample_user, user_attribute, user_value):
     update_dict = {
         user_attribute: user_value
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
 
     resp = client.post(
@@ -301,7 +301,7 @@ def test_post_user_attribute_with_updated_by(
         user_attribute: user_value,
         'updated_by': str(updater.id)
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     mock_persist_notification = mocker.patch('app.user.rest.persist_notification')
     mocker.patch('app.user.rest.send_notification_to_queue')
@@ -327,7 +327,7 @@ def test_post_user_attribute_with_updated_by_sends_notification_to_international
         'mobile_number': '+601117224412',
         'updated_by': str(updater.id)
     }
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     mocker.patch('app.user.rest.send_notification_to_queue')
     resp = client.post(
@@ -346,7 +346,7 @@ def test_archive_user(mocker, client, sample_user):
 
     response = client.post(
         url_for('user.archive_user', user_id=sample_user.id),
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
 
     assert response.status_code == 204
@@ -358,7 +358,7 @@ def test_archive_user_when_user_does_not_exist_gives_404(mocker, client, fake_uu
 
     response = client.post(
         url_for('user.archive_user', user_id=fake_uuid),
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
 
     assert response.status_code == 404
@@ -370,7 +370,7 @@ def test_archive_user_when_user_cannot_be_archived(mocker, client, sample_user):
 
     response = client.post(
         url_for('user.archive_user', user_id=sample_user.id),
-        headers=[create_authorization_header()]
+        headers=[create_admin_authorization_header()]
     )
     json_resp = json.loads(response.get_data(as_text=True))
 
@@ -382,7 +382,7 @@ def test_archive_user_when_user_cannot_be_archived(mocker, client, sample_user):
 
 def test_get_user_by_email(client, sample_service):
     sample_user = sample_service.users[0]
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     url = url_for('user.get_by_email', email=sample_user.email_address)
     resp = client.get(url, headers=[header])
     assert resp.status_code == 200
@@ -400,7 +400,7 @@ def test_get_user_by_email(client, sample_service):
 
 
 def test_get_user_by_email_not_found_returns_404(client, sample_user):
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     url = url_for('user.get_by_email', email='no_user@digital.gov.uk')
     resp = client.get(url, headers=[header])
     assert resp.status_code == 404
@@ -410,7 +410,7 @@ def test_get_user_by_email_not_found_returns_404(client, sample_user):
 
 
 def test_get_user_by_email_bad_url_returns_404(client, sample_user):
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     url = '/user/email'
     resp = client.get(url, headers=[header])
     assert resp.status_code == 400
@@ -458,7 +458,7 @@ def test_fetch_user_by_email_without_email_returns_400(admin_request, notify_db_
 
 
 def test_get_user_with_permissions(client, sample_user_service_permission):
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     response = client.get(url_for('user.get_user', user_id=str(sample_user_service_permission.user.id)),
                           headers=[header])
     assert response.status_code == 200
@@ -468,7 +468,7 @@ def test_get_user_with_permissions(client, sample_user_service_permission):
 
 def test_set_user_permissions(client, sample_user, sample_service):
     data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}]})
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
         url_for(
@@ -487,7 +487,7 @@ def test_set_user_permissions(client, sample_user, sample_service):
 
 def test_set_user_permissions_multiple(client, sample_user, sample_service):
     data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}, {'permission': MANAGE_TEMPLATES}]})
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
         url_for(
@@ -510,7 +510,7 @@ def test_set_user_permissions_multiple(client, sample_user, sample_service):
 
 def test_set_user_permissions_remove_old(client, sample_user, sample_service):
     data = json.dumps({'permissions': [{'permission': MANAGE_SETTINGS}]})
-    header = create_authorization_header()
+    header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), header]
     response = client.post(
         url_for(
@@ -536,7 +536,7 @@ def test_set_user_folder_permissions(client, sample_user, sample_service):
             'user.set_permissions',
             user_id=str(sample_user.id),
             service_id=str(sample_service.id)),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=data)
 
     assert response.status_code == 204
@@ -559,7 +559,7 @@ def test_set_user_folder_permissions_when_user_does_not_belong_to_service(client
             'user.set_permissions',
             user_id=str(sample_user.id),
             service_id=str(service.id)),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=data)
 
     assert response.status_code == 404
@@ -591,7 +591,7 @@ def test_set_user_folder_permissions_does_not_affect_permissions_for_other_servi
             'user.set_permissions',
             user_id=str(sample_user.id),
             service_id=str(sample_service.id)),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=data)
 
     assert response.status_code == 204
@@ -616,7 +616,7 @@ def test_update_user_folder_permissions(client, sample_user, sample_service):
             'user.set_permissions',
             user_id=str(sample_user.id),
             service_id=str(sample_service.id)),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=data)
 
     assert response.status_code == 204
@@ -640,7 +640,7 @@ def test_remove_user_folder_permissions(client, sample_user, sample_service):
             'user.set_permissions',
             user_id=str(sample_user.id),
             service_id=str(sample_service.id)),
-        headers=[('Content-Type', 'application/json'), create_authorization_header()],
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()],
         data=data)
 
     assert response.status_code == 204
@@ -654,7 +654,7 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
                                                                   password_reset_email_template):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({'email': sample_user.email_address})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     notify_service = password_reset_email_template.service
     resp = client.post(
         url_for('user.send_user_reset_password'),
@@ -673,7 +673,7 @@ def test_send_user_reset_password_reset_password_link_contains_redirect_link_if_
 ):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({'email': sample_user.email_address, "next": "blob"})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.post(
         url_for('user.send_user_reset_password'),
         data=data,
@@ -688,7 +688,7 @@ def test_send_user_reset_password_reset_password_link_contains_redirect_link_if_
 def test_send_user_reset_password_should_return_400_when_email_is_missing(client, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     resp = client.post(
         url_for('user.send_user_reset_password'),
@@ -704,7 +704,7 @@ def test_send_user_reset_password_should_return_400_when_user_doesnot_exist(clie
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     bad_email_address = 'bad@email.gov.uk'
     data = json.dumps({'email': bad_email_address})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     resp = client.post(
         url_for('user.send_user_reset_password'),
@@ -720,7 +720,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     bad_email_address = 'bad.email.gov.uk'
     data = json.dumps({'email': bad_email_address})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     resp = client.post(
         url_for('user.send_user_reset_password'),
@@ -734,7 +734,7 @@ def test_send_user_reset_password_should_return_400_when_data_is_not_email_addre
 
 def test_send_already_registered_email(client, sample_user, already_registered_template, mocker):
     data = json.dumps({'email': sample_user.email_address})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     notify_service = already_registered_template.service
 
@@ -751,7 +751,7 @@ def test_send_already_registered_email(client, sample_user, already_registered_t
 
 def test_send_already_registered_email_returns_400_when_data_is_missing(client, sample_user):
     data = json.dumps({})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     resp = client.post(
         url_for('user.send_already_registered_email', user_id=str(sample_user.id)),
@@ -765,7 +765,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     new_email = 'new_address@dig.gov.uk'
     data = json.dumps({'email': new_email})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     notify_service = change_email_confirmation_template.service
 
     resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
@@ -782,7 +782,7 @@ def test_send_user_confirm_new_email_returns_204(client, sample_user, change_ema
 def test_send_user_confirm_new_email_returns_400_when_email_missing(client, sample_user, mocker):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     data = json.dumps({})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     resp = client.post(url_for('user.send_user_confirm_new_email', user_id=str(sample_user.id)),
                        data=data,
                        headers=[('Content-Type', 'application/json'), auth_header])
@@ -807,7 +807,7 @@ def test_update_user_password_saves_correctly(client, sample_service, data, emai
     sample_user = sample_service.users[0]
     sample_user.email_access_validated_at = datetime(2020, 2, 13, 12, 0)
     new_password = '1234567890'
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
         url_for('user.update_password', user_id=sample_user.id),
@@ -819,7 +819,7 @@ def test_update_user_password_saves_correctly(client, sample_service, data, emai
     json_resp = json.loads(resp.get_data(as_text=True))
     assert json_resp['data']['password_changed_at'] is not None
     data = {'password': new_password}
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     headers = [('Content-Type', 'application/json'), auth_header]
     resp = client.post(
         url_for('user.verify_user_password', user_id=str(sample_user.id)),
@@ -1071,7 +1071,7 @@ def test_find_users_by_email_finds_user_by_partial_email(notify_db, client):
     create_user(email='findel.mestro@foo.com')
     create_user(email='me.ignorra@foo.com')
     data = json.dumps({"email": "findel"})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     response = client.post(
         url_for("user.find_users_by_email"),
@@ -1089,7 +1089,7 @@ def test_find_users_by_email_finds_user_by_full_email(notify_db, client):
     create_user(email='findel.mestro@foo.com')
     create_user(email='me.ignorra@foo.com')
     data = json.dumps({"email": "findel.mestro@foo.com"})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     response = client.post(
         url_for("user.find_users_by_email"),
@@ -1107,7 +1107,7 @@ def test_find_users_by_email_handles_no_results(notify_db, client):
     create_user(email='findel.mestro@foo.com')
     create_user(email='me.ignorra@foo.com')
     data = json.dumps({"email": "rogue"})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     response = client.post(
         url_for("user.find_users_by_email"),
@@ -1123,7 +1123,7 @@ def test_find_users_by_email_handles_no_results(notify_db, client):
 def test_search_for_users_by_email_handles_incorrect_data_format(notify_db, client):
     create_user(email='findel.mestro@foo.com')
     data = json.dumps({"email": 1})
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
 
     response = client.post(
         url_for("user.find_users_by_email"),

@@ -8,7 +8,7 @@ from app.v2.inbound_sms.inbound_sms_schemas import (
     get_inbound_sms_response,
     get_inbound_sms_single_response,
 )
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_inbound_sms
 
 valid_inbound_sms = {
@@ -49,7 +49,7 @@ def test_get_inbound_sms_contract(client, sample_service):
     ]
     reversed_inbound_sms = sorted(all_inbound_sms, key=lambda sms: sms.created_at, reverse=True)
 
-    auth_header = create_authorization_header(service_id=all_inbound_sms[0].service_id)
+    auth_header = create_service_authorization_header(service_id=all_inbound_sms[0].service_id)
     response = client.get('/v2/received-text-messages', headers=[auth_header])
     response_json = json.loads(response.get_data(as_text=True))
 

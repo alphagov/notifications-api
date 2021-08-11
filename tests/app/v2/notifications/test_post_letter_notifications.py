@@ -26,7 +26,7 @@ from app.notifications.process_letter_notifications import (
 from app.schema_validation import validate
 from app.v2.errors import RateLimitError
 from app.v2.notifications.notification_schemas import post_letter_response
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_letter_contact, create_service, create_template
 from tests.conftest import set_config_values
 
@@ -47,7 +47,7 @@ def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected
         data=json.dumps(data),
         headers=[
             ('Content-Type', 'application/json'),
-            create_authorization_header(service_id=service_id, key_type=key_type)
+            create_service_authorization_header(service_id=service_id, key_type=key_type)
         ]
     )
     json_resp = json.loads(resp.get_data(as_text=True))
@@ -626,7 +626,7 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
         "reference": "letter-reference",
         "content": "hi"
     }
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.post(
         path="v2/notifications/letter",
         data=json.dumps(data),
@@ -656,7 +656,7 @@ def test_post_precompiled_letter_notification_returns_201(
     }
     if notification_postage:
         data["postage"] = notification_postage
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.post(
         path="v2/notifications/letter",
         data=json.dumps(data),
@@ -689,7 +689,7 @@ def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is
         "content": "bGV0dGVyLWNvbnRlbnQ="
     }
 
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     with pytest.raises(expected_exception=Exception):
         client.post(
             path="v2/notifications/letter",
@@ -708,7 +708,7 @@ def test_post_letter_notification_throws_error_for_invalid_postage(client, notif
         "content": "bGV0dGVyLWNvbnRlbnQ=",
         "postage": "space unicorn"
     }
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.post(
         path="v2/notifications/letter",
         data=json.dumps(data),
@@ -725,7 +725,7 @@ def test_post_letter_notification_throws_error_for_invalid_postage(client, notif
                          ['application/json', 'application/text'])
 def test_post_letter_notification_when_payload_is_invalid_json_returns_400(
         client, sample_service, content_type):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     payload_not_json = {
         "template_id": "dont-convert-to-json",
     }

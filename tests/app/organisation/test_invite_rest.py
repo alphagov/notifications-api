@@ -6,7 +6,7 @@ from freezegun import freeze_time
 from notifications_utils.url_safe_token import generate_token
 
 from app.models import INVITE_PENDING, Notification
-from tests import create_authorization_header
+from tests import create_admin_authorization_header
 from tests.app.db import create_invited_org_user
 
 
@@ -192,7 +192,7 @@ def test_validate_invitation_token_returns_200_when_token_valid(client, sample_i
                            current_app.config['DANGEROUS_SALT'])
 
     url = endpoint_format_str.format(token)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 200
@@ -205,7 +205,7 @@ def test_validate_invitation_token_for_expired_token_returns_400(client):
         token = generate_token(str(uuid.uuid4()), current_app.config['SECRET_KEY'],
                                current_app.config['DANGEROUS_SALT'])
     url = '/invite/organisation/{}'.format(token)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400
@@ -220,7 +220,7 @@ def test_validate_invitation_token_returns_400_when_invited_user_does_not_exist(
     token = generate_token(str(uuid.uuid4()), current_app.config['SECRET_KEY'],
                            current_app.config['DANGEROUS_SALT'])
     url = '/invite/organisation/{}'.format(token)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 404
@@ -237,7 +237,7 @@ def test_validate_invitation_token_returns_400_when_token_is_malformed(client):
     )[:-2]
 
     url = '/invite/organisation/{}'.format(token)
-    auth_header = create_authorization_header()
+    auth_header = create_admin_authorization_header()
     response = client.get(url, headers=[('Content-Type', 'application/json'), auth_header])
 
     assert response.status_code == 400

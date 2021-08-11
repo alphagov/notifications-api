@@ -4,7 +4,7 @@ import pytest
 from flask import json, url_for
 
 from app.utils import DATETIME_FORMAT
-from tests import create_authorization_header
+from tests import create_service_authorization_header
 from tests.app.db import create_notification, create_template
 
 
@@ -31,7 +31,7 @@ def test_get_notification_by_id_returns_200(
         scheduled_for="2017-06-12 15:15"
     )
 
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(sample_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -83,7 +83,7 @@ def test_get_notification_by_id_with_placeholders_returns_200(
         personalisation={"name": "Bob"}
     )
 
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(sample_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -131,7 +131,7 @@ def test_get_notification_by_reference_returns_200(client, sample_template):
     sample_notification_with_reference = create_notification(template=sample_template,
                                                              client_reference='some-client-reference')
 
-    auth_header = create_authorization_header(service_id=sample_notification_with_reference.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification_with_reference.service_id)
     response = client.get(
         path='/v2/notifications?reference={}'.format(sample_notification_with_reference.client_reference),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -154,7 +154,7 @@ def test_get_notification_by_id_returns_created_by_name_if_notification_created_
     sms_notification = create_notification(template=sample_template)
     sms_notification.created_by_id = sample_user.id
 
-    auth_header = create_authorization_header(service_id=sms_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sms_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_notification_by_id', notification_id=sms_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -165,7 +165,7 @@ def test_get_notification_by_id_returns_created_by_name_if_notification_created_
 
 
 def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/notifications?reference={}'.format('nonexistent-reference'),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -178,7 +178,7 @@ def test_get_notification_by_reference_nonexistent_reference_returns_no_notifica
 
 
 def test_get_notification_by_id_nonexistent_id(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/dd4b8b9d-d414-4a83-9256-580046bf18f9',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -200,7 +200,7 @@ def test_get_notification_by_id_nonexistent_id(client, sample_notification):
 
 @pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
 def test_get_notification_by_id_invalid_id(client, sample_notification, id):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -233,7 +233,7 @@ def test_get_notification_adds_delivery_estimate_for_letters(
     sample_letter_notification.created_at = datetime.date(2000, created_at_month, 1)
     sample_letter_notification.postage = postage
 
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(sample_letter_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -250,7 +250,7 @@ def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(client, 
     template = create_template(service=sample_service, template_type=template_type)
     mocked_notification = create_notification(template=template)
 
-    auth_header = create_authorization_header(service_id=mocked_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=mocked_notification.service_id)
     response = client.get(
         path='/v2/notifications/{}'.format(mocked_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -264,7 +264,7 @@ def test_get_all_notifications_except_job_notifications_returns_200(client, samp
     notifications = [create_notification(template=sample_template) for _ in range(2)]
     notification = notifications[-1]
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -298,7 +298,7 @@ def test_get_all_notifications_with_include_jobs_arg_returns_200(
     ]
     notification = notifications[-1]
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications?include_jobs=true',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -318,7 +318,7 @@ def test_get_all_notifications_with_include_jobs_arg_returns_200(
 
 
 def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):
-    auth_header = create_authorization_header(service_id=sample_service.id)
+    auth_header = create_service_authorization_header(service_id=sample_service.id)
     response = client.get(
         path='/v2/notifications',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -339,7 +339,7 @@ def test_get_all_notifications_filter_by_template_type(client, sample_service):
     notification = create_notification(template=email_template, to_field="don.draper@scdp.biz")
     create_notification(template=sms_template)
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications?template_type=email',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -364,7 +364,7 @@ def test_get_all_notifications_filter_by_template_type(client, sample_service):
 
 
 def test_get_all_notifications_filter_by_template_type_invalid_template_type(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications?template_type=orange',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -383,7 +383,7 @@ def test_get_all_notifications_filter_by_single_status(client, sample_template):
     notification = create_notification(template=sample_template, status="pending")
     create_notification(template=sample_template)
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications?status=pending',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -401,7 +401,7 @@ def test_get_all_notifications_filter_by_single_status(client, sample_template):
 
 
 def test_get_all_notifications_filter_by_status_invalid_status(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications?status=elephant',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -425,7 +425,7 @@ def test_get_all_notifications_filter_by_multiple_statuses(client, sample_templa
     ]
     failed_notification = create_notification(template=sample_template, status="permanent-failure")
 
-    auth_header = create_authorization_header(service_id=notifications[0].service_id)
+    auth_header = create_service_authorization_header(service_id=notifications[0].service_id)
     response = client.get(
         path='/v2/notifications?status=created&status=pending&status=sending',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -452,7 +452,7 @@ def test_get_all_notifications_filter_by_failed_status(client, sample_template):
         for _status in ["technical-failure", "temporary-failure", "permanent-failure"]
     ]
 
-    auth_header = create_authorization_header(service_id=created_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=created_notification.service_id)
     response = client.get(
         path='/v2/notifications?status=failed',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -476,7 +476,7 @@ def test_get_all_notifications_filter_by_id(client, sample_template):
     older_notification = create_notification(template=sample_template)
     newer_notification = create_notification(template=sample_template)
 
-    auth_header = create_authorization_header(service_id=newer_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=newer_notification.service_id)
     response = client.get(
         path='/v2/notifications?older_than={}'.format(newer_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -493,7 +493,7 @@ def test_get_all_notifications_filter_by_id(client, sample_template):
 
 
 def test_get_all_notifications_filter_by_id_invalid_id(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path='/v2/notifications?older_than=1234-badly-formatted-id-7890',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -508,7 +508,7 @@ def test_get_all_notifications_filter_by_id_invalid_id(client, sample_notificati
 def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(client, sample_template):
     notification = create_notification(template=sample_template)
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications?older_than=dd4b8b9d-d414-4a83-9256-580046bf18f9',
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -526,7 +526,7 @@ def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(c
 def test_get_all_notifications_filter_by_id_no_notifications_if_last_notification(client, sample_template):
     notification = create_notification(template=sample_template)
 
-    auth_header = create_authorization_header(service_id=notification.service_id)
+    auth_header = create_service_authorization_header(service_id=notification.service_id)
     response = client.get(
         path='/v2/notifications?older_than={}'.format(notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -557,7 +557,7 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
     # this notification was created too recently
     create_notification(template=sample_email_template, status="pending")
 
-    auth_header = create_authorization_header(service_id=newer_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=newer_notification.service_id)
     response = client.get(
         path='/v2/notifications?status=pending&template_type=email&older_than={}'.format(newer_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header])
@@ -587,7 +587,7 @@ def test_get_all_notifications_renames_letter_statuses(
     sample_notification,
     sample_email_notification,
 ):
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_notifications'),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -618,7 +618,7 @@ def test_get_notifications_renames_letter_statuses(client, sample_letter_templat
         status=db_status,
         personalisation={'address_line_1': 'Mr Foo', 'address_line_2': '1 Bar Street', 'postcode': 'N1'}
     )
-    auth_header = create_authorization_header(service_id=letter_noti.service_id)
+    auth_header = create_service_authorization_header(service_id=letter_noti.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_notification_by_id', notification_id=letter_noti.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -643,7 +643,7 @@ def test_get_pdf_for_notification_returns_pdf_content(
     )
     sample_letter_notification.status = 'created'
 
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -666,7 +666,7 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
     )
     sample_letter_notification.status = 'created'
 
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -700,7 +700,7 @@ def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
     )
     sample_letter_notification.status = status
 
-    auth_header = create_authorization_header(service_id=sample_letter_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]
@@ -715,7 +715,7 @@ def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
 
 
 def test_get_pdf_for_notification_fails_for_non_letters(client, sample_notification):
-    auth_header = create_authorization_header(service_id=sample_notification.service_id)
+    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
     response = client.get(
         path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_notification.id),
         headers=[('Content-Type', 'application/json'), auth_header]

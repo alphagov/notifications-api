@@ -113,6 +113,13 @@ def requires_auth():
 
     api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
 
+    current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
+        service_id,
+        api_key.id,
+        request.headers.get('User-Agent'),
+        request.base_url
+    ))
+
     g.api_user = api_key
     g.service_id = service_id
     g.authenticated_service = service
@@ -141,13 +148,6 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
 
         if api_key.expiry_date:
             raise AuthError("Invalid token: API key revoked", 403, service_id=service_id, api_key_id=api_key.id)
-
-        current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-            service_id,
-            api_key.id,
-            request.headers.get('User-Agent'),
-            request.base_url
-        ))
 
         return api_key
     else:
