@@ -1,4 +1,7 @@
 import uuid
+from datetime import datetime
+
+from sqlalchemy import desc
 
 from app import db
 from app.dao.dao_utils import autocommit
@@ -9,6 +12,8 @@ from app.models import (
     BroadcastProviderMessage,
     BroadcastProviderMessageNumber,
     BroadcastProviderMessageStatus,
+    BroadcastStatusType,
+    ServiceBroadcastSettings,
 )
 
 
@@ -27,6 +32,27 @@ def dao_get_broadcast_messages_for_service(service_id):
     return BroadcastMessage.query.filter(
         BroadcastMessage.service_id == service_id
     ).order_by(BroadcastMessage.created_at)
+
+
+def dao_get_all_broadcast_messages():
+    return db.session.query(
+        BroadcastMessage.id,
+        BroadcastMessage.reference,
+        ServiceBroadcastSettings.channel,
+        BroadcastMessage.content,
+        BroadcastMessage.areas,
+        BroadcastMessage.status,
+        BroadcastMessage.starts_at,
+        BroadcastMessage.finishes_at,
+        BroadcastMessage.approved_at,
+        BroadcastMessage.cancelled_at,
+    ).join(
+        ServiceBroadcastSettings, ServiceBroadcastSettings.service_id == BroadcastMessage.service_id
+    ).filter(
+        BroadcastMessage.starts_at >= datetime(2021, 5, 25, 0, 0, 0),
+        BroadcastMessage.stubbed == False,  # noqa
+        BroadcastMessage.status.in_(BroadcastStatusType.LIVE_STATUSES)
+    ).order_by(desc(BroadcastMessage.starts_at)).all()
 
 
 def get_earlier_events_for_broadcast_event(broadcast_event_id):
