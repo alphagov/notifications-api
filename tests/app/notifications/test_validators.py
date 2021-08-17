@@ -166,6 +166,29 @@ def test_service_can_send_to_recipient_passes(key_type, notify_db_session):
                                          serialised_service) is None
 
 
+@pytest.mark.parametrize('user_number, recipient_number', [
+    ['0048601234567', '+486 012 34567'],
+    ['07513332413', '(07513) 332413'],
+])
+def test_service_can_send_to_recipient_passes_with_non_normalised_number(sample_service, user_number, recipient_number):
+    sample_service.users[0].mobile_number = user_number
+
+    serialised_service = SerialisedService.from_id(sample_service.id)
+
+    assert service_can_send_to_recipient(recipient_number, 'team', serialised_service) is None
+
+
+@pytest.mark.parametrize('user_email, recipient_email', [
+    ['test@example.com', 'TeSt@EXAMPLE.com'],
+])
+def test_service_can_send_to_recipient_passes_with_non_normalised_email(sample_service, user_email, recipient_email):
+    sample_service.users[0].email_address = user_email
+
+    serialised_service = SerialisedService.from_id(sample_service.id)
+
+    assert service_can_send_to_recipient(recipient_email, 'team', serialised_service) is None
+
+
 @pytest.mark.parametrize('key_type',
                          ['test', 'normal'])
 def test_service_can_send_to_recipient_passes_for_live_service_non_team_member(key_type, sample_service):
