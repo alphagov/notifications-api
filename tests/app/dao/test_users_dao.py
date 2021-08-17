@@ -159,19 +159,13 @@ def test_update_user_attribute(client, sample_user, user_attribute, user_value):
 
 
 @freeze_time('2020-01-24T12:00:00')
-@pytest.mark.parametrize('from_email', [True, False])
-def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user, from_email):
+def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user):
     sample_user.password_changed_at = datetime.utcnow() - timedelta(days=1)
-    sample_user.email_access_validated_at = datetime.utcnow() - timedelta(days=1)
     password = 'newpassword'
     assert not sample_user.check_password(password)
-    update_user_password(sample_user, password, validated_email_access=from_email)
+    update_user_password(sample_user, password)
     assert sample_user.check_password(password)
     assert sample_user.password_changed_at == datetime.utcnow()
-    if from_email:
-        assert sample_user.email_access_validated_at == datetime.utcnow()
-    else:
-        assert sample_user.email_access_validated_at == datetime.utcnow() - timedelta(days=1)
 
 
 def test_count_user_verify_codes(sample_user):

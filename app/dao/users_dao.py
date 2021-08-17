@@ -123,12 +123,10 @@ def reset_failed_login_count(user):
         db.session.commit()
 
 
-def update_user_password(user, password, validated_email_access=False):
+def update_user_password(user, password):
     # reset failed login count - they've just reset their password so should be fine
     user.password = password
     user.password_changed_at = datetime.utcnow()
-    if validated_email_access:
-        user.email_access_validated_at = datetime.utcnow()
     db.session.add(user)
     db.session.commit()
 
