@@ -43,7 +43,10 @@ def create_broadcast():
     validate(broadcast_json, post_broadcast_schema)
 
     polygons = Polygons(list(chain.from_iterable((
-        area['polygons'] for area in broadcast_json['areas']
+        [
+            [[y, x] for x, y in polygon]
+            for polygon in area['polygons']
+        ] for area in broadcast_json['areas']
     ))))
 
     template = BroadcastMessageTemplate.from_content(
@@ -70,7 +73,7 @@ def create_broadcast():
             'areas': [
                 area['name'] for area in broadcast_json['areas']
             ],
-            'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_long_lat,
+            'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_lat_long,
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,

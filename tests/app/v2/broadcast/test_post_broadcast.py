@@ -103,9 +103,9 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
     assert len(response_json['simple_polygons']) == 1
-    assert len(response_json['simple_polygons'][0]) == 23
-    assert response_json['simple_polygons'][0][0] == [53.10562, 0.244127]
-    assert response_json['simple_polygons'][0][-1] == [53.10562, 0.244127]
+    assert len(response_json['simple_polygons'][0]) == 27
+    assert response_json['simple_polygons'][0][0] == [53.10635, 0.240159]
+    assert response_json['simple_polygons'][0][-1] == [53.10635, 0.240159]
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None
