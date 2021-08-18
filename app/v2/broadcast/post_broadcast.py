@@ -65,6 +65,11 @@ def create_broadcast():
             status_code=400,
         )
 
+    if len(polygons) > 12 or polygons.point_count > 250:
+        simple_polygons = polygons.smooth.simplify
+    else:
+        simple_polygons = polygons
+
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
         content=broadcast_json['content'],
@@ -73,7 +78,7 @@ def create_broadcast():
             'areas': [
                 area['name'] for area in broadcast_json['areas']
             ],
-            'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_lat_long,
+            'simple_polygons': simple_polygons.as_coordinate_pairs_lat_long,
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,
