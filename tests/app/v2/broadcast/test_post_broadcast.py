@@ -103,36 +103,15 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
     assert len(response_json['simple_polygons']) == 1
-    assert len(response_json['simple_polygons'][0]) == 29
-    assert response_json['simple_polygons'][0][0] == [53.10569, 0.24453]
-    assert response_json['simple_polygons'][0][-1] == [53.10569, 0.24453]
+    assert len(response_json['simple_polygons'][0]) == 23
+    assert response_json['simple_polygons'][0][0] == [53.10562, 0.244127]
+    assert response_json['simple_polygons'][0][-1] == [53.10562, 0.244127]
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None
     assert response_json['template_name'] is None
     assert response_json['template_version'] is None
     assert response_json['updated_at'] is None
-
-
-def test_large_polygon_is_simplified(
-    client,
-    sample_broadcast_service,
-):
-    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
-    response = client.post(
-        path='/v2/broadcast',
-        data=sample_cap_xml_documents.WINDEMERE,
-        headers=[('Content-Type', 'application/cap+xml'), auth_header],
-    )
-    assert response.status_code == 201
-
-    response_json = json.loads(response.get_data(as_text=True))
-
-    assert len(response_json['simple_polygons']) == 1
-    assert len(response_json['simple_polygons'][0]) == 110
-
-    assert response_json['simple_polygons'][0][0] == [54.419546, -2.988521]
-    assert response_json['simple_polygons'][0][-1] == [54.419546, -2.988521]
 
 
 @pytest.mark.parametrize("training_mode_service", [True, False])
