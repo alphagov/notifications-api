@@ -51,7 +51,7 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     assert response['created_at'] is not None
     assert response['starts_at'] is None
     assert response['areas'] == ['place A', 'region B']
-    assert response['areas_2']['areas'] == ['place A', 'region B']
+    assert response['areas_2']['ids'] == ['place A', 'region B']
     assert response['personalisation'] == {'thing': 'test'}
 
 
@@ -81,7 +81,7 @@ def test_get_broadcast_message_without_template(admin_request, sample_broadcast_
     assert response['created_at'] is not None
     assert response['starts_at'] is None
     assert response['areas'] == ['place A', 'region B']
-    assert response['areas_2']['areas'] == ['place A', 'region B']
+    assert response['areas_2']['ids'] == ['place A', 'region B']
     assert response['personalisation'] is None
 
 
@@ -155,7 +155,7 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
     assert response['areas'] == []
-    assert response['areas_2']['areas'] == []
+    assert response['areas_2']['ids'] == []
     assert response['areas_2']['simple_polygons'] == []
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
 
@@ -365,7 +365,7 @@ def test_create_broadcast_message_400s_if_no_content_or_template(
     },
     {
         "areas_2": {
-            "areas": ["london", "glasgow"],
+            "ids": ["london", "glasgow"],
             "simple_polygons": [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
         },
     }
@@ -401,7 +401,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
 
     assert response['starts_at'] == '2020-06-01T20:00:01.000000Z'
     assert response['areas'] == ['london', 'glasgow']
-    assert response['areas_2']['areas'] == ['london', 'glasgow']
+    assert response['areas_2']['ids'] == ['london', 'glasgow']
     assert response['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['areas_2']['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['updated_at'] is not None
@@ -413,7 +413,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
 ])
 @pytest.mark.parametrize('area_data', [  # TEMPORARY: while we repurpose "areas"
     {'areas': ['london', 'glasgow']},
-    {'areas_2': {'areas': ['london', 'glasgow']}},
+    {'areas_2': {'ids': ['london', 'glasgow']}},
 ])
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.BROADCASTING,
@@ -490,7 +490,7 @@ def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request
     },
     {
         "areas_2": {
-            "areas": ["glasgow"],
+            "ids": ["glasgow"],
             "simple_polygons": [[[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]]],
         }
     },
@@ -518,7 +518,7 @@ def test_update_broadcast_message_doesnt_let_you_update_status(area_data, admin_
 @pytest.mark.parametrize("incomplete_area_data", [
     {"areas": ["cardiff"]},  # TEMPORARY: while we repurpose "areas"
     {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]},  # TEMPORARY: while we repurpose "areas"
-    {"areas_2": {"areas": ["cardiff"]}},
+    {"areas_2": {"ids": ["cardiff"]}},
     {"areas_2": {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]}},
 ])
 def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
@@ -537,7 +537,7 @@ def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
 
     assert response[
         'message'
-    ] == f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.'
+    ] == f'Cannot update broadcast_message {broadcast_message.id}, area IDs or polygons are missing.'
 
 
 def test_update_broadcast_message_status(admin_request, sample_broadcast_service):
@@ -558,7 +558,7 @@ def test_update_broadcast_message_status(admin_request, sample_broadcast_service
 
 @pytest.mark.parametrize(('area_data', 'error'), [  # TEMPORARY: while we repurpose "areas"
     ({'areas': ['glasgow']}, 'areas was unexpected'),
-    ({'areas_2': {'areas': ['glasgow']}}, 'areas_2 was unexpected')
+    ({'areas_2': {'ids': ['glasgow']}}, 'areas_2 was unexpected')
 ])
 def test_update_broadcast_message_status_doesnt_let_you_update_other_things(
     area_data,
@@ -637,7 +637,11 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+        areas={
+            "areas": ["london"],
+            "ids": ["london"],
+            "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
+        }
     )
     approver = create_user(email='approver@gov.uk')
     sample_broadcast_service.users.append(approver)
@@ -736,7 +740,11 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
         template=None,
         content='tailor made emergency broadcast content',
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+        areas={
+            "areas": ["london"],
+            "ids": ["london"],
+            "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
+        }
     )
     approver = create_user(email='approver@gov.uk')
     sample_broadcast_service.users.append(approver)

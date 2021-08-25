@@ -139,10 +139,12 @@ def create_broadcast_message(service_id):
 
     if "areas" in data:
         areas["areas"] = data["areas"]
+        areas["ids"] = data["areas"]
     if "simple_polygons" in data:
         areas["simple_polygons"] = data["simple_polygons"]
-    if "areas" in areas_2:
-        areas["areas"] = areas_2["areas"]
+    if "ids" in areas_2:
+        areas["areas"] = areas_2["ids"]
+        areas["ids"] = areas_2["ids"]
     if "simple_polygons" in areas_2:
         areas["simple_polygons"] = areas_2["simple_polygons"]
 
@@ -189,16 +191,18 @@ def update_broadcast_message(service_id, broadcast_message_id):
 
     if "areas" in data:
         areas["areas"] = data["areas"]
+        areas["ids"] = data["areas"]
     if "simple_polygons" in data:
         areas["simple_polygons"] = data["simple_polygons"]
-    if "areas" in areas_2:
-        areas["areas"] = areas_2["areas"]
+    if "ids" in areas_2:
+        areas["areas"] = areas_2["ids"]
+        areas["ids"] = areas_2["ids"]
     if "simple_polygons" in areas_2:
         areas["simple_polygons"] = areas_2["simple_polygons"]
 
-    if ('areas' in areas and 'simple_polygons' not in areas) or ('areas' not in areas and 'simple_polygons' in areas):
+    if ('ids' in areas and 'simple_polygons' not in areas) or ('ids' not in areas and 'simple_polygons' in areas):
         raise InvalidRequest(
-            f'Cannot update broadcast_message {broadcast_message.id}, areas or polygons are missing.',
+            f'Cannot update broadcast_message {broadcast_message.id}, area IDs or polygons are missing.',
             status_code=400
         )
 
