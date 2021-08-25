@@ -2336,6 +2336,11 @@ class BroadcastMessage(db.Model):
         self._personalisation = encryption.encrypt(personalisation or {})
 
     def serialize(self):
+        # TEMPORARY: while we repurpose "areas"
+        areas_2 = dict(self.areas)
+        areas_2["simple_polygons"] = areas_2.get("simple_polygons", [])
+        areas_2["areas"] = areas_2.get("areas", [])
+
         return {
             'id': str(self.id),
             'reference': self.reference,
@@ -2348,6 +2353,8 @@ class BroadcastMessage(db.Model):
             'personalisation': self.personalisation if self.template else None,
             'content': self.content,
 
+            # TEMPORARY: switch to this so we can repurpose "areas"
+            'areas_2': areas_2,
             'areas': self.areas.get("areas", []),
             'simple_polygons': self.areas.get("simple_polygons", []),
 
