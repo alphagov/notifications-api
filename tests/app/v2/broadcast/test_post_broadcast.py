@@ -88,7 +88,7 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['areas'] == [
         'River Steeping in Wainfleet All Saints'
     ]
-    assert response_json['areas_2']['areas'] == [
+    assert response_json['areas_2']['names'] == [
         'River Steeping in Wainfleet All Saints'
     ]
     assert response_json['cancelled_at'] is None
