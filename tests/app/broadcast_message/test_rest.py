@@ -385,6 +385,10 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
     assert response['updated_at'] is not None
 
 
+@pytest.mark.parametrize('force_override', [
+    False,
+    pytest.param(True, marks=pytest.mark.xfail)
+])
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.BROADCASTING,
     BroadcastStatusType.CANCELLED,
@@ -392,14 +396,17 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(admin_request, 
     BroadcastStatusType.TECHNICAL_FAILURE,
 ])
 def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
-    admin_request, sample_broadcast_service, status
+    admin_request,
+    force_override,
+    sample_broadcast_service,
+    status
 ):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t, areas=['manchester'], status=status)
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
-        _data={'areas': ['london', 'glasgow']},
+        _data={'areas': ['london', 'glasgow'], 'force_override': force_override},
         service_id=t.service_id,
         broadcast_message_id=bm.id,
         _expected_status=400
