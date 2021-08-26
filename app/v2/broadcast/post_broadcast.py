@@ -70,6 +70,9 @@ def create_broadcast():
             'areas': [
                 area['name'] for area in broadcast_json['areas']
             ],
+            'names': [
+                area['name'] for area in broadcast_json['areas']
+            ],
             'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_long_lat,
         },
         status=BroadcastStatusType.PENDING_APPROVAL,

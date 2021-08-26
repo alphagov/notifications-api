@@ -84,7 +84,11 @@ def test_valid_post_cap_xml_broadcast_returns_201(
 
     assert response_json['approved_at'] is None
     assert response_json['approved_by_id'] is None
+    # TEMPORARY: while we repurpose "areas"
     assert response_json['areas'] == [
+        'River Steeping in Wainfleet All Saints'
+    ]
+    assert response_json['areas_2']['names'] == [
         'River Steeping in Wainfleet All Saints'
     ]
     assert response_json['cancelled_at'] is None
@@ -102,10 +106,19 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['id'] == ANY
     assert response_json['personalisation'] is None
     assert response_json['service_id'] == str(sample_broadcast_service.id)
+
+    # TEMPORARY: while we repurpose "areas"
     assert len(response_json['simple_polygons']) == 1
     assert len(response_json['simple_polygons'][0]) == 23
     assert response_json['simple_polygons'][0][0] == [53.10562, 0.244127]
     assert response_json['simple_polygons'][0][-1] == [53.10562, 0.244127]
+    assert response_json['simple_polygons'][0][-1] == [53.10562, 0.244127]
+    assert len(response_json['areas_2']['simple_polygons']) == 1
+    assert len(response_json['areas_2']['simple_polygons'][0]) == 23
+    assert response_json['areas_2']['simple_polygons'][0][0] == [53.10562, 0.244127]
+    assert response_json['areas_2']['simple_polygons'][0][-1] == [53.10562, 0.244127]
+    assert response_json['areas_2']['simple_polygons'][0][-1] == [53.10562, 0.244127]
+
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
     assert response_json['template_id'] is None
