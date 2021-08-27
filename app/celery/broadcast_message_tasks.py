@@ -135,7 +135,7 @@ def send_broadcast_event(broadcast_event_id):
             f'https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}',  # noqa
             '',
             f'This broacast has been sent on channel {broadcast_message.service.broadcast_channel}.',
-            f'This broadcast is targeted at areas {broadcast_message.areas.get("ids", broadcast_message.areas.get("areas"))}.',  # noqa
+            f'This broadcast is targeted at areas {broadcast_message.areas.get("names", [])}.',  # noqa
             ''
             f'This broadcast\'s content starts "{broadcast_message.content[:100]}"'
             '',
