@@ -122,10 +122,10 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
     assert broadcast_messages == [
         (
             broadcast_message_2.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
-            {'areas': [], 'ids': [], 'simple_polygons': []}, 'broadcasting', datetime(2021, 6, 20, 12, 0),
+            {'ids': [], 'simple_polygons': []}, 'broadcasting', datetime(2021, 6, 20, 12, 0),
             None, None, None),
         (
             broadcast_message_1.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
-            {'areas': [], 'ids': [], 'simple_polygons': []}, 'cancelled', datetime(2021, 6, 15, 12, 0),
+            {'ids': [], 'simple_polygons': []}, 'cancelled', datetime(2021, 6, 15, 12, 0),
             None, None, None)
     ]
