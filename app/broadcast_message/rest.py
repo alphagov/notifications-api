@@ -212,7 +212,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
         broadcast_message.starts_at = _parse_nullable_datetime(data['starts_at'])
     if 'finishes_at' in data:
         broadcast_message.finishes_at = _parse_nullable_datetime(data['finishes_at'])
-    if 'areas' in areas and 'simple_polygons' in areas:
+    if 'ids' in areas and 'simple_polygons' in areas:
         broadcast_message.areas = areas
 
     dao_save_object(broadcast_message)

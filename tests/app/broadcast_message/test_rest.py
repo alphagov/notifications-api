@@ -449,7 +449,7 @@ def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
     status
 ):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['manchester'], status=status)
+    bm = create_broadcast_message(t, status=status)
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
@@ -658,7 +658,6 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={
-            "areas": ["london"],
             "ids": ["london"],
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
@@ -708,7 +707,7 @@ def test_update_broadcast_message_status_updates_details_but_does_not_queue_task
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
+        areas={"ids": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
         stubbed=broadcast_message_stubbed
     )
     approver = create_user(email='approver@gov.uk')
@@ -761,7 +760,6 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
         content='tailor made emergency broadcast content',
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={
-            "areas": ["london"],
             "ids": ["london"],
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
@@ -849,7 +847,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+        areas={"ids": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 

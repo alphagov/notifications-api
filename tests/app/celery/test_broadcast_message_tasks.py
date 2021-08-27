@@ -100,7 +100,7 @@ def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broa
     broadcast_message = create_broadcast_message(
         template,
         status=BroadcastStatusType.BROADCASTING,
-        areas={'areas': ['wd20-S13002775', 'wd20-S13002773'], 'simple_polygons': []},
+        areas={'ids': ['wd20-S13002775', 'wd20-S13002773'], 'simple_polygons': []},
     )
     event = create_broadcast_event(broadcast_message)
     mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
