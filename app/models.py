@@ -2339,7 +2339,7 @@ class BroadcastMessage(db.Model):
         # TEMPORARY: while we repurpose "areas"
         areas_2 = dict(self.areas)
         areas_2["simple_polygons"] = areas_2.get("simple_polygons", [])
-        areas_2["ids"] = areas_2.pop("areas", [])
+        areas_2["ids"] = areas_2.pop("areas", areas_2.get("ids", []))
 
         return {
             'id': str(self.id),
@@ -2355,8 +2355,8 @@ class BroadcastMessage(db.Model):
 
             # TEMPORARY: switch to this so we can repurpose "areas"
             'areas_2': areas_2,
-            'areas': self.areas.get("areas", []),
-            'simple_polygons': self.areas.get("simple_polygons", []),
+            'areas': areas_2["ids"],
+            'simple_polygons': areas_2["simple_polygons"],
 
             'status': self.status,
 

@@ -19,7 +19,16 @@ from tests.app.db import (
 )
 
 
-def test_get_broadcast_message(admin_request, sample_broadcast_service):
+# TEMPORARY: while we repurpose "areas"
+@pytest.mark.parametrize("area_data", [
+    {"areas": ["place A", "region B"]},
+    {"ids": ["place A", "region B"]},
+])
+def test_get_broadcast_message(
+    area_data,
+    admin_request,
+    sample_broadcast_service
+):
     t = create_template(
         sample_broadcast_service,
         BROADCAST_TYPE,
@@ -28,7 +37,7 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     bm = create_broadcast_message(
         t,
         areas={
-            "areas": ['place A', 'region B'],
+            **area_data,
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
         personalisation={
@@ -51,16 +60,27 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     assert response['created_at'] is not None
     assert response['starts_at'] is None
     assert response['areas'] == ['place A', 'region B']
+    assert response['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['areas_2']['ids'] == ['place A', 'region B']
+    assert response['areas_2']['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['personalisation'] == {'thing': 'test'}
 
 
-def test_get_broadcast_message_without_template(admin_request, sample_broadcast_service):
+# TEMPORARY: while we repurpose "areas"
+@pytest.mark.parametrize("area_data", [
+    {"areas": ["place A", "region B"]},
+    {"ids": ["place A", "region B"]},
+])
+def test_get_broadcast_message_without_template(
+    area_data,
+    admin_request,
+    sample_broadcast_service
+):
     bm = create_broadcast_message(
         service=sample_broadcast_service,
         content='emergency broadcast content',
         areas={
-            "areas": ['place A', 'region B'],
+            **area_data,
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
     )
