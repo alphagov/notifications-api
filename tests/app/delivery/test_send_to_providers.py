@@ -72,8 +72,18 @@ def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
     assert len(mock_choices.call_args_list) == 1
 
 
-def test_provider_to_use_should_only_return_mmg_for_international(mocker, notify_db_session):
+@pytest.mark.parametrize('international_provider_priority', (
+    # Since there’s only one international provider it should always
+    # be used, no matter what its priority is set to
+    0, 50, 100,
+))
+def test_provider_to_use_should_only_return_mmg_for_international(
+    mocker,
+    notify_db_session,
+    international_provider_priority,
+):
     mmg = get_provider_details_by_identifier('mmg')
+    mmg.priority = international_provider_priority
     mock_choices = mocker.patch('app.delivery.send_to_providers.random.choices', return_value=[mmg])
 
     ret = send_to_providers.provider_to_use('sms', international=True)
@@ -90,7 +100,7 @@ def test_provider_to_use_should_only_return_active_providers(mocker, restore_pro
 
     ret = send_to_providers.provider_to_use('sms')
 
-    mock_choices.assert_called_once_with([firetext], weights=[0])
+    mock_choices.assert_called_once_with([firetext], weights=[100])
     assert ret.get_name() == 'firetext'
 
 
