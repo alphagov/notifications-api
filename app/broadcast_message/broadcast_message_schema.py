@@ -14,7 +14,6 @@ create_broadcast_message_schema = {
         'starts_at': {'type': 'string', 'format': 'datetime'},
         'finishes_at': {'type': 'string', 'format': 'datetime'},
         'areas': {'type': 'object'},
-        'areas_2': {'type': 'object'},
         'content': {'type': 'string', 'minLength': 1},
         'reference': {'type': 'string', 'minLength': 1, 'maxLength': 255},
     },
@@ -42,7 +41,6 @@ update_broadcast_message_schema = {
         'starts_at': {'type': 'string', 'format': 'datetime'},
         'finishes_at': {'type': 'string', 'format': 'datetime'},
         'areas': {'type': 'object'},
-        'areas_2': {'type': 'object'},
     },
     'required': [],
     'additionalProperties': False

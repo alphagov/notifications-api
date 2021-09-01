@@ -2353,10 +2353,7 @@ class BroadcastMessage(db.Model):
             'personalisation': self.personalisation if self.template else None,
             'content': self.content,
 
-            # TEMPORARY: switch to this so we can repurpose "areas"
-            'areas_2': areas,
             'areas': areas,
-
             'status': self.status,
 
             'starts_at': get_dt_string_or_none(self.starts_at),

@@ -138,7 +138,7 @@ def create_broadcast_message(service_id):
         template_id=template_id,
         template_version=template.version if template else None,
         personalisation=personalisation,
-        areas=data.get("areas", data.get("areas_2", {})),  # TEMPORARY: while we repurpose "areas"
+        areas=data.get("areas", {}),
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
@@ -170,8 +170,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
             status_code=400
         )
 
-    # TEMPORARY: while we repurpose "areas"
-    areas = data.get("areas", data.get("areas_2", {}))
+    areas = data.get("areas", {})
 
     if ('ids' in areas and 'simple_polygons' not in areas) or ('ids' not in areas and 'simple_polygons' in areas):
         raise InvalidRequest(
