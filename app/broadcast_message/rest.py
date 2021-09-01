@@ -133,27 +133,12 @@ def create_broadcast_message(service_id):
         content = str(temporary_template)
         reference = data['reference']
 
-    # TEMPORARY: while we repurpose "areas"
-    areas = {}
-    areas_2 = data.get("areas_2", {})
-
-    if "areas" in data:
-        areas["areas"] = data["areas"]
-        areas["ids"] = data["areas"]
-    if "simple_polygons" in data:
-        areas["simple_polygons"] = data["simple_polygons"]
-    if "ids" in areas_2:
-        areas["areas"] = areas_2["ids"]
-        areas["ids"] = areas_2["ids"]
-    if "simple_polygons" in areas_2:
-        areas["simple_polygons"] = areas_2["simple_polygons"]
-
     broadcast_message = BroadcastMessage(
         service_id=service.id,
         template_id=template_id,
         template_version=template.version if template else None,
         personalisation=personalisation,
-        areas=areas,
+        areas=data.get("areas", data.get("areas_2", {})),  # TEMPORARY: while we repurpose "areas"
         status=BroadcastStatusType.DRAFT,
         starts_at=_parse_nullable_datetime(data.get('starts_at')),
         finishes_at=_parse_nullable_datetime(data.get('finishes_at')),
@@ -186,19 +171,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
         )
 
     # TEMPORARY: while we repurpose "areas"
-    areas = {}
-    areas_2 = data.get("areas_2", {})
-
-    if "areas" in data:
-        areas["areas"] = data["areas"]
-        areas["ids"] = data["areas"]
-    if "simple_polygons" in data:
-        areas["simple_polygons"] = data["simple_polygons"]
-    if "ids" in areas_2:
-        areas["areas"] = areas_2["ids"]
-        areas["ids"] = areas_2["ids"]
-    if "simple_polygons" in areas_2:
-        areas["simple_polygons"] = areas_2["simple_polygons"]
+    areas = data.get("areas", data.get("areas_2", {}))
 
     if ('ids' in areas and 'simple_polygons' not in areas) or ('ids' not in areas and 'simple_polygons' in areas):
         raise InvalidRequest(
@@ -212,7 +185,7 @@ def update_broadcast_message(service_id, broadcast_message_id):
         broadcast_message.starts_at = _parse_nullable_datetime(data['starts_at'])
     if 'finishes_at' in data:
         broadcast_message.finishes_at = _parse_nullable_datetime(data['finishes_at'])
-    if 'areas' in areas and 'simple_polygons' in areas:
+    if 'ids' in areas and 'simple_polygons' in areas:
         broadcast_message.areas = areas
 
     dao_save_object(broadcast_message)

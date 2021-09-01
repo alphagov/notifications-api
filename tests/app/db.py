@@ -1146,7 +1146,7 @@ def create_broadcast_message(
         starts_at=starts_at,
         finishes_at=finishes_at,
         created_by_id=created_by.id if created_by else service.created_by_id,
-        areas=areas or {'areas': [], 'ids': [], 'simple_polygons': []},
+        areas=areas or {'ids': [], 'simple_polygons': []},
         content=content,
         stubbed=stubbed
     )

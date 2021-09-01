@@ -2337,9 +2337,9 @@ class BroadcastMessage(db.Model):
 
     def serialize(self):
         # TEMPORARY: while we repurpose "areas"
-        areas_2 = dict(self.areas)
-        areas_2["simple_polygons"] = areas_2.get("simple_polygons", [])
-        areas_2["ids"] = areas_2.pop("areas", [])
+        areas = dict(self.areas)
+        areas["simple_polygons"] = areas.get("simple_polygons", [])
+        areas["ids"] = areas.pop("areas", areas.get("ids", []))
 
         return {
             'id': str(self.id),
@@ -2354,9 +2354,8 @@ class BroadcastMessage(db.Model):
             'content': self.content,
 
             # TEMPORARY: switch to this so we can repurpose "areas"
-            'areas_2': areas_2,
-            'areas': self.areas.get("areas", []),
-            'simple_polygons': self.areas.get("simple_polygons", []),
+            'areas_2': areas,
+            'areas': areas,
 
             'status': self.status,
 

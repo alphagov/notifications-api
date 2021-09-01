@@ -67,9 +67,6 @@ def create_broadcast():
         content=broadcast_json['content'],
         reference=broadcast_json['reference'],
         areas={
-            'areas': [
-                area['name'] for area in broadcast_json['areas']
-            ],
             'names': [
                 area['name'] for area in broadcast_json['areas']
             ],

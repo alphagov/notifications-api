@@ -19,7 +19,16 @@ from tests.app.db import (
 )
 
 
-def test_get_broadcast_message(admin_request, sample_broadcast_service):
+# TEMPORARY: while we repurpose "areas"
+@pytest.mark.parametrize("area_data", [
+    {"areas": ["place A", "region B"]},
+    {"ids": ["place A", "region B"]},
+])
+def test_get_broadcast_message(
+    area_data,
+    admin_request,
+    sample_broadcast_service
+):
     t = create_template(
         sample_broadcast_service,
         BROADCAST_TYPE,
@@ -28,7 +37,7 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     bm = create_broadcast_message(
         t,
         areas={
-            "areas": ['place A', 'region B'],
+            **area_data,
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
         personalisation={
@@ -50,17 +59,28 @@ def test_get_broadcast_message(admin_request, sample_broadcast_service):
     assert response['status'] == BroadcastStatusType.DRAFT
     assert response['created_at'] is not None
     assert response['starts_at'] is None
-    assert response['areas'] == ['place A', 'region B']
+    assert response['areas']['ids'] == ['place A', 'region B']
+    assert response['areas']['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['areas_2']['ids'] == ['place A', 'region B']
+    assert response['areas_2']['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['personalisation'] == {'thing': 'test'}
 
 
-def test_get_broadcast_message_without_template(admin_request, sample_broadcast_service):
+# TEMPORARY: while we repurpose "areas"
+@pytest.mark.parametrize("area_data", [
+    {"areas": ["place A", "region B"]},
+    {"ids": ["place A", "region B"]},
+])
+def test_get_broadcast_message_without_template(
+    area_data,
+    admin_request,
+    sample_broadcast_service
+):
     bm = create_broadcast_message(
         service=sample_broadcast_service,
         content='emergency broadcast content',
         areas={
-            "areas": ['place A', 'region B'],
+            **area_data,
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
     )
@@ -80,8 +100,10 @@ def test_get_broadcast_message_without_template(admin_request, sample_broadcast_
     assert response['status'] == BroadcastStatusType.DRAFT
     assert response['created_at'] is not None
     assert response['starts_at'] is None
-    assert response['areas'] == ['place A', 'region B']
+    assert response['areas']['ids'] == ['place A', 'region B']
+    assert response['areas']['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['areas_2']['ids'] == ['place A', 'region B']
+    assert response['areas_2']['simple_polygons'] == [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]]
     assert response['personalisation'] is None
 
 
@@ -154,7 +176,8 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
-    assert response['areas'] == []
+    assert response['areas']['ids'] == []
+    assert response['areas']['simple_polygons'] == []
     assert response['areas_2']['ids'] == []
     assert response['areas_2']['simple_polygons'] == []
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
@@ -360,8 +383,10 @@ def test_create_broadcast_message_400s_if_no_content_or_template(
 
 @pytest.mark.parametrize('area_data', [  # TEMPORARY: while we repurpose "areas"
     {
-        "areas": ["london", "glasgow"],
-        "simple_polygons": [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
+        "areas": {
+            "ids": ["london", "glasgow"],
+            "simple_polygons": [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
+        },
     },
     {
         "areas_2": {
@@ -384,7 +409,10 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
-        areas={"areas": ['manchester'], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]},
+        areas={
+            "ids": ['manchester'],
+            "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]
+        },
         status=status
     )
 
@@ -400,9 +428,9 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
     )
 
     assert response['starts_at'] == '2020-06-01T20:00:01.000000Z'
-    assert response['areas'] == ['london', 'glasgow']
+    assert response['areas']['ids'] == ['london', 'glasgow']
+    assert response['areas']['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['areas_2']['ids'] == ['london', 'glasgow']
-    assert response['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['areas_2']['simple_polygons'] == [[[51.12, 0.2], [50.13, 0.4], [50.14, 0.45]]]
     assert response['updated_at'] is not None
 
@@ -412,7 +440,7 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
     pytest.param(True, marks=pytest.mark.xfail)
 ])
 @pytest.mark.parametrize('area_data', [  # TEMPORARY: while we repurpose "areas"
-    {'areas': ['london', 'glasgow']},
+    {'areas': {'ids': ['london', 'glasgow']}},
     {'areas_2': {'ids': ['london', 'glasgow']}},
 ])
 @pytest.mark.parametrize('status', [
@@ -429,7 +457,7 @@ def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
     status
 ):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
-    bm = create_broadcast_message(t, areas=['manchester'], status=status)
+    bm = create_broadcast_message(t, status=status)
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
@@ -445,7 +473,10 @@ def test_update_broadcast_message_sets_finishes_at_separately(admin_request, sam
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(
         t,
-        areas={"areas": ["london"], "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]}
+        areas={
+            "ids": ["london"],
+            "simple_polygons": [[[50.12, 1.2], [50.13, 1.2], [50.14, 1.21]]]
+        }
     )
 
     response = admin_request.post(
@@ -485,8 +516,10 @@ def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request
 
 @pytest.mark.parametrize('area_data', [  # TEMPORARY: while we repurpose "areas"
     {
-        "areas": ["glasgow"],
-        "simple_polygons": [[[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]]],
+        "areas": {
+            "ids": ["glasgow"],
+            "simple_polygons": [[[55.86, -4.25], [55.85, -4.25], [55.87, -4.24]]],
+        }
     },
     {
         "areas_2": {
@@ -516,8 +549,9 @@ def test_update_broadcast_message_doesnt_let_you_update_status(area_data, admin_
 
 
 @pytest.mark.parametrize("incomplete_area_data", [
-    {"areas": ["cardiff"]},  # TEMPORARY: while we repurpose "areas"
-    {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]},  # TEMPORARY: while we repurpose "areas"
+    {"areas": {"ids": ["cardiff"]}},
+    {"areas": {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]}},
+    # TEMPORARY: while we repurpose "areas"
     {"areas_2": {"ids": ["cardiff"]}},
     {"areas_2": {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]}},
 ])
@@ -557,7 +591,7 @@ def test_update_broadcast_message_status(admin_request, sample_broadcast_service
 
 
 @pytest.mark.parametrize(('area_data', 'error'), [  # TEMPORARY: while we repurpose "areas"
-    ({'areas': ['glasgow']}, 'areas was unexpected'),
+    ({'areas': {'ids': ['glasgow']}}, 'areas was unexpected'),
     ({'areas_2': {'ids': ['glasgow']}}, 'areas_2 was unexpected')
 ])
 def test_update_broadcast_message_status_doesnt_let_you_update_other_things(
@@ -638,7 +672,6 @@ def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={
-            "areas": ["london"],
             "ids": ["london"],
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
@@ -688,7 +721,7 @@ def test_update_broadcast_message_status_updates_details_but_does_not_queue_task
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
+        areas={"ids": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]},
         stubbed=broadcast_message_stubbed
     )
     approver = create_user(email='approver@gov.uk')
@@ -741,7 +774,6 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
         content='tailor made emergency broadcast content',
         status=BroadcastStatusType.PENDING_APPROVAL,
         areas={
-            "areas": ["london"],
             "ids": ["london"],
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
@@ -829,7 +861,7 @@ def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_o
     bm = create_broadcast_message(
         t,
         status=BroadcastStatusType.PENDING_APPROVAL,
-        areas={"areas": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
+        areas={"ids": ["london"], "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]}
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 

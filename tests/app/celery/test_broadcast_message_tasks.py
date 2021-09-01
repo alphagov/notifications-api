@@ -95,12 +95,22 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
     assert mock_send_broadcast_provider_message.apply_async.called is False
 
 
-def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broadcast_service):
+@pytest.mark.parametrize('area_data,expected_message', [
+    ({'names': ['England', 'Scotland']}, ['England', 'Scotland']),
+    ({}, [])
+])
+def test_send_broadcast_event_creates_zendesk_p1(
+    area_data,
+    expected_message,
+    mocker,
+    notify_api,
+    sample_broadcast_service
+):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
         status=BroadcastStatusType.BROADCASTING,
-        areas={'areas': ['wd20-S13002775', 'wd20-S13002773'], 'simple_polygons': []},
+        areas={**area_data, 'simple_polygons': []},
     )
     event = create_broadcast_event(broadcast_message)
     mock_create_ticket = mocker.patch("app.celery.broadcast_message_tasks.zendesk_client.create_ticket")
@@ -117,7 +127,7 @@ def test_send_broadcast_event_creates_zendesk_p1(mocker, notify_api, sample_broa
 
     assert str(broadcast_message.id) in zendesk_args['message']
     assert 'channel severe' in zendesk_args['message']
-    assert "areas ['wd20-S13002775', 'wd20-S13002773']" in zendesk_args['message']
+    assert f"areas {expected_message}" in zendesk_args['message']
     # the start of the content from the broadcast template
     assert "Dear Sir/Madam" in zendesk_args['message']
 
