@@ -27,7 +27,7 @@ beautifulsoup4==4.9.3
 lxml==4.6.3
 
 # When we upgraded to 2.0.1 we noticed significantly higher memory usage on the API
-Werkzeug==1.0.1 # puyp: < 2.0.0
+Werkzeug==2.0.1 # puyp: < 2.0.0
 
 # higher version causes build to fail on PaaS due to lack of Rust
 # see https://github.com/pyca/cryptography/issues/5810
