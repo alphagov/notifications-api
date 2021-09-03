@@ -87,10 +87,6 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['areas']['names'] == [
         'River Steeping in Wainfleet All Saints'
     ]
-    # TEMPORARY: while we repurpose "areas"
-    assert response_json['areas_2']['names'] == [
-        'River Steeping in Wainfleet All Saints'
-    ]
     assert response_json['cancelled_at'] is None
     assert response_json['cancelled_by_id'] is None
     assert response_json['content'].startswith(
@@ -113,11 +109,6 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['areas']['simple_polygons'][0][0] == [53.10562, 0.244127]
     assert response_json['areas']['simple_polygons'][0][-1] == [53.10562, 0.244127]
     assert response_json['areas']['simple_polygons'][0][-1] == [53.10562, 0.244127]
-    assert len(response_json['areas_2']['simple_polygons']) == 1
-    assert len(response_json['areas_2']['simple_polygons'][0]) == 23
-    assert response_json['areas_2']['simple_polygons'][0][0] == [53.10562, 0.244127]
-    assert response_json['areas_2']['simple_polygons'][0][-1] == [53.10562, 0.244127]
-    assert response_json['areas_2']['simple_polygons'][0][-1] == [53.10562, 0.244127]
 
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'
