@@ -19,13 +19,7 @@ from tests.app.db import (
 )
 
 
-# TEMPORARY: while we repurpose "areas"
-@pytest.mark.parametrize("area_data", [
-    {"areas": ["place A", "region B"]},
-    {"ids": ["place A", "region B"]},
-])
 def test_get_broadcast_message(
-    area_data,
     admin_request,
     sample_broadcast_service
 ):
@@ -37,7 +31,7 @@ def test_get_broadcast_message(
     bm = create_broadcast_message(
         t,
         areas={
-            **area_data,
+            "ids": ["place A", "region B"],
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
         personalisation={
@@ -64,13 +58,7 @@ def test_get_broadcast_message(
     assert response['personalisation'] == {'thing': 'test'}
 
 
-# TEMPORARY: while we repurpose "areas"
-@pytest.mark.parametrize("area_data", [
-    {"areas": ["place A", "region B"]},
-    {"ids": ["place A", "region B"]},
-])
 def test_get_broadcast_message_without_template(
-    area_data,
     admin_request,
     sample_broadcast_service
 ):
@@ -78,7 +66,7 @@ def test_get_broadcast_message_without_template(
         service=sample_broadcast_service,
         content='emergency broadcast content',
         areas={
-            **area_data,
+            "ids": ["place A", "region B"],
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
     )

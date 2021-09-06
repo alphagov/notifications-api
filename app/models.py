@@ -2336,10 +2336,9 @@ class BroadcastMessage(db.Model):
         self._personalisation = encryption.encrypt(personalisation or {})
 
     def serialize(self):
-        # TEMPORARY: while we repurpose "areas"
         areas = dict(self.areas)
         areas["simple_polygons"] = areas.get("simple_polygons", [])
-        areas["ids"] = areas.pop("areas", areas.get("ids", []))
+        areas["ids"] = areas.get("ids", [])
 
         return {
             'id': str(self.id),
