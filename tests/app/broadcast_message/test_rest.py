@@ -160,7 +160,7 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
-    assert response['areas']['simple_polygons'] == []
+    assert response['areas'] == {}
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)

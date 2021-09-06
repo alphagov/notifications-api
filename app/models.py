@@ -2336,9 +2336,6 @@ class BroadcastMessage(db.Model):
         self._personalisation = encryption.encrypt(personalisation or {})
 
     def serialize(self):
-        areas = dict(self.areas)
-        areas["simple_polygons"] = areas.get("simple_polygons", [])
-
         return {
             'id': str(self.id),
             'reference': self.reference,
@@ -2351,7 +2348,7 @@ class BroadcastMessage(db.Model):
             'personalisation': self.personalisation if self.template else None,
             'content': self.content,
 
-            'areas': areas,
+            'areas': self.areas,
             'status': self.status,
 
             'starts_at': get_dt_string_or_none(self.starts_at),
