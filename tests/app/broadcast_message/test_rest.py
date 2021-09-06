@@ -160,7 +160,6 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
-    assert response['areas']['ids'] == []
     assert response['areas']['simple_polygons'] == []
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
 

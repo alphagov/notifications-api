@@ -107,6 +107,8 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert len(response_json['areas']['simple_polygons'][0]) == 23
     assert response_json['areas']['simple_polygons'][0][0] == [53.10562, 0.244127]
     assert response_json['areas']['simple_polygons'][0][-1] == [53.10562, 0.244127]
+    assert response_json['areas']['names'] == ['River Steeping in Wainfleet All Saints']
+    assert 'ids' not in response_json['areas']  # only for broadcasts created in Admin
 
     assert response_json['starts_at'] is None
     assert response_json['status'] == 'pending-approval'

@@ -2338,7 +2338,6 @@ class BroadcastMessage(db.Model):
     def serialize(self):
         areas = dict(self.areas)
         areas["simple_polygons"] = areas.get("simple_polygons", [])
-        areas["ids"] = areas.get("ids", [])
 
         return {
             'id': str(self.id),
