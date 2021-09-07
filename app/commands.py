@@ -1,6 +1,7 @@
 import csv
 import functools
 import itertools
+import os
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -43,6 +44,7 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_get_organisation_by_email_address,
 )
+from app.dao.permissions_dao import permission_dao
 from app.dao.provider_rates_dao import (
     create_provider_rates as dao_create_provider_rates,
 )
@@ -75,6 +77,7 @@ from app.models import (
     LetterBranding,
     Notification,
     Organisation,
+    Permission,
     Service,
     User,
 )
@@ -914,3 +917,32 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
 
     for service in active_services:
         set_default_free_allowance_for_service(service, year)
+
+
+@click.option('-u', '--user-id', required=True)
+@notify_command(name='local-dev-broadcast-permissions')
+def local_dev_broadcast_permissions(user_id):
+    if os.getenv('NOTIFY_ENVIRONMENT', '') not in ['development', 'test']:
+        current_app.logger.error('Can only be run in development')
+        return
+
+    user = User.query.filter_by(id=user_id).one()
+
+    user_broadcast_services = Service.query.filter(
+        Service.permissions.any(permission='broadcast'),
+        Service.users.any(id=user_id)
+    )
+
+    for service in user_broadcast_services:
+        permission_list = [
+            Permission(service_id=service.id, user_id=user_id, permission=permission)
+            for permission in [
+                'reject_broadcasts', 'cancel_broadcasts',  # required to create / approve
+                'create_broadcasts', 'approve_broadcasts',  # minimum for testing
+                'manage_templates',  # unlikely but might be useful
+            ]
+        ]
+
+        permission_dao.set_user_service_permission(
+            user, service, permission_list, _commit=True, replace=True
+        )
