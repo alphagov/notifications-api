@@ -94,17 +94,25 @@ class notify_command:
         self.name = name
 
     def __call__(self, func):
-        # we need to call the flask with_appcontext decorator to ensure the config is loaded, db connected etc etc.
-        # we also need to use functools.wraps to carry through the names and docstrings etc of the functions.
-        # Then we need to turn it into a click.Command - that's what command_group.add_command expects.
-        @click.command(name=self.name)
-        @functools.wraps(func)
-        @flask.cli.with_appcontext
+        decorators = [
+            click.command(name=self.name),  # turn it into a click.Command
+            functools.wraps(func)  # carry through function name, docstrings, etc.
+        ]
+
+        # in the test environment the app context is already provided and having
+        # another will lead to the test db connection being closed prematurely
+        if os.getenv('NOTIFY_ENVIRONMENT', '') != 'test':
+            # with_appcontext ensures the config is loaded, db connected, etc.
+            decorators.insert(0, flask.cli.with_appcontext)
+
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        command_group.add_command(wrapper)
+        for decorator in decorators:
+            # this syntax is equivalent to e.g. "@flask.cli.with_appcontext"
+            wrapper = decorator(wrapper)
 
+        command_group.add_command(wrapper)
         return wrapper
 
 
