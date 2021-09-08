@@ -156,15 +156,11 @@ def create_broadcast_message(service_id):
 @broadcast_message_blueprint.route('/<uuid:broadcast_message_id>', methods=['POST'])
 def update_broadcast_message(service_id, broadcast_message_id):
     data = request.get_json()
-
-    # TEMPORARY: while we migrate and backfill "areas"
-    force_override = data.pop("force_override", False)
-
     validate(data, update_broadcast_message_schema)
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service_id)
 
-    if not force_override and broadcast_message.status not in BroadcastStatusType.PRE_BROADCAST_STATUSES:
+    if broadcast_message.status not in BroadcastStatusType.PRE_BROADCAST_STATUSES:
         raise InvalidRequest(
             f'Cannot update broadcast_message {broadcast_message.id} while it has status {broadcast_message.status}',
             status_code=400

@@ -19,13 +19,7 @@ from tests.app.db import (
 )
 
 
-# TEMPORARY: while we repurpose "areas"
-@pytest.mark.parametrize("area_data", [
-    {"areas": ["place A", "region B"]},
-    {"ids": ["place A", "region B"]},
-])
 def test_get_broadcast_message(
-    area_data,
     admin_request,
     sample_broadcast_service
 ):
@@ -37,7 +31,7 @@ def test_get_broadcast_message(
     bm = create_broadcast_message(
         t,
         areas={
-            **area_data,
+            "ids": ["place A", "region B"],
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
         personalisation={
@@ -64,13 +58,7 @@ def test_get_broadcast_message(
     assert response['personalisation'] == {'thing': 'test'}
 
 
-# TEMPORARY: while we repurpose "areas"
-@pytest.mark.parametrize("area_data", [
-    {"areas": ["place A", "region B"]},
-    {"ids": ["place A", "region B"]},
-])
 def test_get_broadcast_message_without_template(
-    area_data,
     admin_request,
     sample_broadcast_service
 ):
@@ -78,7 +66,7 @@ def test_get_broadcast_message_without_template(
         service=sample_broadcast_service,
         content='emergency broadcast content',
         areas={
-            **area_data,
+            "ids": ["place A", "region B"],
             "simple_polygons": [[[50.1, 1.2], [50.12, 1.2], [50.13, 1.2]]],
         },
     )
@@ -172,8 +160,7 @@ def test_create_broadcast_message(admin_request, sample_broadcast_service, train
     assert response['created_at'] is not None
     assert response['created_by_id'] == str(t.created_by_id)
     assert response['personalisation'] == {}
-    assert response['areas']['ids'] == []
-    assert response['areas']['simple_polygons'] == []
+    assert response['areas'] == {}
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
 
     broadcast_message = dao_get_broadcast_message_by_id_and_service_id(response["id"], sample_broadcast_service.id)
@@ -415,10 +402,6 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
     assert response['updated_at'] is not None
 
 
-@pytest.mark.parametrize('force_override', [
-    False,
-    pytest.param(True, marks=pytest.mark.xfail)
-])
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.BROADCASTING,
     BroadcastStatusType.CANCELLED,
@@ -426,7 +409,6 @@ def test_update_broadcast_message_allows_edit_while_not_yet_live(
     BroadcastStatusType.TECHNICAL_FAILURE,
 ])
 def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
-    force_override,
     admin_request,
     sample_broadcast_service,
     status
@@ -436,7 +418,7 @@ def test_update_broadcast_message_doesnt_allow_edits_after_broadcast_goes_live(
 
     response = admin_request.post(
         'broadcast_message.update_broadcast_message',
-        _data={'force_override': force_override, 'areas': {'ids': ['london', 'glasgow']}},
+        _data={'areas': {'ids': ['london', 'glasgow']}},
         service_id=t.service_id,
         broadcast_message_id=bm.id,
         _expected_status=400
