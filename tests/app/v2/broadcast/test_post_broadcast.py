@@ -104,7 +104,7 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['service_id'] == str(sample_broadcast_service.id)
 
     assert len(response_json['areas']['simple_polygons']) == 1
-    assert len(response_json['areas']['simple_polygons'][0]) == 23
+    assert len(response_json['areas']['simple_polygons'][0]) == 22
     assert response_json['areas']['simple_polygons'][0][0] == [53.10562, 0.244127]
     assert response_json['areas']['simple_polygons'][0][-1] == [53.10562, 0.244127]
     assert response_json['areas']['names'] == ['River Steeping in Wainfleet All Saints']
