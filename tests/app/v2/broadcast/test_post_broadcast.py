@@ -28,7 +28,7 @@ def test_broadcast_for_service_without_permission_returns_400(
     )
 
 
-def test_valid_post_broadcast_returns_201(
+def test_post_broadcast_non_cap_xml_returns_415(
     client,
     sample_broadcast_service,
 ):
