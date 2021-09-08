@@ -76,6 +76,7 @@ post_broadcast_schema = {
             "properties": {
                 "name": {
                     "type": "string",
+                    "pattern": "([a-zA-Z1-9]+ )*[a-zA-Z1-9]+",
                 },
                 "polygons": {
                     "type": "array",

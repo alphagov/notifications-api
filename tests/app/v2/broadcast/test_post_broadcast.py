@@ -229,3 +229,24 @@ def test_content_too_long_returns_400(
         }],
         'status_code': 400,
     }
+
+
+def test_invalid_areas_returns_400(
+    client,
+    sample_broadcast_service
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+    response = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.MISSING_AREA_NAMES,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert json.loads(response.get_data(as_text=True)) == {
+        'errors': [{
+            'error': 'ValidationError',
+            # the blank spaces represent the blank areaDesc in the XML
+            'message': 'areas   does not match ([a-zA-Z1-9]+ )*[a-zA-Z1-9]+',
+        }],
+        'status_code': 400,
+    }
