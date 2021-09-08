@@ -914,26 +914,3 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
 
     for service in active_services:
         set_default_free_allowance_for_service(service, year)
-
-
-@notify_command(name='tmp-backfill-custom-broadcast-areas')
-def tmp_backfill_custom_broadcast_areas():
-    from app import db
-    from app.models import BroadcastMessage
-
-    custom_broadcasts = BroadcastMessage.query \
-        .filter(BroadcastMessage.api_key_id != None) \
-        .filter(BroadcastMessage.areas.has_key('areas'))  # noqa
-
-    for broadcast in custom_broadcasts:
-        old_areas = broadcast.areas
-
-        new_areas = {
-            'names': old_areas['areas'],
-            'simple_polygons': old_areas['simple_polygons']
-        }
-
-        broadcast.areas = new_areas
-
-        print(f'Migrating {broadcast.id}')
-        db.session.commit()
