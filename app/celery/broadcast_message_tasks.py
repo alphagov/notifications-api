@@ -58,8 +58,8 @@ def check_event_is_authorised_to_be_sent(broadcast_event, provider):
 def check_event_makes_sense_in_sequence(broadcast_event, provider):
     """
     If any previous event hasn't sent yet for that provider, then we shouldn't send the current event. Instead, fail and
-    raise a zendesk ticket - so that a notify team member can assess the state of the previous messages, and if necessary, can
-    replay the `send_broadcast_provider_message` task if the previous message has now been sent.
+    raise a zendesk ticket - so that a notify team member can assess the state of the previous messages, and if
+    necessary, can replay the `send_broadcast_provider_message` task if the previous message has now been sent.
 
     Note: This is called before the new broadcast_provider_message is created.
 
