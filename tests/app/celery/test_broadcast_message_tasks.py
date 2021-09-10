@@ -99,7 +99,7 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
     ({'names': ['England', 'Scotland']}, ['England', 'Scotland']),
     ({}, [])
 ])
-def test_send_broadcast_event_creates_zendesk_p1(
+def test_send_broadcast_event_creates_zendesk(
     area_data,
     expected_message,
     mocker,
@@ -122,7 +122,6 @@ def test_send_broadcast_event_creates_zendesk_p1(
 
     assert mock_create_ticket.call_count == 1
     zendesk_args = mock_create_ticket.call_args[1]
-    assert zendesk_args['p1'] is True
     assert zendesk_args['ticket_type'] == 'incident'
 
     assert str(broadcast_message.id) in zendesk_args['message']
@@ -132,7 +131,7 @@ def test_send_broadcast_event_creates_zendesk_p1(
     assert "Dear Sir/Madam" in zendesk_args['message']
 
 
-def test_send_broadcast_event_doesnt_p1_when_cancelling(mocker, notify_api, sample_broadcast_service):
+def test_send_broadcast_event_doesnt_create_zendesk_when_cancelling(mocker, notify_api, sample_broadcast_service):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(
         template,
