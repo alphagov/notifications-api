@@ -1,6 +1,7 @@
 import csv
 import functools
 import itertools
+import os
 import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -43,6 +44,7 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_get_organisation_by_email_address,
 )
+from app.dao.permissions_dao import permission_dao
 from app.dao.provider_rates_dao import (
     create_provider_rates as dao_create_provider_rates,
 )
@@ -75,6 +77,7 @@ from app.models import (
     LetterBranding,
     Notification,
     Organisation,
+    Permission,
     Service,
     User,
 )
@@ -91,17 +94,25 @@ class notify_command:
         self.name = name
 
     def __call__(self, func):
-        # we need to call the flask with_appcontext decorator to ensure the config is loaded, db connected etc etc.
-        # we also need to use functools.wraps to carry through the names and docstrings etc of the functions.
-        # Then we need to turn it into a click.Command - that's what command_group.add_command expects.
-        @click.command(name=self.name)
-        @functools.wraps(func)
-        @flask.cli.with_appcontext
+        decorators = [
+            click.command(name=self.name),  # turn it into a click.Command
+            functools.wraps(func)  # carry through function name, docstrings, etc.
+        ]
+
+        # in the test environment the app context is already provided and having
+        # another will lead to the test db connection being closed prematurely
+        if os.getenv('NOTIFY_ENVIRONMENT', '') != 'test':
+            # with_appcontext ensures the config is loaded, db connected, etc.
+            decorators.insert(0, flask.cli.with_appcontext)
+
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        command_group.add_command(wrapper)
+        for decorator in decorators:
+            # this syntax is equivalent to e.g. "@flask.cli.with_appcontext"
+            wrapper = decorator(wrapper)
 
+        command_group.add_command(wrapper)
         return wrapper
 
 
@@ -914,3 +925,32 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
 
     for service in active_services:
         set_default_free_allowance_for_service(service, year)
+
+
+@click.option('-u', '--user-id', required=True)
+@notify_command(name='local-dev-broadcast-permissions')
+def local_dev_broadcast_permissions(user_id):
+    if os.getenv('NOTIFY_ENVIRONMENT', '') not in ['development', 'test']:
+        current_app.logger.error('Can only be run in development')
+        return
+
+    user = User.query.filter_by(id=user_id).one()
+
+    user_broadcast_services = Service.query.filter(
+        Service.permissions.any(permission='broadcast'),
+        Service.users.any(id=user_id)
+    )
+
+    for service in user_broadcast_services:
+        permission_list = [
+            Permission(service_id=service.id, user_id=user_id, permission=permission)
+            for permission in [
+                'reject_broadcasts', 'cancel_broadcasts',  # required to create / approve
+                'create_broadcasts', 'approve_broadcasts',  # minimum for testing
+                'manage_templates',  # unlikely but might be useful
+            ]
+        ]
+
+        permission_dao.set_user_service_permission(
+            user, service, permission_list, _commit=True, replace=True
+        )

@@ -71,11 +71,11 @@ def rmock():
 
 
 @pytest.fixture(scope='function')
-def service_factory(notify_db, notify_db_session):
+def service_factory(sample_user):
     class ServiceFactory(object):
         def get(self, service_name, user=None, template_type=None, email_from=None):
             if not user:
-                user = create_user()
+                user = sample_user
             if not email_from:
                 email_from = service_name
 
@@ -106,7 +106,9 @@ def service_factory(notify_db, notify_db_session):
 
 @pytest.fixture(scope='function')
 def sample_user(notify_db_session):
-    return create_user()
+    return create_user(
+        email='notify@digital.cabinet-office.gov.uk'
+    )
 
 
 @pytest.fixture(scope='function')
@@ -131,8 +133,7 @@ def sample_sms_code(notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_service(notify_db_session):
-    user = create_user()
+def sample_service(sample_user):
     service_name = 'Sample service'
     email_from = service_name.lower().replace(' ', '.')
 
@@ -141,23 +142,22 @@ def sample_service(notify_db_session):
         'message_limit': 1000,
         'restricted': False,
         'email_from': email_from,
-        'created_by': user,
+        'created_by': sample_user,
         'crown': True
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user, service_permissions=None)
+        dao_create_service(service, sample_user, service_permissions=None)
     else:
-        if user not in service.users:
-            dao_add_user_to_service(service, user)
+        if sample_user not in service.users:
+            dao_add_user_to_service(service, sample_user)
 
     return service
 
 
 @pytest.fixture(scope='function')
-def sample_broadcast_service(notify_db_session, broadcast_organisation):
-    user = create_user()
+def sample_broadcast_service(broadcast_organisation, sample_user):
     service_name = 'Sample broadcast service'
     email_from = service_name.lower().replace(' ', '.')
 
@@ -166,19 +166,19 @@ def sample_broadcast_service(notify_db_session, broadcast_organisation):
         'message_limit': 1000,
         'restricted': False,
         'email_from': email_from,
-        'created_by': user,
+        'created_by': sample_user,
         'crown': True,
         'count_as_live': False,
     }
     service = Service.query.filter_by(name=service_name).first()
     if not service:
         service = Service(**data)
-        dao_create_service(service, user, service_permissions=[BROADCAST_TYPE])
+        dao_create_service(service, sample_user, service_permissions=[BROADCAST_TYPE])
         insert_or_update_service_broadcast_settings(service, channel="severe")
         dao_add_service_to_organisation(service, current_app.config['BROADCAST_ORGANISATION_ID'])
     else:
-        if user not in service.users:
-            dao_add_user_to_service(service, user)
+        if sample_user not in service.users:
+            dao_add_user_to_service(service, sample_user)
 
     return service
 
@@ -201,8 +201,7 @@ def _sample_service_custom_letter_contact_block(sample_service):
 
 
 @pytest.fixture(scope='function')
-def sample_template(notify_db_session):
-    user = create_user()
+def sample_template(sample_user):
     service = create_service(service_permissions=[EMAIL_TYPE, SMS_TYPE], check_if_service_exists=True)
 
     data = {
@@ -210,7 +209,7 @@ def sample_template(notify_db_session):
         'template_type': 'sms',
         'content': 'This is a template:\nwith a newline',
         'service': service,
-        'created_by': user,
+        'created_by': sample_user,
         'archived': False,
         'hidden': False,
         'process_type': 'normal'
@@ -240,15 +239,14 @@ def sample_sms_template_with_html(sample_service):
 
 
 @pytest.fixture(scope='function')
-def sample_email_template(notify_db_session):
-    user = create_user()
-    service = create_service(user=user, service_permissions=[EMAIL_TYPE, SMS_TYPE], check_if_service_exists=True)
+def sample_email_template(sample_user):
+    service = create_service(user=sample_user, service_permissions=[EMAIL_TYPE, SMS_TYPE], check_if_service_exists=True)
     data = {
         'name': 'Email Template Name',
         'template_type': EMAIL_TYPE,
         'content': 'This is a template',
         'service': service,
-        'created_by': user,
+        'created_by': sample_user,
         'subject': 'Email Subject'
     }
     template = Template(**data)
@@ -551,18 +549,17 @@ def sample_invited_org_user(sample_user, sample_organisation):
 
 
 @pytest.fixture(scope='function')
-def sample_user_service_permission(notify_db_session):
-    user = create_user()
-    service = create_service(user=user, check_if_service_exists=True)
+def sample_user_service_permission(sample_user):
+    service = create_service(user=sample_user, check_if_service_exists=True)
     permission = 'manage_settings'
 
     data = {
-        'user': user,
+        'user': sample_user,
         'service': service,
         'permission': permission
     }
     p_model = Permission.query.filter_by(
-        user=user,
+        user=sample_user,
         service=service,
         permission=permission).first()
     if not p_model:
@@ -828,8 +825,7 @@ def letter_volumes_email_template(notify_service):
 
 
 @pytest.fixture
-def notify_service(notify_db, notify_db_session):
-    user = create_user()
+def notify_service(sample_user):
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
         service = Service(
@@ -837,13 +833,13 @@ def notify_service(notify_db, notify_db_session):
             message_limit=1000,
             restricted=False,
             email_from='notify.service',
-            created_by=user,
+            created_by=sample_user,
             prefix_sms=False,
         )
         dao_create_service(
             service=service,
             service_id=current_app.config['NOTIFY_SERVICE_ID'],
-            user=user
+            user=sample_user
         )
 
         data = {

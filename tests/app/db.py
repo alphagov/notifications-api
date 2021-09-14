@@ -81,7 +81,7 @@ from app.models import (
 def create_user(
     *,
     mobile_number="+447700900986",
-    email="notify@digital.cabinet-office.gov.uk",
+    email=None,
     state='active',
     id_=None,
     name="Test User"
@@ -89,7 +89,7 @@ def create_user(
     data = {
         'id': id_ or uuid.uuid4(),
         'name': name,
-        'email_address': email,
+        'email_address': email or f"{uuid.uuid4()}@digital.cabinet-office.gov.uk",
         'password': 'password',
         'mobile_number': mobile_number,
         'state': state
