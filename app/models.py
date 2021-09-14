@@ -2218,7 +2218,6 @@ class ServiceContactList(db.Model):
         ).first())
 
     def serialize(self):
-        created_at_in_bst = convert_utc_to_bst(self.created_at)
         contact_list = {
             "id": str(self.id),
             "original_file_name": self.original_file_name,
@@ -2228,7 +2227,7 @@ class ServiceContactList(db.Model):
             "template_type": self.template_type,
             "service_id": str(self.service_id),
             "created_by": self.created_by.name,
-            "created_at": created_at_in_bst.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": self.created_at.strftime(DATETIME_FORMAT),
         }
         return contact_list
 

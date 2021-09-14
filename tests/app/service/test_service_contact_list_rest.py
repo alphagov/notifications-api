@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 
 import pytest
+from freezegun import freeze_time
 
 from app.models import ServiceContactList
 from tests.app.db import (
@@ -59,6 +60,7 @@ def test_create_service_contact_list_cannot_save_type_letter(sample_service, adm
     assert response['errors'][0]['message'] == "template_type letter is not one of [email, sms]"
 
 
+@freeze_time('2020-06-06 12:00')
 def test_get_contact_list(admin_request, notify_db_session):
     contact_list = create_service_contact_list()
 
@@ -70,6 +72,7 @@ def test_get_contact_list(admin_request, notify_db_session):
     assert len(response) == 1
     assert response[0] == contact_list.serialize()
     assert response[0]['recent_job_count'] == 0
+    assert response[0]['created_at'] == '2020-06-06T12:00:00.000000Z'
 
 
 @pytest.mark.parametrize('days_of_email_retention, expected_job_count', (
