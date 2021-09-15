@@ -25,7 +25,7 @@ def test_get_all_broadcasts_returns_list_of_broadcasts_and_200(
     jwt_client_id = current_app.config['GOVUK_ALERTS_CLIENT_ID']
     header = create_internal_authorization_header(jwt_client_id)
 
-    response = client.get('/v2/govuk-alerts', headers=[header])
+    response = client.get('/govuk-alerts', headers=[header])
 
     json_response = json.loads(response.get_data(as_text=True))
 
