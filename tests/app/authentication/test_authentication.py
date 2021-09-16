@@ -81,7 +81,7 @@ def test_requires_admin_auth_should_allow_valid_token_for_request(client):
 def test_requires_govuk_alerts_auth_should_allow_valid_token_for_request(client):
     jwt_client_id = current_app.config['GOVUK_ALERTS_CLIENT_ID']
     header = create_internal_authorization_header(jwt_client_id)
-    response = client.get('/v2/govuk-alerts', headers=[header])
+    response = client.get('/govuk-alerts', headers=[header])
     assert response.status_code == 200
 
 

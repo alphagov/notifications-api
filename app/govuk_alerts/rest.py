@@ -1,11 +1,19 @@
-from flask import jsonify
+from flask import Blueprint, jsonify
 
 from app.dao.broadcast_message_dao import dao_get_all_broadcast_messages
+from app.errors import register_errors
 from app.utils import get_dt_string_or_none
-from app.v2.govuk_alerts import v2_govuk_alerts_blueprint
+
+govuk_alerts_blueprint = Blueprint(
+    "govuk-alerts",
+    __name__,
+    url_prefix='/govuk-alerts',
+)
+
+register_errors(govuk_alerts_blueprint)
 
 
-@v2_govuk_alerts_blueprint.route('')
+@govuk_alerts_blueprint.route('')
 def get_broadcasts():
     broadcasts = dao_get_all_broadcast_messages()
     broadcasts_dict = {"alerts": [{

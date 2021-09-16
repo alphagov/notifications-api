@@ -133,6 +133,7 @@ def register_blueprint(application):
     from app.authentication.auth import (
         requires_admin_auth,
         requires_auth,
+        requires_govuk_alerts_auth,
         requires_no_auth,
     )
     from app.billing.rest import billing_blueprint
@@ -140,6 +141,7 @@ def register_blueprint(application):
     from app.complaint.complaint_rest import complaint_blueprint
     from app.email_branding.rest import email_branding_blueprint
     from app.events.rest import events as events_blueprint
+    from app.govuk_alerts.rest import govuk_alerts_blueprint
     from app.inbound_number.rest import inbound_number_blueprint
     from app.inbound_sms.rest import inbound_sms as inbound_sms_blueprint
     from app.job.rest import job_blueprint
@@ -269,17 +271,14 @@ def register_blueprint(application):
     broadcast_message_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(broadcast_message_blueprint)
 
+    govuk_alerts_blueprint.before_request(requires_govuk_alerts_auth)
+    application.register_blueprint(govuk_alerts_blueprint)
+
 
 def register_v2_blueprints(application):
-    from app.authentication.auth import (
-        requires_auth,
-        requires_govuk_alerts_auth,
-    )
+    from app.authentication.auth import requires_auth
     from app.v2.broadcast.post_broadcast import (
         v2_broadcast_blueprint as post_broadcast,
-    )
-    from app.v2.govuk_alerts.get_broadcasts import (
-        v2_govuk_alerts_blueprint as get_broadcasts,
     )
     from app.v2.inbound_sms.get_inbound_sms import (
         v2_inbound_sms_blueprint as get_inbound_sms,
@@ -320,9 +319,6 @@ def register_v2_blueprints(application):
 
     post_broadcast.before_request(requires_auth)
     application.register_blueprint(post_broadcast)
-
-    get_broadcasts.before_request(requires_govuk_alerts_auth)
-    application.register_blueprint(get_broadcasts)
 
 
 def init_app(app):
