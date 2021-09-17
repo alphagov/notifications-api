@@ -120,5 +120,4 @@ All commands and command options have a --help command if you need more informat
 
 ## Further documentation
 
-- [Creating a new worker app](docs/creating-a-new-worker-app.md)
 - [Writing public APIs](docs/writing-public-apis.md)
