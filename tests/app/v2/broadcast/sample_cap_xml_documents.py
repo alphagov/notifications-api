@@ -1,3 +1,5 @@
+import re
+
 WAINFLEET = """
     <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
         <identifier>50385fcb0ab7aa447bbd46d848ce8466E</identifier>
@@ -235,3 +237,4 @@ WITH_PLACEHOLDER_FOR_CONTENT = """
 
 LONG_GSM7 = WITH_PLACEHOLDER_FOR_CONTENT.format('a' * 1396)
 LONG_UCS2 = WITH_PLACEHOLDER_FOR_CONTENT.format('ŵ' * 616)
+MISSING_AREA_NAMES = re.sub("<areaDesc>.*</areaDesc>", "<areaDesc> </areaDesc>", WAINFLEET)

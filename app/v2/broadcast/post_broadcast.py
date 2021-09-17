@@ -41,26 +41,11 @@ def create_broadcast():
     broadcast_json = cap_xml_to_dict(cap_xml)
 
     validate(broadcast_json, post_broadcast_schema)
+    _validate_template(broadcast_json)
 
     polygons = Polygons(list(chain.from_iterable((
         area['polygons'] for area in broadcast_json['areas']
     ))))
-
-    template = BroadcastMessageTemplate.from_content(
-        broadcast_json['content']
-    )
-
-    if template.content_too_long:
-        raise ValidationError(
-            message=(
-                f'description must be {template.max_content_count:,.0f} '
-                f'characters or fewer'
-            ) + (
-                ' (because it could not be GSM7 encoded)'
-                if template.non_gsm_characters else ''
-            ),
-            status_code=400,
-        )
 
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
@@ -89,3 +74,21 @@ def create_broadcast():
     )
 
     return jsonify(broadcast_message.serialize()), 201
+
+
+def _validate_template(broadcast_json):
+    template = BroadcastMessageTemplate.from_content(
+        broadcast_json['content']
+    )
+
+    if template.content_too_long:
+        raise ValidationError(
+            message=(
+                f'description must be {template.max_content_count:,.0f} '
+                f'characters or fewer'
+            ) + (
+                ' (because it could not be GSM7 encoded)'
+                if template.non_gsm_characters else ''
+            ),
+            status_code=400,
+        )
