@@ -412,7 +412,11 @@ def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_templa
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
-    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
@@ -429,16 +433,24 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
+        ANY,
         message=message,
         subject="[test] Letters still in 'created' status",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @freeze_time("2019-01-30 14:00:00")
 def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
-    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
@@ -454,11 +466,15 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
         "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
 
     mock_logger.assert_called_once_with(message)
-    mock_create_ticket.assert_called_with(
+    mock_create_ticket.assert_called_once_with(
+        ANY,
         message=message,
         subject="[test] Letters still in 'created' status",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @pytest.mark.parametrize('offset', (

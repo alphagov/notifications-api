@@ -239,11 +239,14 @@ def check_if_letters_still_in_created():
               "#deal-with-Letters-still-in-created.".format(len(letters))
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            zendesk_client.create_ticket(
-                subject="[{}] Letters still in 'created' status".format(current_app.config['NOTIFY_ENVIRONMENT']),
+            ticket = NotifySupportTicket(
+                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still in 'created' status",
                 message=msg,
-                ticket_type=zendesk_client.TYPE_INCIDENT
+                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+                technical_ticket=True,
+                ticket_categories=['notify_letters']
             )
+            zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(msg)
 
 
