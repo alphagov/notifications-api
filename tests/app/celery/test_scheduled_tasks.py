@@ -609,7 +609,11 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message
 ):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
-    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
     mock_failure_rates = mocker.patch(
         'app.celery.scheduled_tasks.dao_find_services_with_high_failure_rates', return_value=failure_rates
     )
@@ -625,10 +629,13 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     assert mock_sms_to_tv_numbers.called
     mock_logger.assert_called_once_with(expected_message)
     mock_create_ticket.assert_called_with(
+        ANY,
         message=expected_message + zendesk_actions,
         subject="[test] High failure rates for sms spotted for services",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 def test_trigger_link_tests_calls_for_all_providers(
