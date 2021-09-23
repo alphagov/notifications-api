@@ -1,6 +1,9 @@
 from datetime import datetime, timedelta
 
 from flask import current_app
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -214,11 +217,14 @@ def check_if_letters_still_pending_virus_check():
             Notifications: {}""".format(len(letters), sorted(letter_ids))
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            zendesk_client.create_ticket(
-                subject="[{}] Letters still pending virus check".format(current_app.config['NOTIFY_ENVIRONMENT']),
+            ticket = NotifySupportTicket(
+                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
                 message=msg,
-                ticket_type=zendesk_client.TYPE_INCIDENT
+                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+                technical_ticket=True,
+                ticket_categories=['notify_letters']
             )
+            zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(msg)
 
 
