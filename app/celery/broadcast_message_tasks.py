@@ -1,6 +1,9 @@
 from datetime import datetime
 
 from flask import current_app
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 
 from app import cbc_proxy_client, notify_celery, zendesk_client
 from app.clients.cbc_proxy import CBCProxyRetryableException
@@ -142,11 +145,16 @@ def send_broadcast_event(broadcast_event_id):
             'If this alert is not expected refer to the runbook for instructions.',
             'https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs',
         ])
-        zendesk_client.create_ticket(
-            subject="Live broadcast sent",
+        ticket = NotifySupportTicket(
+            subject='Live broadcast sent',
             message=message,
-            ticket_type=zendesk_client.TYPE_INCIDENT,
+            ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+            technical_ticket=True,
+            org_id=current_app.config['BROADCAST_ORGANISATION_ID'],
+            org_type='central',
+            service_id=str(broadcast_message.service_id)
         )
+        zendesk_client.send_ticket_to_zendesk(ticket)
         current_app.logger.error(message)
 
     for provider in broadcast_event.service.get_available_broadcast_providers():
