@@ -2,6 +2,9 @@ from datetime import datetime, timedelta
 
 import pytz
 from flask import current_app
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -179,11 +182,15 @@ def raise_alert_if_letter_notifications_still_sending():
         # Only send alerts in production
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
             message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
-            zendesk_client.create_ticket(
-                subject="[{}] Letters still sending".format(current_app.config['NOTIFY_ENVIRONMENT']),
+
+            ticket = NotifySupportTicket(
+                subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still sending",
                 message=message,
-                ticket_type=zendesk_client.TYPE_INCIDENT
+                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+                technical_ticket=True,
+                ticket_categories=['notify_letters']
             )
+            zendesk_client.send_ticket_to_zendesk(ticket)
         else:
             current_app.logger.info(message)
 
