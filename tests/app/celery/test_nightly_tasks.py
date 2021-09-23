@@ -374,7 +374,11 @@ def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_mat
 @freeze_time('2018-01-11T23:00:00')
 def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_diff)
-    mock_zendesk = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.nightly_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
@@ -387,11 +391,15 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
                                       current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                       datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                       current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
-    mock_zendesk.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
+        ANY,
         subject="Letter acknowledge error",
         message=message,
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @freeze_time('2018-01-11T23:00:00')

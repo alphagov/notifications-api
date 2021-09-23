@@ -257,11 +257,14 @@ def letter_raise_alert_if_no_ack_file_for_zip():
 
     if len(zip_file_set - ack_file_set) > 0:
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            zendesk_client.create_ticket(
+            ticket = NotifySupportTicket(
                 subject="Letter acknowledge error",
                 message=message,
-                ticket_type=zendesk_client.TYPE_INCIDENT
+                ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+                technical_ticket=True,
+                ticket_categories=['notify_letters']
             )
+            zendesk_client.send_ticket_to_zendesk(ticket)
         current_app.logger.error(message)
 
     if len(ack_file_set - zip_file_set) > 0:
