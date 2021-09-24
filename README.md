@@ -17,7 +17,7 @@ To run the API you will need appropriate AWS credentials. See the [Wiki](https:/
 
 ### `environment.sh`
 
-Creating and edit an environment.sh file.
+Creating and edit an environment.sh file
 
 ```
 echo "
