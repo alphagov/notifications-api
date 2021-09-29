@@ -1,11 +1,13 @@
 from datetime import date, datetime, timedelta
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import pytest
 import pytz
 from flask import current_app
 from freezegun import freeze_time
-from notifications_utils.clients.zendesk.zendesk_client import ZendeskClient
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 
 from app.celery import nightly_tasks
 from app.celery.nightly_tasks import (
@@ -232,34 +234,47 @@ def test_should_call_delete_inbound_sms(notify_api, mocker):
     assert nightly_tasks.delete_inbound_sms_older_than_retention.call_count == 1
 
 
-def test_create_ticket_if_letter_notifications_still_sending(mocker):
+def test_create_ticket_if_letter_notifications_still_sending(notify_api, mocker):
     mock_get_letters = mocker.patch(
         "app.celery.nightly_tasks.get_letter_notifications_still_sending_when_they_shouldnt_be"
     )
 
     mock_get_letters.return_value = 1, date(2018, 1, 15)
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
-
-    raise_alert_if_letter_notifications_still_sending()
-
-    mock_create_ticket.assert_called_once_with(
-        subject="[test] Letters still sending",
-        message="There are 1 letters in the 'sending' state from Monday 15 January. Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending",  # noqa
-        ticket_type=ZendeskClient.TYPE_INCIDENT
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.nightly_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
     )
 
+    raise_alert_if_letter_notifications_still_sending()
+    mock_create_ticket.assert_called_once_with(
+        ANY,
+        subject='[test] Letters still sending',
+        message=(
+            "There are 1 letters in the 'sending' state from Monday 15 January. Resolve using "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"
+            ),
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
+    )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
-def test_dont_create_ticket_if_letter_notifications_not_still_sending(mocker):
+
+def test_dont_create_ticket_if_letter_notifications_not_still_sending(notify_api, mocker):
     mock_get_letters = mocker.patch(
         "app.celery.nightly_tasks.get_letter_notifications_still_sending_when_they_shouldnt_be"
     )
 
     mock_get_letters.return_value = 0, None
-    mock_create_ticket = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
+    mock_send_ticket_to_zendesk = mocker.patch(
+        "app.celery.nightly_tasks.zendesk_client.send_ticket_to_zendesk",
+        autospec=True
+    )
 
     raise_alert_if_letter_notifications_still_sending()
 
-    mock_create_ticket.assert_not_called()
+    mock_send_ticket_to_zendesk.assert_not_called()
 
 
 @freeze_time("Thursday 17th January 2018 17:00")
@@ -359,7 +374,11 @@ def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_mat
 @freeze_time('2018-01-11T23:00:00')
 def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_diff)
-    mock_zendesk = mocker.patch("app.celery.nightly_tasks.zendesk_client.create_ticket")
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.nightly_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     letter_raise_alert_if_no_ack_file_for_zip()
 
@@ -372,11 +391,15 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
                                       current_app.config['LETTERS_PDF_BUCKET_NAME'],
                                       datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
                                       current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
-    mock_zendesk.assert_called_once_with(
+    mock_create_ticket.assert_called_once_with(
+        ANY,
         subject="Letter acknowledge error",
         message=message,
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @freeze_time('2018-01-11T23:00:00')

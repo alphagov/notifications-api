@@ -1,10 +1,13 @@
 from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest import mock
-from unittest.mock import call
+from unittest.mock import ANY, call
 
 import pytest
 from freezegun import freeze_time
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
@@ -364,7 +367,11 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
-    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     create_notification(template=sample_letter_template,
                         status=NOTIFICATION_PENDING_VIRUS_CHECK,
@@ -391,17 +398,25 @@ def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_templa
             Notifications: {}""".format(id_references)
 
     mock_logger.assert_called_once_with(message)
-    mock_create_ticket.assert_called_with(
-        message=message,
+    mock_create_ticket.assert_called_once_with(
+        ANY,
         subject='[test] Letters still pending virus check',
-        ticket_type='incident'
+        message=message,
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @freeze_time("2019-05-30 14:00:00")
 def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
-    mock_create_ticket = mocker.patch('app.celery.nightly_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 1, 12, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 5, 29, 16, 29))
@@ -418,16 +433,24 @@ def test_check_if_letters_still_in_created_during_bst(mocker, sample_letter_temp
 
     mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_with(
+        ANY,
         message=message,
         subject="[test] Letters still in 'created' status",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @freeze_time("2019-01-30 14:00:00")
 def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_template):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
-    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
 
     create_notification(template=sample_letter_template, created_at=datetime(2018, 12, 1, 12, 0))
     create_notification(template=sample_letter_template, created_at=datetime(2019, 1, 29, 17, 29))
@@ -443,11 +466,15 @@ def test_check_if_letters_still_in_created_during_utc(mocker, sample_letter_temp
         "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-Letters-still-in-created."
 
     mock_logger.assert_called_once_with(message)
-    mock_create_ticket.assert_called_with(
+    mock_create_ticket.assert_called_once_with(
+        ANY,
         message=message,
         subject="[test] Letters still in 'created' status",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True,
+        ticket_categories=['notify_letters']
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 @pytest.mark.parametrize('offset', (
@@ -582,7 +609,11 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     mocker, notify_db_session, failure_rates, sms_to_tv_numbers, expected_message
 ):
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
-    mock_create_ticket = mocker.patch('app.celery.scheduled_tasks.zendesk_client.create_ticket')
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
     mock_failure_rates = mocker.patch(
         'app.celery.scheduled_tasks.dao_find_services_with_high_failure_rates', return_value=failure_rates
     )
@@ -598,10 +629,13 @@ def test_check_for_services_with_high_failure_rates_or_sending_to_tv_numbers(
     assert mock_sms_to_tv_numbers.called
     mock_logger.assert_called_once_with(expected_message)
     mock_create_ticket.assert_called_with(
+        ANY,
         message=expected_message + zendesk_actions,
         subject="[test] High failure rates for sms spotted for services",
-        ticket_type='incident'
+        ticket_type='incident',
+        technical_ticket=True
     )
+    mock_send_ticket_to_zendesk.assert_called_once()
 
 
 def test_trigger_link_tests_calls_for_all_providers(
