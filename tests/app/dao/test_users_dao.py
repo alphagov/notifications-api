@@ -188,6 +188,18 @@ def test_create_secret_code_returns_5_digits():
     assert len(str(code)) == 5
 
 
+def test_create_secret_code_never_repeats_consecutive_digits(mocker):
+    mocker.patch('app.dao.users_dao.SystemRandom.randrange', side_effect=[
+        1, 1, 1,
+        2,
+        3,
+        4, 4,
+        1,  # Repeated allowed if not consecutive
+        9, 9,  # Not called because we have 5 digits now
+    ])
+    assert create_secret_code() == '12341'
+
+
 @freeze_time('2018-07-07 12:00:00')
 def test_dao_archive_user(sample_user, sample_organisation, fake_uuid):
     sample_user.current_session_id = fake_uuid
