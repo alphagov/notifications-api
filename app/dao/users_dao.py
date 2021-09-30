@@ -20,7 +20,15 @@ def _remove_values_for_keys_if_present(dict, keys):
 
 
 def create_secret_code():
-    return ''.join(map(str, [SystemRandom().randrange(10) for i in range(5)]))
+    return ''.join(get_non_repeating_random_digits(5))
+
+
+def get_non_repeating_random_digits(length):
+    output = [None] * length
+    for index in range(length):
+        while output[index] in {None, output[index - 1]}:
+            output[index] = str(SystemRandom().randrange(10))
+    return output
 
 
 def save_user_attribute(usr, update_dict=None):
