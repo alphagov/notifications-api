@@ -205,7 +205,7 @@ def verify_user_code(user_id):
     user_to_verify = get_user_by_id(user_id=user_id)
 
     code = get_user_code(user_to_verify, data['code'], data['code_type'])
-    if user_to_verify.failed_login_count >= current_app.config.get('MAX_VERIFY_CODE_COUNT'):
+    if user_to_verify.failed_login_count >= current_app.config.get('MAX_FAILED_LOGIN_COUNT'):
         raise InvalidRequest("Code not found", status_code=404)
     if not code:
         # only relevant from sms

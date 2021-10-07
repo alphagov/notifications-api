@@ -71,6 +71,31 @@ def test_user_verify_code_bad_code_and_increments_failed_login_count(client,
     assert User.query.get(sample_sms_code.user.id).failed_login_count == 1
 
 
+@pytest.mark.parametrize('failed_login_count, expected_status', (
+    (9, 204),
+    (10, 404),
+))
+def test_user_verify_code_rejects_good_code_if_too_many_failed_logins(
+    client,
+    sample_sms_code,
+    failed_login_count,
+    expected_status,
+):
+    sample_sms_code.user.failed_login_count = failed_login_count
+    resp = client.post(
+        url_for('user.verify_user_code', user_id=sample_sms_code.user.id),
+        data=json.dumps({
+            'code_type': sample_sms_code.code_type,
+            'code': sample_sms_code.txt_code,
+        }),
+        headers=[
+            ('Content-Type', 'application/json'),
+            create_admin_authorization_header(),
+        ],
+    )
+    assert resp.status_code == expected_status
+
+
 @freeze_time('2020-04-01 12:00')
 @pytest.mark.parametrize('code_type', [EMAIL_TYPE, SMS_TYPE])
 def test_user_verify_code_expired_code_and_increments_failed_login_count(code_type, admin_request, sample_user):
@@ -247,7 +272,7 @@ def test_send_sms_code_returns_404_for_bad_input_data(client):
 
 
 def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, sample_user):
-    for _ in range(10):
+    for _ in range(5):
         verify_code = VerifyCode(
             code_type='sms',
             _code=12345,
@@ -257,14 +282,14 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
         )
         db.session.add(verify_code)
         db.session.commit()
-    assert VerifyCode.query.count() == 10
+    assert VerifyCode.query.count() == 5
     auth_header = create_admin_authorization_header()
     resp = client.post(
         url_for('user.send_user_2fa_code', code_type='sms', user_id=sample_user.id),
         data=json.dumps({}),
         headers=[('Content-Type', 'application/json'), auth_header])
     assert resp.status_code == 204
-    assert VerifyCode.query.count() == 10
+    assert VerifyCode.query.count() == 5
 
 
 def test_send_new_user_email_verification(client,
