@@ -384,22 +384,17 @@ def test_letter_raise_alert_if_ack_files_not_match_zip_list(mocker, notify_db):
 
     assert mock_file_list.call_count == 2
 
-    message = "Letter ack file does not contain all zip files sent. " \
-              "Missing ack for zip files: {}, " \
-              "pdf bucket: {}, subfolder: {}, " \
-              "ack bucket: {}".format(str(['NOTIFY.2018-01-11175009', 'NOTIFY.2018-01-11175010']),
-                                      current_app.config['LETTERS_PDF_BUCKET_NAME'],
-                                      datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
-                                      current_app.config['DVLA_RESPONSE_BUCKET_NAME'])
     mock_create_ticket.assert_called_once_with(
         ANY,
         subject="Letter acknowledge error",
-        message=message,
+        message=ANY,
         ticket_type='incident',
         technical_ticket=True,
         ticket_categories=['notify_letters']
     )
     mock_send_ticket_to_zendesk.assert_called_once()
+    assert "['NOTIFY.2018-01-11175009', 'NOTIFY.2018-01-11175010']" in mock_create_ticket.call_args[1]['message']
+    assert '2018-01-11/zips_sent' in mock_create_ticket.call_args[1]['message']
 
 
 @freeze_time('2018-01-11T23:00:00')
