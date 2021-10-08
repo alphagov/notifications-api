@@ -95,8 +95,8 @@ class notify_command:
 
     def __call__(self, func):
         decorators = [
+            functools.wraps(func),  # carry through function name, docstrings, etc.
             click.command(name=self.name),  # turn it into a click.Command
-            functools.wraps(func)  # carry through function name, docstrings, etc.
         ]
 
         # in the test environment the app context is already provided and having
