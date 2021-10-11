@@ -271,10 +271,10 @@ def insert_inbound_numbers_from_file(file_name):
     file.close()
 
 
-@notify_command(name='replay-create-pdf-letters')
+@notify_command(name='replay-create-pdf-for-templated-letter')
 @click.option('-n', '--notification_id', type=click.UUID, required=True,
               help="Notification id of the letter that needs the get_pdf_for_templated_letter task replayed")
-def replay_create_pdf_letters(notification_id):
+def replay_create_pdf_for_templated_letter(notification_id):
     print("Create task to get_pdf_for_templated_letter for notification: {}".format(notification_id))
     get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
