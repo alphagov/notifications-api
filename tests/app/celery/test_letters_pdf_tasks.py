@@ -23,6 +23,7 @@ from app.celery.letters_pdf_tasks import (
     process_virus_scan_error,
     process_virus_scan_failed,
     replay_letters_in_error,
+    resanitise_pdf,
     sanitise_letter,
     send_letters_volume_email_to_dvla,
     update_billable_units_for_letter,
@@ -1098,3 +1099,33 @@ def test_replay_letters_in_error_for_one_file(notify_api, mocker):
     replay_letters_in_error("file_name")
     mock_move.assert_called_once_with('file_name')
     mock_celery.assert_called_once_with(name='scan-file', kwargs={'filename': 'file_name'}, queue='antivirus-tasks')
+
+
+@pytest.mark.parametrize('permissions, expected_international_letters_allowed', (
+    ([LETTER_TYPE], False),
+    ([LETTER_TYPE, INTERNATIONAL_LETTERS], True),
+))
+def test_resanitise_pdf_calls_template_preview_with_letter_details(
+    mocker,
+    sample_letter_notification,
+    permissions,
+    expected_international_letters_allowed,
+):
+    mock_celery = mocker.patch('app.celery.letters_pdf_tasks.notify_celery.send_task')
+
+    sample_letter_notification.created_at = datetime(2021, 2, 7, 12)
+    sample_letter_notification.service = create_service(
+        service_permissions=permissions
+    )
+
+    resanitise_pdf(sample_letter_notification.id)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.RECREATE_PDF_FOR_PRECOMPILED_LETTER,
+        kwargs={
+            'notification_id': str(sample_letter_notification.id),
+            'file_location': '2021-02-07/NOTIFY.FOO.D.2.C.20210207120000.PDF',
+            'allow_international_letters': expected_international_letters_allowed,
+        },
+        queue=QueueNames.SANITISE_LETTERS,
+    )

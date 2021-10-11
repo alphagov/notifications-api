@@ -31,6 +31,7 @@ from app.letters.utils import (
     generate_letter_pdf_filename,
     get_billable_units_for_letter_page_count,
     get_file_names_from_error_bucket,
+    get_folder_name,
     get_reference_from_filename,
     move_error_pdf_to_scan_bucket,
     move_failed_pdf,
@@ -524,3 +525,37 @@ def replay_letters_in_error(filename=None):
                     [filename],
                     queue=QueueNames.LETTERS
                 )
+
+
+@notify_celery.task(name='resanitise-pdf')
+def resanitise_pdf(notification_id):
+    """
+    `notification_id` is the notification id for a PDF letter which was either uploaded or sent using the API.
+
+    This task calls the `recreate_pdf_for_precompiled_letter` template preview task which recreates the
+    PDF for a letter which is already sanitised and in the letters-pdf bucket. The new file that is generated
+    will then overwrite the existing letter in the letters-pdf bucket.
+    """
+    notification = get_notification_by_id(notification_id)
+
+    # folder_name is the folder that the letter is in the letters-pdf bucket e.g. '2021-10-10/'
+    folder_name = get_folder_name(notification.created_at)
+
+    filename = generate_letter_pdf_filename(
+            reference=notification.reference,
+            created_at=notification.created_at,
+            ignore_folder=True,
+            postage=notification.postage
+        )
+
+    notify_celery.send_task(
+        name=TaskNames.RECREATE_PDF_FOR_PRECOMPILED_LETTER,
+        kwargs={
+            'notification_id': str(notification.id),
+            'file_location': f'{folder_name}{filename}',
+            'allow_international_letters': notification.service.has_permission(
+                INTERNATIONAL_LETTERS
+            ),
+        },
+        queue=QueueNames.SANITISE_LETTERS,
+    )
