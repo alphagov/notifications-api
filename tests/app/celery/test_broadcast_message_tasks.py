@@ -18,6 +18,7 @@ from app.celery.broadcast_message_tasks import (
     trigger_link_test,
 )
 from app.clients.cbc_proxy import CBCProxyRetryableException
+from app.config import QueueNames, TaskNames
 from app.models import (
     BROADCAST_TYPE,
     BroadcastEventMessageType,
@@ -37,6 +38,9 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api,
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
+
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
+
     mock_send_ticket_to_zendesk = mocker.patch(
         'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
         autospec=True,
@@ -57,6 +61,35 @@ def test_send_broadcast_event_queues_up_for_active_providers(mocker, notify_api,
     assert mock_send_ticket_to_zendesk.called is False
 
 
+@pytest.mark.parametrize('message_status', [
+    BroadcastStatusType.BROADCASTING,
+    BroadcastStatusType.CANCELLED,
+])
+def test_send_broadcast_event_calls_publish_govuk_alerts_task(
+    mocker, notify_api, sample_broadcast_service, message_status
+):
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE)
+    broadcast_message = create_broadcast_message(template, status=message_status)
+    event = create_broadcast_event(broadcast_message)
+    mocker.patch(
+        'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+    mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
+    )
+
+    mock_celery = mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
+
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
+        send_broadcast_event(event.id)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PUBLISH_GOVUK_ALERTS,
+        queue=QueueNames.GOVUK_ALERTS
+    )
+
+
 def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
     mocker,
     notify_db,
@@ -71,6 +104,7 @@ def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
     mock_send_broadcast_provider_message = mocker.patch(
         'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
     )
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
 
     with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
         send_broadcast_event(event.id)
@@ -90,6 +124,8 @@ def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabl
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
+
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
 
     mock_send_broadcast_provider_message = mocker.patch(
         'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
@@ -120,6 +156,8 @@ def test_send_broadcast_event_creates_zendesk(
     )
     event = create_broadcast_event(broadcast_message)
     mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
+
     mock_send_ticket_to_zendesk = mocker.patch(
         'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
         autospec=True,
@@ -160,6 +198,9 @@ def test_send_broadcast_event_doesnt_create_zendesk_when_cancelling(mocker, noti
     )
     create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.ALERT)
     cancel_event = create_broadcast_event(broadcast_message, message_type=BroadcastEventMessageType.CANCEL)
+
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
+
     mock_send_ticket_to_zendesk = mocker.patch(
         'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
         autospec=True,
@@ -176,6 +217,9 @@ def test_send_broadcast_event_doesnt_create_zendesk_on_staging(mocker, notify_ap
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
     broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     event = create_broadcast_event(broadcast_message)
+
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
+
     mock_send_ticket_to_zendesk = mocker.patch(
         'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
         autospec=True,

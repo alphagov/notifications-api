@@ -7,7 +7,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 
 from app import cbc_proxy_client, notify_celery, zendesk_client
 from app.clients.cbc_proxy import CBCProxyRetryableException
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.dao.broadcast_message_dao import (
     create_broadcast_provider_message,
     dao_get_broadcast_event_by_id,
@@ -156,6 +156,11 @@ def send_broadcast_event(broadcast_event_id):
         )
         zendesk_client.send_ticket_to_zendesk(ticket)
         current_app.logger.error(message)
+
+    notify_celery.send_task(
+        name=TaskNames.PUBLISH_GOVUK_ALERTS,
+        queue=QueueNames.GOVUK_ALERTS
+    )
 
     for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
