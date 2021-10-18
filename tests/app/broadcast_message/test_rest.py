@@ -91,6 +91,26 @@ def test_get_broadcast_message_without_template(
     assert response['personalisation'] is None
 
 
+def test_get_broadcast_message_with_event(
+    admin_request,
+    sample_broadcast_service
+):
+    bm = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='emergency broadcast content',
+        cap_event='001 example event',
+    )
+
+    response = admin_request.get(
+        'broadcast_message.get_broadcast_message',
+        service_id=sample_broadcast_service.id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert response['cap_event'] == '001 example event'
+
+
 def test_get_broadcast_message_404s_if_message_doesnt_exist(admin_request, sample_broadcast_service):
     err = admin_request.get(
         'broadcast_message.get_broadcast_message',
@@ -255,6 +275,7 @@ def test_create_broadcast_message_can_be_created_from_content(admin_request, sam
     assert response['content'] == 'Some content\n€ŷŵ~\n\'\'""---'
     assert response['reference'] == 'abc123'
     assert response['template_id'] is None
+    assert response['cap_event'] is None
 
 
 def test_create_broadcast_message_400s_if_content_and_template_provided(
