@@ -24,7 +24,7 @@ from app.celery.scheduled_tasks import (
     switch_current_sms_provider_on_slow_delivery,
     trigger_link_tests,
 )
-from app.config import Config, QueueNames
+from app.config import Config, QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.models import (
@@ -668,24 +668,35 @@ def test_trigger_link_does_nothing_if_cbc_proxy_disabled(
 
 
 @freeze_time('2021-07-19 15:50')
-@pytest.mark.parametrize('status, finishes_at, final_status', [
-    (BroadcastStatusType.BROADCASTING, '2021-07-19 16:00', BroadcastStatusType.BROADCASTING),
-    (BroadcastStatusType.BROADCASTING, '2021-07-19 15:40', BroadcastStatusType.COMPLETED),
-    (BroadcastStatusType.BROADCASTING, None, BroadcastStatusType.BROADCASTING),
-    (BroadcastStatusType.PENDING_APPROVAL, None, BroadcastStatusType.PENDING_APPROVAL),
-    (BroadcastStatusType.CANCELLED, '2021-07-19 15:40', BroadcastStatusType.CANCELLED),
+@pytest.mark.parametrize('status, finishes_at, final_status, should_call_publish_task', [
+    (BroadcastStatusType.BROADCASTING, '2021-07-19 16:00', BroadcastStatusType.BROADCASTING, False),
+    (BroadcastStatusType.BROADCASTING, '2021-07-19 15:40', BroadcastStatusType.COMPLETED, True),
+    (BroadcastStatusType.BROADCASTING, None, BroadcastStatusType.BROADCASTING, False),
+    (BroadcastStatusType.PENDING_APPROVAL, None, BroadcastStatusType.PENDING_APPROVAL, False),
+    (BroadcastStatusType.CANCELLED, '2021-07-19 15:40', BroadcastStatusType.CANCELLED, False),
 ])
 def test_auto_expire_broadcast_messages(
+    mocker,
     status,
     finishes_at,
     final_status,
-    sample_template
+    sample_template,
+    should_call_publish_task,
 ):
     message = create_broadcast_message(
         status=status,
         finishes_at=finishes_at,
         template=sample_template,
     )
+    mock_celery = mocker.patch('app.celery.scheduled_tasks.notify_celery.send_task')
 
     auto_expire_broadcast_messages()
     assert message.status == final_status
+
+    if should_call_publish_task:
+        mock_celery.assert_called_once_with(
+            name=TaskNames.PUBLISH_GOVUK_ALERTS,
+            queue=QueueNames.GOVUK_ALERTS
+        )
+    else:
+        assert not mock_celery.called

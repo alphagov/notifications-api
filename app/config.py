@@ -35,6 +35,7 @@ class QueueNames(object):
     SAVE_API_EMAIL = 'save-api-email-tasks'
     SAVE_API_SMS = 'save-api-sms-tasks'
     BROADCASTS = 'broadcast-tasks'
+    GOVUK_ALERTS = 'govuk-alerts'
 
     @staticmethod
     def all_queues():
@@ -75,6 +76,7 @@ class TaskNames(object):
     SCAN_FILE = 'scan-file'
     SANITISE_LETTER = 'sanitise-and-upload-letter'
     CREATE_PDF_FOR_TEMPLATED_LETTER = 'create-pdf-for-templated-letter'
+    PUBLISH_GOVUK_ALERTS = 'publish-govuk-alerts'
 
 
 class Config(object):

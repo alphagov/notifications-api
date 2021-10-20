@@ -16,7 +16,7 @@ from app.celery.tasks import (
     process_job,
     process_row,
 )
-from app.config import QueueNames
+from app.config import QueueNames, TaskNames
 from app.dao.invited_org_user_dao import (
     delete_org_invitations_created_more_than_two_days_ago,
 )
@@ -322,9 +322,15 @@ def auto_expire_broadcast_messages():
     expired_broadcasts = BroadcastMessage.query.filter(
         BroadcastMessage.finishes_at <= datetime.now(),
         BroadcastMessage.status == BroadcastStatusType.BROADCASTING,
-    )
+    ).all()
 
     for broadcast in expired_broadcasts:
         broadcast.status = BroadcastStatusType.COMPLETED
 
     db.session.commit()
+
+    if expired_broadcasts:
+        notify_celery.send_task(
+            name=TaskNames.PUBLISH_GOVUK_ALERTS,
+            queue=QueueNames.GOVUK_ALERTS
+        )
