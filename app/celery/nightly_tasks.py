@@ -240,17 +240,16 @@ def letter_raise_alert_if_no_ack_file_for_zip():
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
         ack_file_set.add(key.lstrip('root/dispatch').upper().replace('.ACK.TXT', ''))
 
-    message = (
-        "Letter ack file does not contain all zip files sent. "
-        "Missing ack for zip files: {}, "
-        "pdf bucket: {}, subfolder: {}, "
-        "ack bucket: {}"
-    ).format(
-        str(sorted(zip_file_set - ack_file_set)),
-        current_app.config['LETTERS_PDF_BUCKET_NAME'],
-        datetime.utcnow().strftime('%Y-%m-%d') + '/zips_sent',
-        current_app.config['DVLA_RESPONSE_BUCKET_NAME']
-    )
+    message = '\n'.join([
+        "Letter ack file does not contain all zip files sent."
+        "",
+        f"See runbook at https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#letter-ack-file-does-not-contain-all-zip-files-sent\n",  # noqa
+        f"pdf bucket: {current_app.config['LETTERS_PDF_BUCKET_NAME']}, subfolder: {datetime.utcnow().strftime('%Y-%m-%d')}/zips_sent",  # noqa
+        f"ack bucket: {current_app.config['DVLA_RESPONSE_BUCKET_NAME']}",
+        "",
+        f"Missing ack for zip files: {str(sorted(zip_file_set - ack_file_set))}",
+    ])
+
     # strip empty element before comparison
     ack_file_set.discard('')
     zip_file_set.discard('')
