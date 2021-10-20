@@ -86,7 +86,7 @@ def test_ses_callback_should_update_notification_status(
         assert process_ses_results(ses_notification_callback(reference='ref'))
         assert get_notification_by_id(notification.id).status == 'delivered'
         statsd_client.timing_with_dates.assert_any_call(
-            "callback.ses.elapsed-time", datetime.utcnow(), notification.sent_at
+            "callback.ses.delivered.elapsed-time", datetime.utcnow(), notification.sent_at
         )
         statsd_client.incr.assert_any_call("callback.ses.delivered")
         updated_notification = Notification.query.get(notification.id)
