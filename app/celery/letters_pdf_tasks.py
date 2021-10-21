@@ -85,12 +85,12 @@ def get_pdf_for_templated_letter(self, notification_id):
             args=(encrypted_data,),
             queue=QueueNames.SANITISE_LETTERS
         )
-    except Exception:
+    except Exception as e:
         try:
             current_app.logger.exception(
                 f"RETRY: calling create-letter-pdf task for notification {notification_id} failed"
             )
-            self.retry(queue=QueueNames.RETRY)
+            self.retry(exc=e, queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
             message = f"RETRY FAILED: Max retries reached. " \
                       f"The task create-letter-pdf failed for notification id {notification_id}. " \
