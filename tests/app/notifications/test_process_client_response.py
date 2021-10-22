@@ -144,7 +144,7 @@ def test_process_sms_client_response_records_statsd_metrics(sample_notification,
 
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
     statsd_client.timing_with_dates.assert_any_call(
-        "callback.firetext.elapsed-time", datetime.utcnow(), sample_notification.sent_at
+        "callback.firetext.delivered.elapsed-time", datetime.utcnow(), sample_notification.sent_at
     )
 
 
