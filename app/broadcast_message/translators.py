@@ -7,6 +7,7 @@ def cap_xml_to_dict(cap_xml):
     return {
         "msgType": cap.alert.msgType.text,
         "reference": cap.alert.identifier.text,
+        "cap_event": cap.alert.info.event.text,
         "category": cap.alert.info.category.text,
         "expires": cap.alert.info.expires.text,
         "content": cap.alert.info.description.text,

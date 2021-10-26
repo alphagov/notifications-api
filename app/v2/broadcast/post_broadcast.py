@@ -51,6 +51,7 @@ def create_broadcast():
         service_id=authenticated_service.id,
         content=broadcast_json['content'],
         reference=broadcast_json['reference'],
+        cap_event=broadcast_json['cap_event'],
         areas={
             'names': [
                 area['name'] for area in broadcast_json['areas']

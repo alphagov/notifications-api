@@ -2319,6 +2319,7 @@ class BroadcastMessage(db.Model):
     api_key = db.relationship('ApiKey')
 
     reference = db.Column(db.String(255), nullable=True)
+    cap_event = db.Column(db.String(255), nullable=True)
 
     stubbed = db.Column(db.Boolean, nullable=False)
 
@@ -2338,6 +2339,7 @@ class BroadcastMessage(db.Model):
         return {
             'id': str(self.id),
             'reference': self.reference,
+            'cap_event': self.cap_event,
 
             'service_id': str(self.service_id),
 

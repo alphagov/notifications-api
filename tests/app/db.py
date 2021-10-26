@@ -1119,7 +1119,8 @@ def create_broadcast_message(
     starts_at=None,
     finishes_at=None,
     areas=None,
-    stubbed=False
+    stubbed=False,
+    cap_event=None,
 ):
     if template:
         service = template.service
@@ -1148,7 +1149,8 @@ def create_broadcast_message(
         created_by_id=created_by.id if created_by else service.created_by_id,
         areas=areas or {'ids': [], 'simple_polygons': []},
         content=content,
-        stubbed=stubbed
+        stubbed=stubbed,
+        cap_event=cap_event,
     )
     db.session.add(broadcast_message)
     db.session.commit()

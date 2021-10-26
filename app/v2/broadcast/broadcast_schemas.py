@@ -4,6 +4,7 @@ post_broadcast_schema = {
     "required": [
         "msgType",
         "reference",
+        "cap_event",
         "category",
         "content",
         "areas",
@@ -11,6 +12,12 @@ post_broadcast_schema = {
     "additionalProperties": False,
     "properties": {
         "reference": {
+            "type": [
+                "string",
+                "null",
+            ],
+        },
+        "cap_event": {
             "type": [
                 "string",
                 "null",
