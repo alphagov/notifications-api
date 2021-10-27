@@ -843,6 +843,7 @@ def test_process_sanitised_letter_with_valid_letter(
     assert sample_letter_notification.status == expected_status
     assert sample_letter_notification.billable_units == 1
     assert sample_letter_notification.to == 'A. User\nThe house on the corner'
+    assert sample_letter_notification.normalised_to == 'a.userthehouseonthecorner'
 
     assert not [x for x in scan_bucket.objects.all()]
     assert not [x for x in template_preview_bucket.objects.all()]

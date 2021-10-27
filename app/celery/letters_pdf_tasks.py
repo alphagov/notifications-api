@@ -479,6 +479,7 @@ def update_letter_pdf_status(reference, status, billable_units, recipient_addres
         update_dict.update({'postage': postage, 'international': True})
     if recipient_address:
         update_dict['to'] = recipient_address
+        update_dict['normalised_to'] = ''.join(recipient_address.split()).lower()
     return dao_update_notifications_by_reference(
         references=[reference],
         update_dict=update_dict)[0]
