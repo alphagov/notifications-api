@@ -191,7 +191,6 @@ class Config(object):
         'broker_url': 'sqs://',
         'broker_transport_options': {
             'region': AWS_REGION,
-            'polling_interval': 1,  # 1 second
             'visibility_timeout': 310,
             'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
         },
