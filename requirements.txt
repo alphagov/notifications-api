@@ -53,12 +53,15 @@ bcrypt==3.2.0
 billiard==3.6.4.0
 bleach==4.1.0
 blinker==1.4
-boto==2.49.0
 boto3==1.19.4
 botocore==1.22.4
+cached-property==1.5.2
 certifi==2021.10.8
 charset-normalizer==2.0.7
 click==7.1.2
+click-didyoumean==0.3.0
+click-plugins==1.1.1
+click-repl==0.2.0
 colorama==0.4.3
 dataclasses==0.8
 dnspython==1.16.0
@@ -79,8 +82,10 @@ mistune==0.8.4
 orderedset==2.0.3
 packaging==21.0
 phonenumbers==8.12.36
+prompt-toolkit==3.0.21
 pyasn1==0.4.8
 pycparser==2.20
+pycurl==7.43.0.5
 pyparsing==3.0.1
 PyPDF2==1.26.0
 pyrsistent==0.18.0
@@ -99,5 +104,7 @@ soupsieve==2.2.1
 statsd==3.3.0
 typing-extensions==3.10.0.2
 urllib3==1.26.7
+vine==5.0.0
+wcwidth==0.2.5
 webencodings==0.5.1
 zipp==3.6.0
