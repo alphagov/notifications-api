@@ -185,6 +185,7 @@ def raise_alert_if_letter_notifications_still_sending():
 
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still sending",
+                email_ccs=current_app.config['DVLA_EMAIL_ADDRESSES'],
                 message=message,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
                 technical_ticket=True,
