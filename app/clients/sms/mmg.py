@@ -107,7 +107,6 @@ class MMGClient(SmsClient):
             "multi": multi
         }
 
-        response = None
         start_time = monotonic()
         try:
             response = request(
@@ -134,9 +133,6 @@ class MMGClient(SmsClient):
         finally:
             elapsed_time = monotonic() - start_time
             self.statsd_client.timing("clients.mmg.request-time", elapsed_time)
-            if response and hasattr(response, 'elapsed'):
-                self.statsd_client.timing("clients.mmg.raw-request-time", response.elapsed.total_seconds())
-
             self.current_app.logger.info("MMG request for {} finished in {}".format(reference, elapsed_time))
 
         return response
