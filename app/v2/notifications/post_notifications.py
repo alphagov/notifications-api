@@ -3,7 +3,7 @@ import functools
 import uuid
 from datetime import datetime
 
-from boto.exception import SQSError
+import botocore
 from flask import abort, current_app, jsonify, request
 from gds_metrics import Histogram
 from notifications_utils.recipients import try_validate_and_format_phone_number
@@ -232,7 +232,7 @@ def process_sms_or_email_notification(
                 reply_to_text=reply_to_text
             )
             return resp
-        except SQSError:
+        except botocore.exceptions.ClientError:
             # if SQS cannot put the task on the queue, it's probably because the notification body was too long and it
             # went over SQS's 256kb message limit. If so, we
             current_app.logger.info(

@@ -3,7 +3,6 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
-boto==2.49.0 # notify-api crashes in PaaS without this
 cffi==1.14.5
 celery[sqs]==5.1.2
 docopt==0.6.2
