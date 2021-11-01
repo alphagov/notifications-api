@@ -22,6 +22,7 @@ def make_task(app):
     class NotifyTask(Task):
         abstract = True
         start = None
+        typing = False
 
         def on_success(self, retval, task_id, args, kwargs):
             elapsed_time = time.monotonic() - self.start
