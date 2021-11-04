@@ -332,6 +332,11 @@ class Config(object):
                 'schedule': timedelta(minutes=5),
                 'options': {'queue': QueueNames.PERIODIC}
             },
+            'remove-yesterdays-planned-tests-on-govuk-alerts': {
+                'task': 'remove-yesterdays-planned-tests-on-govuk-alerts',
+                'schedule': crontab(hour=00, minute=00),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
         }
     }
 
