@@ -5,15 +5,15 @@ case $NOTIFY_APP_NAME in
     exec scripts/run_app_paas.sh gunicorn -c /home/vcap/app/gunicorn_config.py application
     ;;
   delivery-worker-retry-tasks)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q retry-tasks 2> /dev/null
     ;;
   delivery-worker-letters)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q create-letters-pdf-tasks,letter-tasks 2> /dev/null
     ;;
   delivery-worker-jobs)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q database-tasks,job-tasks 2> /dev/null
     ;;
   delivery-worker-research)
@@ -38,7 +38,7 @@ case $NOTIFY_APP_NAME in
     ;;
   # Only consume the notify-internal-tasks queue on this app so that Notify messages are processed as a priority
   delivery-worker-internal)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=11 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q notify-internal-tasks 2> /dev/null
     ;;
   delivery-worker-broadcasts)
