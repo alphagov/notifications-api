@@ -2,8 +2,8 @@ import uuid
 from unittest import mock
 from unittest.mock import call
 
+import botocore
 import pytest
-from boto.exception import SQSError
 from flask import current_app, json
 
 from app.dao import templates_dao
@@ -1074,7 +1074,7 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
 ):
     save_task = mocker.patch(
         f"app.celery.tasks.save_api_{notification_type}.apply_async",
-        side_effect=SQSError({'some': 'json'}, 'some opname')
+        side_effect=botocore.exceptions.ClientError({'some': 'json'}, 'some opname')
     )
     mock_send_task = mocker.patch(f'app.celery.provider_tasks.deliver_{notification_type}.apply_async')
 

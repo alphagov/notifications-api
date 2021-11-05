@@ -187,156 +187,160 @@ class Config(object):
     # we only need real email in Live environment (production)
     DVLA_EMAIL_ADDRESSES = json.loads(os.environ.get('DVLA_EMAIL_ADDRESSES', '[]'))
 
-    BROKER_URL = 'sqs://'
-    BROKER_TRANSPORT_OPTIONS = {
-        'region': AWS_REGION,
-        'polling_interval': 1,  # 1 second
-        'visibility_timeout': 310,
-        'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX
+    CELERY = {
+        'broker_url': 'sqs://',
+        'broker_transport_options': {
+            'region': AWS_REGION,
+            'visibility_timeout': 310,
+            'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
+        },
+        'timezone': 'Europe/London',
+        'imports': [
+            'app.celery.tasks',
+            'app.celery.scheduled_tasks',
+            'app.celery.reporting_tasks',
+            'app.celery.nightly_tasks',
+        ],
+        # this is overriden by the -Q command, but locally, we should read from all queues
+        'task_queues': [
+            Queue(queue, Exchange('default'), routing_key=queue) for queue in QueueNames.all_queues()
+        ],
+        'beat_schedule': {
+            # app/celery/scheduled_tasks.py
+            'run-scheduled-jobs': {
+                'task': 'run-scheduled-jobs',
+                'schedule': crontab(minute='0,15,30,45'),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'delete-verify-codes': {
+                'task': 'delete-verify-codes',
+                'schedule': timedelta(minutes=63),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'delete-invitations': {
+                'task': 'delete-invitations',
+                'schedule': timedelta(minutes=66),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'switch-current-sms-provider-on-slow-delivery': {
+                'task': 'switch-current-sms-provider-on-slow-delivery',
+                'schedule': crontab(),  # Every minute
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'check-job-status': {
+                'task': 'check-job-status',
+                'schedule': crontab(),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'tend-providers-back-to-middle': {
+                'task': 'tend-providers-back-to-middle',
+                'schedule': crontab(minute='*/5'),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'check-for-missing-rows-in-completed-jobs': {
+                'task': 'check-for-missing-rows-in-completed-jobs',
+                'schedule': crontab(minute='*/10'),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'replay-created-notifications': {
+                'task': 'replay-created-notifications',
+                'schedule': crontab(minute='0, 15, 30, 45'),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            # app/celery/nightly_tasks.py
+            'timeout-sending-notifications': {
+                'task': 'timeout-sending-notifications',
+                'schedule': crontab(hour=0, minute=5),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'create-nightly-billing': {
+                'task': 'create-nightly-billing',
+                'schedule': crontab(hour=0, minute=15),
+                'options': {'queue': QueueNames.REPORTING}
+            },
+            'create-nightly-notification-status': {
+                'task': 'create-nightly-notification-status',
+                'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
+                'options': {'queue': QueueNames.REPORTING}
+            },
+            'delete-notifications-older-than-retention': {
+                'task': 'delete-notifications-older-than-retention',
+                'schedule': crontab(hour=3, minute=0),  # after 'create-nightly-notification-status'
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'delete-inbound-sms': {
+                'task': 'delete-inbound-sms',
+                'schedule': crontab(hour=1, minute=40),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'save-daily-notification-processing-time': {
+                'task': 'save-daily-notification-processing-time',
+                'schedule': crontab(hour=2, minute=0),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'remove_sms_email_jobs': {
+                'task': 'remove_sms_email_jobs',
+                'schedule': crontab(hour=4, minute=0),
+                'options': {'queue': QueueNames.PERIODIC},
+            },
+            'remove_letter_jobs': {
+                'task': 'remove_letter_jobs',
+                'schedule': crontab(hour=4, minute=20),
+                # since we mark jobs as archived
+                'options': {'queue': QueueNames.PERIODIC},
+            },
+            'check-if-letters-still-in-created': {
+                'task': 'check-if-letters-still-in-created',
+                'schedule': crontab(day_of_week='mon-fri', hour=7, minute=0),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'check-if-letters-still-pending-virus-check': {
+                'task': 'check-if-letters-still-pending-virus-check',
+                'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers': {
+                'task': 'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers',
+                'schedule': crontab(day_of_week='mon-fri', hour=10, minute=30),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'raise-alert-if-letter-notifications-still-sending': {
+                'task': 'raise-alert-if-letter-notifications-still-sending',
+                'schedule': crontab(hour=15, minute=30),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            # The collate-letter-pdf does assume it is called in an hour that BST does not make a
+            # difference to the truncate date which translates to the filename to process
+            'collate-letter-pdfs-to-be-sent': {
+                'task': 'collate-letter-pdfs-to-be-sent',
+                'schedule': crontab(hour=17, minute=50),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'raise-alert-if-no-letter-ack-file': {
+                'task': 'raise-alert-if-no-letter-ack-file',
+                'schedule': crontab(hour=23, minute=00),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'trigger-link-tests': {
+                'task': 'trigger-link-tests',
+                'schedule': timedelta(minutes=15),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+            'auto-expire-broadcast-messages': {
+                'task': 'auto-expire-broadcast-messages',
+                'schedule': timedelta(minutes=5),
+                'options': {'queue': QueueNames.PERIODIC}
+            },
+        }
     }
-    CELERY_ENABLE_UTC = True
-    CELERY_TIMEZONE = 'Europe/London'
-    CELERY_ACCEPT_CONTENT = ['json']
-    CELERY_TASK_SERIALIZER = 'json'
-    # on reporting worker, restart workers after each task is executed to help prevent memory leaks
-    CELERYD_MAX_TASKS_PER_CHILD = os.getenv('CELERYD_MAX_TASKS_PER_CHILD')
+
     # we can set celeryd_prefetch_multiplier to be 1 for celery apps which handle only long running tasks
     if os.getenv('CELERYD_PREFETCH_MULTIPLIER'):
-        CELERYD_PREFETCH_MULTIPLIER = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
-    CELERY_IMPORTS = (
-        'app.celery.tasks',
-        'app.celery.scheduled_tasks',
-        'app.celery.reporting_tasks',
-        'app.celery.nightly_tasks',
-    )
-    CELERYBEAT_SCHEDULE = {
-        # app/celery/scheduled_tasks.py
-        'run-scheduled-jobs': {
-            'task': 'run-scheduled-jobs',
-            'schedule': crontab(minute='0,15,30,45'),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-verify-codes': {
-            'task': 'delete-verify-codes',
-            'schedule': timedelta(minutes=63),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-invitations': {
-            'task': 'delete-invitations',
-            'schedule': timedelta(minutes=66),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'switch-current-sms-provider-on-slow-delivery': {
-            'task': 'switch-current-sms-provider-on-slow-delivery',
-            'schedule': crontab(),  # Every minute
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'check-job-status': {
-            'task': 'check-job-status',
-            'schedule': crontab(),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'tend-providers-back-to-middle': {
-            'task': 'tend-providers-back-to-middle',
-            'schedule': crontab(minute='*/5'),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'check-for-missing-rows-in-completed-jobs': {
-            'task': 'check-for-missing-rows-in-completed-jobs',
-            'schedule': crontab(minute='*/10'),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'replay-created-notifications': {
-            'task': 'replay-created-notifications',
-            'schedule': crontab(minute='0, 15, 30, 45'),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        # app/celery/nightly_tasks.py
-        'timeout-sending-notifications': {
-            'task': 'timeout-sending-notifications',
-            'schedule': crontab(hour=0, minute=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'create-nightly-billing': {
-            'task': 'create-nightly-billing',
-            'schedule': crontab(hour=0, minute=15),
-            'options': {'queue': QueueNames.REPORTING}
-        },
-        'create-nightly-notification-status': {
-            'task': 'create-nightly-notification-status',
-            'schedule': crontab(hour=0, minute=30),  # after 'timeout-sending-notifications'
-            'options': {'queue': QueueNames.REPORTING}
-        },
-        'delete-notifications-older-than-retention': {
-            'task': 'delete-notifications-older-than-retention',
-            'schedule': crontab(hour=3, minute=0),  # after 'create-nightly-notification-status'
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'delete-inbound-sms': {
-            'task': 'delete-inbound-sms',
-            'schedule': crontab(hour=1, minute=40),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'save-daily-notification-processing-time': {
-            'task': 'save-daily-notification-processing-time',
-            'schedule': crontab(hour=2, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'remove_sms_email_jobs': {
-            'task': 'remove_sms_email_jobs',
-            'schedule': crontab(hour=4, minute=0),
-            'options': {'queue': QueueNames.PERIODIC},
-        },
-        'remove_letter_jobs': {
-            'task': 'remove_letter_jobs',
-            'schedule': crontab(hour=4, minute=20),
-            # since we mark jobs as archived
-            'options': {'queue': QueueNames.PERIODIC},
-        },
-        'check-if-letters-still-in-created': {
-            'task': 'check-if-letters-still-in-created',
-            'schedule': crontab(day_of_week='mon-fri', hour=7, minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'check-if-letters-still-pending-virus-check': {
-            'task': 'check-if-letters-still-pending-virus-check',
-            'schedule': crontab(day_of_week='mon-fri', hour='9,15', minute=0),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers': {
-            'task': 'check-for-services-with-high-failure-rates-or-sending-to-tv-numbers',
-            'schedule': crontab(day_of_week='mon-fri', hour=10, minute=30),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'raise-alert-if-letter-notifications-still-sending': {
-            'task': 'raise-alert-if-letter-notifications-still-sending',
-            'schedule': crontab(hour=15, minute=30),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        # The collate-letter-pdf does assume it is called in an hour that BST does not make a
-        # difference to the truncate date which translates to the filename to process
-        'collate-letter-pdfs-to-be-sent': {
-            'task': 'collate-letter-pdfs-to-be-sent',
-            'schedule': crontab(hour=17, minute=50),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'raise-alert-if-no-letter-ack-file': {
-            'task': 'raise-alert-if-no-letter-ack-file',
-            'schedule': crontab(hour=23, minute=00),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'trigger-link-tests': {
-            'task': 'trigger-link-tests',
-            'schedule': timedelta(minutes=15),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-        'auto-expire-broadcast-messages': {
-            'task': 'auto-expire-broadcast-messages',
-            'schedule': timedelta(minutes=5),
-            'options': {'queue': QueueNames.PERIODIC}
-        },
-    }
-    CELERY_QUEUES = []
+        CELERY['worker_prefetch_multiplier'] = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
+
+    # on reporting worker, restart workers after each task is executed to help prevent memory leaks
+    if os.getenv('CELERYD_MAX_TASKS_PER_CHILD'):
+        CELERY['worker_max_tasks_per_child'] = int(os.getenv('CELERYD_MAX_TASKS_PER_CHILD'))
 
     FROM_NUMBER = 'development'
 
@@ -419,18 +423,12 @@ class Development(Config):
 
     NOTIFY_ENVIRONMENT = 'development'
     NOTIFY_LOG_PATH = 'application.log'
-    NOTIFICATION_QUEUE_PREFIX = 'development'
     NOTIFY_EMAIL_DOMAIN = "notify.tools"
 
     SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/notification_api'
     REDIS_URL = 'redis://localhost:6379/0'
 
     ANTIVIRUS_ENABLED = os.getenv('ANTIVIRUS_ENABLED') == '1'
-
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
 
     API_HOST_NAME = "http://localhost:6011"
     API_RATE_LIMIT_ENABLED = True
@@ -465,14 +463,12 @@ class Test(Development):
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv('SQLALCHEMY_DATABASE_URI', 'postgresql://localhost/test_notification_api')
 
-    BROKER_URL = 'you-forgot-to-mock-celery-in-your-tests://'
+    CELERY = {
+        **Config.CELERY,
+        'broker_url': 'you-forgot-to-mock-celery-in-your-tests://'
+    }
 
     ANTIVIRUS_ENABLED = True
-
-    for queue in QueueNames.all_queues():
-        Config.CELERY_QUEUES.append(
-            Queue(queue, Exchange('default'), routing_key=queue)
-        )
 
     API_RATE_LIMIT_ENABLED = True
     API_HOST_NAME = "http://localhost:6011"

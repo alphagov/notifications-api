@@ -22,6 +22,7 @@ def make_task(app):
     class NotifyTask(Task):
         abstract = True
         start = None
+        typing = False
 
         def on_success(self, retval, task_id, args, kwargs):
             elapsed_time = time.monotonic() - self.start
@@ -81,11 +82,11 @@ class NotifyCelery(Celery):
     def init_app(self, app):
         super().__init__(
             app.import_name,
-            broker=app.config['BROKER_URL'],
+            broker=app.config['CELERY']['broker_url'],
             task_cls=make_task(app),
         )
 
-        self.conf.update(app.config)
+        self.conf.update(app.config['CELERY'])
         self._app = app
 
     def send_task(self, name, args=None, kwargs=None, **other_kwargs):
