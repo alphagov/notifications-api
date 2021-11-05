@@ -195,8 +195,6 @@ class Config(object):
             'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
         },
         'timezone': 'Europe/London',
-        # on reporting worker, restart workers after each task is executed to help prevent memory leaks
-        'worker_max_tasks_per_child': os.getenv('CELERYD_MAX_TASKS_PER_CHILD'),
         'imports': [
             'app.celery.tasks',
             'app.celery.scheduled_tasks',
@@ -339,6 +337,10 @@ class Config(object):
     # we can set celeryd_prefetch_multiplier to be 1 for celery apps which handle only long running tasks
     if os.getenv('CELERYD_PREFETCH_MULTIPLIER'):
         CELERY['worker_prefetch_multiplier'] = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
+
+    # on reporting worker, restart workers after each task is executed to help prevent memory leaks
+    if os.getenv('CELERYD_MAX_TASKS_PER_CHILD'):
+        CELERY['worker_max_tasks_per_child'] = int(os.getenv('CELERYD_MAX_TASKS_PER_CHILD'))
 
     FROM_NUMBER = 'development'
 
