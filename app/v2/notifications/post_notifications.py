@@ -232,9 +232,10 @@ def process_sms_or_email_notification(
                 reply_to_text=reply_to_text
             )
             return resp
-        except botocore.exceptions.ClientError:
-            # if SQS cannot put the task on the queue, it's probably because the notification body was too long and it
-            # went over SQS's 256kb message limit. If so, we
+        except (botocore.exceptions.ClientError, botocore.parsers.ResponseParserError):
+            # If SQS cannot put the task on the queue, it's probably because the notification body was too long and it
+            # went over SQS's 256kb message limit. If the body is very large, it may exceed the HTTP max content length;
+            # the exception we get here isn't handled correctly by botocore - we get a ResponseParserError instead.
             current_app.logger.info(
                 f'Notification {notification_id} failed to save to high volume queue. Using normal flow instead'
             )

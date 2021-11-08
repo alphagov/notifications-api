@@ -1068,13 +1068,21 @@ def test_post_notifications_saves_email_or_sms_to_queue(client, notify_db_sessio
         assert len(Notification.query.all()) == 0
 
 
+@pytest.mark.parametrize("exception", [
+    botocore.exceptions.ClientError({'some': 'json'}, 'some opname'),
+    botocore.parsers.ResponseParserError('exceeded max HTTP body length'),
+])
 @pytest.mark.parametrize("notification_type", ("email", "sms"))
 def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails(
-    client, notify_db_session, mocker, notification_type
+    client,
+    notify_db_session,
+    mocker,
+    notification_type,
+    exception
 ):
     save_task = mocker.patch(
         f"app.celery.tasks.save_api_{notification_type}.apply_async",
-        side_effect=botocore.exceptions.ClientError({'some': 'json'}, 'some opname')
+        side_effect=exception,
     )
     mock_send_task = mocker.patch(f'app.celery.provider_tasks.deliver_{notification_type}.apply_async')
 
