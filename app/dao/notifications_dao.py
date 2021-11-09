@@ -467,15 +467,21 @@ def dao_delete_notifications_by_id(notification_id):
 
 
 def _timeout_notifications(current_statuses, new_status, timeout_start, updated_at):
+    # TEMPORARY: limit the notifications to 100K as otherwise we
+    # see an issues where the task vanishes after it starts executing
+    # - we believe this is a OOM error but there are no logs. From
+    # experimentation we've found we can safely process up to 100K.
     notifications = Notification.query.filter(
         Notification.created_at < timeout_start,
         Notification.status.in_(current_statuses),
-        Notification.notification_type != LETTER_TYPE
-    ).all()
+        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE])
+    ).limit(100000).all()
+
     Notification.query.filter(
         Notification.created_at < timeout_start,
         Notification.status.in_(current_statuses),
-        Notification.notification_type != LETTER_TYPE
+        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
+        Notification.id.in_([n.id for n in notifications]),
     ).update(
         {'status': new_status, 'updated_at': updated_at},
         synchronize_session=False
