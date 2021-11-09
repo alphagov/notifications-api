@@ -155,7 +155,7 @@ def timeout_notifications():
                           len(technical_failure_notifications), [str(x.id) for x in technical_failure_notifications])
             raise NotificationTechnicalFailureException(message)
 
-        if len(notifications) == 0:
+        if len(notifications) < 100000:
             return
 
     raise RuntimeError("Some notifications may still be in sending.")
