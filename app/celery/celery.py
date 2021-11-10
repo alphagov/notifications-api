@@ -68,9 +68,12 @@ def make_task(app):
             # ensure task has flask context to access config, logger, etc
             with app.app_context():
                 self.start = time.monotonic()
-                # Remove piggyback values from kwargs
-                # Add 'request_id' to 'g' so that it gets logged
-                g.request_id = kwargs.pop('request_id', None)
+                # TEMPORARY: remove old piggyback values from kwargs
+                kwargs.pop('request_id', None)
+                # Add 'request_id' to 'g' so that it gets logged. Note
+                # that each header is a direct attribute of the task
+                # context (aka "request").
+                g.request_id = self.request.get('notify_request_id')
 
                 return super().__call__(*args, **kwargs)
 
@@ -90,11 +93,11 @@ class NotifyCelery(Celery):
         self._app = app
 
     def send_task(self, name, args=None, kwargs=None, **other_kwargs):
-        kwargs = kwargs or {}
+        other_kwargs['headers'] = other_kwargs.get('headers') or {}
 
         if has_request_context() and hasattr(request, 'request_id'):
-            kwargs['request_id'] = request.request_id
+            other_kwargs['headers']['notify_request_id'] = request.request_id
         elif has_app_context() and 'request_id' in g:
-            kwargs['request_id'] = g.request_id
+            other_kwargs['headers']['notify_request_id'] = g.request_id
 
         return super().send_task(name, args, kwargs, **other_kwargs)
