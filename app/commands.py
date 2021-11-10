@@ -19,7 +19,10 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import db
 from app.aws import s3
-from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
+from app.celery.letters_pdf_tasks import (
+    get_pdf_for_templated_letter,
+    resanitise_pdf,
+)
 from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_day,
 )
@@ -271,12 +274,20 @@ def insert_inbound_numbers_from_file(file_name):
     file.close()
 
 
-@notify_command(name='replay-create-pdf-letters')
+@notify_command(name='replay-create-pdf-for-templated-letter')
 @click.option('-n', '--notification_id', type=click.UUID, required=True,
               help="Notification id of the letter that needs the get_pdf_for_templated_letter task replayed")
-def replay_create_pdf_letters(notification_id):
+def replay_create_pdf_for_templated_letter(notification_id):
     print("Create task to get_pdf_for_templated_letter for notification: {}".format(notification_id))
     get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
+
+
+@notify_command(name='recreate-pdf-for-precompiled-or-uploaded-letter')
+@click.option('-n', '--notification_id', type=click.UUID, required=True,
+              help="Notification ID of the precompiled or uploaded letter")
+def recreate_pdf_for_precompiled_or_uploaded_letter(notification_id):
+    print(f"Call resanitise_pdf task for notification: {notification_id}")
+    resanitise_pdf.apply_async([str(notification_id)], queue=QueueNames.LETTERS)
 
 
 @notify_command(name='replay-service-callbacks')

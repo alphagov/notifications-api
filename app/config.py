@@ -77,6 +77,7 @@ class TaskNames(object):
     SANITISE_LETTER = 'sanitise-and-upload-letter'
     CREATE_PDF_FOR_TEMPLATED_LETTER = 'create-pdf-for-templated-letter'
     PUBLISH_GOVUK_ALERTS = 'publish-govuk-alerts'
+    RECREATE_PDF_FOR_PRECOMPILED_LETTER = 'recreate-pdf-for-precompiled-letter'
 
 
 class Config(object):
