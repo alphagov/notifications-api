@@ -24,15 +24,24 @@ def make_task(app):
         start = None
         typing = False
 
+        @property
+        def queue_name(self):
+            delivery_info = self.request.delivery_info or {}
+            return delivery_info.get('routing_key', 'none')
+
+        @property
+        def request_id(self):
+            # Note that each header is a direct attribute of the
+            # task context (aka "request").
+            return self.request.get('notify_request_id')
+
         def on_success(self, retval, task_id, args, kwargs):
             elapsed_time = time.monotonic() - self.start
-            delivery_info = self.request.delivery_info or {}
-            queue_name = delivery_info.get('routing_key', 'none')
 
             app.logger.info(
                 "Celery task {task_name} (queue: {queue_name}) took {time}".format(
                     task_name=self.name,
-                    queue_name=queue_name,
+                    queue_name=self.queue_name,
                     time="{0:.4f}".format(elapsed_time)
                 )
             )
@@ -40,25 +49,22 @@ def make_task(app):
             app.statsd_client.timing(
                 "celery.{queue_name}.{task_name}.success".format(
                     task_name=self.name,
-                    queue_name=queue_name
+                    queue_name=self.queue_name
                 ), elapsed_time
             )
 
         def on_failure(self, exc, task_id, args, kwargs, einfo):
-            delivery_info = self.request.delivery_info or {}
-            queue_name = delivery_info.get('routing_key', 'none')
-
             app.logger.exception(
                 "Celery task {task_name} (queue: {queue_name}) failed".format(
                     task_name=self.name,
-                    queue_name=queue_name,
+                    queue_name=self.queue_name,
                 )
             )
 
             app.statsd_client.incr(
                 "celery.{queue_name}.{task_name}.failure".format(
                     task_name=self.name,
-                    queue_name=queue_name
+                    queue_name=self.queue_name
                 )
             )
 
@@ -71,9 +77,7 @@ def make_task(app):
                 # TEMPORARY: remove old piggyback values from kwargs
                 kwargs.pop('request_id', None)
                 # Add 'request_id' to 'g' so that it gets logged. Note
-                # that each header is a direct attribute of the task
-                # context (aka "request").
-                g.request_id = self.request.get('notify_request_id')
+                g.request_id = self.request_id
 
                 return super().__call__(*args, **kwargs)
 
