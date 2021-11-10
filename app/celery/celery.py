@@ -22,7 +22,6 @@ def make_task(app):
     class NotifyTask(Task):
         abstract = True
         start = None
-        typing = False
 
         def on_success(self, retval, task_id, args, kwargs):
             elapsed_time = time.monotonic() - self.start
@@ -68,8 +67,6 @@ def make_task(app):
             # ensure task has flask context to access config, logger, etc
             with app.app_context():
                 self.start = time.monotonic()
-                # TEMPORARY: remove old piggyback values from kwargs
-                kwargs.pop('request_id', None)
                 # Add 'request_id' to 'g' so that it gets logged. Note
                 # that each header is a direct attribute of the task
                 # context (aka "request").
