@@ -9,7 +9,7 @@ Contains:
 
 ### Python version
 
-At the moment we run Python 3.6 in production. You will run into problems if you try to use Python 3.5 or older, or Python 3.7 or newer.
+We run python 3.9 both locally and in production.
 
 ### AWS credentials
 
