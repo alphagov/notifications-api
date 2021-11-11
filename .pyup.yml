@@ -4,5 +4,5 @@ schedule: "every week on wednesday"
 
 search: False
 requirements:
-  - requirements-app.txt
-  - requirements-dev.txt
+  - requirements.in
+  - requirements_for_test.txt

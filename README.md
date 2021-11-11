@@ -9,7 +9,7 @@ Contains:
 
 ### Python version
 
-At the moment we run Python 3.6 in production. You will run into problems if you try to use Python 3.5 or older, or Python 3.7 or newer.
+We run python 3.9 both locally and in production.
 
 ### AWS credentials
 
@@ -88,17 +88,9 @@ make test
 
 ## To update application dependencies
 
-`requirements.txt` file is generated from the `requirements-app.txt` in order to pin
-versions of all nested dependencies. If `requirements-app.txt` has been changed (or
-we want to update the unpinned nested dependencies) `requirements.txt` should be
-regenerated with
+## To update application dependencies
 
-```
-make freeze-requirements
-```
-
-`requirements.txt` should be committed alongside `requirements-app.txt` changes.
-
+`requirements.txt` is generated from the `requirements.in` in order to pin versions of all nested dependencies. If `requirements.in` has been changed, run `make freeze-requirements` to regenerate it.
 
 ## To run one off tasks
 
