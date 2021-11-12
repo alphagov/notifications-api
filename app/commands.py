@@ -252,13 +252,6 @@ def fix_notification_statuses_not_in_sync():
         result = db.session.execute(subq_hist).fetchall()
 
 
-@notify_command(name='list-routes')
-def list_routes():
-    """List URLs of all application routes."""
-    for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
-        print("{:10} {}".format(", ".join(rule.methods - set(['OPTIONS', 'HEAD'])), rule.rule))
-
-
 @notify_command(name='insert-inbound-numbers')
 @click.option('-f', '--file_name', required=True,
               help="""Full path of the file to upload, file is a contains inbound numbers,
