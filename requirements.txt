@@ -27,9 +27,7 @@ bleach==4.1.0
 blinker==1.4
     # via gds-metrics
 boto3==1.19.4
-    # via
-    #   celery
-    #   notifications-utils
+    # via notifications-utils
 botocore==1.22.4
     # via
     #   awscli
@@ -39,7 +37,7 @@ cachetools==4.2.1
     # via
     #   -r requirements.in
     #   notifications-utils
-celery[sqs]==5.1.2
+celery[sqs]==5.2.0
     # via -r requirements.in
 certifi==2021.10.8
     # via requests
@@ -50,7 +48,7 @@ cffi==1.14.5
     #   cryptography
 charset-normalizer==2.0.7
     # via requests
-click==7.1.2
+click==8.0.3
     # via
     #   celery
     #   click-datetime
@@ -78,7 +76,7 @@ docopt==0.6.2
     #   notifications-python-client
 docutils==0.15.2
     # via awscli
-eventlet==0.30.2
+eventlet==0.30.2 # pyup: ignore
     # via -r requirements.in
 flask==1.1.2
     # via
@@ -132,7 +130,7 @@ jmespath==0.10.0
     #   botocore
 jsonschema==3.2.0
     # via -r requirements.in
-kombu==5.1.0
+kombu==5.2.1
     # via celery
 lxml==4.6.3
     # via -r requirements.in
@@ -173,8 +171,6 @@ pyasn1==0.4.8
     # via rsa
 pycparser==2.20
     # via cffi
-pycurl==7.43.0.5
-    # via celery
 pyjwt==2.0.1
     # via
     #   -r requirements.in
