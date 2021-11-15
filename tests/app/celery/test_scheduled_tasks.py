@@ -19,6 +19,7 @@ from app.celery.scheduled_tasks import (
     check_job_status,
     delete_invitations,
     delete_verify_codes,
+    remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
@@ -700,3 +701,16 @@ def test_auto_expire_broadcast_messages(
         )
     else:
         assert not mock_celery.called
+
+
+def test_remove_yesterdays_planned_tests_on_govuk_alerts(
+    mocker
+):
+    mock_celery = mocker.patch('app.celery.scheduled_tasks.notify_celery.send_task')
+
+    remove_yesterdays_planned_tests_on_govuk_alerts()
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.PUBLISH_GOVUK_ALERTS,
+        queue=QueueNames.GOVUK_ALERTS
+    )

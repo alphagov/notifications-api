@@ -334,3 +334,11 @@ def auto_expire_broadcast_messages():
             name=TaskNames.PUBLISH_GOVUK_ALERTS,
             queue=QueueNames.GOVUK_ALERTS
         )
+
+
+@notify_celery.task(name='remove-yesterdays-planned-tests-on-govuk-alerts')
+def remove_yesterdays_planned_tests_on_govuk_alerts():
+    notify_celery.send_task(
+        name=TaskNames.PUBLISH_GOVUK_ALERTS,
+        queue=QueueNames.GOVUK_ALERTS
+    )
