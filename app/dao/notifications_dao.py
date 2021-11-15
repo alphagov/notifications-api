@@ -834,7 +834,7 @@ def _duplicate_update_warning(notification, status):
     current_app.logger.info(
         (
             'Duplicate callback received. Notification id {id} received a status update to {new_status}'
-            '{time_diff} after being set to {old_status}. {type} sent by {sent_by}'
+            ' from {old_status} for {type} sent by {sent_by}. This happened {time_diff} after being first set.'
         ).format(
             id=notification.id,
             old_status=notification.status,
