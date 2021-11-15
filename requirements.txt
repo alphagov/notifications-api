@@ -76,7 +76,7 @@ docopt==0.6.2
     #   notifications-python-client
 docutils==0.15.2
     # via awscli
-eventlet==0.30.2
+eventlet==0.30.2 # pyup: ignore
     # via -r requirements.in
 flask==1.1.2
     # via
