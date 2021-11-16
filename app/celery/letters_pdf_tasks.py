@@ -126,7 +126,6 @@ def collate_letter_pdfs_to_be_sent():
     that have not yet been sent.
     If run after midnight, it will collect up letters created before 5:30pm the day before.
     """
-    current_app.logger.info("starting collate-letter-pdfs-to-be-sent")
     print_run_date = convert_utc_to_bst(datetime.utcnow())
     if print_run_date.time() < LETTER_PROCESSING_DEADLINE:
         print_run_date = print_run_date - timedelta(days=1)
