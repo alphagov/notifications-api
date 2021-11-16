@@ -17,7 +17,7 @@ case $NOTIFY_APP_NAME in
     -Q database-tasks,job-tasks 2> /dev/null
     ;;
   delivery-worker-research)
-    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=5 \
+    exec scripts/run_app_paas.sh celery -A run_celery.notify_celery worker --loglevel=INFO --concurrency=4 \
     -Q research-mode-tasks 2> /dev/null
     ;;
   delivery-worker-sender)
