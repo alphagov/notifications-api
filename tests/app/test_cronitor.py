@@ -1,3 +1,4 @@
+import logging
 from urllib import parse
 
 import pytest
@@ -75,6 +76,9 @@ def test_cronitor_does_nothing_if_cronitor_not_enabled(notify_api, rmock):
 
 
 def test_cronitor_does_nothing_if_name_not_recognised(notify_api, rmock, caplog):
+    # ignore "INFO" log about task starting
+    caplog.set_level(logging.ERROR)
+
     with set_config_values(notify_api, {
         'CRONITOR_ENABLED': True,
         'CRONITOR_KEYS': {'not-hello': 'other'}

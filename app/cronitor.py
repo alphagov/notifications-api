@@ -5,11 +5,14 @@ from flask import current_app
 
 
 def cronitor(task_name):
-    # check if task_name is in config
     def decorator(func):
         def ping_cronitor(command):
             if not current_app.config['CRONITOR_ENABLED']:
                 return
+
+            # it's useful to have a log that a periodic task has started in case it
+            # get stuck without generating any other logs - we know it got this far
+            current_app.logger.info(f'Pinging Cronitor for Celery task {task_name}')
 
             task_slug = current_app.config['CRONITOR_KEYS'].get(task_name)
             if not task_slug:

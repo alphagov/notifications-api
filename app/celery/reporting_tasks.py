@@ -20,7 +20,6 @@ from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 @notify_celery.task(name="create-nightly-billing")
 @cronitor("create-nightly-billing")
 def create_nightly_billing(day_start=None):
-    current_app.logger.info("create-nightly-billing task: started")
     # day_start is a datetime.date() object. e.g.
     # up to 4 days of data counting back from day_start is consolidated
     if day_start is None:
@@ -67,7 +66,6 @@ def create_nightly_billing_for_day(process_day):
 @notify_celery.task(name="create-nightly-notification-status")
 @cronitor("create-nightly-notification-status")
 def create_nightly_notification_status():
-    current_app.logger.info("create-nightly-notification-status task: started")
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
     # email and sms
