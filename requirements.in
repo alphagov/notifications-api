@@ -12,7 +12,7 @@ Flask==2.0.2
 click-datetime==0.2
 eventlet==0.30.2 # pyup: ignore # 0.31 breaks Gunicorn
 gunicorn==20.1.0
-iso8601==0.1.14
+iso8601==1.0.0
 itsdangerous==1.1.0
 jsonschema==3.2.0
 marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
