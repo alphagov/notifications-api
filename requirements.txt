@@ -66,7 +66,7 @@ click-repl==0.2.0
     # via celery
 colorama==0.4.4
     # via awscli
-cryptography==3.3.2
+cryptography==35.0.0
     # via -r requirements.in
 dnspython==1.16.0
     # via eventlet
