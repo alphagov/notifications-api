@@ -155,7 +155,7 @@ notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@48
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
-packaging==21.0
+packaging==21.2
     # via bleach
 phonenumbers==8.12.36
     # via notifications-utils
