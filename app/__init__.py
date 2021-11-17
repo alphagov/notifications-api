@@ -20,6 +20,7 @@ from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
 from gds_metrics import GDSMetrics
 from gds_metrics.metrics import Gauge, Histogram
 from notifications_utils import logging, request_helper
+from notifications_utils.celery import NotifyCelery
 from notifications_utils.clients.encryption.encryption_client import Encryption
 from notifications_utils.clients.redis.redis_client import RedisClient
 from notifications_utils.clients.statsd.statsd_client import StatsdClient
@@ -28,7 +29,6 @@ from sqlalchemy import event
 from werkzeug.exceptions import HTTPException as WerkzeugHTTPException
 from werkzeug.local import LocalProxy
 
-from app.celery.celery import NotifyCelery
 from app.clients import NotificationProviderClients
 from app.clients.cbc_proxy import CBCProxyClient
 from app.clients.document_download import DocumentDownloadClient
