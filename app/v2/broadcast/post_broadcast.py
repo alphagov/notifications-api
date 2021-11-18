@@ -44,8 +44,16 @@ def create_broadcast():
     _validate_template(broadcast_json)
 
     polygons = Polygons(list(chain.from_iterable((
-        area['polygons'] for area in broadcast_json['areas']
+        [
+            [[y, x] for x, y in polygon]
+            for polygon in area['polygons']
+        ] for area in broadcast_json['areas']
     ))))
+
+    if len(polygons) > 12 or polygons.point_count > 250:
+        simple_polygons = polygons.smooth.simplify
+    else:
+        simple_polygons = polygons
 
     broadcast_message = BroadcastMessage(
         service_id=authenticated_service.id,
@@ -56,7 +64,7 @@ def create_broadcast():
             'names': [
                 area['name'] for area in broadcast_json['areas']
             ],
-            'simple_polygons': polygons.smooth.simplify.as_coordinate_pairs_long_lat,
+            'simple_polygons': simple_polygons.as_coordinate_pairs_lat_long,
         },
         status=BroadcastStatusType.PENDING_APPROVAL,
         api_key_id=api_user.id,
