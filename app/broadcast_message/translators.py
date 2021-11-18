@@ -29,5 +29,5 @@ def cap_xml_polygon_to_list(polygon_string):
         [
             float(coordinate) for coordinate in pair.split(',')
         ]
-        for pair in polygon_string.split(' ')
+        for pair in polygon_string.strip().split(' ')
     ]
