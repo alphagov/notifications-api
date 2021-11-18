@@ -398,14 +398,14 @@ def insert_notification_history_delete_notifications(
     select_to_use = select_into_temp_table_for_letters if notification_type == 'letter' else select_into_temp_table
     db.session.execute(select_to_use, input_params)
 
-    result = db.session.execute("select * from NOTIFICATION_ARCHIVE")
+    result = db.session.execute("select count(*) from NOTIFICATION_ARCHIVE").fetchone()[0]
 
     db.session.execute(insert_query)
 
     db.session.execute(delete_query)
 
     db.session.execute("DROP TABLE NOTIFICATION_ARCHIVE")
-    return result.rowcount
+    return result
 
 
 def _move_notifications_to_notification_history(notification_type, service_id, day_to_delete_backwards_from, qry_limit):
