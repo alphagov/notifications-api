@@ -251,7 +251,7 @@ class Config(object):
             # app/celery/nightly_tasks.py
             'timeout-sending-notifications': {
                 'task': 'timeout-sending-notifications',
-                'schedule': crontab(hour=0, minute=5),
+                'schedule': crontab(minute=5),
                 'options': {'queue': QueueNames.PERIODIC}
             },
             'create-nightly-billing': {
