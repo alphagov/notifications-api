@@ -474,9 +474,6 @@ def _timeout_notifications(current_statuses, new_status, timeout_start, updated_
     ).all()
 
     Notification.query.filter(
-        Notification.created_at < timeout_start,
-        Notification.status.in_(current_statuses),
-        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
         Notification.id.in_([n.id for n in notifications]),
     ).update(
         {'status': new_status, 'updated_at': updated_at},
