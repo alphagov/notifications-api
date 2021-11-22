@@ -70,3 +70,29 @@ def test_get_processing_time_percentage_for_date_range(notify_db_session):
     assert results[0].messages_total == 3
     assert results[0].messages_within_10_secs == 2
     assert round(results[0].percentage, 1) == 66.7
+
+
+def test_get_processing_time_percentage_for_date_range_handles_zero_cases(notify_db_session):
+    create_process_time(
+        bst_date='2021-02-21',
+        messages_total=0,
+        messages_within_10_secs=0
+    )
+    create_process_time(
+        bst_date='2021-02-22',
+        messages_total=10,
+        messages_within_10_secs=0
+    )
+
+    results = get_processing_time_percentage_for_date_range('2021-02-21', '2021-02-22')
+
+    assert len(results) == 2
+    assert results[0].date == '2021-02-21'
+    assert results[0].messages_total == 0
+    assert results[0].messages_within_10_secs == 0
+    assert results[0].percentage == 100.0
+
+    assert results[1].date == '2021-02-22'
+    assert results[1].messages_total == 10
+    assert results[1].messages_within_10_secs == 0
+    assert results[1].percentage == 0.0
