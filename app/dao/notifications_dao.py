@@ -47,7 +47,6 @@ from app.models import (
     Notification,
     NotificationHistory,
     ProviderDetails,
-    Service,
     ServiceDataRetention,
 )
 from app.utils import (
@@ -323,16 +322,31 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
         deleted += _move_notifications_to_notification_history(
             notification_type, f.service_id, day_to_delete_backwards_from, qry_limit)
 
-    current_app.logger.info(
-        'Deleting {} notifications for services without flexible data retention'.format(notification_type))
-
     seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=7)
-    services_with_data_retention = [x.service_id for x in flexible_data_retention]
-    service_ids_to_purge = Service.query.filter(Service.id.notin_(services_with_data_retention)).all()
+    service_ids_with_data_retention = {x.service_id for x in flexible_data_retention}
 
-    for service in service_ids_to_purge:
+    # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
+    # This query takes a couple of mins to run.
+    service_ids_that_have_sent_notifications_recently = {
+        row.service_id
+        for row in db.session.query(
+            Notification.service_id
+        ).filter(
+            Notification.notification_type == notification_type,
+            Notification.created_at < seven_days_ago
+        ).distinct()
+    }
+
+    service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
+
+    current_app.logger.info('Deleting {} notifications for {} services without flexible data retention'.format(
+        notification_type,
+        len(service_ids_to_purge)
+    ))
+
+    for service_id in service_ids_to_purge:
         deleted += _move_notifications_to_notification_history(
-            notification_type, service.id, seven_days_ago, qry_limit)
+            notification_type, service_id, seven_days_ago, qry_limit)
 
     current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
 
