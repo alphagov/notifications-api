@@ -19,6 +19,7 @@ from app.celery.scheduled_tasks import (
     check_job_status,
     delete_invitations,
     delete_verify_codes,
+    raise_alert_if_email_sms_still_in_created,
     remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
     run_scheduled_jobs,
@@ -106,6 +107,24 @@ def test_should_update_all_scheduled_jobs_and_put_on_queue(sample_template, mock
         call([str(job_2.id)], queue="job-tasks"),
         call([str(job_1.id)], queue="job-tasks")
     ])
+
+
+def test_raise_alert_if_email_sms_still_in_created(notify_api, mocker):
+    mock_check = mocker.patch('app.celery.scheduled_tasks.dao_check_notifications_still_in_created')
+    mock_logger = mocker.patch('app.celery.scheduled_tasks.current_app.logger')
+
+    mock_check.return_value = 0
+    raise_alert_if_email_sms_still_in_created()
+    mock_logger.info.assert_called_once_with("0 notifications are still in 'created'.")
+
+    assert mock_check.called_once_with(
+        notify_api.config['CREATED_NOTIFICATIONS_ALERT_AGE']
+    )
+
+    # try again with something to alert about
+    mock_check.return_value = 1
+    raise_alert_if_email_sms_still_in_created()
+    mock_logger.error.assert_called_once_with("1 notifications are still in 'created'.")
 
 
 @freeze_time('2017-05-01 14:00:00')
