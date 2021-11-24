@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from unittest.mock import ANY, call
 
 import boto3
 import pytest
@@ -446,3 +447,57 @@ def test_insert_notification_history_delete_notifications_insert_for_key_type(sa
     assert len(notifications) == 1
     assert with_test_key.id == notifications[0].id
     assert len(history_rows) == 2
+
+
+@freeze_time('2020-12-10')
+def test_delete_notifications_only_runs_move_notifications_for_services_that_have_things_to_delete(mocker):
+    move_notifications_mock = mocker.patch(
+        'app.dao.notifications_dao._move_notifications_to_notification_history',
+        return_value=0
+    )
+
+    service_retention_will_delete = create_service(service_name='a')
+    service_retention_nothing_to_delete = create_service(service_name='b')
+    service_will_delete = create_service(service_name='c')
+    service_nothing_to_delete = create_service(service_name='d')
+
+    create_service_data_retention(
+        service_retention_will_delete,
+        notification_type='sms',
+        days_of_retention=3
+    )
+    create_service_data_retention(
+        service_retention_nothing_to_delete,
+        notification_type='sms',
+        days_of_retention=3
+    )
+
+    create_template(service_retention_will_delete)
+    create_template(service_retention_nothing_to_delete)
+    create_template(service_will_delete)
+    nothing_to_delete_sms_template = create_template(service_nothing_to_delete, template_type='sms')
+    nothing_to_delete_email_template = create_template(service_nothing_to_delete, template_type='email')
+
+    # this notification will be deleted because it's past retention
+    create_notification(service_retention_will_delete.templates[0], created_at=datetime.now() - timedelta(days=8))
+
+    # will be deleted as service has no custom retention, but past our default 7 days
+    create_notification(service_will_delete.templates[0], created_at=datetime.now() - timedelta(days=8))
+
+    # will be kept as it's recent, but we'll still run _move_notifications_to_notification_history
+    # as it's for a service with custom retention
+    create_notification(service_retention_nothing_to_delete.templates[0], created_at=datetime.now() - timedelta(days=2))
+
+    # will be kept as it's recent, and we won't run _move_notifications_to_notification_history
+    create_notification(nothing_to_delete_sms_template, created_at=datetime.now() - timedelta(days=2))
+    # this is an old notification, but for email not sms, so we won't run _move_notifications_to_notification_history
+    create_notification(nothing_to_delete_email_template, created_at=datetime.now() - timedelta(days=2))
+
+    delete_notifications_older_than_retention_by_type('sms')
+
+    # called for all services except for "service_nothing_to_delete"
+    move_notifications_mock.assert_has_calls([
+        call('sms', service_retention_will_delete.id, ANY, ANY),
+        call('sms', service_retention_nothing_to_delete.id, ANY, ANY),
+        call('sms', service_will_delete.id, ANY, ANY),
+    ], any_order=True)
