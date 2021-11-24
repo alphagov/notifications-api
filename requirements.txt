@@ -171,7 +171,7 @@ psycopg2-binary==2.9.2
     # via -r requirements.in
 pyasn1==0.4.8
     # via rsa
-pycparser==2.20
+pycparser==2.21
     # via cffi
 pyjwt==2.3.0
     # via
