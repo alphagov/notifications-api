@@ -17,6 +17,7 @@ from app.celery.tasks import (
     process_row,
 )
 from app.config import QueueNames, TaskNames
+from app.cronitor import cronitor
 from app.dao.invited_org_user_dao import (
     delete_org_invitations_created_more_than_two_days_ago,
 )
@@ -59,6 +60,7 @@ from app.notifications.process_notifications import send_notification_to_queue
 
 
 @notify_celery.task(name="run-scheduled-jobs")
+@cronitor("run-scheduled-jobs")
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
@@ -70,6 +72,7 @@ def run_scheduled_jobs():
 
 
 @notify_celery.task(name="delete-verify-codes")
+@cronitor("delete-verify-codes")
 def delete_verify_codes():
     try:
         start = datetime.utcnow()
@@ -83,6 +86,7 @@ def delete_verify_codes():
 
 
 @notify_celery.task(name="delete-invitations")
+@cronitor("delete-invitations")
 def delete_invitations():
     try:
         start = datetime.utcnow()
@@ -97,6 +101,7 @@ def delete_invitations():
 
 
 @notify_celery.task(name='switch-current-sms-provider-on-slow-delivery')
+@cronitor('switch-current-sms-provider-on-slow-delivery')
 def switch_current_sms_provider_on_slow_delivery():
     """
     Reduce provider's priority if at least 30% of notifications took more than four minutes to be delivered
@@ -119,11 +124,13 @@ def switch_current_sms_provider_on_slow_delivery():
 
 
 @notify_celery.task(name='tend-providers-back-to-middle')
+@cronitor('tend-providers-back-to-middle')
 def tend_providers_back_to_middle():
     dao_adjust_provider_priority_back_to_resting_points()
 
 
 @notify_celery.task(name='check-job-status')
+@cronitor('check-job-status')
 def check_job_status():
     """
     every x minutes do this check
@@ -173,6 +180,7 @@ def check_job_status():
 
 
 @notify_celery.task(name='replay-created-notifications')
+@cronitor('replay-created-notifications')
 def replay_created_notifications():
     # if the notification has not be send after 1 hour, then try to resend.
     resend_created_notifications_older_than = (60 * 60)
@@ -206,6 +214,7 @@ def replay_created_notifications():
 
 
 @notify_celery.task(name='check-if-letters-still-pending-virus-check')
+@cronitor('check-if-letters-still-pending-virus-check')
 def check_if_letters_still_pending_virus_check():
     letters = dao_precompiled_letters_still_pending_virus_check()
 
@@ -229,6 +238,7 @@ def check_if_letters_still_pending_virus_check():
 
 
 @notify_celery.task(name='check-if-letters-still-in-created')
+@cronitor('check-if-letters-still-in-created')
 def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
@@ -251,6 +261,7 @@ def check_if_letters_still_in_created():
 
 
 @notify_celery.task(name='check-for-missing-rows-in-completed-jobs')
+@cronitor('check-for-missing-rows-in-completed-jobs')
 def check_for_missing_rows_in_completed_jobs():
     jobs = find_jobs_with_missing_rows()
     for job in jobs:
@@ -264,6 +275,7 @@ def check_for_missing_rows_in_completed_jobs():
 
 
 @notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
+@cronitor('check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
 def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     start_date = (datetime.utcnow() - timedelta(days=1))
     end_date = datetime.utcnow()
@@ -311,6 +323,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
 
 
 @notify_celery.task(name='trigger-link-tests')
+@cronitor('trigger-link-tests')
 def trigger_link_tests():
     if current_app.config['CBC_PROXY_ENABLED']:
         for cbc_name in current_app.config['ENABLED_CBCS']:
@@ -318,6 +331,7 @@ def trigger_link_tests():
 
 
 @notify_celery.task(name='auto-expire-broadcast-messages')
+@cronitor('auto-expire-broadcast-messages')
 def auto_expire_broadcast_messages():
     expired_broadcasts = BroadcastMessage.query.filter(
         BroadcastMessage.finishes_at <= datetime.now(),
@@ -337,6 +351,7 @@ def auto_expire_broadcast_messages():
 
 
 @notify_celery.task(name='remove-yesterdays-planned-tests-on-govuk-alerts')
+@cronitor('remove-yesterdays-planned-tests-on-govuk-alerts')
 def remove_yesterdays_planned_tests_on_govuk_alerts():
     notify_celery.send_task(
         name=TaskNames.PUBLISH_GOVUK_ALERTS,
