@@ -166,7 +166,8 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
     mocked.assert_called_once_with('letter')
 
 
-def test_timeout_notifications(mocker, notify_api, sample_notification):
+def test_timeout_notifications_no_callbacks(mocker, sample_notification):
+    mock_update = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
     mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
     mock_dao.return_value = [sample_notification]
 
@@ -176,6 +177,7 @@ def test_timeout_notifications(mocker, notify_api, sample_notification):
         current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
     )
 
+    mock_update.assert_not_called()
 
 def test_timeout_notifications_sends_status_update_to_service(client, sample_template, mocker):
     callback_api = create_service_callback_api(service=sample_template.service)
