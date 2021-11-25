@@ -179,18 +179,17 @@ def test_timeout_notifications_no_callbacks(mocker, sample_notification):
 
     mock_update.assert_not_called()
 
-def test_timeout_notifications_sends_status_update_to_service(client, sample_template, mocker):
-    callback_api = create_service_callback_api(service=sample_template.service)
-    mocked = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
-    notification = create_notification(
-        template=sample_template,
-        status='sending',
-        created_at=datetime.utcnow() - timedelta(
-            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+
+def test_timeout_notifications_with_callbacks(mocker, sample_notification):
+    mock_update = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+    mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
+    mock_dao.return_value = [sample_notification]
+
+    callback_api = create_service_callback_api(service=sample_notification.service)
     timeout_notifications()
 
-    encrypted_data = create_delivery_status_callback_data(notification, callback_api)
-    mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
+    encrypted_data = create_delivery_status_callback_data(sample_notification, callback_api)
+    mock_update.assert_called_once_with([str(sample_notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
 def test_delete_inbound_sms_calls_child_task(notify_api, mocker):
