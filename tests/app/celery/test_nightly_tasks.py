@@ -147,26 +147,26 @@ def test_remove_csv_files_filters_by_type(mocker, sample_service):
     ]
 
 
-def test_should_call_delete_sms_notifications_more_than_week_in_task(notify_api, mocker):
+def test_delete_sms_notifications_older_than_retention_calls_child_task(notify_api, mocker):
     mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
     delete_sms_notifications_older_than_retention()
     mocked.assert_called_once_with('sms')
 
 
-def test_should_call_delete_email_notifications_more_than_week_in_task(notify_api, mocker):
+def test_delete_email_notifications_older_than_retentions_calls_child_task(notify_api, mocker):
     mocked_notifications = mocker.patch(
         'app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
     delete_email_notifications_older_than_retention()
     mocked_notifications.assert_called_once_with('email')
 
 
-def test_should_call_delete_letter_notifications_more_than_week_in_task(notify_api, mocker):
+def test_delete_letter_notifications_older_than_retention_calls_child_task(notify_api, mocker):
     mocked = mocker.patch('app.celery.nightly_tasks.delete_notifications_older_than_retention_by_type')
     delete_letter_notifications_older_than_retention()
     mocked.assert_called_once_with('letter')
 
 
-def test_update_status_of_notifications_after_timeout(notify_api, sample_template):
+def test_timeout_notifications_after_timeout(notify_api, sample_template):
     with notify_api.test_request_context():
         not1 = create_notification(
             template=sample_template,
@@ -189,7 +189,7 @@ def test_update_status_of_notifications_after_timeout(notify_api, sample_templat
         assert not3.status == 'temporary-failure'
 
 
-def test_not_update_status_of_notification_before_timeout(notify_api, sample_template):
+def test_timeout_notifications_before_timeout(notify_api, sample_template):
     with notify_api.test_request_context():
         not1 = create_notification(
             template=sample_template,
@@ -200,7 +200,7 @@ def test_not_update_status_of_notification_before_timeout(notify_api, sample_tem
         assert not1.status == 'sending'
 
 
-def test_should_not_update_status_of_letter_notifications(client, sample_letter_template):
+def test_timeout_notifications_avoids_letters(client, sample_letter_template):
     created_at = datetime.utcnow() - timedelta(days=5)
     not1 = create_notification(template=sample_letter_template, status='sending', created_at=created_at)
     not2 = create_notification(template=sample_letter_template, status='created', created_at=created_at)
@@ -225,7 +225,7 @@ def test_timeout_notifications_sends_status_update_to_service(client, sample_tem
     mocked.assert_called_once_with([str(notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
 
 
-def test_should_call_delete_inbound_sms(notify_api, mocker):
+def test_delete_inbound_sms_calls_child_task(notify_api, mocker):
     mocker.patch('app.celery.nightly_tasks.delete_inbound_sms_older_than_retention')
     delete_inbound_sms()
     assert nightly_tasks.delete_inbound_sms_older_than_retention.call_count == 1
