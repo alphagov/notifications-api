@@ -526,9 +526,6 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     """
     Timeout SMS and email notifications by the following rules:
 
-    we never sent the notification to the provider for some reason
-        created -> technical-failure
-
     the notification was sent to the provider but there was not a delivery receipt
         sending -> temporary-failure
         pending -> temporary-failure
@@ -539,16 +536,13 @@ def dao_timeout_notifications(timeout_period_in_seconds):
     updated_at = datetime.utcnow()
     timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
 
-    # Notifications still in created status are marked with a technical-failure:
-    technical_failure_notifications = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
-
     # Notifications still in sending or pending status are marked with a temporary-failure:
     temporary_failure_notifications = timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING],
                                               NOTIFICATION_TEMPORARY_FAILURE)
 
     db.session.commit()
 
-    return technical_failure_notifications, temporary_failure_notifications
+    return temporary_failure_notifications
 
 
 def is_delivery_slow_for_providers(

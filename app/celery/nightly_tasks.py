@@ -30,7 +30,6 @@ from app.dao.notifications_dao import (
 from app.dao.service_callback_api_dao import (
     get_service_delivery_status_callback_api_for_service,
 )
-from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -123,10 +122,9 @@ def timeout_notifications():
     # dao_timeout_notifications to return up to 100K notifications, so this task
     # will operate on up to 500K - normally we only get around 20K.
     for _ in range(0, 5):
-        technical_failure_notifications, temporary_failure_notifications = \
+        notifications = \
             dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
 
-        notifications = technical_failure_notifications + temporary_failure_notifications
         for notification in notifications:
             # queue callback task only if the service_callback_api exists
             service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)  # noqa: E501
@@ -137,11 +135,6 @@ def timeout_notifications():
 
         current_app.logger.info(
             "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
-        if technical_failure_notifications:
-            message = "{} notifications have been updated to technical-failure because they " \
-                      "have timed out and are still in created.Notification ids: {}".format(
-                          len(technical_failure_notifications), [str(x.id) for x in technical_failure_notifications])
-            raise NotificationTechnicalFailureException(message)
 
         if len(notifications) < 100000:
             return
