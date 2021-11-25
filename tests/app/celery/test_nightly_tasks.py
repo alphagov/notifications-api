@@ -166,47 +166,15 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
     mocked.assert_called_once_with('letter')
 
 
-def test_timeout_notifications_after_timeout(notify_api, sample_template):
-    not1 = create_notification(
-        template=sample_template,
-        status='sending',
-        created_at=datetime.utcnow() - timedelta(
-            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-    not2 = create_notification(
-        template=sample_template,
-        status='created',
-        created_at=datetime.utcnow() - timedelta(
-            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-    not3 = create_notification(
-        template=sample_template,
-        status='pending',
-        created_at=datetime.utcnow() - timedelta(
-            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-    timeout_notifications()
-    assert not1.status == 'temporary-failure'
-    assert not2.status == 'created'
-    assert not3.status == 'temporary-failure'
-
-
-def test_timeout_notifications_before_timeout(notify_api, sample_template):
-    not1 = create_notification(
-        template=sample_template,
-        status='sending',
-        created_at=datetime.utcnow() - timedelta(
-            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
-    timeout_notifications()
-    assert not1.status == 'sending'
-
-
-def test_timeout_notifications_avoids_letters(client, sample_letter_template):
-    created_at = datetime.utcnow() - timedelta(days=5)
-    not1 = create_notification(template=sample_letter_template, status='sending', created_at=created_at)
-    not2 = create_notification(template=sample_letter_template, status='created', created_at=created_at)
+def test_timeout_notifications(mocker, notify_api, sample_notification):
+    mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
+    mock_dao.return_value = [sample_notification]
 
     timeout_notifications()
 
-    assert not1.status == 'sending'
-    assert not2.status == 'created'
+    mock_dao.assert_called_once_with(
+        current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
+    )
 
 
 def test_timeout_notifications_sends_status_update_to_service(client, sample_template, mocker):
