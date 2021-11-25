@@ -167,37 +167,35 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
 
 
 def test_timeout_notifications_after_timeout(notify_api, sample_template):
-    with notify_api.test_request_context():
-        not1 = create_notification(
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not2 = create_notification(
-            template=sample_template,
-            status='created',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        not3 = create_notification(
-            template=sample_template,
-            status='pending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
-        timeout_notifications()
-        assert not1.status == 'temporary-failure'
-        assert not2.status == 'created'
-        assert not3.status == 'temporary-failure'
+    not1 = create_notification(
+        template=sample_template,
+        status='sending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    not2 = create_notification(
+        template=sample_template,
+        status='created',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    not3 = create_notification(
+        template=sample_template,
+        status='pending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') + 10))
+    timeout_notifications()
+    assert not1.status == 'temporary-failure'
+    assert not2.status == 'created'
+    assert not3.status == 'temporary-failure'
 
 
 def test_timeout_notifications_before_timeout(notify_api, sample_template):
-    with notify_api.test_request_context():
-        not1 = create_notification(
-            template=sample_template,
-            status='sending',
-            created_at=datetime.utcnow() - timedelta(
-                seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
-        timeout_notifications()
-        assert not1.status == 'sending'
+    not1 = create_notification(
+        template=sample_template,
+        status='sending',
+        created_at=datetime.utcnow() - timedelta(
+            seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD') - 10))
+    timeout_notifications()
+    assert not1.status == 'sending'
 
 
 def test_timeout_notifications_avoids_letters(client, sample_letter_template):
