@@ -4,10 +4,14 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.notifications_dao import get_notification_by_id
 from app.models import Complaint
-from app.notifications.notifications_ses_callback import handle_complaint
+from app.notifications.notifications_ses_callback import (
+    check_and_queue_callback_task,
+    handle_complaint,
+)
 from tests.app.db import (
     create_notification,
     create_notification_history,
+    create_service_callback_api,
     ses_complaint_callback,
     ses_complaint_callback_malformed_message_id,
     ses_complaint_callback_with_missing_complaint_type,
@@ -64,3 +68,37 @@ def test_process_ses_results_in_complaint_save_complaint_with_null_complaint_typ
     assert len(complaints) == 1
     assert complaints[0].notification_id == notification.id
     assert not complaints[0].complaint_type
+
+
+def test_check_and_queue_callback_task(mocker, sample_notification):
+    mock_create = mocker.patch(
+        'app.notifications.notifications_ses_callback.create_delivery_status_callback_data'
+    )
+
+    mock_send = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+
+    callback_api = create_service_callback_api(service=sample_notification.service)
+    mock_create.return_value = 'encrypted_status_update'
+
+    check_and_queue_callback_task(sample_notification)
+
+    # callback_api doesn't match by equality for some
+    # reason, so we need to take this approach instead
+    mock_create_args = mock_create.mock_calls[0][1]
+    assert mock_create_args[0] == sample_notification
+    assert mock_create_args[1].id == callback_api.id
+
+    mock_send.assert_called_once_with(
+        [str(sample_notification.id), mock_create.return_value], queue="service-callbacks"
+    )
+
+
+def test_check_and_queue_callback_task_no_callback_api(mocker, sample_notification):
+    mock_send = mocker.patch(
+        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
+    )
+
+    check_and_queue_callback_task(sample_notification)
+    mock_send.assert_not_called()
