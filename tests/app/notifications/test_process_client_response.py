@@ -8,12 +8,8 @@ from app import statsd_client
 from app.celery.process_sms_client_response_tasks import (
     process_sms_client_response,
 )
-from app.celery.service_callback_tasks import (
-    create_delivery_status_callback_data,
-)
 from app.clients import ClientException
 from app.models import NOTIFICATION_TECHNICAL_FAILURE
-from tests.app.db import create_service_callback_api
 
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
@@ -121,12 +117,7 @@ def test_process_sms_client_response_updates_notification_status_when_detailed_s
 
 
 def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sample_service, mocker):
-    mocker.patch(
-        'app.celery.process_sms_client_response_tasks.get_service_delivery_status_callback_api_for_service',
-        return_value='mock-delivery-callback-for-service')
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
+    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
     reference = str(uuid.uuid4())
     process_sms_client_response(status='3', provider_reference=reference, client_name='MMG')
     send_mock.assert_not_called()
@@ -156,26 +147,17 @@ def test_process_sms_updates_billable_units_if_zero(sample_notification):
 
 
 def test_process_sms_response_does_not_send_service_callback_for_pending_notifications(sample_notification, mocker):
-    mocker.patch(
-        'app.celery.process_sms_client_response_tasks.get_service_delivery_status_callback_api_for_service',
-        return_value='fake-callback')
-    send_mock = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
     process_sms_client_response('2', str(sample_notification.id), 'Firetext')
     send_mock.assert_not_called()
 
 
 def test_outcome_statistics_called_for_successful_callback(sample_notification, mocker):
-    send_mock = mocker.patch(
-        'app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async'
-    )
-    callback_api = create_service_callback_api(service=sample_notification.service, url="https://original_url.com")
+    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
     reference = str(sample_notification.id)
 
     process_sms_client_response('3', reference, 'MMG')
-
-    encrypted_data = create_delivery_status_callback_data(sample_notification, callback_api)
-    send_mock.assert_called_once_with([reference, encrypted_data],
-                                      queue="service-callbacks")
+    send_mock.assert_called_once_with(sample_notification)
 
 
 def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):

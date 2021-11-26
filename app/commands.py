@@ -26,10 +26,6 @@ from app.celery.letters_pdf_tasks import (
 from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_day,
 )
-from app.celery.service_callback_tasks import (
-    create_delivery_status_callback_data,
-    send_delivery_status_to_service,
-)
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.dao.annual_billing_dao import (
@@ -51,9 +47,6 @@ from app.dao.organisation_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.provider_rates_dao import (
     create_provider_rates as dao_create_provider_rates,
-)
-from app.dao.service_callback_api_dao import (
-    get_service_delivery_status_callback_api_for_service,
 )
 from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
@@ -84,6 +77,9 @@ from app.models import (
     Permission,
     Service,
     User,
+)
+from app.notifications.notifications_ses_callback import (
+    check_and_queue_callback_task,
 )
 from app.utils import get_london_midnight_in_utc
 
@@ -295,23 +291,7 @@ def replay_callbacks(file_name):
     for id in [id.strip() for id in file]:
         try:
             notification = Notification.query.filter_by(id=id).one()
-
-            callback_api = get_service_delivery_status_callback_api_for_service(
-                service_id=notification.service_id
-            )
-
-            if not callback_api:
-                print(f"Callback api was not found for notification: {id}.")
-                continue
-
-            encrypted_status_update = create_delivery_status_callback_data(
-                notification, callback_api
-            )
-
-            send_delivery_status_to_service.apply_async(
-                [id, encrypted_status_update], queue=QueueNames.CALLBACKS
-            )
-
+            check_and_queue_callback_task(notification)
             print(f"Created callback task for notification: {id}.")
         except NoResultFound:
             print(f"ID: {id} was not found in notifications.")

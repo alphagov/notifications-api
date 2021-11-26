@@ -11,8 +11,8 @@ from app.config import QueueNames
 from app.dao import notifications_dao
 from app.models import NOTIFICATION_PENDING, NOTIFICATION_SENDING
 from app.notifications.notifications_ses_callback import (
-    _check_and_queue_callback_task,
     _check_and_queue_complaint_callback_task,
+    check_and_queue_callback_task,
     determine_notification_bounce_type,
     handle_complaint,
 )
@@ -76,7 +76,7 @@ def process_ses_results(self, response):
                 notification.sent_at
             )
 
-        _check_and_queue_callback_task(notification)
+        check_and_queue_callback_task(notification)
 
         return True
 

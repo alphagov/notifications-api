@@ -1,9 +1,8 @@
 import uuid
 
 from app.commands import local_dev_broadcast_permissions, replay_callbacks
-from app.config import QueueNames
 from app.dao.services_dao import dao_add_user_to_service
-from tests.app.db import create_service_callback_api, create_user
+from tests.app.db import create_user
 
 
 def test_local_dev_broadcast_permissions(
@@ -33,10 +32,7 @@ def test_replay_callbacks(
     tmpdir,
     notify_api,
 ):
-    mock_apply = mocker.patch('app.commands.send_delivery_status_to_service.apply_async')
-    mock_update = mocker.patch('app.commands.create_delivery_status_callback_data')
-    mock_update.return_value = 'encrypted_status_update'
-
+    mock_task = mocker.patch('app.commands.check_and_queue_callback_task')
     file_path = tmpdir + 'callback_ids.txt'
     missing_notification_id = uuid.uuid4()
 
@@ -48,20 +44,6 @@ def test_replay_callbacks(
         replay_callbacks, ['-f', file_path]
     )
 
-    mock_apply.assert_not_called()
     assert f'{missing_notification_id} was not found' in result.output
-    assert "Callback api was not found" in result.output
-
-    # Now re-run with the callback API in place
-    create_service_callback_api(service=sample_service, bearer_token='foo')
-
-    result = notify_api.test_cli_runner().invoke(
-        replay_callbacks, ['-f', file_path]
-    )
-
-    mock_apply.assert_called_once_with(
-        [str(sample_notification.id), 'encrypted_status_update'],
-        queue=QueueNames.CALLBACKS
-    )
-
+    mock_task.assert_called_once_with(sample_notification)
     assert result.exit_code == 0

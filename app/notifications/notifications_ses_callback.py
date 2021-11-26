@@ -68,7 +68,7 @@ def remove_emails_from_complaint(complaint_dict):
     return complaint_dict['mail'].pop('destination')
 
 
-def _check_and_queue_callback_task(notification):
+def check_and_queue_callback_task(notification):
     # queue callback task only if the service_callback_api exists
     service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
     if service_callback_api:

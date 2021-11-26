@@ -24,16 +24,11 @@ from app.celery.nightly_tasks import (
     save_daily_notification_processing_time,
     timeout_notifications,
 )
-from app.celery.service_callback_tasks import (
-    create_delivery_status_callback_data,
-)
-from app.config import QueueNames
 from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, FactProcessingTime
 from tests.app.db import (
     create_job,
     create_notification,
     create_service,
-    create_service_callback_api,
     create_service_data_retention,
     create_template,
 )
@@ -166,8 +161,8 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
     mocked.assert_called_once_with('letter')
 
 
-def test_timeout_notifications_no_callbacks(mocker, sample_notification):
-    mock_update = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
+def test_timeout_notifications(mocker, sample_notification):
+    mock_update = mocker.patch('app.celery.nightly_tasks.check_and_queue_callback_task')
     mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
     mock_dao.return_value = [sample_notification]
 
@@ -177,19 +172,7 @@ def test_timeout_notifications_no_callbacks(mocker, sample_notification):
         current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
     )
 
-    mock_update.assert_not_called()
-
-
-def test_timeout_notifications_with_callbacks(mocker, sample_notification):
-    mock_update = mocker.patch('app.celery.service_callback_tasks.send_delivery_status_to_service.apply_async')
-    mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
-    mock_dao.return_value = [sample_notification]
-
-    callback_api = create_service_callback_api(service=sample_notification.service)
-    timeout_notifications()
-
-    encrypted_data = create_delivery_status_callback_data(sample_notification, callback_api)
-    mock_update.assert_called_once_with([str(sample_notification.id), encrypted_data], queue=QueueNames.CALLBACKS)
+    mock_update.assert_called_once_with(sample_notification)
 
 
 def test_delete_inbound_sms_calls_child_task(notify_api, mocker):
