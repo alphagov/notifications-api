@@ -62,7 +62,7 @@ def test_performance_dashboard(sample_service, admin_request):
 
     create_process_time(bst_date='2021-02-28', messages_total=15, messages_within_10_secs=14)
     create_process_time(bst_date='2021-03-01', messages_total=35, messages_within_10_secs=34)
-    create_process_time(bst_date='2021-03-02', messages_total=15, messages_within_10_secs=14)
+    create_process_time(bst_date='2021-03-02', messages_total=15, messages_within_10_secs=12)
     create_process_time(bst_date='2021-03-03', messages_total=15, messages_within_10_secs=14)
 
     results = admin_request.get(endpoint="performance_dashboard.get_performance_dashboard",
@@ -75,8 +75,8 @@ def test_performance_dashboard(sample_service, admin_request):
     assert results['letter_notifications'] == 2+3+10+15
     assert results['notifications_by_type'] == [{"date": '2021-03-01', "emails": 15, "sms": 20, "letters": 3},
                                                 {"date": '2021-03-02', "emails": 25, "sms": 30, "letters": 10}]
-    assert results['processing_time'] == [{"date": "2021-03-01", "percentage_under_10_seconds": 97.1},
-                                          {"date": "2021-03-02", "percentage_under_10_seconds": 93.3}]
+    assert results['processing_time'] == [{"date": "2021-03-01", "percentage_under_10_seconds": 97.1428571428571},
+                                          {"date": "2021-03-02", "percentage_under_10_seconds": 80.0}]
     assert results["live_service_count"] == 1
     assert results["services_using_notify"][0]["service_name"] == sample_service.name
     assert not results["services_using_notify"][0]["organisation_name"]
