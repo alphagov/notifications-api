@@ -46,6 +46,7 @@ from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_get_organisation_by_email_address,
+    dao_get_organisation_by_id,
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.provider_rates_dao import (
@@ -249,13 +250,6 @@ def fix_notification_statuses_not_in_sync():
         print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
-
-
-@notify_command(name='list-routes')
-def list_routes():
-    """List URLs of all application routes."""
-    for rule in sorted(current_app.url_map.iter_rules(), key=lambda r: r.rule):
-        print("{:10} {}".format(", ".join(rule.methods - set(['OPTIONS', 'HEAD'])), rule.rule))
 
 
 @notify_command(name='insert-inbound-numbers')
@@ -696,6 +690,39 @@ def populate_organisations_from_file(file_name):
                     except IntegrityError:
                         print("duplicate domain", d.strip())
                         db.session.rollback()
+
+
+@notify_command(name='populate-organisation-agreement-details-from-file')
+@click.option('-f', '--file_name', required=True,
+              help="CSV file containing id, agreement_signed_version, "
+              "agreement_signed_on_behalf_of_name, agreement_signed_at")
+def populate_organisation_agreement_details_from_file(file_name):
+    """
+    The input file should be a comma separated CSV file with a header row and 4 columns
+    id: the organisation ID
+    agreement_signed_version
+    agreement_signed_on_behalf_of_name
+    agreement_signed_at: The date the agreement was signed in the format of 'dd/mm/yyyy'
+    """
+    with open(file_name) as f:
+        csv_reader = csv.reader(f)
+
+        # ignore the header row
+        next(csv_reader)
+
+        for row in csv_reader:
+            org = dao_get_organisation_by_id(row[0])
+
+            current_app.logger.info(f"Updating {org.name}")
+
+            assert org.agreement_signed
+
+            org.agreement_signed_version = float(row[1])
+            org.agreement_signed_on_behalf_of_name = row[2].strip()
+            org.agreement_signed_at = datetime.strptime(row[3], "%d/%m/%Y")
+
+            db.session.add(org)
+            db.session.commit()
 
 
 @notify_command(name='get-letter-details-from-zips-sent-file')
