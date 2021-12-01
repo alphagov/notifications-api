@@ -357,13 +357,25 @@ def delete_notifications_older_than_retention_by_type(notification_type, qry_lim
 def insert_notification_history_delete_notifications(
     notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
 ):
+    """
+    Delete up to 50,000 notifications that are past retention for a notification type and service.
+
+
+    Steps are as follows:
+
+    Create a temporary notifications table
+    Populate that table with up to 50k notifications that are to be deleted. (Note: no specified order)
+    Insert everything in the temp table into notification history
+    Delete from notifications if notification id is in the temp table
+    Drop the temp table (automatically when the transaction commits)
+
+    Temporary tables are in a separate postgres schema, and only visible to the current session (db connection,
+    in a celery task there's one connection per thread.)
+    """
     # Setting default query limit to 50,000 which take about 48 seconds on current table size
     # 10, 000 took 11s and 100,000 took 1 min 30 seconds.
-    drop_table_if_exists = """
-        DROP TABLE if exists NOTIFICATION_ARCHIVE
-        """
     select_into_temp_table = """
-         CREATE TEMP TABLE NOTIFICATION_ARCHIVE AS
+         CREATE TEMP TABLE NOTIFICATION_ARCHIVE ON COMMIT DROP AS
          SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
              key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
              client_reference, international, phone_prefix, rate_multiplier, notification_status,
@@ -376,7 +388,7 @@ def insert_notification_history_delete_notifications(
         limit :qry_limit
         """
     select_into_temp_table_for_letters = """
-         CREATE TEMP TABLE NOTIFICATION_ARCHIVE AS
+         CREATE TEMP TABLE NOTIFICATION_ARCHIVE ON COMMIT DROP AS
          SELECT id, job_id, job_row_number, service_id, template_id, template_version, api_key_id,
              key_type, notification_type, created_at, sent_at, sent_by, updated_at, reference, billable_units,
              client_reference, international, phone_prefix, rate_multiplier, notification_status,
@@ -407,8 +419,6 @@ def insert_notification_history_delete_notifications(
         "qry_limit": qry_limit
     }
 
-    db.session.execute(drop_table_if_exists)
-
     select_to_use = select_into_temp_table_for_letters if notification_type == 'letter' else select_into_temp_table
     db.session.execute(select_to_use, input_params)
 
@@ -418,7 +428,6 @@ def insert_notification_history_delete_notifications(
 
     db.session.execute(delete_query)
 
-    db.session.execute("DROP TABLE NOTIFICATION_ARCHIVE")
     return result
 
 
