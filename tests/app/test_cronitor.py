@@ -1,4 +1,3 @@
-import logging
 from urllib import parse
 
 import pytest
@@ -75,9 +74,8 @@ def test_cronitor_does_nothing_if_cronitor_not_enabled(notify_api, rmock):
     assert rmock.called is False
 
 
-def test_cronitor_does_nothing_if_name_not_recognised(notify_api, rmock, caplog):
-    # ignore "INFO" log about task starting
-    caplog.set_level(logging.ERROR)
+def test_cronitor_does_nothing_if_name_not_recognised(notify_api, rmock, mocker):
+    mock_logger = mocker.patch('app.cronitor.current_app.logger')
 
     with set_config_values(notify_api, {
         'CRONITOR_ENABLED': True,
@@ -85,9 +83,10 @@ def test_cronitor_does_nothing_if_name_not_recognised(notify_api, rmock, caplog)
     }):
         assert successful_task() == 1
 
-    error_log = caplog.records[0]
-    assert error_log.levelname == 'ERROR'
-    assert error_log.msg == 'Cronitor enabled but task_name hello not found in environment'
+    mock_logger.error.assert_called_with(
+        'Cronitor enabled but task_name hello not found in environment'
+    )
+
     assert rmock.called is False
 
 
