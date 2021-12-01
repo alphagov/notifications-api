@@ -558,6 +558,7 @@ def is_delivery_slow_for_providers(
         ProviderDetails
     ).outerjoin(
         Notification, and_(
+            Notification.notification_type == SMS_TYPE,
             Notification.sent_by == ProviderDetails.identifier,
             Notification.created_at >= created_at,
             Notification.sent_at.isnot(None),
