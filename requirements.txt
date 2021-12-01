@@ -177,7 +177,7 @@ pyjwt==2.3.0
     # via
     #   -r requirements.in
     #   notifications-python-client
-pyparsing==3.0.1
+pyparsing==3.0.6
     # via packaging
 pypdf2==1.26.0
     # via notifications-utils
