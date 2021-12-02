@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, url_for
 from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
     too_late_to_cancel_letter,
@@ -441,11 +441,22 @@ def get_all_notifications_for_service(service_id):
         notifications = [notification.serialize_for_csv() for notification in pagination.items]
     else:
         notifications = notification_with_template_schema.dump(pagination.items, many=True).data
+
+
+    def get_prev_next_pagination_links(pagination, endpoint, **kwargs):
+        if 'page' in kwargs:
+            kwargs.pop('page', None)
+        links = {}
+        if pagination.has_prev:
+            links['prev'] = url_for(endpoint, page=pagination.prev_num, **kwargs)
+        if pagination.has_next:
+            links['next'] = url_for(endpoint, page=pagination.next_num, **kwargs)
+        return links
+
     return jsonify(
         notifications=notifications,
         page_size=page_size,
-        total=pagination.total,
-        links=pagination_links(
+        links=get_prev_next_pagination_links(
             pagination,
             '.get_all_notifications_for_service',
             **kwargs
