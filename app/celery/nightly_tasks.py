@@ -65,66 +65,54 @@ def _remove_csv_files(job_types):
 
 @notify_celery.task(name="delete-notifications-older-than-retention")
 def delete_notifications_older_than_retention():
-    delete_email_notifications_older_than_retention()
-    delete_sms_notifications_older_than_retention()
-    delete_letter_notifications_older_than_retention()
+    delete_email_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+    delete_sms_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+    delete_letter_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
 
 
 @notify_celery.task(name="delete-sms-notifications")
 @cronitor("delete-sms-notifications")
 def delete_sms_notifications_older_than_retention():
-    try:
-        start = datetime.utcnow()
-        deleted = delete_notifications_older_than_retention_by_type('sms')
-        current_app.logger.info(
-            "Delete {} job started {} finished {} deleted {} sms notifications".format(
-                'sms',
-                start,
-                datetime.utcnow(),
-                deleted
-            )
+    start = datetime.utcnow()
+    deleted = delete_notifications_older_than_retention_by_type('sms')
+    current_app.logger.info(
+        "Delete {} job started {} finished {} deleted {} sms notifications".format(
+            'sms',
+            start,
+            datetime.utcnow(),
+            deleted
         )
-    except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete sms notifications")
-        raise
+    )
 
 
 @notify_celery.task(name="delete-email-notifications")
 @cronitor("delete-email-notifications")
 def delete_email_notifications_older_than_retention():
-    try:
-        start = datetime.utcnow()
-        deleted = delete_notifications_older_than_retention_by_type('email')
-        current_app.logger.info(
-            "Delete {} job started {} finished {} deleted {} email notifications".format(
-                'email',
-                start,
-                datetime.utcnow(),
-                deleted
-            )
+    start = datetime.utcnow()
+    deleted = delete_notifications_older_than_retention_by_type('email')
+    current_app.logger.info(
+        "Delete {} job started {} finished {} deleted {} email notifications".format(
+            'email',
+            start,
+            datetime.utcnow(),
+            deleted
         )
-    except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete email notifications")
-        raise
+    )
 
 
 @notify_celery.task(name="delete-letter-notifications")
 @cronitor("delete-letter-notifications")
 def delete_letter_notifications_older_than_retention():
-    try:
-        start = datetime.utcnow()
-        deleted = delete_notifications_older_than_retention_by_type('letter')
-        current_app.logger.info(
-            "Delete {} job started {} finished {} deleted {} letter notifications".format(
-                'letter',
-                start,
-                datetime.utcnow(),
-                deleted
-            )
+    start = datetime.utcnow()
+    deleted = delete_notifications_older_than_retention_by_type('letter')
+    current_app.logger.info(
+        "Delete {} job started {} finished {} deleted {} letter notifications".format(
+            'letter',
+            start,
+            datetime.utcnow(),
+            deleted
         )
-    except SQLAlchemyError:
-        current_app.logger.exception("Failed to delete letter notifications")
-        raise
+    )
 
 
 @notify_celery.task(name='timeout-sending-notifications')
