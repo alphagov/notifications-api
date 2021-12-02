@@ -1883,6 +1883,51 @@ def test_get_notifications_for_service_without_page_count(
     assert len(resp['notifications']) == 1
     assert resp['total'] is None
     assert resp['notifications'][0]['id'] == str(without_job.id)
+    assert 'prev' not in resp['links']
+    assert 'next' not in resp['links']
+    assert 'last' not in resp['links']
+
+
+def test_get_notifications_for_service_pagination_links(
+    admin_request,
+    sample_job,
+    sample_template,
+    sample_user,
+):
+    for _ in range(101):
+        create_notification(sample_template, to_field='+447700900855', normalised_to='447700900855')
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_template.service_id
+    )
+
+    assert resp['total'] == 101
+    assert 'prev' not in resp['links']
+    assert '?page=2' in resp['links']['next']
+    assert '?page=3' in resp['links']['last']
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_template.service_id,
+        page=2
+    )
+
+    assert resp['total'] == 101
+    assert '?page=1' in resp['links']['prev']
+    assert '?page=3' in resp['links']['next']
+    assert '?page=3' in resp['links']['last']
+
+    resp = admin_request.get(
+        'service.get_all_notifications_for_service',
+        service_id=sample_template.service_id,
+        page=3
+    )
+
+    assert resp['total'] == 101
+    assert '?page=2' in resp['links']['prev']
+    assert 'next' not in resp['links']
+    assert 'last' not in resp['links']
 
 
 @pytest.mark.parametrize('should_prefix', [
@@ -2229,6 +2274,7 @@ def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(
     assert len(response_json['notifications']) == 50
     assert 'prev' not in response_json['links']
     assert 'page=2' in response_json['links']['next']
+    assert 'page=2' in response_json['links']['last']
 
 
 def test_search_for_notification_by_to_field_for_letter(
