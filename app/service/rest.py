@@ -420,6 +420,8 @@ def get_all_notifications_for_service(service_id):
     include_from_test_key = data.get('include_from_test_key', False)
     include_one_off = data.get('include_one_off', True)
 
+    # count_pages is not being used for whether to count the number of pages, but instead as a flag
+    # for whether to show pagination links
     count_pages = data.get('count_pages', True)
 
     pagination = notifications_dao.get_notifications_for_service(
@@ -427,7 +429,7 @@ def get_all_notifications_for_service(service_id):
         filter_dict=data,
         page=page,
         page_size=page_size,
-        count_pages=count_pages,
+        count_pages=False,
         limit_days=limit_days,
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
@@ -442,25 +444,44 @@ def get_all_notifications_for_service(service_id):
     else:
         notifications = notification_with_template_schema.dump(pagination.items, many=True).data
 
+    # We try and get the next page of results to work out if we need provide a pagination link to the next page
+    # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
+    # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
+    # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
+    # doesn't do an additional query to count all the results of which there could be millions but instead only
+    # asks for a single extra page of results).
+    next_page_of_pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page + 1,
+        page_size=page_size,
+        count_pages=False,
+        limit_days=limit_days,
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key,
+        include_one_off=include_one_off,
+        error_out=False  # False so that if there are no results, it doesn't end in aborting with a 404
+    )
 
-    def get_prev_next_pagination_links(pagination, endpoint, **kwargs):
+    def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
         if 'page' in kwargs:
             kwargs.pop('page', None)
         links = {}
-        if pagination.has_prev:
-            links['prev'] = url_for(endpoint, page=pagination.prev_num, **kwargs)
-        if pagination.has_next:
-            links['next'] = url_for(endpoint, page=pagination.next_num, **kwargs)
+        if page > 1:
+            links['prev'] = url_for(endpoint, page=page - 1, **kwargs)
+        if next_page_exists:
+            links['next'] = url_for(endpoint, page=page + 1, **kwargs)
         return links
 
     return jsonify(
         notifications=notifications,
         page_size=page_size,
         links=get_prev_next_pagination_links(
-            pagination,
+            page,
+            len(next_page_of_pagination.items),
             '.get_all_notifications_for_service',
             **kwargs
-        )
+        ) if count_pages else {}
     ), 200
 
 
