@@ -65,9 +65,9 @@ def _remove_csv_files(job_types):
 
 @notify_celery.task(name="delete-notifications-older-than-retention")
 def delete_notifications_older_than_retention():
-    delete_email_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
-    delete_sms_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
-    delete_letter_notifications_older_than_retention.apply_async(queue=QueueNames.PERIODIC)
+    delete_email_notifications_older_than_retention.apply_async(queue=QueueNames.REPORTING)
+    delete_sms_notifications_older_than_retention.apply_async(queue=QueueNames.REPORTING)
+    delete_letter_notifications_older_than_retention.apply_async(queue=QueueNames.REPORTING)
 
 
 @notify_celery.task(name="delete-sms-notifications")
