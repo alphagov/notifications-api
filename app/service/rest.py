@@ -542,6 +542,9 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
     )
     return jsonify(
         notifications=notification_with_template_schema.dump(results.items, many=True).data,
+        # TODO: this may be a bug to include the pagination links as currently `search_for_notification_by_to_field`
+        # hardcodes the pages of results to always be the first page so not sure what benefit is to show a link to
+        # page 2 which would have the page parameter ignored
         links=pagination_links(
             results,
             '.get_all_notifications_for_service',
