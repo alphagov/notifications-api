@@ -30,7 +30,6 @@ from app.dao.jobs_dao import (
     find_missing_row_for_job,
 )
 from app.dao.notifications_dao import (
-    dao_check_notifications_still_in_created,
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
     is_delivery_slow_for_providers,
@@ -117,19 +116,6 @@ def switch_current_sms_provider_on_slow_delivery():
             if is_slow:
                 current_app.logger.warning('Slow delivery notifications detected for provider {}'.format(provider_name))
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
-
-
-@notify_celery.task(name='raise-alert-if-email-sms-still-in-created')
-def raise_alert_if_email_sms_still_in_created():
-    alert_above_age = current_app.config.get('CREATED_NOTIFICATIONS_ALERT_AGE')
-    still_in_created = dao_check_notifications_still_in_created(alert_above_age)
-    message = f"{still_in_created} notifications are still in 'created'."
-
-    if still_in_created == 0:
-        current_app.logger.info(message)
-        return
-
-    current_app.logger.error(message)
 
 
 @notify_celery.task(name='tend-providers-back-to-middle')

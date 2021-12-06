@@ -8,7 +8,6 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm.exc import NoResultFound
 
 from app.dao.notifications_dao import (
-    dao_check_notifications_still_in_created,
     dao_create_notification,
     dao_delete_notifications_by_id,
     dao_get_last_notification_added_for_job_id,
@@ -663,33 +662,6 @@ def _notification_json(sample_template, job_id=None, id=None, status=None):
     if status:
         data.update({'status': status})
     return data
-
-
-def test_dao_check_notifications_still_in_created(
-    sample_template,
-    sample_email_template,
-    sample_letter_template
-):
-    with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
-        # old sending notification (ignored)
-        create_notification(sample_template, status='sending')
-        # old letter notification (ignored)
-        create_notification(sample_letter_template, status='created')
-
-    with freeze_time(datetime.utcnow() + timedelta(minutes=10)):
-        # new / future notification (ignored)
-        create_notification(sample_template, status='created')
-
-    # first prove all the above notifications are ignored
-    assert dao_check_notifications_still_in_created(1) == 0
-
-    with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
-        # now add old, eligible notifications
-        create_notification(sample_template, status='created')
-        create_notification(sample_email_template, status='created')
-
-    # now prove the check only picks up on these ones
-    assert dao_check_notifications_still_in_created(1) == 2
 
 
 def test_dao_timeout_notifications(sample_template):

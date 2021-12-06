@@ -487,16 +487,6 @@ def dao_delete_notifications_by_id(notification_id):
     ).delete(synchronize_session='fetch')
 
 
-def dao_check_notifications_still_in_created(minimum_age_in_seconds):
-    min_created_at = datetime.utcnow() - timedelta(seconds=minimum_age_in_seconds)
-
-    return Notification.query.filter(
-        Notification.created_at < min_created_at,
-        Notification.status == NOTIFICATION_CREATED,
-        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE])
-    ).count()
-
-
 def dao_timeout_notifications(timeout_period_in_seconds):
     """
     Timeout SMS and email notifications by the following rules:

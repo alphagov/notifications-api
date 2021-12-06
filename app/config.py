@@ -310,11 +310,6 @@ class Config(object):
                 'schedule': crontab(hour=15, minute=30),
                 'options': {'queue': QueueNames.PERIODIC}
             },
-            'raise-alert-if-email-sms-still-in-created': {
-                'task': 'raise-alert-if-email-sms-still-in-created',
-                'schedule': crontab(minute=30),
-                'options': {'queue': QueueNames.PERIODIC},
-            },
             # The collate-letter-pdf does assume it is called in an hour that BST does not make a
             # difference to the truncate date which translates to the filename to process
             'collate-letter-pdfs-to-be-sent': {
@@ -360,7 +355,6 @@ class Config(object):
     STATSD_ENABLED = bool(STATSD_HOST)
 
     SENDING_NOTIFICATIONS_TIMEOUT_PERIOD = 259200  # 3 days
-    CREATED_NOTIFICATIONS_ALERT_AGE = 3600  # 1 hour
 
     SIMULATED_EMAIL_ADDRESSES = (
         'simulate-delivered@notifications.service.gov.uk',
