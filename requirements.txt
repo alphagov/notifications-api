@@ -142,7 +142,7 @@ markupsafe==2.0.1
     # via
     #   jinja2
     #   mako
-marshmallow==2.21.0
+marshmallow==3.14.1
     # via
     #   -r requirements.in
     #   flask-marshmallow
