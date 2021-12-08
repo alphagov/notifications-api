@@ -1,5 +1,5 @@
 -r requirements.txt
-flake8==3.8.4
+flake8==4.0.1
 flake8-bugbear==20.11.1
 isort==5.7.0
 moto==2.0.11
