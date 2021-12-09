@@ -78,9 +78,6 @@ from app.models import (
     Service,
     User,
 )
-from app.notifications.notifications_ses_callback import (
-    check_and_queue_callback_task,
-)
 from app.utils import get_london_midnight_in_utc
 
 
@@ -278,23 +275,6 @@ def replay_create_pdf_for_templated_letter(notification_id):
 def recreate_pdf_for_precompiled_or_uploaded_letter(notification_id):
     print(f"Call resanitise_pdf task for notification: {notification_id}")
     resanitise_pdf.apply_async([str(notification_id)], queue=QueueNames.LETTERS)
-
-
-@notify_command(name='replay-callbacks')
-@click.option('-f', '--file-name', required=True,
-              help="""Full path of the file to upload, containing IDs of
-              notifications that need the status to be sent to the service.""")
-def replay_callbacks(file_name):
-    print("Replaying callbacks.")
-    file = open(file_name)
-
-    for id in [id.strip() for id in file]:
-        try:
-            notification = Notification.query.filter_by(id=id).one()
-            check_and_queue_callback_task(notification)
-            print(f"Created callback task for notification: {id}.")
-        except NoResultFound:
-            print(f"ID: {id} was not found in notifications.")
 
 
 def setup_commands(application):
