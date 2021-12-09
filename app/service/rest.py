@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime
 
-from flask import Blueprint, current_app, jsonify, request, url_for
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
     too_late_to_cancel_letter,
@@ -148,6 +148,7 @@ from app.user.users_schema import post_set_permissions_schema
 from app.utils import (
     DATE_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
+    get_prev_next_pagination_links,
     midnight_n_days_ago,
     pagination_links,
 )
@@ -462,16 +463,6 @@ def get_all_notifications_for_service(service_id):
         include_one_off=include_one_off,
         error_out=False  # False so that if there are no results, it doesn't end in aborting with a 404
     )
-
-    def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
-        if 'page' in kwargs:
-            kwargs.pop('page', None)
-        links = {}
-        if page > 1:
-            links['prev'] = url_for(endpoint, page=page - 1, **kwargs)
-        if next_page_exists:
-            links['next'] = url_for(endpoint, page=page + 1, **kwargs)
-        return links
 
     return jsonify(
         notifications=notifications,

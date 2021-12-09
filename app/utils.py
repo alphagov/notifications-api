@@ -29,6 +29,17 @@ def pagination_links(pagination, endpoint, **kwargs):
     return links
 
 
+def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
+    if 'page' in kwargs:
+        kwargs.pop('page', None)
+    links = {}
+    if current_page > 1:
+        links['prev'] = url_for(endpoint, page=current_page - 1, **kwargs)
+    if next_page_exists:
+        links['next'] = url_for(endpoint, page=current_page + 1, **kwargs)
+    return links
+
+
 def url_with_token(data, url, config, base_url=None):
     from notifications_utils.url_safe_token import generate_token
     token = generate_token(data, config['SECRET_KEY'], config['DANGEROUS_SALT'])
