@@ -831,7 +831,7 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     assert service_usage['free_sms_limit'] == 10
     assert service_usage['letter_cost'] == 0
     assert service_usage['sms_billable_units'] == 19
-    assert service_usage['sms_remainder'] == 10
+    assert service_usage['sms_remainder'] == 0
     assert service_usage['sms_cost'] == 0.54
 
 

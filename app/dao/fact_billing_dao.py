@@ -32,9 +32,9 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
 
 
-def fetch_sms_free_allowance_remainder(start_date):
+def fetch_sms_free_allowance_remainder_until_date(end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    billing_year = get_financial_year_for_datetime(start_date)
+    billing_year = get_financial_year_for_datetime(end_date)
     start_of_year = date(billing_year, 4, 1)
 
     billable_units = func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0)
@@ -50,7 +50,7 @@ def fetch_sms_free_allowance_remainder(start_date):
         FactBilling, and_(
             AnnualBilling.service_id == FactBilling.service_id,
             FactBilling.bst_date >= start_of_year,
-            FactBilling.bst_date < start_date,
+            FactBilling.bst_date < end_date,
             FactBilling.notification_type == SMS_TYPE,
         )
     ).filter(
@@ -65,14 +65,23 @@ def fetch_sms_free_allowance_remainder(start_date):
 def fetch_sms_billing_for_all_services(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
-    free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
+    allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
 
     sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
-    sms_remainder = func.coalesce(
-        free_allowance_remainder.c.sms_remainder,
-        free_allowance_remainder.c.free_sms_fragment_limit
+
+    allowance_left_at_start_date = func.coalesce(
+        allowance_left_at_start_date_query.c.sms_remainder,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit
     )
-    chargeable_sms = func.greatest(sms_billable_units - sms_remainder, 0)
+
+    # subtract sms_billable_units units accrued since report's start date to get up-to-date
+    # allowance remainder
+    sms_allowance_left = func.greatest(allowance_left_at_start_date - sms_billable_units, 0)
+
+    # billable units here are for period between start date and end date only, so to see
+    # how many are chargeable, we need to see how much free allowance was used up in the
+    # period up until report's start date and then do a subtraction
+    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date, 0)
     sms_cost = chargeable_sms * FactBilling.rate
 
     query = db.session.query(
@@ -80,16 +89,16 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        free_allowance_remainder.c.free_sms_fragment_limit,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
         FactBilling.rate.label('sms_rate'),
-        sms_remainder.label("sms_remainder"),
+        sms_allowance_left.label("sms_remainder"),
         sms_billable_units.label('sms_billable_units'),
         chargeable_sms.label("chargeable_billable_sms"),
         sms_cost.label('sms_cost'),
     ).select_from(
         Service
     ).outerjoin(
-        free_allowance_remainder, Service.id == free_allowance_remainder.c.service_id
+        allowance_left_at_start_date_query, Service.id == allowance_left_at_start_date_query.c.service_id
     ).outerjoin(
         Service.organisation
     ).join(
@@ -103,8 +112,8 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.id,
         Service.id,
         Service.name,
-        free_allowance_remainder.c.free_sms_fragment_limit,
-        free_allowance_remainder.c.sms_remainder,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
+        allowance_left_at_start_date_query.c.sms_remainder,
         FactBilling.rate,
     ).order_by(
         Organisation.name,
@@ -593,22 +602,30 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
 
 def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    free_allowance_remainder = fetch_sms_free_allowance_remainder(start_date).subquery()
+    allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
 
     sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
-    sms_remainder = func.coalesce(
-        free_allowance_remainder.c.sms_remainder,
-        free_allowance_remainder.c.free_sms_fragment_limit
+
+    allowance_left_at_start_date = func.coalesce(
+        allowance_left_at_start_date_query.c.sms_remainder,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit
     )
-    chargeable_sms = func.greatest(sms_billable_units - sms_remainder, 0)
+    # subtract sms_billable_units units accrued since report's start date to get up-to-date
+    # allowance remainder
+    sms_allowance_left = func.greatest(allowance_left_at_start_date - sms_billable_units, 0)
+
+    # billable units here are for period between start date and end date only, so to see
+    # how many are chargeable, we need to see how much free allowance was used up in the
+    # period up until report's start date and then do a subtraction
+    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date, 0)
     sms_cost = chargeable_sms * FactBilling.rate
 
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        free_allowance_remainder.c.free_sms_fragment_limit,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
         FactBilling.rate.label('sms_rate'),
-        sms_remainder.label("sms_remainder"),
+        sms_allowance_left.label("sms_remainder"),
         sms_billable_units.label('sms_billable_units'),
         chargeable_sms.label("chargeable_billable_sms"),
         sms_cost.label('sms_cost'),
@@ -616,7 +633,7 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     ).select_from(
         Service
     ).outerjoin(
-        free_allowance_remainder, Service.id == free_allowance_remainder.c.service_id
+        allowance_left_at_start_date_query, Service.id == allowance_left_at_start_date_query.c.service_id
     ).join(
         FactBilling, FactBilling.service_id == Service.id,
     ).filter(
@@ -628,8 +645,8 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     ).group_by(
         Service.id,
         Service.name,
-        free_allowance_remainder.c.free_sms_fragment_limit,
-        free_allowance_remainder.c.sms_remainder,
+        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
+        allowance_left_at_start_date_query.c.sms_remainder,
         FactBilling.rate,
     ).order_by(
         Service.name
