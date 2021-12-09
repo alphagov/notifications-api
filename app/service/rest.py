@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, url_for
 from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
     too_late_to_cancel_letter,
@@ -420,6 +420,8 @@ def get_all_notifications_for_service(service_id):
     include_from_test_key = data.get('include_from_test_key', False)
     include_one_off = data.get('include_one_off', True)
 
+    # count_pages is not being used for whether to count the number of pages, but instead as a flag
+    # for whether to show pagination links
     count_pages = data.get('count_pages', True)
 
     pagination = notifications_dao.get_notifications_for_service(
@@ -427,7 +429,7 @@ def get_all_notifications_for_service(service_id):
         filter_dict=data,
         page=page,
         page_size=page_size,
-        count_pages=count_pages,
+        count_pages=False,
         limit_days=limit_days,
         include_jobs=include_jobs,
         include_from_test_key=include_from_test_key,
@@ -441,15 +443,45 @@ def get_all_notifications_for_service(service_id):
         notifications = [notification.serialize_for_csv() for notification in pagination.items]
     else:
         notifications = notification_with_template_schema.dump(pagination.items, many=True).data
+
+    # We try and get the next page of results to work out if we need provide a pagination link to the next page
+    # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
+    # call to be True which will enable us to use Flask-Sqlalchemy to tell if there is a next page of results but
+    # this way is much more performant for services with many results (unlike Flask SqlAlchemy, this approach
+    # doesn't do an additional query to count all the results of which there could be millions but instead only
+    # asks for a single extra page of results).
+    next_page_of_pagination = notifications_dao.get_notifications_for_service(
+        service_id,
+        filter_dict=data,
+        page=page + 1,
+        page_size=page_size,
+        count_pages=False,
+        limit_days=limit_days,
+        include_jobs=include_jobs,
+        include_from_test_key=include_from_test_key,
+        include_one_off=include_one_off,
+        error_out=False  # False so that if there are no results, it doesn't end in aborting with a 404
+    )
+
+    def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
+        if 'page' in kwargs:
+            kwargs.pop('page', None)
+        links = {}
+        if page > 1:
+            links['prev'] = url_for(endpoint, page=page - 1, **kwargs)
+        if next_page_exists:
+            links['next'] = url_for(endpoint, page=page + 1, **kwargs)
+        return links
+
     return jsonify(
         notifications=notifications,
         page_size=page_size,
-        total=pagination.total,
-        links=pagination_links(
-            pagination,
+        links=get_prev_next_pagination_links(
+            page,
+            len(next_page_of_pagination.items),
             '.get_all_notifications_for_service',
             **kwargs
-        )
+        ) if count_pages else {}
     ), 200
 
 
@@ -510,6 +542,9 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
     )
     return jsonify(
         notifications=notification_with_template_schema.dump(results.items, many=True).data,
+        # TODO: this may be a bug to include the pagination links as currently `search_for_notification_by_to_field`
+        # hardcodes the pages of results to always be the first page so not sure what benefit is to show a link to
+        # page 2 which would have the page parameter ignored
         links=pagination_links(
             results,
             '.get_all_notifications_for_service',
