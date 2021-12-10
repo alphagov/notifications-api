@@ -2266,7 +2266,6 @@ def test_search_for_notification_by_to_field_returns_next_link_if_more_than_50(
     assert len(response_json['notifications']) == 50
     assert 'prev' not in response_json['links']
     assert 'page=2' in response_json['links']['next']
-    assert 'page=2' in response_json['links']['last']
 
 
 def test_search_for_notification_by_to_field_returns_no_next_link_if_50_or_less(

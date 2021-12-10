@@ -150,7 +150,6 @@ from app.utils import (
     DATETIME_FORMAT_NO_TIMEZONE,
     get_prev_next_pagination_links,
     midnight_n_days_ago,
-    pagination_links,
 )
 
 service_blueprint = Blueprint('service', __name__)
@@ -533,11 +532,9 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
     )
     return jsonify(
         notifications=notification_with_template_schema.dump(results.items, many=True).data,
-        # TODO: this may be a bug to include the pagination links as currently `search_for_notification_by_to_field`
-        # hardcodes the pages of results to always be the first page so not sure what benefit is to show a link to
-        # page 2 which would have the page parameter ignored
-        links=pagination_links(
-            results,
+        links=get_prev_next_pagination_links(
+            1,
+            results.has_next,
             '.get_all_notifications_for_service',
             statuses=statuses,
             notification_type=notification_type,
