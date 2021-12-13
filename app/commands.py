@@ -26,10 +26,6 @@ from app.celery.letters_pdf_tasks import (
 from app.celery.reporting_tasks import (
     create_nightly_notification_status_for_day,
 )
-from app.celery.service_callback_tasks import (
-    create_delivery_status_callback_data,
-    send_delivery_status_to_service,
-)
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.dao.annual_billing_dao import (
@@ -51,9 +47,6 @@ from app.dao.organisation_dao import (
 from app.dao.permissions_dao import permission_dao
 from app.dao.provider_rates_dao import (
     create_provider_rates as dao_create_provider_rates,
-)
-from app.dao.service_callback_api_dao import (
-    get_service_delivery_status_callback_api_for_service,
 )
 from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
@@ -282,44 +275,6 @@ def replay_create_pdf_for_templated_letter(notification_id):
 def recreate_pdf_for_precompiled_or_uploaded_letter(notification_id):
     print(f"Call resanitise_pdf task for notification: {notification_id}")
     resanitise_pdf.apply_async([str(notification_id)], queue=QueueNames.LETTERS)
-
-
-@notify_command(name='replay-service-callbacks')
-@click.option('-f', '--file_name', required=True,
-              help="""Full path of the file to upload, file is a contains client references of
-              notifications that need the status to be sent to the service.""")
-@click.option('-s', '--service_id', required=True,
-              help="""The service that the callbacks are for""")
-def replay_service_callbacks(file_name, service_id):
-    print("Start send service callbacks for service: ", service_id)
-    callback_api = get_service_delivery_status_callback_api_for_service(service_id=service_id)
-    if not callback_api:
-        print("Callback api was not found for service: {}".format(service_id))
-        return
-
-    errors = []
-    notifications = []
-    file = open(file_name)
-
-    for ref in file:
-        try:
-            notification = Notification.query.filter_by(client_reference=ref.strip()).one()
-            notifications.append(notification)
-        except NoResultFound:
-            errors.append("Reference: {} was not found in notifications.".format(ref))
-
-    for e in errors:
-        print(e)
-    if errors:
-        raise Exception("Some notifications for the given references were not found")
-
-    for n in notifications:
-        encrypted_status_update = create_delivery_status_callback_data(n, callback_api)
-        send_delivery_status_to_service.apply_async([str(n.id), encrypted_status_update],
-                                                    queue=QueueNames.CALLBACKS)
-
-    print("Replay service status for service: {}. Sent {} notification status updates to the queue".format(
-        service_id, len(notifications)))
 
 
 def setup_commands(application):

@@ -5,20 +5,15 @@ from flask import current_app
 from notifications_utils.template import SMSMessageTemplate
 
 from app import notify_celery, statsd_client
-from app.celery.service_callback_tasks import (
-    create_delivery_status_callback_data,
-    send_delivery_status_to_service,
-)
 from app.clients import ClientException
 from app.clients.sms.firetext import get_firetext_responses
 from app.clients.sms.mmg import get_mmg_responses
-from app.config import QueueNames
 from app.dao import notifications_dao
-from app.dao.service_callback_api_dao import (
-    get_service_delivery_status_callback_api_for_service,
-)
 from app.dao.templates_dao import dao_get_template_by_id
 from app.models import NOTIFICATION_PENDING
+from app.notifications.notifications_ses_callback import (
+    check_and_queue_callback_task,
+)
 
 sms_response_mapper = {
     'MMG': get_mmg_responses,
@@ -94,9 +89,4 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         notifications_dao.dao_update_notification(notification)
 
     if notification_status != NOTIFICATION_PENDING:
-        service_callback_api = get_service_delivery_status_callback_api_for_service(service_id=notification.service_id)
-        # queue callback task only if the service_callback_api exists
-        if service_callback_api:
-            encrypted_notification = create_delivery_status_callback_data(notification, service_callback_api)
-            send_delivery_status_to_service.apply_async([str(notification.id), encrypted_notification],
-                                                        queue=QueueNames.CALLBACKS)
+        check_and_queue_callback_task(notification)

@@ -1,4 +1,3 @@
-import functools
 from datetime import datetime, timedelta
 from itertools import groupby
 from operator import attrgetter
@@ -40,7 +39,6 @@ from app.models import (
     NOTIFICATION_SENDING,
     NOTIFICATION_SENT,
     NOTIFICATION_STATUS_TYPES_COMPLETED,
-    NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
     FactNotificationStatus,
@@ -491,7 +489,21 @@ def dao_delete_notifications_by_id(notification_id):
     ).delete(synchronize_session='fetch')
 
 
-def _timeout_notifications(current_statuses, new_status, timeout_start, updated_at):
+def dao_timeout_notifications(timeout_period_in_seconds):
+    """
+    Timeout SMS and email notifications by the following rules:
+
+    the notification was sent to the provider but there was not a delivery receipt
+        sending -> temporary-failure
+        pending -> temporary-failure
+
+    Letter notifications are not timed out
+    """
+    timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
+    updated_at = datetime.utcnow()
+    current_statuses = [NOTIFICATION_SENDING, NOTIFICATION_PENDING]
+    new_status = NOTIFICATION_TEMPORARY_FAILURE
+
     # TEMPORARY: limit the notifications to 100K as otherwise we
     # see an issues where the task vanishes after it starts executing
     # - we believe this is a OOM error but there are no logs. From
@@ -511,36 +523,9 @@ def _timeout_notifications(current_statuses, new_status, timeout_start, updated_
         {'status': new_status, 'updated_at': updated_at},
         synchronize_session=False
     )
-    return notifications
-
-
-def dao_timeout_notifications(timeout_period_in_seconds):
-    """
-    Timeout SMS and email notifications by the following rules:
-
-    we never sent the notification to the provider for some reason
-        created -> technical-failure
-
-    the notification was sent to the provider but there was not a delivery receipt
-        sending -> temporary-failure
-        pending -> temporary-failure
-
-    Letter notifications are not timed out
-    """
-    timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
-    updated_at = datetime.utcnow()
-    timeout = functools.partial(_timeout_notifications, timeout_start=timeout_start, updated_at=updated_at)
-
-    # Notifications still in created status are marked with a technical-failure:
-    technical_failure_notifications = timeout([NOTIFICATION_CREATED], NOTIFICATION_TECHNICAL_FAILURE)
-
-    # Notifications still in sending or pending status are marked with a temporary-failure:
-    temporary_failure_notifications = timeout([NOTIFICATION_SENDING, NOTIFICATION_PENDING],
-                                              NOTIFICATION_TEMPORARY_FAILURE)
 
     db.session.commit()
-
-    return technical_failure_notifications, temporary_failure_notifications
+    return notifications
 
 
 def is_delivery_slow_for_providers(
