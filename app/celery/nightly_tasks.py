@@ -117,9 +117,12 @@ def timeout_notifications():
     # so that we can cope with a high volume that need processing. We've changed
     # dao_timeout_notifications to return up to 100K notifications, so this task
     # will operate on up to 500K - normally we only get around 20K.
+    cutoff_time = datetime.utcnow() - timedelta(
+        seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
+    )
+
     for _ in range(0, 5):
-        notifications = \
-            dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+        notifications = dao_timeout_notifications(cutoff_time)
 
         for notification in notifications:
             check_and_queue_callback_task(notification)

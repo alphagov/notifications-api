@@ -161,17 +161,14 @@ def test_delete_letter_notifications_older_than_retention_calls_child_task(notif
     mocked.assert_called_once_with('letter')
 
 
+@freeze_time("2021-12-13T10:00")
 def test_timeout_notifications(mocker, sample_notification):
     mock_update = mocker.patch('app.celery.nightly_tasks.check_and_queue_callback_task')
     mock_dao = mocker.patch('app.celery.nightly_tasks.dao_timeout_notifications')
     mock_dao.return_value = [sample_notification]
 
     timeout_notifications()
-
-    mock_dao.assert_called_once_with(
-        current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
-    )
-
+    mock_dao.assert_called_once_with(datetime.fromisoformat('2021-12-10T10:00'))
     mock_update.assert_called_once_with(sample_notification)
 
 

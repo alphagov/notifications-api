@@ -671,7 +671,7 @@ def test_dao_timeout_notifications(sample_template):
         pending = create_notification(sample_template, status='pending')
         delivered = create_notification(sample_template, status='delivered')
 
-    temporary_failure_notifications = dao_timeout_notifications(1)
+    temporary_failure_notifications = dao_timeout_notifications(datetime.utcnow())
 
     assert len(temporary_failure_notifications) == 2
     assert Notification.query.get(created.id).status == 'created'
@@ -687,7 +687,7 @@ def test_dao_timeout_notifications_only_updates_for_older_notifications(sample_t
         pending = create_notification(sample_template, status='pending')
         delivered = create_notification(sample_template, status='delivered')
 
-    temporary_failure_notifications = dao_timeout_notifications(1)
+    temporary_failure_notifications = dao_timeout_notifications(datetime.utcnow())
 
     assert len(temporary_failure_notifications) == 0
     assert Notification.query.get(created.id).status == 'created'
@@ -703,7 +703,7 @@ def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template)
         pending = create_notification(sample_letter_template, status='pending')
         delivered = create_notification(sample_letter_template, status='delivered')
 
-    temporary_failure_notifications = dao_timeout_notifications(1)
+    temporary_failure_notifications = dao_timeout_notifications(datetime.utcnow())
 
     assert len(temporary_failure_notifications) == 0
     assert Notification.query.get(created.id).status == 'created'
