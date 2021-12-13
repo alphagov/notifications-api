@@ -505,9 +505,6 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     ).limit(limit).all()
 
     Notification.query.filter(
-        Notification.created_at < cutoff_time,
-        Notification.status.in_(current_statuses),
-        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
         Notification.id.in_([n.id for n in notifications]),
     ).update(
         {'status': new_status, 'updated_at': updated_at},
