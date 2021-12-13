@@ -1,7 +1,7 @@
 import itertools
 from datetime import datetime
 
-from flask import Blueprint, current_app, jsonify, request, url_for
+from flask import Blueprint, current_app, jsonify, request
 from notifications_utils.letter_timings import (
     letter_can_be_cancelled,
     too_late_to_cancel_letter,
@@ -148,8 +148,8 @@ from app.user.users_schema import post_set_permissions_schema
 from app.utils import (
     DATE_FORMAT,
     DATETIME_FORMAT_NO_TIMEZONE,
+    get_prev_next_pagination_links,
     midnight_n_days_ago,
-    pagination_links,
 )
 
 service_blueprint = Blueprint('service', __name__)
@@ -463,16 +463,6 @@ def get_all_notifications_for_service(service_id):
         error_out=False  # False so that if there are no results, it doesn't end in aborting with a 404
     )
 
-    def get_prev_next_pagination_links(current_page, next_page_exists, endpoint, **kwargs):
-        if 'page' in kwargs:
-            kwargs.pop('page', None)
-        links = {}
-        if page > 1:
-            links['prev'] = url_for(endpoint, page=page - 1, **kwargs)
-        if next_page_exists:
-            links['next'] = url_for(endpoint, page=page + 1, **kwargs)
-        return links
-
     return jsonify(
         notifications=notifications,
         page_size=page_size,
@@ -540,13 +530,29 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
         page=1,
         page_size=current_app.config['PAGE_SIZE'],
     )
+
+    # We try and get the next page of results to work out if we need provide a pagination link to the next page
+    # in our response. Note, this was previously be done by having
+    # notifications_dao.dao_get_notifications_by_recipient_or_reference use count=False when calling
+    # Flask-Sqlalchemys `paginate'. But instead we now use this way because it is much more performant for
+    # services with many results (unlike using Flask SqlAlchemy `paginate` with `count=True`, this approach
+    # doesn't do an additional query to count all the results of which there could be millions but instead only
+    # asks for a single extra page of results).
+    next_page_of_pagination = notifications_dao.dao_get_notifications_by_recipient_or_reference(
+        service_id=service_id,
+        search_term=search_term,
+        statuses=statuses,
+        notification_type=notification_type,
+        page=2,
+        page_size=current_app.config['PAGE_SIZE'],
+        error_out=False  # False so that if there are no results, it doesn't end in aborting with a 404
+    )
+
     return jsonify(
         notifications=notification_with_template_schema.dump(results.items, many=True).data,
-        # TODO: this may be a bug to include the pagination links as currently `search_for_notification_by_to_field`
-        # hardcodes the pages of results to always be the first page so not sure what benefit is to show a link to
-        # page 2 which would have the page parameter ignored
-        links=pagination_links(
-            results,
+        links=get_prev_next_pagination_links(
+            1,
+            len(next_page_of_pagination.items),
             '.get_all_notifications_for_service',
             statuses=statuses,
             notification_type=notification_type,

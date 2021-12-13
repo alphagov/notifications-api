@@ -629,6 +629,7 @@ def dao_get_notifications_by_recipient_or_reference(
     statuses=None,
     page=1,
     page_size=None,
+    error_out=True,
 ):
 
     if notification_type == SMS_TYPE:
@@ -679,7 +680,7 @@ def dao_get_notifications_by_recipient_or_reference(
     results = db.session.query(Notification)\
         .filter(*filters)\
         .order_by(desc(Notification.created_at))\
-        .paginate(page=page, per_page=page_size)
+        .paginate(page=page, per_page=page_size, count=False, error_out=error_out)
     return results
 
 

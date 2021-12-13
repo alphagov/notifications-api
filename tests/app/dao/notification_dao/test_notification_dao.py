@@ -1067,7 +1067,6 @@ def test_dao_get_notifications_by_recipient_is_limited_to_50_results(sample_temp
     )
 
     assert len(results.items) == 50
-    assert results.has_next is True
 
 
 @pytest.mark.parametrize("search_term",
