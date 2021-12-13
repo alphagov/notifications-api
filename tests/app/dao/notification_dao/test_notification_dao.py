@@ -682,34 +682,26 @@ def test_dao_timeout_notifications(sample_template):
 
 def test_dao_timeout_notifications_only_updates_for_older_notifications(sample_template):
     with freeze_time(datetime.utcnow() + timedelta(minutes=10)):
-        created = create_notification(sample_template, status='created')
         sending = create_notification(sample_template, status='sending')
         pending = create_notification(sample_template, status='pending')
-        delivered = create_notification(sample_template, status='delivered')
 
     temporary_failure_notifications = dao_timeout_notifications(datetime.utcnow())
 
     assert len(temporary_failure_notifications) == 0
-    assert Notification.query.get(created.id).status == 'created'
     assert Notification.query.get(sending.id).status == 'sending'
     assert Notification.query.get(pending.id).status == 'pending'
-    assert Notification.query.get(delivered.id).status == 'delivered'
 
 
 def test_dao_timeout_notifications_doesnt_affect_letters(sample_letter_template):
     with freeze_time(datetime.utcnow() - timedelta(minutes=2)):
-        created = create_notification(sample_letter_template, status='created')
         sending = create_notification(sample_letter_template, status='sending')
         pending = create_notification(sample_letter_template, status='pending')
-        delivered = create_notification(sample_letter_template, status='delivered')
 
     temporary_failure_notifications = dao_timeout_notifications(datetime.utcnow())
 
     assert len(temporary_failure_notifications) == 0
-    assert Notification.query.get(created.id).status == 'created'
     assert Notification.query.get(sending.id).status == 'sending'
     assert Notification.query.get(pending.id).status == 'pending'
-    assert Notification.query.get(delivered.id).status == 'delivered'
 
 
 def test_should_return_notifications_excluding_jobs_by_default(sample_template, sample_job, sample_api_key):
