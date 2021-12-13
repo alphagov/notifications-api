@@ -491,13 +491,7 @@ def dao_delete_notifications_by_id(notification_id):
 
 def dao_timeout_notifications(timeout_period_in_seconds):
     """
-    Timeout SMS and email notifications by the following rules:
-
-    the notification was sent to the provider but there was not a delivery receipt
-        sending -> temporary-failure
-        pending -> temporary-failure
-
-    Letter notifications are not timed out
+    Set email and SMS notifications (only) to "temporary-failure" status.
     """
     timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
     updated_at = datetime.utcnow()
