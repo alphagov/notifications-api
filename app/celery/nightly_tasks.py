@@ -89,10 +89,8 @@ def delete_letter_notifications_older_than_retention():
 
 
 def _delete_notifications_older_than_retention_by_type(notification_type):
-    current_app.logger.info(
-        'Deleting {} notifications for services with flexible data retention'.format(notification_type))
-
     flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(notification_type)
+
     for f in flexible_data_retention:
         day_to_delete_backwards_from = get_london_midnight_in_utc(
             convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
@@ -116,17 +114,18 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
     service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
 
-    current_app.logger.info('Deleting {} notifications for {} services without flexible data retention'.format(
-        notification_type,
-        len(service_ids_to_purge)
-    ))
-
     for service_id in service_ids_to_purge:
         delete_notifications_for_service_and_type.apply_async(queue=QueueNames.REPORTING, kwargs={
             'service_id': service_id,
             'notification_type': notification_type,
             'datetime_to_delete_before': seven_days_ago
         })
+
+    current_app.logger.info(
+        f'delete-notifications-older-than-retention: triggered subtasks for notification_type {notification_type}: '
+        f'{len(service_ids_with_data_retention)} services with flexible data retention, '
+        f'{len(service_ids_to_purge)} services without flexible data retention'
+    )
 
 
 @notify_celery.task(name='delete-notifications-for-service-and-type')
@@ -139,8 +138,11 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
     )
     end = datetime.utcnow()
     current_app.logger.info(
-        f'Deleted {num_deleted} {notification_type} notifications for '
-        f'service id: {service_id} in {(end - start).seconds} seconds'
+        f'delete-notifications-for-service-and-type: '
+        f'service: {service_id}, '
+        f'notification_type: {notification_type}, '
+        f'count deleted: {num_deleted}, '
+        f'duration: {(end - start).seconds} seconds'
     )
 
 
