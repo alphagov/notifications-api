@@ -20,7 +20,7 @@ from sqlalchemy.sql import functions
 from sqlalchemy.sql.expression import case
 from werkzeug.datastructures import MultiDict
 
-from app import create_uuid, db
+from app import create_uuid, db, statsd_client
 from app.clients.sms.firetext import (
     get_message_status_and_reason_from_firetext_code,
 )
@@ -565,10 +565,7 @@ def is_delivery_slow_for_providers(
         slow_notifications = sum(row.count for row in rows if row.slow)
 
         slow_providers[provider] = (slow_notifications / total_notifications >= threshold)
-
-        current_app.logger.info("Slow delivery notifications count for provider {}: {} out of {}. Ratio {}".format(
-            provider, slow_notifications, total_notifications, slow_notifications / total_notifications
-        ))
+        statsd_client.gauge(f'slow-delivery.{provider}.ratio', slow_notifications / total_notifications)
 
     return slow_providers
 
