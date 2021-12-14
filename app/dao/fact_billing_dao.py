@@ -69,19 +69,14 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
 
-    allowance_left_at_start_date = func.coalesce(
-        allowance_left_at_start_date_query.c.sms_remainder,
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit
-    )
-
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(allowance_left_at_start_date - sms_billable_units, 0)
+    sms_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - sms_billable_units, 0)
 
     # billable units here are for period between start date and end date only, so to see
     # how many are chargeable, we need to see how much free allowance was used up in the
     # period up until report's start date and then do a subtraction
-    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date, 0)
+    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
     sms_cost = chargeable_sms * FactBilling.rate
 
     query = db.session.query(
@@ -606,18 +601,14 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
 
     sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
 
-    allowance_left_at_start_date = func.coalesce(
-        allowance_left_at_start_date_query.c.sms_remainder,
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit
-    )
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(allowance_left_at_start_date - sms_billable_units, 0)
+    sms_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - sms_billable_units, 0)
 
     # billable units here are for period between start date and end date only, so to see
     # how many are chargeable, we need to see how much free allowance was used up in the
     # period up until report's start date and then do a subtraction
-    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date, 0)
+    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
     sms_cost = chargeable_sms * FactBilling.rate
 
     query = db.session.query(
