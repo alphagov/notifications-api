@@ -73,12 +73,10 @@ cryptography==3.3.2
 dnspython==1.16.0
     # via eventlet
 docopt==0.6.2
-    # via
-    #   -r requirements.in
-    #   notifications-python-client
+    # via notifications-python-client
 docutils==0.15.2
     # via awscli
-eventlet==0.30.2 # pyup: ignore
+eventlet==0.30.2
     # via -r requirements.in
 flask==1.1.2
     # via
@@ -134,7 +132,7 @@ jsonschema==3.2.0
     # via -r requirements.in
 kombu==5.2.1
     # via celery
-lxml==4.6.3
+lxml==4.7.1
     # via -r requirements.in
 mako==1.1.5
     # via alembic
