@@ -489,35 +489,22 @@ def dao_delete_notifications_by_id(notification_id):
     ).delete(synchronize_session='fetch')
 
 
-def dao_timeout_notifications(timeout_period_in_seconds):
+def dao_timeout_notifications(cutoff_time, limit=100000):
     """
-    Timeout SMS and email notifications by the following rules:
-
-    the notification was sent to the provider but there was not a delivery receipt
-        sending -> temporary-failure
-        pending -> temporary-failure
-
-    Letter notifications are not timed out
+    Set email and SMS notifications (only) to "temporary-failure" status
+    if they're still sending from before the specified cutoff_time.
     """
-    timeout_start = datetime.utcnow() - timedelta(seconds=timeout_period_in_seconds)
     updated_at = datetime.utcnow()
     current_statuses = [NOTIFICATION_SENDING, NOTIFICATION_PENDING]
     new_status = NOTIFICATION_TEMPORARY_FAILURE
 
-    # TEMPORARY: limit the notifications to 100K as otherwise we
-    # see an issues where the task vanishes after it starts executing
-    # - we believe this is a OOM error but there are no logs. From
-    # experimentation we've found we can safely process up to 100K.
     notifications = Notification.query.filter(
-        Notification.created_at < timeout_start,
+        Notification.created_at < cutoff_time,
         Notification.status.in_(current_statuses),
         Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE])
-    ).limit(100000).all()
+    ).limit(limit).all()
 
     Notification.query.filter(
-        Notification.created_at < timeout_start,
-        Notification.status.in_(current_statuses),
-        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
         Notification.id.in_([n.id for n in notifications]),
     ).update(
         {'status': new_status, 'updated_at': updated_at},

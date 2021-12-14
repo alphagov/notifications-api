@@ -113,24 +113,20 @@ def delete_letter_notifications_older_than_retention():
 @notify_celery.task(name='timeout-sending-notifications')
 @cronitor('timeout-sending-notifications')
 def timeout_notifications():
-    # TEMPORARY: re-run the following code over small batches of notifications
-    # so that we can cope with a high volume that need processing. We've changed
-    # dao_timeout_notifications to return up to 100K notifications, so this task
-    # will operate on up to 500K - normally we only get around 20K.
-    for _ in range(0, 5):
-        notifications = \
-            dao_timeout_notifications(current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD'))
+    notifications = ['dummy value so len() > 0']
+
+    cutoff_time = datetime.utcnow() - timedelta(
+        seconds=current_app.config.get('SENDING_NOTIFICATIONS_TIMEOUT_PERIOD')
+    )
+
+    while len(notifications) > 0:
+        notifications = dao_timeout_notifications(cutoff_time)
 
         for notification in notifications:
             check_and_queue_callback_task(notification)
 
         current_app.logger.info(
             "Timeout period reached for {} notifications, status has been updated.".format(len(notifications)))
-
-        if len(notifications) < 100000:
-            return
-
-    raise RuntimeError("Some notifications may still be in sending.")
 
 
 @notify_celery.task(name="delete-inbound-sms")
