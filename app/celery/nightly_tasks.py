@@ -5,6 +5,7 @@ from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
 )
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -21,7 +22,11 @@ from app.dao.jobs_dao import (
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
-    delete_notifications_older_than_retention_by_type,
+    get_service_ids_that_have_notifications_from_before_timestamp,
+    move_notifications_to_notification_history,
+)
+from app.dao.service_data_retention_dao import (
+    fetch_service_data_retention_for_all_services_by_notification_type,
 )
 from app.models import (
     EMAIL_TYPE,
@@ -68,45 +73,76 @@ def delete_notifications_older_than_retention():
 @notify_celery.task(name="delete-sms-notifications")
 @cronitor("delete-sms-notifications")
 def delete_sms_notifications_older_than_retention():
-    start = datetime.utcnow()
-    deleted = delete_notifications_older_than_retention_by_type('sms')
-    current_app.logger.info(
-        "Delete {} job started {} finished {} deleted {} sms notifications".format(
-            'sms',
-            start,
-            datetime.utcnow(),
-            deleted
-        )
-    )
+    _delete_notifications_older_than_retention_by_type('sms')
 
 
 @notify_celery.task(name="delete-email-notifications")
 @cronitor("delete-email-notifications")
 def delete_email_notifications_older_than_retention():
-    start = datetime.utcnow()
-    deleted = delete_notifications_older_than_retention_by_type('email')
-    current_app.logger.info(
-        "Delete {} job started {} finished {} deleted {} email notifications".format(
-            'email',
-            start,
-            datetime.utcnow(),
-            deleted
-        )
-    )
+    _delete_notifications_older_than_retention_by_type('email')
 
 
 @notify_celery.task(name="delete-letter-notifications")
 @cronitor("delete-letter-notifications")
 def delete_letter_notifications_older_than_retention():
-    start = datetime.utcnow()
-    deleted = delete_notifications_older_than_retention_by_type('letter')
-    current_app.logger.info(
-        "Delete {} job started {} finished {} deleted {} letter notifications".format(
-            'letter',
-            start,
-            datetime.utcnow(),
-            deleted
+    _delete_notifications_older_than_retention_by_type('letter')
+
+
+def _delete_notifications_older_than_retention_by_type(notification_type):
+    flexible_data_retention = fetch_service_data_retention_for_all_services_by_notification_type(notification_type)
+
+    for f in flexible_data_retention:
+        day_to_delete_backwards_from = get_london_midnight_in_utc(
+            convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=f.days_of_retention)
         )
+
+        delete_notifications_for_service_and_type.apply_async(queue=QueueNames.REPORTING, kwargs={
+            'service_id': f.service_id,
+            'notification_type': notification_type,
+            'datetime_to_delete_before': day_to_delete_backwards_from
+        })
+
+    seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=7))
+    service_ids_with_data_retention = {x.service_id for x in flexible_data_retention}
+
+    # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
+    # This query takes a couple of mins to run.
+    service_ids_that_have_sent_notifications_recently = get_service_ids_that_have_notifications_from_before_timestamp(
+        notification_type,
+        seven_days_ago
+    )
+
+    service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
+
+    for service_id in service_ids_to_purge:
+        delete_notifications_for_service_and_type.apply_async(queue=QueueNames.REPORTING, kwargs={
+            'service_id': service_id,
+            'notification_type': notification_type,
+            'datetime_to_delete_before': seven_days_ago
+        })
+
+    current_app.logger.info(
+        f'delete-notifications-older-than-retention: triggered subtasks for notification_type {notification_type}: '
+        f'{len(service_ids_with_data_retention)} services with flexible data retention, '
+        f'{len(service_ids_to_purge)} services without flexible data retention'
+    )
+
+
+@notify_celery.task(name='delete-notifications-for-service-and-type')
+def delete_notifications_for_service_and_type(service_id, notification_type, datetime_to_delete_before):
+    start = datetime.utcnow()
+    num_deleted = move_notifications_to_notification_history(
+        notification_type,
+        service_id,
+        datetime_to_delete_before,
+    )
+    end = datetime.utcnow()
+    current_app.logger.info(
+        f'delete-notifications-for-service-and-type: '
+        f'service: {service_id}, '
+        f'notification_type: {notification_type}, '
+        f'count deleted: {num_deleted}, '
+        f'duration: {(end - start).seconds} seconds'
     )
 
 

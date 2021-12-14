@@ -50,3 +50,7 @@ def update_service_data_retention(service_data_retention_id, service_id, days_of
         }
     )
     return updated_count
+
+
+def fetch_service_data_retention_for_all_services_by_notification_type(notification_type):
+    return ServiceDataRetention.query.filter(ServiceDataRetention.notification_type == notification_type).all()

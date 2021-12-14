@@ -45,13 +45,8 @@ from app.models import (
     Notification,
     NotificationHistory,
     ProviderDetails,
-    ServiceDataRetention,
 )
-from app.utils import (
-    escape_special_characters,
-    get_london_midnight_in_utc,
-    midnight_n_days_ago,
-)
+from app.utils import escape_special_characters, midnight_n_days_ago
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
@@ -304,55 +299,6 @@ def _filter_query(query, filter_dict=None):
     return query
 
 
-def delete_notifications_older_than_retention_by_type(notification_type, qry_limit=50000):
-    current_app.logger.info(
-        'Deleting {} notifications for services with flexible data retention'.format(notification_type))
-
-    flexible_data_retention = ServiceDataRetention.query.filter(
-        ServiceDataRetention.notification_type == notification_type
-    ).all()
-    deleted = 0
-    for f in flexible_data_retention:
-        current_app.logger.info(
-            "Deleting {} notifications for service id: {}".format(notification_type, f.service_id))
-
-        day_to_delete_backwards_from = get_london_midnight_in_utc(
-            convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=f.days_of_retention)
-
-        deleted += _move_notifications_to_notification_history(
-            notification_type, f.service_id, day_to_delete_backwards_from, qry_limit)
-
-    seven_days_ago = get_london_midnight_in_utc(convert_utc_to_bst(datetime.utcnow()).date()) - timedelta(days=7)
-    service_ids_with_data_retention = {x.service_id for x in flexible_data_retention}
-
-    # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
-    # This query takes a couple of mins to run.
-    service_ids_that_have_sent_notifications_recently = {
-        row.service_id
-        for row in db.session.query(
-            Notification.service_id
-        ).filter(
-            Notification.notification_type == notification_type,
-            Notification.created_at < seven_days_ago
-        ).distinct()
-    }
-
-    service_ids_to_purge = service_ids_that_have_sent_notifications_recently - service_ids_with_data_retention
-
-    current_app.logger.info('Deleting {} notifications for {} services without flexible data retention'.format(
-        notification_type,
-        len(service_ids_to_purge)
-    ))
-
-    for service_id in service_ids_to_purge:
-        deleted += _move_notifications_to_notification_history(
-            notification_type, service_id, seven_days_ago, qry_limit)
-
-    current_app.logger.info('Finished deleting {} notifications'.format(notification_type))
-
-    return deleted
-
-
 @autocommit
 def insert_notification_history_delete_notifications(
     notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
@@ -431,18 +377,23 @@ def insert_notification_history_delete_notifications(
     return result
 
 
-def _move_notifications_to_notification_history(notification_type, service_id, day_to_delete_backwards_from, qry_limit):
+def move_notifications_to_notification_history(
+    notification_type,
+    service_id,
+    timestamp_to_delete_backwards_from,
+    qry_limit=50000
+):
     deleted = 0
     if notification_type == LETTER_TYPE:
         _delete_letters_from_s3(
-            notification_type, service_id, day_to_delete_backwards_from, qry_limit
+            notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit
         )
     delete_count_per_call = 1
     while delete_count_per_call > 0:
         delete_count_per_call = insert_notification_history_delete_notifications(
             notification_type=notification_type,
             service_id=service_id,
-            timestamp_to_delete_backwards_from=day_to_delete_backwards_from,
+            timestamp_to_delete_backwards_from=timestamp_to_delete_backwards_from,
             qry_limit=qry_limit
         )
         deleted += delete_count_per_call
@@ -451,7 +402,7 @@ def _move_notifications_to_notification_history(notification_type, service_id, d
     Notification.query.filter(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
-        Notification.created_at < day_to_delete_backwards_from,
+        Notification.created_at < timestamp_to_delete_backwards_from,
         Notification.key_type == KEY_TYPE_TEST
     ).delete(synchronize_session=False)
     db.session.commit()
@@ -840,3 +791,15 @@ def _duplicate_update_warning(notification, status):
             sent_by=notification.sent_by
         )
     )
+
+
+def get_service_ids_that_have_notifications_from_before_timestamp(notification_type, timestamp):
+    return {
+        row.service_id
+        for row in db.session.query(
+            Notification.service_id
+        ).filter(
+            Notification.notification_type == notification_type,
+            Notification.created_at < timestamp
+        ).distinct()
+    }
