@@ -8,7 +8,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import notify_celery, zendesk_client
+from app import notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.config import QueueNames
 from app.cronitor import cronitor
@@ -123,6 +123,7 @@ def timeout_notifications():
         notifications = dao_timeout_notifications(cutoff_time)
 
         for notification in notifications:
+            statsd_client.incr(f'timeout-sending.{notification.sent_by}')
             check_and_queue_callback_task(notification)
 
         current_app.logger.info(
