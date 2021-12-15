@@ -5,7 +5,7 @@ isort==5.10.1
 moto==2.2.19
 pytest==6.2.5
 pytest-env==0.6.2
-pytest-mock==3.3.1
+pytest-mock==3.6.1
 pytest-cov==2.10.1
 pytest-xdist==2.1.0
 freezegun==1.1.0
