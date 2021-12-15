@@ -70,7 +70,7 @@ colorama==0.4.4
     # via awscli
 cryptography==36.0.1
     # via -r requirements.in
-dnspython==1.16.0
+dnspython==2.1.0
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
