@@ -179,7 +179,7 @@ pyparsing==3.0.6
     # via packaging
 pypdf2==1.26.0
     # via notifications-utils
-pyproj==3.2.1
+pyproj==3.3.0
     # via notifications-utils
 pyrsistent==0.18.0
     # via jsonschema
