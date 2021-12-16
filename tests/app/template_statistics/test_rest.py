@@ -8,22 +8,6 @@ from freezegun import freeze_time
 from app.utils import DATETIME_FORMAT
 from tests.app.db import create_ft_notification_status, create_notification
 
-
-def set_up_get_all_from_hash(mock_redis, side_effect):
-    """
-    redis returns binary strings for both keys and values - so given a list of side effects (return values),
-    make sure
-    """
-    assert type(side_effect) == list
-    side_effects = []
-    for ret_val in side_effect:
-        if ret_val is None:
-            side_effects.append(None)
-        else:
-            side_effects += [{str(k).encode('utf-8'): str(v).encode('utf-8') for k, v in ret_val.items()}]
-
-    mock_redis.get_all_from_hash.side_effect = side_effects
-
 # get_template_statistics_for_service_by_day
 
 
