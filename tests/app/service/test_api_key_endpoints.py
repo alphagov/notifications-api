@@ -38,20 +38,19 @@ def test_api_key_should_return_error_when_service_does_not_exist(notify_api, sam
             assert response.status_code == 404
 
 
-def test_create_api_key_without_key_type_rejects(notify_api, sample_service):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        data = {
-            'name': 'some secret name',
-            'created_by': str(sample_service.created_by.id)
-        }
-        auth_header = create_admin_authorization_header()
-        response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
-                               data=json.dumps(data),
-                               headers=[('Content-Type', 'application/json'), auth_header])
-        assert response.status_code == 400
-        json_resp = json.loads(response.get_data(as_text=True))
-        assert json_resp['result'] == 'error'
-        assert json_resp['message'] == {'key_type': ['Missing data for required field.']}
+def test_create_api_key_without_key_type_rejects(client, sample_service):
+    data = {
+        'name': 'some secret name',
+        'created_by': str(sample_service.created_by.id)
+    }
+    auth_header = create_admin_authorization_header()
+    response = client.post(url_for('service.create_api_key', service_id=sample_service.id),
+                           data=json.dumps(data),
+                           headers=[('Content-Type', 'application/json'), auth_header])
+    assert response.status_code == 400
+    json_resp = json.loads(response.get_data(as_text=True))
+    assert json_resp['result'] == 'error'
+    assert json_resp['message'] == {'key_type': ['Missing data for required field.']}
 
 
 def test_revoke_should_expire_api_key_for_service(notify_api, sample_api_key):

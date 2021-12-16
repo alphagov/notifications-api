@@ -467,56 +467,54 @@ def test_should_not_return_html_in_body(notify_api, sample_service, mocker):
             assert json.loads(response.get_data(as_text=True))['data']['body'] == 'hello\nthere'
 
 
-def test_should_not_send_email_if_team_api_key_and_not_a_service_user(notify_api, sample_email_template, mocker):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-        data = {
-            'to': "not-someone-we-trust@email-address.com",
-            'template': str(sample_email_template.id),
-        }
+def test_should_not_send_email_if_team_api_key_and_not_a_service_user(client, sample_email_template, mocker):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    data = {
+        'to': "not-someone-we-trust@email-address.com",
+        'template': str(sample_email_template.id),
+    }
 
-        auth_header = create_service_authorization_header(
-            service_id=sample_email_template.service_id, key_type=KEY_TYPE_TEAM
-        )
+    auth_header = create_service_authorization_header(
+        service_id=sample_email_template.service_id, key_type=KEY_TYPE_TEAM
+    )
 
-        response = client.post(
-            path='/notifications/email',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/notifications/email',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-        json_resp = json.loads(response.get_data(as_text=True))
+    json_resp = json.loads(response.get_data(as_text=True))
 
-        app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
+    app.celery.provider_tasks.deliver_email.apply_async.assert_not_called()
 
-        assert response.status_code == 400
-        assert [
-            'Can’t send to this recipient using a team-only API key'
-        ] == json_resp['message']['to']
+    assert response.status_code == 400
+    assert [
+        'Can’t send to this recipient using a team-only API key'
+    ] == json_resp['message']['to']
 
 
-def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(notify_api, sample_template, mocker):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
+def test_should_not_send_sms_if_team_api_key_and_not_a_service_user(client, sample_template, mocker):
+    mocker.patch('app.celery.provider_tasks.deliver_sms.apply_async')
 
-        data = {
-            'to': '07123123123',
-            'template': str(sample_template.id),
-        }
+    data = {
+        'to': '07123123123',
+        'template': str(sample_template.id),
+    }
 
-        auth_header = create_service_authorization_header(service_id=sample_template.service_id, key_type=KEY_TYPE_TEAM)
+    auth_header = create_service_authorization_header(service_id=sample_template.service_id, key_type=KEY_TYPE_TEAM)
 
-        response = client.post(
-            path='/notifications/sms',
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+    response = client.post(
+        path='/notifications/sms',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
 
-        json_resp = json.loads(response.get_data(as_text=True))
-        app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
+    json_resp = json.loads(response.get_data(as_text=True))
+    app.celery.provider_tasks.deliver_sms.apply_async.assert_not_called()
 
-        assert response.status_code == 400
-        assert [
-            'Can’t send to this recipient using a team-only API key'
-        ] == json_resp['message']['to']
+    assert response.status_code == 400
+    assert [
+        'Can’t send to this recipient using a team-only API key'
+    ] == json_resp['message']['to']
 
 
 def test_should_send_email_if_team_api_key_and_a_service_user(client, sample_email_template, fake_uuid, mocker):

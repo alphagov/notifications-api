@@ -1681,33 +1681,32 @@ def test_get_service_and_api_key_history(notify_api, sample_service, sample_api_
             assert json_resp['data']['api_key_history'][0]['id'] == str(sample_api_key.id)
 
 
-def test_get_all_notifications_for_service_in_order(notify_api, notify_db_session):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        service_1 = create_service(service_name="1", email_from='1')
-        service_2 = create_service(service_name="2", email_from='2')
+def test_get_all_notifications_for_service_in_order(client, notify_db_session):
+    service_1 = create_service(service_name="1", email_from='1')
+    service_2 = create_service(service_name="2", email_from='2')
 
-        service_1_template = create_template(service_1)
-        service_2_template = create_template(service_2)
+    service_1_template = create_template(service_1)
+    service_2_template = create_template(service_2)
 
-        # create notification for service_2
-        create_notification(service_2_template)
+    # create notification for service_2
+    create_notification(service_2_template)
 
-        notification_1 = create_notification(service_1_template)
-        notification_2 = create_notification(service_1_template)
-        notification_3 = create_notification(service_1_template)
+    notification_1 = create_notification(service_1_template)
+    notification_2 = create_notification(service_1_template)
+    notification_3 = create_notification(service_1_template)
 
-        auth_header = create_admin_authorization_header()
+    auth_header = create_admin_authorization_header()
 
-        response = client.get(
-            path='/service/{}/notifications'.format(service_1.id),
-            headers=[auth_header])
+    response = client.get(
+        path='/service/{}/notifications'.format(service_1.id),
+        headers=[auth_header])
 
-        resp = json.loads(response.get_data(as_text=True))
-        assert len(resp['notifications']) == 3
-        assert resp['notifications'][0]['to'] == notification_3.to
-        assert resp['notifications'][1]['to'] == notification_2.to
-        assert resp['notifications'][2]['to'] == notification_1.to
-        assert response.status_code == 200
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 3
+    assert resp['notifications'][0]['to'] == notification_3.to
+    assert resp['notifications'][1]['to'] == notification_2.to
+    assert resp['notifications'][2]['to'] == notification_1.to
+    assert response.status_code == 200
 
 
 def test_get_all_notifications_for_service_in_order_with_post_request(client, notify_db_session):
@@ -2041,15 +2040,14 @@ def test_set_sms_prefixing_for_service_cant_be_none(
     ('False', {'requested': 2, 'delivered': 1, 'failed': 0}),
     ('True', {'requested': 1, 'delivered': 0, 'failed': 0})
 ], ids=['seven_days', 'today'])
-def test_get_detailed_service(sample_template, notify_api, sample_service, today_only, stats):
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        create_ft_notification_status(date(2000, 1, 1), 'sms', sample_service, count=1)
-        with freeze_time('2000-01-02T12:00:00'):
-            create_notification(template=sample_template, status='created')
-            resp = client.get(
-                '/service/{}?detailed=True&today_only={}'.format(sample_service.id, today_only),
-                headers=[create_admin_authorization_header()]
-            )
+def test_get_detailed_service(sample_template, client, sample_service, today_only, stats):
+    create_ft_notification_status(date(2000, 1, 1), 'sms', sample_service, count=1)
+    with freeze_time('2000-01-02T12:00:00'):
+        create_notification(template=sample_template, status='created')
+        resp = client.get(
+            '/service/{}?detailed=True&today_only={}'.format(sample_service.id, today_only),
+            headers=[create_admin_authorization_header()]
+        )
 
     assert resp.status_code == 200
     service = resp.json['data']
@@ -2082,18 +2080,17 @@ def test_get_services_with_detailed_flag(client, sample_template):
     }
 
 
-def test_get_services_with_detailed_flag_excluding_from_test_key(notify_api, sample_template):
+def test_get_services_with_detailed_flag_excluding_from_test_key(client, sample_template):
     create_notification(sample_template, key_type=KEY_TYPE_NORMAL)
     create_notification(sample_template, key_type=KEY_TYPE_TEAM)
     create_notification(sample_template, key_type=KEY_TYPE_TEST)
     create_notification(sample_template, key_type=KEY_TYPE_TEST)
     create_notification(sample_template, key_type=KEY_TYPE_TEST)
 
-    with notify_api.test_request_context(), notify_api.test_client() as client:
-        resp = client.get(
-            '/service?detailed=True&include_from_test_key=False',
-            headers=[create_admin_authorization_header()]
-        )
+    resp = client.get(
+        '/service?detailed=True&include_from_test_key=False',
+        headers=[create_admin_authorization_header()]
+    )
 
     assert resp.status_code == 200
     data = resp.json['data']
