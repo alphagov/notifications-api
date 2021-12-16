@@ -1710,6 +1710,64 @@ def test_get_all_notifications_for_service_in_order(notify_api, notify_db_sessio
         assert response.status_code == 200
 
 
+def test_get_all_notifications_for_service_in_order_with_post_request(client, notify_db_session):
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
+
+    service_1_template = create_template(service_1)
+    service_2_template = create_template(service_2)
+
+    # create notification for service_2
+    create_notification(service_2_template)
+
+    notification_1 = create_notification(service_1_template)
+    notification_2 = create_notification(service_1_template)
+    notification_3 = create_notification(service_1_template)
+
+    response = client.post(
+        path=f'/service/{service_1.id}/notifications',
+        data=json.dumps({}),
+        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 3
+    assert resp['notifications'][0]['to'] == notification_3.to
+    assert resp['notifications'][1]['to'] == notification_2.to
+    assert resp['notifications'][2]['to'] == notification_1.to
+    assert response.status_code == 200
+
+
+def test_get_all_notifications_for_service_filters_notifications_when_using_post_request(client, notify_db_session):
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
+
+    service_1_sms_template = create_template(service_1)
+    service_1_email_template = create_template(service_1, template_type=EMAIL_TYPE)
+    service_2_sms_template = create_template(service_2)
+
+    returned_notification = create_notification(service_1_sms_template, normalised_to='447700900855')
+
+    create_notification(service_1_sms_template, to_field='+447700900000', normalised_to='447700900000')
+    create_notification(service_1_sms_template, status='delivered', normalised_to='447700900855')
+    create_notification(service_1_email_template, normalised_to='447700900855')
+    # create notification for service_2
+    create_notification(service_2_sms_template)
+
+    auth_header = create_admin_authorization_header()
+    data = {'page': 1, 'template_type': ['sms'], 'status': ['created', 'sending'], 'to': '0855'}
+
+    response = client.post(
+        path=f'/service/{service_1.id}/notifications',
+        data=json.dumps(data),
+        headers=[('Content-Type', 'application/json'), auth_header])
+
+    resp = json.loads(response.get_data(as_text=True))
+    assert len(resp['notifications']) == 1
+    assert resp['notifications'][0]['to'] == returned_notification.to
+    assert resp['notifications'][0]['status'] == returned_notification.status
+    assert response.status_code == 200
+
+
 def test_get_all_notifications_for_service_formatted_for_csv(client, sample_template):
     notification = create_notification(template=sample_template)
     auth_header = create_admin_authorization_header()

@@ -9,6 +9,7 @@ from notifications_utils.letter_timings import (
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import NoResultFound
+from werkzeug.datastructures import MultiDict
 
 from app.aws import s3
 from app.config import QueueNames
@@ -404,9 +405,15 @@ def get_service_history(service_id):
     return jsonify(data=data)
 
 
-@service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET'])
+@service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET', 'POST'])
 def get_all_notifications_for_service(service_id):
-    data = notifications_filter_schema.load(request.args).data
+    if request.method == 'GET':
+        data = notifications_filter_schema.load(request.args).data
+    elif request.method == 'POST':
+        # Must transform request.get_json() to MultiDict as NotificationsFilterSchema expects a MultiDict.
+        # Unlike request.args, request.get_json() does not return a MultiDict but instead just a dict.
+        data = notifications_filter_schema.load(MultiDict(request.get_json())).data
+
     if data.get('to'):
         notification_type = data.get('template_type')[0] if data.get('template_type') else None
         return search_for_notification_by_to_field(service_id=service_id,
