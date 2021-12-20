@@ -93,6 +93,11 @@ def create_nightly_notification_status():
         )
 
 
+@notify_celery.task(name='ben-test')
+def ben_test():
+    raise TypeError('ben test')
+
+
 @notify_celery.task(name="create-nightly-notification-status-for-day")
 def create_nightly_notification_status_for_day(process_day, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
