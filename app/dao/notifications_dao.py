@@ -428,9 +428,12 @@ def _delete_letters_from_s3(
         try:
             letter_pdf = find_letter_pdf_in_s3(letter)
             letter_pdf.delete()
-        except (ClientError, LetterPDFNotFound):
+        except ClientError:
             current_app.logger.exception(
-                "Could not delete S3 object for letter: {}".format(letter.id))
+                "Error deleting S3 object for letter: {}".format(letter.id))
+        except LetterPDFNotFound:
+            current_app.logger.warning(
+                "No S3 object to delete for letter: {}".format(letter.id))
 
 
 @autocommit
