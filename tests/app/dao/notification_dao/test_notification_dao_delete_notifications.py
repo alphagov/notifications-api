@@ -51,6 +51,23 @@ def test_move_notifications_deletes_letters_from_s3(sample_letter_template, mock
         s3.get_object(Bucket=bucket_name, Key=filename)
 
 
+@mock_s3
+@freeze_time('2019-09-01 04:30')
+def test_move_notifications_copes_if_letter_not_in_s3(sample_letter_template, mocker):
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.create_bucket(
+        Bucket=current_app.config['LETTERS_PDF_BUCKET_NAME'],
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
+    eight_days_ago = datetime.utcnow() - timedelta(days=8)
+    create_notification(template=sample_letter_template, status='delivered', sent_at=eight_days_ago)
+
+    move_notifications_to_notification_history('letter', sample_letter_template.service_id, datetime(2020, 1, 2))
+    assert Notification.query.count() == 0
+    assert NotificationHistory.query.count() == 1
+
+
 def test_move_notifications_does_nothing_if_notification_history_row_already_exists(
     sample_email_template, mocker
 ):
