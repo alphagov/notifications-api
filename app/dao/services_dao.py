@@ -318,15 +318,17 @@ def dao_create_service(
     if organisation:
         service.organisation_id = organisation.id
         service.organisation_type = organisation.organisation_type
+
         if organisation.email_branding:
             service.email_branding = organisation.email_branding
 
-        if organisation.letter_branding and not service.letter_branding:
+        if organisation.letter_branding:
             service.letter_branding = organisation.letter_branding
 
     elif service.organisation_type in NHS_ORGANISATION_TYPES or email_address_is_nhs(user.email_address):
         service.email_branding = dao_get_email_branding_by_name('NHS')
         service.letter_branding = dao_get_letter_branding_by_name('NHS')
+
     if organisation:
         service.crown = organisation.crown
     elif service.organisation_type in CROWN_ORGANISATION_TYPES:
