@@ -218,6 +218,7 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     mocker.patch('app.mmg_client.send_sms')
 
     version_on_notification = sample_template.version
+    expected_template_id = sample_template.id
 
     # Change the template
     from app.dao.templates_dao import (
@@ -241,11 +242,13 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
         international=False
     )
 
+    t = dao_get_template_by_id(expected_template_id)
+
     persisted_notification = notifications_dao.get_notification_by_id(db_notification.id)
     assert persisted_notification.to == db_notification.to
-    assert persisted_notification.template_id == sample_template.id
+    assert persisted_notification.template_id == expected_template_id
     assert persisted_notification.template_version == version_on_notification
-    assert persisted_notification.template_version != sample_template.version
+    assert persisted_notification.template_version != t.version
     assert persisted_notification.status == 'sending'
     assert not persisted_notification.personalisation
 
@@ -349,6 +352,7 @@ def test_send_sms_should_use_service_sms_sender(
 
     sms_sender = create_service_sms_sender(service=sample_service, sms_sender='123456', is_default=False)
     db_notification = create_notification(template=sample_template, reply_to_text=sms_sender.sms_sender)
+    expected_sender_name = sms_sender.sms_sender
 
     send_to_providers.send_sms_to_provider(
         db_notification,
@@ -358,7 +362,7 @@ def test_send_sms_should_use_service_sms_sender(
         to=ANY,
         content=ANY,
         reference=ANY,
-        sender=sms_sender.sms_sender,
+        sender=expected_sender_name,
         international=False
     )
 
@@ -653,16 +657,6 @@ def test_should_send_sms_to_international_providers(
     get_provider_details_by_identifier('firetext').priority = 100
     get_provider_details_by_identifier('mmg').priority = 0
 
-    notification_uk = create_notification(
-        template=sample_template,
-        to_field="+447234123999",
-        personalisation={"name": "Jo"},
-        status='created',
-        international=False,
-        reply_to_text=sample_template.service.get_default_sms_sender(),
-        normalised_to="447234123999"
-    )
-
     notification_international = create_notification(
         template=sample_template,
         to_field="+6011-17224412",
@@ -671,17 +665,6 @@ def test_should_send_sms_to_international_providers(
         international=True,
         reply_to_text=sample_template.service.get_default_sms_sender(),
         normalised_to='601117224412'
-    )
-    send_to_providers.send_sms_to_provider(
-        notification_uk
-    )
-
-    firetext_client.send_sms.assert_called_once_with(
-        to="447234123999",
-        content=ANY,
-        reference=str(notification_uk.id),
-        sender=current_app.config['FROM_NUMBER'],
-        international=False
     )
 
     send_to_providers.send_sms_to_provider(
@@ -696,10 +679,46 @@ def test_should_send_sms_to_international_providers(
         international=True
     )
 
-    assert notification_uk.status == 'sending'
-    assert notification_uk.sent_by == 'firetext'
     assert notification_international.status == 'sent'
     assert notification_international.sent_by == 'mmg'
+
+
+def test_should_send_non_international_sms_to_default_provider(
+    sample_template,
+    sample_user,
+    mocker
+):
+    mocker.patch('app.mmg_client.send_sms')
+    mocker.patch('app.firetext_client.send_sms')
+
+    # set firetext to active
+    get_provider_details_by_identifier('firetext').priority = 100
+    get_provider_details_by_identifier('mmg').priority = 0
+
+    notification_uk = create_notification(
+        template=sample_template,
+        to_field="+447234123999",
+        personalisation={"name": "Jo"},
+        status='created',
+        international=False,
+        reply_to_text=sample_template.service.get_default_sms_sender(),
+        normalised_to="447234123999"
+    )
+
+    send_to_providers.send_sms_to_provider(
+        notification_uk
+    )
+
+    firetext_client.send_sms.assert_called_once_with(
+        to="447234123999",
+        content=ANY,
+        reference=str(notification_uk.id),
+        sender=current_app.config['FROM_NUMBER'],
+        international=False
+    )
+
+    assert notification_uk.status == 'sending'
+    assert notification_uk.sent_by == 'firetext'
 
 
 @pytest.mark.parametrize('sms_sender, expected_sender, prefix_sms, expected_content', [
