@@ -175,6 +175,30 @@ def move_sanitised_letter_to_test_or_live_pdf_bucket(filename, is_test_letter, c
     )
 
 
+def move_invalid_templated_letter_to_invalid_bucket(page_count, key_type, reference, created_at, postage):
+    metadata = {}
+    metadata["message"] = "letter-too-long"
+    metadata["page_count"] = str(page_count)
+    # If the file already exists in S3, it will be overwritten
+    if key_type == "test":
+        bucket_name = current_app.config['TEST_LETTERS_BUCKET_NAME']
+    else:
+        bucket_name = current_app.config['LETTERS_PDF_BUCKET_NAME']
+    filename = generate_letter_pdf_filename(
+        reference=reference,
+        created_at=created_at,
+        ignore_folder=key_type == KEY_TYPE_TEST,
+        postage=postage
+    )
+    _move_s3_object(
+        source_bucket=bucket_name,
+        source_filename=filename,
+        target_bucket=current_app.config['INVALID_PDF_BUCKET_NAME'],
+        target_filename=filename,
+        metadata=metadata
+    )
+
+
 def get_file_names_from_error_bucket():
     s3 = boto3.resource('s3')
     scan_bucket = current_app.config['LETTERS_SCAN_BUCKET_NAME']

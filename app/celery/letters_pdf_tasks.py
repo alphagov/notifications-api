@@ -35,6 +35,7 @@ from app.letters.utils import (
     get_reference_from_filename,
     move_error_pdf_to_scan_bucket,
     move_failed_pdf,
+    move_invalid_templated_letter_to_invalid_bucket,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
     move_scan_to_invalid_pdf_bucket,
 )
@@ -103,17 +104,33 @@ def get_pdf_for_templated_letter(self, notification_id):
 @notify_celery.task(bind=True, name="update-billable-units-for-letter", max_retries=15, default_retry_delay=300)
 def update_billable_units_for_letter(self, notification_id, page_count):
     notification = get_notification_by_id(notification_id, _raise=True)
-
-    billable_units = get_billable_units_for_letter_page_count(page_count)
-
-    if notification.key_type != KEY_TYPE_TEST:
-        notification.billable_units = billable_units
+    if page_count > 10:
+        # update file with validation data
+        # set letter.status = validation-failed
+        # move letter to validation failed s3 bucket
+        move_invalid_templated_letter_to_invalid_bucket(
+            page_count,
+            notification.key_type,
+            notification.reference,
+            notification.created_at,
+            notification.postage)
+        notification.status = NOTIFICATION_VALIDATION_FAILED
         dao_update_notification(notification)
-
         current_app.logger.info(
-            f"Letter notification id: {notification_id} reference {notification.reference}: "
-            f"billable units set to {billable_units}"
+            f"Templated letter notification id: {notification_id} reference {notification.reference}: "
+            f"is too long page_count: {page_count} status set to validation-failed"
         )
+    else:
+        billable_units = get_billable_units_for_letter_page_count(page_count)
+
+        if notification.key_type != KEY_TYPE_TEST:
+            notification.billable_units = billable_units
+            dao_update_notification(notification)
+
+            current_app.logger.info(
+                f"Letter notification id: {notification_id} reference {notification.reference}: "
+                f"billable units set to {billable_units}"
+            )
 
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')

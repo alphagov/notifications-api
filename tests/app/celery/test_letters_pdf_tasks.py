@@ -172,6 +172,31 @@ def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mo
     mock_logger.assert_not_called()
 
 
+def test_update_billable_units_for_letter_with_over_10_pages(
+        mocker, sample_letter_notification
+):
+    sample_letter_notification.billable_units = 0
+    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
+    mock_move = mocker.patch('app.celery.letters_pdf_tasks.move_invalid_templated_letter_to_invalid_bucket')
+
+    update_billable_units_for_letter(sample_letter_notification.id, 11)
+
+    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
+    assert notification.billable_units == 0
+    assert notification.status == NOTIFICATION_VALIDATION_FAILED
+    mock_logger.assert_called_once_with(
+        f"Templated letter notification id: {notification.id} reference {notification.reference}: "
+        f"is too long page_count: {11} status set to validation-failed"
+    )
+    mock_move.assert_called_once_with(
+        11,
+        notification.key_type,
+        notification.reference,
+        notification.created_at,
+        notification.postage
+    )
+
+
 @mock_s3
 @freeze_time('2020-02-17 18:00:00')
 def test_get_key_and_size_of_letters_to_be_sent_to_print(
