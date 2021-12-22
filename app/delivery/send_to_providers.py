@@ -10,7 +10,7 @@ from notifications_utils.template import (
     SMSMessageTemplate,
 )
 
-from app import create_uuid, notification_provider_clients, statsd_client
+from app import create_uuid, db, notification_provider_clients, statsd_client
 from app.celery.research_mode_tasks import (
     send_email_response,
     send_sms_response,
@@ -64,13 +64,21 @@ def send_sms_to_provider(notification):
 
         else:
             try:
-                provider.send_sms(
-                    to=notification.normalised_to,
-                    content=str(template),
-                    reference=str(notification.id),
-                    sender=notification.reply_to_text,
-                    international=notification.international
-                )
+                # End DB session here so that we don't have a connection stuck open waiting on the call
+                # to one of the SMS providers
+                # We don't want to tie our DB connections being open to the performance of our SMS
+                # providers as a slow down of our providers can cause us to run out of DB connections
+                # Therefore we pull all the data from our DB models into `send_sms_kwargs`now before
+                # closing the session (as otherwise it would be reopened immediately)
+                send_sms_kwargs = {
+                    'to': notification.normalised_to,
+                    'content': str(template),
+                    'reference': str(notification.id),
+                    'sender': notification.reply_to_text,
+                    'international': notification.international,
+                }
+                db.session.close()  # no commit needed as no changes to objects have been made above
+                provider.send_sms(**send_sms_kwargs)
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
