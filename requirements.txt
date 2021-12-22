@@ -145,7 +145,7 @@ marshmallow==3.14.1
     #   -r requirements.in
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==0.23.1
+marshmallow-sqlalchemy==0.27.0
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
