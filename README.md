@@ -90,12 +90,6 @@ make bootstrap
 make test
 ```
 
-## To update application dependencies
-
-## To update application dependencies
-
-`requirements.txt` is generated from the `requirements.in` in order to pin versions of all nested dependencies. If `requirements.in` has been changed, run `make freeze-requirements` to regenerate it.
-
 ## To run one off tasks
 
 Tasks are run through the `flask` command - run `flask --help` for more information. There are two sections we need to
@@ -117,3 +111,4 @@ All commands and command options have a --help command if you need more informat
 ## Further documentation
 
 - [Writing public APIs](docs/writing-public-apis.md)
+- [Updating dependencies](https://github.com/alphagov/notifications-manuals/wiki/Dependencies)
