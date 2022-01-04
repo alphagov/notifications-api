@@ -4,6 +4,7 @@ from hashlib import sha512
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
+from notifications_utils import LETTER_MAX_PAGE_COUNT
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.timezones import convert_utc_to_bst
@@ -102,9 +103,10 @@ def get_pdf_for_templated_letter(self, notification_id):
 
 
 @notify_celery.task(bind=True, name="update-billable-units-for-letter", max_retries=15, default_retry_delay=300)
-def update_billable_units_for_letter(self, notification_id, page_count):
+def update_billable_units_or_validation_failed_status_for_templated_letter(self, notification_id, page_count):
     notification = get_notification_by_id(notification_id, _raise=True)
-    if page_count > 10:
+    if page_count > LETTER_MAX_PAGE_COUNT:
+        # DVLA only support letters up to 10 pages
         # update file with validation data
         # set letter.status = validation-failed
         # move letter to validation failed s3 bucket

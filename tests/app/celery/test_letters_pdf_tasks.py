@@ -26,7 +26,7 @@ from app.celery.letters_pdf_tasks import (
     resanitise_pdf,
     sanitise_letter,
     send_letters_volume_email_to_dvla,
-    update_billable_units_for_letter,
+    update_billable_units_or_validation_failed_status_for_templated_letter,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import get_notifications
@@ -44,7 +44,6 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_VALIDATION_FAILED,
     NOTIFICATION_VIRUS_SCAN_FAILED,
-    Notification,
 )
 from tests.app.db import (
     create_letter_branding,
@@ -146,54 +145,58 @@ def test_get_pdf_for_templated_letter_sets_technical_failure_max_retries(mocker,
 
 
 @pytest.mark.parametrize('number_of_pages, expected_billable_units', [(2, 1), (3, 2), (10, 5)])
-def test_update_billable_units_for_letter(mocker, sample_letter_notification, number_of_pages, expected_billable_units):
+def test_update_billable_units_for_templated_letter(
+        mocker, sample_letter_notification, number_of_pages, expected_billable_units
+):
     sample_letter_notification.billable_units = 0
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
 
-    update_billable_units_for_letter(sample_letter_notification.id, number_of_pages)
+    update_billable_units_or_validation_failed_status_for_templated_letter(
+        sample_letter_notification.id, number_of_pages
+    )
 
-    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
-    assert notification.billable_units == expected_billable_units
+    assert sample_letter_notification.billable_units == expected_billable_units
     mock_logger.assert_called_once_with(
         f"Letter notification id: {sample_letter_notification.id} reference {sample_letter_notification.reference}:"
         f" billable units set to {expected_billable_units}"
     )
 
 
-def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(mocker, sample_letter_notification):
+def test_update_billable_units_or_validation_failed_status_for_templated_letter_doesnt_update_if_sent_with_test_key(
+        mocker, sample_letter_notification
+):
     sample_letter_notification.billable_units = 0
     sample_letter_notification.key_type = KEY_TYPE_TEST
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
 
-    update_billable_units_for_letter(sample_letter_notification.id, 2)
+    update_billable_units_or_validation_failed_status_for_templated_letter(sample_letter_notification.id, 2)
 
-    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
-    assert notification.billable_units == 0
+    assert sample_letter_notification.billable_units == 0
     mock_logger.assert_not_called()
 
 
-def test_update_billable_units_for_letter_with_over_10_pages(
+def test_update_billable_units_or_validation_failed_status_for_templated_letter_with_over_10_pages(
         mocker, sample_letter_notification
 ):
     sample_letter_notification.billable_units = 0
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
     mock_move = mocker.patch('app.celery.letters_pdf_tasks.move_invalid_templated_letter_to_invalid_bucket')
 
-    update_billable_units_for_letter(sample_letter_notification.id, 11)
+    update_billable_units_or_validation_failed_status_for_templated_letter(sample_letter_notification.id, 11)
 
-    notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
-    assert notification.billable_units == 0
-    assert notification.status == NOTIFICATION_VALIDATION_FAILED
+    assert sample_letter_notification.billable_units == 0
+    assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     mock_logger.assert_called_once_with(
-        f"Templated letter notification id: {notification.id} reference {notification.reference}: "
+        f"Templated letter notification id: {sample_letter_notification.id} reference "
+        f"{sample_letter_notification.reference}: "
         f"is too long page_count: {11} status set to validation-failed"
     )
     mock_move.assert_called_once_with(
         11,
-        notification.key_type,
-        notification.reference,
-        notification.created_at,
-        notification.postage
+        sample_letter_notification.key_type,
+        sample_letter_notification.reference,
+        sample_letter_notification.created_at,
+        sample_letter_notification.postage
     )
 
 

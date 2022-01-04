@@ -17,6 +17,7 @@ from app.letters.utils import (
     get_letter_pdf_and_metadata,
     letter_print_day,
     move_failed_pdf,
+    move_invalid_templated_letter_to_invalid_bucket,
     move_sanitised_letter_to_test_or_live_pdf_bucket,
     upload_letter_pdf,
 )
@@ -433,3 +434,41 @@ def test_letter_print_day_returns_today_if_letter_was_printed_today():
 @freeze_time('2017-07-07 16:30:00')
 def test_letter_print_day_returns_formatted_date_if_letter_printed_before_1730_yesterday(created_at, formatted_date):
     assert letter_print_day(created_at) == formatted_date
+
+
+@pytest.mark.parametrize('source_bucket, key_type',
+                         [('LETTERS_PDF_BUCKET_NAME', 'normal'),
+                          ('TEST_LETTERS_BUCKET_NAME', 'test')]
+                         )
+@mock_s3
+def test_move_invalid_templated_letter_from_live_or_test_bucket_to_invalid_bucket(
+        notify_api, source_bucket, key_type, mocker
+):
+    filename = 'my_letter.pdf'
+    mocker.patch('app.letters.utils.generate_letter_pdf_filename', return_value=filename)
+    source_bucket_name = current_app.config[source_bucket]
+    target_bucket_name = current_app.config['INVALID_PDF_BUCKET_NAME']
+
+    conn = boto3.resource('s3', region_name='eu-west-1')
+    source_bucket = conn.create_bucket(
+        Bucket=source_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+    target_bucket = conn.create_bucket(
+        Bucket=target_bucket_name,
+        CreateBucketConfiguration={'LocationConstraint': 'eu-west-1'}
+    )
+
+    s3 = boto3.client('s3', region_name='eu-west-1')
+    s3.put_object(Bucket=source_bucket_name, Key=filename, Body=b'pdf_content')
+
+    move_invalid_templated_letter_to_invalid_bucket(
+        page_count=11,
+        key_type=key_type,
+        reference='my_letter',
+        created_at=datetime.utcnow(),
+        postage='second'
+    )
+
+    assert not [x for x in source_bucket.objects.all()]
+    assert len([x for x in target_bucket.objects.all()]) == 1
