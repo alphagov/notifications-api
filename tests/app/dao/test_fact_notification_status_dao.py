@@ -20,6 +20,7 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.models import (
     EMAIL_TYPE,
+    KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -63,7 +64,11 @@ def test_update_fact_notification_status(notify_db_session):
         # 2nd service email has 3 day data retention - data has been moved to history and doesn't exist in notifications
         create_notification_history(template=second_template, status='temporary-failure')
 
-        create_notification(template=third_template, status='sending')
+        # team API key notifications are included
+        create_notification(template=third_template, status='sending', key_type=KEY_TYPE_TEAM)
+
+        # test notifications are ignored
+        create_notification(template=third_template, status='sending', key_type=KEY_TYPE_TEST)
 
     # these created notifications from a different day get ignored
     with freeze_time(datetime.combine(date.today() - timedelta(days=4), time.min)):
@@ -87,6 +92,7 @@ def test_update_fact_notification_status(notify_db_session):
     assert new_fact_data[0].notification_type == 'email'
     assert new_fact_data[0].notification_status == 'temporary-failure'
     assert new_fact_data[0].notification_count == 1
+    assert new_fact_data[0].key_type == KEY_TYPE_NORMAL
 
     assert new_fact_data[1].bst_date == process_day
     assert new_fact_data[1].template_id == third_template.id
@@ -95,6 +101,7 @@ def test_update_fact_notification_status(notify_db_session):
     assert new_fact_data[1].notification_type == 'letter'
     assert new_fact_data[1].notification_status == 'sending'
     assert new_fact_data[1].notification_count == 1
+    assert new_fact_data[1].key_type == KEY_TYPE_TEAM
 
     assert new_fact_data[2].bst_date == process_day
     assert new_fact_data[2].template_id == first_template.id
@@ -103,6 +110,7 @@ def test_update_fact_notification_status(notify_db_session):
     assert new_fact_data[2].notification_type == 'sms'
     assert new_fact_data[2].notification_status == 'delivered'
     assert new_fact_data[2].notification_count == 1
+    assert new_fact_data[2].key_type == KEY_TYPE_NORMAL
 
 
 def test__update_fact_notification_status_updates_row(notify_db_session):
