@@ -15,10 +15,12 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_get_organisations,
     dao_get_users_for_organisation,
+    dao_remove_user_from_organisation,
     dao_update_organisation,
 )
 from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
 from app.models import KEY_TYPE_NORMAL, Organisation
 from app.notifications.process_notifications import (
@@ -150,6 +152,20 @@ def get_organisation_services_usage(organisation_id):
 def add_user_to_organisation(organisation_id, user_id):
     new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
     return jsonify(data=new_org_user.serialize())
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['DELETE'])
+def remove_user_from_organisation(organisation_id, user_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    user = get_user_by_id(user_id=user_id)
+
+    if user not in organisation.users:
+        error = 'User not found'
+        raise InvalidRequest(error, status_code=404)
+
+    dao_remove_user_from_organisation(organisation, user)
+
+    return {}, 204
 
 
 @organisation_blueprint.route('/<uuid:organisation_id>/users', methods=['GET'])

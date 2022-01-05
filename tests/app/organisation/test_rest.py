@@ -694,6 +694,32 @@ def test_add_user_to_organisation_returns_404_if_user_does_not_exist(admin_reque
     )
 
 
+def test_remove_user_from_organisation(admin_request, sample_organisation, sample_user):
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=sample_user.id)
+
+    admin_request.delete(
+        'organisation.remove_user_from_organisation',
+        organisation_id=sample_organisation.id,
+        user_id=sample_user.id
+    )
+
+    assert sample_organisation.users == []
+
+
+def test_remove_user_from_organisation_when_user_is_not_an_org_member(admin_request, sample_organisation, sample_user):
+    resp = admin_request.delete(
+        'organisation.remove_user_from_organisation',
+        organisation_id=sample_organisation.id,
+        user_id=sample_user.id,
+        _expected_status=404
+    )
+
+    assert resp == {
+        'result': 'error',
+        'message': 'User not found'
+    }
+
+
 def test_get_organisation_users_returns_users_for_organisation(admin_request, sample_organisation):
     first = create_user(email='first@invited.com')
     second = create_user(email='another@invited.com')
