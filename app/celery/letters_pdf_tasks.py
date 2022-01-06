@@ -4,6 +4,7 @@ from hashlib import sha512
 
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
+from notifications_utils import LETTER_MAX_PAGE_COUNT
 from notifications_utils.letter_timings import LETTER_PROCESSING_DEADLINE
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.timezones import convert_utc_to_bst
@@ -101,19 +102,27 @@ def get_pdf_for_templated_letter(self, notification_id):
 
 
 @notify_celery.task(bind=True, name="update-billable-units-for-letter", max_retries=15, default_retry_delay=300)
-def update_billable_units_for_letter(self, notification_id, page_count):
+def update_billable_units_or_validation_failed_for_templated_letter(self, notification_id, page_count,
+                                                                    create_fake_letter_response_file=None):
     notification = get_notification_by_id(notification_id, _raise=True)
-
-    billable_units = get_billable_units_for_letter_page_count(page_count)
-
-    if notification.key_type != KEY_TYPE_TEST:
-        notification.billable_units = billable_units
+    if page_count > LETTER_MAX_PAGE_COUNT:
+        notification.status = NOTIFICATION_VALIDATION_FAILED
         dao_update_notification(notification)
-
-        current_app.logger.info(
-            f"Letter notification id: {notification_id} reference {notification.reference}: "
-            f"billable units set to {billable_units}"
-        )
+        current_app.logger.info(f"Letter notification id: {notification_id} reference {notification.reference}: "
+                                f"validation failed: letter is too long {page_count}")
+    else:
+        if notification.key_type != KEY_TYPE_TEST:
+            notification.billable_units = get_billable_units_for_letter_page_count(page_count)
+            dao_update_notification(notification)
+            current_app.logger.info(f"Letter notification id: {notification_id} reference {notification.reference}: "
+                                    f"billable units set to {notification.billable_units}")
+        if notification.key_type == KEY_TYPE_TEST \
+                and current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+            # For test letters send a fake letter response
+            create_fake_letter_response_file.apply_async(
+                (notification.reference,),
+                queue=QueueNames.RESEARCH_MODE
+            )
 
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')
