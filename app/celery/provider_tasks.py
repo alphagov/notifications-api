@@ -24,7 +24,7 @@ def deliver_sms(self, notification_id):
     except Exception as e:
         if isinstance(e, SmsClientResponseException):
             current_app.logger.warning(
-                "SMS notification delivery for id: {} failed".format(notification_id)
+                "SMS notification delivery for id: {} failed due to {}".format(notification_id, e)
             )
         else:
             current_app.logger.exception(
