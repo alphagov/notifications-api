@@ -26,7 +26,8 @@ from app.celery.letters_pdf_tasks import (
     resanitise_pdf,
     sanitise_letter,
     send_letters_volume_email_to_dvla,
-    update_billable_units_or_validation_failed_for_templated_letter,
+    update_billable_units_for_letter,
+    update_validation_failed_for_templated_letter,
 )
 from app.config import QueueNames, TaskNames
 from app.dao.notifications_dao import get_notifications
@@ -145,32 +146,31 @@ def test_get_pdf_for_templated_letter_sets_technical_failure_max_retries(mocker,
     mock_update_noti.assert_called_once_with(sample_letter_notification.id, 'technical-failure')
 
 
-@pytest.mark.parametrize('number_of_pages, expected_billable_units', [(2, 1), (3, 2), (10, 5)])
-def test_update_billable_units_or_validation_failed_for_templated_letter(
-        mocker, sample_letter_notification, number_of_pages, expected_billable_units
+def test_update_billable_units_for_letter(
+        mocker, sample_letter_notification
 ):
     sample_letter_notification.billable_units = 0
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
 
-    update_billable_units_or_validation_failed_for_templated_letter(sample_letter_notification.id, number_of_pages)
+    update_billable_units_for_letter(sample_letter_notification.id, 4)
 
     notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
-    assert notification.billable_units == expected_billable_units
+    assert notification.billable_units == 2
     assert sample_letter_notification.status == NOTIFICATION_CREATED
     mock_logger.assert_called_once_with(
         f"Letter notification id: {sample_letter_notification.id} reference {sample_letter_notification.reference}:"
-        f" billable units set to {expected_billable_units}"
+        f" billable units set to 2"
     )
 
 
-def test_update_billable_units_or_validation_failed_for_templated_letter_doesnt_update_if_sent_with_test_key(
+def test_update_billable_units_for_letter_doesnt_update_if_sent_with_test_key(
         mocker, sample_letter_notification
 ):
     sample_letter_notification.billable_units = 0
     sample_letter_notification.key_type = KEY_TYPE_TEST
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
 
-    update_billable_units_or_validation_failed_for_templated_letter(sample_letter_notification.id, 2)
+    update_billable_units_for_letter(sample_letter_notification.id, 2)
 
     notification = Notification.query.filter(Notification.reference == sample_letter_notification.reference).one()
     assert notification.billable_units == 0
@@ -178,14 +178,14 @@ def test_update_billable_units_or_validation_failed_for_templated_letter_doesnt_
 
 
 @pytest.mark.parametrize('key_type', ['test', 'normal', 'team'])
-def test_update_billable_units_or_validation_failed_for_templated_letter_with_too_many_pages(
+def test_update_validation_failed_for_templated_letter_with_too_many_pages(
         mocker, sample_letter_notification, key_type
 ):
     sample_letter_notification.billable_units = 0
     sample_letter_notification.key_type = key_type
     mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
 
-    update_billable_units_or_validation_failed_for_templated_letter(sample_letter_notification.id, 11)
+    update_validation_failed_for_templated_letter(sample_letter_notification.id, 11)
 
     assert sample_letter_notification.billable_units == 0
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED

@@ -711,7 +711,8 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
-        Notification.postage == postage
+        Notification.postage == postage,
+        Notification.billable_units > 0
     ).order_by(
         Notification.service_id,
         Notification.created_at
@@ -729,6 +730,7 @@ def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
         Notification.notification_type == LETTER_TYPE,
         Notification.status == NOTIFICATION_CREATED,
         Notification.key_type == KEY_TYPE_NORMAL,
+        Notification.billable_units > 0
     ).group_by(
         Notification.postage
     ).order_by(
