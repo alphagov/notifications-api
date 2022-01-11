@@ -1,6 +1,5 @@
 from datetime import datetime, time, timedelta
 
-from flask import current_app
 from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
@@ -36,29 +35,21 @@ from app.utils import (
 )
 
 
-def fetch_notification_status_for_day(process_day, notification_type):
+def fetch_status_data_for_service_and_day(process_day, service_id, notification_type):
     start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
     end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
 
-    current_app.logger.info("Fetch ft_notification_status for {} to {}".format(start_date, end_date))
+    # query notifications or notification_history for the day, depending on their data retention
+    service = Service.query.get(service_id)
+    table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
 
-    all_data_for_process_day = []
-    services = Service.query.all()
-    # for each service query notifications or notification_history for the day, depending on their data retention
-    for service in services:
-        table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
-
-        data_for_service_and_type = query_for_fact_status_data(
-            table=table,
-            start_date=start_date,
-            end_date=end_date,
-            notification_type=notification_type,
-            service_id=service.id
-        )
-
-        all_data_for_process_day += data_for_service_and_type
-
-    return all_data_for_process_day
+    return query_for_fact_status_data(
+        table=table,
+        start_date=start_date,
+        end_date=end_date,
+        notification_type=notification_type,
+        service_id=service.id
+    )
 
 
 def query_for_fact_status_data(table, start_date, end_date, notification_type, service_id):
@@ -86,18 +77,19 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
 
 
 @autocommit
-def update_fact_notification_status(data, process_day, notification_type):
+def update_fact_notification_status(transit_data, process_day, notification_type, service_id):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
         FactNotificationStatus.bst_date == process_day,
-        FactNotificationStatus.notification_type == notification_type
+        FactNotificationStatus.notification_type == notification_type,
+        FactNotificationStatus.service_id == service_id,
     ).delete()
 
-    for row in data:
+    for row in transit_data:
         stmt = insert(table).values(
             bst_date=process_day,
             template_id=row.template_id,
-            service_id=row.service_id,
+            service_id=service_id,
             job_id=row.job_id,
             notification_type=notification_type,
             key_type=row.key_type,
