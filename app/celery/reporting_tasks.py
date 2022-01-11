@@ -103,7 +103,7 @@ def create_nightly_notification_status():
             )
             current_app.logger.info(
                 f"create-nightly-notification-status-for-day task created "
-                f"for type {notification_type} for {process_day}"
+                f"for {notification_type} and {process_day}"
             )
 
 
@@ -111,7 +111,8 @@ def create_nightly_notification_status():
 def create_nightly_notification_status_for_day(process_day, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info(
-        f'create-nightly-notification-status-for-day task for {process_day} type {notification_type}: started'
+        f'create-nightly-notification-status-for-day task started '
+        f'for {notification_type} and {process_day}'
     )
 
     for (service_id,) in db.session.query(Service.id):
@@ -124,7 +125,8 @@ def create_nightly_notification_status_for_day(process_day, notification_type):
 
         end = datetime.utcnow()
         current_app.logger.info(
-            f'create-nightly-notification-status-for-day task for {process_day} type {notification_type}: '
+            f'create-nightly-notification-status-for-day task fetch '
+            f'for {process_day} and {notification_type}: '
             f'data fetched in {(end - start).seconds} seconds'
         )
 
@@ -136,6 +138,7 @@ def create_nightly_notification_status_for_day(process_day, notification_type):
         )
 
         current_app.logger.info(
-            f'create-nightly-notification-status-for-day task for {process_day} type {notification_type}: '
-            f'task complete - {len(transit_data)} rows updated'
+            f'create-nightly-notification-status-for-day task finished '
+            f'for {process_day} and {notification_type}: '
+            f'{len(transit_data)} rows updated'
         )
