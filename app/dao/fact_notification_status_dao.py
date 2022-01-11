@@ -43,17 +43,7 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
     service = Service.query.get(service_id)
     table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
 
-    return query_for_fact_status_data(
-        table=table,
-        start_date=start_date,
-        end_date=end_date,
-        notification_type=notification_type,
-        service_id=service.id
-    )
-
-
-def query_for_fact_status_data(table, start_date, end_date, notification_type, service_id):
-    query = db.session.query(
+    return db.session.query(
         table.template_id,
         table.service_id,
         func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
@@ -72,8 +62,7 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
         'job_id',
         table.key_type,
         table.status
-    )
-    return query.all()
+    ).all()
 
 
 @autocommit
