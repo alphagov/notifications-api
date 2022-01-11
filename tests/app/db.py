@@ -1054,6 +1054,19 @@ def set_up_usage_data(start_date):
     )
     create_ft_billing(bst_date=one_week_later, template=sms_template_2, billable_unit=2, rate=0.11)
 
+    # service without ft_billing this year
+    service_with_out_ft_billing_this_year = create_service(
+        service_name='f - without ft_billing',
+        purchase_order_number="sms purchase order number",
+        billing_contact_names="sms billing contact names",
+        billing_contact_email_addresses="sms@billing.contact email@addresses.gov.uk",
+        billing_reference="sms billing reference"
+    )
+    create_annual_billing(
+        service_id=service_with_out_ft_billing_this_year.id, free_sms_fragment_limit=10, financial_year_start=year
+    )
+    dao_add_service_to_organisation(service=service_with_out_ft_billing_this_year, organisation_id=org_1.id)
+
     # dictionary with services and orgs to return
     return {
         "org_1": org_1,
@@ -1065,6 +1078,7 @@ def set_up_usage_data(start_date):
         "service_with_letters_without_org": service_with_letters_without_org,
         "service_with_sms_without_org": service_with_sms_without_org,
         "service_with_sms_within_allowance": service_with_sms_within_allowance,
+        "service_with_out_ft_billing_this_year": service_with_out_ft_billing_this_year,
     }
 
 

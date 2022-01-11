@@ -599,7 +599,7 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
 
-    sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+    sms_billable_units = func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0)
 
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
@@ -614,23 +614,25 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        FactBilling.rate.label('sms_rate'),
-        sms_allowance_left.label("sms_remainder"),
-        sms_billable_units.label('sms_billable_units'),
-        chargeable_sms.label("chargeable_billable_sms"),
-        sms_cost.label('sms_cost'),
+        func.coalesce(allowance_left_at_start_date_query.c.free_sms_fragment_limit, 0).label('free_sms_fragment_limit'),
+        func.coalesce(FactBilling.rate, 0).label('sms_rate'),
+        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
+        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
+        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
+        func.coalesce(sms_cost, 0).label('sms_cost'),
         Service.active.label("active")
     ).select_from(
         Service
     ).outerjoin(
         allowance_left_at_start_date_query, Service.id == allowance_left_at_start_date_query.c.service_id
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
+    ).outerjoin(
+        FactBilling, and_(
+            Service.id == FactBilling.service_id,
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date < end_date,
+            FactBilling.notification_type == SMS_TYPE,
+        )
     ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == SMS_TYPE,
         Service.organisation_id == organisation_id,
         Service.restricted.is_(False)
     ).group_by(
