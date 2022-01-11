@@ -91,30 +91,20 @@ def create_nightly_notification_status():
 
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
-    # email and sms
-    for i in range(4):
-        process_day = yesterday - timedelta(days=i)
-        for notification_type in [SMS_TYPE, EMAIL_TYPE]:
+    for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
+        days = 10 if notification_type == LETTER_TYPE else 4
+
+        for i in range(days):
+            process_day = yesterday - timedelta(days=i)
+
             create_nightly_notification_status_for_day.apply_async(
                 kwargs={'process_day': process_day.isoformat(), 'notification_type': notification_type},
                 queue=QueueNames.REPORTING
             )
             current_app.logger.info(
-                f"create-nightly-notification-status task: create-nightly-notification-status-for-day task created "
+                f"create-nightly-notification-status-for-day task created "
                 f"for type {notification_type} for {process_day}"
             )
-
-    # letters
-    for i in range(10):
-        process_day = yesterday - timedelta(days=i)
-        create_nightly_notification_status_for_day.apply_async(
-            kwargs={'process_day': process_day.isoformat(), 'notification_type': LETTER_TYPE},
-            queue=QueueNames.REPORTING
-        )
-        current_app.logger.info(
-            f"create-nightly-notification-status task: create-nightly-notification-status-for-day task created "
-            f"for type letter for {process_day}"
-        )
 
 
 @notify_celery.task(name="create-nightly-notification-status-for-day")
