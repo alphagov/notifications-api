@@ -10,6 +10,8 @@ from sqlalchemy.types import DateTime, Integer
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import (
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     NOTIFICATION_CANCELLED,
     NOTIFICATION_CREATED,
@@ -72,7 +74,7 @@ def query_for_fact_status_data(table, start_date, end_date, notification_type, s
         table.created_at < end_date,
         table.notification_type == notification_type,
         table.service_id == service_id,
-        table.key_type != KEY_TYPE_TEST
+        table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
     ).group_by(
         table.template_id,
         table.service_id,
