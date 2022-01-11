@@ -736,7 +736,7 @@ def test_fetch_usage_year_for_organisation(notify_db_session):
                       notifications_sent=1100)
     results = fetch_usage_year_for_organisation(fixtures["org_1"].id, 2019)
 
-    assert len(results) == 2
+    assert len(results) == 3
     first_row = results[str(fixtures["service_1_sms_and_letter"].id)]
     assert first_row['service_id'] == fixtures["service_1_sms_and_letter"].id
     assert first_row['service_name'] == fixtures["service_1_sms_and_letter"].name
@@ -756,6 +756,16 @@ def test_fetch_usage_year_for_organisation(notify_db_session):
     assert second_row['sms_cost'] == 0
     assert second_row['letter_cost'] == 0
     assert second_row['emails_sent'] == 1100
+
+    third_row = results[str(fixtures["service_with_out_ft_billing_this_year"].id)]
+    assert third_row['service_id'] == fixtures["service_with_out_ft_billing_this_year"].id
+    assert third_row['service_name'] == fixtures["service_with_out_ft_billing_this_year"].name
+    assert third_row['free_sms_limit'] == 10
+    assert third_row['sms_remainder'] == 10
+    assert third_row['chargeable_billable_sms'] == 0
+    assert third_row['sms_cost'] == 0
+    assert third_row['letter_cost'] == 0
+    assert third_row['emails_sent'] == 0
 
 
 def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify_db_session):
