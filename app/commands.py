@@ -23,9 +23,6 @@ from app.celery.letters_pdf_tasks import (
     get_pdf_for_templated_letter,
     resanitise_pdf,
 )
-from app.celery.reporting_tasks import (
-    create_nightly_notification_status_for_day,
-)
 from app.celery.tasks import process_row, record_daily_sorted_counts
 from app.config import QueueNames
 from app.dao.annual_billing_dao import (
@@ -62,9 +59,7 @@ from app.dao.users_dao import (
     get_user_by_email,
 )
 from app.models import (
-    EMAIL_TYPE,
     KEY_TYPE_TEST,
-    LETTER_TYPE,
     NOTIFICATION_CREATED,
     PROVIDERS,
     SMS_TYPE,
@@ -281,87 +276,6 @@ def setup_commands(application):
     application.cli.add_command(command_group)
 
 
-@notify_command(name='migrate-data-to-ft-billing')
-@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
-@statsd(namespace="tasks")
-def migrate_data_to_ft_billing(start_date, end_date):
-
-    current_app.logger.info('Billing migration from date {} to {}'.format(start_date, end_date))
-
-    process_date = start_date
-    total_updated = 0
-
-    while process_date < end_date:
-        start_time = datetime.utcnow()
-        # migrate data into ft_billing, upserting the data if it the record already exists
-        sql = \
-            """
-            insert into ft_billing (bst_date, template_id, service_id, notification_type, provider, rate_multiplier,
-                international, billable_units, notifications_sent, rate, postage, created_at)
-                select bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
-                    sum(billable_units) as billable_units, sum(notifications_sent) as notification_sent,
-                    case when notification_type = 'sms' then sms_rate else letter_rate end as rate, postage, created_at
-                from (
-                    select
-                        n.id,
-                        (n.created_at at time zone 'UTC' at time zone 'Europe/London')::timestamp::date as bst_date,
-                        coalesce(n.template_id, '00000000-0000-0000-0000-000000000000') as template_id,
-                        coalesce(n.service_id, '00000000-0000-0000-0000-000000000000') as service_id,
-                        n.notification_type,
-                        coalesce(n.sent_by, (
-                        case
-                        when notification_type = 'sms' then
-                            coalesce(sent_by, 'unknown')
-                        when notification_type = 'letter' then
-                            coalesce(sent_by, 'dvla')
-                        else
-                            coalesce(sent_by, 'ses')
-                        end )) as provider,
-                        coalesce(n.rate_multiplier,1) as rate_multiplier,
-                        s.crown,
-                        coalesce((select rates.rate from rates
-                        where n.notification_type = rates.notification_type and n.created_at > rates.valid_from
-                        order by rates.valid_from desc limit 1), 0) as sms_rate,
-                        coalesce((select l.rate from letter_rates l where n.billable_units = l.sheet_count
-                        and s.crown = l.crown and n.postage = l.post_class and n.created_at >= l.start_date
-                        and n.created_at < coalesce(l.end_date, now()) and n.notification_type='letter'), 0)
-                        as letter_rate,
-                        coalesce(n.international, false) as international,
-                        n.billable_units,
-                        1 as notifications_sent,
-                        coalesce(n.postage, 'none') as postage,
-                        now() as created_at
-                    from public.notification_history n
-                    left join services s on s.id = n.service_id
-                    where n.key_type!='test'
-                        and n.notification_status in
-                        ('sending', 'sent', 'delivered', 'temporary-failure', 'permanent-failure', 'failed')
-                        and n.created_at >= (date :start + time '00:00:00') at time zone 'Europe/London'
-                        at time zone 'UTC'
-                        and n.created_at < (date :end + time '00:00:00') at time zone 'Europe/London' at time zone 'UTC'
-                    ) as individual_record
-                group by bst_date, template_id, service_id, notification_type, provider, rate_multiplier, international,
-                    sms_rate, letter_rate, postage, created_at
-                order by bst_date
-            on conflict on constraint ft_billing_pkey do update set
-             billable_units = excluded.billable_units,
-             notifications_sent = excluded.notifications_sent,
-             rate = excluded.rate,
-             updated_at = now()
-            """
-
-        result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
-        db.session.commit()
-        current_app.logger.info('ft_billing: --- Completed took {}ms. Migrated {} rows for {}'.format(
-            datetime.now() - start_time, result.rowcount, process_date))
-
-        process_date += timedelta(days=1)
-
-        total_updated += result.rowcount
-    current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
-
-
 @notify_command(name='rebuild-ft-billing-for-day')
 @click.option('-s', '--service_id', required=False, type=click.UUID)
 @click.option('-d', '--day', help="The date to recalculate, as YYYY-MM-DD", required=True,
@@ -399,29 +313,6 @@ def rebuild_ft_billing_for_day(service_id, day):
         )
         for row in services:
             rebuild_ft_data(day, row.service_id)
-
-
-@notify_command(name='migrate-data-to-ft-notification-status')
-@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-t', '--notification-type', required=False, help="notification type (or leave blank for all types)")
-@statsd(namespace="tasks")
-def migrate_data_to_ft_notification_status(start_date, end_date, notification_type=None):
-    notification_types = [SMS_TYPE, LETTER_TYPE, EMAIL_TYPE] if notification_type is None else [notification_type]
-
-    start_date = start_date.date()
-    end_date = end_date.date()
-    for day_diff in range((end_date - start_date).days + 1):
-        process_day = start_date + timedelta(days=day_diff)
-        for notification_type in notification_types:
-            print('create_nightly_notification_status_for_day triggered for {} and {}'.format(
-                process_day,
-                notification_type
-            ))
-            create_nightly_notification_status_for_day.apply_async(
-                kwargs={'process_day': process_day.strftime('%Y-%m-%d'), 'notification_type': notification_type},
-                queue=QueueNames.REPORTING
-            )
 
 
 @notify_command(name='bulk-invite-user-to-service')
