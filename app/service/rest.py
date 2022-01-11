@@ -940,21 +940,6 @@ def get_organisation_for_service(service_id):
     return jsonify(organisation.serialize() if organisation else {}), 200
 
 
-@service_blueprint.route('/unique', methods=["GET"])
-def is_service_name_unique():
-    service_id, name, email_from = check_request_args(request)
-
-    name_exists = Service.query.filter_by(name=name).first()
-
-    email_from_exists = Service.query.filter(
-        Service.email_from == email_from,
-        Service.id != service_id
-    ).first()
-
-    result = not (name_exists or email_from_exists)
-    return jsonify(result=result), 200
-
-
 @service_blueprint.route('/<uuid:service_id>/data-retention', methods=['GET'])
 def get_data_retention_for_service(service_id):
     data_retention_list = fetch_service_data_retention(service_id)
