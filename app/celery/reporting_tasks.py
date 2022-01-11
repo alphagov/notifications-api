@@ -66,6 +66,29 @@ def create_nightly_billing_for_day(process_day):
 @notify_celery.task(name="create-nightly-notification-status")
 @cronitor("create-nightly-notification-status")
 def create_nightly_notification_status():
+    """
+    Aggregate notification statuses into rows in ft_notification_status.
+    In order to minimise effort, this task assumes that:
+
+      - Email + SMS statuses don't change after 3 days. This is currently true
+        because all outstanding email / SMS are "timed out" after 3 days, and
+        we reject delivery receipts after this point.
+
+      - Letter statuses don't change after 9 days. There's no "timeout" for
+        letters but this is the longest we've had to cope with in the past - due
+        to major issues with our print provider.
+
+    Because the time range of the task exceeds the minimum possible retention
+    period (3 days), we need to choose which table to query for each service.
+
+    The aggregation happens for 1 extra day in case:
+
+      - This task or the "timeout" task fails to run.
+
+      - Data is (somehow) still in transit to the history table, which would
+        mean the aggregated results are temporarily incorrect.
+    """
+
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
     # email and sms
@@ -80,7 +103,8 @@ def create_nightly_notification_status():
                 f"create-nightly-notification-status task: create-nightly-notification-status-for-day task created "
                 f"for type {notification_type} for {process_day}"
             )
-    # letters get modified for a longer time period than sms and email, so we need to reprocess for more days
+
+    # letters
     for i in range(10):
         process_day = yesterday - timedelta(days=i)
         create_nightly_notification_status_for_day.apply_async(
