@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import pycurl
 from flask import Flask
 
 # notify_celery is referenced from manifest_delivery_base.yml, and cannot be removed

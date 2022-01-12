@@ -16,6 +16,12 @@ from app.dao.fact_notification_status_dao import (
 )
 from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
+@notify_celery.task(name='long')
+def long_task():
+    from time import sleep
+    current_app.logger.info("Running long_task")
+    sleep(20)
+
 
 @notify_celery.task(name="create-nightly-billing")
 @cronitor("create-nightly-billing")
