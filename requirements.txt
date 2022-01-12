@@ -48,7 +48,7 @@ cffi==1.15.0
     #   -r requirements.in
     #   bcrypt
     #   cryptography
-charset-normalizer==2.0.7
+charset-normalizer==2.0.10
     # via requests
 click==8.0.3
     # via
