@@ -37,7 +37,7 @@ run-celery: ## Run celery
 		-A run_celery.notify_celery worker \
 		--pidfile="/tmp/celery.pid" \
 		--loglevel=INFO \
-		--concurrency=4
+		--concurrency=2
 
 .PHONY: run-celery-beat
 run-celery-beat: ## Run celery beat

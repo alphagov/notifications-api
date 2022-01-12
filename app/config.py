@@ -192,7 +192,8 @@ class Config(object):
         'broker_url': 'sqs://',
         'broker_transport_options': {
             'region': AWS_REGION,
-            'visibility_timeout': 310,
+            'visibility_timeout': 10,
+            'wait_time_seconds': 1,
             'queue_name_prefix': NOTIFICATION_QUEUE_PREFIX,
         },
         'timezone': 'Europe/London',
@@ -343,10 +344,12 @@ class Config(object):
     # we can set celeryd_prefetch_multiplier to be 1 for celery apps which handle only long running tasks
     if os.getenv('CELERYD_PREFETCH_MULTIPLIER'):
         CELERY['worker_prefetch_multiplier'] = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
+    CELERY['worker_prefetch_multiplier'] = 1
 
     # on reporting worker, restart workers after each task is executed to help prevent memory leaks
     if os.getenv('CELERYD_MAX_TASKS_PER_CHILD'):
         CELERY['worker_max_tasks_per_child'] = int(os.getenv('CELERYD_MAX_TASKS_PER_CHILD'))
+    CELERY['worker_max_tasks_per_child'] = 1
 
     FROM_NUMBER = 'development'
 
