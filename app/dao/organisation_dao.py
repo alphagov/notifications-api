@@ -137,3 +137,8 @@ def dao_add_user_to_organisation(organisation_id, user_id):
     user.organisations.append(organisation)
     db.session.add(organisation)
     return user
+
+
+@autocommit
+def dao_remove_user_from_organisation(organisation, user):
+    organisation.users.remove(user)
