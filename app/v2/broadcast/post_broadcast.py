@@ -5,9 +5,13 @@ from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
 
 from app import api_user, authenticated_service
-from app.broadcast_message.rest import validate_and_update_broadcast_message_status
+from app.broadcast_message.rest import (
+    validate_and_update_broadcast_message_status,
+)
 from app.broadcast_message.translators import cap_xml_to_dict
-from app.dao.broadcast_message_dao import dao_get_broadcast_message_by_references
+from app.dao.broadcast_message_dao import (
+    dao_get_broadcast_message_by_references,
+)
 from app.dao.dao_utils import dao_save_object
 from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
 from app.notifications.validators import check_service_has_permission
@@ -47,9 +51,13 @@ def create_broadcast():
         references_to_original_broadcast = broadcast_json["references"].split(",")
         broadcast_message = dao_get_broadcast_message_by_references(references_to_original_broadcast)
         # do we need to check if service is active?
+        if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
+            new_status = BroadcastStatusType.REJECTED
+        else:
+            new_status = BroadcastStatusType.CANCELLED
         validate_and_update_broadcast_message_status(
             broadcast_message,
-            BroadcastStatusType.REJECTED,
+            new_status,
             updating_user=None,
             from_api=True
         )
