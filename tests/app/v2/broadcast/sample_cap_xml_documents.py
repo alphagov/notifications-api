@@ -189,7 +189,7 @@ WITH_PLACEHOLDER_FOR_CONTENT = """
 
 WINDEMERE = """
     <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
-        <identifier>50385fcb0ab7aa447bbd46d848ce8466E</identifier>
+        <identifier>4f6d28b10ab7aa447bbd46d85f1e9effE</identifier>
         <sender>www.gov.uk/environment-agency</sender>
         <sent>2020-02-16T23:01:13-00:00</sent>
         <status>Actual</status>

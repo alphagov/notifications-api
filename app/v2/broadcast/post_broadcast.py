@@ -3,6 +3,7 @@ from itertools import chain
 from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
+from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
 from app.broadcast_message.rest import (
@@ -10,7 +11,7 @@ from app.broadcast_message.rest import (
 )
 from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.broadcast_message_dao import (
-    dao_get_broadcast_message_by_references,
+    dao_get_broadcast_message_by_references_and_service_id,
 )
 from app.dao.dao_utils import dao_save_object
 from app.models import BROADCAST_TYPE, BroadcastMessage, BroadcastStatusType
@@ -48,18 +49,9 @@ def create_broadcast():
     validate(broadcast_json, post_broadcast_schema)
 
     if broadcast_json["msgType"] == "Cancel":
-        references_to_original_broadcast = broadcast_json["references"].split(",")
-        broadcast_message = dao_get_broadcast_message_by_references(references_to_original_broadcast)
-        # do we need to check if service is active?
-        if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
-            new_status = BroadcastStatusType.REJECTED
-        else:
-            new_status = BroadcastStatusType.CANCELLED
-        validate_and_update_broadcast_message_status(
-            broadcast_message,
-            new_status,
-            updating_user=None,
-            from_api=True
+        broadcast_message = _cancel_or_reject_broadcast(
+            broadcast_json["references"].split(","),
+            authenticated_service.id
         )
         return jsonify(broadcast_message.serialize()), 201
 
@@ -106,6 +98,31 @@ def create_broadcast():
         )
 
         return jsonify(broadcast_message.serialize()), 201
+
+
+def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
+    try:
+        broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
+            references_to_original_broadcast,
+            service_id
+        )
+    except NoResultFound:
+        raise BadRequestError(
+            message="Broadcast message reference and service id didn't match with any existing broadcasts",
+            status_code=404,
+        )
+    # do we need to check if service is active?
+    if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
+        new_status = BroadcastStatusType.REJECTED
+    else:
+        new_status = BroadcastStatusType.CANCELLED
+    validate_and_update_broadcast_message_status(
+        broadcast_message,
+        new_status,
+        updating_user=None,
+        from_api=True
+    )
+    return broadcast_message
 
 
 def _validate_template(broadcast_json):

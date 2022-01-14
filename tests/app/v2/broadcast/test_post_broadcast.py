@@ -205,8 +205,38 @@ def test_valid_cancel_broadcast_request_cancels_active_alert_and_returns_201(
     assert broadcast_message.updated_at is not None
 
 
-def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match():
-    pass
+def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
+    client,
+    sample_broadcast_service
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WINDEMERE,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    assert response_json_for_create['cancelled_at'] is None
+    assert response_json_for_create['cancelled_by_id'] is None
+    assert response_json_for_create['reference'] == '4f6d28b10ab7aa447bbd46d85f1e9effE'
+    assert response_json_for_create['status'] == 'pending-approval'
+
+    # try to cancel broadcast, but reference doesn't match
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert response_for_cancel.status_code == 404
+    response = json.loads(response_for_cancel.get_data(as_text=True))
+    expected_error_message = "Broadcast message reference and service id didn't match with any existing broadcasts"
+    assert response["errors"][0]["message"] == expected_error_message
 
 
 def test_large_polygon_is_simplified(
