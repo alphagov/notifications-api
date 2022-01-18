@@ -140,7 +140,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[0]["organisation_id"] == str(fixtures["org_1"].id)
     assert response[0]["service_id"] == str(fixtures["service_1_sms_and_letter"].id)
     assert response[0]["sms_cost"] == 0
-    assert response[0]["sms_fragments"] == 0
+    assert response[0]["sms_chargeable_units"] == 0
     assert response[0]["total_letters"] == 8
     assert response[0]["letter_cost"] == 3.40
     assert response[0]["letter_breakdown"] == "6 second class letters at 45p\n2 first class letters at 35p\n"
@@ -152,7 +152,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[1]["organisation_id"] == str(fixtures["org_for_service_with_letters"].id)
     assert response[1]["service_id"] == str(fixtures["service_with_letters"].id)
     assert response[1]["sms_cost"] == 0
-    assert response[1]["sms_fragments"] == 0
+    assert response[1]["sms_chargeable_units"] == 0
     assert response[1]["total_letters"] == 22
     assert response[1]["letter_cost"] == 14
     assert response[1]["letter_breakdown"] == "20 second class letters at 65p\n2 first class letters at 50p\n"
@@ -164,7 +164,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[2]["organisation_id"] == ""
     assert response[2]["service_id"] == str(fixtures["service_with_sms_without_org"].id)
     assert response[2]["sms_cost"] == 0.33
-    assert response[2]["sms_fragments"] == 3
+    assert response[2]["sms_chargeable_units"] == 3
     assert response[2]["total_letters"] == 0
     assert response[2]["letter_cost"] == 0
     assert response[2]["letter_breakdown"] == ""
@@ -176,7 +176,7 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
     assert response[3]["organisation_id"] == ""
     assert response[3]["service_id"] == str(fixtures["service_with_letters_without_org"].id)
     assert response[3]["sms_cost"] == 0
-    assert response[3]["sms_fragments"] == 0
+    assert response[3]["sms_chargeable_units"] == 0
     assert response[3]["total_letters"] == 18
     assert response[3]["letter_cost"] == 24.45
     assert response[3]["letter_breakdown"] == (
