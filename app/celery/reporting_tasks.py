@@ -117,11 +117,11 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
     current_app.logger.info(
         f'create-nightly-notification-status-for-day task started '
-        f'for {service_id}, {notification_type} and {process_day}'
+        f'for {service_id}, {notification_type} for {process_day}'
     )
 
     start = datetime.utcnow()
-    transit_data = fetch_status_data_for_service_and_day(
+    new_status_rows = fetch_status_data_for_service_and_day(
         process_day=process_day,
         notification_type=notification_type,
         service_id=service_id,
@@ -130,12 +130,12 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     end = datetime.utcnow()
     current_app.logger.info(
         f'create-nightly-notification-status-for-day task fetch '
-        f'for {service_id}, {process_day} and {notification_type}: '
+        f'for {service_id}, {notification_type} for {process_day}: '
         f'data fetched in {(end - start).seconds} seconds'
     )
 
     update_fact_notification_status(
-        transit_data=transit_data,
+        new_status_rows=new_status_rows,
         process_day=process_day,
         notification_type=notification_type,
         service_id=service_id
@@ -143,6 +143,6 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
 
     current_app.logger.info(
         f'create-nightly-notification-status-for-day task finished '
-        f'for {service_id}, {process_day} and {notification_type}: '
-        f'{len(transit_data)} rows updated'
+        f'for {service_id}, {notification_type} for {process_day}: '
+        f'{len(new_status_rows)} rows updated'
     )

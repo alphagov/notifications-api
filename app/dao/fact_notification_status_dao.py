@@ -45,7 +45,6 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
 
     return db.session.query(
         table.template_id,
-        table.service_id,
         func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
         table.key_type,
         table.status,
@@ -58,7 +57,6 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
         table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
     ).group_by(
         table.template_id,
-        table.service_id,
         'job_id',
         table.key_type,
         table.status
@@ -66,7 +64,7 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
 
 
 @autocommit
-def update_fact_notification_status(transit_data, process_day, notification_type, service_id):
+def update_fact_notification_status(new_status_rows, process_day, notification_type, service_id):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
         FactNotificationStatus.bst_date == process_day,
@@ -74,18 +72,19 @@ def update_fact_notification_status(transit_data, process_day, notification_type
         FactNotificationStatus.service_id == service_id,
     ).delete()
 
-    for row in transit_data:
-        stmt = insert(table).values(
-            bst_date=process_day,
-            template_id=row.template_id,
-            service_id=service_id,
-            job_id=row.job_id,
-            notification_type=notification_type,
-            key_type=row.key_type,
-            notification_status=row.status,
-            notification_count=row.notification_count,
+    for row in new_status_rows:
+        db.session.connection().execute(
+            insert(table).values(
+                bst_date=process_day,
+                template_id=row.template_id,
+                service_id=service_id,
+                job_id=row.job_id,
+                notification_type=notification_type,
+                key_type=row.key_type,
+                notification_status=row.status,
+                notification_count=row.notification_count,
+            )
         )
-        db.session.connection().execute(stmt)
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
