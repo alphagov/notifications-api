@@ -47,7 +47,6 @@ cffi==1.14.5
     # via
     #   -r requirements.in
     #   bcrypt
-    #   cryptography
 charset-normalizer==2.0.7
     # via requests
 click==8.0.3
@@ -68,8 +67,6 @@ click-repl==0.2.0
     # via celery
 colorama==0.4.3
     # via awscli
-cryptography==3.3.2
-    # via -r requirements.in
 dnspython==1.16.0
     # via eventlet
 docopt==0.6.2
@@ -221,7 +218,6 @@ six==1.16.0
     #   bcrypt
     #   bleach
     #   click-repl
-    #   cryptography
     #   eventlet
     #   flask-marshmallow
     #   jsonschema
