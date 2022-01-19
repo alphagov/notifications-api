@@ -3,13 +3,12 @@ from itertools import chain
 from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
-from sqlalchemy.orm.exc import NoResultFound
 
 from app import api_user, authenticated_service
-from app.broadcast_message.rest import (
+from app.broadcast_message.translators import cap_xml_to_dict
+from app.broadcast_message.utils import (
     validate_and_update_broadcast_message_status,
 )
-from app.broadcast_message.translators import cap_xml_to_dict
 from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_references_and_service_id,
 )
