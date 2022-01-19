@@ -1466,8 +1466,6 @@ class Notification(db.Model):
     client_reference = db.Column(db.String, index=True, nullable=True)
     _personalisation = db.Column(db.String, nullable=True)
 
-    client_reference = db.Column(db.String, index=True, nullable=True)
-
     international = db.Column(db.Boolean, nullable=False, default=False)
     phone_prefix = db.Column(db.String, nullable=True)
     rate_multiplier = db.Column(db.Numeric(asdecimal=False), nullable=True)
