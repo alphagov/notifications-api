@@ -42,15 +42,7 @@ def _parse_nullable_datetime(dt):
     return dt
 
 
-def validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user, from_api=False):
-    if updating_user not in broadcast_message.service.users:
-        #  we allow platform admins to cancel broadcasts, and we don't check user if request was done via API
-        if not from_api and not (new_status == BroadcastStatusType.CANCELLED and updating_user.platform_admin):
-            raise InvalidRequest(
-                f'User {updating_user.id} cannot update broadcast_message {broadcast_message.id} from other service',
-                status_code=400
-            )
-
+def validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user):
     if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
         raise InvalidRequest(
             f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}',
@@ -205,6 +197,14 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
 
     new_status = data['status']
     updating_user = get_user_by_id(data['created_by'])
+
+    if updating_user not in broadcast_message.service.users:
+        #  we allow platform admins to cancel broadcasts, and we don't check user if request was done via API
+        if not (new_status == BroadcastStatusType.CANCELLED and updating_user.platform_admin):
+            raise InvalidRequest(
+                f'User {updating_user.id} cannot update broadcast_message {broadcast_message.id} from other service',
+                status_code=400
+            )
 
     validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user)
 

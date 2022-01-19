@@ -111,7 +111,7 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
             message="Broadcast message reference and service id didn't match with any existing broadcasts",
             status_code=404,
         )
-    # do we need to check if service is active?
+
     if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
         new_status = BroadcastStatusType.REJECTED
     else:
@@ -119,8 +119,7 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
     validate_and_update_broadcast_message_status(
         broadcast_message,
         new_status,
-        updating_user=None,
-        from_api=True
+        updating_user=None
     )
     return broadcast_message
 
