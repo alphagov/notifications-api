@@ -42,10 +42,10 @@ def _parse_nullable_datetime(dt):
     return dt
 
 
-def _update_broadcast_message(broadcast_message, new_status, updating_user):
+def validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user, from_api=False):
     if updating_user not in broadcast_message.service.users:
-        #  we allow platform admins to cancel broadcasts
-        if not (new_status == BroadcastStatusType.CANCELLED and updating_user.platform_admin):
+        #  we allow platform admins to cancel broadcasts, and we don't check user if request was done via API
+        if not from_api and not (new_status == BroadcastStatusType.CANCELLED and updating_user.platform_admin):
             raise InvalidRequest(
                 f'User {updating_user.id} cannot update broadcast_message {broadcast_message.id} from other service',
                 status_code=400
@@ -81,6 +81,11 @@ def _update_broadcast_message(broadcast_message, new_status, updating_user):
         f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
     )
     broadcast_message.status = new_status
+
+    dao_save_object(broadcast_message)
+
+    if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
+        _create_broadcast_event(broadcast_message)
 
 
 @broadcast_message_blueprint.route('', methods=['GET'])
@@ -201,11 +206,7 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
     new_status = data['status']
     updating_user = get_user_by_id(data['created_by'])
 
-    _update_broadcast_message(broadcast_message, new_status, updating_user)
-    dao_save_object(broadcast_message)
-
-    if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
-        _create_broadcast_event(broadcast_message)
+    validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user)
 
     return jsonify(broadcast_message.serialize()), 200
 

@@ -119,6 +119,50 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['updated_at'] is None
 
 
+def test_valid_cancel_broadcast_request_rejects_unapproved_alert_and_returns_201(
+    client,
+    sample_broadcast_service,
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    assert response_json_for_create['cancelled_at'] is None
+    assert response_json_for_create['cancelled_by_id'] is None
+    assert response_json_for_create['reference'] == '50385fcb0ab7aa447bbd46d848ce8466E'
+    assert response_json_for_create['status'] == 'pending-approval'
+
+    # cancel broadcast
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_cancel.status_code == 201
+
+    response_json_for_reject = json.loads(response_for_cancel.get_data(as_text=True))
+
+    assert response_json_for_reject['reference'] == response_json_for_create['reference']
+    assert response_json_for_reject['status'] == 'rejected'
+    assert response_json_for_reject['updated_at'] is not None
+
+
+def test_valid_cancel_broadcast_request_cancels_active_alert_and_returns_201():
+    pass
+
+
+def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match():
+    pass
+
+
 def test_large_polygon_is_simplified(
     client,
     sample_broadcast_service,
@@ -191,32 +235,22 @@ def test_invalid_post_cap_xml_broadcast_returns_400(
     }
 
 
-@pytest.mark.parametrize('xml_document, expected_error_message', (
-    (sample_cap_xml_documents.CANCEL, (
-        'msgType Cancel is not one of [Alert]'
-    )),
-    (sample_cap_xml_documents.UPDATE, (
-        'msgType Update is not one of [Alert]'
-    )),
-))
 def test_unsupported_message_types_400(
     client,
     sample_broadcast_service,
-    xml_document,
-    expected_error_message,
 ):
     auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
 
     response = client.post(
         path='/v2/broadcast',
-        data=xml_document,
+        data=sample_cap_xml_documents.UPDATE,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
 
     assert response.status_code == 400
     assert {
         'error': 'ValidationError',
-        'message': expected_error_message,
+        'message': 'msgType Update is not one of [Alert, Cancel]',
     } in (
         json.loads(response.get_data(as_text=True))['errors']
     )
