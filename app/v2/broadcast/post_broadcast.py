@@ -101,17 +101,10 @@ def create_broadcast():
 
 
 def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
-    try:
-        broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
-            references_to_original_broadcast,
-            service_id
-        )
-    except NoResultFound:
-        raise BadRequestError(
-            message="Broadcast message reference and service id didn't match with any existing broadcasts",
-            status_code=404,
-        )
-
+    broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
+        references_to_original_broadcast,
+        service_id
+    )
     if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
         new_status = BroadcastStatusType.REJECTED
     else:

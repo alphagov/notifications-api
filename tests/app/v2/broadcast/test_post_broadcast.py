@@ -234,9 +234,6 @@ def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
     )
 
     assert response_for_cancel.status_code == 404
-    response = json.loads(response_for_cancel.get_data(as_text=True))
-    expected_error_message = "Broadcast message reference and service id didn't match with any existing broadcasts"
-    assert response["errors"][0]["message"] == expected_error_message
 
 
 def test_large_polygon_is_simplified(
