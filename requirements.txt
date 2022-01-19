@@ -181,7 +181,7 @@ pypdf2==1.26.0
     # via notifications-utils
 pyproj==3.3.0
     # via notifications-utils
-pyrsistent==0.18.0
+pyrsistent==0.18.1
     # via jsonschema
 python-dateutil==2.8.2
     # via
