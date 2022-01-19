@@ -239,7 +239,7 @@ statsd==3.3.0
     # via notifications-utils
 strict-rfc3339==0.7
     # via -r requirements.in
-urllib3==1.26.7
+urllib3==1.26.8
     # via
     #   botocore
     #   requests
