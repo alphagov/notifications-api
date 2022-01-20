@@ -183,6 +183,33 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
     return service
 
 
+@pytest.fixture(scope='function')
+def sample_broadcast_service_2(broadcast_organisation, sample_user):
+    service_name = 'Sample broadcast service 2'
+    email_from = service_name.lower().replace(' ', '.')
+
+    data = {
+        'name': service_name,
+        'message_limit': 1000,
+        'restricted': False,
+        'email_from': email_from,
+        'created_by': sample_user,
+        'crown': True,
+        'count_as_live': False,
+    }
+    service = Service.query.filter_by(name=service_name).first()
+    if not service:
+        service = Service(**data)
+        dao_create_service(service, sample_user, service_permissions=[BROADCAST_TYPE])
+        insert_or_update_service_broadcast_settings(service, channel="severe")
+        dao_add_service_to_organisation(service, current_app.config['BROADCAST_ORGANISATION_ID'])
+    else:
+        if sample_user not in service.users:
+            dao_add_user_to_service(service, sample_user)
+
+    return service
+
+
 @pytest.fixture(scope='function', name='sample_service_full_permissions')
 def _sample_service_full_permissions(notify_db_session):
     service = create_service(
