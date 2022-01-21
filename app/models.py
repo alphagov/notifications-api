@@ -1498,6 +1498,15 @@ class Notification(db.Model):
             'notification_type',
             'status',
             'created_at'
+        ),
+        Index(
+            "ix_notifications_template_statistics_for_service_by_day",
+            'service_id',
+            'created_at',
+            'template_id',
+            'status',
+            'notification_type',
+            'key_type'
         )
     )
 
