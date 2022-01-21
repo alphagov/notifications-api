@@ -119,6 +119,112 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     assert response_json['updated_at'] is None
 
 
+@pytest.mark.parametrize("is_approved,expected_status", [
+    [True, "cancelled"],
+    [False, "rejected"]
+])
+def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_message_status_and_returns_201(
+    client,
+    sample_broadcast_service,
+    mocker,
+    is_approved,
+    expected_status
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    broadcast_message = dao_get_broadcast_message_by_id_and_service_id(
+        response_json_for_create["id"], response_json_for_create["service_id"]
+    )
+    # approve broadcast
+    if is_approved:
+        broadcast_message.status = 'broadcasting'
+
+    mock_update = mocker.patch('app.v2.broadcast.post_broadcast.validate_and_update_broadcast_message_status')
+
+    # cancel broadcast
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_cancel.status_code == 201
+    mock_update.assert_called_once_with(broadcast_message, expected_status, updating_user=None)
+
+
+def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
+    client,
+    sample_broadcast_service
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WINDEMERE,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    assert response_json_for_create['cancelled_at'] is None
+    assert response_json_for_create['cancelled_by_id'] is None
+    assert response_json_for_create['reference'] == '4f6d28b10ab7aa447bbd46d85f1e9effE'
+    assert response_json_for_create['status'] == 'pending-approval'
+
+    # try to cancel broadcast, but reference doesn't match
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+
+    assert response_for_cancel.status_code == 404
+
+
+def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
+    client,
+    sample_broadcast_service,
+    sample_broadcast_service_2
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    assert response_json_for_create['cancelled_at'] is None
+    assert response_json_for_create['cancelled_by_id'] is None
+    assert response_json_for_create['reference'] == '50385fcb0ab7aa447bbd46d848ce8466E'
+    assert response_json_for_create['status'] == 'pending-approval'
+
+    # try to cancel broadcast, but service id doesn't match
+    auth_header_2 = create_service_authorization_header(service_id=sample_broadcast_service_2.id)
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header_2],
+    )
+
+    assert response_for_cancel.status_code == 404
+
+
 def test_large_polygon_is_simplified(
     client,
     sample_broadcast_service,
@@ -191,32 +297,22 @@ def test_invalid_post_cap_xml_broadcast_returns_400(
     }
 
 
-@pytest.mark.parametrize('xml_document, expected_error_message', (
-    (sample_cap_xml_documents.CANCEL, (
-        'msgType Cancel is not one of [Alert]'
-    )),
-    (sample_cap_xml_documents.UPDATE, (
-        'msgType Update is not one of [Alert]'
-    )),
-))
 def test_unsupported_message_types_400(
     client,
     sample_broadcast_service,
-    xml_document,
-    expected_error_message,
 ):
     auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
 
     response = client.post(
         path='/v2/broadcast',
-        data=xml_document,
+        data=sample_cap_xml_documents.UPDATE,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
 
     assert response.status_code == 400
     assert {
         'error': 'ValidationError',
-        'message': expected_error_message,
+        'message': 'msgType Update is not one of [Alert, Cancel]',
     } in (
         json.loads(response.get_data(as_text=True))['errors']
     )

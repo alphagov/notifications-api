@@ -17,6 +17,12 @@ post_broadcast_schema = {
                 "null",
             ],
         },
+        "references": {
+            "type": [
+                "string",
+                "null",
+            ],
+        },
         "cap_event": {
             "type": [
                 "string",
@@ -63,10 +69,10 @@ post_broadcast_schema = {
             "type": "string",
             "enum": [
                 "Alert",
+                "Cancel",
                 # The following are valid CAP but not supported by our
                 # API at the moment
                 #    "Update",
-                #    "Cancel",
                 #    "Ack",
                 #    "Error",
             ],

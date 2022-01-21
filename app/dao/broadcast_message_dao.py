@@ -24,6 +24,13 @@ def dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service
     ).one()
 
 
+def dao_get_broadcast_message_by_references_and_service_id(references_to_original_broadcast, service_id):
+    return BroadcastMessage.query.filter(
+        BroadcastMessage.reference.in_(references_to_original_broadcast),
+        BroadcastMessage.service_id == service_id
+    ).one()
+
+
 def dao_get_broadcast_event_by_id(broadcast_event_id):
     return BroadcastEvent.query.filter(BroadcastEvent.id == broadcast_event_id).one()
 
