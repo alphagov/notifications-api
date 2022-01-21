@@ -136,14 +136,15 @@ def delete_notifications_for_service_and_type(service_id, notification_type, dat
         service_id,
         datetime_to_delete_before,
     )
-    end = datetime.utcnow()
-    current_app.logger.info(
-        f'delete-notifications-for-service-and-type: '
-        f'service: {service_id}, '
-        f'notification_type: {notification_type}, '
-        f'count deleted: {num_deleted}, '
-        f'duration: {(end - start).seconds} seconds'
-    )
+    if num_deleted:
+        end = datetime.utcnow()
+        current_app.logger.info(
+            f'delete-notifications-for-service-and-type: '
+            f'service: {service_id}, '
+            f'notification_type: {notification_type}, '
+            f'count deleted: {num_deleted}, '
+            f'duration: {(end - start).seconds} seconds'
+        )
 
 
 @notify_celery.task(name='timeout-sending-notifications')
