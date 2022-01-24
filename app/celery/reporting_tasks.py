@@ -106,19 +106,11 @@ def create_nightly_notification_status():
                     },
                     queue=QueueNames.REPORTING
                 )
-                current_app.logger.info(
-                    f"create-nightly-notification-status-for-day task created "
-                    f"for {service_id}, {notification_type} and {process_day}"
-                )
 
 
 @notify_celery.task(name="create-nightly-notification-status-for-service-and-day")
 def create_nightly_notification_status_for_service_and_day(process_day, service_id, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
-    current_app.logger.info(
-        f'create-nightly-notification-status-for-day task started '
-        f'for {service_id}, {notification_type} for {process_day}'
-    )
 
     start = datetime.utcnow()
     new_status_rows = fetch_status_data_for_service_and_day(
@@ -134,6 +126,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
         f'data fetched in {(end - start).seconds} seconds'
     )
 
+    start = datetime.utcnow()
     update_fact_notification_status(
         new_status_rows=new_status_rows,
         process_day=process_day,
@@ -141,8 +134,9 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
         service_id=service_id
     )
 
+    end = datetime.utcnow()
     current_app.logger.info(
-        f'create-nightly-notification-status-for-day task finished '
+        f'create-nightly-notification-status-for-day task update '
         f'for {service_id}, {notification_type} for {process_day}: '
-        f'{len(new_status_rows)} rows updated'
+        f'data fetched in {(end - start).seconds} seconds'
     )
