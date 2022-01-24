@@ -10,7 +10,7 @@ from app.celery.reporting_tasks import (
     create_nightly_billing,
     create_nightly_billing_for_day,
     create_nightly_notification_status,
-    create_nightly_notification_status_for_day,
+    create_nightly_notification_status_for_service_and_day,
 )
 from app.config import QueueNames
 from app.dao.fact_billing_dao import get_rate
@@ -63,7 +63,7 @@ def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_
 
 @freeze_time('2019-08-01')
 def test_create_nightly_notification_status_triggers_tasks(notify_api, sample_service, mocker):
-    mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_day')
+    mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day')
     create_nightly_notification_status()
 
     assert mock_celery.apply_async.call_count == (
@@ -80,6 +80,7 @@ def test_create_nightly_notification_status_triggers_tasks(notify_api, sample_se
             kwargs={
                 'process_day': process_date,
                 'notification_type': notification_type,
+                'service_id': sample_service.id,
             },
             queue=QueueNames.REPORTING
         )
@@ -89,6 +90,7 @@ def test_create_nightly_notification_status_triggers_tasks(notify_api, sample_se
             kwargs={
                 'process_day': process_date,
                 'notification_type': LETTER_TYPE,
+                'service_id': sample_service.id,
             },
             queue=QueueNames.REPORTING
         )
@@ -507,7 +509,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(
     assert records[0].updated_at
 
 
-def test_create_nightly_notification_status_for_day(notify_db_session):
+def test_create_nightly_notification_status_for_service_and_day(notify_db_session):
     first_service = create_service(service_name='First Service')
     first_template = create_template(service=first_service)
     second_service = create_service(service_name='second Service')
@@ -538,9 +540,9 @@ def test_create_nightly_notification_status_for_day(notify_db_session):
 
     assert len(FactNotificationStatus.query.all()) == 0
 
-    create_nightly_notification_status_for_day(str(process_day), 'sms')
-    create_nightly_notification_status_for_day(str(process_day), 'email')
-    create_nightly_notification_status_for_day(str(process_day), 'letter')
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
+    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, 'email')
+    create_nightly_notification_status_for_service_and_day(str(process_day), third_service.id, 'letter')
 
     new_fact_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.notification_type
@@ -575,13 +577,13 @@ def test_create_nightly_notification_status_for_day(notify_db_session):
     assert new_fact_data[2].key_type == KEY_TYPE_NORMAL
 
 
-def test_create_nightly_notification_status_for_day_overwrites_old_data(notify_db_session):
+def test_create_nightly_notification_status_for_service_and_day_overwrites_old_data(notify_db_session):
     first_service = create_service(service_name='First Service')
     first_template = create_template(service=first_service)
     create_notification(template=first_template, status='delivered')
 
     process_day = date.today()
-    create_nightly_notification_status_for_day(str(process_day), 'sms')
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
     new_fact_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.bst_date,
@@ -592,7 +594,7 @@ def test_create_nightly_notification_status_for_day_overwrites_old_data(notify_d
     assert new_fact_data[0].notification_count == 1
 
     create_notification(template=first_template, status='delivered')
-    create_nightly_notification_status_for_day(str(process_day), 'sms')
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
     updated_fact_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.bst_date,
@@ -605,7 +607,7 @@ def test_create_nightly_notification_status_for_day_overwrites_old_data(notify_d
 
 # the job runs at 12:30am London time. 04/01 is in BST.
 @freeze_time('2019-04-01T23:30')
-def test_create_nightly_notification_status_for_day_respects_bst(sample_template):
+def test_create_nightly_notification_status_for_service_and_day_respects_bst(sample_template):
     create_notification(sample_template, status='delivered', created_at=datetime(2019, 4, 1, 23, 0))  # too new
 
     create_notification(sample_template, status='created', created_at=datetime(2019, 4, 1, 22, 59))
@@ -613,7 +615,7 @@ def test_create_nightly_notification_status_for_day_respects_bst(sample_template
 
     create_notification(sample_template, status='delivered', created_at=datetime(2019, 3, 31, 22, 59))  # too old
 
-    create_nightly_notification_status_for_day('2019-04-01', 'sms')
+    create_nightly_notification_status_for_service_and_day('2019-04-01', sample_template.service_id, 'sms')
 
     noti_status = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date).all()
     assert len(noti_status) == 1
