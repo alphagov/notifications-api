@@ -22,7 +22,7 @@ from app.dao.jobs_dao import (
 from app.dao.notifications_dao import (
     dao_get_notifications_processing_time_stats,
     dao_timeout_notifications,
-    get_service_ids_that_have_notifications_from_before_timestamp,
+    get_service_ids_with_notifications_before,
     move_notifications_to_notification_history,
 )
 from app.dao.service_data_retention_dao import (
@@ -107,7 +107,7 @@ def _delete_notifications_older_than_retention_by_type(notification_type):
 
     # get a list of all service ids that we'll need to delete for. Typically that might only be 5% of services.
     # This query takes a couple of mins to run.
-    service_ids_that_have_sent_notifications_recently = get_service_ids_that_have_notifications_from_before_timestamp(
+    service_ids_that_have_sent_notifications_recently = get_service_ids_with_notifications_before(
         notification_type,
         seven_days_ago
     )

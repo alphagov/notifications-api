@@ -784,7 +784,7 @@ def _duplicate_update_warning(notification, status):
     )
 
 
-def get_service_ids_that_have_notifications_from_before_timestamp(notification_type, timestamp):
+def get_service_ids_with_notifications_before(notification_type, timestamp):
     return {
         row.service_id
         for row in db.session.query(
