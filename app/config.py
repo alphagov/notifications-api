@@ -344,10 +344,6 @@ class Config(object):
     if os.getenv('CELERYD_PREFETCH_MULTIPLIER'):
         CELERY['worker_prefetch_multiplier'] = os.getenv('CELERYD_PREFETCH_MULTIPLIER')
 
-    # on reporting worker, restart workers after each task is executed to help prevent memory leaks
-    if os.getenv('CELERYD_MAX_TASKS_PER_CHILD'):
-        CELERY['worker_max_tasks_per_child'] = int(os.getenv('CELERYD_MAX_TASKS_PER_CHILD'))
-
     FROM_NUMBER = 'development'
 
     STATSD_HOST = os.getenv('STATSD_HOST')
