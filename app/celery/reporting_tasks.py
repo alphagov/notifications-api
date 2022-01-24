@@ -91,12 +91,13 @@ def create_nightly_notification_status():
 
     yesterday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
-    for (service_id,) in db.session.query(Service.id):
-        for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
-            days = 10 if notification_type == LETTER_TYPE else 4
+    for notification_type in [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]:
+        days = 10 if notification_type == LETTER_TYPE else 4
 
-            for i in range(days):
-                process_day = yesterday - timedelta(days=i)
+        for i in range(days):
+            process_day = yesterday - timedelta(days=i)
+
+            for (service_id,) in db.session.query(Service.id):
 
                 create_nightly_notification_status_for_service_and_day.apply_async(
                     kwargs={
