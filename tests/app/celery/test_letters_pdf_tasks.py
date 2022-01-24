@@ -190,8 +190,7 @@ def test_update_validation_failed_for_templated_letter_with_too_many_pages(
     assert sample_letter_notification.billable_units == 0
     assert sample_letter_notification.status == NOTIFICATION_VALIDATION_FAILED
     mock_logger.assert_called_once_with(
-         f"Letter notification id: {sample_letter_notification.id} reference {sample_letter_notification.reference}: "
-         f"validation failed: letter is too long 11"
+         f"Validation failed: letter is too long 11 for letter with id: {sample_letter_notification.id}"
     )
 
 

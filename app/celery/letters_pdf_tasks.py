@@ -123,8 +123,7 @@ def update_validation_failed_for_templated_letter(self, notification_id, page_co
     notification = get_notification_by_id(notification_id, _raise=True)
     notification.status = NOTIFICATION_VALIDATION_FAILED
     dao_update_notification(notification)
-    current_app.logger.info(f"Letter notification id: {notification_id} reference {notification.reference}: "
-                            f"validation failed: letter is too long {page_count}")
+    current_app.logger.info(f"Validation failed: letter is too long {page_count} for letter with id: {notification_id}")
 
 
 @notify_celery.task(name='collate-letter-pdfs-to-be-sent')
