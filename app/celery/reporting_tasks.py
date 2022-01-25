@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
 
-from app import db, notify_celery
+from app import notify_celery
 from app.config import QueueNames
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
@@ -14,7 +14,8 @@ from app.dao.fact_notification_status_dao import (
     fetch_status_data_for_service_and_day,
     update_fact_notification_status,
 )
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, Service
+from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
 
 @notify_celery.task(name="create-nightly-billing")
@@ -97,8 +98,11 @@ def create_nightly_notification_status():
         for i in range(days):
             process_day = yesterday - timedelta(days=i)
 
-            for (service_id,) in db.session.query(Service.id):
+            relevant_service_ids = get_service_ids_with_notifications_on_date(
+                notification_type, process_day
+            )
 
+            for service_id in relevant_service_ids:
                 create_nightly_notification_status_for_service_and_day.apply_async(
                     kwargs={
                         'process_day': process_day.isoformat(),

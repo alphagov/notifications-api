@@ -1,4 +1,3 @@
-import itertools
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from uuid import UUID
@@ -20,6 +19,7 @@ from app.models import (
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
+    NOTIFICATION_TYPES,
     SMS_TYPE,
     FactBilling,
     FactNotificationStatus,
@@ -61,39 +61,58 @@ def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_
         assert mock_celery.apply_async.call_args_list[i][1]['kwargs'] == {'process_day': expected_kwargs[i]}
 
 
-@freeze_time('2019-08-01')
-def test_create_nightly_notification_status_triggers_tasks(notify_api, sample_service, mocker):
-    mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day')
+@freeze_time('2019-08-01T00:30')
+def test_create_nightly_notification_status_triggers_tasks(
+    notify_api,
+    sample_service,
+    sample_template,
+    mocker,
+):
+    mock_celery = mocker.patch(
+        'app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day'
+    ).apply_async
+
+    create_notification(template=sample_template, created_at='2019-07-31')
     create_nightly_notification_status()
 
-    assert mock_celery.apply_async.call_count == (
-        (4 * 3)  # four days, three notification types
-        +
-        6  # six more days of just letters
+    mock_celery.assert_called_with(
+        kwargs={
+            'service_id': sample_service.id,
+            'process_day': '2019-07-31',
+            'notification_type': SMS_TYPE
+        },
+        queue=QueueNames.REPORTING
     )
 
-    for process_date, notification_type in itertools.product(
-        ['2019-07-31', '2019-07-30', '2019-07-29', '2019-07-28'],
-        [SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]
-    ):
-        mock_celery.apply_async.assert_any_call(
-            kwargs={
-                'process_day': process_date,
-                'notification_type': notification_type,
-                'service_id': sample_service.id,
-            },
-            queue=QueueNames.REPORTING
-        )
 
-    for process_date in ['2019-07-27', '2019-07-26', '2019-07-25', '2019-07-24', '2019-07-23', '2019-07-22']:
-        mock_celery.apply_async.assert_any_call(
-            kwargs={
-                'process_day': process_date,
-                'notification_type': LETTER_TYPE,
-                'service_id': sample_service.id,
-            },
-            queue=QueueNames.REPORTING
-        )
+@freeze_time('2019-08-01T00:30')
+@pytest.mark.parametrize('notification_date, expected_types_aggregated', [
+    ('2019-08-01', set()),
+    ('2019-07-31', {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
+    ('2019-07-28', {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
+    ('2019-07-27', {LETTER_TYPE}),
+    ('2019-07-22', {LETTER_TYPE}),
+    ('2019-07-21', set()),
+])
+def test_create_nightly_notification_status_triggers_relevant_tasks(
+    notify_api,
+    sample_service,
+    mocker,
+    notification_date,
+    expected_types_aggregated,
+):
+    mock_celery = mocker.patch(
+        'app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day'
+    ).apply_async
+
+    for notification_type in NOTIFICATION_TYPES:
+        template = create_template(sample_service, template_type=notification_type)
+        create_notification(template=template, created_at=notification_date)
+
+    create_nightly_notification_status()
+
+    types = {call.kwargs['kwargs']['notification_type'] for call in mock_celery.mock_calls}
+    assert types == expected_types_aggregated
 
 
 @pytest.mark.parametrize('second_rate, records_num, billable_units, multiplier',

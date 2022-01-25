@@ -794,3 +794,17 @@ def get_service_ids_that_have_notifications_from_before_timestamp(notification_t
             Notification.created_at < timestamp
         ).distinct()
     }
+
+
+def get_service_ids_with_notifications_on_date(notification_type, date):
+    return {
+        row.service_id
+        for row in db.session.query(
+            Notification.service_id
+        ).filter(
+            Notification.notification_type == notification_type,
+            # using >= + < is much more efficient than date(created_at)
+            Notification.created_at >= date,
+            Notification.created_at < date + timedelta(days=1)
+        ).distinct()
+    }
