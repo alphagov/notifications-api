@@ -429,10 +429,9 @@ def process_precompiled_letter_notifications(*, letter_data, api_key, service, t
         'postage': notification.postage
     }
 
-    current_app.logger.info('Calling task scan-file for {}'.format(filename))
-
     # call task to add the filename to anti virus queue
     if current_app.config['ANTIVIRUS_ENABLED']:
+        current_app.logger.info('Calling task scan-file for {}'.format(filename))
         notify_celery.send_task(
             name=TaskNames.SCAN_FILE,
             kwargs={'filename': filename},
