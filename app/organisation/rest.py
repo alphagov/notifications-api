@@ -174,16 +174,6 @@ def get_organisation_users(organisation_id):
     return jsonify(data=[x.serialize() for x in org_users])
 
 
-@organisation_blueprint.route('/unique', methods=["GET"])
-def is_organisation_name_unique():
-    organisation_id, name = check_request_args(request)
-
-    name_exists = Organisation.query.filter(Organisation.name.ilike(name)).first()
-
-    result = (not name_exists) or str(name_exists.id) == organisation_id
-    return jsonify(result=result), 200
-
-
 def check_request_args(request):
     org_id = request.args.get('org_id')
     name = request.args.get('name', None)
