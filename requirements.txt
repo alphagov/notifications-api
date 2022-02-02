@@ -194,7 +194,7 @@ pyyaml==6.0
     # via
     #   awscli
     #   notifications-utils
-redis==3.5.3
+redis==4.1.2
     # via flask-redis
 requests==2.26.0
     # via
