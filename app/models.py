@@ -2324,7 +2324,6 @@ class BroadcastMessage(db.Model):
     stubbed = db.Column(db.Boolean, nullable=False)
 
     CheckConstraint("created_by_id is not null or created_by_api_key_id is not null")
-    CheckConstraint("cancelled_by_id is not null or cancelled_by_api_key_id is not null")
 
     @property
     def personalisation(self):
