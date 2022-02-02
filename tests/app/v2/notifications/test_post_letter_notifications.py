@@ -314,7 +314,6 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
     fake_create_letter_task = mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     fake_create_dvla_response_task = mocker.patch(
         'app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async')
-
     with set_config_values(notify_api, {
         'NOTIFY_ENVIRONMENT': env
     }):

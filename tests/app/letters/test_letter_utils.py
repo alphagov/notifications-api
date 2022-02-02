@@ -12,6 +12,7 @@ from app.letters.utils import (
     ScanErrorType,
     find_letter_pdf_in_s3,
     generate_letter_pdf_filename,
+    get_billable_units_for_letter_page_count,
     get_bucket_name_and_prefix_for_notification,
     get_folder_name,
     get_letter_pdf_and_metadata,
@@ -433,3 +434,9 @@ def test_letter_print_day_returns_today_if_letter_was_printed_today():
 @freeze_time('2017-07-07 16:30:00')
 def test_letter_print_day_returns_formatted_date_if_letter_printed_before_1730_yesterday(created_at, formatted_date):
     assert letter_print_day(created_at) == formatted_date
+
+
+@pytest.mark.parametrize('number_of_pages, expected_billable_units', [(2, 1), (3, 2), (10, 5)])
+def test_get_billable_units_for_letter_page_count(number_of_pages, expected_billable_units):
+    result = get_billable_units_for_letter_page_count(number_of_pages)
+    assert result == expected_billable_units

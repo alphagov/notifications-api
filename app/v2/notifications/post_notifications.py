@@ -394,6 +394,7 @@ def process_letter_notification(
             (notification.reference,),
             queue=queue
         )
+
     resp = create_response_for_post_notification(
         notification_id=notification.id,
         client_reference=notification.client_reference,
