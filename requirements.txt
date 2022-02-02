@@ -160,7 +160,7 @@ prometheus-client==0.13.1
     # via
     #   -r requirements.in
     #   gds-metrics
-prompt-toolkit==3.0.21
+prompt-toolkit==3.0.26
     # via click-repl
 psycopg2-binary==2.9.3
     # via -r requirements.in
