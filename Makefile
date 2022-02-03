@@ -177,3 +177,8 @@ disable-failwhale: ## Disable the failwhale app and enable api
 	cf unmap-route notify-api-failwhale ${DNS_NAME} --hostname api
 	cf stop notify-api-failwhale
 	@echo "Failwhale is disabled"
+
+.PHONY: run-celery-with-docker
+run-celery-with-docker: ## Run celery in Docker container (useful if you can't install pycurl locally)
+	docker build -f docker/Dockerfile -t notifications-api .
+	./scripts/run_with_docker.sh make run-celery
