@@ -667,6 +667,39 @@ def test_send_user_reset_password_should_send_reset_password_link(client,
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
+@pytest.mark.parametrize('data, expected_url', (
+    ({
+        'email': 'notify@digital.cabinet-office.gov.uk',
+    }, (
+        'http://localhost:6012/new-password/'
+    )),
+    ({
+        'email': 'notify@digital.cabinet-office.gov.uk',
+        'admin_base_url': 'https://different.example.com',
+    }, (
+        'https://different.example.com/new-password/'
+    )),
+))
+@freeze_time("2016-01-01 11:09:00.061258")
+def test_send_user_reset_password_should_use_provided_base_url(
+    admin_request,
+    sample_user,
+    password_reset_email_template,
+    mocker,
+    data,
+    expected_url,
+):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    admin_request.post(
+        'user.send_user_reset_password',
+        _data=data,
+        _expected_status=204,
+    )
+
+    assert Notification.query.first().personalisation['url'].startswith(expected_url)
+
+
 @freeze_time("2016-01-01 11:09:00.061258")
 def test_send_user_reset_password_reset_password_link_contains_redirect_link_if_present_in_request(
     client, sample_user, mocker, password_reset_email_template

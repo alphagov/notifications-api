@@ -499,10 +499,9 @@ def find_users_by_email():
 
 @user_blueprint.route('/reset-password', methods=['POST'])
 def send_user_reset_password():
-    email, errors = email_data_request_schema.load(request.get_json())
-
+    request_json = request.get_json()
+    email, errors = email_data_request_schema.load(request_json)
     user_to_send_to = get_user_by_email(email['email'])
-
     template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     saved_notification = persist_notification(
@@ -514,7 +513,8 @@ def send_user_reset_password():
             'user_name': user_to_send_to.name,
             'url': _create_reset_password_url(
                 user_to_send_to.email_address,
-                next_redirect=request.get_json().get('next')
+                base_url=request_json.get('admin_base_url'),
+                next_redirect=request_json.get('next')
             )
         },
         notification_type=template.template_type,
@@ -547,10 +547,10 @@ def get_organisations_and_services_for_user(user_id):
     return jsonify(data)
 
 
-def _create_reset_password_url(email, next_redirect):
+def _create_reset_password_url(email, next_redirect, base_url=None):
     data = json.dumps({'email': email, 'created_at': str(datetime.utcnow())})
     static_url_part = '/new-password/'
-    full_url = url_with_token(data, static_url_part, current_app.config)
+    full_url = url_with_token(data, static_url_part, current_app.config, base_url=base_url)
     if next_redirect:
         full_url += '?{}'.format(urlencode({'next': next_redirect}))
     return full_url
