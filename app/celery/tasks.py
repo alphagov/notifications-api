@@ -3,7 +3,7 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.columns import Columns
+from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.postal_address import PostalAddress
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.timezones import convert_utc_to_bst
@@ -351,7 +351,7 @@ def save_letter(
     notification = encryption.decrypt(encrypted_notification)
 
     postal_address = PostalAddress.from_personalisation(
-        Columns(notification['personalisation'])
+        InsensitiveDict(notification['personalisation'])
     )
 
     service = SerialisedService.from_id(service_id)

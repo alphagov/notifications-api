@@ -7,7 +7,7 @@ import pytest
 import requests_mock
 from celery.exceptions import Retry
 from freezegun import freeze_time
-from notifications_utils.columns import Row
+from notifications_utils.recipients import Row
 from notifications_utils.template import (
     LetterPrintTemplate,
     PlainTextEmailTemplate,
