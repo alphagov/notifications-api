@@ -43,7 +43,8 @@ Things to change:
 * Run the following in the credentials repo to get the API keys.
 
 ```
-notify-pass credentials/providers/api_keys
+notify-pass credentials/firetext
+notify-pass credentials/mmg
 ```
 
 ### Postgres
