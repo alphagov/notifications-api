@@ -17,12 +17,10 @@ from app.dao.notifications_dao import (
     dao_get_notification_count_for_job_id,
     dao_get_notification_or_history_by_reference,
     dao_get_notifications_by_recipient_or_reference,
-    dao_get_notifications_by_references,
     dao_timeout_notifications,
     dao_update_notification,
     dao_update_notifications_by_reference,
     get_notification_by_id,
-    get_notification_for_job,
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
@@ -501,14 +499,6 @@ def test_save_notification_no_job_id(sample_template):
     assert data['template_version'] == notification_from_db.template_version
     assert notification_from_db.status == 'created'
     assert data.get('job_id') is None
-
-
-def test_get_notification_for_job(sample_notification):
-    notification_from_db = get_notification_for_job(
-        sample_notification.service.id,
-        sample_notification.job_id,
-        sample_notification.id)
-    assert sample_notification == notification_from_db
 
 
 def test_get_all_notifications_for_job(sample_job):
@@ -1600,17 +1590,6 @@ def test_dao_get_notification_by_reference_with_multiple_matches_raises_error(sa
 def test_dao_get_notification_by_reference_with_no_matches_raises_error(notify_db):
     with pytest.raises(SQLAlchemyError):
         dao_get_notification_by_reference('REF1')
-
-
-def test_dao_get_notifications_by_references(sample_template):
-    create_notification(template=sample_template, reference='noref')
-    notification_1 = create_notification(template=sample_template, reference='ref')
-    notification_2 = create_notification(template=sample_template, reference='ref')
-
-    notifications = dao_get_notifications_by_references(['ref'])
-    assert len(notifications) == 2
-    assert notifications[0].id in [notification_1.id, notification_2.id]
-    assert notifications[1].id in [notification_1.id, notification_2.id]
 
 
 def test_dao_get_notification_or_history_by_reference_with_one_match_returns_notification(

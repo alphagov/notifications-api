@@ -179,10 +179,6 @@ def dao_update_notification(notification):
     db.session.add(notification)
 
 
-def get_notification_for_job(service_id, job_id, notification_id):
-    return Notification.query.filter_by(service_id=service_id, job_id=job_id, id=notification_id).one()
-
-
 def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
     if page_size is None:
         page_size = current_app.config['PAGE_SIZE']
@@ -215,10 +211,6 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
     query = Notification.query.filter(*filters)
 
     return query.one() if _raise else query.first()
-
-
-def get_notifications(filter_dict=None):
-    return _filter_query(Notification.query, filter_dict=filter_dict)
 
 
 def get_notifications_for_service(
@@ -624,12 +616,6 @@ def dao_get_notification_or_history_by_reference(reference):
         return NotificationHistory.query.filter(
             NotificationHistory.reference == reference
         ).one()
-
-
-def dao_get_notifications_by_references(references):
-    return Notification.query.filter(
-        Notification.reference.in_(references)
-    ).all()
 
 
 def dao_get_notifications_processing_time_stats(start_date, end_date):
