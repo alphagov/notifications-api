@@ -30,7 +30,6 @@ from app.celery.letters_pdf_tasks import (
     update_validation_failed_for_templated_letter,
 )
 from app.config import QueueNames, TaskNames
-from app.dao.notifications_dao import get_notifications
 from app.errors import VirusScanError
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import ScanErrorType
@@ -515,7 +514,7 @@ def test_send_letters_volume_email_to_dvla(notify_api, notify_db_session, mocker
 
     send_letters_volume_email_to_dvla(letters_volumes, datetime(2020, 2, 17).date())
 
-    emails_to_dvla = get_notifications().all()
+    emails_to_dvla = Notification.query.all()
     assert len(emails_to_dvla) == 2
     send_mock.called = 2
     send_mock.assert_any_call([str(emails_to_dvla[0].id)], queue=QueueNames.NOTIFY)
