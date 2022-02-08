@@ -3,8 +3,11 @@ import itertools
 import uuid
 
 from flask import current_app, url_for
-from notifications_utils.columns import Columns
+from notifications_utils.insensitive_dict import InsensitiveDict
 from notifications_utils.letter_timings import get_letter_timings
+from notifications_utils.postal_address import (
+    address_lines_1_to_6_and_postcode_keys,
+)
 from notifications_utils.recipients import (
     InvalidEmailError,
     InvalidPhoneError,
@@ -1692,14 +1695,20 @@ class Notification(db.Model):
         }
 
         if self.notification_type == LETTER_TYPE:
-            col = Columns(self.personalisation)
-            serialized['line_1'] = col.get('address_line_1')
-            serialized['line_2'] = col.get('address_line_2')
-            serialized['line_3'] = col.get('address_line_3')
-            serialized['line_4'] = col.get('address_line_4')
-            serialized['line_5'] = col.get('address_line_5')
-            serialized['line_6'] = col.get('address_line_6')
-            serialized['postcode'] = col.get('postcode')
+            personalisation = InsensitiveDict(self.personalisation)
+
+            (
+                serialized['line_1'],
+                serialized['line_2'],
+                serialized['line_3'],
+                serialized['line_4'],
+                serialized['line_5'],
+                serialized['line_6'],
+                serialized['postcode'],
+            ) = (
+                personalisation.get(line) for line in address_lines_1_to_6_and_postcode_keys
+            )
+
             serialized['estimated_delivery'] = \
                 get_letter_timings(serialized['created_at'], postage=self.postage)\
                 .earliest_delivery\
