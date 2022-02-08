@@ -61,10 +61,18 @@ export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/11/bin/
 
 ### Redis
 
-To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
+You can run redis locally using
 
-        REDIS_ENABLED = True
+```
+brew install redis
+redis-server
+```
 
+To get the API to use redis locally you need to change the config for development:
+
+```
+REDIS_ENABLED = True
+```
 
 ##  To run the application
 
