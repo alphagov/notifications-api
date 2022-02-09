@@ -9,7 +9,12 @@ from app.models import (
     BroadcastEventMessageType,
     BroadcastStatusType,
 )
-from tests.app.db import create_broadcast_message, create_template, create_user
+from tests.app.db import (
+    create_api_key,
+    create_broadcast_message,
+    create_template,
+    create_user,
+)
 
 
 def test_validate_and_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
@@ -49,11 +54,9 @@ def test_validate_and_update_broadcast_message_status_stores_approved_by_and_app
     assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
-@pytest.mark.parametrize("cancel_route", ["admin_interface", "api_call"])
-def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast(
+def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_from_admin_interface(
     sample_broadcast_service,
     mocker,
-    cancel_route
 ):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     broadcast_message = create_broadcast_message(
@@ -64,19 +67,18 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast(
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
     )
-    if cancel_route == "admin_interface":
-        canceller = sample_broadcast_service.created_by
-    else:
-        canceller = None
+    canceller = sample_broadcast_service.created_by
+
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     validate_and_update_broadcast_message_status(
-        broadcast_message, BroadcastStatusType.CANCELLED, canceller
+        broadcast_message, BroadcastStatusType.CANCELLED, updating_user=canceller, api_key_id=None
     )
 
     assert broadcast_message.status == BroadcastStatusType.CANCELLED
     assert broadcast_message.cancelled_at is not None
-    assert broadcast_message.cancelled_by_id == (canceller.id if canceller else None)
+    assert broadcast_message.cancelled_by_id == canceller.id
+    assert broadcast_message.cancelled_by_api_key_id is None
 
     assert len(broadcast_message.events) == 1
     alert_event = broadcast_message.events[0]
@@ -87,11 +89,43 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast(
     assert alert_event.message_type == BroadcastEventMessageType.CANCEL
 
 
-@pytest.mark.parametrize("reject_route", ["admin_interface", "api_call"])
-def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast(
+def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_from_API_call(
     sample_broadcast_service,
     mocker,
-    reject_route
+):
+    api_key = create_api_key(service=sample_broadcast_service)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    broadcast_message = create_broadcast_message(
+        template,
+        status=BroadcastStatusType.BROADCASTING,
+        areas={
+            "ids": ["london"],
+            "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
+        }
+    )
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    validate_and_update_broadcast_message_status(
+        broadcast_message, BroadcastStatusType.CANCELLED, updating_user=None, api_key_id=api_key.id
+    )
+
+    assert broadcast_message.status == BroadcastStatusType.CANCELLED
+    assert broadcast_message.cancelled_at is not None
+    assert broadcast_message.cancelled_by_id is None
+    assert broadcast_message.cancelled_by_api_key_id == api_key.id
+
+    assert len(broadcast_message.events) == 1
+    alert_event = broadcast_message.events[0]
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
+
+    assert alert_event.service_id == sample_broadcast_service.id
+    assert alert_event.message_type == BroadcastEventMessageType.CANCEL
+
+
+def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_via_admin_interface(
+    sample_broadcast_service,
+    mocker
 ):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
     broadcast_message = create_broadcast_message(
@@ -102,19 +136,45 @@ def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast(
             "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
         }
     )
-    if reject_route == "admin_interface":
-        canceller = sample_broadcast_service.created_by
-    else:
-        canceller = None
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     validate_and_update_broadcast_message_status(
-        broadcast_message, BroadcastStatusType.REJECTED, canceller
+        broadcast_message, BroadcastStatusType.REJECTED, updating_user=sample_broadcast_service.created_by
     )
 
     assert broadcast_message.status == BroadcastStatusType.REJECTED
     assert broadcast_message.cancelled_at is None
     assert broadcast_message.cancelled_by_id is None
+    assert broadcast_message.updated_at is not None
+
+    assert not mock_task.called
+    assert len(broadcast_message.events) == 0
+
+
+def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_from_API_call(
+    sample_broadcast_service,
+    mocker
+):
+    api_key = create_api_key(service=sample_broadcast_service)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    broadcast_message = create_broadcast_message(
+        template,
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={
+            "ids": ["london"],
+            "simple_polygons": [[[51.30, 0.7], [51.28, 0.8], [51.25, -0.7]]]
+        }
+    )
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    validate_and_update_broadcast_message_status(
+        broadcast_message, BroadcastStatusType.REJECTED, api_key_id=api_key.id
+    )
+
+    assert broadcast_message.status == BroadcastStatusType.REJECTED
+    assert broadcast_message.cancelled_at is None
+    assert broadcast_message.cancelled_by_id is None
+    assert broadcast_message.cancelled_by_api_key_id is None
     assert broadcast_message.updated_at is not None
 
     assert not mock_task.called
