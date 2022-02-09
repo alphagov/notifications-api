@@ -1,32 +1,32 @@
 # Run `make freeze-requirements` to update requirements.txt
 # with package version changes made in requirements-app.txt
 
-cffi==1.14.5
-celery[sqs]==5.2.0
+cffi==1.15.0
+celery[sqs]==5.2.3
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.14.0
-Flask-Migrate==2.7.0
+Flask-Migrate==3.1.0
 git+https://github.com/mitsuhiko/flask-sqlalchemy.git@500e732dd1b975a56ab06a46bd1a20a21e682262#egg=Flask-SQLAlchemy==2.3.2.dev20190108
-Flask==1.1.2
+Flask==2.0.2
 click-datetime==0.2
 eventlet==0.30.2 # pyup: ignore # 0.31 breaks Gunicorn
 gunicorn==20.1.0
-iso8601==0.1.14
-itsdangerous==1.1.0
-jsonschema==3.2.0
+iso8601==1.0.2
+itsdangerous==2.0.1
+jsonschema==4.4.0
 marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
-psycopg2-binary==2.8.6
-PyJWT==2.0.1
-SQLAlchemy==1.4.10
+psycopg2-binary==2.9.3
+PyJWT==2.3.0
+SQLAlchemy==1.4.31
 strict-rfc3339==0.7
 rfc3987==1.3.8
-cachetools==4.2.1
-beautifulsoup4==4.9.3
+cachetools==5.0.0
+beautifulsoup4==4.10.0
 lxml==4.7.1
 Werkzeug==2.0.2
 
-notifications-python-client==6.0.2
+notifications-python-client==6.3.0
 
 # PaaS
 awscli-cwlogs==1.4.6
@@ -34,5 +34,5 @@ awscli-cwlogs==1.4.6
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@53.0.0
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
-prometheus-client==0.10.1
+prometheus-client==0.13.1
 gds-metrics==0.2.4
