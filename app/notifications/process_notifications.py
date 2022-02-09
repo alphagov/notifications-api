@@ -148,6 +148,7 @@ def persist_notification(
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
+
         if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
             cache_key = redis.daily_limit_cache_key(service.id)
             if redis_store.get(cache_key) is None:
@@ -158,10 +159,35 @@ def persist_notification(
                 redis_store.set(cache_key, 1, ex=86400)
             else:
                 redis_store.incr(cache_key)
+
+            # sending may not always be true, check this
+            cache_key = notification_count_cache_key(
+                service.id, notification_created_at, notification_type, 'sending'
+            )
+            if redis_store.get(cache_key) is None:
+                # if cache does not exist set the cache to 1 with an expiry of 8 days,
+                # The cache should be set by the time we create the notification
+                # but in case it is this will make sure the expiry is set to 8 days,
+                # where if we let the incr method create the cache it will be set a ttl.
+                # fix this comment as it might be missing a word?
+                redis_store.set(cache_key, 1, ex=691200)
+            else:
+                redis_store.incr(cache_key)
+
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
         )
     return notification
+
+
+def notification_count_cache_key(
+    service_id, created_at_utc, notification_type, simplified_status
+):
+    # this is not actually turning it in to bst, will need to fix this
+    bst_date = created_at_utc.strftime("%Y-%m-%d")
+    return "service-{}-bst-date-{}-{}-{}".format(
+            str(service_id), bst_date, notification_type, simplified_status
+        )
 
 
 def send_notification_to_queue_detached(
