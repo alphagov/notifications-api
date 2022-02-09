@@ -7,7 +7,6 @@ from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_id_and_service_id,
 )
 from tests import create_service_authorization_header
-from tests.app.db import create_api_key
 
 from . import sample_cap_xml_documents
 
@@ -131,7 +130,6 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
     is_approved,
     expected_status
 ):
-    api_key = create_api_key(service=sample_broadcast_service)
     auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
 
     # create a broadcast
@@ -160,11 +158,7 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
     assert response_for_cancel.status_code == 201
-    mock_update.assert_called_once_with(
-        broadcast_message,
-        expected_status,
-        api_key_id=api_key.id
-    )
+    mock_update.assert_called_once_with(broadcast_message, expected_status, updating_user=None)
 
 
 def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
