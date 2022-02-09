@@ -1,6 +1,5 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 
-from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import extract, literal
@@ -36,8 +35,8 @@ from app.utils import (
 
 
 def fetch_status_data_for_service_and_day(process_day, service_id, notification_type):
-    start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
-    end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
+    start_date = get_london_midnight_in_utc(process_day)
+    end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
     # query notifications or notification_history for the day, depending on their data retention
     service = Service.query.get(service_id)

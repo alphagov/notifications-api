@@ -8,7 +8,7 @@ from notifications_utils.template import (
     LetterPrintTemplate,
     SMSMessageTemplate,
 )
-from notifications_utils.timezones import convert_utc_to_bst
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 from sqlalchemy import func
 
 DATETIME_FORMAT_NO_TIMEZONE = "%Y-%m-%d %H:%M:%S.%f"
@@ -64,9 +64,7 @@ def get_london_midnight_in_utc(date):
      :param date: the day to calculate the London midnight in UTC for
      :return: the datetime of London midnight in UTC, for example 2016-06-17 = 2016-06-16 23:00:00
     """
-    return local_timezone.localize(datetime.combine(date, datetime.min.time())).astimezone(
-        pytz.UTC).replace(
-        tzinfo=None)
+    return convert_bst_to_utc(datetime.combine(date, datetime.min.time()))
 
 
 def get_midnight_for_day_before(date):
