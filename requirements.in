@@ -2,7 +2,7 @@
 # with package version changes made in requirements-app.txt
 
 cffi==1.15.0
-celery[sqs]==5.2.0
+celery[sqs]==5.2.3
 Flask-Bcrypt==0.7.1
 flask-marshmallow==0.14.0
 Flask-Migrate==2.7.0
