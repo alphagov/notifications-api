@@ -81,7 +81,7 @@ def create_broadcast():
                 'simple_polygons': simple_polygons.as_coordinate_pairs_lat_long,
             },
             status=BroadcastStatusType.PENDING_APPROVAL,
-            created_by_api_key_id=api_user.id,
+            api_key_id=api_user.id,
             stubbed=authenticated_service.restricted
             # The client may pass in broadcast_json['expires'] but it’s
             # simpler for now to ignore it and have the rules around expiry
@@ -111,7 +111,7 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
     validate_and_update_broadcast_message_status(
         broadcast_message,
         new_status,
-        api_key_id=api_user.id
+        updating_user=None
     )
     return broadcast_message
 
