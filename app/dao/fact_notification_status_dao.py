@@ -65,25 +65,28 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
 @autocommit
 def update_fact_notification_status(new_status_rows, process_day, notification_type, service_id):
     table = FactNotificationStatus.__table__
-    FactNotificationStatus.query.filter(
-        FactNotificationStatus.bst_date == process_day,
-        FactNotificationStatus.notification_type == notification_type,
-        FactNotificationStatus.service_id == service_id,
-    ).delete()
 
     for row in new_status_rows:
-        db.session.connection().execute(
-            insert(table).values(
-                bst_date=process_day,
-                template_id=row.template_id,
-                service_id=service_id,
-                job_id=row.job_id,
-                notification_type=notification_type,
-                key_type=row.key_type,
-                notification_status=row.status,
-                notification_count=row.notification_count,
-            )
+        stmt = insert(table).values(
+            bst_date=process_day,
+            template_id=row.template_id,
+            service_id=service_id,
+            job_id=row.job_id,
+            notification_type=notification_type,
+            key_type=row.key_type,
+            notification_status=row.status,
+            notification_count=row.notification_count,
         )
+
+        stmt = stmt.on_conflict_do_update(
+            constraint="ft_notification_status_pkey",
+            set_={
+                FactNotificationStatus.notification_count: stmt.excluded.notification_count,
+                FactNotificationStatus.updated_at: datetime.utcnow()
+            }
+        )
+
+        db.session.connection().execute(stmt)
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
