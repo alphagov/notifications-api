@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from functools import partial
 
 import pytest
@@ -24,6 +24,7 @@ from app.dao.notifications_dao import (
     get_notification_with_personalisation,
     get_notifications_for_job,
     get_notifications_for_service,
+    get_service_ids_with_notifications_on_date,
     is_delivery_slow_for_providers,
     notifications_not_yet_sent,
     update_notification_status_by_id,
@@ -41,6 +42,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_STATUS_TYPES_FAILED,
     NOTIFICATION_TEMPORARY_FAILURE,
+    SMS_TYPE,
     Job,
     Notification,
     NotificationHistory,
@@ -1721,3 +1723,22 @@ def test_dao_get_letters_and_sheets_volume_by_postage(notify_db_session):
 
     for result in results:
         assert result._asdict() in expected_results
+
+
+@pytest.mark.parametrize('created_at_utc,date_to_check,expected_count', [
+    # Clocks change on the 27th of March 2022, so the query needs to look at the
+    # time range 00:00 - 23:00 (UTC) thereafter.
+    ('2022-03-27T00:30', date(2022, 3, 27), 1),  # 27/03 00:30 GMT
+    ('2022-03-27T22:30', date(2022, 3, 27), 1),  # 27/03 23:30 BST
+    ('2022-03-27T23:30', date(2022, 3, 27), 0),  # 28/03 00:30 BST
+    ('2022-03-26T23:30', date(2022, 3, 26), 1),  # 26/03 23:30 GMT
+])
+def test_get_service_ids_with_notifications_on_date_respects_gmt_bst(
+    sample_template,
+    created_at_utc,
+    date_to_check,
+    expected_count
+):
+    create_notification(template=sample_template, created_at=created_at_utc)
+    service_ids = get_service_ids_with_notifications_on_date(SMS_TYPE, date_to_check)
+    assert len(service_ids) == expected_count
