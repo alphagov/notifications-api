@@ -34,59 +34,66 @@ from app.utils import (
 )
 
 
-def fetch_status_data_for_service_and_day(process_day, service_id, notification_type):
+@autocommit
+def update_fact_notification_status(process_day, notification_type, service_id):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
     # query notifications or notification_history for the day, depending on their data retention
     service = Service.query.get(service_id)
-    table = get_notification_table_to_use(service, notification_type, process_day, has_delete_task_run=False)
+    source_table = get_notification_table_to_use(
+        service,
+        notification_type,
+        process_day,
+        has_delete_task_run=False
+    )
 
-    return db.session.query(
-        table.template_id,
-        func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
-        table.key_type,
-        table.status,
+    query = db.session.query(
+        literal(process_day).label("process_day"),
+        source_table.template_id,
+        literal(service_id).label("service_id"),
+        func.coalesce(source_table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
+        literal(notification_type).label("notification_type"),
+        source_table.key_type,
+        source_table.status,
         func.count().label('notification_count')
     ).filter(
-        table.created_at >= start_date,
-        table.created_at < end_date,
-        table.notification_type == notification_type,
-        table.service_id == service_id,
-        table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+        source_table.created_at >= start_date,
+        source_table.created_at < end_date,
+        source_table.notification_type == notification_type,
+        source_table.service_id == service_id,
+        source_table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
     ).group_by(
-        table.template_id,
+        source_table.template_id,
+        source_table.template_id,
         'job_id',
-        table.key_type,
-        table.status
-    ).all()
+        source_table.key_type,
+        source_table.status
+    )
 
+    stmt = insert(FactNotificationStatus.__table__).from_select(
+        [
+            FactNotificationStatus.bst_date,
+            FactNotificationStatus.template_id,
+            FactNotificationStatus.service_id,
+            FactNotificationStatus.job_id,
+            FactNotificationStatus.notification_type,
+            FactNotificationStatus.key_type,
+            FactNotificationStatus.notification_status,
+            FactNotificationStatus.notification_count
+        ],
+        query
+    )
 
-@autocommit
-def update_fact_notification_status(new_status_rows, process_day, notification_type, service_id):
-    table = FactNotificationStatus.__table__
+    stmt = stmt.on_conflict_do_update(
+        constraint="ft_notification_status_pkey",
+        set_={
+            FactNotificationStatus.notification_count: stmt.excluded.notification_count,
+            FactNotificationStatus.updated_at: datetime.utcnow()
+        }
+    )
 
-    for row in new_status_rows:
-        stmt = insert(table).values(
-            bst_date=process_day,
-            template_id=row.template_id,
-            service_id=service_id,
-            job_id=row.job_id,
-            notification_type=notification_type,
-            key_type=row.key_type,
-            notification_status=row.status,
-            notification_count=row.notification_count,
-        )
-
-        stmt = stmt.on_conflict_do_update(
-            constraint="ft_notification_status_pkey",
-            set_={
-                FactNotificationStatus.notification_count: stmt.excluded.notification_count,
-                FactNotificationStatus.updated_at: datetime.utcnow()
-            }
-        )
-
-        db.session.connection().execute(stmt)
+    db.session.connection().execute(stmt)
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):

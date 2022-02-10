@@ -10,10 +10,7 @@ from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     update_fact_billing,
 )
-from app.dao.fact_notification_status_dao import (
-    fetch_status_data_for_service_and_day,
-    update_fact_notification_status,
-)
+from app.dao.fact_notification_status_dao import update_fact_notification_status
 from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
 from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
@@ -118,22 +115,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
 
     start = datetime.utcnow()
-    new_status_rows = fetch_status_data_for_service_and_day(
-        process_day=process_day,
-        notification_type=notification_type,
-        service_id=service_id,
-    )
-
-    end = datetime.utcnow()
-    current_app.logger.info(
-        f'create-nightly-notification-status-for-service-and-day task fetch '
-        f'for {service_id}, {notification_type} for {process_day}: '
-        f'data fetched in {(end - start).seconds} seconds'
-    )
-
-    start = datetime.utcnow()
     update_fact_notification_status(
-        new_status_rows=new_status_rows,
         process_day=process_day,
         notification_type=notification_type,
         service_id=service_id
@@ -143,5 +125,5 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
     current_app.logger.info(
         f'create-nightly-notification-status-for-service-and-day task update '
         f'for {service_id}, {notification_type} for {process_day}: '
-        f'data updated in {(end - start).seconds} seconds'
+        f'updated in {(end - start).seconds} seconds'
     )

@@ -14,8 +14,8 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
     fetch_stats_for_all_services_by_date_range,
-    fetch_status_data_for_service_and_day,
     get_total_notifications_for_date_range,
+    update_fact_notification_status,
 )
 from app.models import (
     EMAIL_TYPE,
@@ -32,6 +32,7 @@ from app.models import (
     NOTIFICATION_TECHNICAL_FAILURE,
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
+    FactNotificationStatus,
 )
 from tests.app.db import (
     create_ft_notification_status,
@@ -618,7 +619,7 @@ def test_get_total_notifications_for_date_range(sample_service):
     ('2022-03-27T23:30', date(2022, 3, 27), 0),  # 28/03 00:30 BST
     ('2022-03-26T23:30', date(2022, 3, 26), 1),  # 26/03 23:30 GMT
 ])
-def test_fetch_status_data_for_service_and_day_respects_gmt_bst(
+def test_update_fact_notification_status_respects_gmt_bst(
     sample_template,
     sample_service,
     created_at_utc,
@@ -626,5 +627,9 @@ def test_fetch_status_data_for_service_and_day_respects_gmt_bst(
     expected_count,
 ):
     create_notification(template=sample_template, created_at=created_at_utc)
-    rows = fetch_status_data_for_service_and_day(process_day, sample_service.id, SMS_TYPE)
-    assert len(rows) == expected_count
+    update_fact_notification_status(process_day, SMS_TYPE, sample_service.id)
+
+    assert FactNotificationStatus.query.filter_by(
+        service_id=sample_service.id,
+        bst_date=process_day
+    ).count() == expected_count
