@@ -2322,15 +2322,17 @@ class BroadcastMessage(db.Model):
     approved_by = db.relationship('User', foreign_keys=[approved_by_id])
     cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_id])
 
-    api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), nullable=True)
-    api_key = db.relationship('ApiKey')
+    created_by_api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), nullable=True)
+    cancelled_by_api_key_id = db.Column(UUID(as_uuid=True), db.ForeignKey('api_keys.id'), nullable=True)
+    created_by_api_key = db.relationship('ApiKey', foreign_keys=[created_by_api_key_id])
+    cancelled_by_api_key = db.relationship('ApiKey', foreign_keys=[cancelled_by_api_key_id])
 
     reference = db.Column(db.String(255), nullable=True)
     cap_event = db.Column(db.String(255), nullable=True)
 
     stubbed = db.Column(db.Boolean, nullable=False)
 
-    CheckConstraint("created_by_id is not null or api_key_id is not null")
+    CheckConstraint("created_by_id is not null or created_by_api_key_id is not null")
 
     @property
     def personalisation(self):
