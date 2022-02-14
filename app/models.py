@@ -1501,6 +1501,16 @@ class Notification(db.Model):
             'notification_type',
             'status',
             'created_at'
+        ),
+        Index(
+            "ix_notifications_get_by_recipient_or_reference",
+            'normalised_to',
+            'client_reference',
+            postgresql_ops={
+                'normalised_to': 'gin_trgm_ops',
+                'client_reference': 'gin_trgm_ops',
+            },
+            postgresql_using='gin'
         )
     )
 
