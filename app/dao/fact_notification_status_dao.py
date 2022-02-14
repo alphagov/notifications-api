@@ -1,6 +1,5 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, timedelta
 
-from notifications_utils.timezones import convert_bst_to_utc
 from sqlalchemy import Date, case, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import extract, literal
@@ -36,8 +35,8 @@ from app.utils import (
 
 
 def fetch_status_data_for_service_and_day(process_day, service_id, notification_type):
-    start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
-    end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
+    start_date = get_london_midnight_in_utc(process_day)
+    end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
     # query notifications or notification_history for the day, depending on their data retention
     service = Service.query.get(service_id)
@@ -45,7 +44,6 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
 
     return db.session.query(
         table.template_id,
-        table.service_id,
         func.coalesce(table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
         table.key_type,
         table.status,
@@ -58,7 +56,6 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
         table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
     ).group_by(
         table.template_id,
-        table.service_id,
         'job_id',
         table.key_type,
         table.status
@@ -66,11 +63,12 @@ def fetch_status_data_for_service_and_day(process_day, service_id, notification_
 
 
 @autocommit
-def update_fact_notification_status(new_status_rows, process_day, notification_type):
+def update_fact_notification_status(new_status_rows, process_day, notification_type, service_id):
     table = FactNotificationStatus.__table__
     FactNotificationStatus.query.filter(
         FactNotificationStatus.bst_date == process_day,
         FactNotificationStatus.notification_type == notification_type,
+        FactNotificationStatus.service_id == service_id,
     ).delete()
 
     for row in new_status_rows:
@@ -78,7 +76,7 @@ def update_fact_notification_status(new_status_rows, process_day, notification_t
             insert(table).values(
                 bst_date=process_day,
                 template_id=row.template_id,
-                service_id=row.service_id,
+                service_id=service_id,
                 job_id=row.job_id,
                 notification_type=notification_type,
                 key_type=row.key_type,

@@ -14,6 +14,7 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
     fetch_notification_statuses_for_job,
     fetch_stats_for_all_services_by_date_range,
+    fetch_status_data_for_service_and_day,
     get_total_notifications_for_date_range,
 )
 from app.models import (
@@ -607,3 +608,23 @@ def test_get_total_notifications_for_date_range(sample_service):
 
     assert len(results) == 1
     assert results[0] == ("2021-03-01", 15, 20, 3)
+
+
+@pytest.mark.parametrize('created_at_utc,process_day,expected_count', [
+    # Clocks change on the 27th of March 2022, so the query needs to look at the
+    # time range 00:00 - 23:00 (UTC) thereafter.
+    ('2022-03-27T00:30', date(2022, 3, 27), 1),  # 27/03 00:30 GMT
+    ('2022-03-27T22:30', date(2022, 3, 27), 1),  # 27/03 23:30 BST
+    ('2022-03-27T23:30', date(2022, 3, 27), 0),  # 28/03 00:30 BST
+    ('2022-03-26T23:30', date(2022, 3, 26), 1),  # 26/03 23:30 GMT
+])
+def test_fetch_status_data_for_service_and_day_respects_gmt_bst(
+    sample_template,
+    sample_service,
+    created_at_utc,
+    process_day,
+    expected_count,
+):
+    create_notification(template=sample_template, created_at=created_at_utc)
+    rows = fetch_status_data_for_service_and_day(process_day, sample_service.id, SMS_TYPE)
+    assert len(rows) == expected_count

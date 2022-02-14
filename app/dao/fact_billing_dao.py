@@ -1,7 +1,7 @@
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 
 from flask import current_app
-from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import Date, Integer, and_, desc, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal
@@ -317,8 +317,8 @@ def delete_billing_data_for_service_for_day(process_day, service_id):
 
 
 def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
-    start_date = convert_bst_to_utc(datetime.combine(process_day, time.min))
-    end_date = convert_bst_to_utc(datetime.combine(process_day + timedelta(days=1), time.min))
+    start_date = get_london_midnight_in_utc(process_day)
+    end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
     transit_data = []
     if not service_id:

@@ -46,7 +46,11 @@ from app.models import (
     NotificationHistory,
     ProviderDetails,
 )
-from app.utils import escape_special_characters, midnight_n_days_ago
+from app.utils import (
+    escape_special_characters,
+    get_london_midnight_in_utc,
+    midnight_n_days_ago,
+)
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
@@ -784,7 +788,7 @@ def _duplicate_update_warning(notification, status):
     )
 
 
-def get_service_ids_that_have_notifications_from_before_timestamp(notification_type, timestamp):
+def get_service_ids_with_notifications_before(notification_type, timestamp):
     return {
         row.service_id
         for row in db.session.query(
@@ -792,5 +796,22 @@ def get_service_ids_that_have_notifications_from_before_timestamp(notification_t
         ).filter(
             Notification.notification_type == notification_type,
             Notification.created_at < timestamp
+        ).distinct()
+    }
+
+
+def get_service_ids_with_notifications_on_date(notification_type, date):
+    start_date = get_london_midnight_in_utc(date)
+    end_date = get_london_midnight_in_utc(date + timedelta(days=1))
+
+    return {
+        row.service_id
+        for row in db.session.query(
+            Notification.service_id
+        ).filter(
+            Notification.notification_type == notification_type,
+            # using >= + < is much more efficient than date(created_at)
+            Notification.created_at >= start_date,
+            Notification.created_at < end_date,
         ).distinct()
     }

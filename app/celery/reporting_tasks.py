@@ -14,7 +14,8 @@ from app.dao.fact_notification_status_dao import (
     fetch_status_data_for_service_and_day,
     update_fact_notification_status,
 )
-from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE, Service
+from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
+from app.models import EMAIL_TYPE, LETTER_TYPE, SMS_TYPE
 
 
 @notify_celery.task(name="create-nightly-billing")
@@ -97,52 +98,50 @@ def create_nightly_notification_status():
         for i in range(days):
             process_day = yesterday - timedelta(days=i)
 
-            create_nightly_notification_status_for_day.apply_async(
-                kwargs={
-                    'process_day': process_day.isoformat(),
-                    'notification_type': notification_type,
-                },
-                queue=QueueNames.REPORTING
-            )
-            current_app.logger.info(
-                f"create-nightly-notification-status-for-day task created "
-                f"for {notification_type} and {process_day}"
+            relevant_service_ids = get_service_ids_with_notifications_on_date(
+                notification_type, process_day
             )
 
+            for service_id in relevant_service_ids:
+                create_nightly_notification_status_for_service_and_day.apply_async(
+                    kwargs={
+                        'process_day': process_day.isoformat(),
+                        'notification_type': notification_type,
+                        'service_id': service_id,
+                    },
+                    queue=QueueNames.REPORTING
+                )
 
-@notify_celery.task(name="create-nightly-notification-status-for-day")
-def create_nightly_notification_status_for_day(process_day, notification_type):
+
+@notify_celery.task(name="create-nightly-notification-status-for-service-and-day")
+def create_nightly_notification_status_for_service_and_day(process_day, service_id, notification_type):
     process_day = datetime.strptime(process_day, "%Y-%m-%d").date()
-    current_app.logger.info(
-        f'create-nightly-notification-status-for-day task started '
-        f'for {notification_type} for {process_day}'
-    )
 
     start = datetime.utcnow()
-    new_status_rows = []
-
-    for service in Service.query.all():
-        new_status_rows += fetch_status_data_for_service_and_day(
-            process_day=process_day,
-            notification_type=notification_type,
-            service_id=service.id,
-        )
+    new_status_rows = fetch_status_data_for_service_and_day(
+        process_day=process_day,
+        notification_type=notification_type,
+        service_id=service_id,
+    )
 
     end = datetime.utcnow()
     current_app.logger.info(
         f'create-nightly-notification-status-for-day task fetch '
-        f'for {notification_type} for {process_day}: '
+        f'for {service_id}, {notification_type} for {process_day}: '
         f'data fetched in {(end - start).seconds} seconds'
     )
 
+    start = datetime.utcnow()
     update_fact_notification_status(
         new_status_rows=new_status_rows,
         process_day=process_day,
         notification_type=notification_type,
+        service_id=service_id
     )
 
+    end = datetime.utcnow()
     current_app.logger.info(
-        f'create-nightly-notification-status-for-day task finished '
-        f'for {notification_type} for {process_day}: '
-        f'{len(new_status_rows)} rows updated'
+        f'create-nightly-notification-status-for-day task update '
+        f'for {service_id}, {notification_type} for {process_day}: '
+        f'data fetched in {(end - start).seconds} seconds'
     )
