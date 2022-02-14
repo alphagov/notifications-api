@@ -156,7 +156,7 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
     # cancel broadcast
     response_for_cancel = client.post(
         path='/v2/broadcast',
-        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_REFERENCES,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
     assert response_for_cancel.status_code == 201
@@ -167,9 +167,29 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
     )
 
 
+@pytest.mark.parametrize('cap_xml_document, expected_status, expected_error', (
+    (
+        sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_REFERENCES,
+        404,
+        [{'error': 'NoResultFound', 'message': 'No result found'}],
+    ),
+    (
+        sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_EMPTY_REFERENCES,
+        404,
+        [{'error': 'NoResultFound', 'message': 'No result found'}],
+    ),
+    (
+        sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_MISSING_REFERENCES,
+        400,
+        [{'error': 'BadRequestError', 'message': 'Missing <references>'}],
+    ),
+))
 def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
     client,
-    sample_broadcast_service
+    sample_broadcast_service,
+    cap_xml_document,
+    expected_status,
+    expected_error,
 ):
     auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
 
@@ -191,11 +211,13 @@ def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
     # try to cancel broadcast, but reference doesn't match
     response_for_cancel = client.post(
         path='/v2/broadcast',
-        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        data=cap_xml_document,
         headers=[('Content-Type', 'application/cap+xml'), auth_header],
     )
+    response_for_cancel_json = json.loads(response_for_cancel.get_data(as_text=True))
 
-    assert response_for_cancel.status_code == 404
+    assert response_for_cancel.status_code == expected_status
+    assert response_for_cancel_json["errors"] == expected_error
 
 
 def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
@@ -224,7 +246,7 @@ def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
     auth_header_2 = create_service_authorization_header(service_id=sample_broadcast_service_2.id)
     response_for_cancel = client.post(
         path='/v2/broadcast',
-        data=sample_cap_xml_documents.WAINFLEET_CANCEL,
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_REFERENCES,
         headers=[('Content-Type', 'application/cap+xml'), auth_header_2],
     )
 

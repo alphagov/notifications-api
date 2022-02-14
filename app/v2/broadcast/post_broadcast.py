@@ -48,6 +48,11 @@ def create_broadcast():
     validate(broadcast_json, post_broadcast_schema)
 
     if broadcast_json["msgType"] == "Cancel":
+        if broadcast_json["references"] is None:
+            raise BadRequestError(
+                message='Missing <references>',
+                status_code=400,
+            )
         broadcast_message = _cancel_or_reject_broadcast(
             broadcast_json["references"].split(","),
             authenticated_service.id
