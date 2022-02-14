@@ -45,7 +45,7 @@ WAINFLEET_CANCEL = """
         <source>Flood warning service</source>
         <scope>Public</scope>
         <code></code>
-        <references>www.gov.uk/environment-agency,50385fcb0ab7aa447bbd46d848ce8466E,2020-02-16T23:01:13-00:00</references>
+        {}
         <info>
                 <language>en-GB</language>
                 <category>Met</category>
@@ -69,6 +69,16 @@ WAINFLEET_CANCEL = """
         </info>
     </alert>
 """
+
+WAINFLEET_CANCEL_WITH_REFERENCES = WAINFLEET_CANCEL.format(
+    "<references>www.gov.uk/environment-agency,50385fcb0ab7aa447bbd46d848ce8466E,2020-02-16T23:01:13-00:00</references>"
+)
+WAINFLEET_CANCEL_WITH_MISSING_REFERENCES = WAINFLEET_CANCEL.format(
+    ""
+)
+WAINFLEET_CANCEL_WITH_EMPTY_REFERENCES = WAINFLEET_CANCEL.format(
+    "<references></references>"
+)
 
 UPDATE = """
     <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
