@@ -19,6 +19,9 @@ def upgrade():
     if environment not in ["live", "production"]:
       conn = op.get_bind()
       conn.execute("""
+          CREATE EXTENSION pg_trgm
+      """)
+      conn.execute("""
           CREATE INDEX ix_notifications_get_by_recipient_or_reference ON
           notifications USING GIN
           (normalised_to gin_trgm_ops, client_reference gin_trgm_ops)
