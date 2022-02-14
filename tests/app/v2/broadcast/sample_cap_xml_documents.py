@@ -9,7 +9,6 @@ WAINFLEET = """
         <msgType>Alert</msgType>
         <source>Flood warning service</source>
         <scope>Public</scope>
-        <references>www.gov.uk/environment-agency,4f6d28b10ab7aa447bbd46d85f1e9effE,2020-02-16T19:20:03+00:00</references>
         <info>
             <language>en-GB</language>
             <category>Met</category>
