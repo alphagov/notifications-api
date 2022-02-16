@@ -126,7 +126,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
 
     end = datetime.utcnow()
     current_app.logger.info(
-        f'create-nightly-notification-status-for-day task fetch '
+        f'create-nightly-notification-status-for-service-and-day task fetch '
         f'for {service_id}, {notification_type} for {process_day}: '
         f'data fetched in {(end - start).seconds} seconds'
     )
@@ -141,7 +141,7 @@ def create_nightly_notification_status_for_service_and_day(process_day, service_
 
     end = datetime.utcnow()
     current_app.logger.info(
-        f'create-nightly-notification-status-for-day task update '
+        f'create-nightly-notification-status-for-service-and-day task update '
         f'for {service_id}, {notification_type} for {process_day}: '
-        f'data fetched in {(end - start).seconds} seconds'
+        f'data updated in {(end - start).seconds} seconds'
     )
