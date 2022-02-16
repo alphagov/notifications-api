@@ -599,9 +599,10 @@ def test_create_nightly_notification_status_for_service_and_day(notify_db_sessio
 def test_create_nightly_notification_status_for_service_and_day_overwrites_old_data(notify_db_session):
     first_service = create_service(service_name='First Service')
     first_template = create_template(service=first_service)
-    create_notification(template=first_template, status='delivered')
-
     process_day = date.today()
+
+    # first run: one notification, expect one row (just one status)
+    notification = create_notification(template=first_template, status='sending')
     create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
     new_fact_data = FactNotificationStatus.query.order_by(
@@ -611,8 +612,11 @@ def test_create_nightly_notification_status_for_service_and_day_overwrites_old_d
 
     assert len(new_fact_data) == 1
     assert new_fact_data[0].notification_count == 1
+    assert new_fact_data[0].notification_status == 'sending'
 
-    create_notification(template=first_template, status='delivered')
+    # second run: status changed, still expect one row (one status)
+    notification.status = 'delivered'
+    create_notification(template=first_template, status='created')
     create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
     updated_fact_data = FactNotificationStatus.query.order_by(
@@ -620,8 +624,11 @@ def test_create_nightly_notification_status_for_service_and_day_overwrites_old_d
         FactNotificationStatus.notification_type
     ).all()
 
-    assert len(updated_fact_data) == 1
-    assert updated_fact_data[0].notification_count == 2
+    assert len(updated_fact_data) == 2
+    assert updated_fact_data[0].notification_count == 1
+    assert updated_fact_data[0].notification_status == 'created'
+    assert updated_fact_data[1].notification_count == 1
+    assert updated_fact_data[1].notification_status == 'delivered'
 
 
 # the job runs at 12:30am London time. 04/01 is in BST.

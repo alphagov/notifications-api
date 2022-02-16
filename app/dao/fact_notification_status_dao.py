@@ -39,6 +39,13 @@ def update_fact_notification_status(process_day, notification_type, service_id):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
 
+    # delete any existing rows in case some no longer exist e.g. if all messages are sent
+    FactNotificationStatus.query.filter(
+        FactNotificationStatus.bst_date == process_day,
+        FactNotificationStatus.notification_type == notification_type,
+        FactNotificationStatus.service_id == service_id,
+    ).delete()
+
     # query notifications or notification_history for the day, depending on their data retention
     service = Service.query.get(service_id)
     source_table = get_notification_table_to_use(
@@ -71,29 +78,21 @@ def update_fact_notification_status(process_day, notification_type, service_id):
         source_table.status
     )
 
-    stmt = insert(FactNotificationStatus.__table__).from_select(
-        [
-            FactNotificationStatus.bst_date,
-            FactNotificationStatus.template_id,
-            FactNotificationStatus.service_id,
-            FactNotificationStatus.job_id,
-            FactNotificationStatus.notification_type,
-            FactNotificationStatus.key_type,
-            FactNotificationStatus.notification_status,
-            FactNotificationStatus.notification_count
-        ],
-        query
+    db.session.connection().execute(
+        insert(FactNotificationStatus.__table__).from_select(
+            [
+                FactNotificationStatus.bst_date,
+                FactNotificationStatus.template_id,
+                FactNotificationStatus.service_id,
+                FactNotificationStatus.job_id,
+                FactNotificationStatus.notification_type,
+                FactNotificationStatus.key_type,
+                FactNotificationStatus.notification_status,
+                FactNotificationStatus.notification_count
+            ],
+            query
+        )
     )
-
-    stmt = stmt.on_conflict_do_update(
-        constraint="ft_notification_status_pkey",
-        set_={
-            FactNotificationStatus.notification_count: stmt.excluded.notification_count,
-            FactNotificationStatus.updated_at: datetime.utcnow()
-        }
-    )
-
-    db.session.connection().execute(stmt)
 
 
 def fetch_notification_status_for_service_by_month(start_date, end_date, service_id):
