@@ -8,7 +8,7 @@ alembic==1.7.6
     # via flask-migrate
 amqp==5.0.9
     # via kombu
-attrs==21.2.0
+attrs==21.4.0
     # via jsonschema
 awscli==1.21.4
     # via
