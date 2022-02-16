@@ -52,7 +52,7 @@ post_broadcast_schema = {
         },
         "content": {
             "type": "string",
-            "minLength": 1,
+            "minLength": 0,
         },
         "web": {
             "type": "string",

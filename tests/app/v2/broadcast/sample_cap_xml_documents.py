@@ -9,7 +9,6 @@ WAINFLEET = """
         <msgType>Alert</msgType>
         <source>Flood warning service</source>
         <scope>Public</scope>
-        <references>www.gov.uk/environment-agency,4f6d28b10ab7aa447bbd46d85f1e9effE,2020-02-16T19:20:03+00:00</references>
         <info>
             <language>en-GB</language>
             <category>Met</category>
@@ -55,7 +54,7 @@ WAINFLEET_CANCEL = """
                 <certainty>Likely</certainty>
                 <expires>2020-02-16T23:30:13-00:00</expires>
                 <senderName>Environment Agency</senderName>
-                <description>Cancel Warning</description>
+                <description></description>
                 <web>https://flood-warning-information.service.gov.uk</web>
                 <contact>0345 988 1188</contact>
                 <area>
