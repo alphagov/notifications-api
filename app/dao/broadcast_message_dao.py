@@ -26,6 +26,10 @@ def dao_get_broadcast_message_by_id_and_service_id(broadcast_message_id, service
 
 def dao_get_broadcast_message_by_references_and_service_id(references_to_original_broadcast, service_id):
     return BroadcastMessage.query.filter(
+        BroadcastMessage.status.in_((
+            BroadcastStatusType.PENDING_APPROVAL,
+            BroadcastStatusType.BROADCASTING,
+        )),
         BroadcastMessage.reference.in_(references_to_original_broadcast),
         BroadcastMessage.service_id == service_id
     ).one()
