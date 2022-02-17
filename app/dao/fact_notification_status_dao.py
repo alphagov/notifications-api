@@ -176,6 +176,43 @@ def fetch_notification_status_for_service_for_today_and_7_previous_days(service_
     ).all()
 
 
+def fetch_notification_status_for_service_for_today_and_7_previous_days_attempt2(service_id, by_template=False, limit_days=7):
+    start_date = midnight_n_days_ago(limit_days)
+    now = datetime.utcnow()
+    stats_for_7_days = db.session.query(
+        FactNotificationStatus.notification_type.label('notification_type'),
+        FactNotificationStatus.notification_status.label('status'),
+        *([FactNotificationStatus.template_id.label('template_id')] if by_template else []),
+        FactNotificationStatus.notification_count.label('count')
+    ).filter(
+        FactNotificationStatus.service_id == service_id,
+        FactNotificationStatus.bst_date >= start_date,
+        FactNotificationStatus.key_type != KEY_TYPE_TEST
+    )
+
+    all_stats_table = stats_for_7_days.subquery()
+
+    query = db.session.query(
+        *([
+            Template.name.label("template_name"),
+            Template.is_precompiled_letter,
+            all_stats_table.c.template_id
+        ] if by_template else []),
+        all_stats_table.c.notification_type,
+        all_stats_table.c.status,
+        func.cast(func.sum(all_stats_table.c.count), Integer).label('count'),
+    )
+
+    if by_template:
+        query = query.filter(all_stats_table.c.template_id == Template.id)
+
+    return query.group_by(
+        *([Template.name, Template.is_precompiled_letter, all_stats_table.c.template_id] if by_template else []),
+        all_stats_table.c.notification_type,
+        all_stats_table.c.status,
+    ).all()
+
+
 def fetch_notification_status_totals_for_all_services(start_date, end_date):
     stats = db.session.query(
         FactNotificationStatus.notification_type.label('notification_type'),

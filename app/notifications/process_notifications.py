@@ -161,18 +161,18 @@ def persist_notification(
                 redis_store.incr(cache_key)
 
             # sending may not always be true, check this
-            cache_key = notification_count_cache_key(
-                service.id, notification_created_at, notification_type, 'sending'
+            cache_key, subkey = notification_count_cache_key(
+                service.id, notification_created_at, notification_type, template_id,'sending'
             )
-            if redis_store.get(cache_key) is None:
+            if redis_store.get_all_from_hash(cache_key) is None:
                 # if cache does not exist set the cache to 1 with an expiry of 8 days,
                 # The cache should be set by the time we create the notification
                 # but in case it is this will make sure the expiry is set to 8 days,
                 # where if we let the incr method create the cache it will be set a ttl.
                 # fix this comment as it might be missing a word?
-                redis_store.set(cache_key, 1, ex=691200)
+                redis_store.set_hash_and_expire(cache_key, {subkey: 1}, ex=691200)
             else:
-                redis_store.incr(cache_key)
+                redis_store.increment_hash_value(cache_key, subkey)
 
         current_app.logger.info(
             "{} {} created at {}".format(notification_type, notification_id, notification_created_at)
@@ -181,13 +181,11 @@ def persist_notification(
 
 
 def notification_count_cache_key(
-    service_id, created_at_utc, notification_type, simplified_status
+    service_id, created_at_utc, notification_type, template_id, simplified_status
 ):
     # this is not actually turning it in to bst, will need to fix this
     bst_date = created_at_utc.strftime("%Y-%m-%d")
-    return "service-{}-bst-date-{}-{}-{}".format(
-            str(service_id), bst_date, notification_type, simplified_status
-        )
+    return "service-{}:bst-date-{}:{}".format(str(service_id), bst_date, notification_type), "template-{}:{}".format(template_id, simplified_status) 
 
 
 def send_notification_to_queue_detached(
