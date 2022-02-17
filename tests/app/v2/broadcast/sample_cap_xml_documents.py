@@ -79,6 +79,15 @@ WAINFLEET_CANCEL_WITH_EMPTY_REFERENCES = WAINFLEET_CANCEL.format(
     "<references></references>"
 )
 
+WAINFLEET_CANCEL_WITH_WINDMERE_REFERENCES = WAINFLEET_CANCEL.format(
+    "<references>"
+    # Wainfleet
+    "www.gov.uk/environment-agency,50385fcb0ab7aa447bbd46d848ce8466E,2020-02-16T23:01:13-00:00,"
+    # Windemere
+    "www.gov.uk/environment-agency,4f6d28b10ab7aa447bbd46d85f1e9effE,2020-02-16T19:20:03+00:00"
+    "</references>"
+)
+
 UPDATE = """
     <alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
       <identifier>PAAQ-4-mg5a94</identifier>

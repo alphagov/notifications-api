@@ -220,6 +220,38 @@ def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
     assert response_for_cancel_json["errors"] == expected_error
 
 
+def test_cancel_raises_error_if_multiple_broadcasts_referenced(
+    client,
+    sample_broadcast_service,
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    for cap_document in (
+        sample_cap_xml_documents.WAINFLEET,
+        sample_cap_xml_documents.WINDEMERE,
+    ):
+        response_for_create = client.post(
+            path='/v2/broadcast',
+            data=cap_document,
+            headers=[('Content-Type', 'application/cap+xml'), auth_header],
+        )
+        assert response_for_create.status_code == 201
+
+    # try to cancel two broadcasts with one request
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_WINDMERE_REFERENCES,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    response_for_cancel_json = json.loads(response_for_cancel.get_data(as_text=True))
+
+    assert response_for_cancel.status_code == 400
+    assert response_for_cancel_json["errors"] == [{
+        'error': 'BadRequestError',
+        'message': 'Multiple alerts found - unclear which one to cancel',
+    }]
+
+
 def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
     client,
     sample_broadcast_service,

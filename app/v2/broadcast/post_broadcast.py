@@ -3,6 +3,7 @@ from itertools import chain
 from flask import current_app, jsonify, request
 from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
+from sqlalchemy.orm.exc import MultipleResultsFound
 
 from app import api_user, authenticated_service
 from app.broadcast_message.translators import cap_xml_to_dict
@@ -105,10 +106,17 @@ def create_broadcast():
 
 
 def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
-    broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
-        references_to_original_broadcast,
-        service_id
-    )
+    try:
+        broadcast_message = dao_get_broadcast_message_by_references_and_service_id(
+            references_to_original_broadcast,
+            service_id
+        )
+    except MultipleResultsFound:
+        raise BadRequestError(
+            message='Multiple alerts found - unclear which one to cancel',
+            status_code=400,
+        )
+
     if broadcast_message.status == BroadcastStatusType.PENDING_APPROVAL:
         new_status = BroadcastStatusType.REJECTED
     else:
