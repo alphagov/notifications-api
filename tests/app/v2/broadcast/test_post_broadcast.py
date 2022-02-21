@@ -220,6 +220,38 @@ def test_cancel_request_does_not_cancel_broadcast_if_reference_does_not_match(
     assert response_for_cancel_json["errors"] == expected_error
 
 
+def test_cancel_raises_error_if_multiple_broadcasts_referenced(
+    client,
+    sample_broadcast_service,
+):
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    for cap_document in (
+        sample_cap_xml_documents.WAINFLEET,
+        sample_cap_xml_documents.WINDEMERE,
+    ):
+        response_for_create = client.post(
+            path='/v2/broadcast',
+            data=cap_document,
+            headers=[('Content-Type', 'application/cap+xml'), auth_header],
+        )
+        assert response_for_create.status_code == 201
+
+    # try to cancel two broadcasts with one request
+    response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_WINDMERE_REFERENCES,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    response_for_cancel_json = json.loads(response_for_cancel.get_data(as_text=True))
+
+    assert response_for_cancel.status_code == 400
+    assert response_for_cancel_json["errors"] == [{
+        'error': 'BadRequestError',
+        'message': 'Multiple alerts found - unclear which one to cancel',
+    }]
+
+
 def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
     client,
     sample_broadcast_service,
@@ -251,6 +283,56 @@ def test_cancel_request_does_not_cancel_broadcast_if_service_id_does_not_match(
     )
 
     assert response_for_cancel.status_code == 404
+
+
+@pytest.mark.parametrize("is_approved, expected_cancel_tasks", (
+    (True, 1),
+    (False, 0),
+))
+def test_same_broadcast_cant_be_cancelled_twice(
+    mocker,
+    client,
+    sample_broadcast_service,
+    is_approved,
+    expected_cancel_tasks,
+):
+    mock_send_broadcast_event_task = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_event.apply_async'
+    )
+    auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
+
+    # create a broadcast
+    response_for_create = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert response_for_create.status_code == 201
+
+    response_json_for_create = json.loads(response_for_create.get_data(as_text=True))
+
+    broadcast_message = dao_get_broadcast_message_by_id_and_service_id(
+        response_json_for_create["id"], response_json_for_create["service_id"]
+    )
+    # approve broadcast
+    if is_approved:
+        broadcast_message.status = 'broadcasting'
+
+    first_response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_REFERENCES,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert first_response_for_cancel.status_code == 201
+
+    second_response_for_cancel = client.post(
+        path='/v2/broadcast',
+        data=sample_cap_xml_documents.WAINFLEET_CANCEL_WITH_REFERENCES,
+        headers=[('Content-Type', 'application/cap+xml'), auth_header],
+    )
+    assert second_response_for_cancel.status_code == 404
+
+    assert len(mock_send_broadcast_event_task.call_args_list) == expected_cancel_tasks
 
 
 def test_large_polygon_is_simplified(
