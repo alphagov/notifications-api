@@ -131,7 +131,7 @@ kombu==5.2.3
     # via celery
 lxml==4.8.0
     # via -r requirements.in
-mako==1.1.5
+mako==1.1.6
     # via alembic
 markupsafe==2.0.1
     # via
