@@ -134,6 +134,8 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
     api_key = create_api_key(service=sample_broadcast_service)
     auth_header = create_service_authorization_header(service_id=sample_broadcast_service.id)
 
+    mock_redis_delete = mocker.patch('app.redis_store.delete')
+
     # create a broadcast
     response_for_create = client.post(
         path='/v2/broadcast',
@@ -164,6 +166,9 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
         broadcast_message,
         expected_status,
         api_key_id=api_key.id
+    )
+    mock_redis_delete.assert_called_once_with(
+        f'service-{sample_broadcast_service.id}-broadcast-message-{broadcast_message.id}'
     )
 
 

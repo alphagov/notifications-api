@@ -5,7 +5,7 @@ from notifications_utils.polygons import Polygons
 from notifications_utils.template import BroadcastMessageTemplate
 from sqlalchemy.orm.exc import MultipleResultsFound
 
-from app import api_user, authenticated_service
+from app import api_user, authenticated_service, redis_store
 from app.broadcast_message.translators import cap_xml_to_dict
 from app.broadcast_message.utils import (
     validate_and_update_broadcast_message_status,
@@ -125,6 +125,9 @@ def _cancel_or_reject_broadcast(references_to_original_broadcast, service_id):
         broadcast_message,
         new_status,
         api_key_id=api_user.id
+    )
+    redis_store.delete(
+        f'service-{broadcast_message.service_id}-broadcast-message-{broadcast_message.id}'
     )
     return broadcast_message
 
