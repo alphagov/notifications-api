@@ -204,7 +204,7 @@ requests==2.27.1
     #   notifications-utils
 rfc3987==1.3.8
     # via -r requirements.in
-rsa==4.7.2
+rsa==4.8
     # via awscli
 s3transfer==0.5.0
     # via
