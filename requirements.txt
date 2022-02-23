@@ -88,7 +88,7 @@ flask-bcrypt==0.7.1
     # via -r requirements.in
 flask-marshmallow==0.14.0
     # via -r requirements.in
-flask-migrate==2.7.0
+flask-migrate==3.1.0
     # via -r requirements.in
 flask-redis==0.4.0
     # via notifications-utils
