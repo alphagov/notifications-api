@@ -14,6 +14,8 @@ docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
   -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI \
+  -e REDIS_ENABLED=${REDIS_ENABLED:-0} \
+  -e REDIS_URL=${REDIS_URL:-''} \
   -v $(pwd):/home/vcap/app \
   ${DOCKER_IMAGE_NAME} \
   ${@}

@@ -27,6 +27,10 @@ bootstrap: generate-version-file ## Set up everything to run the app
 	createdb notification_api || true
 	(. environment.sh && flask db upgrade) || true
 
+.PHONY: bootstrap-with-docker
+bootstrap-with-docker: ## Build the image to run the app in Docker
+	docker build -f docker/Dockerfile -t notifications-api .
+
 .PHONY: run-flask
 run-flask: ## Run flask
 	. environment.sh && flask run -p 6011
@@ -39,11 +43,19 @@ run-celery: ## Run celery
 		--loglevel=INFO \
 		--concurrency=4
 
+.PHONY: run-celery-with-docker
+run-celery-with-docker: ## Run celery in Docker container (useful if you can't install pycurl locally)
+	./scripts/run_with_docker.sh make run-celery
+
 .PHONY: run-celery-beat
 run-celery-beat: ## Run celery beat
 	. environment.sh && celery \
 		-A run_celery.notify_celery beat \
 		--loglevel=INFO
+
+.PHONY: run-celery-beat-with-docker
+run-celery-beat-with-docker: ## Run celery beat in Docker container (useful if you can't install pycurl locally)
+	./scripts/run_with_docker.sh make run-celery-beat
 
 .PHONY: help
 help:
@@ -177,8 +189,3 @@ disable-failwhale: ## Disable the failwhale app and enable api
 	cf unmap-route notify-api-failwhale ${DNS_NAME} --hostname api
 	cf stop notify-api-failwhale
 	@echo "Failwhale is disabled"
-
-.PHONY: run-celery-with-docker
-run-celery-with-docker: ## Run celery in Docker container (useful if you can't install pycurl locally)
-	docker build -f docker/Dockerfile -t notifications-api .
-	./scripts/run_with_docker.sh make run-celery
