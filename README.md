@@ -61,13 +61,11 @@ export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/11/bin/
 
 ### Redis
 
-To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
+To switch redis on you'll need to install it locally e.g. `brew install redis`. To use redis caching you need to switch it on with an environment variable:
 
 ```
-REDIS_ENABLED = 1
+export REDIS_ENABLED=1
 ```
-
-Note that if you're running Celery with Docker locally, then you'll also need to set `REDIS_URL=redis://host.docker.internal:6379`.
 
 ##  To run the application
 
