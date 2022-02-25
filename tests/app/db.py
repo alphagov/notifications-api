@@ -260,7 +260,6 @@ def create_notification(
         rate_multiplier=None,
         international=False,
         phone_prefix=None,
-        scheduled_for=None,
         normalised_to=None,
         one_off=False,
         reply_to_text=None,

@@ -29,10 +29,6 @@ IN_MAY_2016 = datetime(2016, 5, 10, 23, 00, 00)
 IN_JUN_2016 = datetime(2016, 6, 3, 23, 00, 00)
 
 
-def _assert_dict_equals(actual, expected_dict):
-    assert actual == expected_dict
-
-
 def test_create_update_free_sms_fragment_limit_invalid_schema(client, sample_service):
 
     response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
