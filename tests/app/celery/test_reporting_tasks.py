@@ -605,10 +605,7 @@ def test_create_nightly_notification_status_for_service_and_day_overwrites_old_d
     notification = create_notification(template=first_template, status='sending')
     create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
-    new_fact_data = FactNotificationStatus.query.order_by(
-        FactNotificationStatus.bst_date,
-        FactNotificationStatus.notification_type
-    ).all()
+    new_fact_data = FactNotificationStatus.query.all()
 
     assert len(new_fact_data) == 1
     assert new_fact_data[0].notification_count == 1
@@ -620,8 +617,7 @@ def test_create_nightly_notification_status_for_service_and_day_overwrites_old_d
     create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
 
     updated_fact_data = FactNotificationStatus.query.order_by(
-        FactNotificationStatus.bst_date,
-        FactNotificationStatus.notification_type
+        FactNotificationStatus.notification_status
     ).all()
 
     assert len(updated_fact_data) == 2
