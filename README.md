@@ -61,10 +61,19 @@ export PATH=${PATH}:/Applications/Postgres.app/Contents/Versions/11/bin/
 
 ### Redis
 
-To switch redis on you'll need to install it locally. On a OSX we've used brew for this. To use redis caching you need to switch it on by changing the config for development:
+To switch redis on you'll need to install it locally. On a Mac you can do:
 
-        REDIS_ENABLED = True
+```
+# assuming you use Homebrew
+brew install redis
+brew services start redis
+```
 
+To use redis caching you need to switch it on with an environment variable:
+
+```
+export REDIS_ENABLED=1
+```
 
 ##  To run the application
 
@@ -81,6 +90,18 @@ make run-celery
 # run scheduled tasks (optional)
 make run-celery-beat
 ```
+
+We've had problems running Celery locally due to one of its dependencies: pycurl. Due to the complexity of the issue, we also support running Celery via Docker:
+
+```
+# install dependencies, etc.
+make bootstrap-with-docker
+
+# run the background tasks
+make run-celery-with-docker
+
+# run scheduled tasks
+make run-celery-beat-with-docker
 
 ##  To test the application
 
