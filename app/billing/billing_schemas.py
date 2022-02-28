@@ -6,7 +6,7 @@ create_or_update_free_sms_fragment_limit_schema = {
     "type": "object",
     "title": "Create",
     "properties": {
-        "free_sms_fragment_limit": {"type": "integer", "minimum": 1},
+        "free_sms_fragment_limit": {"type": "integer", "minimum": 0},
     },
     "required": ["free_sms_fragment_limit"]
 }

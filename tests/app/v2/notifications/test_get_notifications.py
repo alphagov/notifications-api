@@ -20,7 +20,6 @@ def test_get_notification_by_id_returns_200(
         template=sample_template,
         billable_units=billable_units,
         sent_by=provider,
-        scheduled_for="2017-05-12 15:15"
     )
 
     # another
@@ -28,7 +27,6 @@ def test_get_notification_by_id_returns_200(
         template=sample_template,
         billable_units=billable_units,
         sent_by=provider,
-        scheduled_for="2017-06-12 15:15"
     )
 
     auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
