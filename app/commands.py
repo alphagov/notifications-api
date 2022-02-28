@@ -246,14 +246,15 @@ def fix_notification_statuses_not_in_sync():
               one number per line. The number must have the format of 07... not 447....""")
 def insert_inbound_numbers_from_file(file_name):
     print("Inserting inbound numbers from {}".format(file_name))
-    file = open(file_name)
-    sql = "insert into inbound_numbers values('{}', '{}', 'mmg', null, True, now(), null);"
+    with open(file_name) as file:
+        sql = "insert into inbound_numbers values('{}', '{}', 'mmg', null, True, now(), null);"
 
-    for line in file:
-        print(line)
-        db.session.execute(sql.format(uuid.uuid4(), line.strip()))
-        db.session.commit()
-    file.close()
+        for line in file:
+            line = line.strip()
+            if line:
+                print(line)
+                db.session.execute(sql.format(uuid.uuid4(), line))
+                db.session.commit()
 
 
 @notify_command(name='replay-create-pdf-for-templated-letter')
