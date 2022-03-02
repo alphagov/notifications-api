@@ -26,7 +26,7 @@ bleach==4.1.0
     # via notifications-utils
 blinker==1.4
     # via gds-metrics
-boto3==1.19.4
+boto3==1.21.10
     # via notifications-utils
 botocore==1.22.4
     # via
