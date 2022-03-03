@@ -544,8 +544,8 @@ def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500)
         Notification.notification_type == SMS_TYPE,
         func.substr(Notification.normalised_to, 3, 7) == '7700900',
         Service.restricted == False,  # noqa
-        Service.research_mode == False,
-        Service.active == True,
+        Service.research_mode == False,  # noqa
+        Service.active == True,  # noqa
     ).group_by(
         Notification.service_id,
     ).having(
@@ -564,8 +564,8 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
         Notification.key_type != KEY_TYPE_TEST,
         Notification.notification_type == SMS_TYPE,
         Service.restricted == False,  # noqa
-        Service.research_mode == False,
-        Service.active == True,
+        Service.research_mode == False,  # noqa
+        Service.active == True,  # noqa
     ).group_by(
         Notification.service_id,
     ).having(
@@ -590,8 +590,8 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
         Notification.notification_type == SMS_TYPE,
         Notification.status == NOTIFICATION_PERMANENT_FAILURE,
         Service.restricted == False,  # noqa
-        Service.research_mode == False,
-        Service.active == True,
+        Service.research_mode == False,  # noqa
+        Service.active == True,  # noqa
     ).group_by(
         Notification.service_id,
         subquery.c.total_count

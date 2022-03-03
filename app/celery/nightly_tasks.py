@@ -255,7 +255,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
 
     for key in s3.get_list_of_files_by_suffix(bucket_name=current_app.config['DVLA_RESPONSE_BUCKET_NAME'],
                                               subfolder='root/dispatch', suffix='.ACK.txt', last_modified=yesterday):
-        ack_file_set.add(key.lstrip('root/dispatch').upper().replace('.ACK.TXT', ''))
+        ack_file_set.add(key.lstrip('root/dispatch').upper().replace('.ACK.TXT', ''))  # noqa
 
     message = '\n'.join([
         "Letter ack file does not contain all zip files sent."

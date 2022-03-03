@@ -6,7 +6,7 @@
 #
 alembic==1.7.4
     # via flask-migrate
-amqp==5.0.6
+amqp==5.0.9
     # via kombu
 attrs==21.2.0
     # via jsonschema
@@ -37,7 +37,7 @@ cachetools==4.2.1
     # via
     #   -r requirements.in
     #   notifications-utils
-celery[sqs]==5.2.0
+celery[sqs]==5.2.3
     # via -r requirements.in
 certifi==2021.10.8
     # via
@@ -88,7 +88,7 @@ flask-bcrypt==0.7.1
     # via -r requirements.in
 flask-marshmallow==0.14.0
     # via -r requirements.in
-flask-migrate==2.7.0
+flask-migrate==3.1.0
     # via -r requirements.in
 flask-redis==0.4.0
     # via notifications-utils
@@ -110,7 +110,7 @@ gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191
     # via -r requirements.in
 idna==3.3
     # via requests
-iso8601==0.1.14
+iso8601==1.0.2
     # via -r requirements.in
 itsdangerous==1.1.0
     # via
@@ -127,9 +127,9 @@ jmespath==0.10.0
     #   botocore
 jsonschema==3.2.0
     # via -r requirements.in
-kombu==5.2.1
+kombu==5.2.3
     # via celery
-lxml==4.7.1
+lxml==4.8.0
     # via -r requirements.in
 mako==1.1.5
     # via alembic
@@ -146,7 +146,7 @@ marshmallow-sqlalchemy==0.23.1
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
-notifications-python-client==6.0.2
+notifications-python-client==6.3.0
     # via -r requirements.in
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@53.0.0
     # via -r requirements.in
@@ -162,7 +162,7 @@ prometheus-client==0.10.1
     #   gds-metrics
 prompt-toolkit==3.0.21
     # via click-repl
-psycopg2-binary==2.8.6
+psycopg2-binary==2.9.3
     # via -r requirements.in
 pyasn1==0.4.8
     # via rsa

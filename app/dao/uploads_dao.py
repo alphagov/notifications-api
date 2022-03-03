@@ -84,7 +84,7 @@ def dao_get_uploads_by_service_id(service_id, limit_days=None, page=1, page_size
         Notification.notification_type == LETTER_TYPE,
         Notification.api_key_id == None,  # noqa
         Notification.status != NOTIFICATION_CANCELLED,
-        Template.hidden == True,
+        Template.hidden == True,  # noqa
         Notification.created_at >= today - func.coalesce(ServiceDataRetention.days_of_retention, 7)
     ]
     if limit_days is not None:
