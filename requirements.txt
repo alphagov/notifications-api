@@ -129,7 +129,7 @@ jsonschema==3.2.0
     # via -r requirements.in
 kombu==5.2.3
     # via celery
-lxml==4.7.1
+lxml==4.8.0
     # via -r requirements.in
 mako==1.1.5
     # via alembic
