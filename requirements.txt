@@ -6,7 +6,7 @@
 #
 alembic==1.7.4
     # via flask-migrate
-amqp==5.0.6
+amqp==5.0.9
     # via kombu
 attrs==21.2.0
     # via jsonschema
@@ -37,7 +37,7 @@ cachetools==4.2.1
     # via
     #   -r requirements.in
     #   notifications-utils
-celery[sqs]==5.2.0
+celery[sqs]==5.2.3
     # via -r requirements.in
 certifi==2021.10.8
     # via
@@ -127,7 +127,7 @@ jmespath==0.10.0
     #   botocore
 jsonschema==3.2.0
     # via -r requirements.in
-kombu==5.2.1
+kombu==5.2.3
     # via celery
 lxml==4.7.1
     # via -r requirements.in
