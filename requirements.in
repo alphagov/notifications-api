@@ -16,7 +16,7 @@ itsdangerous==1.1.0
 jsonschema==3.2.0
 marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
-psycopg2-binary==2.8.6
+psycopg2-binary==2.9.3
 PyJWT==2.0.1
 SQLAlchemy==1.4.10
 strict-rfc3339==0.7
