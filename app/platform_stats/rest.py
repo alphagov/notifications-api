@@ -5,9 +5,11 @@ from flask import Blueprint, jsonify, request
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_billing_details_for_all_services,
+    fetch_daily_volumes_for_platform,
     fetch_letter_costs_and_totals_for_all_services,
     fetch_letter_line_items_for_all_services,
     fetch_sms_billing_for_all_services,
+    fetch_volumes_by_service,
 )
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
@@ -40,12 +42,17 @@ def get_platform_stats():
     return jsonify(stats)
 
 
-def validate_date_range_is_within_a_financial_year(start_date, end_date):
+def validate_date_format(date_to_validate):
     try:
-        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
-        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+        validated_date = datetime.strptime(date_to_validate, "%Y-%m-%d").date()
     except ValueError:
         raise InvalidRequest(message="Input must be a date in the format: YYYY-MM-DD", status_code=400)
+    return validated_date
+
+
+def validate_date_range_is_within_a_financial_year(start_date, end_date):
+    start_date = validate_date_format(start_date)
+    end_date = validate_date_format(end_date)
     if end_date < start_date:
         raise InvalidRequest(message="Start date must be before end date", status_code=400)
 
@@ -131,6 +138,53 @@ def get_data_for_billing_report():
         x['service_name']
     ))
     return jsonify(result)
+
+
+@platform_stats_blueprint.route('daily-volumes-report')
+def daily_volumes_report():
+    start_date = validate_date_format(request.args.get('start_date'))
+    end_date = validate_date_format(request.args.get('end_date'))
+
+    daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date)
+    report = []
+
+    for row in daily_volumes:
+        report.append({
+            "day": row.bst_date,
+            "sms_totals": row.sms_totals,
+            "sms_fragment_totals": row.sms_fragment_totals,
+            "sms_chargeable_units": row.sms_chargeable_units,
+            "email_totals": row.email_totals,
+            "letter_totals": row.letter_totals,
+            "letter_sheet_totals": row.letter_sheet_totals
+        })
+    return jsonify(report)
+
+
+@platform_stats_blueprint.route('volumes-by-service')
+def volumes_by_service_report():
+    start_date = validate_date_format(request.args.get('start_date'))
+    end_date = validate_date_format(request.args.get('end_date'))
+
+    volumes_by_service = fetch_volumes_by_service(start_date, end_date)
+    report = []
+
+    for row in volumes_by_service:
+        report.append({
+            "service_name": row.service_name,
+            "service_id": str(row.service_id),
+            "organisation_name": row.organisation_name if row.organisation_name else '',
+            "organisation_id": str(row.organisation_id) if row.organisation_id else '',
+            "free_allowance": row.free_allowance,
+            "sms_notifications": row.sms_notifications,
+            "sms_chargeable_units": row.sms_chargeable_units,
+            "email_totals": row.email_totals,
+            "letter_totals": row.letter_totals,
+            "letter_sheet_totals": row.letter_sheet_totals,
+            "letter_cost": float(row.letter_cost),
+        })
+
+    return jsonify(report)
 
 
 def postage_description(postage):

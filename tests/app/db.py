@@ -979,11 +979,11 @@ def set_up_usage_data(start_date):
     create_ft_billing(bst_date=two_days_later, template=sms_template_1, billable_unit=1, rate=0.11)
 
     create_ft_billing(bst_date=one_week_later, template=letter_template_1,
-                      notifications_sent=2, billable_unit=1, rate=.35, postage='first')
+                      notifications_sent=2, billable_unit=2, rate=.35, postage='first')
     create_ft_billing(bst_date=one_month_later, template=letter_template_1,
-                      notifications_sent=4, billable_unit=2, rate=.45, postage='second')
+                      notifications_sent=4, billable_unit=8, rate=.45, postage='second')
     create_ft_billing(bst_date=one_week_later, template=letter_template_1,
-                      notifications_sent=2, billable_unit=2, rate=.45, postage='second')
+                      notifications_sent=2, billable_unit=4, rate=.45, postage='second')
 
     # service with emails only:
     service_with_emails = create_service(service_name='b - emails')
