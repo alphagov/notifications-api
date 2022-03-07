@@ -292,15 +292,29 @@ def test_send_sms_code_returns_204_when_too_many_codes_already_created(client, s
     assert VerifyCode.query.count() == 5
 
 
-def test_send_new_user_email_verification(client,
-                                          sample_user,
-                                          mocker,
-                                          email_verification_template):
+@pytest.mark.parametrize('post_data, expected_url_starts_with', (
+    (
+        {},
+        'http://localhost',
+    ),
+    (
+        {'admin_base_url': 'https://example.com'},
+        'https://example.com',
+    ),
+))
+def test_send_new_user_email_verification(
+    client,
+    sample_user,
+    mocker,
+    email_verification_template,
+    post_data,
+    expected_url_starts_with,
+):
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     auth_header = create_admin_authorization_header()
     resp = client.post(
         url_for('user.send_new_user_email_verification', user_id=str(sample_user.id)),
-        data=json.dumps({}),
+        data=json.dumps(post_data),
         headers=[('Content-Type', 'application/json'), auth_header])
     notify_service = email_verification_template.service
     assert resp.status_code == 204
@@ -308,6 +322,8 @@ def test_send_new_user_email_verification(client,
     assert VerifyCode.query.count() == 0
     mocked.assert_called_once_with(([str(notification.id)]), queue="notify-internal-tasks")
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
+    assert notification.personalisation['name'] == 'Test User'
+    assert notification.personalisation['url'].startswith(expected_url_starts_with)
 
 
 def test_send_email_verification_returns_404_for_bad_input_data(client, notify_db_session, mocker):
