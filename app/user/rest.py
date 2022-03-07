@@ -374,6 +374,8 @@ def send_user_confirm_new_email(user_id):
 
 @user_blueprint.route('/<uuid:user_id>/email-verification', methods=['POST'])
 def send_new_user_email_verification(user_id):
+    request_json = request.get_json()
+
     # when registering, we verify all users' email addresses using this function
     user_to_send_to = get_user_by_id(user_id=user_id)
 
@@ -387,7 +389,10 @@ def send_new_user_email_verification(user_id):
         service=service,
         personalisation={
             'name': user_to_send_to.name,
-            'url': _create_verification_url(user_to_send_to)
+            'url': _create_verification_url(
+                user_to_send_to,
+                base_url=request_json.get('admin_base_url'),
+            ),
         },
         notification_type=template.template_type,
         api_key_id=None,
@@ -556,10 +561,10 @@ def _create_reset_password_url(email, next_redirect, base_url=None):
     return full_url
 
 
-def _create_verification_url(user):
+def _create_verification_url(user, base_url):
     data = json.dumps({'user_id': str(user.id), 'email': user.email_address})
     url = '/verify-email/'
-    return url_with_token(data, url, current_app.config)
+    return url_with_token(data, url, current_app.config, base_url=base_url)
 
 
 def _create_confirmation_url(user, email_address):
