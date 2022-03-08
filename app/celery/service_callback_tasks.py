@@ -68,7 +68,7 @@ def _send_data_to_service_callback_api(self, data, service_callback_url, token, 
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer {}'.format(token)
             },
-            timeout=60
+            timeout=5
         )
         current_app.logger.info('{} sending {} to {}, response {}'.format(
             function_name,
