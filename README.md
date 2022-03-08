@@ -102,6 +102,7 @@ make run-celery-with-docker
 
 # run scheduled tasks
 make run-celery-beat-with-docker
+```
 
 ##  To test the application
 
