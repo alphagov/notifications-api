@@ -248,7 +248,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-werkzeug==2.0.2
+werkzeug==2.0.3
     # via
     #   -r requirements.in
     #   flask
