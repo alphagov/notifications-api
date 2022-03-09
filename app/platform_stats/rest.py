@@ -151,12 +151,12 @@ def daily_volumes_report():
     for row in daily_volumes:
         report.append({
             "day": row.bst_date,
-            "sms_totals": row.sms_totals,
-            "sms_fragment_totals": row.sms_fragment_totals,
-            "sms_chargeable_units": row.sms_chargeable_units,
-            "email_totals": row.email_totals,
-            "letter_totals": row.letter_totals,
-            "letter_sheet_totals": row.letter_sheet_totals
+            "sms_totals": int(row.sms_totals),
+            "sms_fragment_totals": int(row.sms_fragment_totals),
+            "sms_chargeable_units": int(row.sms_chargeable_units),
+            "email_totals": int(row.email_totals),
+            "letter_totals": int(row.letter_totals),
+            "letter_sheet_totals": int(row.letter_sheet_totals)
         })
     return jsonify(report)
 
@@ -175,12 +175,12 @@ def volumes_by_service_report():
             "service_id": str(row.service_id),
             "organisation_name": row.organisation_name if row.organisation_name else '',
             "organisation_id": str(row.organisation_id) if row.organisation_id else '',
-            "free_allowance": row.free_allowance,
-            "sms_notifications": row.sms_notifications,
-            "sms_chargeable_units": row.sms_chargeable_units,
-            "email_totals": row.email_totals,
-            "letter_totals": row.letter_totals,
-            "letter_sheet_totals": row.letter_sheet_totals,
+            "free_allowance": int(row.free_allowance),
+            "sms_notifications": int(row.sms_notifications),
+            "sms_chargeable_units": int(row.sms_chargeable_units),
+            "email_totals": int(row.email_totals),
+            "letter_totals": int(row.letter_totals),
+            "letter_sheet_totals": int(row.letter_sheet_totals),
             "letter_cost": float(row.letter_cost),
         })
 

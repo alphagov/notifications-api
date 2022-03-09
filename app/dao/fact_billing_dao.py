@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import Date, Integer, Numeric, and_, desc, func
+from sqlalchemy import Date, Integer, and_, desc, func
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal
 
@@ -763,13 +763,13 @@ def fetch_daily_volumes_for_platform(start_date, end_date):
 
     aggregated_totals = db.session.query(
         daily_volume_stats.c.bst_date.cast(db.Text).label('bst_date'),
-        func.sum(daily_volume_stats.c.sms_totals).cast(Integer).label('sms_totals'),
-        func.sum(daily_volume_stats.c.sms_fragment_totals).cast(Integer).label('sms_fragment_totals'),
+        func.sum(daily_volume_stats.c.sms_totals).label('sms_totals'),
+        func.sum(daily_volume_stats.c.sms_fragment_totals).label('sms_fragment_totals'),
         func.sum(
-            daily_volume_stats.c.sms_fragments_times_multiplier).cast(Integer).label('sms_chargeable_units'),
-        func.sum(daily_volume_stats.c.email_totals).cast(Integer).label('email_totals'),
-        func.sum(daily_volume_stats.c.letter_totals).cast(Integer).label('letter_totals'),
-        func.sum(daily_volume_stats.c.letter_sheet_totals).cast(Integer).label('letter_sheet_totals')
+            daily_volume_stats.c.sms_fragments_times_multiplier).label('sms_chargeable_units'),
+        func.sum(daily_volume_stats.c.email_totals).label('email_totals'),
+        func.sum(daily_volume_stats.c.letter_totals).label('letter_totals'),
+        func.sum(daily_volume_stats.c.letter_sheet_totals).label('letter_sheet_totals')
     ).group_by(
         daily_volume_stats.c.bst_date
     ).order_by(
@@ -832,14 +832,14 @@ def fetch_volumes_by_service(start_date, end_date):
         Service.id.label("service_id"),
         Service.organisation_id.label("organisation_id"),
         Organisation.name.label("organisation_name"),
-        annual_billing.c.free_sms_fragment_limit.cast(Integer).label("free_allowance"),
-        func.coalesce(func.sum(volume_stats.c.sms_totals), 0).cast(Integer).label("sms_notifications"),
+        annual_billing.c.free_sms_fragment_limit.label("free_allowance"),
+        func.coalesce(func.sum(volume_stats.c.sms_totals), 0).label("sms_notifications"),
         func.coalesce(func.sum(volume_stats.c.sms_fragments_times_multiplier), 0
-                      ).cast(Integer).label("sms_chargeable_units"),
-        func.coalesce(func.sum(volume_stats.c.email_totals), 0).cast(Integer).label("email_totals"),
-        func.coalesce(func.sum(volume_stats.c.letter_totals), 0).cast(Integer).label("letter_totals"),
-        func.coalesce(func.sum(volume_stats.c.letter_cost), 0).cast(Numeric).label("letter_cost"),
-        func.coalesce(func.sum(volume_stats.c.letter_sheet_totals), 0).cast(Integer).label("letter_sheet_totals")
+                      ).label("sms_chargeable_units"),
+        func.coalesce(func.sum(volume_stats.c.email_totals), 0).label("email_totals"),
+        func.coalesce(func.sum(volume_stats.c.letter_totals), 0).label("letter_totals"),
+        func.coalesce(func.sum(volume_stats.c.letter_cost), 0).label("letter_cost"),
+        func.coalesce(func.sum(volume_stats.c.letter_sheet_totals), 0).label("letter_sheet_totals")
     ).select_from(
         Service
     ).outerjoin(
