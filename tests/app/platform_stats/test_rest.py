@@ -183,3 +183,58 @@ def test_get_data_for_billing_report(notify_db_session, admin_request):
         "2 second class letters at 35p\n1 first class letters at 50p\n15 international letters at £1.55\n"
     )
     assert response[3]["purchase_order_number"] is None
+
+
+def test_daily_volumes_report(
+        notify_db_session, sample_template, sample_email_template, sample_letter_template, admin_request
+):
+    set_up_usage_data(datetime(2022, 3, 1))
+    response = admin_request.get(
+        "platform_stats.daily_volumes_report",
+        start_date='2022-03-01',
+        end_date='2022-03-31'
+    )
+
+    assert len(response) == 3
+    assert response[0] == {'day': '2022-03-01', 'email_totals': 10, 'letter_sheet_totals': 3,
+                           'letter_totals': 2, 'sms_chargeable_units': 2, 'sms_fragment_totals': 2, 'sms_totals': 1}
+    assert response[1] == {'day': '2022-03-03', 'email_totals': 0, 'letter_sheet_totals': 10, 'letter_totals': 18,
+                           'sms_chargeable_units': 2, 'sms_fragment_totals': 2, 'sms_totals': 2}
+    assert response[2] == {'day': '2022-03-08', 'email_totals': 0, 'letter_sheet_totals': 11, 'letter_totals': 12,
+                           'sms_chargeable_units': 4, 'sms_fragment_totals': 4, 'sms_totals': 2}
+
+
+def test_volumes_by_service_report(
+        notify_db_session, sample_template, sample_email_template, sample_letter_template, admin_request
+):
+    fixture = set_up_usage_data(datetime(2022, 3, 1))
+    response = admin_request.get(
+        "platform_stats.volumes_by_service_report",
+        start_date='2022-03-01',
+        end_date='2022-03-01'
+    )
+
+    assert len(response) == 4
+    assert response[0] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0,
+                           'letter_sheet_totals': 0, 'letter_totals': 0,
+                           'organisation_id': str(fixture['org_1'].id),
+                           'organisation_name': fixture['org_1'].name,
+                           'service_id': str(fixture['service_1_sms_and_letter'].id),
+                           'service_name': fixture['service_1_sms_and_letter'].name,
+                           'sms_chargeable_units': 2, 'sms_notifications': 1}
+    assert response[1] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
+                           'letter_totals': 0, 'organisation_id': str(fixture['org_1'].id),
+                           'organisation_name': fixture['org_1'].name,
+                           'service_id': str(fixture['service_with_out_ft_billing_this_year'].id),
+                           'service_name': fixture['service_with_out_ft_billing_this_year'].name,
+                           'sms_chargeable_units': 0, 'sms_notifications': 0}
+    assert response[2] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
+                           'letter_totals': 0, 'organisation_id': '', 'organisation_name': '',
+                           'service_id': str(fixture['service_with_sms_without_org'].id),
+                           'service_name': fixture['service_with_sms_without_org'].name,
+                           'sms_chargeable_units': 0, 'sms_notifications': 0}
+    assert response[3] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
+                           'letter_totals': 0, 'organisation_id': '', 'organisation_name': '',
+                           'service_id': str(fixture['service_with_sms_within_allowance'].id),
+                           'service_name': fixture['service_with_sms_within_allowance'].name,
+                           'sms_chargeable_units': 0, 'sms_notifications': 0}

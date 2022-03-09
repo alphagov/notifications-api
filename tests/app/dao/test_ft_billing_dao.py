@@ -10,12 +10,14 @@ from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
     fetch_billing_totals_for_year,
+    fetch_daily_volumes_for_platform,
     fetch_letter_costs_and_totals_for_all_services,
     fetch_letter_line_items_for_all_services,
     fetch_monthly_billing_for_year,
     fetch_sms_billing_for_all_services,
     fetch_sms_free_allowance_remainder_until_date,
     fetch_usage_year_for_organisation,
+    fetch_volumes_by_service,
     get_rate,
     get_rates_for_billing,
 )
@@ -812,3 +814,90 @@ def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(n
     assert len(results) == 1
     assert results[str(live_service.id)]['sms_billable_units'] == 19
     assert results[str(live_service.id)]['emails_sent'] == 0
+
+
+def test_fetch_daily_volumes_for_platform(
+        notify_db_session, sample_template, sample_email_template, sample_letter_template
+):
+    create_ft_billing(bst_date='2022-02-03', template=sample_template,
+                      notifications_sent=10, billable_unit=10)
+    create_ft_billing(bst_date='2022-02-03', template=sample_template,
+                      notifications_sent=10, billable_unit=30, international=True)
+    create_ft_billing(bst_date='2022-02-03', template=sample_email_template, notifications_sent=10)
+    create_ft_billing(bst_date='2022-02-03', template=sample_letter_template, notifications_sent=5,
+                      billable_unit=5, rate=0.39)
+    create_ft_billing(bst_date='2022-02-03', template=sample_letter_template, notifications_sent=5,
+                      billable_unit=10, rate=0.44)
+
+    create_ft_billing(bst_date='2022-02-04', template=sample_template,
+                      notifications_sent=20, billable_unit=40)
+    create_ft_billing(bst_date='2022-02-04', template=sample_template,
+                      notifications_sent=10, billable_unit=20, rate_multiplier=3)
+    create_ft_billing(bst_date='2022-02-04', template=sample_email_template, notifications_sent=50)
+    create_ft_billing(bst_date='2022-02-04', template=sample_letter_template, notifications_sent=20, billable_unit=40)
+
+    results = fetch_daily_volumes_for_platform(start_date='2022-02-03', end_date='2022-02-04')
+
+    assert len(results) == 2
+    assert results[0].bst_date == '2022-02-03'
+    assert results[0].sms_totals == 20
+    assert results[0].sms_fragment_totals == 40
+    assert results[0].sms_chargeable_units == 40
+    assert results[0].email_totals == 10
+    assert results[0].letter_totals == 10
+    assert results[0].letter_sheet_totals == 15
+
+    assert results[1].bst_date == '2022-02-04'
+    assert results[1].sms_totals == 30
+    assert results[1].sms_fragment_totals == 60
+    assert results[1].sms_chargeable_units == 100
+    assert results[1].email_totals == 50
+    assert results[1].letter_totals == 20
+    assert results[1].letter_sheet_totals == 40
+
+
+def test_fetch_volumes_by_service(notify_db_session):
+    set_up_usage_data(datetime(2022, 2, 1))
+
+    results = fetch_volumes_by_service(start_date=datetime(2022, 2, 1), end_date=datetime(2022, 2, 28))
+
+    assert len(results) == 4
+    assert results[0].service_name == 'a - with sms and letter'
+    assert results[0].organisation_name == 'Org for a - with sms and letter'
+    assert results[0].free_allowance == 10
+    assert results[0].sms_notifications == 2
+    assert results[0].sms_chargeable_units == 3
+    assert results[0].email_totals == 0
+    assert results[0].letter_totals == 4
+    assert results[0].letter_sheet_totals == 6
+    assert float(results[0].letter_cost) == 1.6
+
+    assert results[1].service_name == 'f - without ft_billing'
+    assert results[1].organisation_name == 'Org for a - with sms and letter'
+    assert results[1].free_allowance == 10
+    assert results[1].sms_notifications == 0
+    assert results[1].sms_chargeable_units == 0
+    assert results[1].email_totals == 0
+    assert results[1].letter_totals == 0
+    assert results[1].letter_sheet_totals == 0
+    assert float(results[1].letter_cost) == 0
+
+    assert results[2].service_name == 'b - chargeable sms'
+    assert not results[2].organisation_name
+    assert results[2].free_allowance == 10
+    assert results[2].sms_notifications == 2
+    assert results[2].sms_chargeable_units == 3
+    assert results[2].email_totals == 0
+    assert results[2].letter_totals == 0
+    assert results[2].letter_sheet_totals == 0
+    assert float(results[2].letter_cost) == 0
+
+    assert results[3].service_name == 'e - sms within allowance'
+    assert not results[3].organisation_name
+    assert results[3].free_allowance == 10
+    assert results[3].sms_notifications == 1
+    assert results[3].sms_chargeable_units == 2
+    assert results[3].email_totals == 0
+    assert results[3].letter_totals == 0
+    assert results[3].letter_sheet_totals == 0
+    assert float(results[3].letter_cost) == 0

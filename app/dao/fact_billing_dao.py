@@ -716,3 +716,151 @@ def fetch_billing_details_for_all_services():
     ).all()
 
     return billing_details
+
+
+def fetch_daily_volumes_for_platform(start_date, end_date):
+    # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
+
+    daily_volume_stats = db.session.query(
+        FactBilling.bst_date,
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)
+            ], else_=0
+        )).label('sms_totals'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units)
+            ], else_=0
+        )).label('sms_fragment_totals'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)
+            ], else_=0
+        )).label('sms_fragments_times_multiplier'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)
+            ], else_=0
+        )).label('email_totals'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)
+            ], else_=0
+        )).label('letter_totals'),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)
+            ], else_=0
+        )).label('letter_sheet_totals')
+    ).filter(
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date
+    ).group_by(
+        FactBilling.bst_date,
+        FactBilling.notification_type
+    ).subquery()
+
+    aggregated_totals = db.session.query(
+        daily_volume_stats.c.bst_date.cast(db.Text).label('bst_date'),
+        func.sum(daily_volume_stats.c.sms_totals).label('sms_totals'),
+        func.sum(daily_volume_stats.c.sms_fragment_totals).label('sms_fragment_totals'),
+        func.sum(
+            daily_volume_stats.c.sms_fragments_times_multiplier).label('sms_chargeable_units'),
+        func.sum(daily_volume_stats.c.email_totals).label('email_totals'),
+        func.sum(daily_volume_stats.c.letter_totals).label('letter_totals'),
+        func.sum(daily_volume_stats.c.letter_sheet_totals).label('letter_sheet_totals')
+    ).group_by(
+        daily_volume_stats.c.bst_date
+    ).order_by(
+        daily_volume_stats.c.bst_date
+    ).all()
+
+    return aggregated_totals
+
+
+def fetch_volumes_by_service(start_date, end_date):
+    # query to return the volume totals by service aggregated for the date range given
+    # start and end dates are inclusive.
+    year_end_date = int(end_date.strftime('%Y'))
+
+    volume_stats = db.session.query(
+        FactBilling.bst_date,
+        FactBilling.service_id,
+        func.sum(case([
+            (FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)
+        ], else_=0)).label('sms_totals'),
+        func.sum(case([
+            (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)
+        ], else_=0)).label('sms_fragments_times_multiplier'),
+        func.sum(case([
+            (FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)
+        ], else_=0)).label('email_totals'),
+        func.sum(case([
+            (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)
+        ], else_=0)).label('letter_totals'),
+        func.sum(case([
+            (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent * FactBilling.rate)
+        ], else_=0)).label("letter_cost"),
+        func.sum(case(
+            [
+                (FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)
+            ], else_=0
+        )).label('letter_sheet_totals')
+    ).filter(
+        FactBilling.bst_date >= start_date,
+        FactBilling.bst_date <= end_date
+    ).group_by(
+        FactBilling.bst_date,
+        FactBilling.service_id,
+        FactBilling.notification_type
+    ).subquery()
+
+    annual_billing = db.session.query(
+        func.max(AnnualBilling.financial_year_start).label('financial_year_start'),
+        AnnualBilling.service_id,
+        AnnualBilling.free_sms_fragment_limit
+    ).filter(
+        AnnualBilling.financial_year_start <= year_end_date
+    ).group_by(
+        AnnualBilling.service_id,
+        AnnualBilling.free_sms_fragment_limit
+    ).subquery()
+
+    results = db.session.query(
+        Service.name.label("service_name"),
+        Service.id.label("service_id"),
+        Service.organisation_id.label("organisation_id"),
+        Organisation.name.label("organisation_name"),
+        annual_billing.c.free_sms_fragment_limit.label("free_allowance"),
+        func.coalesce(func.sum(volume_stats.c.sms_totals), 0).label("sms_notifications"),
+        func.coalesce(func.sum(volume_stats.c.sms_fragments_times_multiplier), 0
+                      ).label("sms_chargeable_units"),
+        func.coalesce(func.sum(volume_stats.c.email_totals), 0).label("email_totals"),
+        func.coalesce(func.sum(volume_stats.c.letter_totals), 0).label("letter_totals"),
+        func.coalesce(func.sum(volume_stats.c.letter_cost), 0).label("letter_cost"),
+        func.coalesce(func.sum(volume_stats.c.letter_sheet_totals), 0).label("letter_sheet_totals")
+    ).select_from(
+        Service
+    ).outerjoin(
+        Organisation, Service.organisation_id == Organisation.id
+    ).join(
+        annual_billing, Service.id == annual_billing.c.service_id
+    ).outerjoin(  # include services without volume
+        volume_stats, Service.id == volume_stats.c.service_id
+    ).filter(
+        Service.restricted.is_(False),
+        Service.count_as_live.is_(True),
+        Service.active.is_(True)
+    ).group_by(
+        Service.id,
+        Service.name,
+        Service.organisation_id,
+        Organisation.name,
+        annual_billing.c.free_sms_fragment_limit
+    ).order_by(
+        Organisation.name,
+        Service.name,
+    ).all()
+
+    return results
