@@ -18,7 +18,7 @@ awscli-cwlogs==1.4.6
     # via -r requirements.in
 bcrypt==3.2.0
     # via flask-bcrypt
-beautifulsoup4==4.9.3
+beautifulsoup4==4.10.0
     # via -r requirements.in
 billiard==3.6.4.0
     # via celery
@@ -168,7 +168,7 @@ pyasn1==0.4.8
     # via rsa
 pycparser==2.20
     # via cffi
-pyjwt==2.0.1
+pyjwt==2.3.0
     # via
     #   -r requirements.in
     #   notifications-python-client
@@ -226,7 +226,7 @@ smartypants==2.0.1
     # via notifications-utils
 soupsieve==2.2.1
     # via beautifulsoup4
-sqlalchemy==1.4.10
+sqlalchemy==1.4.32
     # via
     #   -r requirements.in
     #   alembic
@@ -248,7 +248,7 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webencodings==0.5.1
     # via bleach
-werkzeug==2.0.2
+werkzeug==2.0.3
     # via
     #   -r requirements.in
     #   flask
