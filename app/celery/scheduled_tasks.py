@@ -236,10 +236,9 @@ def check_if_letters_still_pending_virus_check():
         letter_ids = [(str(letter.id), letter.reference) for letter in letters]
 
         msg = f"""{len(letters)} precompiled letters have been pending-virus-check for over 90 minutes.
-            We couldn't find them in the scan bucket.
+            We couldn't find them in the scan bucket. We'll need to find out where the files are and kick them off
+            again or move them to technical failure.
 
-            Follow runbook to resolve:
-            https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
             Notifications: {sorted(letter_ids)}"""
 
         if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
