@@ -58,34 +58,42 @@ def set_default_free_allowance_for_service(service, year_start=None):
         'central': {
             2020: 250_000,
             2021: 150_000,
+            2022: 40_000,
         },
         'local': {
             2020: 25_000,
             2021: 25_000,
+            2022: 20_000,
         },
         'nhs_central': {
             2020: 250_000,
             2021: 150_000,
+            2022: 40_000,
         },
         'nhs_local': {
             2020: 25_000,
             2021: 25_000,
+            2022: 20_000,
         },
         'nhs_gp': {
             2020: 25_000,
             2021: 10_000,
+            2022: 10_000,
         },
         'emergency_service': {
             2020: 25_000,
             2021: 25_000,
+            2022: 20_000,
         },
         'school_or_college': {
             2020: 25_000,
             2021: 10_000,
+            2022: 10_000,
         },
         'other': {
             2020: 25_000,
             2021: 10_000,
+            2022: 10_000,
         },
     }
     if not year_start:
@@ -93,8 +101,8 @@ def set_default_free_allowance_for_service(service, year_start=None):
     # handle cases where the year is less than 2020 or greater than 2021
     if year_start < 2020:
         year_start = 2020
-    if year_start > 2021:
-        year_start = 2021
+    if year_start > 2022:
+        year_start = 2022
     if service.organisation_type:
         free_allowance = default_free_sms_fragment_limits[service.organisation_type][year_start]
     else:
