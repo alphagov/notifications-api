@@ -11,9 +11,9 @@ Contains:
 
 We run python 3.9 both locally and in production.
 
-### pycurl
+### psycopg2
 
-See https://github.com/alphagov/notifications-manuals/wiki/Getting-started#pycurl
+[Follow these instructions on Mac M1 machines](https://github.com/psycopg/psycopg2/issues/1216#issuecomment-1068150544).
 
 ### AWS credentials
 
