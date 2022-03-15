@@ -66,7 +66,12 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
                           ('other', 2020, 25000),
                           (None, 2020, 25000),
                           ('central', 2019, 250000),
-                          ('school_or_college', 2022, 10000)
+                          ('school_or_college', 2022, 10000),
+                          ('central', 2022, 40000),
+                          ('local', 2022, 20000),
+                          ('nhs_local', 2022, 20000),
+                          ('emergency_service', 2022, 20000),
+                          ('central', 2023, 40000),
                           ])
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
 
