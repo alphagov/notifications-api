@@ -366,9 +366,43 @@ def test_check_job_status_task_does_not_raise_error(sample_template):
 
 
 @freeze_time("2019-05-30 14:00:00")
-def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_template):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.error')
+def test_check_if_letters_still_pending_virus_check_restarts_scan_for_stuck_letters(
+        mocker,
+        sample_letter_template
+):
+    mock_file_exists = mocker.patch('app.aws.s3.file_exists', return_value=True)
     mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_celery = mocker.patch('app.celery.scheduled_tasks.notify_celery.send_task')
+
+    create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_PENDING_VIRUS_CHECK,
+        created_at=datetime.utcnow() - timedelta(seconds=5401),
+        reference='one'
+    )
+    expected_filename = 'NOTIFY.ONE.D.2.C.20190530122959.PDF'
+
+    check_if_letters_still_pending_virus_check()
+
+    mock_file_exists.assert_called_once_with('test-letters-scan', expected_filename)
+
+    mock_celery.assert_called_once_with(
+        name=TaskNames.SCAN_FILE,
+        kwargs={'filename': expected_filename},
+        queue=QueueNames.ANTIVIRUS
+    )
+
+    assert mock_create_ticket.called is False
+
+
+@freeze_time("2019-05-30 14:00:00")
+def test_check_if_letters_still_pending_virus_check_raises_zendesk_if_files_cant_be_found(
+        mocker,
+        sample_letter_template
+):
+    mock_file_exists = mocker.patch('app.aws.s3.file_exists', return_value=False)
+    mock_create_ticket = mocker.spy(NotifySupportTicket, '__init__')
+    mock_celery = mocker.patch('app.celery.scheduled_tasks.notify_celery.send_task')
     mock_send_ticket_to_zendesk = mocker.patch(
         'app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk',
         autospec=True,
@@ -391,22 +425,24 @@ def test_check_if_letters_still_pending_virus_check(mocker, sample_letter_templa
 
     check_if_letters_still_pending_virus_check()
 
-    id_references = sorted([(str(notification_1.id), notification_1.reference),
-                            (str(notification_2.id), notification_2.reference)])
+    assert mock_file_exists.call_count == 2
+    mock_file_exists.assert_has_calls([
+        call('test-letters-scan', 'NOTIFY.ONE.D.2.C.20190530122959.PDF'),
+        call('test-letters-scan', 'NOTIFY.TWO.D.2.C.20190529183320.PDF'),
+    ], any_order=True)
+    assert mock_celery.called is False
 
-    message = """2 precompiled letters have been pending-virus-check for over 90 minutes. Follow runbook to resolve:
-            https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-letter-pending-virus-scan-for-90-minutes.
-            Notifications: {}""".format(id_references)
-
-    mock_logger.assert_called_once_with(message)
     mock_create_ticket.assert_called_once_with(
         ANY,
         subject='[test] Letters still pending virus check',
-        message=message,
+        message=ANY,
         ticket_type='incident',
         technical_ticket=True,
         ticket_categories=['notify_letters']
     )
+    assert '2 precompiled letters have been pending-virus-check' in mock_create_ticket.call_args.kwargs['message']
+    assert f'{(str(notification_1.id), notification_1.reference)}' in mock_create_ticket.call_args.kwargs['message']
+    assert f'{(str(notification_2.id), notification_2.reference)}' in mock_create_ticket.call_args.kwargs['message']
     mock_send_ticket_to_zendesk.assert_called_once()
 
 
