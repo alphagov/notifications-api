@@ -84,7 +84,8 @@ def dao_reduce_sms_provider_priority(identifier, *, time_threshold):
     amount_to_reduce_by = 10
     providers_list = _get_sms_providers_for_update(time_threshold)
 
-    if not providers_list:
+    if len(providers_list) < 2:
+        current_app.logger.info("Not adjusting providers, number of active providers is less than 2.")
         return
 
     providers = {provider.identifier: provider for provider in providers_list}
