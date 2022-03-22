@@ -775,15 +775,18 @@ def dao_precompiled_letters_still_pending_virus_check():
 def _duplicate_update_warning(notification, status):
     current_app.logger.info(
         (
-            'Duplicate callback received. Notification id {id} received a status update to {new_status}'
-            ' from {old_status} for {type} sent by {sent_by}. This happened {time_diff} after being first set.'
+            'Duplicate callback received for service {service_id}. '
+            'Notification ID {id} with type {type} sent by {sent_by}. '
+            'New status was {new_status}, current status is {old_status}. '
+            'This happened {time_diff} after being first set.'
         ).format(
             id=notification.id,
             old_status=notification.status,
             new_status=status,
             time_diff=datetime.utcnow() - (notification.updated_at or notification.created_at),
             type=notification.notification_type,
-            sent_by=notification.sent_by
+            sent_by=notification.sent_by,
+            service_id=notification.service_id
         )
     )
 
