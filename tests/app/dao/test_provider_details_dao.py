@@ -234,12 +234,26 @@ def test_reduce_sms_provider_priority_does_nothing_if_providers_have_recently_ch
     mocker,
     restore_provider_details,
 ):
-    mock_get_providers = mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=None)
+    mock_get_providers = mocker.patch('app.dao.provider_details_dao._get_sms_providers_for_update', return_value=[])
     mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
 
     dao_reduce_sms_provider_priority('firetext', time_threshold=timedelta(minutes=5))
 
     mock_get_providers.assert_called_once_with(timedelta(minutes=5))
+    assert mock_adjust.called is False
+
+
+def test_reduce_sms_provider_priority_does_nothing_if_there_is_only_one_active_provider(
+    mocker,
+    restore_provider_details,
+):
+    firetext = get_provider_details_by_identifier('firetext')
+    firetext.active = False
+
+    mock_adjust = mocker.patch('app.dao.provider_details_dao._adjust_provider_priority')
+
+    dao_reduce_sms_provider_priority('firetext', time_threshold=timedelta(minutes=5))
+
     assert mock_adjust.called is False
 
 
