@@ -807,9 +807,27 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
         active_services = Service.query.filter(
             Service.active
         ).all()
+    previous_year = year - 1
+    services_with_zero_free_allowance = db.session.query(AnnualBilling.service_id).filter(
+        AnnualBilling.financial_year_start == previous_year,
+        AnnualBilling.free_sms_fragment_limit == 0
+    ).all()
 
     for service in active_services:
-        set_default_free_allowance_for_service(service, year)
+
+        # If a service has free_sms_fragment_limit for the previous year
+        # set the free allowance for this year to 0 as well.
+        # Else use the default free allowance for the service.
+        if service.id in [x.service_id for x in services_with_zero_free_allowance]:
+            print(f'update service {service.id} to 0')
+            dao_create_or_update_annual_billing_for_year(
+                service_id=service.id,
+                free_sms_fragment_limit=0,
+                financial_year_start=year
+            )
+        else:
+            print(f'update service {service.id} with default')
+            set_default_free_allowance_for_service(service, year)
 
 
 @click.option('-u', '--user-id', required=True)
