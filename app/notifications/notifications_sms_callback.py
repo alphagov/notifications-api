@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, json, jsonify, request
+from flask import Blueprint, json, jsonify, request
 
 from app.celery.process_sms_client_response_tasks import (
     process_sms_client_response,
@@ -30,12 +30,6 @@ def process_mmg_response():
         queue=QueueNames.SMS_CALLBACKS,
     )
 
-    safe_to_log = data.copy()
-    safe_to_log.pop("MSISDN")
-    current_app.logger.debug(
-        f"Full delivery response from {client_name} for notification: {provider_reference}\n{safe_to_log}"
-    )
-
     return jsonify(result='success'), 200
 
 
@@ -51,12 +45,6 @@ def process_firetext_response():
     status = request.form.get('status')
     detailed_status_code = request.form.get('code')
     provider_reference = request.form.get('reference')
-
-    safe_to_log = dict(request.form).copy()
-    safe_to_log.pop('mobile')
-    current_app.logger.debug(
-        f"Full delivery response from {client_name} for notification: {provider_reference}\n{safe_to_log}"
-    )
 
     process_sms_client_response.apply_async(
         [status, provider_reference, client_name, detailed_status_code],
