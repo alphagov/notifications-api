@@ -75,23 +75,6 @@ class FiretextClient(SmsClient):
     def name(self):
         return 'firetext'
 
-    def record_outcome(self, success, response):
-        status_code = response.status_code if response else 503
-
-        log_message = "API {} request {} on {} response status_code {}".format(
-            "POST",
-            "succeeded" if success else "failed",
-            self.url,
-            status_code
-        )
-
-        if success:
-            self.current_app.logger.info(log_message)
-            self.statsd_client.incr("clients.firetext.success")
-        else:
-            self.statsd_client.incr("clients.firetext.error")
-            self.current_app.logger.warning(log_message)
-
     def send_sms(self, to, content, reference, international, sender=None):
         data = {
             "apiKey": self.international_api_key if international else self.api_key,
@@ -115,11 +98,11 @@ class FiretextClient(SmsClient):
                 if response.json()['code'] != 0:
                     raise ValueError()
             except (ValueError, AttributeError) as e:
-                self.record_outcome(False, response)
+                self.record_outcome(False)
                 raise FiretextClientResponseException(response=response, exception=e)
-            self.record_outcome(True, response)
+            self.record_outcome(True)
         except RequestException as e:
-            self.record_outcome(False, e.response)
+            self.record_outcome(False)
             raise FiretextClientResponseException(response=e.response, exception=e)
         finally:
             elapsed_time = monotonic() - start_time

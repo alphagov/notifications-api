@@ -77,22 +77,6 @@ class MMGClient(SmsClient):
         self.statsd_client = statsd_client
         self.mmg_url = current_app.config.get('MMG_URL')
 
-    def record_outcome(self, success, response):
-        status_code = response.status_code if response else 503
-        log_message = "API {} request {} on {} response status_code {}".format(
-            "POST",
-            "succeeded" if success else "failed",
-            self.mmg_url,
-            status_code
-        )
-
-        if success:
-            self.current_app.logger.info(log_message)
-            self.statsd_client.incr("clients.mmg.success")
-        else:
-            self.statsd_client.incr("clients.mmg.error")
-            self.current_app.logger.warning(log_message)
-
     @property
     def name(self):
         return 'mmg'
@@ -124,11 +108,11 @@ class MMGClient(SmsClient):
             try:
                 json.loads(response.text)
             except (ValueError, AttributeError) as e:
-                self.record_outcome(False, response)
+                self.record_outcome(False)
                 raise MMGClientResponseException(response=response, exception=e)
-            self.record_outcome(True, response)
+            self.record_outcome(True)
         except RequestException as e:
-            self.record_outcome(False, e.response)
+            self.record_outcome(False)
             raise MMGClientResponseException(response=e.response, exception=e)
         finally:
             elapsed_time = monotonic() - start_time

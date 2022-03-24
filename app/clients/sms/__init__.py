@@ -18,6 +18,19 @@ class SmsClient(Client):
     Base Sms client for sending smss.
     '''
 
+    def record_outcome(self, success):
+        log_message = "Provider request for {} {}".format(
+            self.name,
+            "succeeded" if success else "failed",
+        )
+
+        if success:
+            self.current_app.logger.info(log_message)
+            self.statsd_client.incr(f"clients.{self.name}.success")
+        else:
+            self.statsd_client.incr(f"clients.{self.name}.error")
+            self.current_app.logger.warning(log_message)
+
     def send_sms(self, *args, **kwargs):
         raise NotImplementedError('TODO Need to implement.')
 
