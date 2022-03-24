@@ -18,7 +18,7 @@ def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uu
             status='000', provider_reference='something-bad', client_name='sms-client')
 
 
-@pytest.mark.parametrize('client_name', ('Firetext', 'MMG'))
+@pytest.mark.parametrize('client_name', ('Firetext', 'MMG', 'Reach'))
 def test_process_sms_response_raises_client_exception_for_unknown_status(
     sample_notification,
     mocker,
@@ -43,6 +43,9 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
     ('3', '2', 'MMG', 'delivered', "Delivered to operator"),
     ('4', '27', 'MMG', 'temporary-failure', "Absent Subscriber"),
     ('5', '13', 'MMG', 'permanent-failure', "Sender id blacklisted"),
+    ('TODO-d', None, 'Reach', 'delivered', "TODO: Delivered"),
+    ('TODO-tf', None, 'Reach', 'temporary-failure', "TODO: Temporary failure"),
+    ('TODO-pf', None, 'Reach', 'permanent-failure', "TODO: Permanent failure"),
 ])
 def test_process_sms_client_response_updates_notification_status(
     sample_notification,

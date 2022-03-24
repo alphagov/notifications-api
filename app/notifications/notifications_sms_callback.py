@@ -54,6 +54,28 @@ def process_firetext_response():
     return jsonify(result='success'), 200
 
 
+@sms_callback_blueprint.route('/reach', methods=['POST'])
+def process_reach_response():
+    client_name = 'Reach'
+
+    # TODO: validate request
+    errors = None
+
+    if errors:
+        raise InvalidRequest(errors, status_code=400)
+
+    status = 'TODO-d'  # TODO
+    detailed_status_code = 'something'  # TODO
+    provider_reference = 'notification_id'  # TODO
+
+    process_sms_client_response.apply_async(
+        [status, provider_reference, client_name, detailed_status_code],
+        queue=QueueNames.SMS_CALLBACKS,
+    )
+
+    return jsonify(result='success'), 200
+
+
 def validate_callback_data(data, fields, client_name):
     errors = []
     for f in fields:
