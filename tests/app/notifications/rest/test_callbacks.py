@@ -8,20 +8,14 @@ def firetext_post(client, data):
     return client.post(
         path='/notifications/sms/firetext',
         data=data,
-        headers=[
-            ('Content-Type', 'application/x-www-form-urlencoded'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')  # fake IPs
-        ])
+        headers=[('Content-Type', 'application/x-www-form-urlencoded')])
 
 
 def mmg_post(client, data):
     return client.post(
         path='/notifications/sms/mmg',
         data=data,
-        headers=[
-            ('Content-Type', 'application/json'),
-            ('X-Forwarded-For', '203.0.113.195, 70.41.3.18, 150.172.238.178')  # fake IPs
-        ])
+        headers=[('Content-Type', 'application/json')])
 
 
 def dvla_post(client, data):
