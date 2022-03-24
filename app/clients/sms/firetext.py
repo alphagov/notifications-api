@@ -68,12 +68,12 @@ class FiretextClient(SmsClient):
         self.api_key = current_app.config.get('FIRETEXT_API_KEY')
         self.international_api_key = current_app.config.get('FIRETEXT_INTERNATIONAL_API_KEY')
         self.from_number = current_app.config.get('FROM_NUMBER')
-        self.name = 'firetext'
         self.url = current_app.config.get('FIRETEXT_URL')
         self.statsd_client = statsd_client
 
-    def get_name(self):
-        return self.name
+    @property
+    def name(self):
+        return 'firetext'
 
     def record_outcome(self, success, response):
         status_code = response.status_code if response else 503

@@ -21,5 +21,6 @@ class SmsClient(Client):
     def send_sms(self, *args, **kwargs):
         raise NotImplementedError('TODO Need to implement.')
 
-    def get_name(self):
+    @property
+    def name(self):
         raise NotImplementedError('TODO Need to implement.')

@@ -74,7 +74,6 @@ class MMGClient(SmsClient):
         self.current_app = current_app
         self.api_key = current_app.config.get('MMG_API_KEY')
         self.from_number = current_app.config.get('FROM_NUMBER')
-        self.name = 'mmg'
         self.statsd_client = statsd_client
         self.mmg_url = current_app.config.get('MMG_URL')
 
@@ -94,8 +93,9 @@ class MMGClient(SmsClient):
             self.statsd_client.incr("clients.mmg.error")
             self.current_app.logger.warning(log_message)
 
-    def get_name(self):
-        return self.name
+    @property
+    def name(self):
+        return 'mmg'
 
     def send_sms(self, to, content, reference, international, multi=True, sender=None):
         data = {
