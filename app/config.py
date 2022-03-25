@@ -380,6 +380,7 @@ class Config(object):
     # these environment vars aren't defined in the manifest so to set them on paas use `cf set-env`
     MMG_URL = os.environ.get("MMG_URL", "https://api.mmg.co.uk/jsonv2a/api.php")
     FIRETEXT_URL = os.environ.get("FIRETEXT_URL", "https://www.firetext.co.uk/api/sendsms/json")
+    REACH_URL = os.environ.get("REACH_URL", "TODO")
     SES_STUB_URL = os.environ.get("SES_STUB_URL")
 
     AWS_REGION = 'eu-west-1'
@@ -481,6 +482,7 @@ class Test(Development):
 
     MMG_URL = 'https://example.com/mmg'
     FIRETEXT_URL = 'https://example.com/firetext'
+    REACH_URL = 'https://example.com/reach'
 
     CBC_PROXY_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ['success@simulator.amazonses.com', 'success+2@simulator.amazonses.com']

@@ -36,6 +36,7 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.clients.sms.reach import ReachClient
 
 
 class SQLAlchemy(_SQLAlchemy):
@@ -56,6 +57,7 @@ ma = Marshmallow()
 notify_celery = NotifyCelery()
 firetext_client = FiretextClient()
 mmg_client = MMGClient()
+reach_client = ReachClient()
 aws_ses_client = AwsSesClient()
 aws_ses_stub_client = AwsSesStubClient()
 encryption = Encryption()
@@ -98,6 +100,7 @@ def create_app(application):
     logging.init_app(application, statsd_client)
     firetext_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
+    reach_client.init_app(application, statsd_client=statsd_client)
 
     aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
     aws_ses_stub_client.init_app(
@@ -107,7 +110,10 @@ def create_app(application):
     )
     # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
     email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
-    notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
+    notification_provider_clients.init_app(
+        sms_clients=[firetext_client, mmg_client, reach_client],
+        email_clients=email_clients
+    )
 
     notify_celery.init_app(application)
     encryption.init_app(application)

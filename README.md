@@ -29,6 +29,7 @@ export NOTIFY_ENVIRONMENT='development'
 
 export MMG_API_KEY='MMG_API_KEY'
 export FIRETEXT_API_KEY='FIRETEXT_ACTUAL_KEY'
+export REACH_API_KEY='REACH_API_KEY'
 export NOTIFICATION_QUEUE_PREFIX='YOUR_OWN_PREFIX'
 
 export FLASK_APP=application.py
@@ -45,6 +46,7 @@ Things to change:
 ```
 notify-pass credentials/firetext
 notify-pass credentials/mmg
+notify-pass credentials/reach
 ```
 
 ### Postgres
