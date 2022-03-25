@@ -383,6 +383,43 @@ def test_create_broadcast_message_400s_if_no_content_or_template(
     )
 
 
+# here we test that flow for cancelling broadcast works correctly from hitting the endpoint up util calling
+# lambdas with correct payloads
+def test_integration_for_cancel_broadcast_message(
+    admin_request, sample_broadcast_service, mocker
+):
+    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
+    canceller = create_user(email='canceller@gov.uk')
+
+    sample_broadcast_service.users.append(canceller)
+    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+
+    response = admin_request.post(
+        'broadcast_message.update_broadcast_message_status',
+        _data={'status': BroadcastStatusType.CANCELLED, 'created_by': str(canceller.id)},
+        service_id=t.service_id,
+        broadcast_message_id=bm.id,
+        _expected_status=200
+    )
+
+    assert len(bm.events) == 1
+    cancel_event = bm.events[0]
+
+    cancel_id = str(cancel_event.id)
+
+    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': cancel_id}, queue='broadcast-tasks')
+    assert response['status'] == BroadcastStatusType.CANCELLED
+    assert response['cancelled_at'] is not None
+    assert response['cancelled_by_id'] == str(canceller.id)
+
+    assert cancel_event.service_id == sample_broadcast_service.id
+    assert cancel_event.transmitted_areas == bm.areas
+    assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
+    assert cancel_event.transmitted_finishes_at == bm.finishes_at
+    assert cancel_event.transmitted_content == {"body": "emergency broadcast"}
+
+
 @pytest.mark.parametrize('status', [
     BroadcastStatusType.DRAFT,
     BroadcastStatusType.PENDING_APPROVAL,
@@ -492,7 +529,9 @@ def test_update_broadcast_message_allows_sensible_datetime_formats(admin_request
     assert response['updated_at'] is not None
 
 
-def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sample_broadcast_service):
+def test_update_broadcast_message_doesnt_let_you_update_status_when_you_already_update_areas(
+    admin_request, sample_broadcast_service
+):
     t = create_template(sample_broadcast_service, BROADCAST_TYPE)
     bm = create_broadcast_message(t)
 
@@ -519,7 +558,7 @@ def test_update_broadcast_message_doesnt_let_you_update_status(admin_request, sa
     {"areas": {"ids": ["cardiff"]}},
     {"areas": {"simple_polygons": [[[51.28, -3.11], [51.29, -3.12], [51.27, -3.10]]]}},
 ])
-def test_update_broadcast_message_doesnt_let_you_update_areas_but_not_polygons(
+def test_update_broadcast_message_doesnt_let_you_update_areas_without_updating_polygons(
     admin_request, sample_broadcast_service, incomplete_area_data
 ):
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)
