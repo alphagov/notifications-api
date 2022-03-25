@@ -97,14 +97,14 @@ class MMGClient(SmsClient):
     def name(self):
         return 'mmg'
 
-    def send_sms(self, to, content, reference, international, multi=True, sender=None):
+    def send_sms(self, to, content, reference, international, sender=None):
         data = {
             "reqType": "BULK",
             "MSISDN": to,
             "msg": content,
             "sender": self.from_number if sender is None else sender,
             "cid": reference,
-            "multi": multi
+            "multi": True
         }
 
         start_time = monotonic()
