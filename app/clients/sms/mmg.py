@@ -1,5 +1,4 @@
 import json
-from time import monotonic
 
 from requests import RequestException, request
 
@@ -69,19 +68,17 @@ class MMGClient(SmsClient):
     MMG sms client
     '''
 
-    def init_app(self, current_app, statsd_client, *args, **kwargs):
-        super(SmsClient, self).__init__(*args, **kwargs)
-        self.current_app = current_app
-        self.api_key = current_app.config.get('MMG_API_KEY')
-        self.from_number = current_app.config.get('FROM_NUMBER')
-        self.statsd_client = statsd_client
-        self.mmg_url = current_app.config.get('MMG_URL')
+    def init_app(self, *args, **kwargs):
+        super().init_app(*args, **kwargs)
+        self.api_key = self.current_app.config.get('MMG_API_KEY')
+        self.from_number = self.current_app.config.get('FROM_NUMBER')
+        self.mmg_url = self.current_app.config.get('MMG_URL')
 
     @property
     def name(self):
         return 'mmg'
 
-    def send_sms(self, to, content, reference, international, sender=None):
+    def try_send_sms(self, to, content, reference, international, sender=None):
         data = {
             "reqType": "BULK",
             "MSISDN": to,
@@ -91,7 +88,6 @@ class MMGClient(SmsClient):
             "multi": True
         }
 
-        start_time = monotonic()
         try:
             response = request(
                 "POST",
@@ -108,15 +104,8 @@ class MMGClient(SmsClient):
             try:
                 json.loads(response.text)
             except (ValueError, AttributeError) as e:
-                self.record_outcome(False)
                 raise MMGClientResponseException(response=response, exception=e)
-            self.record_outcome(True)
         except RequestException as e:
-            self.record_outcome(False)
             raise MMGClientResponseException(response=e.response, exception=e)
-        finally:
-            elapsed_time = monotonic() - start_time
-            self.statsd_client.timing("clients.mmg.request-time", elapsed_time)
-            self.current_app.logger.info("MMG request for {} finished in {}".format(reference, elapsed_time))
 
         return response

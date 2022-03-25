@@ -1,6 +1,5 @@
 import json
 import logging
-from time import monotonic
 
 from requests import RequestException, request
 
@@ -62,20 +61,18 @@ class FiretextClient(SmsClient):
     FireText sms client.
     '''
 
-    def init_app(self, current_app, statsd_client, *args, **kwargs):
-        super(SmsClient, self).__init__(*args, **kwargs)
-        self.current_app = current_app
-        self.api_key = current_app.config.get('FIRETEXT_API_KEY')
-        self.international_api_key = current_app.config.get('FIRETEXT_INTERNATIONAL_API_KEY')
-        self.from_number = current_app.config.get('FROM_NUMBER')
-        self.url = current_app.config.get('FIRETEXT_URL')
-        self.statsd_client = statsd_client
+    def init_app(self, *args, **kwargs):
+        super().init_app(*args, **kwargs)
+        self.api_key = self.current_app.config.get('FIRETEXT_API_KEY')
+        self.international_api_key = self.current_app.config.get('FIRETEXT_INTERNATIONAL_API_KEY')
+        self.from_number = self.current_app.config.get('FROM_NUMBER')
+        self.url = self.current_app.config.get('FIRETEXT_URL')
 
     @property
     def name(self):
         return 'firetext'
 
-    def send_sms(self, to, content, reference, international, sender=None):
+    def try_send_sms(self, to, content, reference, international, sender=None):
         data = {
             "apiKey": self.international_api_key if international else self.api_key,
             "from": self.from_number if sender is None else sender,
@@ -84,7 +81,6 @@ class FiretextClient(SmsClient):
             "reference": reference
         }
 
-        start_time = monotonic()
         try:
             response = request(
                 "POST",
@@ -98,14 +94,8 @@ class FiretextClient(SmsClient):
                 if response.json()['code'] != 0:
                     raise ValueError()
             except (ValueError, AttributeError) as e:
-                self.record_outcome(False)
                 raise FiretextClientResponseException(response=response, exception=e)
-            self.record_outcome(True)
         except RequestException as e:
-            self.record_outcome(False)
             raise FiretextClientResponseException(response=e.response, exception=e)
-        finally:
-            elapsed_time = monotonic() - start_time
-            self.current_app.logger.info("Firetext request for {} finished in {}".format(reference, elapsed_time))
-            self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
+
         return response
