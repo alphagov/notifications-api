@@ -851,6 +851,7 @@ def local_dev_broadcast_permissions(user_id):
                 'reject_broadcasts', 'cancel_broadcasts',  # required to create / approve
                 'create_broadcasts', 'approve_broadcasts',  # minimum for testing
                 'manage_templates',  # unlikely but might be useful
+                'view_activity',  # normally added on invite / service creation
             ]
         ]
 
