@@ -38,7 +38,7 @@ class SmsClient(Client):
             self.statsd_client.incr(f"clients.{self.name}.error")
             self.current_app.logger.warning(log_message)
 
-    def send_sms(self, to, content, reference, international, sender=None):
+    def send_sms(self, to, content, reference, international, sender):
         start_time = monotonic()
         sender = self.from_number if sender is None else sender
 

@@ -24,6 +24,7 @@ def test_send_sms(fake_client, mocker):
         content='content',
         reference='reference',
         international=False,
+        sender=None,
     )
 
     mock_send.assert_called_with(
@@ -42,6 +43,7 @@ def test_send_sms_error(fake_client, mocker):
             content='content',
             reference='reference',
             international=False,
+            sender=None,
         )
 
 
