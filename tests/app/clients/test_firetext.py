@@ -134,6 +134,19 @@ def test_try_send_sms_raises_if_firetext_rejects_with_unexpected_data(mocker, mo
     assert type(exc.value.exception) == HTTPError
 
 
+def test_try_send_sms_raises_if_firetext_fails_to_return_json(notify_api, mock_firetext_client):
+    to = content = reference = 'foo'
+    response_dict = 'NOT AT ALL VALID JSON {"key" : "value"}}'
+
+    with pytest.raises(SmsClientResponseException) as exc, requests_mock.Mocker() as request_mock:
+        request_mock.post('https://example.com/firetext', text=response_dict, status_code=200)
+        mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
+
+    assert 'Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc.value)  # noqa
+    assert exc.value.status_code == 200
+    assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'
+
+
 def test_try_send_sms_raises_if_firetext_rejects_with_connect_timeout(rmock, mock_firetext_client):
     to = content = reference = 'foo'
 
