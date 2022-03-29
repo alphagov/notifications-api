@@ -1,11 +1,9 @@
 import pytest
 import requests_mock
-from requests import HTTPError
 from requests.exceptions import ConnectTimeout, ReadTimeout
 
 from app import reach_client
 from app.clients.sms import SmsClientResponseException
-from app.clients.sms.reach import ReachClientResponseException
 
 # TODO: tests for get_reach_responses
 
@@ -52,10 +50,7 @@ def test_try_send_sms_raises_if_reach_rejects(notify_api, mocker):
         request_mock.post('https://example.com/reach', json=response_dict, status_code=400)
         reach_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 400
-    assert '"Error": 206' in exc.value.text
-    assert '"Description": "Some kind of error"' in exc.value.text
-    assert type(exc.value.exception) == HTTPError
+    assert "Request failed" in str(exc)
 
 
 def test_try_send_sms_raises_if_reach_fails_to_return_json(notify_api, mocker):
@@ -66,28 +61,24 @@ def test_try_send_sms_raises_if_reach_fails_to_return_json(notify_api, mocker):
         request_mock.post('https://example.com/reach', text=response_dict, status_code=200)
         reach_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert 'Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc.value)  # noqa
-    assert exc.value.status_code == 200
-    assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'
+    assert 'Invalid response JSON' in str(exc.value)
 
 
 def test_try_send_sms_raises_if_reach_rejects_with_connect_timeout(rmock):
     to = content = reference = 'foo'
 
-    with pytest.raises(ReachClientResponseException) as exc:
+    with pytest.raises(SmsClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/reach', exc=ConnectTimeout)
         reach_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 504
-    assert exc.value.text == 'Gateway Time-out'
+    assert 'Request failed' in str(exc.value)
 
 
 def test_try_send_sms_raises_if_reach_rejects_with_read_timeout(rmock):
     to = content = reference = 'foo'
 
-    with pytest.raises(ReachClientResponseException) as exc:
+    with pytest.raises(SmsClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/reach', exc=ReadTimeout)
         reach_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 504
-    assert exc.value.text == 'Gateway Time-out'
+    assert 'Request failed' in str(exc.value)

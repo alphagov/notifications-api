@@ -102,9 +102,9 @@ class MMGClient(SmsClient):
             response.raise_for_status()
             try:
                 json.loads(response.text)
-            except (ValueError, AttributeError) as e:
-                raise MMGClientResponseException(response=response, exception=e)
-        except RequestException as e:
-            raise MMGClientResponseException(response=e.response, exception=e)
+            except (ValueError, AttributeError):
+                raise SmsClientResponseException("Invalid response JSON")
+        except RequestException:
+            raise SmsClientResponseException("Request failed")
 
         return response

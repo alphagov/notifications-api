@@ -2,11 +2,9 @@ from urllib.parse import parse_qs
 
 import pytest
 import requests_mock
-from requests import HTTPError
 from requests.exceptions import ConnectTimeout, ReadTimeout
 
 from app.clients.sms.firetext import (
-    FiretextClientResponseException,
     SmsClientResponseException,
     get_firetext_responses,
 )
@@ -116,9 +114,7 @@ def test_try_send_sms_raises_if_firetext_rejects(mocker, mock_firetext_client):
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=200)
         mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 200
-    assert '"description": "Some kind of error"' in exc.value.text
-    assert '"code": 1' in exc.value.text
+    assert "Invalid response JSON" in str(exc.value)
 
 
 def test_try_send_sms_raises_if_firetext_rejects_with_unexpected_data(mocker, mock_firetext_client):
@@ -129,9 +125,7 @@ def test_try_send_sms_raises_if_firetext_rejects_with_unexpected_data(mocker, mo
         request_mock.post('https://example.com/firetext', json=response_dict, status_code=400)
         mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 400
-    assert exc.value.text == '{"something": "gone bad"}'
-    assert type(exc.value.exception) == HTTPError
+    assert "Request failed" in str(exc.value)
 
 
 def test_try_send_sms_raises_if_firetext_fails_to_return_json(notify_api, mock_firetext_client):
@@ -142,28 +136,24 @@ def test_try_send_sms_raises_if_firetext_fails_to_return_json(notify_api, mock_f
         request_mock.post('https://example.com/firetext', text=response_dict, status_code=200)
         mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert 'Code 200 text NOT AT ALL VALID JSON {"key" : "value"}} exception Expecting value: line 1 column 1 (char 0)' in str(exc.value)  # noqa
-    assert exc.value.status_code == 200
-    assert exc.value.text == 'NOT AT ALL VALID JSON {"key" : "value"}}'
+    assert "Invalid response JSON" in str(exc.value)
 
 
 def test_try_send_sms_raises_if_firetext_rejects_with_connect_timeout(rmock, mock_firetext_client):
     to = content = reference = 'foo'
 
-    with pytest.raises(FiretextClientResponseException) as exc:
+    with pytest.raises(SmsClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/firetext', exc=ConnectTimeout)
         mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 504
-    assert exc.value.text == 'Gateway Time-out'
+    assert "Request failed" in str(exc.value)
 
 
 def test_try_send_sms_raises_if_firetext_rejects_with_read_timeout(rmock, mock_firetext_client):
     to = content = reference = 'foo'
 
-    with pytest.raises(FiretextClientResponseException) as exc:
+    with pytest.raises(SmsClientResponseException) as exc:
         rmock.register_uri('POST', 'https://example.com/firetext', exc=ReadTimeout)
         mock_firetext_client.try_send_sms(to, content, reference, False, 'sender')
 
-    assert exc.value.status_code == 504
-    assert exc.value.text == 'Gateway Time-out'
+    assert "Request failed" in str(exc.value)

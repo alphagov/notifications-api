@@ -44,18 +44,6 @@ def get_message_status_and_reason_from_firetext_code(detailed_status_code):
     return firetext_codes[detailed_status_code]['status'], firetext_codes[detailed_status_code]['reason']
 
 
-class FiretextClientResponseException(SmsClientResponseException):
-    def __init__(self, response, exception):
-        status_code = response.status_code if response is not None else 504
-        text = response.text if response is not None else "Gateway Time-out"
-        self.status_code = status_code
-        self.text = text
-        self.exception = exception
-
-    def __str__(self):
-        return "Code {} text {} exception {}".format(self.status_code, self.text, str(self.exception))
-
-
 class FiretextClient(SmsClient):
     '''
     FireText sms client.
@@ -91,10 +79,10 @@ class FiretextClient(SmsClient):
             try:
                 json.loads(response.text)
                 if response.json()['code'] != 0:
-                    raise ValueError()
-            except (ValueError, AttributeError) as e:
-                raise FiretextClientResponseException(response=response, exception=e)
-        except RequestException as e:
-            raise FiretextClientResponseException(response=e.response, exception=e)
+                    raise ValueError("Expected 'code' to be '0'")
+            except (ValueError, AttributeError):
+                raise SmsClientResponseException("Invalid response JSON")
+        except RequestException:
+            raise SmsClientResponseException("Request failed")
 
         return response
