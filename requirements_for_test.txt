@@ -11,4 +11,4 @@ pytest-xdist==2.5.0
 freezegun==1.2.1
 requests-mock==1.9.3
 # used for creating manifest file locally
-jinja2-cli[yaml]==0.8.1
+jinja2-cli[yaml]==0.8.2
