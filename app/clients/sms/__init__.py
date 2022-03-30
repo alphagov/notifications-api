@@ -40,6 +40,14 @@ class SmsClient(Client):
 
     def send_sms(self, to, content, reference, international, sender):
         start_time = monotonic()
+
+        if sender is None:
+            # temporary log to see if the following ternary is necessary
+            # or if it's safe to remove it - keep for 1-2 weeks
+            self.current_app.logger.warning(
+                f"send_sms called with 'sender' of 'None' for {reference}"
+            )
+
         sender = self.from_number if sender is None else sender
 
         try:
