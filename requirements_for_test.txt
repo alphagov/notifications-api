@@ -8,7 +8,7 @@ pytest-env==0.6.2
 pytest-mock==3.7.0
 pytest-cov==3.0.0
 pytest-xdist==2.5.0
-freezegun==1.2.0
+freezegun==1.2.1
 requests-mock==1.9.3
 # used for creating manifest file locally
 jinja2-cli[yaml]==0.8.1
