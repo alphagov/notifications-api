@@ -54,7 +54,7 @@ def test_provider_to_use_should_return_random_provider(mocker, notify_db_session
     ret = send_to_providers.provider_to_use('sms', international=False)
 
     mock_choices.assert_called_once_with([mmg, firetext], weights=[25, 75])
-    assert ret.get_name() == 'mmg'
+    assert ret.name == 'mmg'
 
 
 def test_provider_to_use_should_cache_repeated_calls(mocker, notify_db_session):
@@ -89,7 +89,7 @@ def test_provider_to_use_should_only_return_mmg_for_international(
     ret = send_to_providers.provider_to_use('sms', international=True)
 
     mock_choices.assert_called_once_with([mmg], weights=[100])
-    assert ret.get_name() == 'mmg'
+    assert ret.name == 'mmg'
 
 
 def test_provider_to_use_should_only_return_active_providers(mocker, restore_provider_details):
@@ -101,7 +101,7 @@ def test_provider_to_use_should_only_return_active_providers(mocker, restore_pro
     ret = send_to_providers.provider_to_use('sms')
 
     mock_choices.assert_called_once_with([firetext], weights=[100])
-    assert ret.get_name() == 'firetext'
+    assert ret.name == 'firetext'
 
 
 def test_provider_to_use_raises_if_no_active_providers(mocker, restore_provider_details):

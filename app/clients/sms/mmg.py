@@ -1,5 +1,4 @@
 import json
-from time import monotonic
 
 from requests import RequestException, request
 
@@ -69,45 +68,25 @@ class MMGClient(SmsClient):
     MMG sms client
     '''
 
-    def init_app(self, current_app, statsd_client, *args, **kwargs):
-        super(SmsClient, self).__init__(*args, **kwargs)
-        self.current_app = current_app
-        self.api_key = current_app.config.get('MMG_API_KEY')
-        self.from_number = current_app.config.get('FROM_NUMBER')
-        self.name = 'mmg'
-        self.statsd_client = statsd_client
-        self.mmg_url = current_app.config.get('MMG_URL')
+    def init_app(self, *args, **kwargs):
+        super().init_app(*args, **kwargs)
+        self.api_key = self.current_app.config.get('MMG_API_KEY')
+        self.mmg_url = self.current_app.config.get('MMG_URL')
 
-    def record_outcome(self, success, response):
-        status_code = response.status_code if response else 503
-        log_message = "API {} request {} on {} response status_code {}".format(
-            "POST",
-            "succeeded" if success else "failed",
-            self.mmg_url,
-            status_code
-        )
+    @property
+    def name(self):
+        return 'mmg'
 
-        if success:
-            self.current_app.logger.info(log_message)
-            self.statsd_client.incr("clients.mmg.success")
-        else:
-            self.statsd_client.incr("clients.mmg.error")
-            self.current_app.logger.warning(log_message)
-
-    def get_name(self):
-        return self.name
-
-    def send_sms(self, to, content, reference, international, multi=True, sender=None):
+    def try_send_sms(self, to, content, reference, international, sender):
         data = {
             "reqType": "BULK",
             "MSISDN": to,
             "msg": content,
-            "sender": self.from_number if sender is None else sender,
+            "sender": sender,
             "cid": reference,
-            "multi": multi
+            "multi": True
         }
 
-        start_time = monotonic()
         try:
             response = request(
                 "POST",
@@ -123,16 +102,9 @@ class MMGClient(SmsClient):
             response.raise_for_status()
             try:
                 json.loads(response.text)
-            except (ValueError, AttributeError) as e:
-                self.record_outcome(False, response)
-                raise MMGClientResponseException(response=response, exception=e)
-            self.record_outcome(True, response)
-        except RequestException as e:
-            self.record_outcome(False, e.response)
-            raise MMGClientResponseException(response=e.response, exception=e)
-        finally:
-            elapsed_time = monotonic() - start_time
-            self.statsd_client.timing("clients.mmg.request-time", elapsed_time)
-            self.current_app.logger.info("MMG request for {} finished in {}".format(reference, elapsed_time))
+            except (ValueError, AttributeError):
+                raise SmsClientResponseException("Invalid response JSON")
+        except RequestException:
+            raise SmsClientResponseException("Request failed")
 
         return response

@@ -1,6 +1,5 @@
 import json
 import logging
-from time import monotonic
 
 from requests import RequestException, request
 
@@ -45,63 +44,30 @@ def get_message_status_and_reason_from_firetext_code(detailed_status_code):
     return firetext_codes[detailed_status_code]['status'], firetext_codes[detailed_status_code]['reason']
 
 
-class FiretextClientResponseException(SmsClientResponseException):
-    def __init__(self, response, exception):
-        status_code = response.status_code if response is not None else 504
-        text = response.text if response is not None else "Gateway Time-out"
-        self.status_code = status_code
-        self.text = text
-        self.exception = exception
-
-    def __str__(self):
-        return "Code {} text {} exception {}".format(self.status_code, self.text, str(self.exception))
-
-
 class FiretextClient(SmsClient):
     '''
     FireText sms client.
     '''
 
-    def init_app(self, current_app, statsd_client, *args, **kwargs):
-        super(SmsClient, self).__init__(*args, **kwargs)
-        self.current_app = current_app
-        self.api_key = current_app.config.get('FIRETEXT_API_KEY')
-        self.international_api_key = current_app.config.get('FIRETEXT_INTERNATIONAL_API_KEY')
-        self.from_number = current_app.config.get('FROM_NUMBER')
-        self.name = 'firetext'
-        self.url = current_app.config.get('FIRETEXT_URL')
-        self.statsd_client = statsd_client
+    def init_app(self, *args, **kwargs):
+        super().init_app(*args, **kwargs)
+        self.api_key = self.current_app.config.get('FIRETEXT_API_KEY')
+        self.international_api_key = self.current_app.config.get('FIRETEXT_INTERNATIONAL_API_KEY')
+        self.url = self.current_app.config.get('FIRETEXT_URL')
 
-    def get_name(self):
-        return self.name
+    @property
+    def name(self):
+        return 'firetext'
 
-    def record_outcome(self, success, response):
-        status_code = response.status_code if response else 503
-
-        log_message = "API {} request {} on {} response status_code {}".format(
-            "POST",
-            "succeeded" if success else "failed",
-            self.url,
-            status_code
-        )
-
-        if success:
-            self.current_app.logger.info(log_message)
-            self.statsd_client.incr("clients.firetext.success")
-        else:
-            self.statsd_client.incr("clients.firetext.error")
-            self.current_app.logger.warning(log_message)
-
-    def send_sms(self, to, content, reference, international, sender=None):
+    def try_send_sms(self, to, content, reference, international, sender):
         data = {
             "apiKey": self.international_api_key if international else self.api_key,
-            "from": self.from_number if sender is None else sender,
+            "from": sender,
             "to": to.replace('+', ''),
             "message": content,
             "reference": reference
         }
 
-        start_time = monotonic()
         try:
             response = request(
                 "POST",
@@ -113,16 +79,10 @@ class FiretextClient(SmsClient):
             try:
                 json.loads(response.text)
                 if response.json()['code'] != 0:
-                    raise ValueError()
-            except (ValueError, AttributeError) as e:
-                self.record_outcome(False, response)
-                raise FiretextClientResponseException(response=response, exception=e)
-            self.record_outcome(True, response)
-        except RequestException as e:
-            self.record_outcome(False, e.response)
-            raise FiretextClientResponseException(response=e.response, exception=e)
-        finally:
-            elapsed_time = monotonic() - start_time
-            self.current_app.logger.info("Firetext request for {} finished in {}".format(reference, elapsed_time))
-            self.statsd_client.timing("clients.firetext.request-time", elapsed_time)
+                    raise ValueError("Expected 'code' to be '0'")
+            except (ValueError, AttributeError):
+                raise SmsClientResponseException("Invalid response JSON")
+        except RequestException:
+            raise SmsClientResponseException("Request failed")
+
         return response

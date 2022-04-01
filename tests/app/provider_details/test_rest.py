@@ -10,8 +10,8 @@ from tests.app.db import create_ft_billing
 def test_get_provider_details_returns_all_providers(admin_request, notify_db_session):
     json_resp = admin_request.get('provider_details.get_providers')['provider_details']
 
-    assert len(json_resp) == 4
-    assert {x['identifier'] for x in json_resp} == {'ses', 'firetext', 'mmg', 'dvla'}
+    assert len(json_resp) > 0
+    assert {'ses', 'firetext', 'mmg', 'dvla'} < {x['identifier'] for x in json_resp}
 
 
 def test_get_provider_details_by_id(client, notify_db):
@@ -45,7 +45,7 @@ def test_get_provider_contains_correct_fields(client, sample_template):
         "active", "updated_at", "supports_international",
         "current_month_billable_sms"
     }
-    assert len(json_resp) == 4
+    assert len(json_resp) > 0
     assert allowed_keys == set(json_resp[0].keys())
 
 

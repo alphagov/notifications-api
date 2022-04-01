@@ -28,5 +28,6 @@ class EmailClient(Client):
     def send_email(self, *args, **kwargs):
         raise NotImplementedError('TODO Need to implement.')
 
-    def get_name(self):
+    @property
+    def name(self):
         raise NotImplementedError('TODO Need to implement.')

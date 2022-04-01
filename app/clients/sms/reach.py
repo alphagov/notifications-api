@@ -1,3 +1,7 @@
+import json
+
+from requests import RequestException, request
+
 from app.clients.sms import SmsClient, SmsClientResponseException
 
 
@@ -12,14 +16,37 @@ def get_reach_responses(status, detailed_status_code=None):
         raise KeyError
 
 
-class ReachClientResponseException(SmsClientResponseException):
-    pass  # TODO (custom exception for errors)
-
-
 class ReachClient(SmsClient):
+    def init_app(self, *args, **kwargs):
+        super().init_app(*args, **kwargs)
+        self.url = self.current_app.config.get('REACH_URL')
 
-    def get_name(self):
-        pass  # TODO
+    @property
+    def name(self):
+        return 'reach'
 
-    def send_sms(self, to, content, reference, international, multi=True, sender=None):
-        pass  # TODO
+    def try_send_sms(self, to, content, reference, international, sender):
+        data = {
+            # TODO
+        }
+
+        try:
+            response = request(
+                "POST",
+                self.url,
+                data=json.dumps(data),
+                headers={
+                    'Content-Type': 'application/json',
+                },
+                timeout=60
+            )
+
+            response.raise_for_status()
+            try:
+                json.loads(response.text)
+            except (ValueError, AttributeError):
+                raise SmsClientResponseException("Invalid response JSON")
+        except RequestException:
+            raise SmsClientResponseException("Request failed")
+
+        return response

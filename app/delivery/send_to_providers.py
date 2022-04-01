@@ -60,7 +60,7 @@ def send_sms_to_provider(notification):
         key_type = notification.key_type
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
             update_notification_to_sending(notification, provider)
-            send_sms_response(provider.get_name(), str(notification.id), notification.to)
+            send_sms_response(provider.name, str(notification.id), notification.to)
 
         else:
             try:
@@ -82,7 +82,7 @@ def send_sms_to_provider(notification):
             except Exception as e:
                 notification.billable_units = template.fragment_count
                 dao_update_notification(notification)
-                dao_reduce_sms_provider_priority(provider.get_name(), time_threshold=timedelta(minutes=1))
+                dao_reduce_sms_provider_priority(provider.name, time_threshold=timedelta(minutes=1))
                 raise e
             else:
                 notification.billable_units = template.fragment_count
@@ -158,7 +158,7 @@ def send_email_to_provider(notification):
 
 def update_notification_to_sending(notification, provider):
     notification.sent_at = datetime.utcnow()
-    notification.sent_by = provider.get_name()
+    notification.sent_by = provider.name
     if notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
         notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
     dao_update_notification(notification)

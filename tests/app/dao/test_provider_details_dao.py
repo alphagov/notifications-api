@@ -40,7 +40,7 @@ def set_primary_sms_provider(identifier):
 
 def test_can_get_sms_non_international_providers(notify_db_session):
     sms_providers = get_provider_details_by_notification_type('sms')
-    assert len(sms_providers) == 2
+    assert len(sms_providers) > 0
     assert all('sms' == prov.notification_type for prov in sms_providers)
 
 
@@ -53,8 +53,8 @@ def test_can_get_sms_international_providers(notify_db_session):
 
 def test_can_get_sms_providers_in_order_of_priority(notify_db_session):
     providers = get_provider_details_by_notification_type('sms', False)
-
-    assert providers[0].priority < providers[1].priority
+    priorities = [provider.priority for provider in providers]
+    assert priorities == sorted(priorities)
 
 
 def test_can_get_email_providers_in_order_of_priority(notify_db_session):
@@ -332,27 +332,26 @@ def test_dao_get_provider_stats(notify_db_session):
     create_ft_billing('2018-06-15', sms_template_1, provider='firetext', billable_unit=1)
     create_ft_billing('2018-06-28', sms_template_2, provider='mmg', billable_unit=2)
 
-    result = dao_get_provider_stats()
+    results = dao_get_provider_stats()
 
-    assert len(result) == 4
+    assert len(results) > 0
 
-    assert result[0].identifier == 'ses'
-    assert result[0].display_name == 'AWS SES'
-    assert result[0].created_by_name is None
-    assert result[0].current_month_billable_sms == 0
+    ses = next(result for result in results if result.identifier == 'ses')
+    firetext = next(result for result in results if result.identifier == 'firetext')
+    mmg = next(result for result in results if result.identifier == 'mmg')
 
-    assert result[1].identifier == 'firetext'
-    assert result[1].notification_type == 'sms'
-    assert result[1].supports_international is False
-    assert result[1].active is True
-    assert result[1].current_month_billable_sms == 5
+    assert ses.display_name == 'AWS SES'
+    assert ses.created_by_name is None
+    assert ses.current_month_billable_sms == 0
 
-    assert result[2].identifier == 'mmg'
-    assert result[2].display_name == 'MMG'
-    assert result[2].supports_international is True
-    assert result[2].active is True
-    assert result[2].current_month_billable_sms == 4
+    assert firetext.display_name == 'Firetext'
+    assert firetext.notification_type == 'sms'
+    assert firetext.supports_international is False
+    assert firetext.active is True
+    assert firetext.current_month_billable_sms == 5
 
-    assert result[3].identifier == 'dvla'
-    assert result[3].current_month_billable_sms == 0
-    assert result[3].supports_international is False
+    assert mmg.identifier == 'mmg'
+    assert mmg.display_name == 'MMG'
+    assert mmg.supports_international is True
+    assert mmg.active is True
+    assert mmg.current_month_billable_sms == 4
