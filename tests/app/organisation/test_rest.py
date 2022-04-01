@@ -508,6 +508,7 @@ def test_post_link_service_to_organisation(admin_request, sample_service):
     assert sample_service.organisation_type == 'central'
 
 
+@freeze_time('2021-09-24 13:30')
 def test_post_link_service_to_organisation_inserts_annual_billing(admin_request, sample_service):
     data = {
         'service_id': str(sample_service.id)
@@ -551,6 +552,7 @@ def test_post_link_service_to_organisation_rollback_service_if_annual_billing_up
     assert len(AnnualBilling.query.all()) == 0
 
 
+@freeze_time('2021-09-24 13:30')
 def test_post_link_service_to_another_org(
         admin_request, sample_service, sample_organisation):
     data = {
