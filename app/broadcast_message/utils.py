@@ -74,13 +74,12 @@ def _create_p1_zendesk_alert(broadcast_message):
 
         https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}
 
-        This broacast has been sent on channel {broadcast_message.service.broadcast_channel}.
-        This broadcast is targeted at areas {broadcast_message.areas.get("names", [])}.
+        Sent on channel {broadcast_message.service.broadcast_channel} to {broadcast_message.areas["names"]}.
 
-        This broadcast's content starts "{broadcast_message.content[:100]}".
+        Content starts "{broadcast_message.content[:100]}".
 
-        If this alert is not expected refer to the runbook for instructions.
-        https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs
+        Follow the runbook to check the broadcast went out OK:
+        https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs/edit#heading=h.lzr9aq5b4wg
     """.strip()
 
     ticket = NotifySupportTicket(

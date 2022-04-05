@@ -414,9 +414,8 @@ def test_create_p1_zendesk_alert(sample_broadcast_service, mocker, notify_api):
     assert ticket.subject == 'Live broadcast sent'
     assert ticket.ticket_type == 'incident'
     assert str(broadcast_message.id) in ticket.message
-    assert 'channel severe' in ticket.message
-    assert "areas ['England', 'Scotland']" in ticket.message
-    assert "tailor made emergency" in ticket.message
+    assert "Sent on channel severe to ['England', 'Scotland']" in ticket.message
+    assert 'Content starts "tailor made emergency' in ticket.message
 
 
 def test_create_p1_zendesk_alert_doesnt_alert_when_cancelling(mocker, notify_api, sample_broadcast_service):
