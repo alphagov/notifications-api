@@ -1,7 +1,11 @@
 from datetime import datetime
 
 from flask import current_app
+from notifications_utils.clients.zendesk.zendesk_client import (
+    NotifySupportTicket,
+)
 
+from app import zendesk_client
 from app.celery.broadcast_message_tasks import send_broadcast_event
 from app.config import QueueNames
 from app.dao.dao_utils import dao_save_object
@@ -31,6 +35,7 @@ def update_broadcast_message_status(broadcast_message, new_status, updating_user
     broadcast_message.status = new_status
 
     dao_save_object(broadcast_message)
+    _create_p1_zendesk_alert(broadcast_message)
 
     if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
         _create_broadcast_event(broadcast_message)
@@ -55,6 +60,39 @@ def _validate_broadcast_update(broadcast_message, new_status, updating_user):
                 f'broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.',
                 status_code=400
             )
+
+
+def _create_p1_zendesk_alert(broadcast_message):
+    if current_app.config['NOTIFY_ENVIRONMENT'] != 'live':
+        return
+
+    if broadcast_message.status != BroadcastStatusType.BROADCASTING:
+        return
+
+    message = f"""
+        Broadcast Sent
+
+        https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}
+
+        This broacast has been sent on channel {broadcast_message.service.broadcast_channel}.
+        This broadcast is targeted at areas {broadcast_message.areas.get("names", [])}.
+
+        This broadcast's content starts "{broadcast_message.content[:100]}".
+
+        If this alert is not expected refer to the runbook for instructions.
+        https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs
+    """.strip()
+
+    ticket = NotifySupportTicket(
+        subject='Live broadcast sent',
+        message=message,
+        ticket_type=NotifySupportTicket.TYPE_INCIDENT,
+        technical_ticket=True,
+        org_id=current_app.config['BROADCAST_ORGANISATION_ID'],
+        org_type='central',
+        service_id=str(broadcast_message.service_id)
+    )
+    zendesk_client.send_ticket_to_zendesk(ticket)
 
 
 def _create_broadcast_event(broadcast_message):

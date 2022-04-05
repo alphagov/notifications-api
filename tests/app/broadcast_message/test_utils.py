@@ -1,6 +1,9 @@
 import pytest
 
-from app.broadcast_message.utils import update_broadcast_message_status
+from app.broadcast_message.utils import (
+    _create_p1_zendesk_alert,
+    update_broadcast_message_status,
+)
 from app.errors import InvalidRequest
 from app.models import (
     BROADCAST_TYPE,
@@ -13,6 +16,7 @@ from tests.app.db import (
     create_template,
     create_user,
 )
+from tests.conftest import set_config
 
 
 def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
@@ -360,3 +364,94 @@ def test_update_broadcast_message_status_creates_event_with_correct_content_if_b
     mock_task.assert_called_once_with(kwargs={'broadcast_event_id': str(alert_event.id)}, queue='broadcast-tasks')
 
     assert alert_event.transmitted_content == {"body": "tailor made emergency broadcast content"}
+
+
+def test_update_broadcast_message_status_creates_zendesk_ticket(
+    mocker,
+    notify_api,
+    sample_broadcast_service
+):
+    broadcast_message = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.PENDING_APPROVAL,
+        areas={"names": ["England", "Scotland"], "simple_polygons": ['polygons']}
+    )
+    approver = create_user(email='approver@gov.uk')
+    sample_broadcast_service.users.append(approver)
+
+    mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.broadcast_message.utils.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
+        update_broadcast_message_status(
+            broadcast_message, BroadcastStatusType.BROADCASTING, approver
+        )
+
+    mock_send_ticket_to_zendesk.assert_called_once()
+
+
+def test_create_p1_zendesk_alert(sample_broadcast_service, mocker, notify_api):
+    broadcast_message = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.BROADCASTING,
+        areas={"names": ["England", "Scotland"]}
+    )
+
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.broadcast_message.utils.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
+        _create_p1_zendesk_alert(broadcast_message)
+
+    ticket = mock_send_ticket_to_zendesk.call_args_list[0].args[0]
+    assert ticket.subject == 'Live broadcast sent'
+    assert ticket.ticket_type == 'incident'
+    assert str(broadcast_message.id) in ticket.message
+    assert 'channel severe' in ticket.message
+    assert "areas ['England', 'Scotland']" in ticket.message
+    assert "tailor made emergency" in ticket.message
+
+
+def test_create_p1_zendesk_alert_doesnt_alert_when_cancelling(mocker, notify_api, sample_broadcast_service):
+    broadcast_message = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.CANCELLED,
+        areas={"names": ["England", "Scotland"]}
+    )
+
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.broadcast_message.utils.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
+        _create_p1_zendesk_alert(broadcast_message)
+
+    mock_send_ticket_to_zendesk.assert_not_called()
+
+
+def test_create_p1_zendesk_alert_doesnt_alert_on_staging(mocker, notify_api, sample_broadcast_service):
+    broadcast_message = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.BROADCASTING,
+        areas={"names": ["England", "Scotland"]}
+    )
+
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.broadcast_message.utils.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'staging'):
+        _create_p1_zendesk_alert(broadcast_message)
+
+    mock_send_ticket_to_zendesk.assert_not_called()
