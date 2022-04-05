@@ -13,7 +13,7 @@ from app.models import (
 )
 
 
-def validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user=None, api_key_id=None):
+def update_broadcast_message_status(broadcast_message, new_status, updating_user=None, api_key_id=None):
     _validate_broadcast_update(broadcast_message, new_status, updating_user)
 
     if new_status == BroadcastStatusType.BROADCASTING:

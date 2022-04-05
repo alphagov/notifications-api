@@ -1,8 +1,6 @@
 import pytest
 
-from app.broadcast_message.utils import (
-    validate_and_update_broadcast_message_status,
-)
+from app.broadcast_message.utils import update_broadcast_message_status
 from app.errors import InvalidRequest
 from app.models import (
     BROADCAST_TYPE,
@@ -17,7 +15,7 @@ from tests.app.db import (
 )
 
 
-def test_validate_and_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
+def test_update_broadcast_message_status_stores_approved_by_and_approved_at_and_queues_task(
     sample_broadcast_service,
     mocker
 ):
@@ -34,7 +32,7 @@ def test_validate_and_update_broadcast_message_status_stores_approved_by_and_app
     sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.BROADCASTING, approver
     )
 
@@ -54,7 +52,7 @@ def test_validate_and_update_broadcast_message_status_stores_approved_by_and_app
     assert alert_event.transmitted_content == {"body": "emergency broadcast"}
 
 
-def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_from_admin_interface(
+def test_update_broadcast_message_status_for_cancelling_broadcast_from_admin_interface(
     sample_broadcast_service,
     mocker,
 ):
@@ -71,7 +69,7 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_f
 
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.CANCELLED, updating_user=canceller, api_key_id=None
     )
 
@@ -89,7 +87,7 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_f
     assert alert_event.message_type == BroadcastEventMessageType.CANCEL
 
 
-def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_from_API_call(
+def test_update_broadcast_message_status_for_cancelling_broadcast_from_API_call(
     sample_broadcast_service,
     mocker,
 ):
@@ -105,7 +103,7 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_f
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.CANCELLED, updating_user=None, api_key_id=api_key.id
     )
 
@@ -123,7 +121,7 @@ def test_validate_and_update_broadcast_message_status_for_cancelling_broadcast_f
     assert alert_event.message_type == BroadcastEventMessageType.CANCEL
 
 
-def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_via_admin_interface(
+def test_update_broadcast_message_status_for_rejecting_broadcast_via_admin_interface(
     sample_broadcast_service,
     mocker
 ):
@@ -138,7 +136,7 @@ def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_vi
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.REJECTED, updating_user=sample_broadcast_service.created_by
     )
 
@@ -151,7 +149,7 @@ def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_vi
     assert len(broadcast_message.events) == 0
 
 
-def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_from_API_call(
+def test_update_broadcast_message_status_for_rejecting_broadcast_from_API_call(
     sample_broadcast_service,
     mocker
 ):
@@ -167,7 +165,7 @@ def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_fr
     )
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.REJECTED, api_key_id=api_key.id
     )
 
@@ -209,7 +207,7 @@ def test_validate_and_update_broadcast_message_status_for_rejecting_broadcast_fr
     (BroadcastStatusType.CANCELLED, BroadcastStatusType.BROADCASTING),
     (BroadcastStatusType.CANCELLED, BroadcastStatusType.COMPLETED),
 ])
-def test_validate_and_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
+def test_update_broadcast_message_status_restricts_status_transitions_to_explicit_list(
     sample_broadcast_service,
     mocker,
     current_status,
@@ -222,14 +220,14 @@ def test_validate_and_update_broadcast_message_status_restricts_status_transitio
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     with pytest.raises(expected_exception=InvalidRequest) as e:
-        validate_and_update_broadcast_message_status(broadcast_message, new_status, approver)
+        update_broadcast_message_status(broadcast_message, new_status, approver)
 
     assert mock_task.called is False
     assert f'from {current_status} to {new_status}' in str(e.value)
 
 
 @pytest.mark.parametrize('is_platform_admin', [True, False])
-def test_validate_and_update_broadcast_message_status_rejects_approval_from_creator(
+def test_update_broadcast_message_status_rejects_approval_from_creator(
     sample_broadcast_service,
     mocker,
     is_platform_admin
@@ -241,7 +239,7 @@ def test_validate_and_update_broadcast_message_status_rejects_approval_from_crea
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     with pytest.raises(expected_exception=InvalidRequest) as e:
-        validate_and_update_broadcast_message_status(
+        update_broadcast_message_status(
             broadcast_message, BroadcastStatusType.BROADCASTING, creator_and_approver
         )
 
@@ -249,7 +247,7 @@ def test_validate_and_update_broadcast_message_status_rejects_approval_from_crea
     assert 'cannot approve their own broadcast' in str(e.value)
 
 
-def test_validate_and_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_areas(
+def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_areas(
     admin_request,
     sample_broadcast_service,
     mocker
@@ -261,13 +259,13 @@ def test_validate_and_update_broadcast_message_status_rejects_approval_of_broadc
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
     with pytest.raises(expected_exception=InvalidRequest) as e:
-        validate_and_update_broadcast_message_status(broadcast, BroadcastStatusType.BROADCASTING, approver)
+        update_broadcast_message_status(broadcast, BroadcastStatusType.BROADCASTING, approver)
 
     assert mock_task.called is False
     assert f'broadcast_message {broadcast.id} has no selected areas and so cannot be broadcasted.' in str(e.value)
 
 
-def test_validate_and_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
+def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
     notify_db,
     sample_broadcast_service,
     mocker
@@ -282,7 +280,7 @@ def test_validate_and_update_broadcast_message_status_allows_trial_mode_services
     creator_and_approver = sample_broadcast_service.created_by
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.BROADCASTING, creator_and_approver
     )
 
@@ -298,7 +296,7 @@ def test_validate_and_update_broadcast_message_status_allows_trial_mode_services
     (True, False),
     (False, True),
 ])
-def test_validate_and_update_broadcast_message_status_when_broadcast_message_is_stubbed_or_service_not_live(
+def test_update_broadcast_message_status_when_broadcast_message_is_stubbed_or_service_not_live(
     admin_request,
     sample_broadcast_service,
     mocker,
@@ -319,7 +317,7 @@ def test_validate_and_update_broadcast_message_status_when_broadcast_message_is_
 
     sample_broadcast_service.restricted = service_restricted_before_approval
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.BROADCASTING, approver
     )
     assert broadcast_message.status == BroadcastStatusType.BROADCASTING
@@ -331,7 +329,7 @@ def test_validate_and_update_broadcast_message_status_when_broadcast_message_is_
     assert len(mock_task.mock_calls) == 0
 
 
-def test_validate_and_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
+def test_update_broadcast_message_status_creates_event_with_correct_content_if_broadcast_has_no_template(
     admin_request,
     sample_broadcast_service,
     mocker
@@ -350,7 +348,7 @@ def test_validate_and_update_broadcast_message_status_creates_event_with_correct
     sample_broadcast_service.users.append(approver)
     mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
 
-    validate_and_update_broadcast_message_status(
+    update_broadcast_message_status(
         broadcast_message, BroadcastStatusType.BROADCASTING, approver
     )
 

@@ -2,13 +2,11 @@ import iso8601
 from flask import Blueprint, jsonify, request
 from notifications_utils.template import BroadcastMessageTemplate
 
+from app.broadcast_message import utils as broadcast_utils
 from app.broadcast_message.broadcast_message_schema import (
     create_broadcast_message_schema,
     update_broadcast_message_schema,
     update_broadcast_message_status_schema,
-)
-from app.broadcast_message.utils import (
-    validate_and_update_broadcast_message_status,
 )
 from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_id_and_service_id,
@@ -162,6 +160,6 @@ def update_broadcast_message_status(service_id, broadcast_message_id):
                 status_code=400
             )
 
-    validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user)
+    broadcast_utils.update_broadcast_message_status(broadcast_message, new_status, updating_user)
 
     return jsonify(broadcast_message.serialize()), 200
