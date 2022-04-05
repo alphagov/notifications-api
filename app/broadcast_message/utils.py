@@ -14,6 +14,29 @@ from app.models import (
 
 
 def validate_and_update_broadcast_message_status(broadcast_message, new_status, updating_user=None, api_key_id=None):
+    _validate_broadcast_update(broadcast_message, new_status, updating_user)
+
+    if new_status == BroadcastStatusType.BROADCASTING:
+        broadcast_message.approved_at = datetime.utcnow()
+        broadcast_message.approved_by = updating_user
+
+    if new_status == BroadcastStatusType.CANCELLED:
+        broadcast_message.cancelled_at = datetime.utcnow()
+        broadcast_message.cancelled_by = updating_user
+        broadcast_message.cancelled_by_api_key_id = api_key_id
+
+    current_app.logger.info(
+        f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
+    )
+    broadcast_message.status = new_status
+
+    dao_save_object(broadcast_message)
+
+    if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
+        _create_broadcast_event(broadcast_message)
+
+
+def _validate_broadcast_update(broadcast_message, new_status, updating_user):
     if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
         raise InvalidRequest(
             f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}',
@@ -32,24 +55,6 @@ def validate_and_update_broadcast_message_status(broadcast_message, new_status, 
                 f'broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.',
                 status_code=400
             )
-        else:
-            broadcast_message.approved_at = datetime.utcnow()
-            broadcast_message.approved_by = updating_user
-
-    if new_status == BroadcastStatusType.CANCELLED:
-        broadcast_message.cancelled_at = datetime.utcnow()
-        broadcast_message.cancelled_by = updating_user
-        broadcast_message.cancelled_by_api_key_id = api_key_id
-
-    current_app.logger.info(
-        f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
-    )
-    broadcast_message.status = new_status
-
-    dao_save_object(broadcast_message)
-
-    if new_status in {BroadcastStatusType.BROADCASTING, BroadcastStatusType.CANCELLED}:
-        _create_broadcast_event(broadcast_message)
 
 
 def _create_broadcast_event(broadcast_message):
