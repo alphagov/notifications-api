@@ -90,7 +90,8 @@ def _create_p1_zendesk_alert(broadcast_message):
         technical_ticket=True,
         org_id=current_app.config['BROADCAST_ORGANISATION_ID'],
         org_type='central',
-        service_id=str(broadcast_message.service_id)
+        service_id=str(broadcast_message.service_id),
+        p1=True
     )
     zendesk_client.send_ticket_to_zendesk(ticket)
 
