@@ -1,3 +1,4 @@
+import inspect
 from datetime import datetime
 
 from flask import current_app
@@ -69,7 +70,7 @@ def _create_p1_zendesk_alert(broadcast_message):
     if broadcast_message.status != BroadcastStatusType.BROADCASTING:
         return
 
-    message = f"""
+    message = inspect.cleandoc(f"""
         Broadcast Sent
 
         https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}
@@ -80,7 +81,7 @@ def _create_p1_zendesk_alert(broadcast_message):
 
         Follow the runbook to check the broadcast went out OK:
         https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs/edit#heading=h.lzr9aq5b4wg
-    """.strip()
+    """)
 
     ticket = NotifySupportTicket(
         subject='Live broadcast sent',
