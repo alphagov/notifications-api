@@ -611,6 +611,7 @@ def test_get_total_notifications_for_date_range(sample_service):
     assert results[0] == ("2021-03-01", 15, 20, 3)
 
 
+@freeze_time('2022-03-31T18:00:00')
 @pytest.mark.parametrize('created_at_utc,process_day,expected_count', [
     # Clocks change on the 27th of March 2022, so the query needs to look at the
     # time range 00:00 - 23:00 (UTC) thereafter.
