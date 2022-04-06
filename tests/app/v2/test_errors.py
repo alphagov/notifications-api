@@ -128,7 +128,7 @@ def test_bad_method(app_for_test):
 
             assert response.status_code == 405
 
-            assert response.json == {
+            assert response.get_json(force=True) == {
                 "result": "error",
                 "message": "The method is not allowed for the requested URL."
             }
