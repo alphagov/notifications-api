@@ -36,6 +36,8 @@ def dao_get_provider_versions(provider_id):
         id=provider_id
     ).order_by(
         desc(ProviderDetailsHistory.version)
+    ).limit(
+        100  # limit results instead of adding pagination
     ).all()
 
 
