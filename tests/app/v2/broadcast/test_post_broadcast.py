@@ -124,7 +124,7 @@ def test_valid_post_cap_xml_broadcast_returns_201(
     [True, "cancelled"],
     [False, "rejected"]
 ])
-def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_message_status_and_returns_201(
+def test_valid_cancel_broadcast_request_calls_update_broadcast_message_status_and_returns_201(
     client,
     sample_broadcast_service,
     mocker,
@@ -153,7 +153,9 @@ def test_valid_cancel_broadcast_request_calls_validate_and_update_broadcast_mess
     if is_approved:
         broadcast_message.status = 'broadcasting'
 
-    mock_update = mocker.patch('app.v2.broadcast.post_broadcast.validate_and_update_broadcast_message_status')
+    mock_update = mocker.patch(
+        'app.v2.broadcast.post_broadcast.broadcast_utils.update_broadcast_message_status'
+    )
 
     # cancel broadcast
     response_for_cancel = client.post(

@@ -1,11 +1,8 @@
 from datetime import datetime
 
 from flask import current_app
-from notifications_utils.clients.zendesk.zendesk_client import (
-    NotifySupportTicket,
-)
 
-from app import cbc_proxy_client, notify_celery, zendesk_client
+from app import cbc_proxy_client, notify_celery
 from app.clients.cbc_proxy import CBCProxyRetryableException
 from app.config import QueueNames, TaskNames
 from app.dao.broadcast_message_dao import (
@@ -125,37 +122,6 @@ def check_event_makes_sense_in_sequence(broadcast_event, provider):
 @notify_celery.task(name="send-broadcast-event")
 def send_broadcast_event(broadcast_event_id):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
-
-    if (
-        current_app.config['NOTIFY_ENVIRONMENT'] == 'live' and
-        broadcast_event.message_type == BroadcastEventMessageType.ALERT
-    ):
-        broadcast_message = broadcast_event.broadcast_message
-        # raise a zendesk ticket to alert team that broadcast is going out.
-        message = '\n'.join([
-            'Broadcast Sent',
-            '',
-            f'https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}',  # noqa
-            '',
-            f'This broacast has been sent on channel {broadcast_message.service.broadcast_channel}.',
-            f'This broadcast is targeted at areas {broadcast_message.areas.get("names", [])}.',  # noqa
-            ''
-            f'This broadcast\'s content starts "{broadcast_message.content[:100]}"'
-            '',
-            'If this alert is not expected refer to the runbook for instructions.',
-            'https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs',
-        ])
-        ticket = NotifySupportTicket(
-            subject='Live broadcast sent',
-            message=message,
-            ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-            technical_ticket=True,
-            org_id=current_app.config['BROADCAST_ORGANISATION_ID'],
-            org_type='central',
-            service_id=str(broadcast_message.service_id)
-        )
-        zendesk_client.send_ticket_to_zendesk(ticket)
-        current_app.logger.error(message)
 
     notify_celery.send_task(
         name=TaskNames.PUBLISH_GOVUK_ALERTS,
