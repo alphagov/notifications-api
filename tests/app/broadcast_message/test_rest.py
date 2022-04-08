@@ -2,6 +2,7 @@ import uuid
 
 import pytest
 from freezegun import freeze_time
+from unittest.mock import ANY, Mock, call
 
 from app.dao.broadcast_message_dao import (
     dao_get_broadcast_message_by_id_and_service_id,
@@ -17,6 +18,8 @@ from tests.app.db import (
     create_template,
     create_user,
 )
+
+from tests.conftest import set_config
 
 
 def test_get_broadcast_message(
@@ -386,38 +389,52 @@ def test_create_broadcast_message_400s_if_no_content_or_template(
 # here we test that flow for cancelling broadcast works correctly from hitting the endpoint up util calling
 # lambdas with correct payloads
 def test_integration_for_cancel_broadcast_message(
-    admin_request, sample_broadcast_service, mocker
+    admin_request, sample_broadcast_service, mocker, notify_api
 ):
-    t = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
-    bm = create_broadcast_message(t, status=BroadcastStatusType.BROADCASTING)
+    template = create_template(sample_broadcast_service, BROADCAST_TYPE, content='emergency broadcast')
+    broadcast_message = create_broadcast_message(template, status=BroadcastStatusType.BROADCASTING)
     canceller = create_user(email='canceller@gov.uk')
 
     sample_broadcast_service.users.append(canceller)
-    mock_task = mocker.patch('app.celery.broadcast_message_tasks.send_broadcast_event.apply_async')
+    mocker.patch('app.celery.broadcast_message_tasks.notify_celery.send_task')
 
-    response = admin_request.post(
-        'broadcast_message.update_broadcast_message_status',
-        _data={'status': BroadcastStatusType.CANCELLED, 'created_by': str(canceller.id)},
-        service_id=t.service_id,
-        broadcast_message_id=bm.id,
-        _expected_status=200
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.celery.broadcast_message_tasks.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+    mock_send_broadcast_provider_message = mocker.patch(
+        'app.celery.broadcast_message_tasks.send_broadcast_provider_message',
     )
 
-    assert len(bm.events) == 1
-    cancel_event = bm.events[0]
+    with set_config(notify_api, 'ENABLED_CBCS', ['ee', 'vodafone']):
+        response = admin_request.post(
+            'broadcast_message.update_broadcast_message_status',
+            _data={'status': BroadcastStatusType.CANCELLED, 'created_by': str(canceller.id)},
+            service_id=template.service_id,
+            broadcast_message_id=broadcast_message.id,
+            _expected_status=200
+        )
 
-    cancel_id = str(cancel_event.id)
+    assert len(broadcast_message.events) == 1
+    cancel_event = broadcast_message.events[0]
 
-    mock_task.assert_called_once_with(kwargs={'broadcast_event_id': cancel_id}, queue='broadcast-tasks')
     assert response['status'] == BroadcastStatusType.CANCELLED
     assert response['cancelled_at'] is not None
     assert response['cancelled_by_id'] == str(canceller.id)
 
     assert cancel_event.service_id == sample_broadcast_service.id
-    assert cancel_event.transmitted_areas == bm.areas
+    assert cancel_event.transmitted_areas == broadcast_message.areas
     assert cancel_event.message_type == BroadcastEventMessageType.CANCEL
-    assert cancel_event.transmitted_finishes_at == bm.finishes_at
+    assert cancel_event.transmitted_finishes_at == broadcast_message.finishes_at
     assert cancel_event.transmitted_content == {"body": "emergency broadcast"}
+
+    assert mock_send_broadcast_provider_message.apply_async.call_args_list == [
+        call(kwargs={'broadcast_event_id': cancel_event.id, 'provider': 'ee'}, queue='broadcast-tasks'),
+        call(kwargs={'broadcast_event_id': cancel_event.id, 'provider': 'vodafone'}, queue='broadcast-tasks')
+    ]
+
+    # we're on test env so this isn't called
+    assert mock_send_ticket_to_zendesk.called is False
 
 
 @pytest.mark.parametrize('status', [
