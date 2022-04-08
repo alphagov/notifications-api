@@ -75,12 +75,39 @@ def test_send_pdf_letter_notification_raises_error_when_pdf_is_not_in_transient_
     notify_user,
 ):
     user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid, 'postage': 'first',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
+    post_data = {
+        'filename':
+        'valid.pdf',
+        'created_by': user.id,
+        'file_id': fake_uuid,
+        'postage': 'first',
+        'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'
+    }
     mocker.patch('app.service.send_notification.utils_s3download', side_effect=S3ObjectNotFound({}, ''))
 
     with pytest.raises(S3ObjectNotFound):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+
+
+def test_send_pdf_letter_notification_does_nothing_if_notification_already_exists(
+    mocker,
+    sample_service_full_permissions,
+    fake_uuid,
+    notify_user,
+    sample_notification,
+):
+    user = sample_service_full_permissions.users[0]
+    post_data = {
+        'filename':
+        'valid.pdf',
+        'created_by': user.id,
+        'file_id': str(sample_notification.id),
+        'postage': 'first',
+        'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'
+    }
+    mocker.patch('app.service.send_notification.utils_s3download', side_effect=S3ObjectNotFound({}, ''))
+    response = send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+    assert response['id'] == str(sample_notification.id)
 
 
 @freeze_time("2019-08-02 11:00:00")
