@@ -1,7 +1,7 @@
 from app.schema_validation.definitions import nullable_uuid, uuid
 
 post_create_template_folder_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for getting template_folder",
     "type": "object",
     "properties": {
@@ -12,7 +12,7 @@ post_create_template_folder_schema = {
 }
 
 post_update_template_folder_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for updating template_folder",
     "type": "object",
     "properties": {
@@ -23,7 +23,7 @@ post_update_template_folder_schema = {
 }
 
 post_move_template_folder_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for renaming template_folder",
     "type": "object",
     "properties": {

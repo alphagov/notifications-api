@@ -1,7 +1,7 @@
 from app.schema_validation.definitions import uuid
 
 add_service_email_reply_to_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST service email reply to address",
     "type": "object",
     "title": "Add new email reply to address for service",
@@ -14,7 +14,7 @@ add_service_email_reply_to_request = {
 
 
 add_service_letter_contact_block_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST service letter contact block",
     "type": "object",
     "title": "Add new letter contact block for service",
@@ -27,7 +27,7 @@ add_service_letter_contact_block_request = {
 
 
 add_service_sms_sender_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST add service SMS sender",
     "type": "object",
     "title": "Add new SMS sender for service",

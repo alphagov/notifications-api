@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "Common definitions - usage example: {'$ref': 'definitions.json#/uuid'} (swap quotes for double quotes)",
   "uuid": {
     "type": "string",

@@ -17,7 +17,7 @@ register_errors(letter_callback_blueprint)
 
 
 dvla_sns_callback_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "sns callback received on s3 update",
     "type": "object",
     "title": "dvla internal sns callback",

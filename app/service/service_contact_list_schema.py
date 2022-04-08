@@ -1,7 +1,7 @@
 from app.schema_validation.definitions import uuid
 
 create_service_contact_list_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST create service contact list schema",
     "type": "object",
     "title": "Create service contact list",

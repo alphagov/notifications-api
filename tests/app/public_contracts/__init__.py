@@ -2,7 +2,7 @@ import os
 
 import jsonschema
 from flask import json
-from jsonschema import Draft4Validator
+from jsonschema import Draft7Validator
 
 
 def return_json_from_response(response):
@@ -22,5 +22,5 @@ def validate_v0(json_to_validate, schema_filename):
 
 
 def validate(json_to_validate, schema):
-    validator = Draft4Validator(schema)
+    validator = Draft7Validator(schema)
     validator.validate(json_to_validate, schema)

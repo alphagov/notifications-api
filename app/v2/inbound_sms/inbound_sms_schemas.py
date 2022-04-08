@@ -1,7 +1,7 @@
 from app.schema_validation.definitions import uuid
 
 get_inbound_sms_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "schema for query parameters allowed when getting list of received text messages",
     "type": "object",
     "properties": {
@@ -12,7 +12,7 @@ get_inbound_sms_request = {
 
 
 get_inbound_sms_single_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET inbound sms schema response",
     "type": "object",
     "title": "GET response v2/inbound_sms",
@@ -36,7 +36,7 @@ get_inbound_sms_single_response = {
 }
 
 get_inbound_sms_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET list of inbound sms response schema",
     "type": "object",
     "properties": {

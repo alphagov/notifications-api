@@ -1,5 +1,5 @@
 letter_references = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "list of letter notification references",
     "type": "object",
     "title": "references",

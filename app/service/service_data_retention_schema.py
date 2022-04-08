@@ -1,5 +1,5 @@
 add_service_data_retention_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST service data retention schema",
     "title": "Add service data retention for notification type api",
     "type": "object",
@@ -12,7 +12,7 @@ add_service_data_retention_request = {
 
 
 update_service_data_retention_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST service data retention schema",
     "title": "Update service data retention for notification type api",
     "type": "object",

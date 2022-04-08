@@ -1,6 +1,6 @@
 
 complaint_count_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "complaint count request schema",
     "type": "object",
     "title": "Complaint count request",

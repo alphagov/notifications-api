@@ -1,5 +1,5 @@
 service_broadcast_settings_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Set a services broadcast settings",
     "type": "object",
     "title": "Set a services broadcast settings",

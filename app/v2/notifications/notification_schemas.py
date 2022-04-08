@@ -7,7 +7,7 @@ from app.models import (
 from app.schema_validation.definitions import personalisation, uuid
 
 template = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "template schema",
     "type": "object",
     "title": "notification content",
@@ -20,7 +20,7 @@ template = {
 }
 
 notification_by_id = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET notification response schema",
     "type": "object",
     "title": "response v2/notification",
@@ -32,7 +32,7 @@ notification_by_id = {
 
 
 get_notification_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET notification response schema",
     "type": "object",
     "title": "response v2/notification",
@@ -67,7 +67,7 @@ get_notification_response = {
 }
 
 get_notifications_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "schema for query parameters allowed when getting list of notifications",
     "type": "object",
     "properties": {
@@ -92,7 +92,7 @@ get_notifications_request = {
 }
 
 get_notifications_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET list of notifications response schema",
     "type": "object",
     "properties": {
@@ -126,7 +126,7 @@ get_notifications_response = {
 }
 
 post_sms_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST sms notification schema",
     "type": "object",
     "title": "POST v2/notifications/sms",
@@ -143,7 +143,7 @@ post_sms_request = {
 }
 
 sms_content = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "content schema for SMS notification response schema",
     "type": "object",
     "title": "notification content",
@@ -155,7 +155,7 @@ sms_content = {
 }
 
 post_sms_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST sms notification response schema",
     "type": "object",
     "title": "response v2/notifications/sms",
@@ -172,7 +172,7 @@ post_sms_response = {
 
 
 post_email_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST email notification schema",
     "type": "object",
     "title": "POST v2/notifications/email",
@@ -189,7 +189,7 @@ post_email_request = {
 }
 
 email_content = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Email content for POST email notification",
     "type": "object",
     "title": "notification email content",
@@ -202,7 +202,7 @@ email_content = {
 }
 
 post_email_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST email notification response schema",
     "type": "object",
     "title": "response v2/notifications/email",
@@ -218,7 +218,7 @@ post_email_response = {
 }
 
 post_letter_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST letter notification schema",
     "type": "object",
     "title": "POST v2/notifications/letter",
@@ -232,7 +232,7 @@ post_letter_request = {
 }
 
 post_precompiled_letter_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST precompiled letter notification schema",
     "type": "object",
     "title": "POST v2/notifications/letter",
@@ -246,7 +246,7 @@ post_precompiled_letter_request = {
 }
 
 letter_content = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "Letter content for POST letter notification",
     "type": "object",
     "title": "notification letter content",
@@ -258,7 +258,7 @@ letter_content = {
 }
 
 post_letter_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST sms notification response schema",
     "type": "object",
     "title": "response v2/notifications/letter",
