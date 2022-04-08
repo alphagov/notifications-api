@@ -502,13 +502,17 @@ def create_service_callback_api(
     return service_callback_api
 
 
-def create_email_branding(colour='blue', logo='test_x2.png', name='test_org_1', text='DisplayName'):
+def create_email_branding(
+    id=None, colour='blue', logo='test_x2.png', name='test_org_1', text='DisplayName'
+):
     data = {
         'colour': colour,
         'logo': logo,
         'name': name,
         'text': text,
     }
+    if id:
+        data['id'] = id
     email_branding = EmailBranding(**data)
     dao_create_email_branding(email_branding)
 

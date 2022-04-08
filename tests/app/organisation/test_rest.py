@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -185,6 +186,43 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
     assert data['organisation_type'] == response['organisation_type']
 
     assert len(organisation) == 1
+
+
+@pytest.mark.parametrize('org_type', ["nhs_central", "nhs_local", "nhs_gp"])
+def test_post_create_organisation_sets_default_nhs_branding_for_nhs_orgs(
+    admin_request, notify_db_session, org_type
+):
+    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
+    # that is normally present on all environments and applied through migration
+    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
+    create_email_branding(
+        id=nhs_email_branding_id,
+        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
+        name='NHS'
+    )
+
+    data = {
+        'name': 'test organisation',
+        'active': True,
+        'crown': False,
+        'organisation_type': org_type,
+    }
+
+    response = admin_request.post(
+        'organisation.create_organisation',
+        _data=data,
+        _expected_status=201
+    )
+
+    organisations = Organisation.query.all()
+
+    assert data['name'] == response['name']
+    assert data['active'] == response['active']
+    assert data['crown'] == response['crown']
+    assert data['organisation_type'] == response['organisation_type']
+
+    assert len(organisations) == 1
+    assert organisations[0].email_branding_id == uuid.UUID(nhs_email_branding_id)
 
 
 def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
