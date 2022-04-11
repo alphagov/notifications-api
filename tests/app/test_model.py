@@ -274,9 +274,9 @@ def test_service_get_default_reply_to_email_address(sample_service):
 
 
 def test_service_get_default_contact_letter(sample_service):
-    create_letter_contact(service=sample_service, contact_block='London,\nNW1A 1AA')
+    letter_contact = create_letter_contact(service=sample_service, contact_block='London,\nNW1A 1AA')
 
-    assert sample_service.get_default_letter_contact() == 'London,\nNW1A 1AA'
+    assert sample_service.get_default_letter_contact() == letter_contact
 
 
 def test_service_get_default_sms_sender(notify_db_session):

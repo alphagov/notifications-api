@@ -146,6 +146,70 @@ def test_create_a_new_template_for_a_service_adds_postage_for_letters_only(
     assert template.postage == expected_postage
 
 
+@pytest.mark.parametrize("has_a_non_default_letter_contact_only", [True, False])
+def test_create_letter_template_adds_no_sender_address_if_no_default_exists(
+    client, sample_service, has_a_non_default_letter_contact_only
+):
+    # If the service has no letter contacts, then the default sender address is 'not set' and it will be
+    # blank for the new template
+    # However they can have a single letter contact which is stored in the DB as not the default, which
+    # results in the default sender address being 'Blank' rather than 'not set'
+    # We test both of these situations where we expect the templates sender address to empty
+    if has_a_non_default_letter_contact_only:
+        create_letter_contact(sample_service, "Edinburgh, ED1 1AA", is_default=False)
+
+    data = {
+        'name': 'my template',
+        'template_type': 'letter',
+        'subject': "my subject",
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id)
+    }
+
+    data = json.dumps(data)
+    auth_header = create_admin_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 201
+    created_template = json.loads(response.get_data(as_text=True))['data']
+    assert created_template['service_letter_contact'] is None
+    assert created_template['reply_to'] is None
+    assert created_template['reply_to_text'] is None
+
+
+def test_create_letter_template_adds_default_sender_address_for_letters_when_exists(
+    client, sample_service
+):
+    letter_contact = create_letter_contact(sample_service, "Edinburgh, ED1 1AA", is_default=True)
+    data = {
+        'name': 'my template',
+        'template_type': 'letter',
+        'subject': "my subject",
+        'content': 'template <b>content</b>',
+        'service': str(sample_service.id),
+        'created_by': str(sample_service.users[0].id)
+    }
+
+    data = json.dumps(data)
+    auth_header = create_admin_authorization_header()
+
+    response = client.post(
+        '/service/{}/template'.format(sample_service.id),
+        headers=[('Content-Type', 'application/json'), auth_header],
+        data=data
+    )
+    assert response.status_code == 201
+    created_template = json.loads(response.get_data(as_text=True))['data']
+    assert created_template['service_letter_contact'] == str(letter_contact.id)
+    assert created_template['reply_to'] == str(letter_contact.id)
+    assert created_template['reply_to_text'] == "Edinburgh, ED1 1AA"
+
+
 def test_create_template_should_return_400_if_folder_is_for_a_different_service(
         client, sample_service
 ):

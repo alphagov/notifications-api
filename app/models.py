@@ -563,7 +563,7 @@ class Service(db.Model, Versioned):
 
     def get_default_letter_contact(self):
         default_letter_contact = [x for x in self.letter_contacts if x.is_default]
-        return default_letter_contact[0].contact_block if default_letter_contact else None
+        return default_letter_contact[0] if default_letter_contact else None
 
     def has_permission(self, permission):
         return permission in [p.permission for p in self.permissions]

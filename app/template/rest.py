@@ -96,8 +96,11 @@ def create_template(service_id):
         errors = {'template_type': [message]}
         raise InvalidRequest(errors, 403)
 
-    if not new_template.postage and new_template.template_type == LETTER_TYPE:
-        new_template.postage = SECOND_CLASS
+    if new_template.template_type == LETTER_TYPE:
+        if default_letter_contact := fetched_service.get_default_letter_contact():
+            new_template.reply_to = default_letter_contact.id
+        if not new_template.postage:
+            new_template.postage = SECOND_CLASS
 
     new_template.service = fetched_service
 
