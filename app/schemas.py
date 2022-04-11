@@ -246,9 +246,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     def service_permissions(self, service):
         return [p.permission for p in service.permissions]
 
-    def get_letter_contact(self, service):
-        return service.get_default_letter_contact()
-
     class Meta(BaseSchema.Meta):
         model = models.Service
         exclude = (
