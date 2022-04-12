@@ -9,6 +9,7 @@ from app.platform_stats.rest import (
     validate_date_range_is_within_a_financial_year,
 )
 from tests.app.db import (
+    create_ft_billing,
     create_ft_notification_status,
     create_notification,
     create_service,
@@ -238,3 +239,23 @@ def test_volumes_by_service_report(
                            'service_id': str(fixture['service_with_sms_within_allowance'].id),
                            'service_name': fixture['service_with_sms_within_allowance'].name,
                            'sms_chargeable_units': 0, 'sms_notifications': 0}
+
+
+def test_daily_sms_provider_volumes_report(admin_request, sample_template):
+
+    create_ft_billing('2022-03-01', sample_template, provider='foo', rate=1.5, notifications_sent=1, billable_unit=3)
+    resp = admin_request.get(
+        'platform_stats.daily_sms_provider_volumes_report',
+        start_date='2022-03-01',
+        end_date='2022-03-01'
+    )
+
+    assert len(resp) == 1
+    assert resp[0] == {
+        'day': '2022-03-01',
+        'provider': 'foo',
+        'sms_totals': 1,
+        'sms_fragment_totals': 3,
+        'sms_chargeable_units': 3,
+        'sms_cost': 4.5,
+    }

@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
     fetch_billing_details_for_all_services,
+    fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
     fetch_letter_costs_and_totals_for_all_services,
     fetch_letter_line_items_for_all_services,
@@ -157,6 +158,27 @@ def daily_volumes_report():
             "email_totals": int(row.email_totals),
             "letter_totals": int(row.letter_totals),
             "letter_sheet_totals": int(row.letter_sheet_totals)
+        })
+    return jsonify(report)
+
+
+@platform_stats_blueprint.route('daily-sms-provider-volumes-report')
+def daily_sms_provider_volumes_report():
+    start_date = validate_date_format(request.args.get('start_date'))
+    end_date = validate_date_format(request.args.get('end_date'))
+
+    daily_volumes = fetch_daily_sms_provider_volumes_for_platform(start_date, end_date)
+    report = []
+
+    for row in daily_volumes:
+        report.append({
+            'day': row.bst_date.isoformat(),
+            'provider': row.provider,
+            'sms_totals': int(row.sms_totals),
+            'sms_fragment_totals': int(row.sms_fragment_totals),
+            'sms_chargeable_units': int(row.sms_chargeable_units),
+            # convert from Decimal to float as it's not json serialisable
+            'sms_cost': float(row.sms_cost),
         })
     return jsonify(report)
 
