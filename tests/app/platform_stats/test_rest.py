@@ -48,8 +48,7 @@ def test_get_platform_stats_validates_the_date(admin_request):
         _expected_status=400
     )
 
-    assert response['errors'][0]['message'] == 'start_date time data {} does not match format %Y-%m-%d'.format(
-        start_date)
+    assert response['errors'][0]['message'] == 'start_date month must be in 1..12'
 
 
 @freeze_time('2018-10-31 14:00')

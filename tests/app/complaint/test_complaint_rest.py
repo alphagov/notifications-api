@@ -87,5 +87,4 @@ def test_get_complaint_with_invalid_data_returns_400_status_code(client):
     )
 
     assert response.status_code == 400
-    assert response.json['errors'][0]['message'] == 'start_date time data {} does not match format %Y-%m-%d'.format(
-        start_date)
+    assert response.json['errors'][0]['message'] == 'start_date month must be in 1..12'
