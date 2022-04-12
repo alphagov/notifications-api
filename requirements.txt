@@ -11,9 +11,7 @@ amqp==5.0.9
 attrs==21.2.0
     # via jsonschema
 awscli==1.21.4
-    # via
-    #   awscli-cwlogs
-    #   notifications-utils
+    # via awscli-cwlogs
 awscli-cwlogs==1.4.6
     # via -r requirements.in
 bcrypt==3.2.0
@@ -148,7 +146,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==6.3.0
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@53.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@55.1.4
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
