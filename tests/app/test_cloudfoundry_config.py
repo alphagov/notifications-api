@@ -10,20 +10,13 @@ from app.cloudfoundry_config import (
 
 
 @pytest.fixture
-def postgres_config():
-    return [
-        {
+def cloudfoundry_config():
+    return {
+        'postgres': [{
             'credentials': {
                 'uri': 'postgres uri'
             }
-        }
-    ]
-
-
-@pytest.fixture
-def cloudfoundry_config(postgres_config):
-    return {
-        'postgres': postgres_config,
+        }],
         'user-provided': []
     }
 
