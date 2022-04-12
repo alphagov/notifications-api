@@ -24,7 +24,7 @@ def test_send_sms(fake_client, mocker):
         content='content',
         reference='reference',
         international=False,
-        sender=None,
+        sender='testing',
     )
 
     mock_send.assert_called_with(
@@ -45,22 +45,3 @@ def test_send_sms_error(fake_client, mocker):
             international=False,
             sender=None,
         )
-
-
-def test_send_sms_override_configured_shortcode_with_sender(
-    fake_client,
-    mocker
-):
-    mock_send = mocker.patch.object(fake_client, 'try_send_sms')
-
-    fake_client.send_sms(
-        to='to',
-        content='content',
-        reference='reference',
-        international=False,
-        sender='sender'
-    )
-
-    mock_send.assert_called_with(
-        'to', 'content', 'reference', False, 'sender'
-    )
