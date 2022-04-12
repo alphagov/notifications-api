@@ -7,7 +7,10 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app import create_random_identifier
 from app.config import QueueNames
-from app.dao.notifications_dao import _update_notification_status
+from app.dao.notifications_dao import (
+    _update_notification_status,
+    get_notification_by_id,
+)
 from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.dao.services_dao import dao_fetch_service_by_id
@@ -166,15 +169,20 @@ def send_pdf_letter_notification(service_id, post_data):
         allow_guest_list_recipients=False,
     )
 
+    # notification already exists e.g. if the user clicked send in different tabs
+    if get_notification_by_id(post_data['file_id']):
+        return {'id': str(post_data['file_id'])}
+
     template = get_precompiled_letter_template(service.id)
     file_location = 'service-{}/{}.pdf'.format(service.id, post_data['file_id'])
 
     try:
         letter = utils_s3download(current_app.config['TRANSIENT_UPLOADED_LETTERS'], file_location)
     except S3ObjectNotFound as e:
-        current_app.logger.exception('Letter {}.pdf not in transient {} bucket'.format(
+        current_app.logger.warning('Letter {}.pdf not in transient {} bucket'.format(
             post_data['file_id'], current_app.config['TRANSIENT_UPLOADED_LETTERS'])
         )
+
         raise e
 
     # Getting the page count won't raise an error since admin has already checked the PDF is valid

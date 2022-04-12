@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from freezegun import freeze_time
 from notifications_utils.s3 import S3ObjectNotFound
@@ -11,18 +9,27 @@ from app.v2.errors import BadRequestError, TooManyRequestsError
 from tests.app.db import create_service
 
 
+@pytest.fixture
+def post_data(sample_service_full_permissions, fake_uuid):
+    return {
+        'filename': 'valid.pdf',
+        'created_by': sample_service_full_permissions.users[0].id,
+        'file_id': fake_uuid,
+        'postage': 'second',
+        'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'
+    }
+
+
 @pytest.mark.parametrize('permissions', [
     [EMAIL_TYPE],
     [UPLOAD_LETTERS],
 ])
 def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_permission(
     notify_db_session,
-    fake_uuid,
     permissions,
+    post_data,
 ):
     service = create_service(service_permissions=permissions)
-    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(service.id, post_data)
@@ -31,23 +38,22 @@ def test_send_pdf_letter_notification_raises_error_if_service_does_not_have_perm
 def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_message_limit(
     mocker,
     sample_service_full_permissions,
-    fake_uuid,
+    post_data,
 ):
     mocker.patch(
         'app.service.send_notification.check_service_over_daily_message_limit',
         side_effect=TooManyRequestsError(10))
-    post_data = {'filename': 'valid.pdf', 'created_by': fake_uuid, 'file_id': fake_uuid, 'postage': 'first',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(TooManyRequestsError):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
 
 
 def test_send_pdf_letter_notification_validates_created_by(
-    sample_service_full_permissions, fake_uuid, sample_user
+    sample_service_full_permissions,
+    sample_user,
+    post_data
 ):
-    post_data = {'filename': 'valid.pdf', 'created_by': sample_user.id, 'file_id': fake_uuid, 'postage': 'first',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
+    post_data['created_by'] = sample_user.id
 
     with pytest.raises(BadRequestError):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
@@ -56,12 +62,9 @@ def test_send_pdf_letter_notification_validates_created_by(
 def test_send_pdf_letter_notification_raises_error_if_service_in_trial_mode(
     mocker,
     sample_service_full_permissions,
-    fake_uuid,
+    post_data,
 ):
     sample_service_full_permissions.restricted = True
-    user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid,
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
 
     with pytest.raises(BadRequestError) as e:
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
@@ -71,16 +74,26 @@ def test_send_pdf_letter_notification_raises_error_if_service_in_trial_mode(
 def test_send_pdf_letter_notification_raises_error_when_pdf_is_not_in_transient_letter_bucket(
     mocker,
     sample_service_full_permissions,
-    fake_uuid,
     notify_user,
+    post_data,
 ):
-    user = sample_service_full_permissions.users[0]
-    post_data = {'filename': 'valid.pdf', 'created_by': user.id, 'file_id': fake_uuid, 'postage': 'first',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
     mocker.patch('app.service.send_notification.utils_s3download', side_effect=S3ObjectNotFound({}, ''))
 
     with pytest.raises(S3ObjectNotFound):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+
+
+def test_send_pdf_letter_notification_does_nothing_if_notification_already_exists(
+    mocker,
+    sample_service_full_permissions,
+    notify_user,
+    sample_notification,
+    post_data,
+):
+    post_data['file_id'] = sample_notification.id
+    mocker.patch('app.service.send_notification.utils_s3download', side_effect=S3ObjectNotFound({}, ''))
+    response = send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+    assert response['id'] == str(sample_notification.id)
 
 
 @freeze_time("2019-08-02 11:00:00")
@@ -88,32 +101,27 @@ def test_send_pdf_letter_notification_creates_notification_and_moves_letter(
     mocker,
     sample_service_full_permissions,
     notify_user,
+    post_data,
 ):
-    user = sample_service_full_permissions.users[0]
-    filename = 'valid.pdf'
-    file_id = uuid.uuid4()
-    post_data = {'filename': filename, 'created_by': user.id, 'file_id': file_id, 'postage': 'second',
-                 'recipient_address': 'Bugs%20Bunny%0A123%20Main%20Street%0ALooney%20Town'}
-
     mocker.patch('app.service.send_notification.utils_s3download')
     mocker.patch('app.service.send_notification.get_page_count', return_value=1)
     s3_mock = mocker.patch('app.service.send_notification.move_uploaded_pdf_to_letters_bucket')
 
     result = send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+    file_id = post_data['file_id']
 
     notification = get_notification_by_id(file_id)
 
-    assert notification.id == file_id
+    assert str(notification.id) == file_id
     assert notification.api_key_id is None
-    assert notification.client_reference == filename
-    assert notification.created_by_id == user.id
+    assert notification.client_reference == post_data['filename']
+    assert notification.created_by_id == post_data['created_by']
     assert notification.postage == 'second'
     assert notification.notification_type == LETTER_TYPE
     assert notification.billable_units == 1
     assert notification.to == "Bugs Bunny\n123 Main Street\nLooney Town"
 
     assert notification.service_id == sample_service_full_permissions.id
-
     assert result == {'id': str(notification.id)}
 
     s3_mock.assert_called_once_with(
