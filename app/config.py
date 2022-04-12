@@ -546,21 +546,6 @@ class CloudFoundryConfig(Config):
     pass
 
 
-# CloudFoundry sandbox
-class Sandbox(CloudFoundryConfig):
-    NOTIFY_EMAIL_DOMAIN = 'notify.works'
-    NOTIFY_ENVIRONMENT = 'sandbox'
-    CSV_UPLOAD_BUCKET_NAME = 'cf-sandbox-notifications-csv-upload'
-    CONTACT_LIST_BUCKET_NAME = 'cf-sandbox-contact-list'
-    LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
-    TEST_LETTERS_BUCKET_NAME = 'cf-sandbox-test-letters'
-    DVLA_RESPONSE_BUCKET_NAME = 'notify.works-ftp'
-    LETTERS_PDF_BUCKET_NAME = 'cf-sandbox-letters-pdf'
-    LETTERS_SCAN_BUCKET_NAME = 'cf-sandbox-letters-scan'
-    INVALID_PDF_BUCKET_NAME = 'cf-sandbox-letters-invalid-pdf'
-    FROM_NUMBER = 'sandbox'
-
-
 configs = {
     'development': Development,
     'test': Test,
@@ -568,5 +553,4 @@ configs = {
     'production': Live,
     'staging': Staging,
     'preview': Preview,
-    'sandbox': Sandbox
 }
