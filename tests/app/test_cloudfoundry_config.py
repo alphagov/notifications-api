@@ -17,6 +17,11 @@ def cloudfoundry_config():
                 'uri': 'postgres uri'
             }
         }],
+        'redis': [{
+            'credentials': {
+                'uri': 'redis uri'
+            }
+        }],
         'user-provided': []
     }
 
@@ -31,6 +36,7 @@ def test_extract_cloudfoundry_config_populates_other_vars(cloudfoundry_config, v
     extract_cloudfoundry_config()
 
     assert os.environ['SQLALCHEMY_DATABASE_URI'] == 'postgresql uri'
+    assert os.environ['REDIS_URL'] == 'redis uri'
     assert os.environ['NOTIFY_ENVIRONMENT'] == '🚀🌌'
     assert os.environ['NOTIFY_LOG_PATH'] == '/home/vcap/logs/app.log'
 
@@ -45,3 +51,9 @@ def test_set_config_env_vars_ignores_unknown_configs(cloudfoundry_config, vcap_a
 
     assert 'foo' not in os.environ
     assert 'bar' not in os.environ
+
+
+def test_set_config_env_vars_copes_if_redis_not_set(cloudfoundry_config, vcap_application):
+    del cloudfoundry_config['redis']
+    set_config_env_vars(cloudfoundry_config)
+    assert 'REDIS_URL' not in os.environ
