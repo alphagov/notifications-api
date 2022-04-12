@@ -675,6 +675,7 @@ def create_organisation(
     billing_contact_names=None,
     billing_contact_email_addresses=None,
     billing_reference=None,
+    email_branding_id=None,
 ):
     data = {
         'id': organisation_id,
@@ -685,6 +686,7 @@ def create_organisation(
         'billing_contact_names': billing_contact_names,
         'billing_contact_email_addresses': billing_contact_email_addresses,
         'billing_reference': billing_reference,
+        'email_branding_id': email_branding_id
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)

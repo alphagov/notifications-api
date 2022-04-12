@@ -178,14 +178,16 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
         _expected_status=201
     )
 
-    organisation = Organisation.query.all()
+    organisations = Organisation.query.all()
 
     assert data['name'] == response['name']
     assert data['active'] == response['active']
     assert data['crown'] == response['crown']
     assert data['organisation_type'] == response['organisation_type']
 
-    assert len(organisation) == 1
+    assert len(organisations) == 1
+    # check that for non-nhs orgs, default branding is not set
+    assert organisations[0].email_branding_id is None
 
 
 @pytest.mark.parametrize('org_type', ["nhs_central", "nhs_local", "nhs_gp"])
@@ -208,18 +210,13 @@ def test_post_create_organisation_sets_default_nhs_branding_for_nhs_orgs(
         'organisation_type': org_type,
     }
 
-    response = admin_request.post(
+    admin_request.post(
         'organisation.create_organisation',
         _data=data,
         _expected_status=201
     )
 
     organisations = Organisation.query.all()
-
-    assert data['name'] == response['name']
-    assert data['active'] == response['active']
-    assert data['crown'] == response['crown']
-    assert data['organisation_type'] == response['organisation_type']
 
     assert len(organisations) == 1
     assert organisations[0].email_branding_id == uuid.UUID(nhs_email_branding_id)
@@ -380,6 +377,80 @@ def test_update_other_organisation_attributes_doesnt_clear_domains(
     ] == [
         'example.gov.uk'
     ]
+
+
+@pytest.mark.parametrize('new_org_type', ["nhs_central", "nhs_local", "nhs_gp"])
+def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
+    admin_request,
+    notify_db_session,
+    new_org_type
+):
+    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
+    # that is normally present on all environments and applied through migration
+    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
+    create_email_branding(
+        id=nhs_email_branding_id,
+        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
+        name='NHS'
+    )
+
+    org = create_organisation(organisation_type='central')
+    data = {
+        'organisation_type': new_org_type,
+    }
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    organisation = Organisation.query.all()
+
+    assert len(organisation) == 1
+    assert organisation[0].id == org.id
+    assert organisation[0].organisation_type == new_org_type
+    assert organisation[0].email_branding_id == uuid.UUID(nhs_email_branding_id)
+
+
+@pytest.mark.parametrize('new_org_type', ["nhs_central", "nhs_local", "nhs_gp"])
+def test_post_update_organisation_to_nhs_type_does_not_update_branding_if_default_branding_set(
+    admin_request,
+    notify_db_session,
+    new_org_type
+):
+    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
+    # that is normally present on all environment and applied through migration
+    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
+    create_email_branding(
+        id=nhs_email_branding_id,
+        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
+        name='NHS'
+    )
+
+    current_branding = create_email_branding(
+        logo='example.png',
+        name='custom branding'
+    )
+    org = create_organisation(organisation_type='central', email_branding_id=current_branding.id)
+    data = {
+        'organisation_type': new_org_type,
+    }
+
+    admin_request.post(
+        'organisation.update_organisation',
+        _data=data,
+        organisation_id=org.id,
+        _expected_status=204
+    )
+
+    organisation = Organisation.query.all()
+
+    assert len(organisation) == 1
+    assert organisation[0].id == org.id
+    assert organisation[0].organisation_type == new_org_type
+    assert organisation[0].email_branding_id == current_branding.id
 
 
 def test_update_organisation_default_branding(
