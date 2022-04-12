@@ -169,6 +169,10 @@ def send_pdf_letter_notification(service_id, post_data):
         allow_guest_list_recipients=False,
     )
 
+    # notification already exists e.g. if the user clicked send in different tabs
+    if get_notification_by_id(post_data['file_id']):
+        return {'id': str(post_data['file_id'])}
+
     template = get_precompiled_letter_template(service.id)
     file_location = 'service-{}/{}.pdf'.format(service.id, post_data['file_id'])
 
@@ -178,10 +182,6 @@ def send_pdf_letter_notification(service_id, post_data):
         current_app.logger.warning('Letter {}.pdf not in transient {} bucket'.format(
             post_data['file_id'], current_app.config['TRANSIENT_UPLOADED_LETTERS'])
         )
-
-        # notification already exists e.g. if the user clicked send in different tabs
-        if get_notification_by_id(post_data['file_id']):
-            return {'id': str(post_data['file_id'])}
 
         raise e
 
