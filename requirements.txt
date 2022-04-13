@@ -172,7 +172,7 @@ pyjwt==2.3.0
     #   notifications-python-client
 pyparsing==3.0.8
     # via packaging
-pypdf2==1.26.0
+pypdf2==1.27.4
     # via notifications-utils
 pyproj==3.2.1
     # via notifications-utils
