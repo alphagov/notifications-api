@@ -14,19 +14,13 @@
       "type": "string",
       "enum": ["email"]
     },
-    "created_at": {"$ref": "definitions.json#/datetime"},
-    "sent_at": {"oneOf":[
-      {"$ref": "definitions.json#/datetime"},
-      {"type": "null"}
-    ]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "sent_at": {"type": ["string", "null"], "format": "date-time"},
     "sent_by": {"oneOf":[
       {"type": "string"},
       {"type": "null"}
     ]},
-    "updated_at": {"oneOf":[
-      {"$ref": "definitions.json#/datetime"},
-      {"type": "null"}
-    ]},
+    "updated_at": {"type": ["string", "null"], "format": "date-time"},
     "status": {
       "type": "string",
       "enum": [
