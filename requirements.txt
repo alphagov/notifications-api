@@ -125,7 +125,7 @@ jmespath==1.0.0
     #   botocore
 jsonschema==4.4.0
     # via -r requirements.in
-kombu==5.2.3
+kombu==5.2.4
     # via celery
 lxml==4.8.0
     # via -r requirements.in
