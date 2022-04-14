@@ -82,7 +82,7 @@ flask==2.1.1
     #   flask-redis
     #   gds-metrics
     #   notifications-utils
-flask-bcrypt==0.7.1
+flask-bcrypt==1.0.1
     # via -r requirements.in
 flask-marshmallow==0.14.0
     # via -r requirements.in
