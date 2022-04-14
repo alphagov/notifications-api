@@ -248,5 +248,5 @@ WINDEMERE = """
 """
 
 LONG_GSM7 = WITH_PLACEHOLDER_FOR_CONTENT.format('a' * 1396)
-LONG_UCS2 = WITH_PLACEHOLDER_FOR_CONTENT.format('ŵ' * 616)
+LONG_UCS2 = WITH_PLACEHOLDER_FOR_CONTENT.format('ŵyl' * 205 + 'a')
 MISSING_AREA_NAMES = re.sub("<areaDesc>.*</areaDesc>", "<areaDesc> </areaDesc>", WAINFLEET)
