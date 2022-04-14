@@ -31,11 +31,11 @@ botocore==1.22.4
     #   awscli
     #   boto3
     #   s3transfer
-cachetools==4.2.1
+cachetools==5.0.0
     # via
     #   -r requirements.in
     #   notifications-utils
-celery[sqs]==5.2.3
+celery[sqs]==5.2.6
     # via -r requirements.in
 certifi==2021.10.8
     # via
@@ -73,7 +73,7 @@ docutils==0.15.2
     # via awscli
 eventlet==0.33.0
     # via gunicorn
-flask==2.1.0
+flask==2.1.1
     # via
     #   -r requirements.in
     #   flask-bcrypt
@@ -82,7 +82,7 @@ flask==2.1.0
     #   flask-redis
     #   gds-metrics
     #   notifications-utils
-flask-bcrypt==0.7.1
+flask-bcrypt==1.0.1
     # via -r requirements.in
 flask-marshmallow==0.14.0
     # via -r requirements.in
@@ -154,7 +154,7 @@ packaging==21.0
     # via bleach
 phonenumbers==8.12.36
     # via notifications-utils
-prometheus-client==0.10.1
+prometheus-client==0.14.1
     # via
     #   -r requirements.in
     #   gds-metrics
@@ -224,7 +224,7 @@ smartypants==2.0.1
     # via notifications-utils
 soupsieve==2.2.1
     # via beautifulsoup4
-sqlalchemy==1.4.32
+sqlalchemy==1.4.35
     # via
     #   -r requirements.in
     #   alembic
