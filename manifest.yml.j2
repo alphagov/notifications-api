@@ -99,6 +99,7 @@ applications:
 
     services:
       - notify-db
+      - notify-redis
       - logit-ssl-syslog-drain
       {% if CF_APP == 'notify-api' %}
       - notify-prometheus
@@ -144,7 +145,6 @@ applications:
       FIRETEXT_INBOUND_SMS_AUTH: '{{ FIRETEXT_INBOUND_SMS_AUTH | tojson }}'
 
       REDIS_ENABLED: '{{ REDIS_ENABLED }}'
-      REDIS_URL: '{{ REDIS_URL }}'
 
       TEMPLATE_PREVIEW_API_HOST: '{{ TEMPLATE_PREVIEW_API_HOST }}'
       TEMPLATE_PREVIEW_API_KEY: '{{ TEMPLATE_PREVIEW_API_KEY }}'
