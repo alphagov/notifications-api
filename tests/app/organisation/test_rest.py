@@ -192,17 +192,8 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
 
 @pytest.mark.parametrize('org_type', ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_create_organisation_sets_default_nhs_branding_for_nhs_orgs(
-    admin_request, notify_db_session, org_type
+    admin_request, notify_db_session, nhs_email_branding, org_type
 ):
-    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
-    # that is normally present on all environments and applied through migration
-    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
-    create_email_branding(
-        id=nhs_email_branding_id,
-        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
-        name='NHS'
-    )
-
     data = {
         'name': 'test organisation',
         'active': True,
@@ -219,7 +210,7 @@ def test_post_create_organisation_sets_default_nhs_branding_for_nhs_orgs(
     organisations = Organisation.query.all()
 
     assert len(organisations) == 1
-    assert organisations[0].email_branding_id == uuid.UUID(nhs_email_branding_id)
+    assert organisations[0].email_branding_id == uuid.UUID(current_app.config['NHS_EMAIL_BRANDING_ID'])
 
 
 def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
@@ -382,18 +373,10 @@ def test_update_other_organisation_attributes_doesnt_clear_domains(
 @pytest.mark.parametrize('new_org_type', ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
     admin_request,
+    nhs_email_branding,
     notify_db_session,
     new_org_type
 ):
-    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
-    # that is normally present on all environments and applied through migration
-    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
-    create_email_branding(
-        id=nhs_email_branding_id,
-        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
-        name='NHS'
-    )
-
     org = create_organisation(organisation_type='central')
     data = {
         'organisation_type': new_org_type,
@@ -411,24 +394,16 @@ def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
     assert len(organisation) == 1
     assert organisation[0].id == org.id
     assert organisation[0].organisation_type == new_org_type
-    assert organisation[0].email_branding_id == uuid.UUID(nhs_email_branding_id)
+    assert organisation[0].email_branding_id == uuid.UUID(current_app.config['NHS_EMAIL_BRANDING_ID'])
 
 
 @pytest.mark.parametrize('new_org_type', ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_update_organisation_to_nhs_type_does_not_update_branding_if_default_branding_set(
     admin_request,
+    nhs_email_branding,
     notify_db_session,
     new_org_type
 ):
-    # we wipe email_branding table in test db between the tests, so we have to recreate this branding
-    # that is normally present on all environment and applied through migration
-    nhs_email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
-    create_email_branding(
-        id=nhs_email_branding_id,
-        logo='1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png',
-        name='NHS'
-    )
-
     current_branding = create_email_branding(
         logo='example.png',
         name='custom branding'
