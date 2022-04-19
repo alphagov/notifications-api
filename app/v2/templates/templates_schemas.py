@@ -4,7 +4,7 @@ from app.v2.template.template_schemas import (
 )
 
 get_all_template_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "request schema for parameters allowed when getting all templates",
     "type": "object",
     "properties": {
@@ -14,7 +14,7 @@ get_all_template_request = {
 }
 
 get_all_template_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET response schema when getting all templates",
     "type": "object",
     "properties": {

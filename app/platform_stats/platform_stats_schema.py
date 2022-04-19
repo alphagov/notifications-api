@@ -1,5 +1,5 @@
 platform_stats_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "platform stats request schema",
     "type": "object",
     "title": "Platform stats request",

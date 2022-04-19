@@ -1,5 +1,5 @@
 send_pdf_letter_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST send uploaded pdf letter",
     "type": "object",
     "title": "Send an uploaded pdf letter",

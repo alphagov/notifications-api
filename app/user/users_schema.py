@@ -1,5 +1,5 @@
 post_verify_code_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST schema for verifying a 2fa code',
     'type': 'object',
     'properties': {
@@ -12,7 +12,7 @@ post_verify_code_schema = {
 
 
 post_verify_webauthn_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST schema for verifying a webauthn login attempt',
     'type': 'object',
     'properties': {
@@ -24,7 +24,7 @@ post_verify_webauthn_schema = {
 
 
 post_send_user_email_code_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': (
         'POST schema for generating a 2fa email - "to" is required for legacy purposes. '
         '"next" is an optional url to redirect to on sign in'
@@ -43,7 +43,7 @@ post_send_user_email_code_schema = {
 
 
 post_send_user_sms_code_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST schema for generating a 2fa sms',
     'type': 'object',
     'properties': {

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 create_or_update_free_sms_fragment_limit_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST annual billing schema",
     "type": "object",
     "title": "Create",

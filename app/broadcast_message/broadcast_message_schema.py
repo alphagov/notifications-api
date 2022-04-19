@@ -2,7 +2,7 @@ from app.models import BroadcastStatusType
 from app.schema_validation.definitions import uuid
 
 create_broadcast_message_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST create broadcast_message schema',
     'type': 'object',
     'title': 'Create broadcast_message',
@@ -32,7 +32,7 @@ create_broadcast_message_schema = {
 }
 
 update_broadcast_message_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST update broadcast_message schema',
     'type': 'object',
     'title': 'Update broadcast_message',
@@ -47,7 +47,7 @@ update_broadcast_message_schema = {
 }
 
 update_broadcast_message_status_schema = {
-    '$schema': 'http://json-schema.org/draft-04/schema#',
+    '$schema': 'http://json-schema.org/draft-07/schema#',
     'description': 'POST update broadcast_message status schema',
     'type': 'object',
     'title': 'Update broadcast_message',

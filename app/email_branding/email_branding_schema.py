@@ -1,7 +1,7 @@
 from app.models import BRANDING_TYPES
 
 post_create_email_branding_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for getting email_branding",
     "type": "object",
     "properties": {
@@ -15,7 +15,7 @@ post_create_email_branding_schema = {
 }
 
 post_update_email_branding_schema = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for getting email_branding",
     "type": "object",
     "properties": {

@@ -2,7 +2,7 @@ from app.models import TEMPLATE_TYPES
 from app.schema_validation.definitions import personalisation, uuid
 
 get_template_by_id_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "schema for parameters allowed when getting template by id",
     "type": "object",
     "properties": {
@@ -14,7 +14,7 @@ get_template_by_id_request = {
 }
 
 get_template_by_id_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET template by id schema response",
     "type": "object",
     "title": "reponse v2/template",
@@ -42,7 +42,7 @@ get_template_by_id_response = {
 }
 
 post_template_preview_request = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST template schema",
     "type": "object",
     "title": "POST v2/template/{id}/preview",
@@ -54,7 +54,7 @@ post_template_preview_request = {
 }
 
 post_template_preview_response = {
-    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST template preview schema response",
     "type": "object",
     "title": "reponse v2/template/{id}/preview",
