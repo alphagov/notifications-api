@@ -502,13 +502,17 @@ def create_service_callback_api(
     return service_callback_api
 
 
-def create_email_branding(colour='blue', logo='test_x2.png', name='test_org_1', text='DisplayName'):
+def create_email_branding(
+    id=None, colour='blue', logo='test_x2.png', name='test_org_1', text='DisplayName'
+):
     data = {
         'colour': colour,
         'logo': logo,
         'name': name,
         'text': text,
     }
+    if id:
+        data['id'] = id
     email_branding = EmailBranding(**data)
     dao_create_email_branding(email_branding)
 
@@ -671,6 +675,7 @@ def create_organisation(
     billing_contact_names=None,
     billing_contact_email_addresses=None,
     billing_reference=None,
+    email_branding_id=None,
 ):
     data = {
         'id': organisation_id,
@@ -681,6 +686,7 @@ def create_organisation(
         'billing_contact_names': billing_contact_names,
         'billing_contact_email_addresses': billing_contact_email_addresses,
         'billing_reference': billing_reference,
+        'email_branding_id': email_branding_id
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)

@@ -22,7 +22,7 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
-from app.models import KEY_TYPE_NORMAL, Organisation
+from app.models import KEY_TYPE_NORMAL, NHS_ORGANISATION_TYPES, Organisation
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -93,6 +93,9 @@ def create_organisation():
 
     validate(data, post_create_organisation_schema)
 
+    if data["organisation_type"] in NHS_ORGANISATION_TYPES:
+        data["email_branding_id"] = current_app.config['NHS_EMAIL_BRANDING_ID']
+
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
     return jsonify(organisation.serialize()), 201
@@ -102,6 +105,12 @@ def create_organisation():
 def update_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_update_organisation_schema)
+
+    organisation = dao_get_organisation_by_id(organisation_id)
+
+    if data.get('organisation_type') in NHS_ORGANISATION_TYPES and not organisation.email_branding_id:
+        data["email_branding_id"] = current_app.config['NHS_EMAIL_BRANDING_ID']
+
     result = dao_update_organisation(organisation_id, **data)
 
     if data.get('agreement_signed') is True:
