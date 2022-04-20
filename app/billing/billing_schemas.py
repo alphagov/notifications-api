@@ -17,7 +17,9 @@ def serialize_ft_billing_remove_emails(rows):
         {
             "month": (datetime.strftime(row.month, "%B")),
             "notification_type": row.notification_type,
+            # TEMPORARY: while we migrate to "chargeable_units" in the Admin app
             "billing_units": row.billable_units,
+            "chargeable_units": row.chargeable_units,
             "rate": float(row.rate),
             "postage": row.postage,
         }

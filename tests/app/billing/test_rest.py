@@ -147,6 +147,8 @@ def set_up_monthly_data():
                               billable_unit=1,
                               rate=0.33,
                               postage='second')
+
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=4, financial_year_start=2016)
     return service
 
 
@@ -170,12 +172,14 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert letter_row["month"] == "April"
     assert letter_row["notification_type"] == "letter"
     assert letter_row["billing_units"] == 30
+    assert letter_row["chargeable_units"] == 30
     assert letter_row["rate"] == 0.33
     assert letter_row["postage"] == "second"
 
     assert sms_row["month"] == "April"
     assert sms_row["notification_type"] == "sms"
     assert sms_row["billing_units"] == 30
+    assert sms_row["chargeable_units"] == 30
     assert sms_row["rate"] == 0.162
     assert sms_row["postage"] == "none"
 
