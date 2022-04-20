@@ -23,6 +23,7 @@ def serialize_ft_billing_remove_emails(rows):
             "notifications_sent": row.notifications_sent,
             "rate": float(row.rate),
             "postage": row.postage,
+            "cost": float(row.cost),
         }
         for row in rows
         if row.notification_type != 'email'
@@ -38,7 +39,9 @@ def serialize_ft_billing_yearly_totals(rows):
             "chargeable_units": row.chargeable_units,
             "notifications_sent": row.notifications_sent,
             "rate": float(row.rate),
+            # TEMPORARY: while we migrate to "cost" in the Admin app
             "letter_total": float(row.billable_units * row.rate) if row.notification_type == 'letter' else 0,
+            "cost": float(row.cost),
         }
         for row in rows
     ]
