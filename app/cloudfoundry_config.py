@@ -9,5 +9,4 @@ def extract_cloudfoundry_config():
     os.environ['SQLALCHEMY_DATABASE_URI'] = vcap_services['postgres'][0]['credentials']['uri'].replace('postgres',
                                                                                                        'postgresql')
     # Redis config
-    if 'redis' in vcap_services:
-        os.environ['REDIS_URL'] = vcap_services['redis'][0]['credentials']['uri']
+    os.environ['REDIS_URL'] = vcap_services['redis'][0]['credentials']['uri']
