@@ -30,7 +30,9 @@ def serialize_ft_billing_yearly_totals(rows):
     return [
         {
             "notification_type": row.notification_type,
+            # TEMPORARY: while we migrate to "chargeable_units" in the Admin app
             "billing_units": row.billable_units,
+            "chargeable_units": row.chargeable_units,
             "rate": float(row.rate),
             "letter_total": float(row.billable_units * row.rate) if row.notification_type == 'letter' else 0,
         }

@@ -201,7 +201,9 @@ def fetch_billing_totals_for_year(service_id, year):
         union(*[
             db.session.query(
                 func.sum(query.c.notifications_sent).label("notifications_sent"),
+                # TEMPORARY: while we switch to "chargeable units"
                 func.sum(query.c.chargeable_units).label("billable_units"),
+                func.sum(query.c.chargeable_units).label("chargeable_units"),
                 query.c.rate.label("rate"),
                 query.c.notification_type.label("notification_type"),
             ).group_by(

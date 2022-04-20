@@ -240,15 +240,21 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     )
 
     assert len(json_response) == 3
+
     assert json_response[0]['notification_type'] == 'email'
     assert json_response[0]['billing_units'] == 275
+    assert json_response[0]['chargeable_units'] == 275
     assert json_response[0]['rate'] == 0
     assert json_response[0]['letter_total'] == 0
+
     assert json_response[1]['notification_type'] == 'letter'
     assert json_response[1]['billing_units'] == 275
+    assert json_response[1]['chargeable_units'] == 275
     assert json_response[1]['rate'] == 0.33
     assert json_response[1]['letter_total'] == 90.75
+
     assert json_response[2]['notification_type'] == 'sms'
     assert json_response[2]['billing_units'] == 825
+    assert json_response[2]['chargeable_units'] == 825
     assert json_response[2]['rate'] == 0.0162
     assert json_response[2]['letter_total'] == 0
