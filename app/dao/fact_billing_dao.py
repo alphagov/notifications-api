@@ -206,6 +206,7 @@ def fetch_billing_totals_for_year(service_id, year):
                 func.sum(query.c.chargeable_units).label("chargeable_units"),
                 query.c.rate.label("rate"),
                 query.c.notification_type.label("notification_type"),
+                func.sum(query.c.cost).label("cost"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type
@@ -287,6 +288,7 @@ def query_service_email_usage_for_year(service_id, year):
         FactBilling.notifications_sent.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        literal(0).label("cost"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -303,6 +305,7 @@ def query_service_letter_usage_for_year(service_id, year):
         FactBilling.notifications_sent.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        (FactBilling.notifications_sent * FactBilling.rate).label("cost"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -315,16 +318,44 @@ def query_service_sms_usage_for_year(service_id, year):
     year_start, year_end = get_financial_year_dates(year)
     chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
 
+    # Subquery for the number of chargeable units in all rows preceding this one,
+    # which might be none if this is the first row (hence the "coalesce").
+    cumulative_chargeable_units = func.coalesce(
+        func.sum(chargeable_units).over(
+            order_by=[
+                FactBilling.bst_date,  # order is "ASC" by default
+                FactBilling.rate  # ensures test stability for rows on the same day
+            ],
+            rows=(None, -1)  # ROWS BETWEEN UNBOUNDED PRECEDING AND 1 ROW PRECEDING
+        ),
+        literal(0)
+    )
+
+    # Subquery for how much free allowance we have left before the current row,
+    # so we can work out the cost for this row after taking it into account.
+    cumulative_free_remainder = func.greatest(
+        AnnualBilling.free_sms_fragment_limit - cumulative_chargeable_units,
+        0
+    )
+
     return db.session.query(
         FactBilling.notifications_sent,
         chargeable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        (
+            func.greatest(chargeable_units - cumulative_free_remainder, literal(0)) *
+            FactBilling.rate
+        ).label("cost")
+    ).outerjoin(
+        AnnualBilling,
+        AnnualBilling.service_id == service_id
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
-        FactBilling.notification_type == SMS_TYPE
+        FactBilling.notification_type == SMS_TYPE,
+        AnnualBilling.financial_year_start == year,
     )
 
 

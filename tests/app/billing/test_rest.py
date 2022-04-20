@@ -185,6 +185,7 @@ def set_up_yearly_data():
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
+
     for month in range(1, 13):
         mon = str(month).zfill(2)
         for day in range(1, monthrange(2016, month)[1] + 1):
@@ -205,6 +206,8 @@ def set_up_yearly_data():
                               rate=0.33,
                               postage='second')
         start_date, end_date = get_month_start_and_end_date_in_utc(datetime(2016, int(mon), 1))
+
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=4, financial_year_start=2016)
     return service
 
 
@@ -246,15 +249,18 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     assert json_response[0]['chargeable_units'] == 275
     assert json_response[0]['rate'] == 0
     assert json_response[0]['letter_total'] == 0
+    assert json_response[0]['cost'] == 0
 
     assert json_response[1]['notification_type'] == 'letter'
     assert json_response[1]['billing_units'] == 275
     assert json_response[1]['chargeable_units'] == 275
     assert json_response[1]['rate'] == 0.33
     assert json_response[1]['letter_total'] == 90.75
+    assert json_response[1]['cost'] == 90.75
 
     assert json_response[2]['notification_type'] == 'sms'
     assert json_response[2]['billing_units'] == 825
     assert json_response[2]['chargeable_units'] == 825
     assert json_response[2]['rate'] == 0.0162
     assert json_response[2]['letter_total'] == 0
+    assert json_response[2]['cost'] == 13.3002
