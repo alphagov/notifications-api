@@ -220,7 +220,9 @@ def fetch_billing_totals_for_year(service_id, year):
                 query.c.rate.label("rate"),
 
                 func.sum(query.c.notifications_sent).label("notifications_sent"),
+                # TEMPORARY: while we migrate away from "billing_units"
                 func.sum(query.c.billable_units).label("billable_units"),
+                func.sum(query.c.chargeable_units).label("chargeable_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type
@@ -275,7 +277,9 @@ def fetch_monthly_billing_for_year(service_id, year):
                 func.date_trunc('month', query.c.bst_date).cast(Date).label("month"),
 
                 func.sum(query.c.notifications_sent).label("notifications_sent"),
+                # TEMPORARY: while we migrate away from "billing_units"
                 func.sum(query.c.billable_units).label("billable_units"),
+                func.sum(query.c.chargeable_units).label("chargeable_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type,
@@ -302,7 +306,9 @@ def query_service_email_usage_for_year(service_id, year):
         FactBilling.bst_date,
         FactBilling.postage,  # should always be "none"
         FactBilling.notifications_sent,
+        # TEMPORARY: while we migrate away from "billing_units"
         FactBilling.notifications_sent.label("billable_units"),
+        FactBilling.billable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
     ).filter(
@@ -320,7 +326,12 @@ def query_service_letter_usage_for_year(service_id, year):
         FactBilling.bst_date,
         FactBilling.postage,
         FactBilling.notifications_sent,
+        # TEMPORARY: while we migrate away from "billing_units"
         FactBilling.notifications_sent.label("billable_units"),
+        # We can't use billable_units here as it represents the
+        # sheet count for letters, which is already accounted for
+        # in the rate. We actually charge per letter, not sheet.
+        FactBilling.notifications_sent.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
     ).filter(
@@ -339,7 +350,9 @@ def query_service_sms_usage_for_year(service_id, year):
         FactBilling.bst_date,
         FactBilling.postage,  # should always be "none"
         FactBilling.notifications_sent,
+        # TEMPORARY: while we migrate away from "billing_units"
         chargeable_units.label("billable_units"),
+        chargeable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
     ).filter(
