@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
-from sqlalchemy import Date, Integer, and_, desc, func
+from sqlalchemy import Date, Integer, and_, desc, func, union
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql.expression import case, literal
 
@@ -197,55 +197,67 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
 
 
 def fetch_billing_totals_for_year(service_id, year):
-    year_start, year_end = get_financial_year_dates(year)
     """
-      Billing for email: only record the total number of emails.
-      Billing for letters: The billing units is used to fetch the correct rate for the sheet count of the letter.
-      Total cost is notifications_sent * rate.
-      Rate multiplier does not apply to email or letters.
-    """
-    email_and_letters = db.session.query(
-        func.sum(FactBilling.notifications_sent).label("notifications_sent"),
-        func.sum(FactBilling.notifications_sent).label("billable_units"),
-        FactBilling.rate.label('rate'),
-        FactBilling.notification_type.label('notification_type')
-    ).filter(
-        FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start,
-        FactBilling.bst_date <= year_end,
-        FactBilling.notification_type.in_([EMAIL_TYPE, LETTER_TYPE])
-    ).group_by(
-        FactBilling.rate,
-        FactBilling.notification_type
-    )
-    """
-    Billing for SMS using the billing_units * rate_multiplier. Billing unit of SMS is the fragment count of a message
-    """
-    sms = db.session.query(
-        func.sum(FactBilling.notifications_sent).label("notifications_sent"),
-        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("billable_units"),
-        FactBilling.rate,
-        FactBilling.notification_type
-    ).filter(
-        FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start,
-        FactBilling.bst_date <= year_end,
-        FactBilling.notification_type == SMS_TYPE
-    ).group_by(
-        FactBilling.rate,
-        FactBilling.notification_type
-    )
+    Returns a row for each distinct rate and notification_type from ft_billing
+    over the specified financial year e.g.
 
-    yearly_data = email_and_letters.union_all(sms).order_by(
-        'notification_type',
-        'rate'
+        (
+            rate=0.0165,
+            notification_type=sms,
+            notifications_sent=123,
+            ...
+        )
+
+    The "query_service_<type>..." subqueries for each notification_type all
+    return the same columns but differ internally e.g. SMS has to incorporate
+    a rate multiplier. Each subquery returns the same set of columns, which we
+    pick from here before the big union.
+    """
+    return db.session.query(
+        union(*[
+            db.session.query(
+                query.c.notification_type.label("notification_type"),
+                query.c.rate.label("rate"),
+
+                func.sum(query.c.notifications_sent).label("notifications_sent"),
+                func.sum(query.c.billable_units).label("billable_units"),
+            ).group_by(
+                query.c.rate,
+                query.c.notification_type
+            )
+            for query in [
+                query_service_sms_usage_for_year(service_id, year).subquery(),
+                query_service_email_usage_for_year(service_id, year).subquery(),
+                query_service_letter_usage_for_year(service_id, year).subquery(),
+            ]
+        ]).subquery()
+    ).order_by(
+        "notification_type",
+        "rate",
     ).all()
-
-    return yearly_data
 
 
 def fetch_monthly_billing_for_year(service_id, year):
-    year_start, year_end = get_financial_year_dates(year)
+    """
+    Returns a row for each distinct rate, notification_type, postage and month
+    from ft_billing over the specified financial year e.g.
+
+        (
+            rate=0.0165,
+            notification_type=sms,
+            postage=none,
+            month=2022-04-01 00:00:00,
+            notifications_sent=123,
+            ...
+        )
+
+    The "postage" field is "none" except for letters. Each subquery takes care
+    of anything specific to the notification type e.g. rate multipliers for SMS.
+
+    Since the data in ft_billing is only refreshed once a day for all services,
+    we also update the table on-the-fly if we need accurate data for this year.
+    """
+    _, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
@@ -254,51 +266,88 @@ def fetch_monthly_billing_for_year(service_id, year):
         for d in data:
             update_fact_billing(data=d, process_day=today)
 
-    email_and_letters = db.session.query(
-        func.date_trunc('month', FactBilling.bst_date).cast(Date).label("month"),
-        func.sum(FactBilling.notifications_sent).label("notifications_sent"),
-        func.sum(FactBilling.notifications_sent).label("billable_units"),
-        FactBilling.rate.label('rate'),
-        FactBilling.notification_type.label('notification_type'),
-        FactBilling.postage
+    return db.session.query(
+        union(*[
+            db.session.query(
+                query.c.rate.label("rate"),
+                query.c.notification_type.label("notification_type"),
+                query.c.postage.label("postage"),
+                func.date_trunc('month', query.c.bst_date).cast(Date).label("month"),
+
+                func.sum(query.c.notifications_sent).label("notifications_sent"),
+                func.sum(query.c.billable_units).label("billable_units"),
+            ).group_by(
+                query.c.rate,
+                query.c.notification_type,
+                query.c.postage,
+                'month',
+            )
+            for query in [
+                query_service_sms_usage_for_year(service_id, year).subquery(),
+                query_service_email_usage_for_year(service_id, year).subquery(),
+                query_service_letter_usage_for_year(service_id, year).subquery(),
+            ]
+        ]).subquery()
+    ).order_by(
+        "month",
+        "notification_type",
+        "rate",
+    ).all()
+
+
+def query_service_email_usage_for_year(service_id, year):
+    year_start, year_end = get_financial_year_dates(year)
+
+    return db.session.query(
+        FactBilling.bst_date,
+        FactBilling.postage,  # should always be "none"
+        FactBilling.notifications_sent,
+        FactBilling.notifications_sent.label("billable_units"),
+        FactBilling.rate,
+        FactBilling.notification_type,
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
-        FactBilling.notification_type.in_([EMAIL_TYPE, LETTER_TYPE])
-    ).group_by(
-        'month',
-        FactBilling.rate,
-        FactBilling.notification_type,
-        FactBilling.postage
+        FactBilling.notification_type == EMAIL_TYPE
     )
 
-    sms = db.session.query(
-        func.date_trunc('month', FactBilling.bst_date).cast(Date).label("month"),
-        func.sum(FactBilling.notifications_sent).label("notifications_sent"),
-        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("billable_units"),
+
+def query_service_letter_usage_for_year(service_id, year):
+    year_start, year_end = get_financial_year_dates(year)
+
+    return db.session.query(
+        FactBilling.bst_date,
+        FactBilling.postage,
+        FactBilling.notifications_sent,
+        FactBilling.notifications_sent.label("billable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
-        FactBilling.postage
+    ).filter(
+        FactBilling.service_id == service_id,
+        FactBilling.bst_date >= year_start,
+        FactBilling.bst_date <= year_end,
+        FactBilling.notification_type == LETTER_TYPE
+    )
+
+
+def query_service_sms_usage_for_year(service_id, year):
+    year_start, year_end = get_financial_year_dates(year)
+    chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
+
+    return db.session.query(
+        FactBilling.bst_date,
+        FactBilling.postage,  # should always be "none"
+        FactBilling.notifications_sent,
+        chargeable_units.label("billable_units"),
+        FactBilling.rate,
+        FactBilling.notification_type,
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
         FactBilling.notification_type == SMS_TYPE
-    ).group_by(
-        'month',
-        FactBilling.rate,
-        FactBilling.notification_type,
-        FactBilling.postage
     )
-
-    yearly_data = email_and_letters.union_all(sms).order_by(
-        'month',
-        'notification_type',
-        'rate'
-    ).all()
-
-    return yearly_data
 
 
 def delete_billing_data_for_service_for_day(process_day, service_id):
