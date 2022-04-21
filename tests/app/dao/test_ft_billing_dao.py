@@ -394,34 +394,37 @@ def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):
 
 
 def test_fetch_monthly_billing_for_year(notify_db_session):
-    service = create_service()
-    template = create_template(service=service, template_type="sms")
-    for i in range(1, 31):
-        create_ft_billing(bst_date='2018-06-{}'.format(i),
-                          template=template,
-                          rate_multiplier=2,
-                          rate=0.162)
-    for i in range(1, 32):
-        create_ft_billing(bst_date='2018-07-{}'.format(i),
-                          template=template,
-                          rate=0.158)
+    service = set_up_yearly_data()
+    results = fetch_monthly_billing_for_year(service.id, 2016)
 
-    results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
+    assert len(results) == 48
 
-    assert len(results) == 2
-    assert str(results[0].month) == "2018-06-01"
+    assert str(results[0].month) == "2016-04-01"
+    assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 30
-    assert results[0].billable_units == Decimal('60')
-    assert results[0].rate == Decimal('0.162')
-    assert results[0].notification_type == 'sms'
-    assert results[0].postage == 'none'
+    assert results[0].billable_units == 30
+    assert results[0].rate == Decimal('0')
 
-    assert str(results[1].month) == "2018-07-01"
-    assert results[1].notifications_sent == 31
-    assert results[1].billable_units == Decimal('31')
-    assert results[1].rate == Decimal('0.158')
-    assert results[1].notification_type == 'sms'
-    assert results[1].postage == 'none'
+    assert str(results[1].month) == "2016-04-01"
+    assert results[1].notification_type == 'letter'
+    assert results[1].notifications_sent == 30
+    assert results[1].billable_units == 30
+    assert results[1].rate == Decimal('0.30')
+
+    assert str(results[1].month) == "2016-04-01"
+    assert results[2].notification_type == 'letter'
+    assert results[2].notifications_sent == 30
+    assert results[2].billable_units == 30
+    assert results[2].rate == Decimal('0.33')
+
+    assert str(results[3].month) == "2016-04-01"
+    assert results[3].notification_type == 'sms'
+    assert results[3].notifications_sent == 30
+    assert results[3].billable_units == 30
+    assert results[3].rate == Decimal('0.162')
+
+    assert str(results[4].month) == "2016-05-01"
+    assert str(results[47].month) == "2017-03-01"
 
 
 @freeze_time('2018-08-01 13:30:00')
@@ -437,38 +440,6 @@ def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
                                              year=2018)
     assert db.session.query(FactBilling.bst_date).count() == 32
     assert len(results) == 2
-
-
-def test_fetch_monthly_billing_for_year_return_financial_year(notify_db_session):
-    service = set_up_yearly_data()
-
-    results = fetch_monthly_billing_for_year(service.id, 2016)
-    # returns 3 rows, per month, returns financial year april to end of march
-    # Orders by Month
-
-    assert len(results) == 48
-    assert str(results[0].month) == "2016-04-01"
-    assert results[0].notification_type == 'email'
-    assert results[0].notifications_sent == 30
-    assert results[0].billable_units == 30
-    assert results[0].rate == Decimal('0')
-    assert str(results[1].month) == "2016-04-01"
-    assert results[1].notification_type == 'letter'
-    assert results[1].notifications_sent == 30
-    assert results[1].billable_units == 30
-    assert results[1].rate == Decimal('0.30')
-    assert str(results[1].month) == "2016-04-01"
-    assert results[2].notification_type == 'letter'
-    assert results[2].notifications_sent == 30
-    assert results[2].billable_units == 30
-    assert results[2].rate == Decimal('0.33')
-    assert str(results[3].month) == "2016-04-01"
-    assert results[3].notification_type == 'sms'
-    assert results[3].notifications_sent == 30
-    assert results[3].billable_units == 30
-    assert results[3].rate == Decimal('0.162')
-    assert str(results[4].month) == "2016-05-01"
-    assert str(results[47].month) == "2017-03-01"
 
 
 def test_fetch_billing_totals_for_year(notify_db_session):
