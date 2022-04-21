@@ -150,11 +150,12 @@ def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(admin_requ
     assert fact_billing[0].notification_type == 'sms'
 
 
-def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
+def set_up_monthly_data():
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
+
     for month in range(1, 13):
         mon = str(month).zfill(2)
         for day in range(1, monthrange(2016, month)[1] + 1):
@@ -171,34 +172,37 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
                               billable_unit=1,
                               rate=0.33,
                               postage='second')
+    return service
 
-    json_resp = admin_request.get(
+
+def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
+    service = set_up_monthly_data()
+
+    json_response = admin_request.get(
         'billing.get_yearly_usage_by_monthly_from_ft_billing',
         service_id=service.id,
         year=2016
     )
 
-    ft_letters = [x for x in json_resp if x['notification_type'] == 'letter']
-    ft_sms = [x for x in json_resp if x['notification_type'] == 'sms']
-    ft_email = [x for x in json_resp if x['notification_type'] == 'email']
-    keys = [x.keys() for x in ft_sms][0]
-    expected_sms_april = {"month": "April",
-                          "notification_type": "sms",
-                          "billing_units": 30,
-                          "rate": 0.162,
-                          "postage": "none"
-                          }
-    expected_letter_april = {"month": "April",
-                             "notification_type": "letter",
-                             "billing_units": 30,
-                             "rate": 0.33,
-                             "postage": "second"
-                             }
+    assert len(json_response) == 18
 
-    for k in keys:
-        assert ft_sms[0][k] == expected_sms_april[k]
-        assert ft_letters[0][k] == expected_letter_april[k]
-    assert len(ft_email) == 0
+    email_rows = [row for row in json_response if row['notification_type'] == 'email']
+    assert len(email_rows) == 0
+
+    letter_row = next(x for x in json_response if x['notification_type'] == 'letter')
+    sms_row = next(x for x in json_response if x['notification_type'] == 'sms')
+
+    assert letter_row["month"] == "April"
+    assert letter_row["notification_type"] == "letter"
+    assert letter_row["billing_units"] == 30
+    assert letter_row["rate"] == 0.33
+    assert letter_row["postage"] == "second"
+
+    assert sms_row["month"] == "April"
+    assert sms_row["notification_type"] == "sms"
+    assert sms_row["billing_units"] == 30
+    assert sms_row["rate"] == 0.162
+    assert sms_row["postage"] == "none"
 
 
 def set_up_yearly_data():
