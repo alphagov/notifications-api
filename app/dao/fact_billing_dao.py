@@ -244,6 +244,7 @@ def fetch_monthly_billing_for_year(service_id, year):
                 query.c.rate.label("rate"),
                 query.c.postage.label("postage"),
                 query.c.notification_type.label("notification_type"),
+                func.sum(query.c.cost).label("cost"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type,

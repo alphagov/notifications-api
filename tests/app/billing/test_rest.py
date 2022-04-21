@@ -175,6 +175,7 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert letter_row["chargeable_units"] == 30
     assert letter_row["rate"] == 0.33
     assert letter_row["postage"] == "second"
+    assert letter_row["cost"] == 9.9
 
     assert sms_row["month"] == "April"
     assert sms_row["notification_type"] == "sms"
@@ -182,6 +183,8 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert sms_row["chargeable_units"] == 30
     assert sms_row["rate"] == 0.162
     assert sms_row["postage"] == "none"
+    # free allowance is 4, so (30 - 4) * 0.162
+    assert sms_row["cost"] == 4.212
 
 
 def set_up_yearly_data():

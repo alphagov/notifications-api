@@ -22,6 +22,7 @@ def serialize_ft_billing_remove_emails(rows):
             "chargeable_units": row.chargeable_units,
             "rate": float(row.rate),
             "postage": row.postage,
+            "cost": float(row.cost),
         }
         for row in rows
         if row.notification_type != 'email'
