@@ -1,5 +1,5 @@
 from calendar import monthrange
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
@@ -10,12 +10,9 @@ from app.dao.date_util import (
     get_current_financial_year_start_year,
     get_month_start_and_end_date_in_utc,
 )
-from app.models import FactBilling
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
-    create_notification,
-    create_rate,
     create_service,
     create_template,
 )
@@ -126,28 +123,6 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
 
     annual_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
     assert annual_billing.free_sms_fragment_limit == 9999
-
-
-@freeze_time('2018-04-21 14:00')
-def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(admin_request, notify_db_session):
-    service = create_service()
-    sms_template = create_template(service=service, template_type="sms")
-    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type='sms')
-
-    create_notification(template=sms_template, status='delivered')
-
-    assert FactBilling.query.count() == 0
-
-    json_response = admin_request.get(
-        'billing.get_yearly_usage_by_monthly_from_ft_billing',
-        service_id=service.id,
-        year=2018
-    )
-
-    assert len(json_response) == 1
-    fact_billing = FactBilling.query.all()
-    assert len(fact_billing) == 1
-    assert fact_billing[0].notification_type == 'sms'
 
 
 def set_up_monthly_data():

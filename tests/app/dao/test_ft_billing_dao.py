@@ -484,14 +484,18 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
 @freeze_time('2018-08-01 13:30:00')
 def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
     service = create_service()
-    template = create_template(service=service, template_type="email")
+    template = create_template(service=service, template_type="sms")
+
+    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type='sms')
+
     for i in range(1, 32):
         create_ft_billing(bst_date='2018-07-{}'.format(i), template=template)
+
     create_notification(template=template, status='delivered')
 
     assert db.session.query(FactBilling.bst_date).count() == 31
-    results = fetch_monthly_billing_for_year(service_id=service.id,
-                                             year=2018)
+    results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
+
     assert db.session.query(FactBilling.bst_date).count() == 32
     assert len(results) == 2
 
