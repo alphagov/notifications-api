@@ -207,6 +207,7 @@ def fetch_billing_totals_for_year(service_id, year):
                 query.c.rate.label("rate"),
                 query.c.notification_type.label("notification_type"),
                 func.sum(query.c.cost).label("cost"),
+                func.sum(query.c.free_chargeable_units).label("free_chargeable_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type
@@ -245,6 +246,7 @@ def fetch_monthly_billing_for_year(service_id, year):
                 query.c.postage.label("postage"),
                 query.c.notification_type.label("notification_type"),
                 func.sum(query.c.cost).label("cost"),
+                func.sum(query.c.free_chargeable_units).label("free_chargeable_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type,
@@ -274,6 +276,7 @@ def query_service_email_usage_for_year(service_id, year):
         FactBilling.notifications_sent.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        literal(0).label("free_chargeable_units"),
         literal(0).label("cost"),
     ).filter(
         FactBilling.service_id == service_id,
@@ -293,6 +296,7 @@ def query_service_letter_usage_for_year(service_id, year):
         FactBilling.notifications_sent.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        literal(0).label("free_chargeable_units"),
         (FactBilling.notifications_sent * FactBilling.rate).label("cost"),
     ).filter(
         FactBilling.service_id == service_id,
@@ -333,6 +337,10 @@ def query_service_sms_usage_for_year(service_id, year):
         chargeable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
+        func.least(
+            cumulative_free_remainder,
+            chargeable_units,
+        ).cast(Integer).label("free_chargeable_units"),  # for some reason the result is a Decimal
         (
             func.greatest(chargeable_units - cumulative_free_remainder, literal(0)) *
             FactBilling.rate
