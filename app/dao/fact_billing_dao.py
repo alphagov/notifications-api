@@ -8,7 +8,7 @@ from sqlalchemy.sql.expression import case, literal
 
 from app import db
 from app.dao.date_util import (
-    get_financial_year,
+    get_financial_year_dates,
     get_financial_year_for_datetime,
 )
 from app.dao.organisation_dao import dao_get_organisation_live_services
@@ -197,7 +197,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
 
 
 def fetch_billing_totals_for_year(service_id, year):
-    year_start_date, year_end_date = get_financial_year(year)
+    year_start, year_end = get_financial_year_dates(year)
     """
       Billing for email: only record the total number of emails.
       Billing for letters: The billing units is used to fetch the correct rate for the sheet count of the letter.
@@ -211,8 +211,8 @@ def fetch_billing_totals_for_year(service_id, year):
         FactBilling.notification_type.label('notification_type')
     ).filter(
         FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start_date,
-        FactBilling.bst_date <= year_end_date,
+        FactBilling.bst_date >= year_start,
+        FactBilling.bst_date <= year_end,
         FactBilling.notification_type.in_([EMAIL_TYPE, LETTER_TYPE])
     ).group_by(
         FactBilling.rate,
@@ -228,8 +228,8 @@ def fetch_billing_totals_for_year(service_id, year):
         FactBilling.notification_type
     ).filter(
         FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start_date,
-        FactBilling.bst_date <= year_end_date,
+        FactBilling.bst_date >= year_start,
+        FactBilling.bst_date <= year_end,
         FactBilling.notification_type == SMS_TYPE
     ).group_by(
         FactBilling.rate,
@@ -245,14 +245,11 @@ def fetch_billing_totals_for_year(service_id, year):
 
 
 def fetch_monthly_billing_for_year(service_id, year):
-    year_start_datetime, year_end_datetime = get_financial_year(year)
-
-    year_start_date = convert_utc_to_bst(year_start_datetime).date()
-    year_end_date = convert_utc_to_bst(year_end_datetime).date()
-
+    year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
+
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
-    if year_end_date >= today:
+    if year_end >= today:
         data = fetch_billing_data_for_day(process_day=today, service_id=service_id, check_permissions=True)
         for d in data:
             update_fact_billing(data=d, process_day=today)
@@ -266,8 +263,8 @@ def fetch_monthly_billing_for_year(service_id, year):
         FactBilling.postage
     ).filter(
         FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start_date,
-        FactBilling.bst_date <= year_end_date,
+        FactBilling.bst_date >= year_start,
+        FactBilling.bst_date <= year_end,
         FactBilling.notification_type.in_([EMAIL_TYPE, LETTER_TYPE])
     ).group_by(
         'month',
@@ -285,8 +282,8 @@ def fetch_monthly_billing_for_year(service_id, year):
         FactBilling.postage
     ).filter(
         FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start_date,
-        FactBilling.bst_date <= year_end_date,
+        FactBilling.bst_date >= year_start,
+        FactBilling.bst_date <= year_end,
         FactBilling.notification_type == SMS_TYPE
     ).group_by(
         'month',
@@ -649,15 +646,12 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
 
 
 def fetch_usage_year_for_organisation(organisation_id, year):
-    year_start_datetime, year_end_datetime = get_financial_year(year)
-
-    year_start_date = convert_utc_to_bst(year_start_datetime).date()
-    year_end_date = convert_utc_to_bst(year_end_datetime).date()
-
+    year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
     services = dao_get_organisation_live_services(organisation_id)
+
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
-    if year_end_date >= today:
+    if year_end >= today:
         for service in services:
             data = fetch_billing_data_for_day(process_day=today, service_id=service.id)
             for d in data:
@@ -677,9 +671,9 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'emails_sent': 0,
             'active': service.active
         }
-    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start_date, year_end_date)
-    letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start_date, year_end_date)
-    email_usages = fetch_email_usage_for_organisation(organisation_id, year_start_date, year_end_date)
+    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year_start, year_end)
+    letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start, year_end)
+    email_usages = fetch_email_usage_for_organisation(organisation_id, year_start, year_end)
     for usage in sms_usages:
         service_with_usage[str(usage.service_id)] = {
             'service_id': usage.service_id,

@@ -45,8 +45,16 @@ def set_up_yearly_data():
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
 
-    start_date = date(2016, 3, 31)
-    end_date = date(2017, 4, 2)
+    # use different rates for adjacent financial years to make sure the query
+    # doesn't accidentally bleed over into them
+    for dt in (date(2016, 3, 31), date(2017, 4, 1)):
+        create_ft_billing(bst_date=dt, template=sms_template, rate=0.163)
+        create_ft_billing(bst_date=dt, template=email_template, rate=0)
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.34, postage='second')
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.31, postage='second')
+
+    start_date = date(2016, 4, 1)
+    end_date = date(2017, 4, 1)
 
     for n in range((end_date - start_date).days):
         dt = start_date + timedelta(days=n)
@@ -55,6 +63,7 @@ def set_up_yearly_data():
         create_ft_billing(bst_date=dt, template=email_template, rate=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.30, postage='second')
+
     return service
 
 
