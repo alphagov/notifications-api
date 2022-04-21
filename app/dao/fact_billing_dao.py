@@ -224,6 +224,7 @@ def fetch_billing_totals_for_year(service_id, year):
                 func.sum(query.c.billable_units).label("billable_units"),
                 func.sum(query.c.chargeable_units).label("chargeable_units"),
                 func.sum(query.c.cost).label("cost"),
+                func.sum(query.c.free_allowance_used).label("free_allowance_used"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type
@@ -282,6 +283,7 @@ def fetch_monthly_billing_for_year(service_id, year):
                 func.sum(query.c.billable_units).label("billable_units"),
                 func.sum(query.c.chargeable_units).label("chargeable_units"),
                 func.sum(query.c.cost).label("cost"),
+                func.sum(query.c.free_allowance_used).label("free_allowance_used"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type,
@@ -314,6 +316,7 @@ def query_service_email_usage_for_year(service_id, year):
         FactBilling.rate,
         FactBilling.notification_type,
         literal(0).label("cost"),
+        literal(0).label("free_allowance_used"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -338,6 +341,7 @@ def query_service_letter_usage_for_year(service_id, year):
         FactBilling.rate,
         FactBilling.notification_type,
         (FactBilling.notifications_sent * FactBilling.rate).label("cost"),
+        literal(0).label("free_allowance_used"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -380,14 +384,16 @@ def query_service_sms_usage_for_year(service_id, year):
     chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
 
     # Subquery for the number of chargeable units in all rows preceding this one,
-    # which might be none if this is the first row (hence the "coalesce").
+    # which might be none if this is the first row (hence the "coalesce"). For
+    # some reason the end result is a decimal despite all the input columns being
+    # integer - this seems to be a Sqlalchemy quirk (works in raw SQL).
     cumulative_chargeable_units = func.coalesce(
         func.sum(chargeable_units).over(
             # order is "ASC" by default
             order_by=[FactBilling.bst_date],
             # first row to previous row
             rows=(None, -1)
-        ),
+        ).cast(Integer),
         0
     )
 
@@ -402,6 +408,8 @@ def query_service_sms_usage_for_year(service_id, year):
     # for, after taking any remaining free allowance into account.
     charged_units = func.greatest(chargeable_units - cumulative_free_remainder, 0)
 
+    free_allowance_used = func.least(cumulative_free_remainder, chargeable_units)
+
     return db.session.query(
         FactBilling.bst_date,
         FactBilling.postage,  # should always be "none"
@@ -411,7 +419,8 @@ def query_service_sms_usage_for_year(service_id, year):
         chargeable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
-        (charged_units * FactBilling.rate).label("cost")
+        (charged_units * FactBilling.rate).label("cost"),
+        free_allowance_used.label("free_allowance_used"),
     ).join(
         AnnualBilling,
         AnnualBilling.service_id == service_id

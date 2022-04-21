@@ -177,6 +177,7 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert letter_row["rate"] == 0.33
     assert letter_row["postage"] == "second"
     assert letter_row["cost"] == 9.9
+    assert letter_row["free_allowance_used"] == 0
 
     assert sms_row["month"] == "April"
     assert sms_row["notification_type"] == "sms"
@@ -187,6 +188,7 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert sms_row["postage"] == "none"
     # free allowance is 4, so (30 - 4) * 0.162
     assert sms_row["cost"] == 4.212
+    assert sms_row["free_allowance_used"] == 4
 
 
 def set_up_yearly_data():
@@ -260,6 +262,7 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     assert json_response[0]['rate'] == 0
     assert json_response[0]['letter_total'] == 0
     assert json_response[0]['cost'] == 0
+    assert json_response[0]['free_allowance_used'] == 0
 
     assert json_response[1]['notification_type'] == 'letter'
     assert json_response[1]['billing_units'] == 275
@@ -268,6 +271,7 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     assert json_response[1]['rate'] == 0.33
     assert json_response[1]['letter_total'] == 90.75
     assert json_response[1]['cost'] == 90.75
+    assert json_response[1]['free_allowance_used'] == 0
 
     assert json_response[2]['notification_type'] == 'sms'
     assert json_response[2]['billing_units'] == 825
@@ -276,3 +280,4 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     assert json_response[2]['rate'] == 0.0162
     assert json_response[2]['letter_total'] == 0
     assert json_response[2]['cost'] == 13.3002
+    assert json_response[2]['free_allowance_used'] == 4
