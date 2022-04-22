@@ -595,7 +595,20 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
+def fetch_sms_rates_for_date_range(start_date, end_date):
+    Rate.query.filter(
+        Rate.notification_type == 'sms',
+        Rate.valid_from >= start_date,
+        Rate.valid_from <= end_date
+    ).order_by(
+        Rate.valid_from
+    ).all()
+
+
 def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
+    rates = fetch_sms_rates_for_date_range(start_date, end_date)
+    if len(rates) >= 1:
+        return fetch_sms_billing_for_organisation_with_rate_change(organisation_id, start_date, end_date, rates)
     # ASSUMPTION: AnnualBilling has been populated for year.
     allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
 
@@ -646,6 +659,19 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     )
 
     return query.all()
+
+
+def fetch_sms_billing_for_organisation_with_rate_change(organisation_id, start_date, end_date, rates):
+    sms_billings_for_organisation = []
+    dates = [start_date, end_date]
+    for rate in rates:
+        dates.append(rate.valid_from)
+    dates = dates.sorted()
+    for i, date_ in enumerate(dates):
+        part_of_billing_data = fetch_sms_billing_for_organisation(organisation_id, date_, dates[i+1])
+        sms_billings_for_organisation.append(part_of_billing_data)
+    # WIP think how to unite that data - do we give admin multiple dicts and then admin counts them, or do we somehow
+    # mash it in here?
 
 
 def fetch_usage_year_for_organisation(organisation_id, year):
