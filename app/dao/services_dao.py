@@ -9,7 +9,7 @@ from sqlalchemy.sql.expression import and_, asc, case, func
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.date_util import get_current_financial_year
-from app.dao.email_branding_dao import dao_get_email_branding_by_name
+from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.letter_branding_dao import dao_get_letter_branding_by_name
 from app.dao.organisation_dao import dao_get_organisation_by_email_address
 from app.dao.service_sms_sender_dao import insert_service_sms_sender
@@ -326,7 +326,7 @@ def dao_create_service(
             service.letter_branding = organisation.letter_branding
 
     elif service.organisation_type in NHS_ORGANISATION_TYPES or email_address_is_nhs(user.email_address):
-        service.email_branding = dao_get_email_branding_by_name('NHS')
+        service.email_branding = dao_get_email_branding_by_id(current_app.config['NHS_EMAIL_BRANDING_ID'])
         service.letter_branding = dao_get_letter_branding_by_name('NHS')
 
     if organisation:
