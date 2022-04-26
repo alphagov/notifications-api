@@ -225,6 +225,7 @@ def fetch_billing_totals_for_year(service_id, year):
                 func.sum(query.c.chargeable_units).label("chargeable_units"),
                 func.sum(query.c.cost).label("cost"),
                 func.sum(query.c.free_allowance_used).label("free_allowance_used"),
+                func.sum(query.c.charged_units).label("charged_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type
@@ -284,6 +285,7 @@ def fetch_monthly_billing_for_year(service_id, year):
                 func.sum(query.c.chargeable_units).label("chargeable_units"),
                 func.sum(query.c.cost).label("cost"),
                 func.sum(query.c.free_allowance_used).label("free_allowance_used"),
+                func.sum(query.c.charged_units).label("charged_units"),
             ).group_by(
                 query.c.rate,
                 query.c.notification_type,
@@ -317,6 +319,7 @@ def query_service_email_usage_for_year(service_id, year):
         FactBilling.notification_type,
         literal(0).label("cost"),
         literal(0).label("free_allowance_used"),
+        FactBilling.billable_units.label("charged_units"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -342,6 +345,7 @@ def query_service_letter_usage_for_year(service_id, year):
         FactBilling.notification_type,
         (FactBilling.notifications_sent * FactBilling.rate).label("cost"),
         literal(0).label("free_allowance_used"),
+        FactBilling.notifications_sent.label("charged_units"),
     ).filter(
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
@@ -421,6 +425,7 @@ def query_service_sms_usage_for_year(service_id, year):
         FactBilling.notification_type,
         (charged_units * FactBilling.rate).label("cost"),
         free_allowance_used.label("free_allowance_used"),
+        charged_units.label("charged_units"),
     ).join(
         AnnualBilling,
         AnnualBilling.service_id == service_id
