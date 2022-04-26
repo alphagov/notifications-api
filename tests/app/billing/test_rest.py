@@ -1,4 +1,3 @@
-import json
 from calendar import monthrange
 from datetime import datetime, timedelta
 
@@ -12,7 +11,6 @@ from app.dao.date_util import (
     get_month_start_and_end_date_in_utc,
 )
 from app.models import FactBilling
-from tests import create_admin_authorization_header
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
@@ -29,15 +27,15 @@ IN_MAY_2016 = datetime(2016, 5, 10, 23, 00, 00)
 IN_JUN_2016 = datetime(2016, 6, 3, 23, 00, 00)
 
 
-def test_create_update_free_sms_fragment_limit_invalid_schema(client, sample_service):
+def test_create_update_free_sms_fragment_limit_invalid_schema(admin_request, sample_service):
+    json_response = admin_request.post(
+        'billing.create_or_update_free_sms_fragment_limit',
+        service_id=sample_service.id,
+        _data={},
+        _expected_status=400
+    )
 
-    response = client.post('service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-                           data={},
-                           headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
-    json_resp = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 400
-    assert 'JSON' in json_resp['message']
+    assert 'errors' in json_response
 
 
 def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_request, sample_service):
@@ -94,31 +92,30 @@ def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sam
 
 @freeze_time('2021-04-02 13:00')
 def test_get_free_sms_fragment_limit(
-    client, sample_service
+    admin_request, sample_service
 ):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=11000, financial_year_start=2021)
-    response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
 
-    json_resp = json.loads(response_get.get_data(as_text=True))
-    assert response_get.status_code == 200
-    assert json_resp['financial_year_start'] == 2021
-    assert json_resp['free_sms_fragment_limit'] == 11000
+    json_response = admin_request.get(
+        'billing.get_free_sms_fragment_limit',
+        service_id=sample_service.id
+    )
+
+    assert json_response['financial_year_start'] == 2021
+    assert json_response['free_sms_fragment_limit'] == 11000
 
 
 @freeze_time('2021-04-02 13:00')
 def test_get_free_sms_fragment_limit_current_year_creates_new_row_if_annual_billing_is_missing(
-    client, sample_service
+    admin_request, sample_service
 ):
-    response_get = client.get(
-        'service/{}/billing/free-sms-fragment-limit'.format(sample_service.id),
-        headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
+    json_response = admin_request.get(
+        'billing.get_free_sms_fragment_limit',
+        service_id=sample_service.id
+    )
 
-    json_resp = json.loads(response_get.get_data(as_text=True))
-    assert response_get.status_code == 200
-    assert json_resp['financial_year_start'] == 2021
-    assert json_resp['free_sms_fragment_limit'] == 10000  # based on other organisation type
+    assert json_response['financial_year_start'] == 2021
+    assert json_response['free_sms_fragment_limit'] == 10000  # based on other organisation type
 
 
 def test_update_free_sms_fragment_limit_data(client, sample_service):
@@ -132,7 +129,7 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
 
 
 @freeze_time('2018-04-21 14:00')
-def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(client, notify_db_session):
+def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(admin_request, notify_db_session):
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")
     create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type='sms')
@@ -141,17 +138,19 @@ def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(client, no
 
     assert FactBilling.query.count() == 0
 
-    response = client.get('service/{}/billing/ft-monthly-usage?year=2018'.format(service.id),
-                          headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
+    json_response = admin_request.get(
+        'billing.get_yearly_usage_by_monthly_from_ft_billing',
+        service_id=service.id,
+        year=2018
+    )
 
-    assert response.status_code == 200
-    assert len(json.loads(response.get_data(as_text=True))) == 1
+    assert len(json_response) == 1
     fact_billing = FactBilling.query.all()
     assert len(fact_billing) == 1
     assert fact_billing[0].notification_type == 'sms'
 
 
-def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
+def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
@@ -173,10 +172,12 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(client, notify_db_session):
                               rate=0.33,
                               postage='second')
 
-    response = client.get('service/{}/billing/ft-monthly-usage?year=2016'.format(service.id),
-                          headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
+    json_resp = admin_request.get(
+        'billing.get_yearly_usage_by_monthly_from_ft_billing',
+        service_id=service.id,
+        year=2016
+    )
 
-    json_resp = json.loads(response.get_data(as_text=True))
     ft_letters = [x for x in json_resp if x['notification_type'] == 'letter']
     ft_sms = [x for x in json_resp if x['notification_type'] == 'sms']
     ft_email = [x for x in json_resp if x['notification_type'] == 'email']
@@ -228,36 +229,37 @@ def set_up_yearly_data():
     return service
 
 
-def test_get_yearly_billing_usage_summary_from_ft_billing_returns_400_if_missing_year(client, sample_service):
-    response = client.get(
-        '/service/{}/billing/ft-yearly-usage-summary'.format(sample_service.id),
-        headers=[create_admin_authorization_header()]
+def test_get_yearly_billing_usage_summary_from_ft_billing_returns_400_if_missing_year(admin_request, sample_service):
+    json_response = admin_request.get(
+        'billing.get_yearly_billing_usage_summary_from_ft_billing',
+        service_id=sample_service.id,
+        _expected_status=400
     )
-    assert response.status_code == 400
-    assert json.loads(response.get_data(as_text=True)) == {
+    assert json_response == {
         'message': 'No valid year provided', 'result': 'error'
     }
 
 
 def test_get_yearly_billing_usage_summary_from_ft_billing_returns_empty_list_if_no_billing_data(
-        client, sample_service
+    admin_request, sample_service
 ):
-    response = client.get(
-        '/service/{}/billing/ft-yearly-usage-summary?year=2016'.format(sample_service.id),
-        headers=[create_admin_authorization_header()]
+    json_response = admin_request.get(
+        'billing.get_yearly_billing_usage_summary_from_ft_billing',
+        service_id=sample_service.id,
+        year=2016
     )
-    assert response.status_code == 200
-    assert json.loads(response.get_data(as_text=True)) == []
+    assert json_response == []
 
 
-def test_get_yearly_billing_usage_summary_from_ft_billing(client, notify_db_session):
+def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_db_session):
     service = set_up_yearly_data()
 
-    response = client.get('/service/{}/billing/ft-yearly-usage-summary?year=2016'.format(service.id),
-                          headers=[create_admin_authorization_header()]
-                          )
-    assert response.status_code == 200
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = admin_request.get(
+        'billing.get_yearly_billing_usage_summary_from_ft_billing',
+        service_id=service.id,
+        year=2016
+    )
+
     assert len(json_response) == 3
     assert json_response[0]['notification_type'] == 'email'
     assert json_response[0]['billing_units'] == 275
@@ -273,13 +275,15 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(client, notify_db_sess
     assert json_response[2]['letter_total'] == 0
 
 
-def test_get_yearly_usage_by_monthly_from_ft_billing_all_cases(client, notify_db_session):
+def test_get_yearly_usage_by_monthly_from_ft_billing_all_cases(admin_request, notify_db_session):
     service = set_up_data_for_all_cases()
-    response = client.get('service/{}/billing/ft-monthly-usage?year=2018'.format(service.id),
-                          headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
 
-    assert response.status_code == 200
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = admin_request.get(
+        'billing.get_yearly_usage_by_monthly_from_ft_billing',
+        service_id=service.id,
+        year=2018
+    )
+
     assert len(json_response) == 5
     assert json_response[0]['month'] == 'May'
     assert json_response[0]['notification_type'] == 'letter'
@@ -312,12 +316,14 @@ def test_get_yearly_usage_by_monthly_from_ft_billing_all_cases(client, notify_db
     assert json_response[4]['postage'] == 'none'
 
 
-def test_get_yearly_billing_usage_summary_from_ft_billing_all_cases(client, notify_db_session):
+def test_get_yearly_billing_usage_summary_from_ft_billing_all_cases(admin_request, notify_db_session):
     service = set_up_data_for_all_cases()
-    response = client.get('/service/{}/billing/ft-yearly-usage-summary?year=2018'.format(service.id),
-                          headers=[create_admin_authorization_header()])
-    assert response.status_code == 200
-    json_response = json.loads(response.get_data(as_text=True))
+
+    json_response = admin_request.get(
+        'billing.get_yearly_billing_usage_summary_from_ft_billing',
+        service_id=service.id,
+        year=2018
+    )
 
     assert len(json_response) == 6
     assert json_response[0]["notification_type"] == 'email'
