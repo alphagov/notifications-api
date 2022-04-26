@@ -771,9 +771,10 @@ def test_fetch_usage_year_for_organisation(notify_db_session):
     assert third_row['emails_sent'] == 0
 
 
+@freeze_time('2022-04-24 13:30')
 def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify_db_session):
-    create_letter_rate(start_date=datetime.utcnow() - timedelta(days=1))
-    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.65, notification_type='sms')
+    create_letter_rate(datetime(2022, 3, 31, 23, 00))
+    create_rate(start_date=datetime(2022, 3, 31, 23, 00), value=0.65, notification_type='sms')
     new_org = create_organisation(name='New organisation')
     service = create_service()
     template = create_template(service=service)
@@ -783,6 +784,28 @@ def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify
 
     assert FactBilling.query.count() == 0
 
+    create_notification(template=template, status='delivered')
+
+    results = fetch_usage_year_for_organisation(organisation_id=new_org.id, year=current_year)
+    assert len(results) == 1
+    assert FactBilling.query.count() == 1
+
+
+@freeze_time('2022-05-24 13:30')
+def test_fetch_usage_year_for_organisation_when_more_than_one_rate_per_financial_year(notify_db_session):
+
+    current_year = datetime.utcnow().year
+    with freeze_time('2022-04-02T00:01:00'):
+        create_rate(start_date=datetime(2022, 3, 31, 23, 00), value=0.0161, notification_type='sms')
+        new_org = create_organisation(name='New organisation')
+        service = create_service()
+        template = create_template(service=service)
+        dao_add_service_to_organisation(service=service, organisation_id=new_org.id)
+        create_annual_billing(service_id=service.id, free_sms_fragment_limit=0, financial_year_start=current_year)
+        create_notification(template=template, status='delivered')
+
+    assert FactBilling.query.count() == 0
+    create_rate(start_date=datetime(2022, 4, 30, 23, 00), value=0.0172, notification_type='sms')
     create_notification(template=template, status='delivered')
 
     results = fetch_usage_year_for_organisation(organisation_id=new_org.id, year=current_year)
