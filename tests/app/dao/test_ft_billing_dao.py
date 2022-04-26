@@ -489,7 +489,7 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 1
     assert results[1].billable_units == 1
-    assert results[1].chargeable_units == 1
+    assert results[1].chargeable_units == 2
     assert results[1].rate == Decimal('0.36')
     assert results[1].cost == Decimal('0.36')
     assert results[1].free_chargeable_units == 0
@@ -614,7 +614,7 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 1
     assert results[1].billable_units == 1
-    assert results[1].chargeable_units == 1
+    assert results[1].chargeable_units == 2
     assert results[1].rate == Decimal('0.36')
     assert results[1].cost == Decimal('0.36')
     assert results[1].free_chargeable_units == 0

@@ -25,6 +25,7 @@ def serialize_ft_billing_remove_emails(rows):
             "cost": float(row.cost),
             "free_chargeable_units": row.free_chargeable_units,
             "charged_units": row.charged_units,
+            "notifications_sent": row.notifications_sent,
         }
         for row in rows
         if row.notification_type != 'email'
@@ -44,6 +45,7 @@ def serialize_ft_billing_yearly_totals(rows):
             "cost": float(row.cost),
             "free_chargeable_units": row.free_chargeable_units,
             "charged_units": row.charged_units,
+            "notifications_sent": row.notifications_sent,
         }
         for row in rows
     ]
