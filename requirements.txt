@@ -129,7 +129,7 @@ jinja2==3.1.1
     # via
     #   flask
     #   notifications-utils
-jmespath==0.10.0
+jmespath==1.0.0
     # via
     #   boto3
     #   botocore
