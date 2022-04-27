@@ -11,7 +11,7 @@ def test_get_provider_details_returns_all_providers(admin_request, notify_db_ses
     json_resp = admin_request.get('provider_details.get_providers')['provider_details']
 
     assert len(json_resp) > 0
-    assert {'ses', 'firetext', 'mmg', 'dvla'} < {x['identifier'] for x in json_resp}
+    assert {'ses', 'firetext', 'mmg', 'dvla'} <= {x['identifier'] for x in json_resp}
 
 
 def test_get_provider_details_by_id(client, notify_db):
