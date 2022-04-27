@@ -21,7 +21,7 @@ from app.dao.fact_billing_dao import (
     fetch_volumes_by_service,
     get_rate,
     get_rates_for_billing,
-    query_organisation_sms_usage_for_year
+    query_organisation_sms_usage_for_year,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import NOTIFICATION_STATUS_TYPES, FactBilling
@@ -845,6 +845,7 @@ def test_fetch_letter_line_items_for_all_service(notify_db_session):
 def test_fetch_usage_year_for_organisation(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 5, 1))
     service_with_emails_for_org = create_service(service_name='Service with emails for org')
+    create_annual_billing(service_with_emails_for_org.id, free_sms_fragment_limit=0, financial_year_start=2019)
     dao_add_service_to_organisation(
         service=service_with_emails_for_org,
         organisation_id=fixtures["org_1"].id
@@ -1014,6 +1015,8 @@ def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(n
                       notifications_sent=100)
     create_ft_billing(bst_date=datetime.utcnow().date(), template=trial_letter_template, billable_unit=40, rate=0.30,
                       notifications_sent=20)
+    create_annual_billing(service_id=live_service.id, free_sms_fragment_limit=0, financial_year_start=2019)
+    create_annual_billing(service_id=trial_service.id, free_sms_fragment_limit=0, financial_year_start=2019)
 
     results = fetch_usage_year_for_organisation(organisation_id=org.id, year=2019)
 
@@ -1247,7 +1250,8 @@ def test_fetch_volumes_by_service(notify_db_session):
 
     results = fetch_volumes_by_service(start_date=datetime(2022, 2, 1), end_date=datetime(2022, 2, 28))
 
-    assert len(results) == 4
+    # since we are using a pre-set up fixture, we only care about some of the results
+    assert len(results) == 7
     assert results[0].service_name == 'a - with sms and letter'
     assert results[0].organisation_name == 'Org for a - with sms and letter'
     assert results[0].free_allowance == 10
@@ -1268,22 +1272,22 @@ def test_fetch_volumes_by_service(notify_db_session):
     assert results[1].letter_sheet_totals == 0
     assert float(results[1].letter_cost) == 0
 
-    assert results[2].service_name == 'b - chargeable sms'
-    assert not results[2].organisation_name
-    assert results[2].free_allowance == 10
-    assert results[2].sms_notifications == 2
-    assert results[2].sms_chargeable_units == 3
-    assert results[2].email_totals == 0
-    assert results[2].letter_totals == 0
-    assert results[2].letter_sheet_totals == 0
-    assert float(results[2].letter_cost) == 0
+    assert results[4].service_name == 'b - chargeable sms'
+    assert not results[4].organisation_name
+    assert results[4].free_allowance == 10
+    assert results[4].sms_notifications == 2
+    assert results[4].sms_chargeable_units == 3
+    assert results[4].email_totals == 0
+    assert results[4].letter_totals == 0
+    assert results[4].letter_sheet_totals == 0
+    assert float(results[4].letter_cost) == 0
 
-    assert results[3].service_name == 'e - sms within allowance'
-    assert not results[3].organisation_name
-    assert results[3].free_allowance == 10
-    assert results[3].sms_notifications == 1
-    assert results[3].sms_chargeable_units == 2
-    assert results[3].email_totals == 0
-    assert results[3].letter_totals == 0
-    assert results[3].letter_sheet_totals == 0
-    assert float(results[3].letter_cost) == 0
+    assert results[6].service_name == 'e - sms within allowance'
+    assert not results[6].organisation_name
+    assert results[6].free_allowance == 10
+    assert results[6].sms_notifications == 1
+    assert results[6].sms_chargeable_units == 2
+    assert results[6].email_totals == 0
+    assert results[6].letter_totals == 0
+    assert results[6].letter_sheet_totals == 0
+    assert float(results[6].letter_cost) == 0
