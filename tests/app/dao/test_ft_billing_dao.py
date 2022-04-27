@@ -76,7 +76,16 @@ def set_up_yearly_data_variable_rates():
     create_ft_billing(bst_date='2018-05-17', template=sms_template, rate_multiplier=2, rate=0.162, billable_unit=2)
     create_ft_billing(bst_date='2018-05-16', template=sms_template, rate_multiplier=2, rate=0.0150, billable_unit=2)
     create_ft_billing(bst_date='2018-05-16', template=letter_template, rate=0.33, postage='second')
-    create_ft_billing(bst_date='2018-05-17', template=letter_template, rate=0.36, billable_unit=2, postage='second')
+
+    create_ft_billing(
+        bst_date='2018-05-17',
+        template=letter_template,
+        rate=0.36,
+        notifications_sent=2,
+        billable_unit=4,  # 2 pages each
+        postage='second'
+    )
+
     return service
 
 
@@ -464,8 +473,8 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
 
     assert str(results[1].month) == "2018-05-01"
     assert results[1].notification_type == 'letter'
-    assert results[1].notifications_sent == 1
-    assert results[1].billable_units == 1
+    assert results[1].notifications_sent == 2
+    assert results[1].billable_units == 2
     assert results[1].rate == Decimal('0.36')
 
     assert str(results[2].month) == "2018-05-01"
@@ -537,8 +546,8 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
     assert results[0].rate == Decimal('0.33')
 
     assert results[1].notification_type == 'letter'
-    assert results[1].notifications_sent == 1
-    assert results[1].billable_units == 1
+    assert results[1].notifications_sent == 2
+    assert results[1].billable_units == 2
     assert results[1].rate == Decimal('0.36')
 
     assert results[2].notification_type == 'sms'
