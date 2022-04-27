@@ -49,7 +49,7 @@ def set_up_yearly_data():
     # doesn't accidentally bleed over into them
     for dt in (date(2016, 3, 31), date(2017, 4, 1)):
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.163)
-        create_ft_billing(bst_date=dt, template=email_template, rate=0)
+        create_ft_billing(bst_date=dt, template=email_template, rate=0, billable_unit=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.34, postage='second')
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.31, postage='second')
 
@@ -60,7 +60,7 @@ def set_up_yearly_data():
         dt = start_date + timedelta(days=n)
 
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.162)
-        create_ft_billing(bst_date=dt, template=email_template, rate=0)
+        create_ft_billing(bst_date=dt, template=email_template, rate=0, billable_unit=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.30, postage='second')
 
