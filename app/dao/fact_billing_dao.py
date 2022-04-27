@@ -661,24 +661,32 @@ def fetch_sms_billing_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
+def get_date_ranges(dates):
+    dates.sort()
+    date_ranges = []
+    for i, date_ in enumerate(dates):
+        start_date = date_
+        if i == len(dates) - 1:
+            break
+        elif i == len(dates) - 2:
+            end_date = dates[i+1]
+        else:
+            end_date = dates[i+1] - timedelta(days=1)
+        date_ranges.append({"start_date": start_date, "end_date": end_date})
+    return date_ranges
+
+
 def fetch_sms_billing_for_organisation_with_rate_change(organisation_id, start_date, end_date, rates):
     sms_billings_for_organisation = []
     dates = [start_date, end_date]
     for rate in rates:
         dates.append(convert_utc_to_bst(rate.valid_from).date())
-    dates.sort()
-    for i, date_ in enumerate(dates):
-        loop_start_date = date_
-        if i == len(dates) - 1:
-            break
-        elif i == len(dates) - 2:
-            loop_end_date = dates[i+1]
-        else:
-            loop_end_date = dates[i+1] - timedelta(days=1)
+    date_ranges = get_date_ranges(dates)
+    for date_range in date_ranges:
         part_of_billing_data = fetch_sms_billing_for_organisation(
             organisation_id,
-            loop_start_date,
-            loop_end_date
+            date_range["start_date"],
+            date_range["end_date"]
         )
         sms_billings_for_organisation.append(part_of_billing_data)
     import pdb; pdb.set_trace()
