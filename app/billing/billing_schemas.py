@@ -12,30 +12,40 @@ create_or_update_free_sms_fragment_limit_schema = {
 }
 
 
-def serialize_ft_billing_remove_emails(data):
-    results = []
-    billed_notifications = [x for x in data if x.notification_type != 'email']
-    for notification in billed_notifications:
-        json_result = {
-            "month": (datetime.strftime(notification.month, "%B")),
-            "notification_type": notification.notification_type,
-            "billing_units": notification.billable_units,
-            "rate": float(notification.rate),
-            "postage": notification.postage,
+def serialize_ft_billing_remove_emails(rows):
+    return [
+        {
+            "month": (datetime.strftime(row.month, "%B")),
+            "notification_type": row.notification_type,
+            # TEMPORARY: while we migrate away from "billing_units"
+            "billing_units": row.billable_units,
+            "chargeable_units": row.chargeable_units,
+            "notifications_sent": row.notifications_sent,
+            "rate": float(row.rate),
+            "postage": row.postage,
+            "cost": float(row.cost),
+            "free_allowance_used": row.free_allowance_used,
+            "charged_units": row.charged_units,
         }
-        results.append(json_result)
-    return results
+        for row in rows
+        if row.notification_type != 'email'
+    ]
 
 
-def serialize_ft_billing_yearly_totals(data):
-    yearly_totals = []
-    for total in data:
-        json_result = {
-            "notification_type": total.notification_type,
-            "billing_units": total.billable_units,
-            "rate": float(total.rate),
-            "letter_total": float(total.billable_units * total.rate) if total.notification_type == 'letter' else 0
+def serialize_ft_billing_yearly_totals(rows):
+    return [
+        {
+            "notification_type": row.notification_type,
+            # TEMPORARY: while we migrate away from "billing_units"
+            "billing_units": row.billable_units,
+            "chargeable_units": row.chargeable_units,
+            "notifications_sent": row.notifications_sent,
+            "rate": float(row.rate),
+            # TEMPORARY: while we migrate to "cost" in the Admin app
+            "letter_total": float(row.billable_units * row.rate) if row.notification_type == 'letter' else 0,
+            "cost": float(row.cost),
+            "free_allowance_used": row.free_allowance_used,
+            "charged_units": row.charged_units,
         }
-        yearly_totals.append(json_result)
-
-    return yearly_totals
+        for row in rows
+    ]

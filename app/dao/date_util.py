@@ -1,7 +1,7 @@
 from datetime import date, datetime, time, timedelta
 
 import pytz
-from notifications_utils.timezones import convert_bst_to_utc
+from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
 
 
 def get_months_for_financial_year(year):
@@ -20,6 +20,15 @@ def get_months_for_year(start, end, year):
 
 def get_financial_year(year):
     return get_april_fools(year), get_april_fools(year + 1) - timedelta(microseconds=1)
+
+
+def get_financial_year_dates(year):
+    year_start_datetime, year_end_datetime = get_financial_year(year)
+
+    return (
+        convert_utc_to_bst(year_start_datetime).date(),
+        convert_utc_to_bst(year_end_datetime).date()
+    )
 
 
 def get_current_financial_year():

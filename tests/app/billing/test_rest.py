@@ -1,5 +1,5 @@
 from calendar import monthrange
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
@@ -10,12 +10,9 @@ from app.dao.date_util import (
     get_current_financial_year_start_year,
     get_month_start_and_end_date_in_utc,
 )
-from app.models import FactBilling
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
-    create_notification,
-    create_rate,
     create_service,
     create_template,
 )
@@ -128,33 +125,12 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
     assert annual_billing.free_sms_fragment_limit == 9999
 
 
-@freeze_time('2018-04-21 14:00')
-def test_get_yearly_usage_by_monthly_from_ft_billing_populates_deltas(admin_request, notify_db_session):
-    service = create_service()
-    sms_template = create_template(service=service, template_type="sms")
-    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type='sms')
-
-    create_notification(template=sms_template, status='delivered')
-
-    assert FactBilling.query.count() == 0
-
-    json_response = admin_request.get(
-        'billing.get_yearly_usage_by_monthly_from_ft_billing',
-        service_id=service.id,
-        year=2018
-    )
-
-    assert len(json_response) == 1
-    fact_billing = FactBilling.query.all()
-    assert len(fact_billing) == 1
-    assert fact_billing[0].notification_type == 'sms'
-
-
-def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
+def set_up_monthly_data():
     service = create_service()
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
+
     for month in range(1, 13):
         mon = str(month).zfill(2)
         for day in range(1, monthrange(2016, month)[1] + 1):
@@ -172,33 +148,49 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
                               rate=0.33,
                               postage='second')
 
-    json_resp = admin_request.get(
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=4, financial_year_start=2016)
+    return service
+
+
+def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
+    service = set_up_monthly_data()
+
+    json_response = admin_request.get(
         'billing.get_yearly_usage_by_monthly_from_ft_billing',
         service_id=service.id,
         year=2016
     )
 
-    ft_letters = [x for x in json_resp if x['notification_type'] == 'letter']
-    ft_sms = [x for x in json_resp if x['notification_type'] == 'sms']
-    ft_email = [x for x in json_resp if x['notification_type'] == 'email']
-    keys = [x.keys() for x in ft_sms][0]
-    expected_sms_april = {"month": "April",
-                          "notification_type": "sms",
-                          "billing_units": 30,
-                          "rate": 0.162,
-                          "postage": "none"
-                          }
-    expected_letter_april = {"month": "April",
-                             "notification_type": "letter",
-                             "billing_units": 30,
-                             "rate": 0.33,
-                             "postage": "second"
-                             }
+    assert len(json_response) == 18
 
-    for k in keys:
-        assert ft_sms[0][k] == expected_sms_april[k]
-        assert ft_letters[0][k] == expected_letter_april[k]
-    assert len(ft_email) == 0
+    email_rows = [row for row in json_response if row['notification_type'] == 'email']
+    assert len(email_rows) == 0
+
+    letter_row = next(x for x in json_response if x['notification_type'] == 'letter')
+    sms_row = next(x for x in json_response if x['notification_type'] == 'sms')
+
+    assert letter_row["month"] == "April"
+    assert letter_row["notification_type"] == "letter"
+    assert letter_row["billing_units"] == 30
+    assert letter_row["chargeable_units"] == 30
+    assert letter_row["notifications_sent"] == 30
+    assert letter_row["rate"] == 0.33
+    assert letter_row["postage"] == "second"
+    assert letter_row["cost"] == 9.9
+    assert letter_row["free_allowance_used"] == 0
+    assert letter_row["charged_units"] == 30
+
+    assert sms_row["month"] == "April"
+    assert sms_row["notification_type"] == "sms"
+    assert sms_row["billing_units"] == 30
+    assert sms_row["chargeable_units"] == 30
+    assert sms_row["notifications_sent"] == 30
+    assert sms_row["rate"] == 0.162
+    assert sms_row["postage"] == "none"
+    # free allowance is 4, so (30 - 4) * 0.162
+    assert sms_row["cost"] == 4.212
+    assert sms_row["free_allowance_used"] == 4
+    assert sms_row["charged_units"] == 26
 
 
 def set_up_yearly_data():
@@ -206,6 +198,7 @@ def set_up_yearly_data():
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
+
     for month in range(1, 13):
         mon = str(month).zfill(2)
         for day in range(1, monthrange(2016, month)[1] + 1):
@@ -226,6 +219,8 @@ def set_up_yearly_data():
                               rate=0.33,
                               postage='second')
         start_date, end_date = get_month_start_and_end_date_in_utc(datetime(2016, int(mon), 1))
+
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=4, financial_year_start=2016)
     return service
 
 
@@ -261,157 +256,33 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     )
 
     assert len(json_response) == 3
+
     assert json_response[0]['notification_type'] == 'email'
     assert json_response[0]['billing_units'] == 275
+    assert json_response[0]['chargeable_units'] == 0
+    assert json_response[0]['notifications_sent'] == 275
     assert json_response[0]['rate'] == 0
     assert json_response[0]['letter_total'] == 0
+    assert json_response[0]['cost'] == 0
+    assert json_response[0]['free_allowance_used'] == 0
+    assert json_response[0]['charged_units'] == 0
+
     assert json_response[1]['notification_type'] == 'letter'
     assert json_response[1]['billing_units'] == 275
+    assert json_response[1]['chargeable_units'] == 275
+    assert json_response[1]['notifications_sent'] == 275
     assert json_response[1]['rate'] == 0.33
     assert json_response[1]['letter_total'] == 90.75
+    assert json_response[1]['cost'] == 90.75
+    assert json_response[1]['free_allowance_used'] == 0
+    assert json_response[1]['charged_units'] == 275
+
     assert json_response[2]['notification_type'] == 'sms'
     assert json_response[2]['billing_units'] == 825
+    assert json_response[2]['chargeable_units'] == 825
+    assert json_response[2]['notifications_sent'] == 550
     assert json_response[2]['rate'] == 0.0162
     assert json_response[2]['letter_total'] == 0
-
-
-def test_get_yearly_usage_by_monthly_from_ft_billing_all_cases(admin_request, notify_db_session):
-    service = set_up_data_for_all_cases()
-
-    json_response = admin_request.get(
-        'billing.get_yearly_usage_by_monthly_from_ft_billing',
-        service_id=service.id,
-        year=2018
-    )
-
-    assert len(json_response) == 5
-    assert json_response[0]['month'] == 'May'
-    assert json_response[0]['notification_type'] == 'letter'
-    assert json_response[0]['rate'] == 0.33
-    assert json_response[0]['billing_units'] == 1
-    assert json_response[0]['postage'] == 'second'
-
-    assert json_response[1]['month'] == 'May'
-    assert json_response[1]['notification_type'] == 'letter'
-    assert json_response[1]['rate'] == 0.36
-    assert json_response[1]['billing_units'] == 1
-    assert json_response[1]['postage'] == 'second'
-
-    assert json_response[2]['month'] == 'May'
-    assert json_response[2]['notification_type'] == 'letter'
-    assert json_response[2]['rate'] == 0.39
-    assert json_response[2]['billing_units'] == 1
-    assert json_response[2]['postage'] == 'first'
-
-    assert json_response[3]['month'] == 'May'
-    assert json_response[3]['notification_type'] == 'sms'
-    assert json_response[3]['rate'] == 0.0150
-    assert json_response[3]['billing_units'] == 4
-    assert json_response[3]['postage'] == 'none'
-
-    assert json_response[4]['month'] == 'May'
-    assert json_response[4]['notification_type'] == 'sms'
-    assert json_response[4]['rate'] == 0.162
-    assert json_response[4]['billing_units'] == 5
-    assert json_response[4]['postage'] == 'none'
-
-
-def test_get_yearly_billing_usage_summary_from_ft_billing_all_cases(admin_request, notify_db_session):
-    service = set_up_data_for_all_cases()
-
-    json_response = admin_request.get(
-        'billing.get_yearly_billing_usage_summary_from_ft_billing',
-        service_id=service.id,
-        year=2018
-    )
-
-    assert len(json_response) == 6
-    assert json_response[0]["notification_type"] == 'email'
-    assert json_response[0]["billing_units"] == 1
-    assert json_response[0]["rate"] == 0
-    assert json_response[0]["letter_total"] == 0
-
-    assert json_response[1]["notification_type"] == 'letter'
-    assert json_response[1]["billing_units"] == 1
-    assert json_response[1]["rate"] == 0.33
-    assert json_response[1]["letter_total"] == 0.33
-
-    assert json_response[2]["notification_type"] == 'letter'
-    assert json_response[2]["billing_units"] == 1
-    assert json_response[2]["rate"] == 0.36
-    assert json_response[2]["letter_total"] == 0.36
-
-    assert json_response[3]["notification_type"] == 'letter'
-    assert json_response[3]["billing_units"] == 1
-    assert json_response[3]["rate"] == 0.39
-    assert json_response[3]["letter_total"] == 0.39
-
-    assert json_response[4]["notification_type"] == 'sms'
-    assert json_response[4]["billing_units"] == 4
-    assert json_response[4]["rate"] == 0.0150
-    assert json_response[4]["letter_total"] == 0
-
-    assert json_response[5]["notification_type"] == 'sms'
-    assert json_response[5]["billing_units"] == 5
-    assert json_response[5]["rate"] == 0.162
-    assert json_response[5]["letter_total"] == 0
-
-
-def set_up_data_for_all_cases():
-    service = create_service()
-    sms_template = create_template(service=service, template_type="sms")
-    email_template = create_template(service=service, template_type="email")
-    letter_template = create_template(service=service, template_type="letter")
-    create_ft_billing(bst_date='2018-05-16',
-                      template=sms_template,
-                      rate_multiplier=1,
-                      international=False,
-                      rate=0.162,
-                      billable_unit=1,
-                      notifications_sent=1)
-    create_ft_billing(bst_date='2018-05-17',
-                      template=sms_template,
-                      rate_multiplier=2,
-                      international=False,
-                      rate=0.162,
-                      billable_unit=2,
-                      notifications_sent=1)
-    create_ft_billing(bst_date='2018-05-16',
-                      template=sms_template,
-                      rate_multiplier=2,
-                      international=False,
-                      rate=0.0150,
-                      billable_unit=2,
-                      notifications_sent=1)
-    create_ft_billing(bst_date='2018-05-16',
-                      template=email_template,
-                      rate_multiplier=1,
-                      international=False,
-                      rate=0,
-                      billable_unit=0,
-                      notifications_sent=1)
-    create_ft_billing(bst_date='2018-05-16',
-                      template=letter_template,
-                      rate_multiplier=1,
-                      international=False,
-                      rate=0.33,
-                      billable_unit=1,
-                      notifications_sent=1,
-                      postage='second')
-    create_ft_billing(bst_date='2018-05-17',
-                      template=letter_template,
-                      rate_multiplier=1,
-                      international=False,
-                      rate=0.36,
-                      billable_unit=2,
-                      notifications_sent=1,
-                      postage='second')
-    create_ft_billing(bst_date='2018-05-18',
-                      template=letter_template,
-                      rate_multiplier=1,
-                      international=False,
-                      rate=0.39,
-                      billable_unit=3,
-                      notifications_sent=1,
-                      postage='first')
-    return service
+    assert json_response[2]['cost'] == 13.3002
+    assert json_response[2]['free_allowance_used'] == 4
+    assert json_response[2]['charged_units'] == 821

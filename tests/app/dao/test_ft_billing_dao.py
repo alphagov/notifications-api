@@ -45,16 +45,47 @@ def set_up_yearly_data():
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
 
-    start_date = date(2016, 3, 31)
-    end_date = date(2017, 4, 2)
+    # use different rates for adjacent financial years to make sure the query
+    # doesn't accidentally bleed over into them
+    for dt in (date(2016, 3, 31), date(2017, 4, 1)):
+        create_ft_billing(bst_date=dt, template=sms_template, rate=0.163)
+        create_ft_billing(bst_date=dt, template=email_template, rate=0, billable_unit=0)
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.34, postage='second')
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.31, postage='second')
+
+    start_date = date(2016, 4, 1)
+    end_date = date(2017, 4, 1)
 
     for n in range((end_date - start_date).days):
         dt = start_date + timedelta(days=n)
 
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.162)
-        create_ft_billing(bst_date=dt, template=email_template, rate=0)
+        create_ft_billing(bst_date=dt, template=email_template, rate=0, billable_unit=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.30, postage='second')
+
+    return service
+
+
+def set_up_yearly_data_variable_rates():
+    service = create_service()
+    sms_template = create_template(service=service, template_type="sms")
+    letter_template = create_template(service=service, template_type="letter")
+
+    create_ft_billing(bst_date='2018-05-16', template=sms_template, rate=0.162)
+    create_ft_billing(bst_date='2018-05-17', template=sms_template, rate_multiplier=2, rate=0.0150, billable_unit=2)
+    create_ft_billing(bst_date='2018-05-16', template=sms_template, rate_multiplier=2, rate=0.162, billable_unit=2)
+    create_ft_billing(bst_date='2018-05-16', template=letter_template, rate=0.33, postage='second')
+
+    create_ft_billing(
+        bst_date='2018-05-17',
+        template=letter_template,
+        rate=0.36,
+        notifications_sent=2,
+        billable_unit=4,  # 2 pages each
+        postage='second'
+    )
+
     return service
 
 
@@ -394,107 +425,229 @@ def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):
 
 
 def test_fetch_monthly_billing_for_year(notify_db_session):
-    service = create_service()
-    template = create_template(service=service, template_type="sms")
-    for i in range(1, 31):
-        create_ft_billing(bst_date='2018-06-{}'.format(i),
-                          template=template,
-                          rate_multiplier=2,
-                          rate=0.162)
-    for i in range(1, 32):
-        create_ft_billing(bst_date='2018-07-{}'.format(i),
-                          template=template,
-                          rate=0.158)
+    service = set_up_yearly_data()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2016)
+    results = fetch_monthly_billing_for_year(service.id, 2016)
 
-    results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
+    assert len(results) == 48
 
-    assert len(results) == 2
-    assert str(results[0].month) == "2018-06-01"
+    assert str(results[0].month) == "2016-04-01"
+    assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 30
-    assert results[0].billable_units == Decimal('60')
-    assert results[0].rate == Decimal('0.162')
-    assert results[0].notification_type == 'sms'
-    assert results[0].postage == 'none'
+    assert results[0].billable_units == 30
+    assert results[0].chargeable_units == 0
+    assert results[0].rate == Decimal('0')
+    assert results[0].cost == Decimal('0')
+    assert results[0].free_allowance_used == 0
+    assert results[0].charged_units == 0
 
-    assert str(results[1].month) == "2018-07-01"
-    assert results[1].notifications_sent == 31
-    assert results[1].billable_units == Decimal('31')
-    assert results[1].rate == Decimal('0.158')
-    assert results[1].notification_type == 'sms'
-    assert results[1].postage == 'none'
+    assert str(results[1].month) == "2016-04-01"
+    assert results[1].notification_type == 'letter'
+    assert results[1].notifications_sent == 30
+    assert results[1].billable_units == 30
+    assert results[1].chargeable_units == 30
+    assert results[1].rate == Decimal('0.30')
+    assert results[1].cost == Decimal('9')
+    assert results[1].free_allowance_used == 0
+    assert results[1].charged_units == 30
+
+    assert str(results[1].month) == "2016-04-01"
+    assert results[2].notification_type == 'letter'
+    assert results[2].notifications_sent == 30
+    assert results[2].billable_units == 30
+    assert results[2].chargeable_units == 30
+    assert results[2].rate == Decimal('0.33')
+    assert results[2].cost == Decimal('9.9')
+    assert results[2].free_allowance_used == 0
+    assert results[2].charged_units == 30
+
+    assert str(results[3].month) == "2016-04-01"
+    assert results[3].notification_type == 'sms'
+    assert results[3].notifications_sent == 30
+    assert results[3].billable_units == 30
+    assert results[3].chargeable_units == 30
+    assert results[3].rate == Decimal('0.162')
+    # free allowance is 10, so (30 - 10) * 0.162
+    assert results[3].cost == Decimal('3.24')
+    assert results[3].free_allowance_used == 10
+    assert results[3].charged_units == 20
+
+    assert str(results[4].month) == "2016-05-01"
+    assert str(results[47].month) == "2017-03-01"
+
+
+def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
+    service = set_up_yearly_data_variable_rates()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=6, financial_year_start=2018)
+    results = fetch_monthly_billing_for_year(service.id, 2018)
+
+    # Test data is only for the month of May
+    assert len(results) == 4
+
+    assert str(results[0].month) == "2018-05-01"
+    assert results[0].notification_type == 'letter'
+    assert results[0].notifications_sent == 1
+    assert results[0].billable_units == 1
+    assert results[0].chargeable_units == 1
+    assert results[0].rate == Decimal('0.33')
+    assert results[0].cost == Decimal('0.33')
+    assert results[0].free_allowance_used == 0
+    assert results[0].charged_units == 1
+
+    assert str(results[1].month) == "2018-05-01"
+    assert results[1].notification_type == 'letter'
+    assert results[1].notifications_sent == 2
+    assert results[1].billable_units == 2
+    assert results[1].chargeable_units == 2
+    assert results[1].rate == Decimal('0.36')
+    assert results[1].cost == Decimal('0.72')
+    assert results[1].free_allowance_used == 0
+    assert results[1].charged_units == 2
+
+    assert str(results[2].month) == "2018-05-01"
+    assert results[2].notification_type == 'sms'
+    assert results[2].notifications_sent == 1
+    assert results[2].billable_units == 4
+    assert results[2].chargeable_units == 4
+    assert results[2].rate == Decimal('0.015')
+    # 1 free units on the 17th
+    assert results[2].cost == Decimal('0.045')
+    assert results[2].free_allowance_used == 1
+    assert results[2].charged_units == 3
+
+    assert str(results[3].month) == "2018-05-01"
+    assert results[3].notification_type == 'sms'
+    assert results[3].notifications_sent == 2
+    assert results[3].billable_units == 5
+    assert results[3].chargeable_units == 5
+    assert results[3].rate == Decimal('0.162')
+    # 5 free units on the 16th
+    assert results[3].cost == Decimal('0')
+    assert results[3].free_allowance_used == 5
+    assert results[3].charged_units == 0
 
 
 @freeze_time('2018-08-01 13:30:00')
 def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
     service = create_service()
-    template = create_template(service=service, template_type="email")
+    template = create_template(service=service, template_type="sms")
+
+    create_rate(start_date=datetime.utcnow() - timedelta(days=1), value=0.158, notification_type='sms')
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2018)
+
     for i in range(1, 32):
         create_ft_billing(bst_date='2018-07-{}'.format(i), template=template)
+
     create_notification(template=template, status='delivered')
 
     assert db.session.query(FactBilling.bst_date).count() == 31
-    results = fetch_monthly_billing_for_year(service_id=service.id,
-                                             year=2018)
+    results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
+
     assert db.session.query(FactBilling.bst_date).count() == 32
     assert len(results) == 2
 
 
-def test_fetch_monthly_billing_for_year_return_financial_year(notify_db_session):
-    service = set_up_yearly_data()
-
-    results = fetch_monthly_billing_for_year(service.id, 2016)
-    # returns 3 rows, per month, returns financial year april to end of march
-    # Orders by Month
-
-    assert len(results) == 48
-    assert str(results[0].month) == "2016-04-01"
-    assert results[0].notification_type == 'email'
-    assert results[0].notifications_sent == 30
-    assert results[0].billable_units == 30
-    assert results[0].rate == Decimal('0')
-    assert str(results[1].month) == "2016-04-01"
-    assert results[1].notification_type == 'letter'
-    assert results[1].notifications_sent == 30
-    assert results[1].billable_units == 30
-    assert results[1].rate == Decimal('0.30')
-    assert str(results[1].month) == "2016-04-01"
-    assert results[2].notification_type == 'letter'
-    assert results[2].notifications_sent == 30
-    assert results[2].billable_units == 30
-    assert results[2].rate == Decimal('0.33')
-    assert str(results[3].month) == "2016-04-01"
-    assert results[3].notification_type == 'sms'
-    assert results[3].notifications_sent == 30
-    assert results[3].billable_units == 30
-    assert results[3].rate == Decimal('0.162')
-    assert str(results[4].month) == "2016-05-01"
-    assert str(results[47].month) == "2017-03-01"
-
-
 def test_fetch_billing_totals_for_year(notify_db_session):
     service = set_up_yearly_data()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
     results = fetch_billing_totals_for_year(service_id=service.id, year=2016)
 
     assert len(results) == 4
     assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 365
     assert results[0].billable_units == 365
+    assert results[0].chargeable_units == 0
     assert results[0].rate == Decimal('0')
+    assert results[0].cost == Decimal('0')
+    assert results[0].free_allowance_used == 0
+    assert results[0].charged_units == 0
 
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 365
     assert results[1].billable_units == 365
+    assert results[1].chargeable_units == 365
     assert results[1].rate == Decimal('0.3')
+    assert results[1].cost == Decimal('109.5')
+    assert results[1].free_allowance_used == 0
+    assert results[1].charged_units == 365
 
     assert results[2].notification_type == 'letter'
     assert results[2].notifications_sent == 365
     assert results[2].billable_units == 365
+    assert results[2].chargeable_units == 365
     assert results[2].rate == Decimal('0.33')
+    assert results[2].cost == Decimal('120.45')
+    assert results[2].free_allowance_used == 0
+    assert results[2].charged_units == 365
 
     assert results[3].notification_type == 'sms'
     assert results[3].notifications_sent == 365
     assert results[3].billable_units == 365
+    assert results[3].chargeable_units == 365
     assert results[3].rate == Decimal('0.162')
+    assert results[3].cost == Decimal('0')
+    assert results[3].free_allowance_used == 365
+    assert results[3].charged_units == 0
+
+
+def test_fetch_billing_totals_for_year_uses_current_annual_billing(notify_db_session):
+    service = set_up_yearly_data()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=400, financial_year_start=2015)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=0, financial_year_start=2016)
+
+    result = next(
+        result for result in
+        fetch_billing_totals_for_year(service_id=service.id, year=2016)
+        if result.notification_type == 'sms'
+    )
+
+    assert result.chargeable_units == 365
+    assert result.cost > 0
+
+
+def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
+    service = set_up_yearly_data_variable_rates()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=6, financial_year_start=2018)
+    results = fetch_billing_totals_for_year(service_id=service.id, year=2018)
+
+    assert len(results) == 4
+    assert results[0].notification_type == 'letter'
+    assert results[0].notifications_sent == 1
+    assert results[0].billable_units == 1
+    assert results[0].chargeable_units == 1
+    assert results[0].rate == Decimal('0.33')
+    assert results[0].cost == Decimal('0.33')
+    assert results[0].free_allowance_used == 0
+    assert results[0].charged_units == 1
+
+    assert results[1].notification_type == 'letter'
+    assert results[1].notifications_sent == 2
+    assert results[1].billable_units == 2
+    assert results[1].chargeable_units == 2
+    assert results[1].rate == Decimal('0.36')
+    assert results[1].cost == Decimal('0.72')
+    assert results[1].free_allowance_used == 0
+    assert results[1].charged_units == 2
+
+    assert results[2].notification_type == 'sms'
+    assert results[2].notifications_sent == 1
+    assert results[2].billable_units == 4
+    assert results[2].chargeable_units == 4
+    assert results[2].rate == Decimal('0.015')
+    # 1 free unit on the 17th
+    assert results[2].cost == Decimal('0.045')
+    assert results[2].free_allowance_used == 1
+    assert results[2].charged_units == 3
+
+    assert results[3].notification_type == 'sms'
+    assert results[3].notifications_sent == 2
+    assert results[3].billable_units == 5
+    assert results[3].chargeable_units == 5
+    assert results[3].rate == Decimal('0.162')
+    # 5 free units on the 16th
+    assert results[3].cost == Decimal('0')
+    assert results[3].free_allowance_used == 5
+    assert results[3].charged_units == 0
 
 
 def test_delete_billing_data(notify_db_session):
