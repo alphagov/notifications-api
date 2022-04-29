@@ -17,13 +17,6 @@ def mmg_post(client, data):
         headers=[('Content-Type', 'application/json')])
 
 
-def reach_post(client, data):
-    return client.post(
-        path='/notifications/sms/reach',
-        data=data,
-        headers=[('Content-Type', 'application/json')])
-
-
 def test_firetext_callback_should_not_need_auth(client, mocker):
     mocker.patch('app.notifications.notifications_sms_callback.process_sms_client_response')
     data = 'mobile=441234123123&status=0&reference=notification_id&time=2016-03-10 14:17:00'
@@ -138,24 +131,6 @@ def test_mmg_callback_should_return_200_and_call_task_with_valid_data(client, mo
 
     mock_celery.assert_called_once_with(
         ['3', 'notification_id', 'MMG', '5'],
-        queue='sms-callbacks',
-    )
-
-
-# TODO: more tests about edge cases for this provider
-def test_reach_callback_should_return_200_and_call_task_with_valid_data(client, mocker):
-    mock_celery = mocker.patch(
-        'app.notifications.notifications_sms_callback.process_sms_client_response.apply_async')
-    data = json.dumps({"data": "TODO"})
-
-    response = reach_post(client, data)
-
-    assert response.status_code == 200
-    json_data = json.loads(response.data)
-    assert json_data['result'] == 'success'
-
-    mock_celery.assert_called_once_with(
-        ['TODO-d', 'notification_id', 'Reach', 'something'],
         queue='sms-callbacks',
     )
 
