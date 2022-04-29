@@ -6,10 +6,7 @@ from freezegun import freeze_time
 
 from app.billing.rest import update_free_sms_fragment_limit_data
 from app.dao.annual_billing_dao import dao_get_free_sms_fragment_limit_for_year
-from app.dao.date_util import (
-    get_current_financial_year_start_year,
-    get_month_start_and_end_date_in_utc,
-)
+from app.dao.date_util import get_current_financial_year_start_year
 from tests.app.db import (
     create_annual_billing,
     create_ft_billing,
@@ -214,7 +211,6 @@ def set_up_yearly_data():
                               template=letter_template,
                               rate=0.33,
                               postage='second')
-        start_date, end_date = get_month_start_and_end_date_in_utc(datetime(2016, int(mon), 1))
 
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=4, financial_year_start=2016)
     return service
