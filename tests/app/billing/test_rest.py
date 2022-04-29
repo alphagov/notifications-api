@@ -121,8 +121,10 @@ def test_update_free_sms_fragment_limit_data(client, sample_service):
     assert annual_billing.free_sms_fragment_limit == 9999
 
 
-def set_up_monthly_data():
+def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
     service = create_service()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2016)
+
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
@@ -131,13 +133,6 @@ def set_up_monthly_data():
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.0162)
         create_ft_billing(bst_date=dt, template=email_template, billable_unit=0, rate=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
-
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2016)
-    return service
-
-
-def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_session):
-    service = set_up_monthly_data()
 
     json_response = admin_request.get(
         'billing.get_yearly_usage_by_monthly_from_ft_billing',
@@ -177,21 +172,6 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     assert sms_row["charged_units"] == 0
 
 
-def set_up_yearly_data():
-    service = create_service()
-    sms_template = create_template(service=service, template_type="sms")
-    email_template = create_template(service=service, template_type="email")
-    letter_template = create_template(service=service, template_type="letter")
-
-    for dt in (date(2016, 4, 28), date(2016, 11, 10), date(2017, 2, 26)):
-        create_ft_billing(bst_date=dt, template=sms_template, rate=0.0162)
-        create_ft_billing(bst_date=dt, template=email_template, billable_unit=0, rate=0)
-        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
-
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2016)
-    return service
-
-
 def test_get_yearly_billing_usage_summary_from_ft_billing_returns_400_if_missing_year(admin_request, sample_service):
     json_response = admin_request.get(
         'billing.get_yearly_billing_usage_summary_from_ft_billing',
@@ -215,7 +195,17 @@ def test_get_yearly_billing_usage_summary_from_ft_billing_returns_empty_list_if_
 
 
 def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_db_session):
-    service = set_up_yearly_data()
+    service = create_service()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2016)
+
+    sms_template = create_template(service=service, template_type="sms")
+    email_template = create_template(service=service, template_type="email")
+    letter_template = create_template(service=service, template_type="letter")
+
+    for dt in (date(2016, 4, 28), date(2016, 11, 10), date(2017, 2, 26)):
+        create_ft_billing(bst_date=dt, template=sms_template, rate=0.0162)
+        create_ft_billing(bst_date=dt, template=email_template, billable_unit=0, rate=0)
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
 
     json_response = admin_request.get(
         'billing.get_yearly_billing_usage_summary_from_ft_billing',
