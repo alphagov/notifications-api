@@ -906,6 +906,95 @@ def test_fetch_usage_year_for_organisation_populates_ft_billing_for_today(notify
     assert FactBilling.query.count() == 1
 
 
+@freeze_time('2022-05-01 13:30')
+def test_fetch_usage_year_for_organisation_calculates_cost_from_multiple_rates(notify_db_session):
+    old_rate_date = date(2022, 4, 29)
+    new_rate_date = date(2022, 5, 1)
+    current_year = datetime.utcnow().year
+
+    org = create_organisation(name='Organisation 1')
+
+    service_1 = create_service(restricted=False, service_name="Service 1")
+    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
+    sms_template_1 = create_template(service=service_1)
+    create_ft_billing(
+        bst_date=old_rate_date, template=sms_template_1, rate=2,
+        billable_unit=4, notifications_sent=4
+    )
+    create_ft_billing(
+        bst_date=new_rate_date, template=sms_template_1, rate=3,
+        billable_unit=2, notifications_sent=2
+    )
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
+
+    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=current_year)
+
+    assert len(results) == 1
+    assert results[str(service_1.id)]['free_sms_limit'] == 3
+    assert results[str(service_1.id)]['sms_remainder'] == 0
+    assert results[str(service_1.id)]['sms_billable_units'] == 6
+    assert results[str(service_1.id)]['chargeable_billable_sms'] == 3
+    assert results[str(service_1.id)]['sms_cost'] == 8.0
+
+
+@freeze_time('2022-05-01 13:30')
+def test_fetch_usage_year_for_organisation_when_no_usage(notify_db_session):
+    current_year = datetime.utcnow().year
+
+    org = create_organisation(name='Organisation 1')
+
+    service_1 = create_service(restricted=False, service_name="Service 1")
+    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
+
+    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=current_year)
+
+    assert len(results) == 1
+    assert results[str(service_1.id)]['free_sms_limit'] == 3
+    assert results[str(service_1.id)]['sms_remainder'] == 3
+    assert results[str(service_1.id)]['sms_billable_units'] == 0
+    assert results[str(service_1.id)]['chargeable_billable_sms'] == 0
+    assert results[str(service_1.id)]['sms_cost'] == 0.0
+
+
+@freeze_time('2022-05-01 13:30')
+def test_fetch_usage_year_for_organisation_only_queries_present_year(notify_db_session):
+    current_year = datetime.utcnow().year
+    last_year = current_year - 1
+    date_two_years_ago = date(2021, 3, 31)
+    date_in_last_financial_year = date(2022, 3, 31)
+    date_in_this_year = date.today()
+
+    org = create_organisation(name='Organisation 1')
+
+    service_1 = create_service(restricted=False, service_name="Service 1")
+    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
+    sms_template_1 = create_template(service=service_1)
+
+    create_ft_billing(
+        bst_date=date_two_years_ago, template=sms_template_1, rate=1,
+        billable_unit=2, notifications_sent=2
+    )
+    create_ft_billing(
+        bst_date=date_in_last_financial_year, template=sms_template_1, rate=1,
+        billable_unit=4, notifications_sent=4
+    )
+    create_ft_billing(
+        bst_date=date_in_this_year, template=sms_template_1, rate=1,
+        billable_unit=8, notifications_sent=8
+    )
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=4, financial_year_start=last_year - 1)
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=0, financial_year_start=last_year)
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=8, financial_year_start=current_year)
+
+    results = fetch_usage_year_for_organisation(organisation_id=org.id, year=last_year)
+
+    assert len(results) == 1
+    assert results[str(service_1.id)]['sms_billable_units'] == 4
+    assert results[str(service_1.id)]['chargeable_billable_sms'] == 4
+    assert results[str(service_1.id)]['sms_cost'] == 4.0
+
+
 @freeze_time('2020-02-27 13:30')
 def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(notify_db_session):
     org = create_organisation(name='Organisation without live services')
