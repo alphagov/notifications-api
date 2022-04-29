@@ -207,10 +207,6 @@ def set_up_yearly_data():
                               template=sms_template,
                               rate=0.0162)
             create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
-                              template=sms_template,
-                              rate_multiplier=2,
-                              rate=0.0162)
-            create_ft_billing(bst_date='2016-{}-{}'.format(mon, d),
                               template=email_template,
                               billable_unit=0,
                               rate=0)
@@ -278,11 +274,11 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     assert json_response[1]['charged_units'] == 275
 
     assert json_response[2]['notification_type'] == 'sms'
-    assert json_response[2]['billing_units'] == 825
-    assert json_response[2]['chargeable_units'] == 825
-    assert json_response[2]['notifications_sent'] == 550
+    assert json_response[2]['billing_units'] == 275
+    assert json_response[2]['chargeable_units'] == 275
+    assert json_response[2]['notifications_sent'] == 275
     assert json_response[2]['rate'] == 0.0162
     assert json_response[2]['letter_total'] == 0
-    assert json_response[2]['cost'] == 13.3002
+    assert json_response[2]['cost'] == 4.3902
     assert json_response[2]['free_allowance_used'] == 4
-    assert json_response[2]['charged_units'] == 821
+    assert json_response[2]['charged_units'] == 271
