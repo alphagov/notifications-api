@@ -217,7 +217,6 @@ def test_service_can_send_to_recipient_passes_for_guest_list_recipient_passes(sa
     {"mobile_number": "07513332413"},
 ])
 def test_service_can_send_to_recipient_fails_when_ignoring_guest_list(
-    notify_db,
     notify_db_session,
     sample_service,
     recipient,

@@ -69,6 +69,10 @@ def create_test_db(database_uri):
 
 @pytest.fixture(scope='session')
 def notify_db(notify_api, worker_id):
+    """
+    Manages the connection to the database. Generally this shouldn't be used, instead you should use the
+    `notify_db_session` fixture which also cleans up any data you've got left over after your test run.
+    """
     assert 'test_notification_api' in db.engine.url.database, 'dont run tests against main db'
 
     # create a database for this worker thread -
@@ -103,7 +107,13 @@ def sms_providers(notify_db):
 
 @pytest.fixture(scope='function')
 def notify_db_session(notify_db, sms_providers):
-    yield notify_db
+    """
+    This fixture clears down all non static data after your test run. It yields the sqlalchemy session variable
+    so you can manually add, commit, etc if needed.
+
+    `notify_db_session.commit()`
+    """
+    yield notify_db.session
 
     notify_db.session.remove()
     for tbl in reversed(notify_db.metadata.sorted_tables):

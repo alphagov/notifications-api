@@ -34,13 +34,13 @@ def test_deactivating_inactive_service_does_nothing(client, sample_service):
 
 
 @pytest.fixture
-def archived_service(client, notify_db, sample_service):
+def archived_service(client, notify_db_session, sample_service):
     create_template(sample_service, template_name='a')
     create_template(sample_service, template_name='b')
     create_api_key(sample_service)
     create_api_key(sample_service)
 
-    notify_db.session.commit()
+    notify_db_session.commit()
 
     auth_header = create_admin_authorization_header()
     response = client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])

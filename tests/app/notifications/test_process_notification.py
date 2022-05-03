@@ -263,7 +263,6 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
     (False, 'notify-internal-tasks', 'sms', 'test', 'research-mode-tasks', 'provider_tasks.deliver_sms'),
 ])
 def test_send_notification_to_queue(
-    notify_db,
     notify_db_session,
     research_mode,
     requested_queue,

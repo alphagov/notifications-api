@@ -505,7 +505,7 @@ def test_dao_fetch_live_services_data(sample_user):
     ]
 
 
-def test_get_service_by_id_returns_none_if_no_service(notify_db):
+def test_get_service_by_id_returns_none_if_no_service(notify_db_session):
     with pytest.raises(NoResultFound) as e:
         dao_fetch_service_by_id(str(uuid.uuid4()))
     assert 'No row was found when one was required' in str(e.value)
@@ -1021,7 +1021,7 @@ def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db_s
     assert stats['failed'] == 1
 
 
-def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db, notify_db_session):
+def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_session):
     service1 = create_service(service_name='service 1', email_from='service.1')
     service2 = create_service(service_name='service 2', email_from='service.2')
     template_sms = create_template(service=service1)

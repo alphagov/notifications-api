@@ -45,7 +45,7 @@ def test_save_service_inbound_api(sample_service):
     assert versioned.version == 1
 
 
-def test_save_service_inbound_api_fails_if_service_does_not_exist(notify_db, notify_db_session):
+def test_save_service_inbound_api_fails_if_service_does_not_exist(notify_db_session):
     service_inbound_api = ServiceInboundApi(
         service_id=uuid.uuid4(),
         url="https://some_service/inbound_messages",

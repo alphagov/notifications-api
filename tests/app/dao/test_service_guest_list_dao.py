@@ -29,7 +29,7 @@ def test_add_and_commit_guest_list_contacts_saves_data(sample_service):
     assert db_contents[0].id == guest_list.id
 
 
-def test_remove_service_guest_list_only_removes_for_my_service(notify_db, notify_db_session):
+def test_remove_service_guest_list_only_removes_for_my_service(notify_db_session):
     service_1 = create_service(service_name="service 1")
     service_2 = create_service(service_name="service 2")
     dao_add_and_commit_guest_list_contacts([
@@ -43,10 +43,10 @@ def test_remove_service_guest_list_only_removes_for_my_service(notify_db, notify
     assert len(service_2.guest_list) == 1
 
 
-def test_remove_service_guest_list_does_not_commit(notify_db, sample_service_guest_list):
+def test_remove_service_guest_list_does_not_commit(notify_db_session, sample_service_guest_list):
     dao_remove_service_guest_list(sample_service_guest_list.service_id)
 
     # since dao_remove_service_guest_list doesn't commit, we can still rollback its changes
-    notify_db.session.rollback()
+    notify_db_session.rollback()
 
     assert ServiceGuestList.query.count() == 1

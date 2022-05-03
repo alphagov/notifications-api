@@ -154,7 +154,7 @@ def test_get_service_list_should_return_empty_list_if_no_services(admin_request)
     assert len(json_resp['data']) == 0
 
 
-def test_find_services_by_name_finds_services(notify_db, admin_request, mocker):
+def test_find_services_by_name_finds_services(notify_db_session, admin_request, mocker):
     service_1 = create_service(service_name="ABCDEF")
     service_2 = create_service(service_name="ABCGHT")
     mock_get_services_by_partial_name = mocker.patch(
@@ -166,7 +166,7 @@ def test_find_services_by_name_finds_services(notify_db, admin_request, mocker):
     assert len(response) == 2
 
 
-def test_find_services_by_name_handles_no_results(notify_db, admin_request, mocker):
+def test_find_services_by_name_handles_no_results(notify_db_session, admin_request, mocker):
     mock_get_services_by_partial_name = mocker.patch(
         'app.service.rest.get_services_by_partial_name',
         return_value=[]
@@ -176,7 +176,7 @@ def test_find_services_by_name_handles_no_results(notify_db, admin_request, mock
     assert len(response) == 0
 
 
-def test_find_services_by_name_handles_no_service_name(notify_db, admin_request, mocker):
+def test_find_services_by_name_handles_no_service_name(notify_db_session, admin_request, mocker):
     mock_get_services_by_partial_name = mocker.patch(
         'app.service.rest.get_services_by_partial_name'
     )
@@ -300,7 +300,7 @@ def test_get_service_by_id(admin_request, sample_service):
     ('government', 'vodafone'),
 ))
 def test_get_service_by_id_for_broadcast_service_returns_broadcast_keys(
-    notify_db, admin_request, sample_broadcast_service, broadcast_channel, allowed_broadcast_provider
+    notify_db_session, admin_request, sample_broadcast_service, broadcast_channel, allowed_broadcast_provider
 ):
     sample_broadcast_service.broadcast_channel = broadcast_channel
     sample_broadcast_service.allowed_broadcast_provider = allowed_broadcast_provider
@@ -606,7 +606,6 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
 
 
 def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(notify_api,
-                                                                              notify_db,
                                                                               notify_db_session,
                                                                               fake_uuid):
     with notify_api.test_request_context():
@@ -704,10 +703,10 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
 
-def test_update_service(client, notify_db, sample_service):
+def test_update_service(client, notify_db_session, sample_service):
     brand = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
-    notify_db.session.add(brand)
-    notify_db.session.commit()
+    notify_db_session.add(brand)
+    notify_db_session.commit()
 
     assert sample_service.email_branding is None
 
@@ -752,7 +751,7 @@ def test_cant_update_service_org_type_to_random_value(client, sample_service):
     assert resp.status_code == 500
 
 
-def test_update_service_letter_branding(client, notify_db, sample_service):
+def test_update_service_letter_branding(client, notify_db_session, sample_service):
     letter_branding = create_letter_branding(name='test brand', filename='test-brand')
     data = {
         'letter_branding': str(letter_branding.id)
@@ -770,7 +769,7 @@ def test_update_service_letter_branding(client, notify_db, sample_service):
     assert result['data']['letter_branding'] == str(letter_branding.id)
 
 
-def test_update_service_remove_letter_branding(client, notify_db, sample_service):
+def test_update_service_remove_letter_branding(client, notify_db_session, sample_service):
     letter_branding = create_letter_branding(name='test brand', filename='test-brand')
     sample_service
     data = {
@@ -799,10 +798,10 @@ def test_update_service_remove_letter_branding(client, notify_db, sample_service
     assert result['data']['letter_branding'] is None
 
 
-def test_update_service_remove_email_branding(admin_request, notify_db, sample_service):
+def test_update_service_remove_email_branding(admin_request, notify_db_session, sample_service):
     brand = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
     sample_service.email_branding = brand
-    notify_db.session.commit()
+    notify_db_session.commit()
 
     resp = admin_request.post(
         'service.update_service',
@@ -812,12 +811,12 @@ def test_update_service_remove_email_branding(admin_request, notify_db, sample_s
     assert resp['data']['email_branding'] is None
 
 
-def test_update_service_change_email_branding(admin_request, notify_db, sample_service):
+def test_update_service_change_email_branding(admin_request, notify_db_session, sample_service):
     brand1 = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
     brand2 = EmailBranding(colour='#111111', logo='avengers.png', name='Avengers')
-    notify_db.session.add_all([brand1, brand2])
+    notify_db_session.add_all([brand1, brand2])
     sample_service.email_branding = brand1
-    notify_db.session.commit()
+    notify_db_session.commit()
 
     resp = admin_request.post(
         'service.update_service',
@@ -910,7 +909,7 @@ def test_update_service_sets_research_consent(
 
 
 @pytest.fixture(scope='function')
-def service_with_no_permissions(notify_db, notify_db_session):
+def service_with_no_permissions(notify_db_session):
     return create_service(service_permissions=[])
 
 
@@ -931,7 +930,7 @@ def test_update_service_flags_with_service_without_default_service_permissions(c
     assert set(result['data']['permissions']) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
-def test_update_service_flags_will_remove_service_permissions(client, notify_db, notify_db_session):
+def test_update_service_flags_will_remove_service_permissions(client, notify_db_session):
     auth_header = create_admin_authorization_header()
 
     service = create_service(service_permissions=[SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE])
@@ -1092,7 +1091,6 @@ def test_update_service_research_mode_throws_validation_error(notify_api, sample
 
 
 def test_should_not_update_service_with_duplicate_name(notify_api,
-                                                       notify_db,
                                                        notify_db_session,
                                                        sample_user,
                                                        sample_service):
@@ -1122,7 +1120,6 @@ def test_should_not_update_service_with_duplicate_name(notify_api,
 
 
 def test_should_not_update_service_with_duplicate_email_from(notify_api,
-                                                             notify_db,
                                                              notify_db_session,
                                                              sample_user,
                                                              sample_service):
@@ -1210,7 +1207,7 @@ def test_get_users_for_service_returns_empty_list_if_no_users_associated_with_se
             assert result['data'] == []
 
 
-def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_api, notify_db, notify_db_session):
+def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_api, notify_db_session):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             service_id = uuid.uuid4()
@@ -1227,7 +1224,6 @@ def test_get_users_for_service_returns_404_when_service_does_not_exist(notify_ap
 
 
 def test_default_permissions_are_added_for_user_service(notify_api,
-                                                        notify_db,
                                                         notify_db_session,
                                                         sample_service,
                                                         sample_user):
@@ -1274,7 +1270,6 @@ def test_default_permissions_are_added_for_user_service(notify_api,
 
 def test_add_existing_user_to_another_service_with_all_permissions(
     notify_api,
-    notify_db,
     notify_db_session,
     sample_service,
     sample_user
@@ -1353,7 +1348,6 @@ def test_add_existing_user_to_another_service_with_all_permissions(
 
 
 def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
-                                                                    notify_db,
                                                                     notify_db_session,
                                                                     sample_service,
                                                                     sample_user):
@@ -1401,7 +1395,6 @@ def test_add_existing_user_to_another_service_with_send_permissions(notify_api,
 
 
 def test_add_existing_user_to_another_service_with_manage_permissions(notify_api,
-                                                                      notify_db,
                                                                       notify_db_session,
                                                                       sample_service,
                                                                       sample_user):
@@ -1448,7 +1441,6 @@ def test_add_existing_user_to_another_service_with_manage_permissions(notify_api
 
 
 def test_add_existing_user_to_another_service_with_folder_permissions(notify_api,
-                                                                      notify_db,
                                                                       notify_db_session,
                                                                       sample_service,
                                                                       sample_user):
@@ -1489,7 +1481,6 @@ def test_add_existing_user_to_another_service_with_folder_permissions(notify_api
 
 
 def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
-                                                                   notify_db,
                                                                    notify_db_session,
                                                                    sample_service,
                                                                    sample_user):
@@ -1530,7 +1521,6 @@ def test_add_existing_user_to_another_service_with_manage_api_keys(notify_api,
 
 
 def test_add_existing_user_to_non_existing_service_returns404(notify_api,
-                                                              notify_db,
                                                               notify_db_session,
                                                               sample_user):
     with notify_api.test_request_context():
@@ -1562,7 +1552,7 @@ def test_add_existing_user_to_non_existing_service_returns404(notify_api,
             assert result['message'] == expected_message
 
 
-def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_db, notify_db_session, sample_service):
+def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             existing_user_id = sample_service.users[0].id
@@ -1584,7 +1574,7 @@ def test_add_existing_user_of_service_to_service_returns400(notify_api, notify_d
             assert result['message'] == expected_message
 
 
-def test_add_unknown_user_to_service_returns404(notify_api, notify_db, notify_db_session, sample_service):
+def test_add_unknown_user_to_service_returns404(notify_api, notify_db_session, sample_service):
     with notify_api.test_request_context():
         with notify_api.test_client() as client:
             incorrect_id = 9876
@@ -1646,7 +1636,6 @@ def test_remove_non_existant_user_from_service(
 
 
 def test_cannot_remove_only_user_from_service(notify_api,
-                                              notify_db,
                                               notify_db_session,
                                               sample_user_service_permission):
     with notify_api.test_request_context():
@@ -1785,7 +1774,7 @@ def test_get_all_notifications_for_service_formatted_for_csv(client, sample_temp
     assert resp['notifications'][0]['status'] == 'Sending'
 
 
-def test_get_notification_for_service_without_uuid(client, notify_db, notify_db_session):
+def test_get_notification_for_service_without_uuid(client, notify_db_session):
     service_1 = create_service(service_name="1", email_from='1')
     response = client.get(
         path='/service/{}/notifications/{}'.format(service_1.id, 'foo'),
@@ -2342,7 +2331,6 @@ def test_search_for_notification_by_to_field_returns_no_next_link_if_50_or_less(
 
 def test_search_for_notification_by_to_field_for_letter(
     client,
-    notify_db,
     notify_db_session,
     sample_letter_template,
     sample_email_template,
@@ -2364,7 +2352,7 @@ def test_search_for_notification_by_to_field_for_letter(
     assert notifications[0]['id'] == str(letter_notification.id)
 
 
-def test_update_service_calls_send_notification_as_service_becomes_live(notify_db, notify_db_session, client, mocker):
+def test_update_service_calls_send_notification_as_service_becomes_live(notify_db_session, client, mocker):
     send_notification_mock = mocker.patch('app.service.rest.send_notification_to_service_users')
 
     restricted_service = create_service(restricted=True)
@@ -2708,7 +2696,7 @@ def test_get_email_reply_to_addresses_when_there_are_no_reply_to_email_addresses
     assert response.status_code == 200
 
 
-def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, notify_db_session):
+def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db_session):
     service = create_service()
     create_reply_to_email(service, 'test@mail.com')
 
@@ -2724,7 +2712,7 @@ def test_get_email_reply_to_addresses_with_one_email_address(client, notify_db, 
     assert response.status_code == 200
 
 
-def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, notify_db, notify_db_session):
+def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, notify_db_session):
     service = create_service()
     reply_to_a = create_reply_to_email(service, 'test_a@mail.com')
     reply_to_b = create_reply_to_email(service, 'test_b@mail.com', False)
@@ -2752,7 +2740,7 @@ def test_get_email_reply_to_addresses_with_multiple_email_addresses(client, noti
 
 
 def test_verify_reply_to_email_address_should_send_verification_email(
-    admin_request, notify_db, notify_db_session, mocker, verify_reply_to_address_email_template
+    admin_request, notify_db_session, mocker, verify_reply_to_address_email_template
 ):
     service = create_service()
     mocked = mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
@@ -2772,7 +2760,7 @@ def test_verify_reply_to_email_address_should_send_verification_email(
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
-def test_verify_reply_to_email_address_doesnt_allow_duplicates(admin_request, notify_db, notify_db_session, mocker):
+def test_verify_reply_to_email_address_doesnt_allow_duplicates(admin_request, notify_db_session, mocker):
     data = {'email': 'reply-here@example.gov.uk'}
     service = create_service()
     create_reply_to_email(service, 'reply-here@example.gov.uk')
@@ -2800,7 +2788,7 @@ def test_add_service_reply_to_email_address(admin_request, sample_service):
 
 
 def test_add_service_reply_to_email_address_doesnt_allow_duplicates(
-    admin_request, notify_db, notify_db_session, mocker
+    admin_request, notify_db_session, mocker
 ):
     data = {"email_address": "reply-here@example.gov.uk", "is_default": True}
     service = create_service()
@@ -2848,7 +2836,7 @@ def test_add_service_reply_to_email_address_raise_exception_if_no_default(admin_
     assert response['message'] == 'You must have at least one reply to email address as the default.'
 
 
-def test_add_service_reply_to_email_address_404s_when_invalid_service_id(admin_request, notify_db, notify_db_session):
+def test_add_service_reply_to_email_address_404s_when_invalid_service_id(admin_request, notify_db_session):
     response = admin_request.post(
         'service.add_service_reply_to_email_address',
         service_id=uuid.uuid4(),
@@ -2891,7 +2879,7 @@ def test_update_service_reply_to_email_address_returns_400_when_no_default(admin
 
 
 def test_update_service_reply_to_email_address_404s_when_invalid_service_id(
-    admin_request, notify_db, notify_db_session
+    admin_request, notify_db_session
 ):
     response = admin_request.post(
         'service.update_service_reply_to_email_address',
@@ -2939,7 +2927,7 @@ def test_delete_service_reply_to_email_address_returns_400_if_archiving_default_
     assert reply_to.archived is False
 
 
-def test_get_email_reply_to_address(client, notify_db, notify_db_session):
+def test_get_email_reply_to_address(client, notify_db_session):
     service = create_service()
     reply_to = create_reply_to_email(service, 'test_a@mail.com')
 
@@ -2958,7 +2946,7 @@ def test_get_letter_contacts_when_there_are_no_letter_contacts(client, sample_se
     assert response.status_code == 200
 
 
-def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_db_session):
+def test_get_letter_contacts_with_one_letter_contact(client, notify_db_session):
     service = create_service()
     create_letter_contact(service, 'Aberdeen, AB23 1XH')
 
@@ -2974,7 +2962,7 @@ def test_get_letter_contacts_with_one_letter_contact(client, notify_db, notify_d
     assert response.status_code == 200
 
 
-def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, notify_db_session):
+def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db_session):
     service = create_service()
     letter_contact_a = create_letter_contact(service, 'Aberdeen, AB23 1XH')
     letter_contact_b = create_letter_contact(service, 'London, E1 8QS', False)
@@ -3001,7 +2989,7 @@ def test_get_letter_contacts_with_multiple_letter_contacts(client, notify_db, no
     assert not json_response[1]['updated_at']
 
 
-def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
+def test_get_letter_contact_by_id(client, notify_db_session):
     service = create_service()
     letter_contact = create_letter_contact(service, 'London, E1 8QS')
 
@@ -3012,7 +3000,7 @@ def test_get_letter_contact_by_id(client, notify_db, notify_db_session):
     assert json.loads(response.get_data(as_text=True)) == letter_contact.serialize()
 
 
-def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db, notify_db_session):
+def test_get_letter_contact_return_404_when_invalid_contact_id(client, notify_db_session):
     service = create_service()
 
     response = client.get('/service/{}/letter-contact/{}'.format(service.id, '93d59f88-4aa1-453c-9900-f61e2fc8a2de'),
@@ -3062,7 +3050,7 @@ def test_add_service_letter_contact_block_fine_if_no_default(client, sample_serv
     assert response.status_code == 201
 
 
-def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, notify_db, notify_db_session):
+def test_add_service_letter_contact_block_404s_when_invalid_service_id(client, notify_db_session):
     response = client.post('/service/{}/letter-contact'.format(uuid.uuid4()),
                            data={},
                            headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
@@ -3096,7 +3084,7 @@ def test_update_service_letter_contact_returns_200_when_no_default(client, sampl
     assert response.status_code == 200
 
 
-def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db, notify_db_session):
+def test_update_service_letter_contact_returns_404_when_invalid_service_id(client, notify_db_session):
     response = client.post('/service/{}/letter-contact/{}'.format(uuid.uuid4(), uuid.uuid4()),
                            data={},
                            headers=[('Content-Type', 'application/json'), create_admin_authorization_header()])
@@ -3804,7 +3792,7 @@ def test_set_as_broadcast_service_rejects_unknown_channels(
 
 
 def test_set_as_broadcast_service_rejects_if_no_channel(
-    admin_request, notify_db, sample_service, broadcast_organisation
+    admin_request, notify_db_session, sample_service, broadcast_organisation
 ):
     data = {
         'service_mode': 'training',
@@ -3936,11 +3924,11 @@ def test_set_as_broadcast_service_does_not_error_if_run_on_a_service_that_is_alr
 
 @freeze_time('2021-02-02')
 def test_set_as_broadcast_service_sets_service_to_live_mode(
-    admin_request, notify_db, sample_service, broadcast_organisation
+    admin_request, notify_db_session, sample_service, broadcast_organisation
 ):
     sample_service.restricted = True
-    notify_db.session.add(sample_service)
-    notify_db.session.commit()
+    notify_db_session.add(sample_service)
+    notify_db_session.commit()
     assert sample_service.restricted is True
     assert sample_service.go_live_at is None
     data = {
@@ -3960,12 +3948,12 @@ def test_set_as_broadcast_service_sets_service_to_live_mode(
 
 
 def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
-    admin_request, notify_db, sample_broadcast_service
+    admin_request, notify_db_session, sample_broadcast_service
 ):
     sample_broadcast_service.restricted = False
     sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
-    notify_db.session.add(sample_broadcast_service)
-    notify_db.session.commit()
+    notify_db_session.add(sample_broadcast_service)
+    notify_db_session.commit()
     assert sample_broadcast_service.restricted is False
     assert sample_broadcast_service.go_live_at is not None
     data = {
@@ -3985,12 +3973,12 @@ def test_set_as_broadcast_service_doesnt_override_existing_go_live_at(
 
 
 def test_set_as_broadcast_service_sets_service_to_training_mode(
-    admin_request, notify_db, sample_broadcast_service
+    admin_request, notify_db_session, sample_broadcast_service
 ):
     sample_broadcast_service.restricted = False
     sample_broadcast_service.go_live_at = datetime(2021, 1, 1)
-    notify_db.session.add(sample_broadcast_service)
-    notify_db.session.commit()
+    notify_db_session.add(sample_broadcast_service)
+    notify_db_session.commit()
     assert sample_broadcast_service.restricted is False
     assert sample_broadcast_service.go_live_at is not None
 
@@ -4071,11 +4059,11 @@ def test_set_as_broadcast_service_sets_mobile_provider_restriction(
 
 @pytest.mark.parametrize('provider', ["all", "vodafone"])
 def test_set_as_broadcast_service_updates_mobile_provider_restriction(
-    admin_request, notify_db, sample_broadcast_service, provider
+    admin_request, notify_db_session, sample_broadcast_service, provider
 ):
     sample_broadcast_service.service_broadcast_settings.provider = "o2"
-    notify_db.session.add(sample_broadcast_service)
-    notify_db.session.commit()
+    notify_db_session.add(sample_broadcast_service)
+    notify_db_session.commit()
     assert sample_broadcast_service.service_broadcast_settings.provider == "o2"
 
     data = {

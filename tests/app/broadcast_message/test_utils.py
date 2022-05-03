@@ -270,7 +270,6 @@ def test_update_broadcast_message_status_rejects_approval_of_broadcast_with_no_a
 
 
 def test_update_broadcast_message_status_allows_trial_mode_services_to_approve_own_message(
-    notify_db,
     sample_broadcast_service,
     mocker
 ):

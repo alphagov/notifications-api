@@ -169,7 +169,7 @@ def test_receive_notification_without_permissions_does_not_create_inbound_even_w
     ([INBOUND_SMS_TYPE], False),
     ([SMS_TYPE], False),
 ])
-def test_check_permissions_for_inbound_sms(notify_db, notify_db_session, permissions, expected_response):
+def test_check_permissions_for_inbound_sms(notify_db_session, permissions, expected_response):
     service = create_service(service_permissions=permissions)
     assert has_inbound_sms_permissions(service.permissions) is expected_response
 

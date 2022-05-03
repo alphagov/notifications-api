@@ -3,7 +3,7 @@ from app.dao.events_dao import dao_create_event
 from app.models import Event
 
 
-def test_create_event(notify_db, notify_db_session):
+def test_create_event(notify_db_session):
     assert Event.query.count() == 0
     data = {
         'event_type': 'sucessful_login',

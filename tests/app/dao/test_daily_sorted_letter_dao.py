@@ -8,7 +8,7 @@ from app.models import DailySortedLetter
 from tests.app.db import create_daily_sorted_letter
 
 
-def test_dao_get_daily_sorted_letter_by_billing_day(notify_db, notify_db_session):
+def test_dao_get_daily_sorted_letter_by_billing_day(notify_db_session):
     billing_day = date(2018, 2, 1)
     other_day = date(2017, 9, 8)
 
@@ -18,7 +18,7 @@ def test_dao_get_daily_sorted_letter_by_billing_day(notify_db, notify_db_session
     assert not dao_get_daily_sorted_letter_by_billing_day(other_day)
 
 
-def test_dao_create_or_update_daily_sorted_letter_creates_a_new_entry(notify_db, notify_db_session):
+def test_dao_create_or_update_daily_sorted_letter_creates_a_new_entry(notify_db_session):
     billing_day = date(2018, 2, 1)
     dsl = DailySortedLetter(billing_day=billing_day,
                             file_name="Notify-201802011234.rs.txt",
@@ -35,7 +35,6 @@ def test_dao_create_or_update_daily_sorted_letter_creates_a_new_entry(notify_db,
 
 
 def test_dao_create_or_update_daily_sorted_letter_updates_an_existing_entry(
-    notify_db,
     notify_db_session
 ):
     create_daily_sorted_letter(billing_day=date(2018, 1, 18),

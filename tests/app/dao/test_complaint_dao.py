@@ -120,7 +120,7 @@ def test_fetch_count_of_complaints(sample_email_notification):
     assert count_of_complaints == 3
 
 
-def test_fetch_count_of_complaints_returns_zero(notify_db):
+def test_fetch_count_of_complaints_returns_zero(notify_db_session):
     count_of_complaints = fetch_count_of_complaints(start_date=datetime(2018, 6, 7),
                                                     end_date=datetime(2018, 6, 7))
     assert count_of_complaints == 0

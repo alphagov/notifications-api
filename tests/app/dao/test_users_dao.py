@@ -159,7 +159,7 @@ def test_update_user_attribute(client, sample_user, user_attribute, user_value):
 
 
 @freeze_time('2020-01-24T12:00:00')
-def test_update_user_password(notify_api, notify_db, notify_db_session, sample_user):
+def test_update_user_password(notify_api, notify_db_session, sample_user):
     sample_user.password_changed_at = datetime.utcnow() - timedelta(days=1)
     password = 'newpassword'
     assert not sample_user.check_password(password)

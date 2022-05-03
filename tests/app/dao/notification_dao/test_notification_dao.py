@@ -401,7 +401,7 @@ def test_save_notification_and_increment_job(sample_template, sample_job, mmg_pr
     assert Notification.query.count() == 2
 
 
-def test_save_notification_and_increment_correct_job(notify_db, notify_db_session, sample_template, mmg_provider):
+def test_save_notification_and_increment_correct_job(sample_template, mmg_provider):
     job_1 = create_job(sample_template)
     job_2 = create_job(sample_template)
 
@@ -459,7 +459,7 @@ def test_get_notification_by_id_when_notification_exists(sample_notification):
     assert sample_notification == notification_from_db
 
 
-def test_get_notification_by_id_when_notification_does_not_exist(notify_db, fake_uuid):
+def test_get_notification_by_id_when_notification_does_not_exist(notify_db_session, fake_uuid):
     notification_from_db = get_notification_by_id(fake_uuid)
 
     assert notification_from_db is None
@@ -738,7 +738,6 @@ def test_should_not_count_pages_when_given_a_flag(sample_user, sample_template):
 
 
 def test_get_notifications_created_by_api_or_csv_are_returned_correctly_excluding_test_key_notifications(
-        notify_db,
         notify_db_session,
         sample_service,
         sample_job,
@@ -1529,7 +1528,7 @@ def test_dao_update_notifications_by_reference_updates_history_no_notifications_
     assert updated_history_count == 2
 
 
-def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db):
+def test_dao_update_notifications_by_reference_returns_zero_when_no_notifications_to_update(notify_db_session):
     updated_count, updated_history_count = dao_update_notifications_by_reference(
         references=['ref'],
         update_dict={
@@ -1574,14 +1573,14 @@ def test_dao_update_notifications_by_reference_updates_history_when_one_of_two_n
     assert NotificationHistory.query.get(notification1.id).status == 'returned-letter'
 
 
-def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template, notify_db):
+def test_dao_get_notification_by_reference_with_one_match_returns_notification(sample_letter_template):
     create_notification(template=sample_letter_template, reference='REF1')
     notification = dao_get_notification_by_reference('REF1')
 
     assert notification.reference == 'REF1'
 
 
-def test_dao_get_notification_by_reference_with_multiple_matches_raises_error(sample_letter_template, notify_db):
+def test_dao_get_notification_by_reference_with_multiple_matches_raises_error(sample_letter_template):
     create_notification(template=sample_letter_template, reference='REF1')
     create_notification(template=sample_letter_template, reference='REF1')
 
@@ -1589,7 +1588,7 @@ def test_dao_get_notification_by_reference_with_multiple_matches_raises_error(sa
         dao_get_notification_by_reference('REF1')
 
 
-def test_dao_get_notification_by_reference_with_no_matches_raises_error(notify_db):
+def test_dao_get_notification_by_reference_with_no_matches_raises_error(notify_db_session):
     with pytest.raises(SQLAlchemyError):
         dao_get_notification_by_reference('REF1')
 
@@ -1613,7 +1612,7 @@ def test_dao_get_notification_or_history_by_reference_with_multiple_matches_rais
         dao_get_notification_or_history_by_reference('REF1')
 
 
-def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_error(notify_db):
+def test_dao_get_notification_or_history_by_reference_with_no_matches_raises_error(notify_db_session):
     with pytest.raises(SQLAlchemyError):
         dao_get_notification_or_history_by_reference('REF1')
 
