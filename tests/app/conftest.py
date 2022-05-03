@@ -43,7 +43,6 @@ from app.models import (
     Permission,
     ProviderDetails,
     ProviderDetailsHistory,
-    ProviderRates,
     Service,
     ServiceEmailReplyTo,
     ServiceGuestList,
@@ -954,7 +953,6 @@ def restore_provider_details(notify_db, notify_db_session):
     yield
 
     # also delete these as they depend on provider_details
-    ProviderRates.query.delete()
     ProviderDetails.query.delete()
     ProviderDetailsHistory.query.delete()
     notify_db.session.commit()
