@@ -4,7 +4,6 @@ import itertools
 import os
 import uuid
 from datetime import datetime, timedelta
-from decimal import Decimal
 
 import click
 import flask
@@ -42,9 +41,6 @@ from app.dao.organisation_dao import (
     dao_get_organisation_by_id,
 )
 from app.dao.permissions_dao import permission_dao
-from app.dao.provider_rates_dao import (
-    create_provider_rates as dao_create_provider_rates,
-)
 from app.dao.services_dao import (
     dao_fetch_all_services_by_user,
     dao_fetch_all_services_created_by_user,
@@ -61,7 +57,6 @@ from app.dao.users_dao import (
 from app.models import (
     KEY_TYPE_TEST,
     NOTIFICATION_CREATED,
-    PROVIDERS,
     SMS_TYPE,
     AnnualBilling,
     Domain,
@@ -106,18 +101,6 @@ class notify_command:
 
         command_group.add_command(wrapper)
         return wrapper
-
-
-@notify_command()
-@click.option('-p', '--provider_name', required=True, type=click.Choice(PROVIDERS))
-@click.option('-c', '--cost', required=True, help='Cost (pence) per message including decimals', type=float)
-@click.option('-d', '--valid_from', required=True, type=click_dt(format='%Y-%m-%dT%H:%M:%S'))
-def create_provider_rates(provider_name, cost, valid_from):
-    """
-    Backfill rates for a given provider
-    """
-    cost = Decimal(cost)
-    dao_create_provider_rates(provider_name, valid_from, cost)
 
 
 @notify_command()
