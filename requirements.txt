@@ -75,7 +75,7 @@ docutils==0.15.2
     # via awscli
 eventlet==0.33.0
     # via gunicorn
-flask==2.1.1
+flask==2.1.2
     # via
     #   -r requirements.in
     #   flask-bcrypt
