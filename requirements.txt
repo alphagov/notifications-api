@@ -12,7 +12,7 @@ arrow==1.2.2
     # via isoduration
 attrs==21.4.0
     # via jsonschema
-awscli==1.21.4
+awscli==1.23.6
     # via awscli-cwlogs
 awscli-cwlogs==1.4.6
     # via -r requirements.in
