@@ -105,8 +105,6 @@ class UserSchema(BaseSchema):
             "created_at",
             "email_access_validated_at",
             "updated_at",
-            "user_to_organisation",
-            "user_to_service",
             "verify_codes",
         )
         strict = True
@@ -147,7 +145,6 @@ class UserUpdateAttributeSchema(BaseSchema):
             'platform_admin',
             'state',
             'updated_at',
-            'user_to_service',
             'verify_codes',
         )
         strict = True
@@ -198,7 +195,6 @@ class ProviderDetailsSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
-        exclude = ("provider_stats",)
         strict = True
 
 
@@ -207,7 +203,6 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
-        exclude = ("provider_stats",)
         strict = True
 
 
@@ -257,15 +252,11 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'jobs',
             'letter_contacts',
             'letter_logo_filename',
-            'old_id',
             'reply_to_email_addresses',
             'returned_letters',
             'service_broadcast_provider_restriction',
             'service_broadcast_settings',
-            'service_notification_stats',
-            'service_provider_stats',
             'service_sms_senders',
-            'template_statistics',
             'templates',
             'updated_at',
             'users',
@@ -317,20 +308,12 @@ class DetailedServiceSchema(BaseSchema):
             'inbound_number',
             'inbound_sms',
             'jobs',
-            'letter_contact_block',
-            'letter_logo_filename',
             'message_limit',
-            'monthly_billing',
             'permissions',
             'rate_limit',
-            'reply_to_email_address',
             'reply_to_email_addresses',
             'returned_letters',
-            'service_notification_stats',
-            'service_provider_stats',
             'service_sms_senders',
-            'sms_sender',
-            'template_statistics',
             'templates',
             'users',
             'version',
@@ -358,7 +341,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id", "broadcast_messages")
+        exclude = ("service_id", "jobs", "service_letter_contact_id")
         strict = True
 
 
@@ -520,7 +503,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', 'scheduled_notification')
+        exclude = ('_personalisation',)
 
     template = fields.Nested(
         TemplateSchema,
@@ -583,6 +566,9 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             'service',
             'template_history',
         )
+        # Overwrite the `NotificationWithTemplateSchema` base class to not exclude `_personalisation`, which
+        # isn't a defined field for this class
+        exclude = ()
 
     @pre_dump
     def handle_personalisation_property(self, in_data):
