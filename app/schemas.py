@@ -59,6 +59,7 @@ class UUIDsAsStringsMixin:
                     (str(item) if isinstance(item, UUID) else item)
                     for item in value
                 ]
+        return data
 
 
 class BaseSchema(ma.SQLAlchemyAutoSchema):
@@ -282,6 +283,8 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
 
             in_data['permissions'] = permissions
 
+        return in_data
+
 
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
@@ -382,6 +385,8 @@ class TemplateSchemaNoDetail(TemplateSchema):
     def remove_content_for_non_broadcast_templates(self, template, **kwargs):
         if template.template_type != models.BROADCAST_TYPE:
             template.content = None
+
+        return template
 
 
 class TemplateHistorySchema(BaseSchema):
