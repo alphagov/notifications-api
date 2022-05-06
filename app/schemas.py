@@ -416,14 +416,14 @@ class ApiKeySchema(BaseSchema):
 
 class JobSchema(BaseSchema):
     created_by_user = fields.Nested(UserSchema, attribute="created_by",
-                                    dump_to="created_by", only=["id", "name"], dump_only=True)
+                                    data_key="created_by", only=["id", "name"], dump_only=True)
     created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
 
     job_status = field_for(models.JobStatus, 'name', required=False)
 
     scheduled_for = fields.DateTime()
     service_name = fields.Nested(
-        ServiceSchema, attribute="service", dump_to="service_name", only=["name"], dump_only=True)
+        ServiceSchema, attribute="service", data_key="service_name", only=["name"], dump_only=True)
 
     template_name = fields.Method('get_template_name', dump_only=True)
     template_type = fields.Method('get_template_type', dump_only=True)
