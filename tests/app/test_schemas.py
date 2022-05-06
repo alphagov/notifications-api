@@ -64,7 +64,7 @@ def test_user_update_schema_accepts_valid_attribute_pairs(user_attribute, user_v
     }
     from app.schemas import user_update_schema_load_json
 
-    data, errors = user_update_schema_load_json.load(update_dict)
+    errors = user_update_schema_load_json.validate(update_dict)
     assert not errors
 
 
@@ -81,7 +81,7 @@ def test_user_update_schema_rejects_invalid_attribute_pairs(user_attribute, user
     }
 
     with pytest.raises(ValidationError):
-        data, errors = user_update_schema_load_json.load(update_dict)
+        user_update_schema_load_json.load(update_dict)
 
 
 @pytest.mark.parametrize('user_attribute', [
@@ -96,7 +96,7 @@ def test_user_update_schema_rejects_disallowed_attribute_keys(user_attribute):
     from app.schemas import user_update_schema_load_json
 
     with pytest.raises(ValidationError) as excinfo:
-        data, errors = user_update_schema_load_json.load(update_dict)
+        user_update_schema_load_json.load(update_dict)
 
     assert excinfo.value.messages['_schema'][0] == 'Unknown field name {}'.format(user_attribute)
 

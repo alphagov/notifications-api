@@ -79,7 +79,7 @@ def cancel_letter_job(service_id, job_id):
 
 @job_blueprint.route('/<job_id>/notifications', methods=['GET'])
 def get_all_notifications_for_service_job(service_id, job_id):
-    data = notifications_filter_schema.load(request.args).data
+    data = notifications_filter_schema.load(request.args)
     page = data['page'] if 'page' in data else 1
     page_size = data['page_size'] if 'page_size' in data else current_app.config.get('PAGE_SIZE')
     paginated_notifications = get_notifications_for_job(
@@ -173,7 +173,7 @@ def create_job(service_id):
 
     data.update({"template_version": template.version})
 
-    job = job_schema.load(data).data
+    job = job_schema.load(data)
 
     if job.scheduled_for:
         job.job_status = JOB_STATUS_SCHEDULED

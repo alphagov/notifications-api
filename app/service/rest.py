@@ -274,7 +274,7 @@ def update_service(service_id):
     current_data = dict(service_schema.dump(fetched_service).data.items())
     current_data.update(request.get_json())
 
-    service = service_schema.load(current_data).data
+    service = service_schema.load(current_data)
 
     if 'email_branding' in req_json:
         email_branding_id = req_json['email_branding']
@@ -301,7 +301,7 @@ def update_service(service_id):
 @service_blueprint.route('/<uuid:service_id>/api-key', methods=['POST'])
 def create_api_key(service_id=None):
     fetched_service = dao_fetch_service_by_id(service_id=service_id)
-    valid_api_key = api_key_schema.load(request.get_json()).data
+    valid_api_key = api_key_schema.load(request.get_json())
     valid_api_key.service = fetched_service
     save_model_api_key(valid_api_key)
     unsigned_api_key = get_unsigned_secret(valid_api_key.id)
@@ -408,11 +408,11 @@ def get_service_history(service_id):
 @service_blueprint.route('/<uuid:service_id>/notifications', methods=['GET', 'POST'])
 def get_all_notifications_for_service(service_id):
     if request.method == 'GET':
-        data = notifications_filter_schema.load(request.args).data
+        data = notifications_filter_schema.load(request.args)
     elif request.method == 'POST':
         # Must transform request.get_json() to MultiDict as NotificationsFilterSchema expects a MultiDict.
         # Unlike request.args, request.get_json() does not return a MultiDict but instead just a dict.
-        data = notifications_filter_schema.load(MultiDict(request.get_json())).data
+        data = notifications_filter_schema.load(MultiDict(request.get_json()))
 
     if data.get('to'):
         notification_type = data.get('template_type')[0] if data.get('template_type') else None
@@ -772,7 +772,8 @@ def get_email_reply_to_address(service_id, reply_to_id):
 
 @service_blueprint.route('/<uuid:service_id>/email-reply-to/verify', methods=['POST'])
 def verify_reply_to_email_address(service_id):
-    email_address, errors = email_data_request_schema.load(request.get_json())
+    email_address = email_data_request_schema.load(request.get_json())
+
     check_if_reply_to_address_already_in_use(service_id, email_address["email"])
     template = dao_get_template_by_id(current_app.config['REPLY_TO_EMAIL_ADDRESS_VERIFICATION_TEMPLATE_ID'])
     notify_service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])

@@ -156,7 +156,7 @@ def update_template(service_id, template_id):
         errors = {'content': [message]}
         raise InvalidRequest(errors, status_code=400)
 
-    update_dict = template_schema.load(updated_template).data
+    update_dict = template_schema.load(updated_template)
     if update_dict.archived:
         update_dict.folder = None
     dao_update_template(update_dict)

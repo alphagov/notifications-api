@@ -26,7 +26,7 @@ register_errors(service_invite)
 @service_invite.route('/service/<service_id>/invite', methods=['POST'])
 def create_invited_user(service_id):
     request_json = request.get_json()
-    invited_user, errors = invited_user_schema.load(request_json)
+    invited_user = invited_user_schema.load(request_json)
     save_invited_user(invited_user)
 
     if invited_user.service.has_permission(BROADCAST_TYPE):
@@ -79,7 +79,7 @@ def update_invited_user(service_id, invited_user_id):
 
     current_data = dict(invited_user_schema.dump(fetched).data.items())
     current_data.update(request.get_json())
-    update_dict = invited_user_schema.load(current_data).data
+    update_dict = invited_user_schema.load(current_data)
     save_invited_user(update_dict)
     return jsonify(data=invited_user_schema.dump(fetched).data), 200
 

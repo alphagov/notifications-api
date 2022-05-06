@@ -88,6 +88,7 @@ class UserSchema(BaseSchema):
     password_changed_at = field_for(models.User, 'password_changed_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     created_at = field_for(models.User, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     auth_type = field_for(models.User, 'auth_type')
+    password = fields.String(required=True, load_only=True)
 
     def user_permissions(self, usr):
         retval = {}
