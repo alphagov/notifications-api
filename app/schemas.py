@@ -107,7 +107,6 @@ class UserSchema(BaseSchema):
             "updated_at",
             "verify_codes",
         )
-        strict = True
 
     @validates('name')
     def validate_name(self, value):
@@ -147,7 +146,6 @@ class UserUpdateAttributeSchema(BaseSchema):
             'updated_at',
             'verify_codes',
         )
-        strict = True
 
     @validates('name')
     def validate_name(self, value):
@@ -180,7 +178,6 @@ class UserUpdatePasswordSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.User
-        strict = True
 
     @validates_schema(pass_original=True)
     def check_unknown_fields(self, data, original_data):
@@ -194,7 +191,6 @@ class ProviderDetailsSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
-        strict = True
 
 
 class ProviderDetailsHistorySchema(BaseSchema):
@@ -202,7 +198,6 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
-        strict = True
 
 
 class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
@@ -261,7 +256,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'users',
             'version',
         )
-        strict = True
 
     @validates('permissions')
     def validate_permissions(self, value):
@@ -322,7 +316,6 @@ class DetailedServiceSchema(BaseSchema):
 class NotificationModelSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Notification
-        strict = True
         exclude = ('_personalisation', 'job', 'service', 'template', 'api_key',)
 
     status = fields.String(required=False)
@@ -341,7 +334,6 @@ class BaseTemplateSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Template
         exclude = ("service_id", "jobs", "service_letter_contact_id")
-        strict = True
 
 
 class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
@@ -417,7 +409,6 @@ class ApiKeySchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.ApiKey
         exclude = ("service", "_secret")
-        strict = True
 
 
 class JobSchema(BaseSchema):
@@ -454,14 +445,9 @@ class JobSchema(BaseSchema):
             'notifications_failed',
             'notifications_sent',
         )
-        strict = True
 
 
 class NotificationSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
     status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
 
@@ -502,7 +488,6 @@ class SmsTemplateNotificationSchema(SmsNotificationSchema):
 class NotificationWithTemplateSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Notification
-        strict = True
         exclude = ('_personalisation',)
 
     template = fields.Nested(
@@ -597,7 +582,6 @@ class InvitedUserSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.InvitedUser
-        strict = True
 
     @validates('email_address')
     def validate_to(self, value):
@@ -608,10 +592,6 @@ class InvitedUserSchema(BaseSchema):
 
 
 class EmailDataSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
     email = fields.Str(required=True)
 
     def __init__(self, partial_email=False):
@@ -629,10 +609,6 @@ class EmailDataSchema(ma.Schema):
 
 
 class NotificationsFilterSchema(ma.Schema):
-
-    class Meta:
-        strict = True
-
     template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
     status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
@@ -700,7 +676,6 @@ class ApiKeyHistorySchema(ma.Schema):
 class EventSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Event
-        strict = True
 
 
 class UnarchivedTemplateSchema(BaseSchema):
