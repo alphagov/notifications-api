@@ -407,6 +407,7 @@ class TemplateHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
+        exclude = ('broadcast_messages',)
 
 
 class ApiKeySchema(BaseSchema):
