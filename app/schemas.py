@@ -3,6 +3,7 @@ from uuid import UUID
 
 from flask_marshmallow.fields import fields
 from marshmallow import (
+    EXCLUDE,
     ValidationError,
     post_dump,
     post_load,
@@ -65,6 +66,7 @@ class BaseSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         load_instance = True
         include_relationships = True
+        unknown = EXCLUDE
 
     def __init__(self, load_json=False, *args, **kwargs):
         self.load_json = load_json
@@ -449,6 +451,9 @@ class JobSchema(BaseSchema):
 
 
 class NotificationSchema(ma.Schema):
+    class Meta:
+        unknown = EXCLUDE
+
     status = fields.String(required=False)
     personalisation = fields.Dict(required=False)
 
@@ -593,7 +598,12 @@ class InvitedUserSchema(BaseSchema):
 
 
 class EmailDataSchema(ma.Schema):
+    class Meta:
+        unknown = EXCLUDE
+
     email = fields.Str(required=True)
+    next = fields.Str(required=False)
+    admin_base_url = fields.Str(required=False)
 
     def __init__(self, partial_email=False):
         super().__init__()
@@ -610,6 +620,9 @@ class EmailDataSchema(ma.Schema):
 
 
 class NotificationsFilterSchema(ma.Schema):
+    class Meta:
+        unknown = EXCLUDE
+
     template_type = fields.Nested(BaseTemplateSchema, only=['template_type'], many=True)
     status = fields.Nested(NotificationModelSchema, only=['status'], many=True)
     page = fields.Int(required=False)
@@ -652,6 +665,9 @@ class NotificationsFilterSchema(ma.Schema):
 
 
 class ServiceHistorySchema(ma.Schema):
+    class Meta:
+        unknown = EXCLUDE
+
     id = fields.UUID()
     name = fields.String()
     created_at = fields.DateTime()
@@ -665,6 +681,9 @@ class ServiceHistorySchema(ma.Schema):
 
 
 class ApiKeyHistorySchema(ma.Schema):
+    class Meta:
+        unknown = EXCLUDE
+
     id = fields.UUID()
     name = fields.String()
     service_id = fields.UUID()
