@@ -811,8 +811,8 @@ def test_send_sms_to_provider_should_return_template_if_found_in_redis(
         mocker, client, sample_template
 ):
     from app.schemas import service_schema, template_schema
-    service_dict = service_schema.dump(sample_template.service).data
-    template_dict = template_schema.dump(sample_template).data
+    service_dict = service_schema.dump(sample_template.service)
+    template_dict = template_schema.dump(sample_template)
 
     mocker.patch(
         'app.redis_store.get',
@@ -846,8 +846,8 @@ def test_send_email_to_provider_should_return_template_if_found_in_redis(
         mocker, client, sample_email_template
 ):
     from app.schemas import service_schema, template_schema
-    service_dict = service_schema.dump(sample_email_template.service).data
-    template_dict = template_schema.dump(sample_email_template).data
+    service_dict = service_schema.dump(sample_email_template.service)
+    template_dict = template_schema.dump(sample_email_template)
 
     mocker.patch(
         'app.redis_store.get',

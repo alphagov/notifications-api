@@ -91,7 +91,7 @@ def get_uploaded_letter_by_service_and_print_day(service_id, letter_print_date):
         'notifications': notification_with_template_schema.dump(
             pagination.items,
             many=True,
-        ).data,
+        ),
         'page_size': pagination.per_page,
         'total': pagination.total,
         'links': pagination_links(

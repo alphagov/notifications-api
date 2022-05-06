@@ -200,7 +200,7 @@ def get_services():
         return result
     else:
         services = dao_fetch_all_services(only_active)
-    data = service_schema.dump(services, many=True).data
+    data = service_schema.dump(services, many=True)
     return jsonify(data=data)
 
 
@@ -228,7 +228,7 @@ def get_service_by_id(service_id):
     else:
         fetched = dao_fetch_service_by_id(service_id)
 
-        data = service_schema.dump(fetched).data
+        data = service_schema.dump(fetched)
     return jsonify(data=data)
 
 
@@ -262,7 +262,7 @@ def create_service():
         dao_create_service(valid_service, user)
         set_default_free_allowance_for_service(service=valid_service, year_start=None)
 
-    return jsonify(data=service_schema.dump(valid_service).data), 201
+    return jsonify(data=service_schema.dump(valid_service)), 201
 
 
 @service_blueprint.route('/<uuid:service_id>', methods=['POST'])
@@ -271,7 +271,7 @@ def update_service(service_id):
     fetched_service = dao_fetch_service_by_id(service_id)
     # Capture the status change here as Marshmallow changes this later
     service_going_live = fetched_service.restricted and not req_json.get('restricted', True)
-    current_data = dict(service_schema.dump(fetched_service).data.items())
+    current_data = dict(service_schema.dump(fetched_service).items())
     current_data.update(request.get_json())
 
     service = service_schema.load(current_data)
@@ -295,7 +295,7 @@ def update_service(service_id):
             include_user_fields=['name']
         )
 
-    return jsonify(data=service_schema.dump(fetched_service).data), 200
+    return jsonify(data=service_schema.dump(fetched_service)), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/api-key', methods=['POST'])
@@ -328,7 +328,7 @@ def get_api_keys(service_id, key_id=None):
         error = "API key not found for id: {}".format(service_id)
         raise InvalidRequest(error, status_code=404)
 
-    return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True).data), 200
+    return jsonify(apiKeys=api_key_schema.dump(api_keys, many=True)), 200
 
 
 @service_blueprint.route('/<uuid:service_id>/users', methods=['GET'])
@@ -356,7 +356,7 @@ def add_user_to_service(service_id, user_id):
     folder_permissions = data.get('folder_permissions', [])
 
     dao_add_user_to_service(service, user, permissions, folder_permissions)
-    data = service_schema.dump(service).data
+    data = service_schema.dump(service)
     return jsonify(data=data), 201
 
 
@@ -389,12 +389,12 @@ def get_service_history(service_id):
     )
 
     service_history = Service.get_history_model().query.filter_by(id=service_id).all()
-    service_data = service_history_schema.dump(service_history, many=True).data
+    service_data = service_history_schema.dump(service_history, many=True)
     api_key_history = ApiKey.get_history_model().query.filter_by(service_id=service_id).all()
-    api_keys_data = api_key_history_schema.dump(api_key_history, many=True).data
+    api_keys_data = api_key_history_schema.dump(api_key_history, many=True)
 
     template_history = TemplateHistory.query.filter_by(service_id=service_id).all()
-    template_data, errors = template_history_schema.dump(template_history, many=True)
+    template_data = template_history_schema.dump(template_history, many=True)
 
     data = {
         'service_history': service_data,
@@ -449,7 +449,7 @@ def get_all_notifications_for_service(service_id):
     if data.get('format_for_csv'):
         notifications = [notification.serialize_for_csv() for notification in pagination.items]
     else:
-        notifications = notification_with_template_schema.dump(pagination.items, many=True).data
+        notifications = notification_with_template_schema.dump(pagination.items, many=True)
 
     # We try and get the next page of results to work out if we need provide a pagination link to the next page
     # in our response if it exists. Note, this could be done instead by changing `count_pages` in the previous
@@ -491,7 +491,7 @@ def get_notification_for_service(service_id, notification_id):
         key_type=None,
     )
     return jsonify(
-        notification_with_template_schema.dump(notification).data,
+        notification_with_template_schema.dump(notification),
     ), 200
 
 
@@ -524,7 +524,7 @@ def cancel_notification_for_service(service_id, notification_id):
     )
 
     return jsonify(
-        notification_with_template_schema.dump(updated_notification).data
+        notification_with_template_schema.dump(updated_notification)
     ), 200
 
 
@@ -556,7 +556,7 @@ def search_for_notification_by_to_field(service_id, search_term, statuses, notif
     )
 
     return jsonify(
-        notifications=notification_with_template_schema.dump(results.items, many=True).data,
+        notifications=notification_with_template_schema.dump(results.items, many=True),
         links=get_prev_next_pagination_links(
             1,
             len(next_page_of_pagination.items),
@@ -597,7 +597,7 @@ def get_detailed_service(service_id, today_only=False):
     service = dao_fetch_service_by_id(service_id)
 
     service.statistics = get_service_statistics(service_id, today_only)
-    return detailed_service_schema.dump(service).data
+    return detailed_service_schema.dump(service)
 
 
 def get_service_statistics(service_id, today_only, limit_days=7):
@@ -1172,5 +1172,5 @@ def set_as_broadcast_service(service_id):
         provider_restriction=data["provider_restriction"]
     )
 
-    data = service_schema.dump(service).data
+    data = service_schema.dump(service)
     return jsonify(data=data)

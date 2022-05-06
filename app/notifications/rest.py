@@ -43,7 +43,7 @@ def get_notification_by_id(notification_id):
         str(authenticated_service.id),
         notification_id,
         key_type=None)
-    return jsonify(data={"notification": notification_with_personalisation_schema.dump(notification).data}), 200
+    return jsonify(data={"notification": notification_with_personalisation_schema.dump(notification)}), 200
 
 
 @notifications.route('/notifications', methods=['GET'])
@@ -65,7 +65,7 @@ def get_all_notifications():
         key_type=api_user.key_type,
         include_jobs=include_jobs)
     return jsonify(
-        notifications=notification_with_personalisation_schema.dump(pagination.items, many=True).data,
+        notifications=notification_with_personalisation_schema.dump(pagination.items, many=True),
         page_size=page_size,
         total=pagination.total,
         links=pagination_links(

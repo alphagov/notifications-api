@@ -13,4 +13,4 @@ def create_event():
     data = request.get_json()
     event = event_schema.load(data)
     dao_create_event(event)
-    return jsonify(data=event_schema.dump(event).data), 201
+    return jsonify(data=event_schema.dump(event)), 201

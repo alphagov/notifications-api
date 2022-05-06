@@ -16,16 +16,15 @@ def test_job_schema_doesnt_return_notifications(sample_notification_with_job):
     job = sample_notification_with_job.job
     assert job.notifications.count() == 1
 
-    data, errors = job_schema.dump(job)
+    data = job_schema.dump(job)
 
-    assert not errors
     assert 'notifications' not in data
 
 
 def test_notification_schema_ignores_absent_api_key(sample_notification_with_job):
     from app.schemas import notification_with_template_schema
 
-    data = notification_with_template_schema.dump(sample_notification_with_job).data
+    data = notification_with_template_schema.dump(sample_notification_with_job)
     assert data['key_name'] is None
 
 
@@ -35,7 +34,7 @@ def test_notification_schema_adds_api_key_name(sample_notification):
     api_key = create_api_key(sample_notification.service, key_name='Test key')
     sample_notification.api_key = api_key
 
-    data = notification_with_template_schema.dump(sample_notification).data
+    data = notification_with_template_schema.dump(sample_notification)
     assert data['key_name'] == 'Test key'
 
 
@@ -48,7 +47,7 @@ def test_notification_schema_adds_api_key_name(sample_notification):
 def test_notification_schema_has_correct_status(sample_notification, schema_name):
     from app import schemas
 
-    data = getattr(schemas, schema_name).dump(sample_notification).data
+    data = getattr(schemas, schema_name).dump(sample_notification)
 
     assert data['status'] == sample_notification.status
 
@@ -109,7 +108,7 @@ def test_provider_details_schema_returns_user_details(
     from app.schemas import provider_details_schema
     current_sms_provider = get_provider_details_by_identifier('mmg')
     current_sms_provider.created_by = sample_user
-    data = provider_details_schema.dump(current_sms_provider).data
+    data = provider_details_schema.dump(current_sms_provider)
 
     assert sorted(data['created_by'].keys()) == sorted(['id', 'email_address', 'name'])
 
@@ -122,7 +121,7 @@ def test_provider_details_history_schema_returns_user_details(
     from app.schemas import provider_details_schema
     current_sms_provider = get_provider_details_by_identifier('mmg')
     current_sms_provider.created_by_id = sample_user.id
-    data = provider_details_schema.dump(current_sms_provider).data
+    data = provider_details_schema.dump(current_sms_provider)
 
     dao_update_provider_details(current_sms_provider)
 
@@ -131,6 +130,6 @@ def test_provider_details_history_schema_returns_user_details(
     ).order_by(
         desc(ProviderDetailsHistory.version)
     ).first()
-    data = provider_details_schema.dump(current_sms_provider_in_history).data
+    data = provider_details_schema.dump(current_sms_provider_in_history)
 
     assert sorted(data['created_by'].keys()) == sorted(['id', 'email_address', 'name'])
