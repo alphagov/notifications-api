@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from flask_marshmallow.fields import fields
@@ -37,16 +37,6 @@ def _validate_positive_number(value, msg="Not a positive integer"):
 
 def _validate_datetime_not_more_than_96_hours_in_future(dte, msg="Date cannot be more than 96hrs in the future"):
     if dte > datetime.utcnow() + timedelta(hours=96):
-        raise ValidationError(msg)
-
-
-def _validate_not_in_past(dte, msg="Date cannot be in the past"):
-    if dte < date.today():
-        raise ValidationError(msg)
-
-
-def _validate_datetime_not_in_future(dte, msg="Date cannot be in the future"):
-    if dte > datetime.utcnow():
         raise ValidationError(msg)
 
 
@@ -115,8 +105,6 @@ class UserSchema(BaseSchema):
             "created_at",
             "email_access_validated_at",
             "updated_at",
-            "user_to_organisation",
-            "user_to_service",
             "verify_codes",
         )
         strict = True
@@ -157,7 +145,6 @@ class UserUpdateAttributeSchema(BaseSchema):
             'platform_admin',
             'state',
             'updated_at',
-            'user_to_service',
             'verify_codes',
         )
         strict = True
@@ -193,7 +180,6 @@ class UserUpdatePasswordSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.User
-        only = ('password')
         strict = True
 
     @validates_schema(pass_original=True)
@@ -208,7 +194,6 @@ class ProviderDetailsSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
-        exclude = ("provider_stats",)
         strict = True
 
 
@@ -217,7 +202,6 @@ class ProviderDetailsHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
-        exclude = ("provider_stats",)
         strict = True
 
 
@@ -267,15 +251,11 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             'jobs',
             'letter_contacts',
             'letter_logo_filename',
-            'old_id',
             'reply_to_email_addresses',
             'returned_letters',
             'service_broadcast_provider_restriction',
             'service_broadcast_settings',
-            'service_notification_stats',
-            'service_provider_stats',
             'service_sms_senders',
-            'template_statistics',
             'templates',
             'updated_at',
             'users',
@@ -327,20 +307,12 @@ class DetailedServiceSchema(BaseSchema):
             'inbound_number',
             'inbound_sms',
             'jobs',
-            'letter_contact_block',
-            'letter_logo_filename',
             'message_limit',
-            'monthly_billing',
             'permissions',
             'rate_limit',
-            'reply_to_email_address',
             'reply_to_email_addresses',
             'returned_letters',
-            'service_notification_stats',
-            'service_provider_stats',
             'service_sms_senders',
-            'sms_sender',
-            'template_statistics',
             'templates',
             'users',
             'version',
@@ -368,7 +340,7 @@ class BaseTemplateSchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.Template
-        exclude = ("service_id", "jobs", "service_letter_contact_id", "broadcast_messages")
+        exclude = ("service_id", "jobs", "service_letter_contact_id")
         strict = True
 
 
@@ -434,6 +406,7 @@ class TemplateHistorySchema(BaseSchema):
 
     class Meta(BaseSchema.Meta):
         model = models.TemplateHistory
+        exclude = ('broadcast_messages',)
 
 
 class ApiKeySchema(BaseSchema):
@@ -530,7 +503,7 @@ class NotificationWithTemplateSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = models.Notification
         strict = True
-        exclude = ('_personalisation', 'scheduled_notification')
+        exclude = ('_personalisation',)
 
     template = fields.Nested(
         TemplateSchema,
@@ -593,6 +566,9 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
             'service',
             'template_history',
         )
+        # Overwrite the `NotificationWithTemplateSchema` base class to not exclude `_personalisation`, which
+        # isn't a defined field for this class
+        exclude = ()
 
     @pre_dump
     def handle_personalisation_property(self, in_data):
@@ -739,7 +715,7 @@ class UnarchivedTemplateSchema(BaseSchema):
 # should not be used on its own for dumping - only for loading
 create_user_schema = UserSchema()
 user_update_schema_load_json = UserUpdateAttributeSchema(load_json=True, partial=True)
-user_update_password_schema_load_json = UserUpdatePasswordSchema(load_json=True, partial=True)
+user_update_password_schema_load_json = UserUpdatePasswordSchema(only=('_password',), load_json=True, partial=True)
 service_schema = ServiceSchema()
 detailed_service_schema = DetailedServiceSchema()
 template_schema = TemplateSchema()
