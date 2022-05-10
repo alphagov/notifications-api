@@ -38,7 +38,7 @@ def test_dao_get_all_letter_branding(notify_db_session):
     assert len(results) == 2
 
 
-def test_dao_get_all_letter_branding_returns_empty_list_if_no_brands_exist(notify_db):
+def test_dao_get_all_letter_branding_returns_empty_list_if_no_brands_exist(notify_db_session):
     assert dao_get_all_letter_branding() == []
 
 

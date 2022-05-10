@@ -77,7 +77,6 @@ def test_send_broadcast_event_calls_publish_govuk_alerts_task(
 
 def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
     mocker,
-    notify_db,
     notify_api,
     sample_broadcast_service
 ):
@@ -101,7 +100,6 @@ def test_send_broadcast_event_only_sends_to_one_provider_if_set_on_service(
 
 def test_send_broadcast_event_does_nothing_if_provider_set_on_service_isnt_enabled_globally(
     mocker,
-    notify_db,
     notify_api,
     sample_broadcast_service
 ):
@@ -186,7 +184,7 @@ def test_send_broadcast_provider_message_sends_data_correctly(
 ])
 @pytest.mark.parametrize('channel', ['operator', 'test', 'severe', 'government'])
 def test_send_broadcast_provider_message_uses_channel_set_on_broadcast_service(
-    notify_db, mocker, sample_broadcast_service, provider, provider_capitalised, channel
+    mocker, sample_broadcast_service, provider, provider_capitalised, channel
 ):
     sample_broadcast_service.broadcast_channel = channel
     template = create_template(sample_broadcast_service, BROADCAST_TYPE)

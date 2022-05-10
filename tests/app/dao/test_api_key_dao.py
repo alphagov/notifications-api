@@ -56,7 +56,7 @@ def test_get_api_key_should_raise_exception_when_api_key_does_not_exist(sample_s
         get_model_api_keys(sample_service.id, id=fake_uuid)
 
 
-def test_should_return_api_key_for_service(notify_api, notify_db, notify_db_session, sample_api_key):
+def test_should_return_api_key_for_service(notify_api, notify_db_session, sample_api_key):
     api_key = get_model_api_keys(service_id=sample_api_key.service_id, id=sample_api_key.id)
     assert api_key == sample_api_key
 

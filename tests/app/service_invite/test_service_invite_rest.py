@@ -177,7 +177,7 @@ def test_create_invited_user_invalid_email(client, sample_service, mocker, fake_
     assert mocked.call_count == 0
 
 
-def test_get_all_invited_users_by_service(client, notify_db, notify_db_session, sample_service):
+def test_get_all_invited_users_by_service(client, notify_db_session, sample_service):
     invites = []
     for i in range(0, 5):
         email = 'invited_user_{}@service.gov.uk'.format(i)
@@ -205,7 +205,7 @@ def test_get_all_invited_users_by_service(client, notify_db, notify_db_session, 
         assert invite['id']
 
 
-def test_get_invited_users_by_service_with_no_invites(client, notify_db, notify_db_session, sample_service):
+def test_get_invited_users_by_service_with_no_invites(client, notify_db_session, sample_service):
     url = '/service/{}/invite'.format(sample_service.id)
 
     auth_header = create_admin_authorization_header()

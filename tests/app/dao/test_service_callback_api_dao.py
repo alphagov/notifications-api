@@ -45,7 +45,7 @@ def test_save_service_callback_api(sample_service):
     assert versioned.version == 1
 
 
-def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db, notify_db_session):
+def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db_session):
     service_callback_api = ServiceCallbackApi(
         service_id=uuid.uuid4(),
         url="https://some_service/callback_endpoint",

@@ -16,7 +16,7 @@ from app.models import InvitedUser
 from tests.app.db import create_invited_user
 
 
-def test_create_invited_user(notify_db, notify_db_session, sample_service):
+def test_create_invited_user(notify_db_session, sample_service):
     assert InvitedUser.query.count() == 0
     email_address = 'invited_user@service.gov.uk'
     invite_from = sample_service.users[0]
@@ -43,8 +43,6 @@ def test_create_invited_user(notify_db, notify_db_session, sample_service):
 
 
 def test_create_invited_user_sets_default_folder_permissions_of_empty_list(
-    notify_db,
-    notify_db_session,
     sample_service,
 ):
     assert InvitedUser.query.count() == 0
@@ -64,17 +62,17 @@ def test_create_invited_user_sets_default_folder_permissions_of_empty_list(
     assert invited_user.folder_permissions == []
 
 
-def test_get_invited_user_by_service_and_id(notify_db, notify_db_session, sample_invited_user):
+def test_get_invited_user_by_service_and_id(notify_db_session, sample_invited_user):
     from_db = get_invited_user_by_service_and_id(sample_invited_user.service.id, sample_invited_user.id)
     assert from_db == sample_invited_user
 
 
-def test_get_invited_user_by_id(notify_db, notify_db_session, sample_invited_user):
+def test_get_invited_user_by_id(notify_db_session, sample_invited_user):
     from_db = get_invited_user_by_id(sample_invited_user.id)
     assert from_db == sample_invited_user
 
 
-def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sample_service):
+def test_get_unknown_invited_user_returns_none(notify_db_session, sample_service):
     unknown_id = uuid.uuid4()
 
     with pytest.raises(NoResultFound) as e:
@@ -82,7 +80,7 @@ def test_get_unknown_invited_user_returns_none(notify_db, notify_db_session, sam
     assert 'No row was found when one was required' in str(e.value)
 
 
-def test_get_invited_users_for_service(notify_db, notify_db_session, sample_service):
+def test_get_invited_users_for_service(notify_db_session, sample_service):
     invites = []
     for i in range(0, 5):
         email = 'invited_user_{}@service.gov.uk'.format(i)
@@ -96,12 +94,12 @@ def test_get_invited_users_for_service(notify_db, notify_db_session, sample_serv
         assert invite in all_from_db
 
 
-def test_get_invited_users_for_service_that_has_no_invites(notify_db, notify_db_session, sample_service):
+def test_get_invited_users_for_service_that_has_no_invites(notify_db_session, sample_service):
     invites = get_invited_users_for_service(sample_service.id)
     assert len(invites) == 0
 
 
-def test_save_invited_user_sets_status_to_cancelled(notify_db, notify_db_session, sample_invited_user):
+def test_save_invited_user_sets_status_to_cancelled(notify_db_session, sample_invited_user):
     assert InvitedUser.query.count() == 1
     saved = InvitedUser.query.get(sample_invited_user.id)
     assert saved.status == 'pending'

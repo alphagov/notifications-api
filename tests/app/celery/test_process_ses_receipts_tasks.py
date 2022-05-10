@@ -29,7 +29,7 @@ def test_process_ses_results(sample_email_template):
     assert process_ses_results(response=ses_notification_callback(reference='ref1'))
 
 
-def test_process_ses_results_retry_called(sample_email_template, notify_db, mocker):
+def test_process_ses_results_retry_called(sample_email_template, mocker):
     create_notification(sample_email_template, reference='ref1', sent_at=datetime.utcnow(), status='sending')
 
     mocker.patch("app.dao.notifications_dao.dao_update_notifications_by_reference", side_effect=Exception("EXPECTED"))
@@ -102,7 +102,7 @@ def test_ses_callback_should_not_update_notification_status_if_already_delivered
     assert mock_upd.call_count == 0
 
 
-def test_ses_callback_should_retry_if_notification_is_new(client, notify_db, mocker):
+def test_ses_callback_should_retry_if_notification_is_new(client, notify_db_session, mocker):
     mock_retry = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.error')
 
@@ -112,7 +112,7 @@ def test_ses_callback_should_retry_if_notification_is_new(client, notify_db, moc
         assert mock_retry.call_count == 1
 
 
-def test_ses_callback_should_log_if_notification_is_missing(client, notify_db, mocker):
+def test_ses_callback_should_log_if_notification_is_missing(client, notify_db_session, mocker):
     mock_retry = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.warning')
 
@@ -122,7 +122,7 @@ def test_ses_callback_should_log_if_notification_is_missing(client, notify_db, m
         mock_logger.assert_called_once_with('notification not found for reference: ref (update to delivered)')
 
 
-def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db, mocker):
+def test_ses_callback_should_not_retry_if_notification_is_old(client, notify_db_session, mocker):
     mock_retry = mocker.patch('app.celery.process_ses_receipts_tasks.process_ses_results.retry')
     mock_logger = mocker.patch('app.celery.process_ses_receipts_tasks.current_app.logger.error')
 

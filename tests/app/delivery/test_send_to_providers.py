@@ -258,15 +258,15 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(
     (False, KEY_TYPE_TEST)
 ])
 def test_should_call_send_sms_response_task_if_research_mode(
-        notify_db, sample_service, sample_notification, mocker, research_mode, key_type
+        notify_db_session, sample_service, sample_notification, mocker, research_mode, key_type
 ):
     mocker.patch('app.mmg_client.send_sms')
     mocker.patch('app.delivery.send_to_providers.send_sms_response')
 
     if research_mode:
         sample_service.research_mode = True
-        notify_db.session.add(sample_service)
-        notify_db.session.commit()
+        notify_db_session.add(sample_service)
+        notify_db_session.commit()
 
     sample_notification.key_type = key_type
 
@@ -459,7 +459,7 @@ def test_get_html_email_renderer_should_return_for_normal_service(sample_service
     (BRANDING_BOTH, True),
     (BRANDING_ORG_BANNER, False)
 ])
-def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db, sample_service):
+def test_get_html_email_renderer_with_branding_details(branding_type, govuk_banner, notify_db_session, sample_service):
 
     email_branding = EmailBranding(
         brand_type=branding_type,
@@ -469,8 +469,8 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
         text='League of Justice',
     )
     sample_service.email_branding = email_branding
-    notify_db.session.add_all([sample_service, email_branding])
-    notify_db.session.commit()
+    notify_db_session.add_all([sample_service, email_branding])
+    notify_db_session.commit()
 
     options = send_to_providers.get_html_email_options(sample_service)
 
@@ -485,10 +485,10 @@ def test_get_html_email_renderer_with_branding_details(branding_type, govuk_bann
         assert options['brand_banner'] is False
 
 
-def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db, sample_service):
+def test_get_html_email_renderer_with_branding_details_and_render_govuk_banner_only(notify_db_session, sample_service):
     sample_service.email_branding = None
-    notify_db.session.add_all([sample_service])
-    notify_db.session.commit()
+    notify_db_session.add_all([sample_service])
+    notify_db_session.commit()
 
     options = send_to_providers.get_html_email_options(sample_service)
 

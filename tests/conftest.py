@@ -68,7 +68,11 @@ def create_test_db(database_uri):
 
 
 @pytest.fixture(scope='session')
-def notify_db(notify_api, worker_id):
+def _notify_db(notify_api, worker_id):
+    """
+    Manages the connection to the database. Generally this shouldn't be used, instead you should use the
+    `notify_db_session` fixture which also cleans up any data you've got left over after your test run.
+    """
     assert 'test_notification_api' in db.engine.url.database, 'dont run tests against main db'
 
     # create a database for this worker thread -
@@ -91,7 +95,7 @@ def notify_db(notify_api, worker_id):
 
 
 @pytest.fixture(scope='function')
-def sms_providers(notify_db):
+def sms_providers(_notify_db):
     """
     In production we randomly choose which provider to use based on their priority. To guarantee tests run the same each
     time, make sure we always choose mmg. You'll need to override them in your tests if you wish to do something
@@ -102,11 +106,17 @@ def sms_providers(notify_db):
 
 
 @pytest.fixture(scope='function')
-def notify_db_session(notify_db, sms_providers):
-    yield notify_db
+def notify_db_session(_notify_db, sms_providers):
+    """
+    This fixture clears down all non static data after your test run. It yields the sqlalchemy session variable
+    so you can manually add, commit, etc if needed.
 
-    notify_db.session.remove()
-    for tbl in reversed(notify_db.metadata.sorted_tables):
+    `notify_db_session.commit()`
+    """
+    yield _notify_db.session
+
+    _notify_db.session.remove()
+    for tbl in reversed(_notify_db.metadata.sorted_tables):
         if tbl.name not in ["provider_details",
                             "key_types",
                             "branding_type",
@@ -122,8 +132,8 @@ def notify_db_session(notify_db, sms_providers):
                             "service_callback_type",
                             "broadcast_channel_types",
                             "broadcast_provider_types"]:
-            notify_db.engine.execute(tbl.delete())
-    notify_db.session.commit()
+            _notify_db.engine.execute(tbl.delete())
+    _notify_db.session.commit()
 
 
 @pytest.fixture

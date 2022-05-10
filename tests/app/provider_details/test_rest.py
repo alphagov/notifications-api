@@ -14,7 +14,7 @@ def test_get_provider_details_returns_all_providers(admin_request, notify_db_ses
     assert {'ses', 'firetext', 'mmg', 'dvla'} <= {x['identifier'] for x in json_resp}
 
 
-def test_get_provider_details_by_id(client, notify_db):
+def test_get_provider_details_by_id(client, notify_db_session):
     response = client.get(
         '/provider-details',
         headers=[create_admin_authorization_header()]
@@ -103,7 +103,7 @@ def test_should_not_be_able_to_update_disallowed_fields(client, restore_provider
     assert resp.status_code == 400
 
 
-def test_get_provider_versions_contains_correct_fields(client, notify_db):
+def test_get_provider_versions_contains_correct_fields(client, notify_db_session):
     provider = ProviderDetailsHistory.query.first()
     response = client.get(
         '/provider-details/{}/versions'.format(provider.id),

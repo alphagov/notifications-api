@@ -154,7 +154,7 @@ def test_get_jobs_for_service_with_limit_days_edge_case(sample_template):
     assert just_before_midnight_job not in jobs_limit_days
 
 
-def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db, notify_db_session, sample_template):
+def test_get_jobs_for_service_in_processed_at_then_created_at_order(notify_db_session, sample_template):
     from_hour = partial(datetime, 2001, 1, 1)
 
     created_jobs = [
@@ -269,7 +269,7 @@ def test_should_get_jobs_seven_days_old(sample_template):
     assert jobs[0].id == job_to_delete.id
 
 
-def test_get_jobs_for_service_is_paginated(notify_db, notify_db_session, sample_service, sample_template):
+def test_get_jobs_for_service_is_paginated(notify_db_session, sample_service, sample_template):
     with freeze_time('2015-01-01T00:00:00') as the_time:
         for _ in range(10):
             the_time.tick(timedelta(hours=1))

@@ -544,13 +544,13 @@ def test_get_notifications_for_service_returns_merged_template_content(client, s
 
 
 def test_get_notification_selects_correct_template_for_personalisation(client,
-                                                                       notify_db,
+                                                                       notify_db_session,
                                                                        sample_template):
     create_notification(sample_template)
     original_content = sample_template.content
     sample_template.content = '((name))'
     dao_update_template(sample_template)
-    notify_db.session.commit()
+    notify_db_session.commit()
 
     create_notification(sample_template, personalisation={"name": "foo"})
 

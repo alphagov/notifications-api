@@ -526,7 +526,7 @@ def sample_email_notification(notify_db_session):
 
 
 @pytest.fixture(scope='function')
-def sample_notification_history(notify_db, notify_db_session, sample_template):
+def sample_notification_history(notify_db_session, sample_template):
     created_at = datetime.utcnow()
     sent_at = datetime.utcnow()
     notification_type = sample_template.template_type
@@ -545,8 +545,8 @@ def sample_notification_history(notify_db, notify_db_session, sample_template):
         api_key_id=api_key and api_key.id,
         sent_at=sent_at
     )
-    notify_db.session.add(notification_history)
-    notify_db.session.commit()
+    notify_db_session.add(notification_history)
+    notify_db_session.commit()
 
     return notification_history
 
@@ -852,7 +852,7 @@ def letter_volumes_email_template(notify_service):
 
 
 @pytest.fixture
-def notify_service(sample_user):
+def notify_service(notify_db_session, sample_user):
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
     if not service:
         service = Service(
@@ -876,19 +876,19 @@ def notify_service(sample_user):
         }
         reply_to = ServiceEmailReplyTo(**data)
 
-        db.session.add(reply_to)
-        db.session.commit()
+        notify_db_session.add(reply_to)
+        notify_db_session.commit()
 
     return service
 
 
 @pytest.fixture(scope='function')
-def sample_service_guest_list(notify_db, notify_db_session):
+def sample_service_guest_list(notify_db_session):
     service = create_service(check_if_service_exists=True)
     guest_list_user = ServiceGuestList.from_string(service.id, EMAIL_TYPE, 'guest_list_user@digital.gov.uk')
 
-    notify_db.session.add(guest_list_user)
-    notify_db.session.commit()
+    notify_db_session.add(guest_list_user)
+    notify_db_session.commit()
     return guest_list_user
 
 
@@ -933,7 +933,7 @@ def nhs_email_branding(notify_db_session):
 
 
 @pytest.fixture
-def restore_provider_details(notify_db, notify_db_session):
+def restore_provider_details(notify_db_session):
     """
     We view ProviderDetails as a static in notify_db_session, since we don't modify it... except we do, we updated
     priority. This fixture is designed to be used in tests that will knowingly touch provider details, to restore them
@@ -955,10 +955,10 @@ def restore_provider_details(notify_db, notify_db_session):
     # also delete these as they depend on provider_details
     ProviderDetails.query.delete()
     ProviderDetailsHistory.query.delete()
-    notify_db.session.commit()
-    notify_db.session.add_all(existing_provider_details)
-    notify_db.session.add_all(existing_provider_details_history)
-    notify_db.session.commit()
+    notify_db_session.commit()
+    notify_db_session.add_all(existing_provider_details)
+    notify_db_session.add_all(existing_provider_details_history)
+    notify_db_session.commit()
 
 
 @pytest.fixture

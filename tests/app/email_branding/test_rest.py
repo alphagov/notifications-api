@@ -4,11 +4,11 @@ from app.models import BRANDING_ORG, EmailBranding
 from tests.app.db import create_email_branding
 
 
-def test_get_email_branding_options(admin_request, notify_db, notify_db_session):
+def test_get_email_branding_options(admin_request, notify_db_session):
     email_branding1 = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Org1')
     email_branding2 = EmailBranding(colour='#000000', logo='/path/other.png', name='Org2')
-    notify_db.session.add_all([email_branding1, email_branding2])
-    notify_db.session.commit()
+    notify_db_session.add_all([email_branding1, email_branding2])
+    notify_db_session.commit()
 
     email_branding = admin_request.get(
         'email_branding.get_email_branding_options'
@@ -22,10 +22,10 @@ def test_get_email_branding_options(admin_request, notify_db, notify_db_session)
     }
 
 
-def test_get_email_branding_by_id(admin_request, notify_db, notify_db_session):
+def test_get_email_branding_by_id(admin_request, notify_db_session):
     email_branding = EmailBranding(colour='#FFFFFF', logo='/path/image.png', name='Some Org', text='My Org')
-    notify_db.session.add(email_branding)
-    notify_db.session.commit()
+    notify_db_session.add(email_branding)
+    notify_db_session.commit()
 
     response = admin_request.get(
         'email_branding.get_email_branding_by_id',

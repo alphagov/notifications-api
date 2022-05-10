@@ -98,7 +98,7 @@ def test_should_have_decorated_tasks_functions():
 
 
 @pytest.fixture
-def email_job_with_placeholders(notify_db, notify_db_session, sample_email_template_with_placeholders):
+def email_job_with_placeholders(notify_db_session, sample_email_template_with_placeholders):
     return create_job(template=sample_email_template_with_placeholders)
 
 
@@ -481,7 +481,7 @@ def test_should_send_template_to_correct_sms_task_and_persist(sample_template_wi
     )
 
 
-def test_should_put_save_sms_task_in_research_mode_queue_if_research_mode_service(notify_db, notify_db_session, mocker):
+def test_should_put_save_sms_task_in_research_mode_queue_if_research_mode_service(notify_db_session, mocker):
     service = create_service(research_mode=True, )
 
     template = create_template(service=service)
