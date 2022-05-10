@@ -359,6 +359,16 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
                 raise ValidationError('Invalid template subject', 'subject')
 
 
+class TemplateSchemaNested(TemplateSchema):
+    """
+    Contains extra 'is_precompiled_letter' field for use with NotificationWithTemplateSchema
+    """
+    is_precompiled_letter = fields.Method('get_is_precompiled_letter')
+
+    def get_is_precompiled_letter(self, template):
+        return template.is_precompiled_letter
+
+
 class TemplateSchemaNoDetail(TemplateSchema):
     class Meta(TemplateSchema.Meta):
         exclude = TemplateSchema.Meta.exclude + (
@@ -502,7 +512,7 @@ class NotificationWithTemplateSchema(BaseSchema):
         exclude = ('_personalisation',)
 
     template = fields.Nested(
-        TemplateSchema,
+        TemplateSchemaNested,
         only=[
             'id',
             'version',
