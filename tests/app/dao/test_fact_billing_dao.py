@@ -429,7 +429,6 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert str(results[0].month) == "2016-04-01"
     assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 2
-    assert results[0].billable_units == 2
     assert results[0].chargeable_units == 0
     assert results[0].rate == Decimal('0')
     assert results[0].cost == Decimal('0')
@@ -439,7 +438,6 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert str(results[1].month) == "2016-04-01"
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 2
-    assert results[1].billable_units == 2
     assert results[1].chargeable_units == 2
     assert results[1].rate == Decimal('0.30')
     assert results[1].cost == Decimal('0.60')
@@ -449,7 +447,6 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert str(results[2].month) == "2016-04-01"
     assert results[2].notification_type == 'sms'
     assert results[2].notifications_sent == 2
-    assert results[2].billable_units == 2
     assert results[2].chargeable_units == 2
     assert results[2].rate == Decimal('0.162')
     # free allowance is 1
@@ -472,7 +469,6 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
     assert str(results[0].month) == "2018-05-01"
     assert results[0].notification_type == 'letter'
     assert results[0].notifications_sent == 1
-    assert results[0].billable_units == 1
     assert results[0].chargeable_units == 1
     assert results[0].rate == Decimal('0.33')
     assert results[0].cost == Decimal('0.33')
@@ -482,7 +478,6 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
     assert str(results[1].month) == "2018-05-01"
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 2
-    assert results[1].billable_units == 2
     assert results[1].chargeable_units == 2
     assert results[1].rate == Decimal('0.36')
     assert results[1].cost == Decimal('0.72')
@@ -492,7 +487,6 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
     assert str(results[2].month) == "2018-05-01"
     assert results[2].notification_type == 'sms'
     assert results[2].notifications_sent == 1
-    assert results[2].billable_units == 4
     assert results[2].chargeable_units == 4
     assert results[2].rate == Decimal('0.015')
     # 1 free units on the 17th
@@ -503,7 +497,6 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
     assert str(results[3].month) == "2018-05-01"
     assert results[3].notification_type == 'sms'
     assert results[3].notifications_sent == 2
-    assert results[3].billable_units == 5
     assert results[3].chargeable_units == 5
     assert results[3].rate == Decimal('0.162')
     # 5 free units on the 16th
@@ -540,7 +533,6 @@ def test_fetch_billing_totals_for_year(notify_db_session):
     assert len(results) == 3
     assert results[0].notification_type == 'email'
     assert results[0].notifications_sent == 4
-    assert results[0].billable_units == 4
     assert results[0].chargeable_units == 0
     assert results[0].rate == Decimal('0')
     assert results[0].cost == Decimal('0')
@@ -549,7 +541,6 @@ def test_fetch_billing_totals_for_year(notify_db_session):
 
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 4
-    assert results[1].billable_units == 4
     assert results[1].chargeable_units == 4
     assert results[1].rate == Decimal('0.3')
     assert results[1].cost == Decimal('1.2')
@@ -558,7 +549,6 @@ def test_fetch_billing_totals_for_year(notify_db_session):
 
     assert results[2].notification_type == 'sms'
     assert results[2].notifications_sent == 4
-    assert results[2].billable_units == 4
     assert results[2].chargeable_units == 4
     assert results[2].rate == Decimal('0.162')
     assert results[2].cost == Decimal('0')
@@ -589,7 +579,6 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
     assert len(results) == 4
     assert results[0].notification_type == 'letter'
     assert results[0].notifications_sent == 1
-    assert results[0].billable_units == 1
     assert results[0].chargeable_units == 1
     assert results[0].rate == Decimal('0.33')
     assert results[0].cost == Decimal('0.33')
@@ -598,7 +587,6 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
 
     assert results[1].notification_type == 'letter'
     assert results[1].notifications_sent == 2
-    assert results[1].billable_units == 2
     assert results[1].chargeable_units == 2
     assert results[1].rate == Decimal('0.36')
     assert results[1].cost == Decimal('0.72')
@@ -607,7 +595,6 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
 
     assert results[2].notification_type == 'sms'
     assert results[2].notifications_sent == 1
-    assert results[2].billable_units == 4
     assert results[2].chargeable_units == 4
     assert results[2].rate == Decimal('0.015')
     # 1 free unit on the 17th
@@ -617,7 +604,6 @@ def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
 
     assert results[3].notification_type == 'sms'
     assert results[3].notifications_sent == 2
-    assert results[3].billable_units == 5
     assert results[3].chargeable_units == 5
     assert results[3].rate == Decimal('0.162')
     # 5 free units on the 16th

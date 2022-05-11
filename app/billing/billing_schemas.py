@@ -17,8 +17,6 @@ def serialize_ft_billing_remove_emails(rows):
         {
             "month": (datetime.strftime(row.month, "%B")),
             "notification_type": row.notification_type,
-            # TEMPORARY: while we migrate away from "billing_units"
-            "billing_units": row.billable_units,
             "chargeable_units": row.chargeable_units,
             "notifications_sent": row.notifications_sent,
             "rate": float(row.rate),
@@ -36,13 +34,9 @@ def serialize_ft_billing_yearly_totals(rows):
     return [
         {
             "notification_type": row.notification_type,
-            # TEMPORARY: while we migrate away from "billing_units"
-            "billing_units": row.billable_units,
             "chargeable_units": row.chargeable_units,
             "notifications_sent": row.notifications_sent,
             "rate": float(row.rate),
-            # TEMPORARY: while we migrate to "cost" in the Admin app
-            "letter_total": float(row.billable_units * row.rate) if row.notification_type == 'letter' else 0,
             "cost": float(row.cost),
             "free_allowance_used": row.free_allowance_used,
             "charged_units": row.charged_units,
