@@ -209,7 +209,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     created_by = field_for(models.Service, 'created_by', required=True)
     organisation_type = field_for(models.Service, 'organisation_type')
     letter_logo_filename = fields.Method(dump_only=True, serialize='get_letter_logo_filename')
-    permissions = fields.Method("service_permissions")
+    permissions = fields.Method("serialize_service_permissions", "deserialize_service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
     organisation = field_for(models.Service, 'organisation')
     override_flag = False
@@ -226,8 +226,20 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     def get_letter_logo_filename(self, service):
         return service.letter_branding and service.letter_branding.filename
 
-    def service_permissions(self, service):
+    def serialize_service_permissions(self, service):
         return [p.permission for p in service.permissions]
+
+    def deserialize_service_permissions(self, in_data):
+        if isinstance(in_data, dict) and 'permissions' in in_data:
+            str_permissions = in_data['permissions']
+            permissions = []
+            for p in str_permissions:
+                permission = ServicePermission(service_id=in_data["id"], permission=p)
+                permissions.append(permission)
+
+            in_data['permissions'] = permissions
+
+        return in_data
 
     def get_letter_contact(self, service):
         return service.get_default_letter_contact()
