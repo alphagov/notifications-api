@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from uuid import UUID
 
+from dateutil.parser import parse
 from flask_marshmallow.fields import fields
 from marshmallow import (
     EXCLUDE,
@@ -44,6 +45,21 @@ def _validate_datetime_not_more_than_96_hours_in_future(dte, msg="Date cannot be
 def _validate_datetime_not_in_past(dte, msg="Date cannot be in the past"):
     if dte < datetime.utcnow():
         raise ValidationError(msg)
+
+
+class FlexibleDateTime(fields.DateTime):
+    """
+    Allows input data to not contain tz info.
+    Outputs data using the output format that marshmallow version 2 used to use, OLD_MARSHMALLOW_FORMAT
+    """
+
+    DEFAULT_FORMAT = 'flexible'
+    OLD_MARSHMALLOW_FORMAT = "%Y-%m-%dT%H:%M:%S+00:00"
+
+    def __init__(self, *args, allow_none=True, **kwargs):
+        super().__init__(*args, allow_none=allow_none, **kwargs)
+        self.DESERIALIZATION_FUNCS['flexible'] = parse
+        self.SERIALIZATION_FUNCS['flexible'] = lambda x: x.strftime(self.OLD_MARSHMALLOW_FORMAT)
 
 
 class UUIDsAsStringsMixin:
@@ -90,6 +106,8 @@ class UserSchema(BaseSchema):
     permissions = fields.Method("user_permissions", dump_only=True)
     password_changed_at = field_for(models.User, 'password_changed_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     created_at = field_for(models.User, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
+    updated_at = FlexibleDateTime()
+    logged_in_at = FlexibleDateTime()
     auth_type = field_for(models.User, 'auth_type')
     password = fields.String(required=True, load_only=True)
 
@@ -135,6 +153,7 @@ class UserSchema(BaseSchema):
 
 class UserUpdateAttributeSchema(BaseSchema):
     auth_type = field_for(models.User, 'auth_type')
+    email_access_validated_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.User
@@ -192,6 +211,7 @@ class UserUpdatePasswordSchema(BaseSchema):
 
 class ProviderDetailsSchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
+    updated_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetails
@@ -199,6 +219,7 @@ class ProviderDetailsSchema(BaseSchema):
 
 class ProviderDetailsHistorySchema(BaseSchema):
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
+    updated_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.ProviderDetailsHistory
@@ -301,6 +322,9 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
 class DetailedServiceSchema(BaseSchema):
     statistics = fields.Dict()
     organisation_type = field_for(models.Service, 'organisation_type')
+    go_live_at = FlexibleDateTime()
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.Service
@@ -337,6 +361,9 @@ class NotificationModelSchema(BaseSchema):
         exclude = ('_personalisation', 'job', 'service', 'template', 'api_key',)
 
     status = fields.String(required=False)
+    created_at = FlexibleDateTime()
+    sent_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
 
 
 class BaseTemplateSchema(BaseSchema):
@@ -359,6 +386,8 @@ class TemplateSchema(BaseTemplateSchema, UUIDsAsStringsMixin):
     created_by = field_for(models.Template, 'created_by', required=True)
     process_type = field_for(models.Template, 'process_type')
     redact_personalisation = fields.Method("redact")
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
 
     def redact(self, template):
         return template.redact_personalisation
@@ -419,6 +448,7 @@ class TemplateHistorySchema(BaseSchema):
 
     created_by = fields.Nested(UserSchema, only=['id', 'name', 'email_address'], dump_only=True)
     created_at = field_for(models.Template, 'created_at', format=DATETIME_FORMAT_NO_TIMEZONE)
+    updated_at = FlexibleDateTime()
 
     def get_reply_to(self, template):
         return template.reply_to
@@ -435,6 +465,9 @@ class ApiKeySchema(BaseSchema):
 
     created_by = field_for(models.ApiKey, 'created_by', required=True)
     key_type = field_for(models.ApiKey, 'key_type', required=True)
+    expiry_date = FlexibleDateTime()
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.ApiKey
@@ -445,10 +478,14 @@ class JobSchema(BaseSchema):
     created_by_user = fields.Nested(UserSchema, attribute="created_by",
                                     data_key="created_by", only=["id", "name"], dump_only=True)
     created_by = field_for(models.Job, 'created_by', required=True, load_only=True)
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
+    processing_started = FlexibleDateTime()
+    processing_finished = FlexibleDateTime()
 
     job_status = field_for(models.JobStatus, 'name', required=False)
 
-    scheduled_for = fields.DateTime()
+    scheduled_for = FlexibleDateTime()
     service_name = fields.Nested(
         ServiceSchema, attribute="service", data_key="service_name", only=["name"], dump_only=True)
 
@@ -543,6 +580,9 @@ class NotificationWithTemplateSchema(BaseSchema):
     personalisation = fields.Dict(required=False)
     key_type = field_for(models.Notification, 'key_type', required=True)
     key_name = fields.String()
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
+    sent_at = FlexibleDateTime()
 
     @pre_dump
     def add_api_key_name(self, in_data, **kwargs):
@@ -612,6 +652,7 @@ class NotificationWithPersonalisationSchema(NotificationWithTemplateSchema):
 
 class InvitedUserSchema(BaseSchema):
     auth_type = field_for(models.InvitedUser, 'auth_type')
+    created_at = FlexibleDateTime()
 
     class Meta(BaseSchema.Meta):
         model = models.InvitedUser
@@ -697,8 +738,8 @@ class ServiceHistorySchema(ma.Schema):
 
     id = fields.UUID()
     name = fields.String()
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
     active = fields.Boolean()
     message_limit = fields.Integer()
     restricted = fields.Boolean()
@@ -714,13 +755,15 @@ class ApiKeyHistorySchema(ma.Schema):
     id = fields.UUID()
     name = fields.String()
     service_id = fields.UUID()
-    expiry_date = fields.DateTime()
-    created_at = fields.DateTime()
-    updated_at = fields.DateTime()
+    expiry_date = FlexibleDateTime()
+    created_at = FlexibleDateTime()
+    updated_at = FlexibleDateTime()
     created_by_id = fields.UUID()
 
 
 class EventSchema(BaseSchema):
+    created_at = FlexibleDateTime()
+
     class Meta(BaseSchema.Meta):
         model = models.Event
 
