@@ -49,15 +49,15 @@ def mocker_get_rate(
 
 @freeze_time('2019-08-01')
 @pytest.mark.parametrize('day_start, expected_kwargs', [
-    (None, ['2019-07-31', '2019-07-30', '2019-07-29', '2019-07-28']),
-    ('2019-07-21', ['2019-07-21', '2019-07-20', '2019-07-19', '2019-07-18']),
+    (None, [f'2019-07-{31-i}' for i in range(10)]),
+    ('2019-07-21', [f'2019-07-{21-i}' for i in range(10)]),
 ])
 def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
     mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_billing_for_day')
     create_nightly_billing(day_start)
 
-    assert mock_celery.apply_async.call_count == 4
-    for i in range(4):
+    assert mock_celery.apply_async.call_count == 10
+    for i in range(10):
         assert mock_celery.apply_async.call_args_list[i][1]['kwargs'] == {'process_day': expected_kwargs[i]}
 
 
