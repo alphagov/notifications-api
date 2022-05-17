@@ -48,6 +48,7 @@ from app.models import (
     NotificationHistory,
 )
 from tests.app.db import (
+    create_ft_notification_status,
     create_job,
     create_notification,
     create_notification_history,
@@ -1741,3 +1742,13 @@ def test_get_service_ids_with_notifications_on_date_respects_gmt_bst(
     create_notification(template=sample_template, created_at=created_at_utc)
     service_ids = get_service_ids_with_notifications_on_date(SMS_TYPE, date_to_check)
     assert len(service_ids) == expected_count
+
+
+def test_get_service_ids_with_notifications_on_date_checks_ft_status(
+    sample_template,
+):
+    create_notification(template=sample_template, created_at='2022-01-01T09:30')
+    create_ft_notification_status(template=sample_template, bst_date='2022-01-02')
+
+    assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 1))) == 1
+    assert len(get_service_ids_with_notifications_on_date(SMS_TYPE, date(2022, 1, 2))) == 1

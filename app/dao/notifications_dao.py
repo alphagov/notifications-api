@@ -13,7 +13,7 @@ from notifications_utils.recipients import (
     validate_and_format_email_address,
 )
 from notifications_utils.timezones import convert_bst_to_utc, convert_utc_to_bst
-from sqlalchemy import and_, asc, desc, func, or_
+from sqlalchemy import and_, asc, desc, func, or_, union
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.sql import functions
@@ -807,14 +807,26 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
     start_date = get_london_midnight_in_utc(date)
     end_date = get_london_midnight_in_utc(date + timedelta(days=1))
 
+    notification_table_query = db.session.query(
+        Notification.service_id.label('service_id')
+    ).filter(
+        Notification.notification_type == notification_type,
+        # using >= + < is much more efficient than date(created_at)
+        Notification.created_at >= start_date,
+        Notification.created_at < end_date,
+    )
+
+    # Looking at this table is more efficient for historical notifications,
+    # provided the task to populate it has run before they were archived.
+    ft_status_table_query = db.session.query(
+        FactNotificationStatus.service_id.label('service_id')
+    ).filter(
+        FactNotificationStatus.notification_type == notification_type,
+        FactNotificationStatus.bst_date == date,
+    )
+
     return {
-        row.service_id
-        for row in db.session.query(
-            Notification.service_id
-        ).filter(
-            Notification.notification_type == notification_type,
-            # using >= + < is much more efficient than date(created_at)
-            Notification.created_at >= start_date,
-            Notification.created_at < end_date,
-        ).distinct()
+        row.service_id for row in db.session.query(union(
+            notification_table_query, ft_status_table_query
+        ).subquery()).distinct()
     }
