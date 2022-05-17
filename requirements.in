@@ -19,7 +19,7 @@ marshmallow==2.21.0 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
 SQLAlchemy==1.4.36
-cachetools==5.0.0
+cachetools==5.1.0
 beautifulsoup4==4.11.1
 lxml==4.8.0
 Werkzeug==2.0.3
