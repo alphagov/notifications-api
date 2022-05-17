@@ -33,7 +33,7 @@ botocore==1.22.4
     #   awscli
     #   boto3
     #   s3transfer
-cachetools==5.0.0
+cachetools==5.1.0
     # via
     #   -r requirements.in
     #   notifications-utils
@@ -75,7 +75,7 @@ docutils==0.15.2
     # via awscli
 eventlet==0.33.0
     # via gunicorn
-flask==2.1.1
+flask==2.1.2
     # via
     #   -r requirements.in
     #   flask-bcrypt
@@ -133,7 +133,7 @@ jmespath==0.10.0
     #   botocore
 jsonpointer==2.3
     # via jsonschema
-jsonschema[format]==4.4.0
+jsonschema[format]==4.5.1
     # via -r requirements.in
 kombu==5.2.3
     # via celery
@@ -176,7 +176,7 @@ pyasn1==0.4.8
     # via rsa
 pycparser==2.20
     # via cffi
-pyjwt==2.3.0
+pyjwt==2.4.0
     # via
     #   -r requirements.in
     #   notifications-python-client
@@ -237,7 +237,7 @@ smartypants==2.0.1
     # via notifications-utils
 soupsieve==2.2.1
     # via beautifulsoup4
-sqlalchemy==1.4.35
+sqlalchemy==1.4.36
     # via
     #   -r requirements.in
     #   alembic
