@@ -17,7 +17,7 @@ jsonschema[format]==4.5.1
 marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
 marshmallow==2.21.0 # pyup: <3 # v3 throws errors
 psycopg2-binary==2.9.3
-PyJWT==2.3.0
+PyJWT==2.4.0
 SQLAlchemy==1.4.35
 cachetools==5.0.0
 beautifulsoup4==4.11.1
