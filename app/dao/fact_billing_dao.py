@@ -15,7 +15,8 @@ from app.dao.organisation_dao import dao_get_organisation_live_services
 from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
-    KEY_TYPE_TEST,
+    KEY_TYPE_NORMAL,
+    KEY_TYPE_TEAM,
     LETTER_TYPE,
     NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS,
     NOTIFICATION_STATUS_TYPES_BILLABLE_SMS,
@@ -483,7 +484,7 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             func.count().label('notifications_sent'),
         ).filter(
             table.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
-            table.key_type != KEY_TYPE_TEST,
+            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
             table.created_at >= start_date,
             table.created_at < end_date,
             table.notification_type == notification_type,
@@ -510,7 +511,7 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             func.count().label('notifications_sent'),
         ).filter(
             table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
-            table.key_type != KEY_TYPE_TEST,
+            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
             table.created_at >= start_date,
             table.created_at < end_date,
             table.notification_type == notification_type,
@@ -539,7 +540,7 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             func.count().label('notifications_sent'),
         ).filter(
             table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
-            table.key_type != KEY_TYPE_TEST,
+            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
             table.created_at >= start_date,
             table.created_at < end_date,
             table.notification_type == notification_type,
