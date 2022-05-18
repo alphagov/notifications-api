@@ -10,7 +10,7 @@ amqp==5.1.1
     # via kombu
 arrow==1.2.2
     # via isoduration
-attrs==21.2.0
+attrs==21.4.0
     # via jsonschema
 awscli==1.21.4
     # via awscli-cwlogs
