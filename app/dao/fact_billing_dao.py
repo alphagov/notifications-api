@@ -378,14 +378,14 @@ def query_service_sms_usage_for_year(service_id, year):
     free allowance if it happens to run out when a rate changes.
     """
     year_start, year_end = get_financial_year_dates(year)
-    chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
+    this_rows_chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
 
     # Subquery for the number of chargeable units in all rows preceding this one,
     # which might be none if this is the first row (hence the "coalesce"). For
     # some reason the end result is a decimal despite all the input columns being
     # integer - this seems to be a Sqlalchemy quirk (works in raw SQL).
-    cumulative_chargeable_units = func.coalesce(
-        func.sum(chargeable_units).over(
+    chargeable_units_used_before_this_row = func.coalesce(
+        func.sum(this_rows_chargeable_units).over(
             # order is "ASC" by default
             order_by=[FactBilling.bst_date],
             # first row to previous row
@@ -396,22 +396,22 @@ def query_service_sms_usage_for_year(service_id, year):
 
     # Subquery for how much free allowance we have left before the current row,
     # so we can work out the cost for this row after taking it into account.
-    cumulative_free_remainder = func.greatest(
-        AnnualBilling.free_sms_fragment_limit - cumulative_chargeable_units,
+    remaining_free_allowance_before_this_row = func.greatest(
+        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
         0
     )
 
     # Subquery for the number of chargeable_units that we will actually charge
     # for, after taking any remaining free allowance into account.
-    charged_units = func.greatest(chargeable_units - cumulative_free_remainder, 0)
+    charged_units = func.greatest(this_rows_chargeable_units - remaining_free_allowance_before_this_row, 0)
 
-    free_allowance_used = func.least(cumulative_free_remainder, chargeable_units)
+    free_allowance_used = func.least(remaining_free_allowance_before_this_row, this_rows_chargeable_units)
 
     return db.session.query(
         FactBilling.bst_date,
         FactBilling.postage,  # should always be "none"
         FactBilling.notifications_sent,
-        chargeable_units.label("chargeable_units"),
+        this_rows_chargeable_units.label("chargeable_units"),
         FactBilling.rate,
         FactBilling.notification_type,
         (charged_units * FactBilling.rate).label("cost"),
@@ -772,7 +772,7 @@ def query_organisation_sms_usage_for_year(organisation_id, year):
 
     # Subquery for the number of chargeable units in all rows preceding this one,
     # which might be none if this is the first row (hence the "coalesce").
-    chargeable_units_used_so_far = func.coalesce(
+    chargeable_units_used_before_this_row = func.coalesce(
         func.sum(this_rows_chargeable_units).over(
             # order is "ASC" by default
             order_by=[FactBilling.bst_date],
@@ -789,7 +789,7 @@ def query_organisation_sms_usage_for_year(organisation_id, year):
     # Subquery for how much free allowance we have left before the current row,
     # so we can work out the cost for this row after taking it into account.
     remaining_free_allowance_before_this_row = func.greatest(
-        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_so_far,
+        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
         0
     )
 
