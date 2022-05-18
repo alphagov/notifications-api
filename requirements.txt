@@ -135,7 +135,7 @@ jsonpointer==2.3
     # via jsonschema
 jsonschema[format]==4.5.1
     # via -r requirements.in
-kombu==5.2.3
+kombu==5.2.4
     # via celery
 lxml==4.8.0
     # via -r requirements.in
