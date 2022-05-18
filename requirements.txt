@@ -6,7 +6,7 @@
 #
 alembic==1.7.7
     # via flask-migrate
-amqp==5.0.9
+amqp==5.1.1
     # via kombu
 arrow==1.2.2
     # via isoduration
