@@ -23,13 +23,13 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     FactNotificationStatus,
     Notification,
+    NotificationAllTimeView,
     Service,
     Template,
 )
 from app.utils import (
     get_london_midnight_in_utc,
     get_london_month_from_utc_column,
-    get_notification_table_to_use,
     midnight_n_days_ago,
 )
 
@@ -47,13 +47,7 @@ def update_fact_notification_status(process_day, notification_type, service_id):
     ).delete()
 
     # query notifications or notification_history for the day, depending on their data retention
-    service = Service.query.get(service_id)
-    source_table = get_notification_table_to_use(
-        service,
-        notification_type,
-        process_day,
-        has_delete_task_run=False
-    )
+    source_table = NotificationAllTimeView
 
     query = db.session.query(
         literal(process_day).label("process_day"),

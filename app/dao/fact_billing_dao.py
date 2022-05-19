@@ -25,12 +25,13 @@ from app.models import (
     AnnualBilling,
     FactBilling,
     LetterRate,
+    NotificationAllTimeView,
     NotificationHistory,
     Organisation,
     Rate,
     Service,
 )
-from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
+from app.utils import get_london_midnight_in_utc
 
 
 def fetch_sms_free_allowance_remainder_until_date(end_date):
@@ -454,10 +455,7 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
     for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
             if (not check_permissions) or service.has_permission(notification_type):
-                table = get_notification_table_to_use(service, notification_type, process_day,
-                                                      has_delete_task_run=False)
                 results = _query_for_billing_data(
-                    table=table,
                     notification_type=notification_type,
                     start_date=start_date,
                     end_date=end_date,
@@ -468,7 +466,9 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
     return transit_data
 
 
-def _query_for_billing_data(table, notification_type, start_date, end_date, service):
+def _query_for_billing_data(notification_type, start_date, end_date, service):
+    table = NotificationAllTimeView
+
     def _email_query():
         return db.session.query(
             table.template_id,

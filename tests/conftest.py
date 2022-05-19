@@ -123,6 +123,7 @@ def notify_db_session(_notify_db, sms_providers):
                             "job_status",
                             "provider_details_history",
                             "template_process_type",
+                            "notifications_all_time_view",
                             "notification_status_types",
                             "organisation_types",
                             "service_permission_types",
