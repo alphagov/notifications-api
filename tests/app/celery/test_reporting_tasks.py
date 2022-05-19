@@ -119,13 +119,14 @@ def test_create_nightly_notification_status_triggers_relevant_tasks(
                          [(1.0, 1, 2, [1]),
                           (2.0, 2, 1, [1, 2])])
 def test_create_nightly_billing_for_day_sms_rate_multiplier(
-        sample_service,
-        sample_template,
-        mocker,
-        second_rate,
-        records_num,
-        billable_units,
-        multiplier):
+    sample_service,
+    sample_template,
+    mocker,
+    second_rate,
+    records_num,
+    billable_units,
+    multiplier
+):
 
     yesterday = datetime.now() - timedelta(days=1)
 
@@ -154,11 +155,10 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
+    create_nightly_billing_for_day(str(yesterday.date()))
     records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == records_num
+
     for i, record in enumerate(records):
         assert record.bst_date == datetime.date(yesterday)
         assert record.rate == Decimal(1.33)
@@ -170,7 +170,8 @@ def test_create_nightly_billing_for_day_different_templates(
         sample_service,
         sample_template,
         sample_email_template,
-        mocker):
+        mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
@@ -196,11 +197,9 @@ def test_create_nightly_billing_for_day_different_templates(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
-    records = FactBilling.query.order_by('rate_multiplier').all()
+    create_nightly_billing_for_day(str(yesterday.date()))
 
+    records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == 2
     multiplier = [0, 1]
     billable_units = [0, 1]
@@ -214,10 +213,11 @@ def test_create_nightly_billing_for_day_different_templates(
 
 
 def test_create_nightly_billing_for_day_different_sent_by(
-        sample_service,
-        sample_template,
-        sample_email_template,
-        mocker):
+    sample_service,
+    sample_template,
+    sample_email_template,
+    mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
@@ -244,13 +244,11 @@ def test_create_nightly_billing_for_day_different_sent_by(
 
     records = FactBilling.query.all()
     assert len(records) == 0
+    create_nightly_billing_for_day(str(yesterday.date()))
 
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
     records = FactBilling.query.order_by('rate_multiplier').all()
-
     assert len(records) == 2
+
     for _, record in enumerate(records):
         assert record.bst_date == datetime.date(yesterday)
         assert record.rate == Decimal(1.33)
@@ -259,9 +257,10 @@ def test_create_nightly_billing_for_day_different_sent_by(
 
 
 def test_create_nightly_billing_for_day_different_letter_postage(
-        notify_db_session,
-        sample_letter_template,
-        mocker):
+    notify_db_session,
+    sample_letter_template,
+    mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
 
@@ -301,9 +300,7 @@ def test_create_nightly_billing_for_day_different_letter_postage(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
+    create_nightly_billing_for_day(str(yesterday.date()))
 
     records = FactBilling.query.order_by('postage').all()
     assert len(records) == 4
@@ -334,9 +331,10 @@ def test_create_nightly_billing_for_day_different_letter_postage(
 
 
 def test_create_nightly_billing_for_day_letter(
-        sample_service,
-        sample_letter_template,
-        mocker):
+    sample_service,
+    sample_letter_template,
+    mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
@@ -353,11 +351,11 @@ def test_create_nightly_billing_for_day_letter(
 
     records = FactBilling.query.all()
     assert len(records) == 0
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
+    create_nightly_billing_for_day(str(yesterday.date()))
+
     records = FactBilling.query.order_by('rate_multiplier').all()
     assert len(records) == 1
+
     record = records[0]
     assert record.notification_type == LETTER_TYPE
     assert record.bst_date == datetime.date(yesterday)
@@ -367,9 +365,10 @@ def test_create_nightly_billing_for_day_letter(
 
 
 def test_create_nightly_billing_for_day_null_sent_by_sms(
-        sample_service,
-        sample_template,
-        mocker):
+    sample_service,
+    sample_template,
+    mocker
+):
     yesterday = datetime.now() - timedelta(days=1)
 
     mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
@@ -387,12 +386,10 @@ def test_create_nightly_billing_for_day_null_sent_by_sms(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    # Celery expects the arguments to be a string or primitive type.
-    yesterday_str = datetime.strftime(yesterday, "%Y-%m-%d")
-    create_nightly_billing_for_day(yesterday_str)
+    create_nightly_billing_for_day(str(yesterday.date()))
     records = FactBilling.query.all()
-
     assert len(records) == 1
+
     record = records[0]
     assert record.bst_date == datetime.date(yesterday)
     assert record.rate == Decimal(1.33)
