@@ -214,7 +214,9 @@ def test_volumes_by_service_report(
         end_date='2022-03-01'
     )
 
-    assert len(response) == 4
+    assert len(response) == 7
+
+    # since we are using a pre-set up fixture, we only care about some of the results
     assert response[0] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0,
                            'letter_sheet_totals': 0, 'letter_totals': 0,
                            'organisation_id': str(fixture['org_1'].id),
@@ -228,12 +230,12 @@ def test_volumes_by_service_report(
                            'service_id': str(fixture['service_with_out_ft_billing_this_year'].id),
                            'service_name': fixture['service_with_out_ft_billing_this_year'].name,
                            'sms_chargeable_units': 0, 'sms_notifications': 0}
-    assert response[2] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
+    assert response[4] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
                            'letter_totals': 0, 'organisation_id': '', 'organisation_name': '',
                            'service_id': str(fixture['service_with_sms_without_org'].id),
                            'service_name': fixture['service_with_sms_without_org'].name,
                            'sms_chargeable_units': 0, 'sms_notifications': 0}
-    assert response[3] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
+    assert response[6] == {'email_totals': 0, 'free_allowance': 10, 'letter_cost': 0.0, 'letter_sheet_totals': 0,
                            'letter_totals': 0, 'organisation_id': '', 'organisation_name': '',
                            'service_id': str(fixture['service_with_sms_within_allowance'].id),
                            'service_name': fixture['service_with_sms_within_allowance'].name,

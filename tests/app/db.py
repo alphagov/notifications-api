@@ -998,6 +998,7 @@ def set_up_usage_data(start_date):
         name='Org for {}'.format(service_with_emails.name),
     )
     dao_add_service_to_organisation(service=service_with_emails, organisation_id=org_2.id)
+    create_annual_billing(service_id=service_with_emails.id, free_sms_fragment_limit=0, financial_year_start=year)
 
     create_ft_billing(bst_date=start_date, template=email_template, notifications_sent=10)
 
@@ -1012,6 +1013,7 @@ def set_up_usage_data(start_date):
         billing_reference="org3 billing reference"
     )
     dao_add_service_to_organisation(service=service_with_letters, organisation_id=org_for_service_with_letters.id)
+    create_annual_billing(service_id=service_with_letters.id, free_sms_fragment_limit=0, financial_year_start=year)
 
     create_ft_billing(bst_date=start_date, template=letter_template_3,
                       notifications_sent=2, billable_unit=3, rate=.50, postage='first')
@@ -1023,6 +1025,11 @@ def set_up_usage_data(start_date):
     # service with letters, without an organisation:
     service_with_letters_without_org = create_service(service_name='d - service without org')
     letter_template_4 = create_template(service=service_with_letters_without_org, template_type='letter')
+    create_annual_billing(
+        service_id=service_with_letters_without_org.id,
+        free_sms_fragment_limit=0,
+        financial_year_start=year
+    )
 
     create_ft_billing(bst_date=two_days_later, template=letter_template_4,
                       notifications_sent=7, billable_unit=4, rate=1.55, postage='rest-of-world')
