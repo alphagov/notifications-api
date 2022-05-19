@@ -233,7 +233,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     permissions = fields.Method("serialize_service_permissions", "deserialize_service_permissions")
     email_branding = field_for(models.Service, 'email_branding')
     organisation = field_for(models.Service, 'organisation')
-    override_flag = False
     go_live_at = field_for(models.Service, 'go_live_at', format=DATETIME_FORMAT_NO_TIMEZONE)
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize='_get_allowed_broadcast_provider')
     broadcast_channel = fields.Method(dump_only=True, serialize='_get_broadcast_channel')
