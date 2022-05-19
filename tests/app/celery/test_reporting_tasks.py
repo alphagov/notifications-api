@@ -533,8 +533,7 @@ def test_create_nightly_notification_status_for_service_and_day(notify_db_sessio
     first_template = create_template(service=first_service)
     second_service = create_service(service_name='second Service')
     second_template = create_template(service=second_service, template_type='email')
-    third_service = create_service(service_name='third Service')
-    third_template = create_template(service=third_service, template_type='letter')
+    third_template = create_template(service=second_service, template_type='letter')
 
     create_service_data_retention(second_service, 'email', days_of_retention=3)
 
@@ -561,39 +560,39 @@ def test_create_nightly_notification_status_for_service_and_day(notify_db_sessio
 
     create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
     create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, 'email')
-    create_nightly_notification_status_for_service_and_day(str(process_day), third_service.id, 'letter')
+    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, 'letter')
 
     new_fact_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.notification_type
     ).all()
 
     assert len(new_fact_data) == 3
-    assert new_fact_data[0].bst_date == process_day
-    assert new_fact_data[0].template_id == second_template.id
-    assert new_fact_data[0].service_id == second_service.id
-    assert new_fact_data[0].job_id == UUID('00000000-0000-0000-0000-000000000000')
-    assert new_fact_data[0].notification_type == 'email'
-    assert new_fact_data[0].notification_status == 'temporary-failure'
-    assert new_fact_data[0].notification_count == 1
-    assert new_fact_data[0].key_type == KEY_TYPE_NORMAL
 
-    assert new_fact_data[1].bst_date == process_day
-    assert new_fact_data[1].template_id == third_template.id
-    assert new_fact_data[1].service_id == third_service.id
-    assert new_fact_data[1].job_id == UUID('00000000-0000-0000-0000-000000000000')
-    assert new_fact_data[1].notification_type == 'letter'
-    assert new_fact_data[1].notification_status == 'sending'
-    assert new_fact_data[1].notification_count == 1
-    assert new_fact_data[1].key_type == KEY_TYPE_TEAM
+    email_failure_row = new_fact_data[0]
+    assert email_failure_row.bst_date == process_day
+    assert email_failure_row.template_id == second_template.id
+    assert email_failure_row.service_id == second_service.id
+    assert email_failure_row.job_id == UUID('00000000-0000-0000-0000-000000000000')
+    assert email_failure_row.notification_type == 'email'
+    assert email_failure_row.notification_status == 'temporary-failure'
+    assert email_failure_row.notification_count == 1
+    assert email_failure_row.key_type == KEY_TYPE_NORMAL
 
-    assert new_fact_data[2].bst_date == process_day
-    assert new_fact_data[2].template_id == first_template.id
-    assert new_fact_data[2].service_id == first_service.id
-    assert new_fact_data[2].job_id == UUID('00000000-0000-0000-0000-000000000000')
-    assert new_fact_data[2].notification_type == 'sms'
-    assert new_fact_data[2].notification_status == 'delivered'
-    assert new_fact_data[2].notification_count == 1
-    assert new_fact_data[2].key_type == KEY_TYPE_NORMAL
+    letter_sending_row = new_fact_data[1]
+    assert letter_sending_row.template_id == third_template.id
+    assert letter_sending_row.service_id == second_service.id
+    assert letter_sending_row.notification_type == 'letter'
+    assert letter_sending_row.notification_status == 'sending'
+    assert letter_sending_row.notification_count == 1
+    assert letter_sending_row.key_type == KEY_TYPE_TEAM
+
+    sms_delivered_row = new_fact_data[2]
+    assert sms_delivered_row.template_id == first_template.id
+    assert sms_delivered_row.service_id == first_service.id
+    assert sms_delivered_row.notification_type == 'sms'
+    assert sms_delivered_row.notification_status == 'delivered'
+    assert sms_delivered_row.notification_count == 1
+    assert sms_delivered_row.key_type == KEY_TYPE_NORMAL
 
 
 def test_create_nightly_notification_status_for_service_and_day_overwrites_old_data(notify_db_session):
