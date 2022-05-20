@@ -720,7 +720,9 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
 
 def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    ft_billing_subquery = query_organisation_sms_usage_for_year(organisation_id, financial_year).subquery()
+    ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).filter(
+        Service.organisation_id == organisation_id
+    ).subquery()
 
     sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
@@ -761,7 +763,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     return query.all()
 
 
-def query_organisation_sms_usage_for_year(organisation_id, year):
+def query_sms_usage_for_year_per_service(year):
     """
     See docstring for query_service_sms_usage_for_year()
     """
@@ -813,7 +815,6 @@ def query_organisation_sms_usage_for_year(organisation_id, year):
             FactBilling.notification_type == SMS_TYPE,
         )
     ).filter(
-        Service.organisation_id == organisation_id,
         AnnualBilling.financial_year_start == year,
     )
 

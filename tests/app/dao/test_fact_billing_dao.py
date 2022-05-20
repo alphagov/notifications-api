@@ -21,7 +21,7 @@ from app.dao.fact_billing_dao import (
     fetch_volumes_by_service,
     get_rate,
     get_rates_for_billing,
-    query_organisation_sms_usage_for_year,
+    query_sms_usage_for_year_per_service,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import NOTIFICATION_STATUS_TYPES, FactBilling
@@ -1026,15 +1026,12 @@ def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(n
 
 
 @freeze_time('2022-04-27 13:30')
-def test_query_organisation_sms_usage_for_year_handles_multiple_services(notify_db_session):
+def test_query_sms_usage_for_year_per_service_handles_multiple_services(notify_db_session):
     today = datetime.utcnow().date()
     yesterday = datetime.utcnow().date() - timedelta(days=1)
     current_year = datetime.utcnow().year
 
-    org = create_organisation(name='Organisation 1')
-
     service_1 = create_service(restricted=False, service_name="Service 1")
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
     sms_template_1 = create_template(service=service_1)
     create_ft_billing(
         bst_date=yesterday, template=sms_template_1, rate=1,
@@ -1047,7 +1044,6 @@ def test_query_organisation_sms_usage_for_year_handles_multiple_services(notify_
     create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=5, financial_year_start=current_year)
 
     service_2 = create_service(restricted=False, service_name="Service 2")
-    dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
     sms_template_2 = create_template(service=service_2)
     create_ft_billing(
         bst_date=yesterday, template=sms_template_2, rate=1,
@@ -1061,7 +1057,7 @@ def test_query_organisation_sms_usage_for_year_handles_multiple_services(notify_
 
     # ----------
 
-    result = query_organisation_sms_usage_for_year(org.id, 2022).all()
+    result = query_sms_usage_for_year_per_service(2022).all()
 
     service_1_rows = [row for row in result if row.service_id == service_1.id]
     service_2_rows = [row for row in result if row.service_id == service_2.id]
@@ -1095,15 +1091,12 @@ def test_query_organisation_sms_usage_for_year_handles_multiple_services(notify_
 
 
 @freeze_time('2022-05-01 13:30')
-def test_query_organisation_sms_usage_for_year_handles_multiple_rates(notify_db_session):
+def test_query_sms_usage_for_year_per_service_handles_multiple_rates(notify_db_session):
     old_rate_date = date(2022, 4, 29)
     new_rate_date = date(2022, 5, 1)
     current_year = datetime.utcnow().year
 
-    org = create_organisation(name='Organisation 1')
-
     service_1 = create_service(restricted=False, service_name="Service 1")
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
     sms_template_1 = create_template(service=service_1)
     create_ft_billing(
         bst_date=old_rate_date, template=sms_template_1, rate=2,
@@ -1115,7 +1108,7 @@ def test_query_organisation_sms_usage_for_year_handles_multiple_rates(notify_db_
     )
     create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
 
-    result = query_organisation_sms_usage_for_year(org.id, 2022).all()
+    result = query_sms_usage_for_year_per_service(2022).all()
 
     # al lthe free allowance is used on the first day
     assert result[0]['bst_date'] == date(2022, 4, 29)
