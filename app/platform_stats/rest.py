@@ -66,7 +66,6 @@ def validate_date_range_is_within_a_financial_year(start_date, end_date):
     return start_date, end_date
 
 
-@platform_stats_blueprint.route('usage-for-all-services')
 @platform_stats_blueprint.route('data-for-billing-report')
 def get_data_for_billing_report():
     start_date = request.args.get('start_date')
