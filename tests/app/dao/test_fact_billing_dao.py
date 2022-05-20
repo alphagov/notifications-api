@@ -672,8 +672,14 @@ def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session)
     create_ft_billing(template=template, bst_date=datetime(2019, 4, 20), billable_unit=44, rate=0.11)
     results = fetch_sms_billing_for_all_services(datetime(2019, 4, 1), datetime(2019, 5, 30))
     assert len(results) == 1
-    assert results[0] == (org.name, org.id, service.name, service.id, 25000, Decimal('0.11'), 24956, 44, 0,
-                          Decimal('0'))
+    assert results[0].organisation_name == org.name
+    assert results[0].organisation_id == org.id
+    assert results[0].service_name == service.name
+    assert results[0].service_id == service.id
+    assert results[0].free_sms_fragment_limit == 25000
+    assert results[0].sms_billable_units == 44
+    assert results[0].chargeable_billable_sms == 0
+    assert results[0].sms_cost == 0
 
 
 def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):

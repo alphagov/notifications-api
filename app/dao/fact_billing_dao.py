@@ -64,53 +64,48 @@ def fetch_sms_free_allowance_remainder_until_date(end_date):
 
 
 def fetch_sms_billing_for_all_services(start_date, end_date):
+    # ASSUMPTION: start and end date are in the same financial year
+    financial_year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
 
     # ASSUMPTION: AnnualBilling has been populated for year.
-    allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
+    ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).subquery()
 
-    sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+    sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - sms_billable_units, 0)
+    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
 
-    # billable units here are for period between start date and end date only, so to see
-    # how many are chargeable, we need to see how much free allowance was used up in the
-    # period up until report's start date and then do a subtraction
-    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
-    sms_cost = chargeable_sms * FactBilling.rate
-
+    chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
+    sms_cost = func.sum(ft_billing_subquery.c.cost)
     query = db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
+
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        FactBilling.rate.label('sms_rate'),
-        sms_allowance_left.label("sms_remainder"),
-        sms_billable_units.label('sms_billable_units'),
-        chargeable_sms.label("chargeable_billable_sms"),
-        sms_cost.label('sms_cost'),
+        AnnualBilling.free_sms_fragment_limit,
+        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
+        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
+        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
+        func.coalesce(sms_cost, 0).label('sms_cost'),
     ).select_from(
         Service
     ).outerjoin(
-        allowance_left_at_start_date_query, Service.id == allowance_left_at_start_date_query.c.service_id
-    ).outerjoin(
         Service.organisation
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
+    ).outerjoin(
+        AnnualBilling,
+        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
+    ).outerjoin(
+        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == SMS_TYPE,
+        Service.restricted.is_(False)
     ).group_by(
         Organisation.name,
         Organisation.id,
         Service.id,
         Service.name,
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        allowance_left_at_start_date_query.c.sms_remainder,
-        FactBilling.rate,
+        AnnualBilling.free_sms_fragment_limit
     ).order_by(
         Organisation.name,
         Service.name
