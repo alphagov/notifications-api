@@ -681,6 +681,7 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     create_ft_billing(template=template_3, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
     create_ft_billing(template=template_3, bst_date=datetime(2019, 5, 20), billable_unit=7, rate=0.11)
 
+    # this isn't included in results as it doesn't have any SMS rows
     service_4 = create_service(service_name='d - email only')
     email_template = create_template(service=service_4, template_type='email')
     org_4 = create_organisation(name="Org for {}".format(service_4.name))

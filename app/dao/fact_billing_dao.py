@@ -43,9 +43,11 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
-    # subtract sms_billable_units units accrued since report's start date to get up-to-date
-    # allowance remainder
-    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
+    # get the lowest value allowance (which will be the last date within our filter range)
+    sms_allowance_left = func.greatest(
+        func.min(AnnualBilling.free_sms_fragment_limit - ft_billing_subquery.c.free_allowance_used_to_date),
+        0
+    )
 
     chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
     sms_cost = func.sum(ft_billing_subquery.c.cost)
@@ -69,7 +71,9 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     ).outerjoin(
         ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
-        Service.restricted.is_(False)
+        Service.restricted.is_(False),
+        ft_billing_subquery.c.bst_date >= start_date,
+        ft_billing_subquery.c.bst_date <= end_date,
     ).group_by(
         Organisation.name,
         Organisation.id,
