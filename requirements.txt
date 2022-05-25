@@ -28,7 +28,7 @@ blinker==1.4
     # via gds-metrics
 boto3==1.23.7
     # via notifications-utils
-botocore==1.22.4
+botocore==1.26.7
     # via
     #   awscli
     #   boto3
