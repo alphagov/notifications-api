@@ -26,7 +26,7 @@ register_errors(service_invite)
 @service_invite.route('/service/<service_id>/invite', methods=['POST'])
 def create_invited_user(service_id):
     request_json = request.get_json()
-    invited_user, errors = invited_user_schema.load(request_json)
+    invited_user = invited_user_schema.load(request_json)
     save_invited_user(invited_user)
 
     if invited_user.service.has_permission(BROADCAST_TYPE):
@@ -58,30 +58,30 @@ def create_invited_user(service_id):
 
     send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
 
-    return jsonify(data=invited_user_schema.dump(invited_user).data), 201
+    return jsonify(data=invited_user_schema.dump(invited_user)), 201
 
 
 @service_invite.route('/service/<service_id>/invite', methods=['GET'])
 def get_invited_users_by_service(service_id):
     invited_users = get_invited_users_for_service(service_id)
-    return jsonify(data=invited_user_schema.dump(invited_users, many=True).data), 200
+    return jsonify(data=invited_user_schema.dump(invited_users, many=True)), 200
 
 
 @service_invite.route('/service/<service_id>/invite/<invited_user_id>', methods=['GET'])
 def get_invited_user_by_service(service_id, invited_user_id):
     invited_user = get_invited_user_by_service_and_id(service_id, invited_user_id)
-    return jsonify(data=invited_user_schema.dump(invited_user).data), 200
+    return jsonify(data=invited_user_schema.dump(invited_user)), 200
 
 
 @service_invite.route('/service/<service_id>/invite/<invited_user_id>', methods=['POST'])
 def update_invited_user(service_id, invited_user_id):
     fetched = get_invited_user_by_service_and_id(service_id=service_id, invited_user_id=invited_user_id)
 
-    current_data = dict(invited_user_schema.dump(fetched).data.items())
+    current_data = dict(invited_user_schema.dump(fetched).items())
     current_data.update(request.get_json())
-    update_dict = invited_user_schema.load(current_data).data
+    update_dict = invited_user_schema.load(current_data)
     save_invited_user(update_dict)
-    return jsonify(data=invited_user_schema.dump(fetched).data), 200
+    return jsonify(data=invited_user_schema.dump(fetched)), 200
 
 
 def invited_user_url(invited_user_id, invite_link_host=None):
@@ -96,7 +96,7 @@ def invited_user_url(invited_user_id, invite_link_host=None):
 @service_invite.route('/invite/service/<uuid:invited_user_id>', methods=['GET'])
 def get_invited_user(invited_user_id):
     invited_user = get_invited_user_by_id(invited_user_id)
-    return jsonify(data=invited_user_schema.dump(invited_user).data), 200
+    return jsonify(data=invited_user_schema.dump(invited_user)), 200
 
 
 @service_invite.route('/invite/service/<token>', methods=['GET'])
@@ -120,4 +120,4 @@ def validate_service_invitation_token(token):
         raise InvalidRequest(errors, status_code=400)
 
     invited_user = get_invited_user_by_id(invited_user_id)
-    return jsonify(data=invited_user_schema.dump(invited_user).data), 200
+    return jsonify(data=invited_user_schema.dump(invited_user)), 200

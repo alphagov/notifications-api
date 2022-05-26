@@ -438,8 +438,9 @@ def test_get_template_versions(sample_template):
     assert versions[1].updated_at is not None
 
     from app.schemas import template_history_schema
-    v = template_history_schema.load(versions, many=True)
+    v = template_history_schema.dump(versions, many=True)
     assert len(v) == 2
+    assert {template_history['version'] for template_history in v} == {1, 2}
 
 
 def test_get_template_versions_is_empty_for_hidden_templates(sample_service):

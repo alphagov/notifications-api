@@ -86,11 +86,9 @@ def handle_integrity_error(exc):
 
 @user_blueprint.route('', methods=['POST'])
 def create_user():
-    user_to_create, errors = create_user_schema.load(request.get_json())
     req_json = request.get_json()
-    if not req_json.get('password', None):
-        errors.update({'password': ['Missing data for required field.']})
-        raise InvalidRequest(errors, status_code=400)
+    user_to_create = create_user_schema.load(req_json)
+
     save_model_user(user_to_create, password=req_json.get('password'), validated_email_access=True)
     result = user_to_create.serialize()
     return jsonify(data=result), 201
@@ -105,9 +103,8 @@ def update_user_attribute(user_id):
     else:
         updated_by = None
 
-    update_dct, errors = user_update_schema_load_json.load(req_json)
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
+    update_dct = user_update_schema_load_json.load(req_json)
+
     save_user_attribute(user_to_update, update_dict=update_dct)
     if updated_by:
         if 'email_address' in update_dct:
@@ -345,9 +342,8 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
 @user_blueprint.route('/<uuid:user_id>/change-email-verification', methods=['POST'])
 def send_user_confirm_new_email(user_id):
     user_to_send_to = get_user_by_id(user_id=user_id)
-    email, errors = email_data_request_schema.load(request.get_json())
-    if errors:
-        raise InvalidRequest(message=errors, status_code=400)
+
+    email = email_data_request_schema.load(request.get_json())
 
     template = dao_get_template_by_id(current_app.config['CHANGE_EMAIL_CONFIRMATION_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -407,7 +403,8 @@ def send_new_user_email_verification(user_id):
 
 @user_blueprint.route('/<uuid:user_id>/email-already-registered', methods=['POST'])
 def send_already_registered_email(user_id):
-    to, errors = email_data_request_schema.load(request.get_json())
+    to = email_data_request_schema.load(request.get_json())
+
     template = dao_get_template_by_id(current_app.config['ALREADY_REGISTERED_EMAIL_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
 
@@ -472,10 +469,7 @@ def set_permissions(user_id, service_id):
 
 @user_blueprint.route('/email', methods=['POST'])
 def fetch_user_by_email():
-
-    email, errors = email_data_request_schema.load(request.get_json())
-    if errors:
-        raise InvalidRequest(message=errors, status_code=400)
+    email = email_data_request_schema.load(request.get_json())
 
     fetched_user = get_user_by_email(email['email'])
     result = fetched_user.serialize()
@@ -496,7 +490,8 @@ def get_by_email():
 
 @user_blueprint.route('/find-users-by-email', methods=['POST'])
 def find_users_by_email():
-    email, errors = partial_email_data_request_schema.load(request.get_json())
+    email = partial_email_data_request_schema.load(request.get_json())
+
     fetched_users = get_users_by_partial_email(email['email'])
     result = [user.serialize_for_users_list() for user in fetched_users]
     return jsonify(data=result), 200
@@ -505,7 +500,8 @@ def find_users_by_email():
 @user_blueprint.route('/reset-password', methods=['POST'])
 def send_user_reset_password():
     request_json = request.get_json()
-    email, errors = email_data_request_schema.load(request_json)
+    email = email_data_request_schema.load(request_json)
+
     user_to_send_to = get_user_by_email(email['email'])
     template = dao_get_template_by_id(current_app.config['PASSWORD_RESET_TEMPLATE_ID'])
     service = Service.query.get(current_app.config['NOTIFY_SERVICE_ID'])
@@ -538,9 +534,9 @@ def update_password(user_id):
     user = get_user_by_id(user_id=user_id)
     req_json = request.get_json()
     password = req_json.get('_password')
-    update_dct, errors = user_update_password_schema_load_json.load(req_json)
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
+
+    user_update_password_schema_load_json.load(req_json)
+
     update_user_password(user, password)
     return jsonify(data=user.serialize()), 200
 

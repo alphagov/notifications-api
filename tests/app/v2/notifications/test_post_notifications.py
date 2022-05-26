@@ -273,8 +273,8 @@ def test_should_cache_template_and_service_in_redis(mocker, client, sample_templ
         call(expected_templates_key),
     ]
 
-    service_dict = service_schema.dump(sample_template.service).data
-    template_dict = template_schema.dump(sample_template).data
+    service_dict = service_schema.dump(sample_template.service)
+    template_dict = template_schema.dump(sample_template)
 
     assert len(mock_redis_set.call_args_list) == 2
 
@@ -292,8 +292,8 @@ def test_should_cache_template_and_service_in_redis(mocker, client, sample_templ
 def test_should_return_template_if_found_in_redis(mocker, client, sample_template):
 
     from app.schemas import service_schema, template_schema
-    service_dict = service_schema.dump(sample_template.service).data
-    template_dict = template_schema.dump(sample_template).data
+    service_dict = service_schema.dump(sample_template.service)
+    template_dict = template_schema.dump(sample_template)
 
     mocker.patch(
         'app.redis_store.get',

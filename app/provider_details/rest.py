@@ -37,7 +37,7 @@ def get_providers():
 
 @provider_details.route('/<uuid:provider_details_id>', methods=['GET'])
 def get_provider_by_id(provider_details_id):
-    data = provider_details_schema.dump(get_provider_details_by_id(provider_details_id)).data
+    data = provider_details_schema.dump(get_provider_details_by_id(provider_details_id))
     return jsonify(provider_details=data)
 
 
@@ -47,7 +47,7 @@ def get_provider_versions(provider_details_id):
     data = provider_details_history_schema.dump(
         versions,
         many=True
-    ).data
+    )
     return jsonify(data=data)
 
 
@@ -74,4 +74,4 @@ def update_provider_details(provider_details_id):
         setattr(provider, key, req_json[key])
     dao_update_provider_details(provider)
 
-    return jsonify(provider_details=provider_details_schema.dump(provider).data), 200
+    return jsonify(provider_details=provider_details_schema.dump(provider)), 200

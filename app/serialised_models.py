@@ -66,7 +66,7 @@ class SerialisedTemplate(SerialisedModel):
             version=version,
         )
 
-        template_dict = template_schema.dump(fetched_template).data
+        template_dict = template_schema.dump(fetched_template)
         db.session.commit()
 
         return {'data': template_dict}
@@ -98,7 +98,7 @@ class SerialisedService(SerialisedModel):
     def get_dict(service_id):
         from app.schemas import service_schema
 
-        service_dict = service_schema.dump(dao_fetch_service_by_id(service_id)).data
+        service_dict = service_schema.dump(dao_fetch_service_by_id(service_id))
         db.session.commit()
 
         return {'data': service_dict}
