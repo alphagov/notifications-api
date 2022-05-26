@@ -14,7 +14,7 @@ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b86
 iso8601==1.0.2
 itsdangerous==2.1.2
 jsonschema[format]==4.5.1
-marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
+marshmallow-sqlalchemy==0.28.0
 marshmallow==3.15.0
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
