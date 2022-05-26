@@ -23,13 +23,13 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     FactNotificationStatus,
     Notification,
+    NotificationAllTimeView,
     Service,
     Template,
 )
 from app.utils import (
     get_london_midnight_in_utc,
     get_london_month_from_utc_column,
-    get_notification_table_to_use,
     midnight_n_days_ago,
 )
 
@@ -46,36 +46,27 @@ def update_fact_notification_status(process_day, notification_type, service_id):
         FactNotificationStatus.service_id == service_id,
     ).delete()
 
-    # query notifications or notification_history for the day, depending on their data retention
-    service = Service.query.get(service_id)
-    source_table = get_notification_table_to_use(
-        service,
-        notification_type,
-        process_day,
-        has_delete_task_run=False
-    )
-
     query = db.session.query(
         literal(process_day).label("process_day"),
-        source_table.template_id,
+        NotificationAllTimeView.template_id,
         literal(service_id).label("service_id"),
-        func.coalesce(source_table.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
+        func.coalesce(NotificationAllTimeView.job_id, '00000000-0000-0000-0000-000000000000').label('job_id'),
         literal(notification_type).label("notification_type"),
-        source_table.key_type,
-        source_table.status,
+        NotificationAllTimeView.key_type,
+        NotificationAllTimeView.status,
         func.count().label('notification_count')
     ).filter(
-        source_table.created_at >= start_date,
-        source_table.created_at < end_date,
-        source_table.notification_type == notification_type,
-        source_table.service_id == service_id,
-        source_table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+        NotificationAllTimeView.created_at >= start_date,
+        NotificationAllTimeView.created_at < end_date,
+        NotificationAllTimeView.notification_type == notification_type,
+        NotificationAllTimeView.service_id == service_id,
+        NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
     ).group_by(
-        source_table.template_id,
-        source_table.template_id,
+        NotificationAllTimeView.template_id,
+        NotificationAllTimeView.template_id,
         'job_id',
-        source_table.key_type,
-        source_table.status
+        NotificationAllTimeView.key_type,
+        NotificationAllTimeView.status
     )
 
     db.session.connection().execute(

@@ -25,12 +25,13 @@ from app.models import (
     AnnualBilling,
     FactBilling,
     LetterRate,
+    NotificationAllTimeView,
     NotificationHistory,
     Organisation,
     Rate,
     Service,
 )
-from app.utils import get_london_midnight_in_utc, get_notification_table_to_use
+from app.utils import get_london_midnight_in_utc
 
 
 def fetch_sms_free_allowance_remainder_until_date(end_date):
@@ -454,10 +455,7 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
     for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
             if (not check_permissions) or service.has_permission(notification_type):
-                table = get_notification_table_to_use(service, notification_type, process_day,
-                                                      has_delete_task_run=False)
                 results = _query_for_billing_data(
-                    table=table,
                     notification_type=notification_type,
                     start_date=start_date,
                     end_date=end_date,
@@ -468,10 +466,10 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
     return transit_data
 
 
-def _query_for_billing_data(table, notification_type, start_date, end_date, service):
+def _query_for_billing_data(notification_type, start_date, end_date, service):
     def _email_query():
         return db.session.query(
-            table.template_id,
+            NotificationAllTimeView.template_id,
             literal(service.crown).label('crown'),
             literal(service.id).label('service_id'),
             literal(notification_type).label('notification_type'),
@@ -483,22 +481,22 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             literal(0).label('billable_units'),
             func.count().label('notifications_sent'),
         ).filter(
-            table.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
-            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            table.created_at >= start_date,
-            table.created_at < end_date,
-            table.notification_type == notification_type,
-            table.service_id == service.id
+            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
+            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+            NotificationAllTimeView.created_at >= start_date,
+            NotificationAllTimeView.created_at < end_date,
+            NotificationAllTimeView.notification_type == notification_type,
+            NotificationAllTimeView.service_id == service.id
         ).group_by(
-            table.template_id,
+            NotificationAllTimeView.template_id,
         )
 
     def _sms_query():
-        sent_by = func.coalesce(table.sent_by, 'unknown')
-        rate_multiplier = func.coalesce(table.rate_multiplier, 1).cast(Integer)
-        international = func.coalesce(table.international, False)
+        sent_by = func.coalesce(NotificationAllTimeView.sent_by, 'unknown')
+        rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
+        international = func.coalesce(NotificationAllTimeView.international, False)
         return db.session.query(
-            table.template_id,
+            NotificationAllTimeView.template_id,
             literal(service.crown).label('crown'),
             literal(service.id).label('service_id'),
             literal(notification_type).label('notification_type'),
@@ -507,50 +505,50 @@ def _query_for_billing_data(table, notification_type, start_date, end_date, serv
             international.label('international'),
             literal(None).label('letter_page_count'),
             literal('none').label('postage'),
-            func.sum(table.billable_units).label('billable_units'),
+            func.sum(NotificationAllTimeView.billable_units).label('billable_units'),
             func.count().label('notifications_sent'),
         ).filter(
-            table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
-            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            table.created_at >= start_date,
-            table.created_at < end_date,
-            table.notification_type == notification_type,
-            table.service_id == service.id
+            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
+            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+            NotificationAllTimeView.created_at >= start_date,
+            NotificationAllTimeView.created_at < end_date,
+            NotificationAllTimeView.notification_type == notification_type,
+            NotificationAllTimeView.service_id == service.id
         ).group_by(
-            table.template_id,
+            NotificationAllTimeView.template_id,
             sent_by,
             rate_multiplier,
             international,
         )
 
     def _letter_query():
-        rate_multiplier = func.coalesce(table.rate_multiplier, 1).cast(Integer)
-        postage = func.coalesce(table.postage, 'none')
+        rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
+        postage = func.coalesce(NotificationAllTimeView.postage, 'none')
         return db.session.query(
-            table.template_id,
+            NotificationAllTimeView.template_id,
             literal(service.crown).label('crown'),
             literal(service.id).label('service_id'),
             literal(notification_type).label('notification_type'),
             literal('dvla').label('sent_by'),
             rate_multiplier.label('rate_multiplier'),
-            table.international,
-            table.billable_units.label('letter_page_count'),
+            NotificationAllTimeView.international,
+            NotificationAllTimeView.billable_units.label('letter_page_count'),
             postage.label('postage'),
-            func.sum(table.billable_units).label('billable_units'),
+            func.sum(NotificationAllTimeView.billable_units).label('billable_units'),
             func.count().label('notifications_sent'),
         ).filter(
-            table.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
-            table.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            table.created_at >= start_date,
-            table.created_at < end_date,
-            table.notification_type == notification_type,
-            table.service_id == service.id
+            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
+            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+            NotificationAllTimeView.created_at >= start_date,
+            NotificationAllTimeView.created_at < end_date,
+            NotificationAllTimeView.notification_type == notification_type,
+            NotificationAllTimeView.service_id == service.id
         ).group_by(
-            table.template_id,
+            NotificationAllTimeView.template_id,
             rate_multiplier,
-            table.billable_units,
+            NotificationAllTimeView.billable_units,
             postage,
-            table.international
+            NotificationAllTimeView.international
         )
 
     query_funcs = {

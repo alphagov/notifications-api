@@ -1411,6 +1411,39 @@ class NotificationStatusTypes(db.Model):
     name = db.Column(db.String(), primary_key=True)
 
 
+class NotificationAllTimeView(db.Model):
+    """
+    WARNING: this view is a union of rows in "notifications" and
+    "notification_history". Any query on this view will query both
+    tables and therefore rely on *both* sets of indices.
+    """
+    __tablename__ = 'notifications_all_time_view'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True)
+    job_id = db.Column(UUID(as_uuid=True))
+    job_row_number = db.Column(db.Integer)
+    service_id = db.Column(UUID(as_uuid=True))
+    template_id = db.Column(UUID(as_uuid=True))
+    template_version = db.Column(db.Integer)
+    api_key_id = db.Column(UUID(as_uuid=True))
+    key_type = db.Column(db.String)
+    billable_units = db.Column(db.Integer)
+    notification_type = db.Column(notification_types)
+    created_at = db.Column(db.DateTime)
+    sent_at = db.Column(db.DateTime)
+    sent_by = db.Column(db.String)
+    updated_at = db.Column(db.DateTime)
+    status = db.Column('notification_status', db.Text)
+    reference = db.Column(db.String)
+    client_reference = db.Column(db.String)
+    international = db.Column(db.Boolean)
+    phone_prefix = db.Column(db.String)
+    rate_multiplier = db.Column(db.Numeric(asdecimal=False))
+    created_by_id = db.Column(UUID(as_uuid=True))
+    postage = db.Column(db.String)
+    document_download_count = db.Column(db.Integer)
+
+
 class Notification(db.Model):
     __tablename__ = 'notifications'
 
