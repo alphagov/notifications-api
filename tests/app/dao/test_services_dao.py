@@ -31,7 +31,6 @@ from app.dao.services_dao import (
     dao_fetch_live_services_data,
     dao_fetch_service_by_id,
     dao_fetch_service_by_inbound_number,
-    dao_fetch_stats_for_service,
     dao_fetch_todays_stats_for_all_services,
     dao_fetch_todays_stats_for_service,
     dao_find_services_sending_to_tv_numbers,
@@ -789,7 +788,7 @@ def test_fetch_stats_filters_on_service(notify_db_session):
                           message_limit=1000)
     dao_create_service(service_two, service_one.created_by)
 
-    stats = dao_fetch_stats_for_service(service_two.id, 7)
+    stats = dao_fetch_todays_stats_for_service(service_two.id)
     assert len(stats) == 0
 
 
@@ -799,11 +798,11 @@ def test_fetch_stats_ignores_historical_notification_data(sample_template):
     assert Notification.query.count() == 0
     assert NotificationHistory.query.count() == 1
 
-    stats = dao_fetch_stats_for_service(sample_template.service_id, 7)
+    stats = dao_fetch_todays_stats_for_service(sample_template.service_id)
     assert len(stats) == 0
 
 
-def test_fetch_stats_counts_correctly(notify_db_session):
+def test_dao_fetch_todays_stats_for_service(notify_db_session):
     service = create_service()
     sms_template = create_template(service=service)
     email_template = create_template(service=service, template_type='email')
@@ -813,7 +812,7 @@ def test_fetch_stats_counts_correctly(notify_db_session):
     create_notification(template=email_template, status='technical-failure')
     create_notification(template=sms_template, status='created')
 
-    stats = dao_fetch_stats_for_service(sms_template.service_id, 7)
+    stats = dao_fetch_todays_stats_for_service(service.id)
     stats = sorted(stats, key=lambda x: (x.notification_type, x.status))
     assert len(stats) == 3
 
@@ -830,7 +829,7 @@ def test_fetch_stats_counts_correctly(notify_db_session):
     assert stats[2].count == 1
 
 
-def test_fetch_stats_counts_should_ignore_team_key(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_should_ignore_test_key(notify_db_session):
     service = create_service()
     template = create_template(service=service)
     live_api_key = create_api_key(service=service, key_type=KEY_TYPE_NORMAL)
@@ -843,14 +842,14 @@ def test_fetch_stats_counts_should_ignore_team_key(notify_db_session):
     create_notification(template=template, api_key=team_api_key, key_type=team_api_key.key_type)
     create_notification(template=template)
 
-    stats = dao_fetch_stats_for_service(template.service_id, 7)
+    stats = dao_fetch_todays_stats_for_service(service.id)
     assert len(stats) == 1
     assert stats[0].notification_type == 'sms'
     assert stats[0].status == 'created'
     assert stats[0].count == 3
 
 
-def test_fetch_stats_for_today_only_includes_today(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_only_includes_today(notify_db_session):
     template = create_template(service=create_service())
     # two created email, one failed email, and one created sms
     with freeze_time('2001-01-01T23:59:00'):
@@ -873,7 +872,7 @@ def test_fetch_stats_for_today_only_includes_today(notify_db_session):
     assert stats['created'] == 1
 
 
-def test_fetch_stats_for_today_only_includes_today_when_clocks_spring_forward(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_only_includes_today_when_clocks_spring_forward(notify_db_session):
     template = create_template(service=create_service())
     with freeze_time('2021-03-27T23:59:59'):
         # just before midnight yesterday in UTC -- not included
@@ -895,7 +894,7 @@ def test_fetch_stats_for_today_only_includes_today_when_clocks_spring_forward(no
     assert not stats.get('temporary-failure')
 
 
-def test_fetch_stats_for_today_only_includes_today_during_bst(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_only_includes_today_during_bst(notify_db_session):
     template = create_template(service=create_service())
     with freeze_time('2021-03-28T22:59:59'):
         # just before midnight BST -- not included
@@ -916,7 +915,7 @@ def test_fetch_stats_for_today_only_includes_today_during_bst(notify_db_session)
     assert not stats.get('permanent-failure')
 
 
-def test_fetch_stats_for_today_only_includes_today_when_clocks_fall_back(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_only_includes_today_when_clocks_fall_back(notify_db_session):
     template = create_template(service=create_service())
     with freeze_time('2021-10-30T22:59:59'):
         # just before midnight BST -- not included
@@ -938,7 +937,7 @@ def test_fetch_stats_for_today_only_includes_today_when_clocks_fall_back(notify_
     assert not stats.get('permanent-failure')
 
 
-def test_fetch_stats_for_today_only_includes_during_utc(notify_db_session):
+def test_dao_fetch_todays_stats_for_service_only_includes_during_utc(notify_db_session):
     template = create_template(service=create_service())
     with freeze_time('2021-10-30T12:59:59'):
         # just before midnight UTC -- not included
@@ -958,29 +957,6 @@ def test_fetch_stats_for_today_only_includes_during_utc(notify_db_session):
     assert stats['failed'] == 1
     assert stats['created'] == 1
     assert not stats.get('permanent-failure')
-
-
-@pytest.mark.parametrize('created_at, limit_days, rows_returned', [
-    ('Sunday 8th July 2018 12:00', 7, 0),
-    ('Sunday 8th July 2018 22:59', 7, 0),
-    ('Sunday 1th July 2018 12:00', 10, 0),
-    ('Sunday 8th July 2018 23:00', 7, 1),
-    ('Monday 9th July 2018 09:00', 7, 1),
-    ('Monday 9th July 2018 15:00', 7, 1),
-    ('Monday 16th July 2018 12:00', 7, 1),
-    ('Sunday 8th July 2018 12:00', 10, 1),
-])
-def test_fetch_stats_should_not_gather_notifications_older_than_7_days(
-        sample_template, created_at, limit_days, rows_returned
-):
-    # It's monday today. Things made last monday should still show
-    with freeze_time(created_at):
-        create_notification(sample_template, )
-
-    with freeze_time('Monday 16th July 2018 12:00'):
-        stats = dao_fetch_stats_for_service(sample_template.service_id, limit_days)
-
-    assert len(stats) == rows_returned
 
 
 def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db_session):

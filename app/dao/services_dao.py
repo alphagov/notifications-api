@@ -54,7 +54,6 @@ from app.utils import (
     escape_special_characters,
     get_archived_db_column_value,
     get_london_midnight_in_utc,
-    midnight_n_days_ago,
 )
 
 DEFAULT_SERVICE_PERMISSIONS = [
@@ -422,34 +421,22 @@ def delete_service_and_all_associated_db_objects(service):
     db.session.commit()
 
 
-def dao_fetch_stats_for_service(service_id, limit_days):
-    # We always want between seven and eight days
-    start_date = midnight_n_days_ago(limit_days)
-    return _stats_for_service_query(service_id).filter(
-        Notification.created_at >= start_date
-    ).all()
-
-
 def dao_fetch_todays_stats_for_service(service_id):
     today = date.today()
     start_date = get_london_midnight_in_utc(today)
-    return _stats_for_service_query(service_id).filter(
-        Notification.created_at >= start_date
-    ).all()
 
-
-def _stats_for_service_query(service_id):
     return db.session.query(
         Notification.notification_type,
         Notification.status,
         func.count(Notification.id).label('count')
     ).filter(
         Notification.service_id == service_id,
-        Notification.key_type != KEY_TYPE_TEST
+        Notification.key_type != KEY_TYPE_TEST,
+        Notification.created_at >= start_date
     ).group_by(
         Notification.notification_type,
         Notification.status,
-    )
+    ).all()
 
 
 def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_active=True):
