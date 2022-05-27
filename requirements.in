@@ -14,7 +14,7 @@ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b86
 iso8601==1.0.2
 itsdangerous==2.1.2
 jsonschema[format]==4.5.1
-marshmallow-sqlalchemy==0.23.1 # pyup: <0.24.0 # marshmallow v3 throws errors
+marshmallow-sqlalchemy==0.28.0
 marshmallow==3.15.0
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
@@ -22,7 +22,7 @@ SQLAlchemy==1.4.36
 cachetools==5.1.0
 beautifulsoup4==4.11.1
 lxml==4.8.0
-Werkzeug==2.0.3
+Werkzeug==2.0.3  # pyup: <2.1.0 # later versions are not compatible with the version of flask-sqlalchemy we have pinned
 
 notifications-python-client==6.3.0
 
