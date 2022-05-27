@@ -376,6 +376,9 @@ def query_service_sms_usage_for_year(service_id, year):
     on a given bst_date. This means we don't need to worry about how to assign
     free allowance if it happens to run out when a rate changes.
     """
+    return query_sms_usage_for_year_per_service(year).filter(
+        Service.id == service_id
+    )
     year_start, year_end = get_financial_year_dates(year)
     this_rows_chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
 
@@ -803,13 +806,19 @@ def query_sms_usage_for_year_per_service(year):
     charged_units = func.greatest(this_rows_chargeable_units - remaining_free_allowance_before_this_row, 0)
 
     free_allowance_used_to_date = chargeable_units_used_before_this_row + this_rows_chargeable_units
+    free_allowance_used = func.least(remaining_free_allowance_before_this_row, this_rows_chargeable_units)
 
     return db.session.query(
+        FactBilling.postage,  # should always be "none"
+        FactBilling.notifications_sent,
+        FactBilling.rate,
+        FactBilling.notification_type,
+        free_allowance_used.label("free_allowance_used"),
+        charged_units.label("charged_units"),
         Service.id.label('service_id'),
         FactBilling.bst_date,
         this_rows_chargeable_units.label("chargeable_units"),
         (charged_units * FactBilling.rate).label("cost"),
-        charged_units.label("charged_units"),
         free_allowance_used_to_date.label("free_allowance_used_to_date"),
     ).join(
         AnnualBilling,
