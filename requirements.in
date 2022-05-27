@@ -22,7 +22,7 @@ SQLAlchemy==1.4.36
 cachetools==5.1.0
 beautifulsoup4==4.11.1
 lxml==4.8.0
-Werkzeug==2.0.3
+Werkzeug==2.0.3  # pyup: <2.1.0 # later versions are not compatible with the version of flask-sqlalchemy we have pinned
 
 notifications-python-client==6.3.0
 
