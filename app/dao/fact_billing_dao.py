@@ -35,18 +35,46 @@ from app.utils import get_london_midnight_in_utc
 
 
 def fetch_sms_billing_for_all_services(start_date, end_date):
-    # TODO: replace with new aggregate function containing the following columns:
-    # organisation_name
-    # organisation_id
-    # service_name
-    # service_id
-    # free_sms_fragment_limit
-    # sms_rate
-    # sms_remainder
-    # sms_billable_units
-    # chargeable_billable_sms
-    # sms_cost
-    raise NotImplementedError
+    # ASSUMPTION: AnnualBilling has been populated for year.
+    ft_billing_subquery = query_organisation_sms_usage_for_year(organisation_id, financial_year).subquery()
+
+    sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+
+    # subtract sms_billable_units units accrued since report's start date to get up-to-date
+    # allowance remainder
+    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
+
+    chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
+    sms_cost = func.sum(ft_billing_subquery.c.cost)
+
+    query = db.session.query(
+        Service.name.label("service_name"),
+        Service.id.label("service_id"),
+        AnnualBilling.free_sms_fragment_limit,
+        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
+        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
+        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
+        func.coalesce(sms_cost, 0).label('sms_cost'),
+        Service.active
+    ).select_from(
+        Service
+    ).outerjoin(
+        AnnualBilling,
+        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
+    ).outerjoin(
+        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
+    ).filter(
+        Service.organisation_id == organisation_id,
+        Service.restricted.is_(False)
+    ).group_by(
+        Service.id,
+        Service.name,
+        AnnualBilling.free_sms_fragment_limit
+    ).order_by(
+        Service.name
+    )
+
+    return query.all()
 
 
 def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
