@@ -16,7 +16,6 @@ from app.dao.fact_billing_dao import (
     fetch_letter_line_items_for_all_services,
     fetch_monthly_billing_for_year,
     fetch_sms_billing_for_all_services,
-    fetch_sms_free_allowance_remainder_until_date,
     fetch_usage_year_for_organisation,
     fetch_volumes_by_service,
     get_rate,
@@ -633,32 +632,6 @@ def test_delete_billing_data(notify_db_session):
     assert sorted(x.billable_units for x in current_rows) == sorted(
         [other_day.billable_units, other_service.billable_units]
     )
-
-
-def test_fetch_sms_free_allowance_remainder_until_date_with_two_services(notify_db_session):
-    service = create_service(service_name='has free allowance')
-    template = create_template(service=service)
-    org = create_organisation(name="Org for {}".format(service.name))
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2016)
-    create_ft_billing(template=template, bst_date=datetime(2016, 4, 20), billable_unit=2, rate=0.11)
-    create_ft_billing(template=template, bst_date=datetime(2016, 5, 20), billable_unit=3, rate=0.11)
-
-    service_2 = create_service(service_name='used free allowance')
-    template_2 = create_template(service=service_2)
-    org_2 = create_organisation(name="Org for {}".format(service_2.name))
-    dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=20, financial_year_start=2016)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 4, 20), billable_unit=12, rate=0.11)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 4, 22), billable_unit=10, rate=0.11)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 5, 20), billable_unit=3, rate=0.11)
-
-    results = fetch_sms_free_allowance_remainder_until_date(datetime(2016, 5, 1)).all()
-    assert len(results) == 2
-    service_result = [row for row in results if row[0] == service.id]
-    assert service_result[0] == (service.id, 10, 2, 8)
-    service_2_result = [row for row in results if row[0] == service_2.id]
-    assert service_2_result[0] == (service_2.id, 20, 22, 0)
 
 
 def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session):
