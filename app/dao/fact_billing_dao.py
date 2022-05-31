@@ -35,8 +35,11 @@ from app.utils import get_london_midnight_in_utc
 
 
 def fetch_sms_billing_for_all_services(start_date, end_date):
+    # ASSUMPTION: start and end date are in the same financial year
+    financial_year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
+
     # ASSUMPTION: AnnualBilling has been populated for year.
-    ft_billing_subquery = query_organisation_sms_usage_for_year(organisation_id, financial_year).subquery()
+    ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).subquery()
 
     sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
@@ -46,8 +49,9 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
     sms_cost = func.sum(ft_billing_subquery.c.cost)
-
     query = db.session.query(
+        Organisation.name.label('organisation_name'),
+        Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
@@ -55,22 +59,25 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
         func.coalesce(sms_cost, 0).label('sms_cost'),
-        Service.active
     ).select_from(
         Service
+    ).outerjoin(
+        Service.organisation
     ).outerjoin(
         AnnualBilling,
         and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
     ).outerjoin(
         ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
-        Service.organisation_id == organisation_id,
         Service.restricted.is_(False)
     ).group_by(
+        Organisation.name,
+        Organisation.id,
         Service.id,
         Service.name,
         AnnualBilling.free_sms_fragment_limit
     ).order_by(
+        Organisation.name,
         Service.name
     )
 
