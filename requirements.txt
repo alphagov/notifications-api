@@ -141,7 +141,7 @@ jsonschema[format]==4.5.1
     # via -r requirements.in
 kombu==5.2.4
     # via celery
-lxml==4.8.0
+lxml==4.9.0
     # via -r requirements.in
 mako==1.2.0
     # via alembic
