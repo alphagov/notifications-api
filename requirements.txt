@@ -160,7 +160,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==6.3.0
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@55.1.6
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@56.0.0
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
@@ -189,7 +189,7 @@ pyjwt==2.4.0
     #   notifications-python-client
 pyparsing==3.0.9
     # via packaging
-pypdf2==1.28.2
+pypdf2==2.0.0
     # via notifications-utils
 pyproj==3.3.1
     # via notifications-utils
@@ -250,6 +250,8 @@ sqlalchemy==1.4.36
     #   marshmallow-sqlalchemy
 statsd==3.3.0
     # via notifications-utils
+typing-extensions==4.2.0
+    # via pypdf2
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.9
