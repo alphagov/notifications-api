@@ -10,7 +10,7 @@ import pytest
 import requests_mock
 from freezegun import freeze_time
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
-from PyPDF2.utils import PdfReadError
+from PyPDF2.errors import PdfReadError
 
 from app.dao.templates_dao import (
     dao_get_template_by_id,
