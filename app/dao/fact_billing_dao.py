@@ -45,7 +45,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     # get the lowest value allowance (which will be the last date within our filter range)
     sms_allowance_left = func.greatest(
-        func.min(AnnualBilling.free_sms_fragment_limit - ft_billing_subquery.c.free_allowance_used_to_date),
+        func.min(ft_billing_subquery.c.free_sms_fragment_limit - ft_billing_subquery.c.free_allowance_used_to_date),
         0
     )
 
@@ -56,7 +56,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit,
+        ft_billing_subquery.c.free_sms_fragment_limit,
         func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
         func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
@@ -65,9 +65,6 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Service
     ).outerjoin(
         Service.organisation
-    ).outerjoin(
-        AnnualBilling,
-        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
     ).outerjoin(
         ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
@@ -79,7 +76,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.id,
         Service.id,
         Service.name,
-        AnnualBilling.free_sms_fragment_limit
+        ft_billing_subquery.c.free_sms_fragment_limit
     ).order_by(
         Organisation.name,
         Service.name
@@ -696,7 +693,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
 
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
+    sms_allowance_left = func.greatest(ft_billing_subquery.c.free_sms_fragment_limit - sms_billable_units, 0)
 
     chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
     sms_cost = func.sum(ft_billing_subquery.c.cost)
@@ -704,7 +701,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit,
+        ft_billing_subquery.c.free_sms_fragment_limit,
         func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
         func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
@@ -713,9 +710,6 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     ).select_from(
         Service
     ).outerjoin(
-        AnnualBilling,
-        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
-    ).outerjoin(
         ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
         Service.organisation_id == organisation_id,
@@ -723,7 +717,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     ).group_by(
         Service.id,
         Service.name,
-        AnnualBilling.free_sms_fragment_limit
+        ft_billing_subquery.c.free_sms_fragment_limit
     ).order_by(
         Service.name
     )
@@ -774,6 +768,7 @@ def query_sms_usage_for_year_per_service(year):
         (charged_units * FactBilling.rate).label("cost"),
         charged_units.label("charged_units"),
         free_allowance_used_to_date.label("free_allowance_used_to_date"),
+        AnnualBilling.free_sms_fragment_limit,
     ).join(
         AnnualBilling,
         AnnualBilling.service_id == Service.id

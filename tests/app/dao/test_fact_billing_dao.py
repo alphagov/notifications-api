@@ -1049,20 +1049,24 @@ def test_query_sms_usage_for_year_per_service_handles_multiple_services(notify_d
     # service 1 has allowance of 5
     # four fragments in total, all are used
     assert service_1_rows[0]['bst_date'] == date(2022, 4, 26)
+    assert service_1_rows[0]['free_sms_fragment_limit'] == 5
     assert service_1_rows[0]['chargeable_units'] == 4
     assert service_1_rows[0]['charged_units'] == 0
     # two in total - one is free, one is charged
     assert service_1_rows[1]['bst_date'] == date(2022, 4, 27)
+    assert service_1_rows[1]['free_sms_fragment_limit'] == 5
     assert service_1_rows[1]['chargeable_units'] == 2
     assert service_1_rows[1]['charged_units'] == 1
 
     # service 2 has allowance of 10
     # sixteen fragments total, allowance is used and six are charged
     assert service_2_rows[0]['bst_date'] == date(2022, 4, 26)
+    assert service_2_rows[0]['free_sms_fragment_limit'] == 10
     assert service_2_rows[0]['chargeable_units'] == 16
     assert service_2_rows[0]['charged_units'] == 6
     # eight fragments total, all are charged
     assert service_2_rows[1]['bst_date'] == date(2022, 4, 27)
+    assert service_2_rows[1]['free_sms_fragment_limit'] == 10
     assert service_2_rows[1]['chargeable_units'] == 8
     assert service_2_rows[1]['charged_units'] == 8
 
