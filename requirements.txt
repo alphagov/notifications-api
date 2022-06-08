@@ -75,7 +75,7 @@ dnspython==2.2.1
     # via eventlet
 docopt==0.6.2
     # via notifications-python-client
-docutils==0.16
+docutils==0.18.1
     # via awscli
 eventlet==0.33.1
     # via gunicorn
