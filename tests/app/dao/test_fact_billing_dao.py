@@ -699,21 +699,21 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
         {
             "organisation_name": org.name, "organisation_id": org.id, "service_name": service_1.name,
             "service_id": service_1.id, "free_sms_fragment_limit": 10, "sms_remainder": 5,
-            "sms_billable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00')
+            "sms_billable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
         },
         # sms remainder is 0, because this service sent SMS worth 15 billable units, 12 of which were sent
         # before requested report's start date
         {
             "organisation_name": org_2.name, "organisation_id": org_2.id, "service_name": service_2.name,
             "service_id": service_2.id, "free_sms_fragment_limit": 10, "sms_remainder": 0,
-            "sms_billable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33')
+            "sms_billable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33'), "active": True
         },
         # sms remainder is 0, because this service sent SMS worth 12 billable units, 5 of which were sent
         # before requested report's start date
         {
             "organisation_name": org_3.name, "organisation_id": org_3.id, "service_name": service_3.name,
             "service_id": service_3.id, "free_sms_fragment_limit": 10, "sms_remainder": 0,
-            "sms_billable_units": 7, "chargeable_billable_sms": 2, "sms_cost": Decimal('0.22')
+            "sms_billable_units": 7, "chargeable_billable_sms": 2, "sms_cost": Decimal('0.22'), "active": True
         },
     ]
 
@@ -733,7 +733,7 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
             "service_name": fixtures["service_1_sms_and_letter"].name,
             "service_id": fixtures["service_1_sms_and_letter"].id,
             "free_sms_fragment_limit": 10, "sms_remainder": 5,
-            "sms_billable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00')
+            "sms_billable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
         },
         # sms remainder is 0, because this service sent SMS worth 15 billable units, 12 of which were sent
         # before requested report's start date
@@ -742,14 +742,14 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
             "service_name": fixtures["service_with_sms_without_org"].name,
             "service_id": fixtures["service_with_sms_without_org"].id, "free_sms_fragment_limit": 10,
             "sms_remainder": 0,
-            "sms_billable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33')
+            "sms_billable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33'), "active": True
         },
         {
             "organisation_name": None, "organisation_id": None,
             "service_name": fixtures["service_with_sms_within_allowance"].name,
             "service_id": fixtures["service_with_sms_within_allowance"].id, "free_sms_fragment_limit": 10,
             "sms_remainder": 8,
-            "sms_billable_units": 2, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00')
+            "sms_billable_units": 2, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
         },
     ]
 

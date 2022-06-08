@@ -61,6 +61,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
         func.coalesce(sms_cost, 0).label('sms_cost'),
+        Service.active
     ).select_from(
         Service
     ).outerjoin(
@@ -79,6 +80,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.id,
         Service.id,
         Service.name,
+        Service.active,
         AnnualBilling.free_sms_fragment_limit
     ).order_by(
         Organisation.name,
