@@ -169,7 +169,7 @@ packaging==21.3
     #   bleach
     #   marshmallow
     #   redis
-phonenumbers==8.12.48
+phonenumbers==8.12.49
     # via notifications-utils
 prometheus-client==0.14.1
     # via
