@@ -642,7 +642,7 @@ def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session)
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=2019)
     create_ft_billing(template=template, bst_date=datetime(2019, 4, 20), billable_unit=44, rate=0.11)
-    results = fetch_sms_billing_for_all_services(datetime(2019, 4, 1), datetime(2019, 5, 30))
+    results = fetch_sms_billing_for_all_services(datetime(2019, 4, 1), datetime(2019, 5, 30)).all()
     assert len(results) == 1
     assert results[0].organisation_id == org.id
     assert results[0].organisation_name == org.name
@@ -690,7 +690,7 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     create_ft_billing(template=email_template, bst_date=datetime(2019, 5, 22), notifications_sent=5,
                       billable_unit=0, rate=0)
 
-    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
+    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
     assert len(results) == 3
 
     expected_results = [
@@ -722,7 +722,7 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
 
 def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 5, 1))
-    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
+    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
 
     assert len(results) == 3
     expected_results = [

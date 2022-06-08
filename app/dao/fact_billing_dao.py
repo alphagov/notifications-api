@@ -51,7 +51,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
     sms_cost = func.sum(ft_billing_subquery.c.cost)
-    query = db.session.query(
+    return db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
@@ -84,8 +84,6 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Organisation.name,
         Service.name
     )
-
-    return query.all()
 
 
 def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
