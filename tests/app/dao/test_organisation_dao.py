@@ -2,12 +2,14 @@ import datetime
 import uuid
 
 import pytest
+from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
+    dao_archive_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
@@ -223,6 +225,29 @@ def test_update_organisation_updates_services_with_new_crown_type(
     dao_update_organisation(sample_organisation.id, crown=False)
 
     assert not Service.query.get(sample_service.id).crown
+
+
+@freeze_time("2022-05-17 11:09")
+def test_dao_archive_organisation(sample_organisation, fake_uuid):
+    email_branding = create_email_branding(id=fake_uuid)
+    letter_branding = create_letter_branding()
+
+    dao_update_organisation(
+        sample_organisation.id,
+        domains=['example.com', 'test.com'],
+        email_branding_id=email_branding.id,
+        letter_branding_id=letter_branding.id,
+    )
+
+    org_name = sample_organisation.name
+
+    dao_archive_organisation(sample_organisation.id)
+
+    assert not sample_organisation.email_branding
+    assert not sample_organisation.letter_branding
+    assert not sample_organisation.domains
+    assert sample_organisation.active is False
+    assert sample_organisation.name == f'_archived_2022-05-17_{org_name}'
 
 
 def test_add_service_to_organisation(sample_service, sample_organisation):
