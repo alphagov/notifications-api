@@ -41,7 +41,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).subquery()
 
-    sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+    sms_chargeable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
     # get the lowest value allowance (which will be the last date within our filter range)
     sms_allowance_left = func.greatest(
@@ -58,7 +58,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         Service.id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
         func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
-        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
+        func.coalesce(sms_chargeable_units, 0).label('sms_chargeable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
         func.coalesce(sms_cost, 0).label('sms_cost'),
         Service.active
@@ -700,11 +700,11 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
         Service.organisation_id == organisation_id
     ).subquery()
 
-    sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+    sms_chargeable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
-    # subtract sms_billable_units units accrued since report's start date to get up-to-date
+    # subtract sms_chargeable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
+    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_chargeable_units, 0)
 
     chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
     sms_cost = func.sum(ft_billing_subquery.c.cost)
@@ -714,7 +714,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
         Service.id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
         func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
-        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
+        func.coalesce(sms_chargeable_units, 0).label('sms_chargeable_units'),
         func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
         func.coalesce(sms_cost, 0).label('sms_cost'),
         Service.active
@@ -774,7 +774,7 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'service_name': usage.service_name,
             'free_sms_limit': usage.free_sms_fragment_limit,
             'sms_remainder': usage.sms_remainder,
-            'sms_billable_units': usage.sms_billable_units,
+            'sms_billable_units': usage.sms_chargeable_units,
             'chargeable_billable_sms': usage.chargeable_billable_sms,
             'sms_cost': float(usage.sms_cost),
             'letter_cost': 0.0,
