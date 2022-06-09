@@ -20,7 +20,6 @@ from app.dao.fact_billing_dao import (
     fetch_volumes_by_service,
     get_rate,
     get_rates_for_billing,
-    query_sms_usage_for_year_per_service,
 )
 from app.dao.organisation_dao import dao_add_service_to_organisation
 from app.models import NOTIFICATION_STATUS_TYPES, FactBilling
@@ -797,6 +796,90 @@ def test_fetch_sms_billing_for_all_services_shows_services_without_billing_in_th
     assert results[0]["sms_cost"] == Decimal('0.00')
 
 
+def test_fetch_sms_billing_for_all_services_handles_multiple_rates(notify_db_session):
+    old_rate_date = date(2022, 4, 29)
+    new_rate_date = date(2022, 5, 1)
+    current_year = datetime.utcnow().year
+
+    service_1 = create_service(restricted=False, service_name="Service 1")
+    sms_template_1 = create_template(service=service_1)
+    create_ft_billing(
+        bst_date=old_rate_date, template=sms_template_1, rate=2,
+        billable_unit=4, notifications_sent=4
+    )
+    create_ft_billing(
+        bst_date=new_rate_date, template=sms_template_1, rate=3,
+        billable_unit=2, notifications_sent=2
+    )
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
+
+    results = fetch_sms_billing_for_all_services(start_date=date(2022, 4, 1), end_date=date(2023, 3, 31))
+
+    # 1 charged unit out of 4 with rate 2 from the first day (using up the free allowance part way through the day)
+    # 2 charged units out of 2 with rate 3 from the second day (all charged)
+    assert results[0]["free_sms_fragment_limit"] == 3
+    assert results[0]["sms_remainder"] == 0
+    assert results[0]["sms_chargeable_units"] == 6
+    assert results[0]["chargeable_billable_sms"] == 3
+    assert results[0]["sms_cost"] == 8
+
+
+@freeze_time('2022-04-27 13:30')
+def test_query_sms_usage_for_year_per_service_handles_multiple_services(notify_db_session):
+    today = datetime.utcnow().date()
+    yesterday = datetime.utcnow().date() - timedelta(days=1)
+    current_year = datetime.utcnow().year
+
+    service_1 = create_service(restricted=False, service_name="Service 1")
+    sms_template_1 = create_template(service=service_1)
+    create_ft_billing(
+        bst_date=yesterday, template=sms_template_1, rate=1,
+        billable_unit=4, notifications_sent=4
+    )
+    create_ft_billing(
+        bst_date=today, template=sms_template_1, rate=1,
+        billable_unit=2, notifications_sent=2
+    )
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=5, financial_year_start=current_year)
+
+    service_2 = create_service(restricted=False, service_name="Service 2")
+    sms_template_2 = create_template(service=service_2)
+    create_ft_billing(
+        bst_date=yesterday, template=sms_template_2, rate=1,
+        billable_unit=16, notifications_sent=16
+    )
+    create_ft_billing(
+        bst_date=today, template=sms_template_2, rate=1,
+        billable_unit=8, notifications_sent=8
+    )
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=current_year)
+
+    # ----------
+
+    result = fetch_sms_billing_for_all_services(date(2022, 4, 1), date(2023, 3, 31)).all()
+
+    service_1 = next(row for row in result if row.service_id == service_1.id)
+    service_2 = next(row for row in result if row.service_id == service_2.id)
+
+    # service 1 has allowance of 5
+    # day 1: four fragments in total, all are used
+    # day 2: two in total - one is free, one is charged
+    assert service_1["free_sms_fragment_limit"] == 5
+    assert service_1["sms_remainder"] == 0
+    assert service_1["sms_chargeable_units"] == 6
+    assert service_1["chargeable_billable_sms"] == 1
+    assert service_1["sms_cost"] == 1
+
+    # service 2 has allowance of 10
+    # day 1: sixteen fragments total, allowance is used and six are charged
+    # day 2: eight fragments total, all are charged
+    assert service_2["free_sms_fragment_limit"] == 10
+    assert service_2["sms_remainder"] == 0
+    assert service_2["sms_chargeable_units"] == 24
+    assert service_2["chargeable_billable_sms"] == 14
+    assert service_2["sms_cost"] == 14
+
+
 def test_fetch_letter_costs_and_totals_for_all_services(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
@@ -1045,101 +1128,6 @@ def test_fetch_usage_year_for_organisation_only_returns_data_for_live_services(n
     assert len(results) == 1
     assert results[str(live_service.id)]['sms_billable_units'] == 19
     assert results[str(live_service.id)]['emails_sent'] == 0
-
-
-@freeze_time('2022-04-27 13:30')
-def test_query_sms_usage_for_year_per_service_handles_multiple_services(notify_db_session):
-    today = datetime.utcnow().date()
-    yesterday = datetime.utcnow().date() - timedelta(days=1)
-    current_year = datetime.utcnow().year
-
-    service_1 = create_service(restricted=False, service_name="Service 1")
-    sms_template_1 = create_template(service=service_1)
-    create_ft_billing(
-        bst_date=yesterday, template=sms_template_1, rate=1,
-        billable_unit=4, notifications_sent=4
-    )
-    create_ft_billing(
-        bst_date=today, template=sms_template_1, rate=1,
-        billable_unit=2, notifications_sent=2
-    )
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=5, financial_year_start=current_year)
-
-    service_2 = create_service(restricted=False, service_name="Service 2")
-    sms_template_2 = create_template(service=service_2)
-    create_ft_billing(
-        bst_date=yesterday, template=sms_template_2, rate=1,
-        billable_unit=16, notifications_sent=16
-    )
-    create_ft_billing(
-        bst_date=today, template=sms_template_2, rate=1,
-        billable_unit=8, notifications_sent=8
-    )
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=current_year)
-
-    # ----------
-
-    result = query_sms_usage_for_year_per_service(2022).all()
-
-    service_1_rows = [row for row in result if row.service_id == service_1.id]
-    service_2_rows = [row for row in result if row.service_id == service_2.id]
-
-    assert len(service_1_rows) == 2
-    assert len(service_2_rows) == 2
-
-    # service 1 has allowance of 5
-    # four fragments in total, all are used
-    assert service_1_rows[0]['bst_date'] == date(2022, 4, 26)
-    assert service_1_rows[0]['chargeable_units'] == 4
-    assert service_1_rows[0]['charged_units'] == 0
-    # two in total - one is free, one is charged
-    assert service_1_rows[1]['bst_date'] == date(2022, 4, 27)
-    assert service_1_rows[1]['chargeable_units'] == 2
-    assert service_1_rows[1]['charged_units'] == 1
-
-    # service 2 has allowance of 10
-    # sixteen fragments total, allowance is used and six are charged
-    assert service_2_rows[0]['bst_date'] == date(2022, 4, 26)
-    assert service_2_rows[0]['chargeable_units'] == 16
-    assert service_2_rows[0]['charged_units'] == 6
-    # eight fragments total, all are charged
-    assert service_2_rows[1]['bst_date'] == date(2022, 4, 27)
-    assert service_2_rows[1]['chargeable_units'] == 8
-    assert service_2_rows[1]['charged_units'] == 8
-
-    # assert total costs are accurate
-    assert float(sum(row.cost for row in service_1_rows)) == 1  # rows with 2 and 4, allowance of 5
-    assert float(sum(row.cost for row in service_2_rows)) == 14  # rows with 8 and 16, allowance of 10
-
-
-@freeze_time('2022-05-01 13:30')
-def test_query_sms_usage_for_year_per_service_handles_multiple_rates(notify_db_session):
-    old_rate_date = date(2022, 4, 29)
-    new_rate_date = date(2022, 5, 1)
-    current_year = datetime.utcnow().year
-
-    service_1 = create_service(restricted=False, service_name="Service 1")
-    sms_template_1 = create_template(service=service_1)
-    create_ft_billing(
-        bst_date=old_rate_date, template=sms_template_1, rate=2,
-        billable_unit=4, notifications_sent=4
-    )
-    create_ft_billing(
-        bst_date=new_rate_date, template=sms_template_1, rate=3,
-        billable_unit=2, notifications_sent=2
-    )
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
-
-    result = query_sms_usage_for_year_per_service(2022).all()
-
-    # al lthe free allowance is used on the first day
-    assert result[0]['bst_date'] == date(2022, 4, 29)
-    assert result[0]['charged_units'] == 1
-    assert result[0]['cost'] == 2
-
-    assert result[1]['bst_date'] == date(2022, 5, 1)
-    assert result[1]['charged_units'] == 2
-    assert result[1]['cost'] == 6
 
 
 def test_fetch_daily_volumes_for_platform(
