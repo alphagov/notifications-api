@@ -92,6 +92,9 @@ def _query_sms_usage_for_range_per_service(financial_year, start_date, end_date)
         free_allowance_used_to_date.label("free_allowance_used_to_date")
     ).select_from(
         ft_billing_subquery,
+    ).filter(
+        # if we don't include this we might capture sms billing rows after (inflating free_allowance_used_to_date)
+        ft_billing_subquery.c.bst_date <= end_date
     ).group_by(
         ft_billing_subquery.c.service_id,
     ).subquery()

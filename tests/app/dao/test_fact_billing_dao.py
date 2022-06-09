@@ -774,10 +774,19 @@ def test_fetch_sms_billing_for_all_services_shows_services_without_billing_that_
     assert results[0]["sms_cost"] == Decimal('0.00')
 
 
-def test_fetch_sms_billing_for_all_services_shows_services_without_billing_in_that_period(sample_template):
+@pytest.mark.parametrize('billing_row_date, expected_sms_remainder', [
+    # only data before
+    (date(2019, 4, 15), 6),
+    # only data after
+    (date(2019, 6, 15), 10),
+])
+def test_fetch_sms_billing_for_all_services_shows_services_without_billing_in_that_period(
+    sample_template,
+    billing_row_date, expected_sms_remainder
+):
     create_annual_billing(service_id=sample_template.service_id, free_sms_fragment_limit=10, financial_year_start=2019)
     create_ft_billing(
-        bst_date=date(2019, 4, 15),
+        bst_date=billing_row_date,
         template=sample_template,
         rate=1,
         notifications_sent=2,
@@ -790,7 +799,7 @@ def test_fetch_sms_billing_for_all_services_shows_services_without_billing_in_th
 
     # sms remainder is calculated correctly but the other rows are still 0 despite the subquery returning null
     assert results[0]["free_sms_fragment_limit"] == 10
-    assert results[0]["sms_remainder"] == 6
+    assert results[0]["sms_remainder"] == expected_sms_remainder
     assert results[0]["sms_chargeable_units"] == 0
     assert results[0]["chargeable_billable_sms"] == 0
     assert results[0]["sms_cost"] == Decimal('0.00')
