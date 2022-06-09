@@ -681,7 +681,6 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     create_ft_billing(template=template_3, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
     create_ft_billing(template=template_3, bst_date=datetime(2019, 5, 20), billable_unit=7, rate=0.11)
 
-    # this isn't included in results as it doesn't have any SMS rows
     service_4 = create_service(service_name='d - email only')
     email_template = create_template(service=service_4, template_type='email')
     org_4 = create_organisation(name="Org for {}".format(service_4.name))
@@ -691,7 +690,7 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
                       billable_unit=0, rate=0)
 
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
-    assert len(results) == 3
+    assert len(results) == 4
 
     expected_results = [
         # sms_remainder is 5, because "service_1" has 5 sms_billing_units. 2 of them for a period before
@@ -715,45 +714,87 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
             "service_id": service_3.id, "free_sms_fragment_limit": 10, "sms_remainder": 0,
             "sms_chargeable_units": 7, "chargeable_billable_sms": 2, "sms_cost": Decimal('0.22'), "active": True
         },
+        # sms remainder is 10 as the service has sent nothing
+        {
+            "organisation_name": org_4.name, "organisation_id": org_4.id, "service_name": service_4.name,
+            "service_id": service_4.id, "free_sms_fragment_limit": 10, "sms_remainder": 10,
+            "sms_chargeable_units": 0, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
+        },
     ]
 
     assert [dict(result) for result in results] == expected_results
 
 
-def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
+def test_fetch_sms_billing_for_all_services_shows_services_without_orgs(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 5, 1))
     results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
 
-    assert len(results) == 3
-    expected_results = [
-        # sms_remainder is 5, because service_1_sms_and_letter has 5 sms_billing_units. 2 of them for a period before
-        # the requested report's start date.
-        {
-            "organisation_name": fixtures["org_1"].name, "organisation_id": fixtures["org_1"].id,
-            "service_name": fixtures["service_1_sms_and_letter"].name,
-            "service_id": fixtures["service_1_sms_and_letter"].id,
-            "free_sms_fragment_limit": 10, "sms_remainder": 5,
-            "sms_chargeable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
-        },
-        # sms remainder is 0, because this service sent SMS worth 15 billable units, 12 of which were sent
-        # before requested report's start date
-        {
-            "organisation_name": None, "organisation_id": None,
-            "service_name": fixtures["service_with_sms_without_org"].name,
-            "service_id": fixtures["service_with_sms_without_org"].id, "free_sms_fragment_limit": 10,
-            "sms_remainder": 0,
-            "sms_chargeable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33'), "active": True
-        },
-        {
-            "organisation_name": None, "organisation_id": None,
-            "service_name": fixtures["service_with_sms_within_allowance"].name,
-            "service_id": fixtures["service_with_sms_within_allowance"].id, "free_sms_fragment_limit": 10,
-            "sms_remainder": 8,
-            "sms_chargeable_units": 2, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True
-        },
-    ]
+    # all services set up in the fixtures are present
+    assert len(results) == 7
 
-    assert [dict(result) for result in results] == expected_results
+    # only check results of services we're interested in from fixture data
+
+    # sms_remainder is 5, because service_1_sms_and_letter has 5 sms_billing_units. 2 of them for a period before
+    # the requested report's start date.
+    assert dict(results[0]) == {
+        "organisation_name": fixtures["org_1"].name, "organisation_id": fixtures["org_1"].id,
+        "service_name": fixtures["service_1_sms_and_letter"].name,
+        "service_id": fixtures["service_1_sms_and_letter"].id,
+        "free_sms_fragment_limit": 10, "sms_remainder": 5,
+        "sms_chargeable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True,
+    }
+    # sms remainder is 0, because this service sent SMS worth 15 billable units, 12 of which were sent
+    # before requested report's start date
+    assert dict(results[4]) == {
+        "organisation_name": None, "organisation_id": None,
+        "service_name": fixtures["service_with_sms_without_org"].name,
+        "service_id": fixtures["service_with_sms_without_org"].id, "free_sms_fragment_limit": 10,
+        "sms_remainder": 0,
+        "sms_chargeable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33'), "active": True,
+    }
+    assert dict(results[6]) == {
+        "organisation_name": None, "organisation_id": None,
+        "service_name": fixtures["service_with_sms_within_allowance"].name,
+        "service_id": fixtures["service_with_sms_within_allowance"].id, "free_sms_fragment_limit": 10,
+        "sms_remainder": 8,
+        "sms_chargeable_units": 2, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00'), "active": True,
+    }
+
+
+def test_fetch_sms_billing_for_all_services_shows_services_without_billing_that_year(sample_service):
+    create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=10, financial_year_start=2019)
+
+    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
+
+    assert len(results) == 1
+
+    assert results[0]["free_sms_fragment_limit"] == 10
+    assert results[0]["sms_remainder"] == 10
+    assert results[0]["sms_chargeable_units"] == 0
+    assert results[0]["chargeable_billable_sms"] == 0
+    assert results[0]["sms_cost"] == Decimal('0.00')
+
+
+def test_fetch_sms_billing_for_all_services_shows_services_without_billing_in_that_period(sample_template):
+    create_annual_billing(service_id=sample_template.service_id, free_sms_fragment_limit=10, financial_year_start=2019)
+    create_ft_billing(
+        bst_date=date(2019, 4, 15),
+        template=sample_template,
+        rate=1,
+        notifications_sent=2,
+        billable_unit=4,
+    )
+
+    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31)).all()
+
+    assert len(results) == 1
+
+    # sms remainder is calculated correctly but the other rows are still 0 despite the subquery returning null
+    assert results[0]["free_sms_fragment_limit"] == 10
+    assert results[0]["sms_remainder"] == 6
+    assert results[0]["sms_chargeable_units"] == 0
+    assert results[0]["chargeable_billable_sms"] == 0
+    assert results[0]["sms_cost"] == Decimal('0.00')
 
 
 def test_fetch_letter_costs_and_totals_for_all_services(notify_db_session):

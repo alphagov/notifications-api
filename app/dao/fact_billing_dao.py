@@ -45,7 +45,10 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
 
     # get the lowest value allowance (which will be the last date within our filter range)
     sms_allowance_left = func.greatest(
-        func.min(AnnualBilling.free_sms_fragment_limit - ft_billing_subquery.c.free_allowance_used_to_date),
+        func.min(
+            AnnualBilling.free_sms_fragment_limit -
+            func.coalesce(ft_billing_subquery.c.free_allowance_used_to_date, 0)
+        ),
         0
     )
 
@@ -70,11 +73,14 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         AnnualBilling,
         and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
     ).outerjoin(
-        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
+        ft_billing_subquery,
+        and_(
+            Service.id == ft_billing_subquery.c.service_id,
+            ft_billing_subquery.c.bst_date >= start_date,
+            ft_billing_subquery.c.bst_date <= end_date,
+        )
     ).filter(
         Service.restricted.is_(False),
-        ft_billing_subquery.c.bst_date >= start_date,
-        ft_billing_subquery.c.bst_date <= end_date,
     ).group_by(
         Organisation.name,
         Organisation.id,
@@ -694,51 +700,6 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-def fetch_sms_billing_for_organisation(organisation_id, financial_year):
-    # ASSUMPTION: AnnualBilling has been populated for year.
-    ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).filter(
-        Service.organisation_id == organisation_id
-    ).subquery()
-
-    sms_chargeable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
-
-    # subtract sms_chargeable_units units accrued since report's start date to get up-to-date
-    # allowance remainder
-    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_chargeable_units, 0)
-
-    chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
-    sms_cost = func.sum(ft_billing_subquery.c.cost)
-
-    query = db.session.query(
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit,
-        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
-        func.coalesce(sms_chargeable_units, 0).label('sms_chargeable_units'),
-        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
-        func.coalesce(sms_cost, 0).label('sms_cost'),
-        Service.active
-    ).select_from(
-        Service
-    ).outerjoin(
-        AnnualBilling,
-        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
-    ).outerjoin(
-        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
-    ).filter(
-        Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
-    ).group_by(
-        Service.id,
-        Service.name,
-        AnnualBilling.free_sms_fragment_limit
-    ).order_by(
-        Service.name
-    )
-
-    return query.all()
-
-
 def fetch_usage_year_for_organisation(organisation_id, year):
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
@@ -765,7 +726,8 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'emails_sent': 0,
             'active': service.active
         }
-    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year)
+
+    sms_usages = fetch_sms_billing_for_all_services(year_start, year_end).filter(Organisation.id == organisation_id)
     letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start, year_end)
     email_usages = fetch_email_usage_for_organisation(organisation_id, year_start, year_end)
     for usage in sms_usages:
