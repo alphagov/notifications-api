@@ -34,36 +34,90 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc
 
 
-def fetch_sms_billing_for_all_services(start_date, end_date):
+def _query_sms_usage_for_range_per_service(financial_year, start_date, end_date):
+    """
+    Get all the sms billing data for all services for a given date range (and the financial year that
+    date range belongs to. The financial year MUST entirely encompass the date range.)
+
+    This subquery exists to solve the complex and prickly problem where we want to report on
+    `free_allowance_used_to_date`, the number of free fragments spent over this entire financial year so far.
+
+    However we want the sms_cost, chargeable_sms, etc, that we'll actually build invoices out of, to only encompass
+    the range specified. The even-further-nested-subquery (query_sms_usage_for_year_per_service) handles the summing
+    up of the values to ensure they're correct.
+
+    This subquery utilises SUMs with CASEs to distinguish those rows we're only interested in between start_date and
+    end_date, vs those which we want the entire year for (free_allowance_used_to_date)
+    """
+
+    def _sum_rows_for_date_range(column):
+        """
+        sum all values of a particular column, if that row's bst_date is within
+        the given start and end date.
+
+        equivalent to:
+
+        SUM(CASE WHEN FactBilling.bst_date BETWEEN start_date AND end_date THEN {column} ELSE 0)
+        """
+        return func.sum(
+            case([
+                (
+                    and_(
+                        ft_billing_subquery.c.bst_date >= start_date,
+                        ft_billing_subquery.c.bst_date <= end_date
+                    ),
+                    column
+                )
+            ], else_=0)
+        )
+
     # ASSUMPTION: start and end date are in the same financial year
     financial_year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
 
     # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = query_sms_usage_for_year_per_service(financial_year).subquery()
 
-    sms_chargeable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+    # get the highest value used so far (which will be the last date available, cruicially, this might be outside our
+    free_allowance_used_to_date = func.max(ft_billing_subquery.c.free_allowance_used_to_date)
 
-    # get the lowest value allowance (which will be the last date within our filter range)
-    sms_allowance_left = func.greatest(
-        func.min(
-            AnnualBilling.free_sms_fragment_limit -
-            func.coalesce(ft_billing_subquery.c.free_allowance_used_to_date, 0)
-        ),
+    sms_chargeable_units = _sum_rows_for_date_range(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+    chargeable_sms = _sum_rows_for_date_range(ft_billing_subquery.c.charged_units)
+    sms_cost = _sum_rows_for_date_range(ft_billing_subquery.c.cost)
+
+    return db.session.query(
+        ft_billing_subquery.c.service_id,
+        sms_chargeable_units.label("sms_chargeable_units"),
+        chargeable_sms.label("chargeable_sms"),
+        sms_cost.label("sms_cost"),
+        free_allowance_used_to_date.label("free_allowance_used_to_date")
+    ).select_from(
+        ft_billing_subquery,
+    ).group_by(
+        ft_billing_subquery.c.service_id,
+    ).subquery()
+
+
+def fetch_sms_billing_for_all_services(start_date, end_date):
+    financial_year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
+    sms_billing_subquery = _query_sms_usage_for_range_per_service(financial_year, start_date, end_date)
+
+    # we need to run this query outside the range subquery. if that service has no data at all for the financial year
+    # that subquery won't have any rows, so free_allowance_used_to_date will be null.
+    sms_remainder = func.greatest(
+        AnnualBilling.free_sms_fragment_limit - func.coalesce(sms_billing_subquery.c.free_allowance_used_to_date, 0),
         0
     )
 
-    chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
-    sms_cost = func.sum(ft_billing_subquery.c.cost)
     return db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit,
-        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
-        func.coalesce(sms_chargeable_units, 0).label('sms_chargeable_units'),
-        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
-        func.coalesce(sms_cost, 0).label('sms_cost'),
+        sms_remainder.label("sms_remainder"),
+        func.coalesce(sms_billing_subquery.c.sms_chargeable_units, 0).label('sms_chargeable_units'),
+        func.coalesce(sms_billing_subquery.c.chargeable_sms, 0).label("chargeable_billable_sms"),
+        func.coalesce(sms_billing_subquery.c.sms_cost, 0).label('sms_cost'),
         Service.active
     ).select_from(
         Service
@@ -73,21 +127,10 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
         AnnualBilling,
         and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
     ).outerjoin(
-        ft_billing_subquery,
-        and_(
-            Service.id == ft_billing_subquery.c.service_id,
-            ft_billing_subquery.c.bst_date >= start_date,
-            ft_billing_subquery.c.bst_date <= end_date,
-        )
+        sms_billing_subquery,
+        Service.id == sms_billing_subquery.c.service_id
     ).filter(
         Service.restricted.is_(False),
-    ).group_by(
-        Organisation.name,
-        Organisation.id,
-        Service.id,
-        Service.name,
-        Service.active,
-        AnnualBilling.free_sms_fragment_limit
     ).order_by(
         Organisation.name,
         Service.name
@@ -397,13 +440,11 @@ def query_sms_usage_for_year_per_service(year):
         (charged_units * FactBilling.rate).label("cost"),
         free_allowance_used.label("free_allowance_used"),
         charged_units.label("charged_units"),
-        Service.id.label('service_id'),
+        FactBilling.service_id,
         free_allowance_used_to_date.label("free_allowance_used_to_date"),
     ).join(
-        Service,
-        FactBilling.service_id == Service.id
-    ).join(
-        Service.annual_billing
+        AnnualBilling,
+        AnnualBilling.service_id == FactBilling.service_id
     ).filter(
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
