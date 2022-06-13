@@ -669,7 +669,7 @@ def create_billing_record(data, rate, process_day):
     return billing_record
 
 
-def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
+def _fetch_usage_for_organisation_letter(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
@@ -694,7 +694,7 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
+def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
@@ -718,9 +718,9 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-def fetch_sms_billing_for_organisation(organisation_id, financial_year):
+def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    ft_billing_subquery = query_organisation_sms_usage_for_year(organisation_id, financial_year).subquery()
+    ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
     sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
@@ -761,7 +761,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     return query.all()
 
 
-def query_organisation_sms_usage_for_year(organisation_id, year):
+def _fetch_usage_for_organisation_sms_query(organisation_id, year):
     """
     See docstring for _fetch_usage_for_service_sms()
     """
@@ -818,7 +818,7 @@ def query_organisation_sms_usage_for_year(organisation_id, year):
     )
 
 
-def fetch_usage_year_for_organisation(organisation_id, year):
+def fetch_usage_for_organisation(organisation_id, year):
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
     services = dao_get_organisation_live_services(organisation_id)
@@ -844,9 +844,9 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'emails_sent': 0,
             'active': service.active
         }
-    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year)
-    letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start, year_end)
-    email_usages = fetch_email_usage_for_organisation(organisation_id, year_start, year_end)
+    sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
+    letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
+    email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
     for usage in sms_usages:
         service_with_usage[str(usage.service_id)] = {
             'service_id': usage.service_id,
