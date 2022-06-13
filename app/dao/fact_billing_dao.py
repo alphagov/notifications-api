@@ -198,7 +198,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     return query.all()
 
 
-def fetch_billing_totals_for_year(service_id, year):
+def fetch_usage_for_service_annual(service_id, year):
     """
     Returns a row for each distinct rate and notification_type from ft_billing
     over the specified financial year e.g.
@@ -231,9 +231,9 @@ def fetch_billing_totals_for_year(service_id, year):
                 query.c.notification_type
             )
             for query in [
-                query_service_sms_usage_for_year(service_id, year).subquery(),
-                query_service_email_usage_for_year(service_id, year).subquery(),
-                query_service_letter_usage_for_year(service_id, year).subquery(),
+                _fetch_usage_for_service_sms(service_id, year).subquery(),
+                _fetch_usage_for_service_email(service_id, year).subquery(),
+                _fetch_usage_for_service_letter(service_id, year).subquery(),
             ]
         ]).subquery()
     ).order_by(
@@ -242,7 +242,7 @@ def fetch_billing_totals_for_year(service_id, year):
     ).all()
 
 
-def fetch_monthly_billing_for_year(service_id, year):
+def fetch_usage_for_service_by_month(service_id, year):
     """
     Returns a row for each distinct rate, notification_type, postage and month
     from ft_billing over the specified financial year e.g.
@@ -291,9 +291,9 @@ def fetch_monthly_billing_for_year(service_id, year):
                 'month',
             )
             for query in [
-                query_service_sms_usage_for_year(service_id, year).subquery(),
-                query_service_email_usage_for_year(service_id, year).subquery(),
-                query_service_letter_usage_for_year(service_id, year).subquery(),
+                _fetch_usage_for_service_sms(service_id, year).subquery(),
+                _fetch_usage_for_service_email(service_id, year).subquery(),
+                _fetch_usage_for_service_letter(service_id, year).subquery(),
             ]
         ]).subquery()
     ).order_by(
@@ -303,7 +303,7 @@ def fetch_monthly_billing_for_year(service_id, year):
     ).all()
 
 
-def query_service_email_usage_for_year(service_id, year):
+def _fetch_usage_for_service_email(service_id, year):
     year_start, year_end = get_financial_year_dates(year)
 
     return db.session.query(
@@ -324,7 +324,7 @@ def query_service_email_usage_for_year(service_id, year):
     )
 
 
-def query_service_letter_usage_for_year(service_id, year):
+def _fetch_usage_for_service_letter(service_id, year):
     year_start, year_end = get_financial_year_dates(year)
 
     return db.session.query(
@@ -348,7 +348,7 @@ def query_service_letter_usage_for_year(service_id, year):
     )
 
 
-def query_service_sms_usage_for_year(service_id, year):
+def _fetch_usage_for_service_sms(service_id, year):
     """
     Returns rows from the ft_billing table with some calculated values like cost,
     incorporating the SMS free allowance e.g.
@@ -763,7 +763,7 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
 
 def query_organisation_sms_usage_for_year(organisation_id, year):
     """
-    See docstring for query_service_sms_usage_for_year()
+    See docstring for _fetch_usage_for_service_sms()
     """
     year_start, year_end = get_financial_year_dates(year)
     this_rows_chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier

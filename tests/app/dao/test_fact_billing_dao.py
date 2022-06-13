@@ -9,14 +9,14 @@ from app import db
 from app.dao.fact_billing_dao import (
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
-    fetch_billing_totals_for_year,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
-    fetch_monthly_billing_for_year,
     fetch_sms_free_allowance_remainder_until_date,
     fetch_usage_for_all_services_letter,
     fetch_usage_for_all_services_letter_breakdown,
     fetch_usage_for_all_services_sms,
+    fetch_usage_for_service_annual,
+    fetch_usage_for_service_by_month,
     fetch_usage_year_for_organisation,
     fetch_volumes_by_service,
     get_rate,
@@ -420,10 +420,10 @@ def test_get_rate_for_letters_when_page_count_is_zero(notify_db_session):
     assert letter_rate == 0
 
 
-def test_fetch_monthly_billing_for_year(notify_db_session):
+def test_fetch_usage_for_service_by_month(notify_db_session):
     service = set_up_yearly_data()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=1, financial_year_start=2016)
-    results = fetch_monthly_billing_for_year(service.id, 2016)
+    results = fetch_usage_for_service_by_month(service.id, 2016)
 
     assert len(results) == 9  # 3 billed months for each type
 
@@ -459,10 +459,10 @@ def test_fetch_monthly_billing_for_year(notify_db_session):
     assert str(results[8].month) == "2017-03-01"
 
 
-def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
+def test_fetch_usage_for_service_by_month_variable_rates(notify_db_session):
     service = set_up_yearly_data_variable_rates()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=6, financial_year_start=2018)
-    results = fetch_monthly_billing_for_year(service.id, 2018)
+    results = fetch_usage_for_service_by_month(service.id, 2018)
 
     # Test data is only for the month of May
     assert len(results) == 4
@@ -507,7 +507,7 @@ def test_fetch_monthly_billing_for_year_variable_rates(notify_db_session):
 
 
 @freeze_time('2018-08-01 13:30:00')
-def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
+def test_fetch_usage_for_service_by_month_adds_data_for_today(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="sms")
 
@@ -520,16 +520,16 @@ def test_fetch_monthly_billing_for_year_adds_data_for_today(notify_db_session):
     create_notification(template=template, status='delivered')
 
     assert db.session.query(FactBilling.bst_date).count() == 31
-    results = fetch_monthly_billing_for_year(service_id=service.id, year=2018)
+    results = fetch_usage_for_service_by_month(service_id=service.id, year=2018)
 
     assert db.session.query(FactBilling.bst_date).count() == 32
     assert len(results) == 2
 
 
-def test_fetch_billing_totals_for_year(notify_db_session):
+def test_fetch_usage_for_service_annual(notify_db_session):
     service = set_up_yearly_data()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
-    results = fetch_billing_totals_for_year(service_id=service.id, year=2016)
+    results = fetch_usage_for_service_annual(service_id=service.id, year=2016)
 
     assert len(results) == 3
     assert results[0].notification_type == 'email'
@@ -557,14 +557,14 @@ def test_fetch_billing_totals_for_year(notify_db_session):
     assert results[2].charged_units == 0
 
 
-def test_fetch_billing_totals_for_year_uses_current_annual_billing(notify_db_session):
+def test_fetch_usage_for_service_annual_uses_current_annual_billing(notify_db_session):
     service = set_up_yearly_data()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=400, financial_year_start=2015)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=0, financial_year_start=2016)
 
     result = next(
         result for result in
-        fetch_billing_totals_for_year(service_id=service.id, year=2016)
+        fetch_usage_for_service_annual(service_id=service.id, year=2016)
         if result.notification_type == 'sms'
     )
 
@@ -572,10 +572,10 @@ def test_fetch_billing_totals_for_year_uses_current_annual_billing(notify_db_ses
     assert result.cost > 0
 
 
-def test_fetch_billing_totals_for_year_variable_rates(notify_db_session):
+def test_fetch_usage_for_service_annual_variable_rates(notify_db_session):
     service = set_up_yearly_data_variable_rates()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=6, financial_year_start=2018)
-    results = fetch_billing_totals_for_year(service_id=service.id, year=2018)
+    results = fetch_usage_for_service_annual(service_id=service.id, year=2018)
 
     assert len(results) == 4
     assert results[0].notification_type == 'letter'
