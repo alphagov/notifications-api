@@ -53,6 +53,10 @@ def set_up_yearly_data():
         create_ft_billing(bst_date=dt, template=email_template, rate=0, billable_unit=0)
         create_ft_billing(bst_date=dt, template=letter_template, rate=0.31, postage='second')
 
+    # also add annual billing for these adjacent years, which should not be used
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=9999, financial_year_start=2015)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=8888, financial_year_start=2017)
+
     # a selection of dates that represent the extreme ends of the financial year
     # and some arbitrary dates in between
     for dt in (date(2016, 4, 1), date(2016, 4, 29), date(2017, 2, 6), date(2017, 3, 31)):
@@ -555,21 +559,6 @@ def test_fetch_usage_for_service_annual(notify_db_session):
     assert results[2].cost == Decimal('0')
     assert results[2].free_allowance_used == 4
     assert results[2].charged_units == 0
-
-
-def test_fetch_usage_for_service_annual_uses_current_annual_billing(notify_db_session):
-    service = set_up_yearly_data()
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=400, financial_year_start=2015)
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=0, financial_year_start=2016)
-
-    result = next(
-        result for result in
-        fetch_usage_for_service_annual(service_id=service.id, year=2016)
-        if result.notification_type == 'sms'
-    )
-
-    assert result.chargeable_units == 4
-    assert result.cost > 0
 
 
 def test_fetch_usage_for_service_annual_variable_rates(notify_db_session):
