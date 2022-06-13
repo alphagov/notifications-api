@@ -64,7 +64,7 @@ def fetch_sms_free_allowance_remainder_until_date(end_date):
     return query
 
 
-def fetch_sms_billing_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_sms(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
     allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
@@ -120,7 +120,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_letter(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
@@ -152,7 +152,7 @@ def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_letter_line_items_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     formatted_postage = case(
         [(FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international")], else_=FactBilling.postage
     ).label("postage")

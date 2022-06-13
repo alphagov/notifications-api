@@ -12,11 +12,11 @@ from app.dao.fact_billing_dao import (
     fetch_billing_totals_for_year,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
-    fetch_letter_costs_and_totals_for_all_services,
-    fetch_letter_line_items_for_all_services,
     fetch_monthly_billing_for_year,
-    fetch_sms_billing_for_all_services,
     fetch_sms_free_allowance_remainder_until_date,
+    fetch_usage_for_all_services_letter,
+    fetch_usage_for_all_services_letter_breakdown,
+    fetch_usage_for_all_services_sms,
     fetch_usage_year_for_organisation,
     fetch_volumes_by_service,
     get_rate,
@@ -661,7 +661,7 @@ def test_fetch_sms_free_allowance_remainder_until_date_with_two_services(notify_
     assert service_2_result[0] == (service_2.id, 20, 22, 0)
 
 
-def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session):
+def test_fetch_usage_for_all_services_sms_for_first_quarter(notify_db_session):
     # This test is useful because the inner query resultset is empty.
     service = create_service(service_name='a - has free allowance')
     template = create_template(service=service)
@@ -669,13 +669,13 @@ def test_fetch_sms_billing_for_all_services_for_first_quarter(notify_db_session)
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=2019)
     create_ft_billing(template=template, bst_date=datetime(2019, 4, 20), billable_unit=44, rate=0.11)
-    results = fetch_sms_billing_for_all_services(datetime(2019, 4, 1), datetime(2019, 5, 30))
+    results = fetch_usage_for_all_services_sms(datetime(2019, 4, 1), datetime(2019, 5, 30))
     assert len(results) == 1
     assert results[0] == (org.name, org.id, service.name, service.id, 25000, Decimal('0.11'), 24956, 44, 0,
                           Decimal('0'))
 
 
-def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
+def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
     service_1 = create_service(service_name='a - has free allowance')
     template = create_template(service=service_1)
     org = create_organisation(name="Org for {}".format(service_1.name))
@@ -709,7 +709,7 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     create_ft_billing(template=email_template, bst_date=datetime(2019, 5, 22), notifications_sent=5,
                       billable_unit=0, rate=0)
 
-    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2019, 5, 1), datetime(2019, 5, 31))
     assert len(results) == 3
 
     expected_results = [
@@ -739,9 +739,9 @@ def test_fetch_sms_billing_for_all_services_with_remainder(notify_db_session):
     assert [dict(result) for result in results] == expected_results
 
 
-def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(notify_db_session):
+def test_fetch_usage_for_all_services_sms_without_an_organisation_appears(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 5, 1))
-    results = fetch_sms_billing_for_all_services(datetime(2019, 5, 1), datetime(2019, 5, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2019, 5, 1), datetime(2019, 5, 31))
 
     assert len(results) == 3
     expected_results = [
@@ -775,10 +775,10 @@ def test_fetch_sms_billing_for_all_services_without_an_organisation_appears(noti
     assert [dict(result) for result in results] == expected_results
 
 
-def test_fetch_letter_costs_and_totals_for_all_services(notify_db_session):
+def test_fetch_usage_for_all_services_letter(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_letter_costs_and_totals_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    results = fetch_usage_for_all_services_letter(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 3
     assert results[0] == (
@@ -798,10 +798,10 @@ def test_fetch_letter_costs_and_totals_for_all_services(notify_db_session):
     )
 
 
-def test_fetch_letter_line_items_for_all_service(notify_db_session):
+def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_letter_line_items_for_all_services(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    results = fetch_usage_for_all_services_letter_breakdown(datetime(2019, 6, 1), datetime(2019, 9, 30))
 
     assert len(results) == 7
     assert results[0] == (
