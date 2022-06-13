@@ -897,7 +897,7 @@ def test_fetch_usage_for_organisation_populates_ft_billing_for_today(notify_db_s
 
 
 @freeze_time('2022-05-01 13:30')
-def test_fetch_usage_for_organisation_calculates_cost_from_multiple_rates(notify_db_session):
+def test_fetch_usage_for_organisation_variable_rates(notify_db_session):
     old_rate_date = date(2022, 4, 29)
     new_rate_date = date(2022, 5, 1)
     current_year = datetime.utcnow().year
@@ -1081,39 +1081,6 @@ def test_fetch_usage_for_organisation_sms_query_handles_multiple_services(notify
     # assert total costs are accurate
     assert float(sum(row.cost for row in service_1_rows)) == 1  # rows with 2 and 4, allowance of 5
     assert float(sum(row.cost for row in service_2_rows)) == 14  # rows with 8 and 16, allowance of 10
-
-
-@freeze_time('2022-05-01 13:30')
-def test_fetch_usage_for_organisation_sms_query_handles_multiple_rates(notify_db_session):
-    old_rate_date = date(2022, 4, 29)
-    new_rate_date = date(2022, 5, 1)
-    current_year = datetime.utcnow().year
-
-    org = create_organisation(name='Organisation 1')
-
-    service_1 = create_service(restricted=False, service_name="Service 1")
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
-    sms_template_1 = create_template(service=service_1)
-    create_ft_billing(
-        bst_date=old_rate_date, template=sms_template_1, rate=2,
-        billable_unit=4, notifications_sent=4
-    )
-    create_ft_billing(
-        bst_date=new_rate_date, template=sms_template_1, rate=3,
-        billable_unit=2, notifications_sent=2
-    )
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
-
-    result = _fetch_usage_for_organisation_sms_query(org.id, 2022).all()
-
-    # al lthe free allowance is used on the first day
-    assert result[0]['bst_date'] == date(2022, 4, 29)
-    assert result[0]['charged_units'] == 1
-    assert result[0]['cost'] == 2
-
-    assert result[1]['bst_date'] == date(2022, 5, 1)
-    assert result[1]['charged_units'] == 2
-    assert result[1]['cost'] == 6
 
 
 def test_fetch_daily_volumes_for_platform(
