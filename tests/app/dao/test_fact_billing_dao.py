@@ -7,7 +7,6 @@ from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db
 from app.dao.fact_billing_dao import (
-    _fetch_usage_for_organisation_sms_query,
     delete_billing_data_for_service_for_day,
     fetch_billing_data_for_day,
     fetch_daily_sms_provider_volumes_for_platform,
@@ -40,8 +39,8 @@ from tests.app.db import (
 )
 
 
-def set_up_yearly_data():
-    service = create_service()
+def set_up_yearly_data(service_name='Service 1'):
+    service = create_service(service_name=service_name)
     sms_template = create_template(service=service, template_type="sms")
     email_template = create_template(service=service, template_type="email")
     letter_template = create_template(service=service, template_type="letter")
@@ -922,73 +921,30 @@ def test_fetch_usage_for_organisation_excludes_trial_services(notify_db_session)
     assert len(results) == 0
 
 
-@freeze_time('2022-04-27 13:30')
-def test_fetch_usage_for_organisation_sms_query_handles_multiple_services(notify_db_session):
-    today = datetime.utcnow().date()
-    yesterday = datetime.utcnow().date() - timedelta(days=1)
-    current_year = datetime.utcnow().year
+def test_fetch_usage_for_organisation_multiple_services(notify_db_session):
+    org = create_organisation()
 
-    org = create_organisation(name='Organisation 1')
-
-    service_1 = create_service(restricted=False, service_name="Service 1")
+    service_1 = set_up_yearly_data(service_name='Service 1')
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=2016)
     dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
-    sms_template_1 = create_template(service=service_1)
-    create_ft_billing(
-        bst_date=yesterday, template=sms_template_1, rate=1,
-        billable_unit=4, notifications_sent=4
-    )
-    create_ft_billing(
-        bst_date=today, template=sms_template_1, rate=1,
-        billable_unit=2, notifications_sent=2
-    )
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=5, financial_year_start=current_year)
 
-    service_2 = create_service(restricted=False, service_name="Service 2")
+    service_2 = set_up_yearly_data(service_name='Service 2')
     dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
-    sms_template_2 = create_template(service=service_2)
-    create_ft_billing(
-        bst_date=yesterday, template=sms_template_2, rate=1,
-        billable_unit=16, notifications_sent=16
-    )
-    create_ft_billing(
-        bst_date=today, template=sms_template_2, rate=1,
-        billable_unit=8, notifications_sent=8
-    )
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=current_year)
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
-    # ----------
+    results = fetch_usage_for_organisation(org.id, 2016)
+    assert len(results) == 2
 
-    result = _fetch_usage_for_organisation_sms_query(org.id, 2022).all()
+    # both services send 4 * SMS at a rate of 0.162
+    service_1_row = results[str(service_1.id)]
+    assert service_1_row["sms_billable_units"] == 4
+    assert service_1_row["chargeable_billable_sms"] == 1
+    assert service_1_row["sms_cost"] == 0.162
 
-    service_1_rows = [row for row in result if row.service_id == service_1.id]
-    service_2_rows = [row for row in result if row.service_id == service_2.id]
-
-    assert len(service_1_rows) == 2
-    assert len(service_2_rows) == 2
-
-    # service 1 has allowance of 5
-    # four fragments in total, all are used
-    assert service_1_rows[0]['bst_date'] == date(2022, 4, 26)
-    assert service_1_rows[0]['chargeable_units'] == 4
-    assert service_1_rows[0]['charged_units'] == 0
-    # two in total - one is free, one is charged
-    assert service_1_rows[1]['bst_date'] == date(2022, 4, 27)
-    assert service_1_rows[1]['chargeable_units'] == 2
-    assert service_1_rows[1]['charged_units'] == 1
-
-    # service 2 has allowance of 10
-    # sixteen fragments total, allowance is used and six are charged
-    assert service_2_rows[0]['bst_date'] == date(2022, 4, 26)
-    assert service_2_rows[0]['chargeable_units'] == 16
-    assert service_2_rows[0]['charged_units'] == 6
-    # eight fragments total, all are charged
-    assert service_2_rows[1]['bst_date'] == date(2022, 4, 27)
-    assert service_2_rows[1]['chargeable_units'] == 8
-    assert service_2_rows[1]['charged_units'] == 8
-
-    # assert total costs are accurate
-    assert float(sum(row.cost for row in service_1_rows)) == 1  # rows with 2 and 4, allowance of 5
-    assert float(sum(row.cost for row in service_2_rows)) == 14  # rows with 8 and 16, allowance of 10
+    service_2_row = results[str(service_2.id)]
+    assert service_2_row["sms_billable_units"] == 4
+    assert service_2_row["chargeable_billable_sms"] == 0
+    assert service_2_row["sms_cost"] == 0
 
 
 def test_fetch_daily_volumes_for_platform(
