@@ -649,8 +649,7 @@ def test_fetch_sms_free_allowance_remainder_until_date_with_two_services(notify_
     assert service_2_result[0] == (service_2.id, 20, 22, 0)
 
 
-def test_fetch_usage_for_all_services_sms_for_first_quarter(notify_db_session):
-    # This test is useful because the inner query resultset is empty.
+def test_fetch_usage_for_all_services_sms(notify_db_session):
     service = create_service(service_name='a - has free allowance')
     template = create_template(service=service)
     org = create_organisation(name="Org for {}".format(service.name))
