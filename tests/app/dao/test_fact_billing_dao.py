@@ -679,6 +679,16 @@ def test_fetch_usage_for_all_services_sms_no_usage(notify_db_session):
     assert len(results) == 0
 
 
+def test_fetch_usage_for_all_services_sms_excludes_email(notify_db_session):
+    service = create_service()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=2016)
+    template = create_template(service=service, template_type='email')
+    create_ft_billing(template=template, bst_date=datetime(2016, 4, 22), notifications_sent=5, billable_unit=0)
+
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    assert len(results) == 0
+
+
 def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
     service_1 = create_service(service_name='a - has free allowance')
     template = create_template(service=service_1)
@@ -704,14 +714,6 @@ def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
     create_annual_billing(service_id=service_3.id, free_sms_fragment_limit=10, financial_year_start=2019)
     create_ft_billing(template=template_3, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
     create_ft_billing(template=template_3, bst_date=datetime(2019, 5, 20), billable_unit=7, rate=0.11)
-
-    service_4 = create_service(service_name='d - email only')
-    email_template = create_template(service=service_4, template_type='email')
-    org_4 = create_organisation(name="Org for {}".format(service_4.name))
-    dao_add_service_to_organisation(service=service_4, organisation_id=org_4.id)
-    create_annual_billing(service_id=service_4.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    create_ft_billing(template=email_template, bst_date=datetime(2019, 5, 22), notifications_sent=5,
-                      billable_unit=0, rate=0)
 
     results = fetch_usage_for_all_services_sms(datetime(2019, 5, 1), datetime(2019, 5, 31))
     assert len(results) == 3
