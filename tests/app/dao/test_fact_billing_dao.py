@@ -690,23 +690,6 @@ def test_fetch_usage_for_all_services_sms_excludes_email(notify_db_session):
 
 
 def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
-    service_1 = create_service(service_name='a - has free allowance')
-    template = create_template(service=service_1)
-    org = create_organisation(name="Org for {}".format(service_1.name))
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    create_ft_billing(template=template, bst_date=datetime(2019, 4, 20), billable_unit=2, rate=0.11)
-    create_ft_billing(template=template, bst_date=datetime(2019, 5, 20), billable_unit=2, rate=0.11)
-    create_ft_billing(template=template, bst_date=datetime(2019, 5, 22), billable_unit=1, rate=0.11)
-
-    service_2 = create_service(service_name='b - used free allowance')
-    template_2 = create_template(service=service_2)
-    org_2 = create_organisation(name="Org for {}".format(service_2.name))
-    dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=10, financial_year_start=2019)
-    create_ft_billing(template=template_2, bst_date=datetime(2019, 4, 20), billable_unit=12, rate=0.11)
-    create_ft_billing(template=template_2, bst_date=datetime(2019, 5, 20), billable_unit=3, rate=0.11)
-
     service_3 = create_service(service_name='c - partial allowance')
     template_3 = create_template(service=service_3)
     org_3 = create_organisation(name="Org for {}".format(service_3.name))
@@ -716,23 +699,9 @@ def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
     create_ft_billing(template=template_3, bst_date=datetime(2019, 5, 20), billable_unit=7, rate=0.11)
 
     results = fetch_usage_for_all_services_sms(datetime(2019, 5, 1), datetime(2019, 5, 31))
-    assert len(results) == 3
+    assert len(results) == 1
 
     expected_results = [
-        # sms_remainder is 5, because "service_1" has 5 sms_billing_units. 2 of them for a period before
-        # the requested report's start date.
-        {
-            "organisation_name": org.name, "organisation_id": org.id, "service_name": service_1.name,
-            "service_id": service_1.id, "free_sms_fragment_limit": 10, "sms_rate": Decimal('0.11'), "sms_remainder": 5,
-            "sms_billable_units": 3, "chargeable_billable_sms": 0, "sms_cost": Decimal('0.00')
-        },
-        # sms remainder is 0, because this service sent SMS worth 15 billable units, 12 of which were sent
-        # before requested report's start date
-        {
-            "organisation_name": org_2.name, "organisation_id": org_2.id, "service_name": service_2.name,
-            "service_id": service_2.id, "free_sms_fragment_limit": 10, "sms_rate": Decimal('0.11'), "sms_remainder": 0,
-            "sms_billable_units": 3, "chargeable_billable_sms": 3, "sms_cost": Decimal('0.33')
-        },
         # sms remainder is 0, because this service sent SMS worth 12 billable units, 5 of which were sent
         # before requested report's start date
         {
@@ -743,6 +712,31 @@ def test_fetch_usage_for_all_services_sms_with_remainder(notify_db_session):
     ]
 
     assert [dict(result) for result in results] == expected_results
+
+
+def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
+    service_1 = set_up_yearly_data(service_name='Service 1')
+    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=2016)
+
+    service_2 = set_up_yearly_data(service_name='Service 2')
+    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
+
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = sorted(results, key=lambda row: row["service_name"])
+    assert len(results) == 2
+
+    # both services send 4 * SMS at a rate of 0.162
+    service_1_row = results[0]
+    assert service_1_row["sms_remainder"] == 0
+    assert service_1_row["sms_billable_units"] == 4
+    assert service_1_row["chargeable_billable_sms"] == 1
+    assert service_1_row["sms_cost"] == Decimal('0.162')
+
+    service_2_row = results[1]
+    assert service_2_row["sms_remainder"] == 2
+    assert service_2_row["sms_billable_units"] == 4
+    assert service_2_row["chargeable_billable_sms"] == 0
+    assert service_2_row["sms_cost"] == 0
 
 
 def test_fetch_usage_for_all_services_sms_no_org(notify_db_session):
