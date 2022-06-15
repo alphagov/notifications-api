@@ -13,8 +13,8 @@ from app.dao.annual_billing_dao import (
 )
 from app.dao.date_util import get_current_financial_year_start_year
 from app.dao.fact_billing_dao import (
-    fetch_billing_totals_for_year,
-    fetch_monthly_billing_for_year,
+    fetch_usage_for_service_annual,
+    fetch_usage_for_service_by_month,
 )
 from app.errors import register_errors
 from app.models import Service
@@ -36,7 +36,7 @@ def get_yearly_usage_by_monthly_from_ft_billing(service_id):
         year = int(request.args.get('year'))
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
-    results = fetch_monthly_billing_for_year(service_id=service_id, year=year)
+    results = fetch_usage_for_service_by_month(service_id=service_id, year=year)
     data = serialize_ft_billing_remove_emails(results)
     return jsonify(data)
 
@@ -48,7 +48,7 @@ def get_yearly_billing_usage_summary_from_ft_billing(service_id):
     except TypeError:
         return jsonify(result='error', message='No valid year provided'), 400
 
-    billing_data = fetch_billing_totals_for_year(service_id, year)
+    billing_data = fetch_usage_for_service_annual(service_id, year)
     data = serialize_ft_billing_yearly_totals(billing_data)
     return jsonify(data)
 

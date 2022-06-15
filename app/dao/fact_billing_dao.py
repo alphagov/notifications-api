@@ -64,7 +64,7 @@ def fetch_sms_free_allowance_remainder_until_date(end_date):
     return query
 
 
-def fetch_sms_billing_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_sms(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
     allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
@@ -120,7 +120,7 @@ def fetch_sms_billing_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_letter(start_date, end_date):
     query = db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
@@ -152,7 +152,7 @@ def fetch_letter_costs_and_totals_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_letter_line_items_for_all_services(start_date, end_date):
+def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     formatted_postage = case(
         [(FactBilling.postage.in_(INTERNATIONAL_POSTAGE_TYPES), "international")], else_=FactBilling.postage
     ).label("postage")
@@ -198,7 +198,7 @@ def fetch_letter_line_items_for_all_services(start_date, end_date):
     return query.all()
 
 
-def fetch_billing_totals_for_year(service_id, year):
+def fetch_usage_for_service_annual(service_id, year):
     """
     Returns a row for each distinct rate and notification_type from ft_billing
     over the specified financial year e.g.
@@ -231,9 +231,9 @@ def fetch_billing_totals_for_year(service_id, year):
                 query.c.notification_type
             )
             for query in [
-                query_service_sms_usage_for_year(service_id, year).subquery(),
-                query_service_email_usage_for_year(service_id, year).subquery(),
-                query_service_letter_usage_for_year(service_id, year).subquery(),
+                _fetch_usage_for_service_sms(service_id, year).subquery(),
+                _fetch_usage_for_service_email(service_id, year).subquery(),
+                _fetch_usage_for_service_letter(service_id, year).subquery(),
             ]
         ]).subquery()
     ).order_by(
@@ -242,7 +242,7 @@ def fetch_billing_totals_for_year(service_id, year):
     ).all()
 
 
-def fetch_monthly_billing_for_year(service_id, year):
+def fetch_usage_for_service_by_month(service_id, year):
     """
     Returns a row for each distinct rate, notification_type, postage and month
     from ft_billing over the specified financial year e.g.
@@ -291,9 +291,9 @@ def fetch_monthly_billing_for_year(service_id, year):
                 'month',
             )
             for query in [
-                query_service_sms_usage_for_year(service_id, year).subquery(),
-                query_service_email_usage_for_year(service_id, year).subquery(),
-                query_service_letter_usage_for_year(service_id, year).subquery(),
+                _fetch_usage_for_service_sms(service_id, year).subquery(),
+                _fetch_usage_for_service_email(service_id, year).subquery(),
+                _fetch_usage_for_service_letter(service_id, year).subquery(),
             ]
         ]).subquery()
     ).order_by(
@@ -303,7 +303,7 @@ def fetch_monthly_billing_for_year(service_id, year):
     ).all()
 
 
-def query_service_email_usage_for_year(service_id, year):
+def _fetch_usage_for_service_email(service_id, year):
     year_start, year_end = get_financial_year_dates(year)
 
     return db.session.query(
@@ -324,7 +324,7 @@ def query_service_email_usage_for_year(service_id, year):
     )
 
 
-def query_service_letter_usage_for_year(service_id, year):
+def _fetch_usage_for_service_letter(service_id, year):
     year_start, year_end = get_financial_year_dates(year)
 
     return db.session.query(
@@ -348,7 +348,7 @@ def query_service_letter_usage_for_year(service_id, year):
     )
 
 
-def query_service_sms_usage_for_year(service_id, year):
+def _fetch_usage_for_service_sms(service_id, year):
     """
     Returns rows from the ft_billing table with some calculated values like cost,
     incorporating the SMS free allowance e.g.
@@ -669,7 +669,7 @@ def create_billing_record(data, rate, process_day):
     return billing_record
 
 
-def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
+def _fetch_usage_for_organisation_letter(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
@@ -694,7 +694,7 @@ def fetch_letter_costs_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
+def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
@@ -718,9 +718,9 @@ def fetch_email_usage_for_organisation(organisation_id, start_date, end_date):
     return query.all()
 
 
-def fetch_sms_billing_for_organisation(organisation_id, financial_year):
+def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
-    ft_billing_subquery = query_organisation_sms_usage_for_year(organisation_id, financial_year).subquery()
+    ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
     sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
@@ -761,9 +761,9 @@ def fetch_sms_billing_for_organisation(organisation_id, financial_year):
     return query.all()
 
 
-def query_organisation_sms_usage_for_year(organisation_id, year):
+def _fetch_usage_for_organisation_sms_query(organisation_id, year):
     """
-    See docstring for query_service_sms_usage_for_year()
+    See docstring for _fetch_usage_for_service_sms()
     """
     year_start, year_end = get_financial_year_dates(year)
     this_rows_chargeable_units = FactBilling.billable_units * FactBilling.rate_multiplier
@@ -818,7 +818,7 @@ def query_organisation_sms_usage_for_year(organisation_id, year):
     )
 
 
-def fetch_usage_year_for_organisation(organisation_id, year):
+def fetch_usage_for_organisation(organisation_id, year):
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
     services = dao_get_organisation_live_services(organisation_id)
@@ -844,9 +844,9 @@ def fetch_usage_year_for_organisation(organisation_id, year):
             'emails_sent': 0,
             'active': service.active
         }
-    sms_usages = fetch_sms_billing_for_organisation(organisation_id, year)
-    letter_usages = fetch_letter_costs_for_organisation(organisation_id, year_start, year_end)
-    email_usages = fetch_email_usage_for_organisation(organisation_id, year_start, year_end)
+    sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
+    letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
+    email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
     for usage in sms_usages:
         service_with_usage[str(usage.service_id)] = {
             'service_id': usage.service_id,
@@ -866,23 +866,6 @@ def fetch_usage_year_for_organisation(organisation_id, year):
         service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
 
     return service_with_usage
-
-
-def fetch_billing_details_for_all_services():
-    billing_details = db.session.query(
-        Service.id.label('service_id'),
-        func.coalesce(Service.purchase_order_number, Organisation.purchase_order_number).label('purchase_order_number'),
-        func.coalesce(Service.billing_contact_names, Organisation.billing_contact_names).label('billing_contact_names'),
-        func.coalesce(
-            Service.billing_contact_email_addresses,
-            Organisation.billing_contact_email_addresses
-        ).label('billing_contact_email_addresses'),
-        func.coalesce(Service.billing_reference, Organisation.billing_reference).label('billing_reference'),
-    ).outerjoin(
-        Service.organisation
-    ).all()
-
-    return billing_details
 
 
 def fetch_daily_volumes_for_platform(start_date, end_date):

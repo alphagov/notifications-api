@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from app.config import QueueNames
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.dao_utils import transaction
-from app.dao.fact_billing_dao import fetch_usage_year_for_organisation
+from app.dao.fact_billing_dao import fetch_usage_for_organisation
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
@@ -151,7 +151,7 @@ def get_organisation_services_usage(organisation_id):
         year = int(request.args.get('year', 'none'))
     except ValueError:
         return jsonify(result='error', message='No valid year provided'), 400
-    services = fetch_usage_year_for_organisation(organisation_id, year)
+    services = fetch_usage_for_organisation(organisation_id, year)
     list_services = services.values()
     sorted_services = sorted(list_services, key=lambda s: (-s['active'], s['service_name'].lower()))
     return jsonify(services=sorted_services)

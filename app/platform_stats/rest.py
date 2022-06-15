@@ -4,17 +4,17 @@ from flask import Blueprint, jsonify, request
 
 from app.dao.date_util import get_financial_year_for_datetime
 from app.dao.fact_billing_dao import (
-    fetch_billing_details_for_all_services,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
-    fetch_letter_costs_and_totals_for_all_services,
-    fetch_letter_line_items_for_all_services,
-    fetch_sms_billing_for_all_services,
+    fetch_usage_for_all_services_letter,
+    fetch_usage_for_all_services_letter_breakdown,
+    fetch_usage_for_all_services_sms,
     fetch_volumes_by_service,
 )
 from app.dao.fact_notification_status_dao import (
     fetch_notification_status_totals_for_all_services,
 )
+from app.dao.services_dao import fetch_billing_details_for_all_services
 from app.errors import InvalidRequest, register_errors
 from app.models import UK_POSTAGE_TYPES
 from app.platform_stats.platform_stats_schema import platform_stats_request
@@ -74,9 +74,9 @@ def get_data_for_billing_report():
 
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
-    sms_costs = fetch_sms_billing_for_all_services(start_date, end_date)
-    letter_overview = fetch_letter_costs_and_totals_for_all_services(start_date, end_date)
-    letter_breakdown = fetch_letter_line_items_for_all_services(start_date, end_date)
+    sms_costs = fetch_usage_for_all_services_sms(start_date, end_date)
+    letter_overview = fetch_usage_for_all_services_letter(start_date, end_date)
+    letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
 
     lb_by_service = [
         (lb.service_id,
