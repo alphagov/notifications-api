@@ -891,24 +891,21 @@ def test_fetch_usage_for_organisation_variable_rates(notify_db_session):
     assert row['sms_cost'] == 0.384
 
 
-@freeze_time('2022-05-01 13:30')
-def test_fetch_usage_for_organisation_when_no_usage(notify_db_session):
-    current_year = datetime.utcnow().year
+def test_fetch_usage_for_organisation_no_usage(notify_db_session):
+    org = create_organisation()
+    service = create_service()
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    org = create_organisation(name='Organisation 1')
-
-    service_1 = create_service(restricted=False, service_name="Service 1")
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
-    create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=current_year)
-
-    results = fetch_usage_for_organisation(organisation_id=org.id, year=current_year)
-
+    results = fetch_usage_for_organisation(organisation_id=org.id, year=2016)
     assert len(results) == 1
-    assert results[str(service_1.id)]['free_sms_limit'] == 3
-    assert results[str(service_1.id)]['sms_remainder'] == 3
-    assert results[str(service_1.id)]['sms_billable_units'] == 0
-    assert results[str(service_1.id)]['chargeable_billable_sms'] == 0
-    assert results[str(service_1.id)]['sms_cost'] == 0.0
+
+    row = results[str(service.id)]
+    assert row['free_sms_limit'] == 3
+    assert row['sms_remainder'] == 3
+    assert row['sms_billable_units'] == 0
+    assert row['chargeable_billable_sms'] == 0
+    assert row['sms_cost'] == 0.0
 
 
 @freeze_time('2020-02-27 13:30')
