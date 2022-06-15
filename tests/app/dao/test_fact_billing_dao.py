@@ -679,6 +679,15 @@ def test_fetch_usage_for_all_services_sms_no_usage(notify_db_session):
     assert len(results) == 0
 
 
+def test_fetch_usage_for_all_services_sms_includes_trial_services(notify_db_session):
+    service = set_up_yearly_data()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
+
+    service.restricted = True
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    assert len(results) > 0
+
+
 def test_fetch_usage_for_all_services_sms_excludes_email(notify_db_session):
     service = create_service()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=25000, financial_year_start=2016)
