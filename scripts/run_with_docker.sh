@@ -14,6 +14,7 @@ API_HOST_NAME="http://host.docker.internal:6011"
 
 docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
+  --privileged \
   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
   -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI \
   -e REDIS_ENABLED=${REDIS_ENABLED:-0} \
@@ -21,4 +22,5 @@ docker run -it --rm \
   -e API_HOST_NAME=$API_HOST_NAME \
   -v $(pwd):/home/vcap/app \
   ${DOCKER_IMAGE_NAME} \
-  ${@}
+  ${@} 
+

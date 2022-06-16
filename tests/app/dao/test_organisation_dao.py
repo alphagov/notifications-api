@@ -18,7 +18,7 @@ from app.dao.organisation_dao import (
     dao_get_users_for_organisation,
     dao_update_organisation,
 )
-from app.models import Organisation, Service
+from app.models import Organisation, Service, OrganisationEmailBranding
 from tests.app.db import (
     create_domain,
     create_email_branding,
@@ -383,3 +383,23 @@ def test_get_organisation_by_email_address_ignores_gsi_gov_uk(notify_db_session)
 
     found_org = dao_get_organisation_by_email_address('test_gsi_address@example.gsi.gov.uk')
     assert org == found_org
+
+
+def test_dao_get_email_branding_pool_for_organisation(sample_organisation):
+    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=first_branding.id
+    )
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=second_branding.id
+    )
+
+    results = dao_get_email_branding_pool_for_organisation(organisation_id=sample_organisation.id)
+
+    assert len(results) == 2
+    assert results[0] == first_branding
+    assert results[1] == second_branding
