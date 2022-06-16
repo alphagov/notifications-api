@@ -419,6 +419,11 @@ class Organisation(db.Model):
     billing_contact_email_addresses = db.Column(db.Text, nullable=True)
     billing_reference = db.Column(db.String(255), nullable=True)
 
+    email_branding_pool = db.relationship(
+        'EmailBranding',
+        secondary='email_branding_to_organisation',
+        backref='organisation')
+
     @property
     def live_services(self):
         return [
@@ -466,6 +471,16 @@ class Organisation(db.Model):
             'domains': self.domain_list,
             'organisation_type': self.organisation_type,
         }
+
+
+class OrganisationEmailBranding(db.Model):
+    __tablename__ = 'email_branding_to_organisation'
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), primary_key=True)
+    email_branding_id = db.Column(UUID(as_uuid=True), db.ForeignKey('email_branding.id'), primary_key=True)
+
+    __table_args__ = (
+        UniqueConstraint('organisation_id', 'email_branding_id', name='uix_email_branding_to_organisation'),
+    )
 
 
 class Service(db.Model, Versioned):
