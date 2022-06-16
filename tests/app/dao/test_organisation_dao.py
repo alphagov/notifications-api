@@ -18,7 +18,7 @@ from app.dao.organisation_dao import (
     dao_get_users_for_organisation,
     dao_update_organisation,
 )
-from app.models import Organisation, Service, OrganisationEmailBranding
+from app.models import Organisation, Service
 from tests.app.db import (
     create_domain,
     create_email_branding,
