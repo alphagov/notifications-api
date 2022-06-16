@@ -3,6 +3,7 @@ from sqlalchemy.sql.expression import func
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.models import Domain, Organisation, Service, User
+from app.utils import get_archived_db_column_value
 
 
 def dao_get_organisations():
@@ -103,6 +104,21 @@ def _update_organisation_services(organisation, attribute, only_where_none=True)
         if getattr(service, attribute) is None or not only_where_none:
             setattr(service, attribute, getattr(organisation, attribute))
         db.session.add(service)
+
+
+@autocommit
+def dao_archive_organisation(organisation_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+
+    organisation.email_branding = None
+    organisation.letter_branding = None
+
+    Domain.query.filter_by(organisation_id=organisation_id).delete()
+
+    organisation.name = get_archived_db_column_value(organisation.name)
+    organisation.active = False
+
+    db.session.add(organisation)
 
 
 @autocommit

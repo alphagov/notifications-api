@@ -11,7 +11,12 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
 )
 from app.dao.services_dao import dao_archive_service
-from app.models import AnnualBilling, Organisation
+from app.models import (
+    INVITE_ACCEPTED,
+    INVITE_CANCELLED,
+    AnnualBilling,
+    Organisation,
+)
 from tests.app.db import (
     create_annual_billing,
     create_domain,
@@ -574,6 +579,86 @@ def test_post_update_organisation_set_mou_emails_signed_by(
             'signed_by_name': 'Test User',
             'on_behalf_of_name': on_behalf_of_name
         }
+
+
+@pytest.mark.parametrize('invited_user_status', [INVITE_CANCELLED, INVITE_ACCEPTED])
+def test_archive_organisation_sets_active_to_false(
+    admin_request,
+    sample_organisation,
+    sample_invited_org_user,
+    invited_user_status,
+):
+    # Invited users with 'cancelled' or 'accepted' don't stop orgs from being archived
+    sample_invited_org_user.status = invited_user_status
+
+    assert sample_organisation.active
+
+    admin_request.post(
+        'organisation.archive_organisation',
+        organisation_id=sample_organisation.id,
+        _expected_status=204
+    )
+
+    assert not sample_organisation.active
+
+
+def test_archive_organisation_raises_an_error_if_org_has_team_members(
+    admin_request,
+    sample_organisation,
+    sample_user,
+):
+    dao_add_user_to_organisation(sample_organisation.id, sample_user.id)
+
+    response = admin_request.post(
+        'organisation.archive_organisation',
+        organisation_id=sample_organisation.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'Cannot archive an organisation with team members or invited team members'
+
+    assert sample_organisation.active
+
+
+def test_archive_organisation_raises_an_error_if_org_has_pending_invited_team_members(
+    admin_request,
+    sample_organisation,
+    sample_invited_org_user,
+):
+    response = admin_request.post(
+        'organisation.archive_organisation',
+        organisation_id=sample_organisation.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'Cannot archive an organisation with team members or invited team members'
+
+    assert sample_organisation.active
+
+
+@pytest.mark.parametrize('service_active, service_trial_mode', [
+    (True, True),
+    (False, True),
+    (False, False),
+    (True, False),
+])
+def test_archive_organisation_raises_an_error_if_org_has_services(
+    admin_request,
+    sample_organisation,
+    sample_service,
+    service_active,
+    service_trial_mode,
+):
+    sample_service.active = service_active
+    sample_service.restricted = service_trial_mode
+    dao_add_service_to_organisation(sample_service, sample_organisation.id)
+
+    response = admin_request.post(
+        'organisation.archive_organisation',
+        organisation_id=sample_organisation.id,
+        _expected_status=400
+    )
+    assert response['message'] == 'Cannot archive an organisation with services'
+
+    assert sample_organisation.active
 
 
 def test_post_link_service_to_organisation(admin_request, sample_service):

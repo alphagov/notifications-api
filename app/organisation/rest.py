@@ -6,9 +6,11 @@ from app.config import QueueNames
 from app.dao.annual_billing_dao import set_default_free_allowance_for_service
 from app.dao.dao_utils import transaction
 from app.dao.fact_billing_dao import fetch_usage_for_organisation
+from app.dao.invited_org_user_dao import get_invited_org_users_for_organisation
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
+    dao_archive_organisation,
     dao_create_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
@@ -22,7 +24,12 @@ from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.templates_dao import dao_get_template_by_id
 from app.dao.users_dao import get_user_by_id
 from app.errors import InvalidRequest, register_errors
-from app.models import KEY_TYPE_NORMAL, NHS_ORGANISATION_TYPES, Organisation
+from app.models import (
+    INVITE_PENDING,
+    KEY_TYPE_NORMAL,
+    NHS_ORGANISATION_TYPES,
+    Organisation,
+)
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -122,6 +129,33 @@ def update_organisation(organisation_id):
         return '', 204
     else:
         raise InvalidRequest("Organisation not found", 404)
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/archive', methods=['POST'])
+def archive_organisation(organisation_id):
+    """
+    All services must be reassigned and all team members removed before an org can be
+    archived.
+    When an org is archived, its email branding, letter branding and any domains are deleted.
+    """
+
+    organisation = dao_get_organisation_by_id(organisation_id)
+
+    if organisation.services:
+        raise InvalidRequest('Cannot archive an organisation with services', 400)
+
+    pending_invited_users = [
+        user for user in get_invited_org_users_for_organisation(organisation_id)
+        if user.status == INVITE_PENDING
+    ]
+
+    if organisation.users or pending_invited_users:
+        raise InvalidRequest('Cannot archive an organisation with team members or invited team members', 400)
+
+    if organisation.active:
+        dao_archive_organisation(organisation_id)
+
+    return '', 204
 
 
 @organisation_blueprint.route('/<uuid:organisation_id>/service', methods=['POST'])
