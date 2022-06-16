@@ -511,7 +511,7 @@ def test_fetch_usage_for_service_by_month_variable_rates(notify_db_session):
 
 
 @freeze_time('2018-08-01 13:30:00')
-def test_fetch_usage_for_service_by_month_adds_data_for_today(notify_db_session):
+def test_fetch_usage_for_service_by_month_populates_ft_billing_for_today(notify_db_session):
     service = create_service()
     template = create_template(service=service, template_type="sms")
 
