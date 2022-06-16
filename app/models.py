@@ -409,7 +409,7 @@ class Organisation(db.Model):
     email_branding_pool = db.relationship(
         'EmailBranding',
         secondary='email_branding_to_organisation',
-        backref='organisation'
+        backref='organisations'
     )
 
     letter_branding = db.relationship('LetterBranding')
