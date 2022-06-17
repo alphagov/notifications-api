@@ -721,23 +721,23 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
-    sms_billable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
+    chargeable_units = func.sum(func.coalesce(ft_billing_subquery.c.chargeable_units, 0))
 
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - sms_billable_units, 0)
+    free_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - chargeable_units, 0)
 
-    chargeable_sms = func.sum(ft_billing_subquery.c.charged_units)
-    sms_cost = func.sum(ft_billing_subquery.c.cost)
+    charged_units = func.sum(ft_billing_subquery.c.charged_units)
+    cost = func.sum(ft_billing_subquery.c.cost)
 
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit,
-        func.coalesce(sms_allowance_left, 0).label("sms_remainder"),
-        func.coalesce(sms_billable_units, 0).label('sms_billable_units'),
-        func.coalesce(chargeable_sms, 0).label("chargeable_billable_sms"),
-        func.coalesce(sms_cost, 0).label('sms_cost'),
+        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
+        func.coalesce(free_allowance_left, 0).label("free_allowance_left"),
+        func.coalesce(chargeable_units, 0).label('chargeable_units'),
+        func.coalesce(charged_units, 0).label("charged_units"),
+        func.coalesce(cost, 0).label('cost'),
         Service.active
     ).select_from(
         Service
@@ -850,11 +850,11 @@ def fetch_usage_for_organisation(organisation_id, year):
         service_with_usage[str(usage.service_id)] = {
             'service_id': usage.service_id,
             'service_name': usage.service_name,
-            'free_sms_limit': usage.free_sms_fragment_limit,
-            'sms_remainder': usage.sms_remainder,
-            'sms_billable_units': usage.sms_billable_units,
-            'chargeable_billable_sms': usage.chargeable_billable_sms,
-            'sms_cost': float(usage.sms_cost),
+            'free_sms_limit': usage.free_allowance,
+            'sms_remainder': usage.free_allowance_left,
+            'sms_billable_units': usage.chargeable_units,
+            'chargeable_billable_sms': usage.charged_units,
+            'sms_cost': float(usage.cost),
             'letter_cost': 0.0,
             'emails_sent': 0,
             'active': usage.active
