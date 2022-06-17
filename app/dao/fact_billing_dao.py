@@ -721,6 +721,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
+    free_allowance = func.max(ft_billing_subquery.c.free_allowance)
     free_allowance_left = func.min(ft_billing_subquery.c.free_allowance_left)
     chargeable_units = func.sum(ft_billing_subquery.c.chargeable_units)
     charged_units = func.sum(ft_billing_subquery.c.charged_units)
@@ -729,7 +730,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     query = db.session.query(
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
+        free_allowance.label("free_allowance"),
         free_allowance_left.label("free_allowance_left"),
         chargeable_units.label('chargeable_units'),
         charged_units.label("charged_units"),
@@ -738,9 +739,6 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     ).select_from(
         Service
     ).outerjoin(
-        AnnualBilling,
-        and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year)
-    ).outerjoin(
         ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).filter(
         Service.organisation_id == organisation_id,
@@ -748,7 +746,6 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     ).group_by(
         Service.id,
         Service.name,
-        AnnualBilling.free_sms_fragment_limit
     ).order_by(
         Service.name
     )
@@ -811,6 +808,7 @@ def _fetch_usage_for_organisation_sms_query(organisation_id, year):
     return db.session.query(
         Service.id.label('service_id'),
         FactBilling.bst_date,
+        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
         free_allowance_left.label("free_allowance_left"),
         this_rows_chargeable_units.label("chargeable_units"),
         (charged_units * this_rows_rate).label("cost"),
