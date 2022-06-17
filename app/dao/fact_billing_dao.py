@@ -69,17 +69,17 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
     # ASSUMPTION: AnnualBilling has been populated for year.
     allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
 
-    sms_billable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
+    chargeable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
 
     # subtract sms_billable_units units accrued since report's start date to get up-to-date
     # allowance remainder
-    sms_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - sms_billable_units, 0)
+    free_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - chargeable_units, 0)
 
     # billable units here are for period between start date and end date only, so to see
     # how many are chargeable, we need to see how much free allowance was used up in the
     # period up until report's start date and then do a subtraction
-    chargeable_sms = func.greatest(sms_billable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
-    sms_cost = chargeable_sms * FactBilling.rate
+    charged_units = func.greatest(chargeable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
+    cost = charged_units * FactBilling.rate
 
     query = db.session.query(
         Organisation.name.label('organisation_name'),
@@ -87,10 +87,10 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        sms_allowance_left.label("sms_remainder"),
-        sms_billable_units.label('sms_billable_units'),
-        chargeable_sms.label("chargeable_billable_sms"),
-        sms_cost.label('sms_cost'),
+        free_allowance_left.label("sms_remainder"),
+        chargeable_units.label('sms_billable_units'),
+        charged_units.label("chargeable_billable_sms"),
+        cost.label('sms_cost'),
     ).select_from(
         Service
     ).outerjoin(
