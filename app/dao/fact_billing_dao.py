@@ -365,12 +365,12 @@ def _fetch_usage_for_service_sms(service_id, year):
         )
 
     In order to calculate how much free allowance is left, we need to work out
-    how much was used for previous bst_dates - cumulative_chargeable_units -
+    how much was used for previous bst_dates - chargeable_units_used_before_this_row -
     which we then subtract from the free allowance for the year.
 
-    cumulative_chargeable_units is calculated using a "window" clause, which has
-    access to all the rows identified by the query filter. Note that it's not
-    affected by any GROUP BY clauses that happen in outer queries.
+    chargeable_units_used_before_this_row is calculated using a "window" clause,
+    which has access to all the rows identified by the query filter. Note that
+    it's not affected by any GROUP BY clauses that happen in outer queries.
 
     https://www.postgresql.org/docs/current/tutorial-window.html
 
