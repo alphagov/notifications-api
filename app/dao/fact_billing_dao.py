@@ -50,11 +50,11 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        free_allowance.label("free_sms_fragment_limit"),
-        free_allowance_left.label("sms_remainder"),
-        chargeable_units.label('sms_billable_units'),
-        charged_units.label("chargeable_billable_sms"),
-        cost.label('sms_cost'),
+        free_allowance.label("free_allowance"),
+        free_allowance_left.label("free_allowance_left"),
+        chargeable_units.label('chargeable_units'),
+        charged_units.label("charged_units"),
+        cost.label('cost'),
     ).select_from(
         Service
     ).outerjoin(

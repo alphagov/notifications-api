@@ -84,14 +84,14 @@ def get_data_for_billing_report():
     ]
     combined = {}
     for s in sms_costs:
-        if float(s.sms_cost) > 0:
+        if float(s.cost) > 0:
             entry = {
                 "organisation_id": str(s.organisation_id) if s.organisation_id else "",
                 "organisation_name": s.organisation_name or "",
                 "service_id": str(s.service_id),
                 "service_name": s.service_name,
-                "sms_cost": float(s.sms_cost),
-                "sms_chargeable_units": s.chargeable_billable_sms,
+                "sms_cost": float(s.cost),
+                "sms_chargeable_units": s.charged_units,
                 "total_letters": 0,
                 "letter_cost": 0,
                 "letter_breakdown": ""

@@ -636,11 +636,11 @@ def test_fetch_usage_for_all_services_sms(notify_db_session):
     assert row_1["organisation_id"] == org.id
     assert row_1["service_name"] == service.name
     assert row_1["service_id"] == service.id
-    assert row_1["free_sms_fragment_limit"] == 25000
-    assert row_1["sms_remainder"] == 24996
-    assert row_1["sms_billable_units"] == 4
-    assert row_1["chargeable_billable_sms"] == 0
-    assert row_1["sms_cost"] == 0
+    assert row_1["free_allowance"] == 25000
+    assert row_1["free_allowance_left"] == 24996
+    assert row_1["chargeable_units"] == 4
+    assert row_1["charged_units"] == 0
+    assert row_1["cost"] == 0
 
 
 def test_fetch_usage_for_all_services_variable_rates(notify_db_session):
@@ -651,16 +651,16 @@ def test_fetch_usage_for_all_services_variable_rates(notify_db_session):
     assert len(results) == 1
     row = results[0]
 
-    assert row['free_sms_fragment_limit'] == 3
-    assert row['sms_remainder'] == 0
+    assert row['free_allowance'] == 3
+    assert row['free_allowance_left'] == 0
     # 4 SMS (rate multiplier=2) + 1 SMS (rate_multiplier=1)
-    assert row['sms_billable_units'] == 9
-    assert row['chargeable_billable_sms'] == 6
+    assert row['chargeable_units'] == 9
+    assert row['charged_units'] == 6
     # 1 SMS free (rate_multiplier=1, rate=0.162) +
     # 1 SMS free (rate_multiplier=2, rate=0.162) +
     # 1 SMS paid (rate_multiplier=2, rate=0.162) +
     # 2 SMS paid (rate_multiplier=2, rate=0.0150)
-    assert row['sms_cost'] == Decimal('0.384')
+    assert row['cost'] == Decimal('0.384')
 
 
 def test_fetch_usage_for_all_services_sms_no_usage(notify_db_session):
@@ -708,10 +708,10 @@ def test_fetch_usage_for_all_services_sms_partially_billable(notify_db_session):
     assert len(results) == 1
 
     row = results[0]
-    assert row["sms_remainder"] == 0
-    assert row["sms_billable_units"] == 5
-    assert row["chargeable_billable_sms"] == 2
-    assert row["sms_cost"] == Decimal('0.22')
+    assert row["free_allowance_left"] == 0
+    assert row["chargeable_units"] == 5
+    assert row["charged_units"] == 2
+    assert row["cost"] == Decimal('0.22')
 
 
 def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
@@ -727,16 +727,16 @@ def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
 
     # both services send 4 * SMS at a rate of 0.162
     service_1_row = results[0]
-    assert service_1_row["sms_remainder"] == 0
-    assert service_1_row["sms_billable_units"] == 4
-    assert service_1_row["chargeable_billable_sms"] == 1
-    assert service_1_row["sms_cost"] == Decimal('0.162')
+    assert service_1_row["free_allowance_left"] == 0
+    assert service_1_row["chargeable_units"] == 4
+    assert service_1_row["charged_units"] == 1
+    assert service_1_row["cost"] == Decimal('0.162')
 
     service_2_row = results[1]
-    assert service_2_row["sms_remainder"] == 2
-    assert service_2_row["sms_billable_units"] == 4
-    assert service_2_row["chargeable_billable_sms"] == 0
-    assert service_2_row["sms_cost"] == 0
+    assert service_2_row["free_allowance_left"] == 2
+    assert service_2_row["chargeable_units"] == 4
+    assert service_2_row["charged_units"] == 0
+    assert service_2_row["cost"] == 0
 
 
 def test_fetch_usage_for_all_services_sms_no_org(notify_db_session):
