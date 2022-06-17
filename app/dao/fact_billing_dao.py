@@ -87,7 +87,6 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        FactBilling.rate.label('sms_rate'),
         sms_allowance_left.label("sms_remainder"),
         sms_billable_units.label('sms_billable_units'),
         chargeable_sms.label("chargeable_billable_sms"),

@@ -664,7 +664,6 @@ def test_fetch_usage_for_all_services_sms(notify_db_session):
     assert row_1["service_name"] == service.name
     assert row_1["service_id"] == service.id
     assert row_1["free_sms_fragment_limit"] == 25000
-    assert row_1["sms_rate"] == Decimal('0.162')
     assert row_1["sms_remainder"] == 24996
     assert row_1["sms_billable_units"] == 4
     assert row_1["chargeable_billable_sms"] == 0
