@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from flask import current_app
 from notifications_utils.timezones import convert_utc_to_bst
@@ -32,36 +32,6 @@ from app.models import (
     Service,
 )
 from app.utils import get_london_midnight_in_utc
-
-
-def fetch_sms_free_allowance_remainder_until_date(end_date):
-    # ASSUMPTION: AnnualBilling has been populated for year.
-    billing_year = get_financial_year_for_datetime(end_date)
-    start_of_year = date(billing_year, 4, 1)
-
-    billable_units = func.coalesce(func.sum(FactBilling.billable_units * FactBilling.rate_multiplier), 0)
-
-    query = db.session.query(
-        AnnualBilling.service_id.label("service_id"),
-        AnnualBilling.free_sms_fragment_limit,
-        billable_units.label('billable_units'),
-        func.greatest((AnnualBilling.free_sms_fragment_limit - billable_units).cast(Integer), 0).label('sms_remainder')
-    ).outerjoin(
-        # if there are no ft_billing rows for a service we still want to return the annual billing so we can use the
-        # free_sms_fragment_limit)
-        FactBilling, and_(
-            AnnualBilling.service_id == FactBilling.service_id,
-            FactBilling.bst_date >= start_of_year,
-            FactBilling.bst_date < end_date,
-            FactBilling.notification_type == SMS_TYPE,
-        )
-    ).filter(
-        AnnualBilling.financial_year_start == billing_year,
-    ).group_by(
-        AnnualBilling.service_id,
-        AnnualBilling.free_sms_fragment_limit,
-    )
-    return query
 
 
 def fetch_usage_for_all_services_sms(start_date, end_date):
