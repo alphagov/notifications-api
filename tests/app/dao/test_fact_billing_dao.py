@@ -670,6 +670,26 @@ def test_fetch_usage_for_all_services_sms(notify_db_session):
     assert row_1["sms_cost"] == 0
 
 
+def test_fetch_usage_for_all_services_variable_rates(notify_db_session):
+    service = set_up_yearly_data_variable_rates()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2018)
+    results = fetch_usage_for_all_services_sms(datetime(2018, 4, 1), datetime(2019, 3, 31))
+
+    assert len(results) == 1
+    row = results[0]
+
+    assert row['free_sms_fragment_limit'] == 3
+    assert row['sms_remainder'] == 0
+    # 4 SMS (rate multiplier=2) + 1 SMS (rate_multiplier=1)
+    assert row['sms_billable_units'] == 9
+    assert row['chargeable_billable_sms'] == 6
+    # 1 SMS free (rate_multiplier=1, rate=0.162) +
+    # 1 SMS free (rate_multiplier=2, rate=0.162) +
+    # 1 SMS paid (rate_multiplier=2, rate=0.162) +
+    # 2 SMS paid (rate_multiplier=2, rate=0.0150)
+    assert row['sms_cost'] == Decimal('0.384')
+
+
 def test_fetch_usage_for_all_services_sms_no_usage(notify_db_session):
     service = create_service()
     create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2016)

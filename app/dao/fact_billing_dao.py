@@ -67,26 +67,21 @@ def fetch_sms_free_allowance_remainder_until_date(end_date):
 def fetch_usage_for_all_services_sms(start_date, end_date):
 
     # ASSUMPTION: AnnualBilling has been populated for year.
-    allowance_left_at_start_date_query = fetch_sms_free_allowance_remainder_until_date(start_date).subquery()
+    year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
+    ft_billing_subquery = _fetch_usage_for_all_services_sms_query(year).subquery()
 
-    chargeable_units = func.sum(FactBilling.billable_units * FactBilling.rate_multiplier)
-
-    # subtract sms_billable_units units accrued since report's start date to get up-to-date
-    # allowance remainder
-    free_allowance_left = func.greatest(allowance_left_at_start_date_query.c.sms_remainder - chargeable_units, 0)
-
-    # billable units here are for period between start date and end date only, so to see
-    # how many are chargeable, we need to see how much free allowance was used up in the
-    # period up until report's start date and then do a subtraction
-    charged_units = func.greatest(chargeable_units - allowance_left_at_start_date_query.c.sms_remainder, 0)
-    cost = charged_units * FactBilling.rate
+    free_allowance = func.max(ft_billing_subquery.c.free_allowance)
+    free_allowance_left = func.min(ft_billing_subquery.c.free_allowance_left)
+    chargeable_units = func.sum(ft_billing_subquery.c.chargeable_units)
+    charged_units = func.sum(ft_billing_subquery.c.charged_units)
+    cost = func.sum(ft_billing_subquery.c.cost)
 
     query = db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
         Service.id.label("service_id"),
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
+        free_allowance.label("free_sms_fragment_limit"),
         free_allowance_left.label("sms_remainder"),
         chargeable_units.label('sms_billable_units'),
         charged_units.label("chargeable_billable_sms"),
@@ -94,29 +89,100 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
     ).select_from(
         Service
     ).outerjoin(
-        allowance_left_at_start_date_query, Service.id == allowance_left_at_start_date_query.c.service_id
+        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
     ).outerjoin(
         Service.organisation
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
     ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == SMS_TYPE,
+        ft_billing_subquery.c.bst_date >= start_date,
+        ft_billing_subquery.c.bst_date <= end_date,
     ).group_by(
         Organisation.name,
         Organisation.id,
         Service.id,
         Service.name,
-        allowance_left_at_start_date_query.c.free_sms_fragment_limit,
-        allowance_left_at_start_date_query.c.sms_remainder,
-        FactBilling.rate,
     ).order_by(
         Organisation.name,
         Service.name
     )
 
     return query.all()
+
+
+def _fetch_usage_for_all_services_sms_query(year):
+    """
+    See docstring for _fetch_usage_for_service_sms()
+    """
+    year_start, year_end = get_financial_year_dates(year)
+
+    # We still return a single row even if a service has no rows in ft_billing
+    # or a row in annual_billing. Coalesce ensures we return a usable value.
+    this_rows_chargeable_units = func.coalesce(
+        FactBilling.billable_units * FactBilling.rate_multiplier,
+        0
+    )
+
+    # Subquery for the number of chargeable units in all rows preceding this one,
+    # which might be none if this is the first row (hence the "coalesce").
+    chargeable_units_used_before_this_row = func.coalesce(
+        func.sum(this_rows_chargeable_units).over(
+            # order is "ASC" by default
+            order_by=[FactBilling.bst_date],
+
+            # partition by service id
+            partition_by=FactBilling.service_id,
+
+            # first row to previous row
+            rows=(None, -1)
+        ).cast(Integer),
+        0
+    )
+
+    # Subquery for how much free allowance we have left before the current row,
+    # so we can work out the cost for this row after taking it into account.
+    remaining_free_allowance_before_this_row = func.greatest(
+        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
+        0
+    )
+
+    # Subquery for the number of chargeable_units that we will actually charge
+    # for, after taking any remaining free allowance into account.
+    charged_units = func.greatest(
+        this_rows_chargeable_units - remaining_free_allowance_before_this_row,
+        0
+    )
+
+    # We still return a single row even if a service has no rows in ft_billing
+    # or a row in annual_billing. Coalesce ensures we return a usable value.
+    this_rows_rate = func.coalesce(FactBilling.rate, 0.0)
+
+    free_allowance_left = func.greatest(
+        remaining_free_allowance_before_this_row - this_rows_chargeable_units,
+        0
+    )
+
+    return db.session.query(
+        Service.id.label('service_id'),
+        FactBilling.bst_date,
+        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
+        free_allowance_left.label("free_allowance_left"),
+        this_rows_chargeable_units.label("chargeable_units"),
+        (charged_units * this_rows_rate).label("cost"),
+        charged_units.label("charged_units"),
+    ).outerjoin(
+        AnnualBilling,
+        and_(
+            AnnualBilling.service_id == Service.id,
+            AnnualBilling.financial_year_start == year,
+        )
+    ).outerjoin(
+        FactBilling,
+        and_(
+            Service.id == FactBilling.service_id,
+            FactBilling.bst_date >= year_start,
+            FactBilling.bst_date <= year_end,
+            FactBilling.notification_type == SMS_TYPE,
+        )
+    )
 
 
 def fetch_usage_for_all_services_letter(start_date, end_date):
