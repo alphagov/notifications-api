@@ -721,12 +721,8 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
+    free_allowance_left = func.min(ft_billing_subquery.c.free_allowance_left)
     chargeable_units = func.sum(ft_billing_subquery.c.chargeable_units)
-
-    # subtract sms_billable_units units accrued since report's start date to get up-to-date
-    # allowance remainder
-    free_allowance_left = func.greatest(AnnualBilling.free_sms_fragment_limit - chargeable_units, 0)
-
     charged_units = func.sum(ft_billing_subquery.c.charged_units)
     cost = func.sum(ft_billing_subquery.c.cost)
 
@@ -734,7 +730,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
         Service.name.label("service_name"),
         Service.id.label("service_id"),
         AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
-        func.coalesce(free_allowance_left, 0).label("free_allowance_left"),
+        free_allowance_left.label("free_allowance_left"),
         chargeable_units.label('chargeable_units'),
         charged_units.label("charged_units"),
         cost.label('cost'),
@@ -807,9 +803,15 @@ def _fetch_usage_for_organisation_sms_query(organisation_id, year):
     # or a row in annual_billing. Coalesce ensures we return a usable value.
     this_rows_rate = func.coalesce(FactBilling.rate, 0.0)
 
+    free_allowance_left = func.greatest(
+        remaining_free_allowance_before_this_row - this_rows_chargeable_units,
+        0
+    )
+
     return db.session.query(
         Service.id.label('service_id'),
         FactBilling.bst_date,
+        free_allowance_left.label("free_allowance_left"),
         this_rows_chargeable_units.label("chargeable_units"),
         (charged_units * this_rows_rate).label("cost"),
         charged_units.label("charged_units"),
