@@ -761,6 +761,14 @@ def test_fetch_usage_for_all_services_sms_no_org(notify_db_session):
     assert row_1["service_id"] == service.id
 
 
+def test_fetch_usage_for_all_services_without_annual_billing(notify_db_session):
+    # Example: we don't continue populating annual_billing for inactive services
+    create_service(active=False)
+
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31))
+    assert len(results) == 0
+
+
 def test_fetch_usage_for_all_services_letter(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
@@ -962,6 +970,23 @@ def test_fetch_usage_for_organisation_multiple_services(notify_db_session):
     assert service_2_row["sms_billable_units"] == 4
     assert service_2_row["chargeable_billable_sms"] == 0
     assert service_2_row["sms_cost"] == 0
+
+
+def test_fetch_usage_for_organisation_without_annual_billing(notify_db_session):
+    # Example: we don't continue populating annual_billing for inactive services
+    service = create_service(active=False)
+
+    org = create_organisation()
+    dao_add_service_to_organisation(service=service, organisation_id=org.id)
+
+    results = fetch_usage_for_organisation(org.id, 2016)
+    assert len(results) == 1
+
+    row = results[str(service.id)]
+    assert row["sms_remainder"] == 0
+    assert row["sms_billable_units"] == 0
+    assert row["chargeable_billable_sms"] == 0
+    assert row["sms_cost"] == 0
 
 
 def test_fetch_daily_volumes_for_platform(
