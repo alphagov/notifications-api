@@ -35,8 +35,7 @@ from app.utils import get_london_midnight_in_utc
 
 
 def fetch_usage_for_all_services_sms(start_date, end_date):
-
-    # ASSUMPTION: AnnualBilling has been populated for year.
+    # ASSUMPTION: start_date and end_date are in the same financial year
     year = get_financial_year_for_datetime(get_london_midnight_in_utc(start_date))
     ft_billing_subquery = _fetch_usage_for_all_services_sms_query(year).subquery()
 
@@ -82,6 +81,7 @@ def _fetch_usage_for_all_services_sms_query(year):
     """
     See docstring for _fetch_usage_for_service_sms()
     """
+    # ASSUMPTION: AnnualBilling has been populated for year.
     year_start, year_end = get_financial_year_dates(year)
 
     # We still return a single row even if a service has no rows in ft_billing
@@ -754,7 +754,6 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 
 
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
-    # ASSUMPTION: AnnualBilling has been populated for year.
     ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
 
     free_allowance = func.max(ft_billing_subquery.c.free_allowance)
@@ -793,6 +792,7 @@ def _fetch_usage_for_organisation_sms_query(organisation_id, year):
     """
     See docstring for _fetch_usage_for_service_sms()
     """
+    # ASSUMPTION: AnnualBilling has been populated for year.
     year_start, year_end = get_financial_year_dates(year)
 
     # We still return a single row even if a service has no rows in ft_billing
