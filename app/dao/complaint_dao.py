@@ -23,10 +23,6 @@ def fetch_paginated_complaints(page=1):
     )
 
 
-def fetch_complaints_by_service(service_id):
-    return Complaint.query.filter_by(service_id=service_id).order_by(desc(Complaint.created_at)).all()
-
-
 def fetch_count_of_complaints(start_date, end_date):
     start_date = get_london_midnight_in_utc(start_date)
     end_date = get_london_midnight_in_utc(end_date + timedelta(days=1))
