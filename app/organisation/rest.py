@@ -12,6 +12,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
     dao_archive_organisation,
     dao_create_organisation,
+    dao_get_email_branding_pool_for_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_services,
@@ -215,6 +216,12 @@ def remove_user_from_organisation(organisation_id, user_id):
 def get_organisation_users(organisation_id):
     org_users = dao_get_users_for_organisation(organisation_id)
     return jsonify(data=[x.serialize() for x in org_users])
+
+
+@organisation_blueprint.route('/<uuid:organisation_id>/email-branding-pool', methods=['GET'])
+def get_organisation_email_branding_pool(organisation_id):
+    branding_pool = dao_get_email_branding_pool_for_organisation(organisation_id)
+    return jsonify(data=[branding.serialize() for branding in branding_pool])
 
 
 def check_request_args(request):
