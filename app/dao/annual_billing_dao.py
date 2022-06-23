@@ -19,12 +19,6 @@ def dao_create_or_update_annual_billing_for_year(service_id, free_sms_fragment_l
     return result
 
 
-def dao_get_annual_billing(service_id):
-    return AnnualBilling.query.filter_by(
-        service_id=service_id,
-    ).order_by(AnnualBilling.financial_year_start).all()
-
-
 @autocommit
 def dao_update_annual_billing_for_future_years(service_id, free_sms_fragment_limit, financial_year_start):
     AnnualBilling.query.filter(
@@ -44,13 +38,6 @@ def dao_get_free_sms_fragment_limit_for_year(service_id, financial_year_start=No
         service_id=service_id,
         financial_year_start=financial_year_start
     ).first()
-
-
-def dao_get_all_free_sms_fragment_limit(service_id):
-
-    return AnnualBilling.query.filter_by(
-        service_id=service_id,
-    ).order_by(AnnualBilling.financial_year_start).all()
 
 
 def set_default_free_allowance_for_service(service, year_start=None):
