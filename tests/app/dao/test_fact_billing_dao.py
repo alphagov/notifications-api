@@ -733,17 +733,20 @@ def test_fetch_usage_for_all_services_sms_partially_billable(
 
 
 def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
-    service_1 = set_up_yearly_data(service_name='Service 1')
+    service_1 = create_service(service_name='Service 1')
+    service_1_template = create_template(service=service_1, template_type='sms')
+    create_ft_billing(template=service_1_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=2016)
 
-    service_2 = set_up_yearly_data(service_name='Service 2')
+    service_2 = create_service(service_name='Service 2')
+    service_2_template = create_template(service=service_2, template_type='sms')
+    create_ft_billing(template=service_2_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
     results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
     results = sorted(results, key=lambda row: row["service_name"])
     assert len(results) == 2
 
-    # both services send 4 * SMS at a rate of 0.162
     service_1_row = results[0]
     assert service_1_row["free_allowance_left"] == 0
     assert service_1_row["chargeable_units"] == 4
@@ -968,21 +971,25 @@ def test_fetch_usage_for_organisation_partially_billable(
     assert row["sms_cost"] == 0.22
 
 
-def test_fetch_usage_for_organisation_multiple_services(notify_db_session):
-    org = create_organisation()
-
-    service_1 = set_up_yearly_data(service_name='Service 1')
+def test_fetch_usage_for_organisation_multiple_services(
+    sample_organisation,
+    notify_db_session,
+):
+    service_1 = create_service(service_name='Service 1')
+    dao_add_service_to_organisation(service=service_1, organisation_id=sample_organisation.id)
+    service_1_template = create_template(service=service_1, template_type='sms')
+    create_ft_billing(template=service_1_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_1.id, free_sms_fragment_limit=3, financial_year_start=2016)
-    dao_add_service_to_organisation(service=service_1, organisation_id=org.id)
 
-    service_2 = set_up_yearly_data(service_name='Service 2')
-    dao_add_service_to_organisation(service=service_2, organisation_id=org.id)
+    service_2 = create_service(service_name='Service 2')
+    dao_add_service_to_organisation(service=service_2, organisation_id=sample_organisation.id)
+    service_2_template = create_template(service=service_2, template_type='sms')
+    create_ft_billing(template=service_2_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
-    results = fetch_usage_for_organisation(org.id, 2016)
+    results = fetch_usage_for_organisation(sample_organisation.id, 2016)
     assert len(results) == 2
 
-    # both services send 4 * SMS at a rate of 0.162
     service_1_row = results[str(service_1.id)]
     assert service_1_row["sms_billable_units"] == 4
     assert service_1_row["chargeable_billable_sms"] == 1
