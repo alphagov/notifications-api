@@ -13,6 +13,7 @@ REDIS_URL="redis://host.docker.internal:6379"
 API_HOST_NAME="http://host.docker.internal:6011"
 
 docker run -it --rm \
+  --add-host=host.docker.internal:host-gateway \
   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
   -e SQLALCHEMY_DATABASE_URI=$SQLALCHEMY_DATABASE_URI \
