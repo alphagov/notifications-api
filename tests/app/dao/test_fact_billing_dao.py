@@ -70,10 +70,10 @@ def sample_service_billing_fy_2016(sample_service):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1, financial_year_start=2016)
 
 
-def set_up_yearly_data_variable_rates():
-    service = create_service()
-    sms_template = create_template(service=service, template_type="sms")
-    letter_template = create_template(service=service, template_type="letter")
+@pytest.fixture
+def sample_service_billing_fy_2018_variable_rates(sample_service):
+    sms_template = create_template(service=sample_service, template_type="sms")
+    letter_template = create_template(service=sample_service, template_type="letter")
 
     create_ft_billing(bst_date='2018-05-16', template=sms_template, rate=0.162)
     create_ft_billing(bst_date='2018-05-17', template=sms_template, rate_multiplier=2, rate=0.0150, billable_unit=2)
@@ -95,8 +95,7 @@ def set_up_yearly_data_variable_rates():
     #  - 1 free unit on the 17th (rate=0.015)
     #  - 3 paid units on the 17th (rate=0.015)
     #
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=6, financial_year_start=2018)
-    return service
+    create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=6, financial_year_start=2018)
 
 
 def test_fetch_billing_data_for_today_includes_data_with_the_right_key_type(notify_db_session):
@@ -474,13 +473,15 @@ def test_fetch_usage_for_service_by_month(
     assert str(results[8].month) == "2017-03-01"
 
 
-def test_fetch_usage_for_service_by_month_variable_rates(notify_db_session):
-    service = set_up_yearly_data_variable_rates()
-    results = fetch_usage_for_service_by_month(service.id, 2018)
-
-    # Test data is only for the month of May
+def test_fetch_usage_for_service_by_month_variable_rates(
+    sample_service,
+    sample_service_billing_fy_2018_variable_rates,
+    notify_db_session,
+):
+    results = fetch_usage_for_service_by_month(sample_service.id, 2018)
     assert len(results) == 4
 
+    # Test data is only for the month of May
     assert str(results[0].month) == "2018-05-01"
     assert results[0].notification_type == 'letter'
     assert results[0].notifications_sent == 1
@@ -571,11 +572,14 @@ def test_fetch_usage_for_service_annual(
     assert results[2].charged_units == 3
 
 
-def test_fetch_usage_for_service_annual_variable_rates(notify_db_session):
-    service = set_up_yearly_data_variable_rates()
-    results = fetch_usage_for_service_annual(service_id=service.id, year=2018)
-
+def test_fetch_usage_for_service_annual_variable_rates(
+    sample_service,
+    sample_service_billing_fy_2018_variable_rates,
+    notify_db_session,
+):
+    results = fetch_usage_for_service_annual(service_id=sample_service.id, year=2018)
     assert len(results) == 4
+
     assert results[0].notification_type == 'letter'
     assert results[0].notifications_sent == 1
     assert results[0].chargeable_units == 1
@@ -654,13 +658,16 @@ def test_fetch_usage_for_all_services_sms(
     assert row_1["cost"] == Decimal('0.486')
 
 
-def test_fetch_usage_for_all_services_variable_rates(notify_db_session):
-    service = set_up_yearly_data_variable_rates()
+def test_fetch_usage_for_all_services_variable_rates(
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2018_variable_rates,
+    notify_db_session
+):
     results = fetch_usage_for_all_services_sms(datetime(2018, 4, 1), datetime(2019, 3, 31))
-
     assert len(results) == 1
-    row = results[0]
 
+    row = results[0]
     assert row['free_allowance'] == 6
     assert row['free_allowance_left'] == 0
     assert row['chargeable_units'] == 9
@@ -908,14 +915,17 @@ def test_fetch_usage_for_organisation_populates_ft_billing_for_today(notify_db_s
     assert FactBilling.query.count() == 1
 
 
-def test_fetch_usage_for_organisation_variable_rates(notify_db_session):
-    service = set_up_yearly_data_variable_rates()
-    org = create_organisation()
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    results = fetch_usage_for_organisation(organisation_id=org.id, year=2018)
+def test_fetch_usage_for_organisation_variable_rates(
+    sample_service,
+    sample_organisation,
+    sample_service_billing_fy_2018_variable_rates,
+    notify_db_session,
+):
+    dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
+    results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2018)
 
     assert len(results) == 1
-    row = results[str(service.id)]
+    row = results[str(sample_service.id)]
 
     assert row['free_sms_limit'] == 6
     assert row['sms_remainder'] == 0
