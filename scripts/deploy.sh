@@ -2,7 +2,7 @@
 
 set -eu
 
-echo $(pwd)
+[[ ! -f ./.git/short_ref ]] && $(git rev-parse --short HEAD) > ./.git/short_ref
 
 GIT_REF=$(cat ./.git/short_ref)
 ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
