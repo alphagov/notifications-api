@@ -135,9 +135,7 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	# generate manifest (including secrets) and write it to CF_MANIFEST_PATH (in /tmp/)
 	make -s CF_APP=${CF_APP} generate-manifest > ${CF_MANIFEST_PATH}
 
-	# fails after 15 mins if deploy doesn't work
-	# reads manifest from CF_MANIFEST_PATH
-	CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f ${CF_MANIFEST_PATH}
+	CF_APP=${CF_APP} CF_MANIFEST_PATH=${CF_MANIFEST_PATH} ./scripts/deploy.sh
 	# delete old manifest file
 	rm ${CF_MANIFEST_PATH}
 
