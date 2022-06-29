@@ -11,7 +11,6 @@ from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
-    fetch_sms_free_allowance_remainder_until_date,
     fetch_usage_for_all_services_letter,
     fetch_usage_for_all_services_letter_breakdown,
     fetch_usage_for_all_services_sms,
@@ -623,32 +622,6 @@ def test_delete_billing_data(notify_db_session):
     )
 
 
-def test_fetch_sms_free_allowance_remainder_until_date_with_two_services(notify_db_session):
-    service = create_service(service_name='has free allowance')
-    template = create_template(service=service)
-    org = create_organisation(name="Org for {}".format(service.name))
-    dao_add_service_to_organisation(service=service, organisation_id=org.id)
-    create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2016)
-    create_ft_billing(template=template, bst_date=datetime(2016, 4, 20), billable_unit=2, rate=0.11)
-    create_ft_billing(template=template, bst_date=datetime(2016, 5, 20), billable_unit=3, rate=0.11)
-
-    service_2 = create_service(service_name='used free allowance')
-    template_2 = create_template(service=service_2)
-    org_2 = create_organisation(name="Org for {}".format(service_2.name))
-    dao_add_service_to_organisation(service=service_2, organisation_id=org_2.id)
-    create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=20, financial_year_start=2016)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 4, 20), billable_unit=12, rate=0.11)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 4, 22), billable_unit=10, rate=0.11)
-    create_ft_billing(template=template_2, bst_date=datetime(2016, 5, 20), billable_unit=3, rate=0.11)
-
-    results = fetch_sms_free_allowance_remainder_until_date(datetime(2016, 5, 1)).all()
-    assert len(results) == 2
-    service_result = [row for row in results if row[0] == service.id]
-    assert service_result[0] == (service.id, 10, 2, 8)
-    service_2_result = [row for row in results if row[0] == service_2.id]
-    assert service_2_result[0] == (service_2.id, 20, 22, 0)
-
-
 def test_fetch_usage_for_all_services_sms(notify_db_session):
     service = set_up_yearly_data(service_name='Service 1')
     org = create_organisation(name="Org for Service 1")
@@ -663,12 +636,31 @@ def test_fetch_usage_for_all_services_sms(notify_db_session):
     assert row_1["organisation_id"] == org.id
     assert row_1["service_name"] == service.name
     assert row_1["service_id"] == service.id
-    assert row_1["free_sms_fragment_limit"] == 25000
-    assert row_1["sms_rate"] == Decimal('0.162')
-    assert row_1["sms_remainder"] == 24996
-    assert row_1["sms_billable_units"] == 4
-    assert row_1["chargeable_billable_sms"] == 0
-    assert row_1["sms_cost"] == 0
+    assert row_1["free_allowance"] == 25000
+    assert row_1["free_allowance_left"] == 24996
+    assert row_1["chargeable_units"] == 4
+    assert row_1["charged_units"] == 0
+    assert row_1["cost"] == 0
+
+
+def test_fetch_usage_for_all_services_variable_rates(notify_db_session):
+    service = set_up_yearly_data_variable_rates()
+    create_annual_billing(service_id=service.id, free_sms_fragment_limit=3, financial_year_start=2018)
+    results = fetch_usage_for_all_services_sms(datetime(2018, 4, 1), datetime(2019, 3, 31))
+
+    assert len(results) == 1
+    row = results[0]
+
+    assert row['free_allowance'] == 3
+    assert row['free_allowance_left'] == 0
+    # 4 SMS (rate multiplier=2) + 1 SMS (rate_multiplier=1)
+    assert row['chargeable_units'] == 9
+    assert row['charged_units'] == 6
+    # 1 SMS free (rate_multiplier=1, rate=0.162) +
+    # 1 SMS free (rate_multiplier=2, rate=0.162) +
+    # 1 SMS paid (rate_multiplier=2, rate=0.162) +
+    # 2 SMS paid (rate_multiplier=2, rate=0.0150)
+    assert row['cost'] == Decimal('0.384')
 
 
 def test_fetch_usage_for_all_services_sms_no_usage(notify_db_session):
@@ -716,10 +708,10 @@ def test_fetch_usage_for_all_services_sms_partially_billable(notify_db_session):
     assert len(results) == 1
 
     row = results[0]
-    assert row["sms_remainder"] == 0
-    assert row["sms_billable_units"] == 5
-    assert row["chargeable_billable_sms"] == 2
-    assert row["sms_cost"] == Decimal('0.22')
+    assert row["free_allowance_left"] == 0
+    assert row["chargeable_units"] == 5
+    assert row["charged_units"] == 2
+    assert row["cost"] == Decimal('0.22')
 
 
 def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
@@ -735,16 +727,16 @@ def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
 
     # both services send 4 * SMS at a rate of 0.162
     service_1_row = results[0]
-    assert service_1_row["sms_remainder"] == 0
-    assert service_1_row["sms_billable_units"] == 4
-    assert service_1_row["chargeable_billable_sms"] == 1
-    assert service_1_row["sms_cost"] == Decimal('0.162')
+    assert service_1_row["free_allowance_left"] == 0
+    assert service_1_row["chargeable_units"] == 4
+    assert service_1_row["charged_units"] == 1
+    assert service_1_row["cost"] == Decimal('0.162')
 
     service_2_row = results[1]
-    assert service_2_row["sms_remainder"] == 2
-    assert service_2_row["sms_billable_units"] == 4
-    assert service_2_row["chargeable_billable_sms"] == 0
-    assert service_2_row["sms_cost"] == 0
+    assert service_2_row["free_allowance_left"] == 2
+    assert service_2_row["chargeable_units"] == 4
+    assert service_2_row["charged_units"] == 0
+    assert service_2_row["cost"] == 0
 
 
 def test_fetch_usage_for_all_services_sms_no_org(notify_db_session):
