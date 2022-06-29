@@ -81,6 +81,6 @@ echo "Deployment GUID: ${DEPLOYMENT_GUID}"
 
 #
 # Wait for 15 minutes for the deployment to reach "FINALIZED" status
-# If it doesn't, then it will exit with an exit status of 124 according to `timeout --help`
+# If it doesn't, then, according to `timeout --help`, it will exit with an exit status of 124
 #
 timeout 15m bash -c -- "until [[ \${STATUS} == FINALIZED ]]; do sleep 5; STATUS=\$(cf curl v3/deployments/${DEPLOYMENT_GUID} | jq -r \".status.value\"); echo \"Deployment status: \${STATUS}\"; done"
