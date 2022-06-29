@@ -5,6 +5,13 @@ set -eu
 [[ ! -f ./.git/short_ref ]] && $(git rev-parse --short HEAD) > ./.git/short_ref
 
 GIT_REF=$(cat ./.git/short_ref)
+
+if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
+  echo "Missing api-droplet-guid file for this commit"
+  echo "Create a droplet, store its guid in a file called 'api-droplet-guid-$(date '+%Y-%m-%d')-${GIT_REF}.txt' and try again"
+  exit 1
+fi
+
 ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
 APP_GUID=$(cf app ${CF_APP} --guid)
 
