@@ -8,7 +8,7 @@ GIT_REF=$(cat ./.git/short_ref)
 
 if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
   echo "Missing api-droplet-guid file for this commit"
-  echo "Create a droplet, store its guid in a file called 'api-droplet-guid-$(date '+%Y-%m-%d')-${GIT_REF}.txt' and try again"
+  echo "If running locally, run ./scripts/create-droplet.sh and try again"
   exit 1
 fi
 
