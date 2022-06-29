@@ -20,7 +20,10 @@ APP_GUID=$(cf app ${CF_APP} --guid)
 # Copy droplet
 #
 echo "Copying droplet..."
-cat <<END > copy-droplet-${CF_APP}.json
+DROPLET_GUID=$(cf curl "/v3/droplets?source_guid=${ORIGINAL_DROPLET_GUID}" \
+  -X POST \
+  -H "Content-type: application/json" \
+  -d @<(cat <<END
 {
     "relationships": {
       "app": {
@@ -31,11 +34,7 @@ cat <<END > copy-droplet-${CF_APP}.json
     }
 }
 END
-
-DROPLET_GUID=$(cf curl "/v3/droplets?source_guid=${ORIGINAL_DROPLET_GUID}" \
-  -X POST \
-  -H "Content-type: application/json" \
-  -d @./copy-droplet-${CF_APP}.json | jq -r ".guid")
+) | jq -r ".guid")
 
 echo "Droplet GUID: ${DROPLET_GUID}"
 
@@ -55,7 +54,12 @@ cf apply-manifest -f ${CF_MANIFEST_PATH}
 #
 # Trigger a new deployment using the new droplet guid
 #
-cat <<END > deployment-${CF_APP}.json
+
+echo "Triggering a new deployment..."
+DEPLOYMENT_GUID=$(cf curl "/v3/deployments" \
+  -X POST \
+  -H "Content-type: application/json" \
+  -d @<(cat <<END
 {
   "droplet": {
     "guid": "${DROPLET_GUID}"
@@ -70,13 +74,7 @@ cat <<END > deployment-${CF_APP}.json
   }
 }
 END
-
-echo "Triggering a new deployment..."
-DEPLOYMENT_GUID=$(cf curl "/v3/deployments" \
-  -X POST \
-  -H "Content-type: application/json" \
-  -d @./deployment-${CF_APP}.json | jq -r ".guid")
-
+) | jq -r ".guid")
 echo "Deployment GUID: ${DEPLOYMENT_GUID}"
 
 #
