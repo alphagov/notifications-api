@@ -637,7 +637,7 @@ def test_fetch_usage_for_all_services_sms(
     notify_db_session,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
 
     assert len(results) == 1
     row_1 = results[0]
@@ -659,7 +659,7 @@ def test_fetch_usage_for_all_services_variable_rates(
     sample_service_billing_fy_2018_variable_rates,
     notify_db_session
 ):
-    results = fetch_usage_for_all_services_sms(datetime(2018, 4, 1), datetime(2019, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2018, 4, 1), datetime(2019, 3, 31)).all()
     assert len(results) == 1
 
     row = results[0]
@@ -677,7 +677,7 @@ def test_fetch_usage_for_all_services_sms_remainder(
 ):
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=1)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
 
     assert len(results) == 1
     row_1 = results[0]
@@ -689,7 +689,7 @@ def test_fetch_usage_for_all_services_sms_no_usage(
     notify_db_session
 ):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
     assert len(results) == 0
 
 
@@ -701,7 +701,7 @@ def test_fetch_usage_for_all_services_sms_no_usage_in_period(
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=5)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=25000, financial_year_start=2016)
 
-    results = fetch_usage_for_all_services_sms(datetime(2016, 11, 1), datetime(2017, 1, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 11, 1), datetime(2017, 1, 31)).all()
     assert len(results) == 0
 
 
@@ -714,7 +714,7 @@ def test_fetch_usage_for_all_services_sms_includes_trial_services(
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
 
     sample_service.restricted = True
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
     assert len(results) > 0
 
 
@@ -726,7 +726,7 @@ def test_fetch_usage_for_all_services_sms_excludes_email(
     template = create_template(service=sample_service, template_type='email')
     create_ft_billing(template=template, bst_date=datetime(2016, 4, 22), notifications_sent=5, billable_unit=0)
 
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
     assert len(results) == 0
 
 
@@ -738,7 +738,7 @@ def test_fetch_usage_for_all_services_sms_partially_billable(
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2019)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
 
-    results = fetch_usage_for_all_services_sms(datetime(2019, 4, 1), datetime(2019, 5, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2019, 4, 1), datetime(2019, 5, 31)).all()
     assert len(results) == 1
 
     row = results[0]
@@ -759,7 +759,7 @@ def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
     create_ft_billing(template=service_2_template, bst_date=datetime(2016, 4, 20), billable_unit=4, rate=0.162)
     create_annual_billing(service_id=service_2.id, free_sms_fragment_limit=6, financial_year_start=2016)
 
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31)).all()
     results = sorted(results, key=lambda row: row["service_name"])
     assert len(results) == 2
 
@@ -784,7 +784,7 @@ def test_fetch_usage_for_all_services_sms_no_org(
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
     create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=5)
 
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31)).all()
     assert len(results) == 1
 
     row_1 = results[0]
@@ -800,14 +800,14 @@ def test_fetch_usage_for_all_services_without_annual_billing(
 ):
     # Example: we don't continue populating annual_billing for inactive services
     sample_service.active = False
-    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31))
+    results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31)).all()
     assert len(results) == 0
 
 
 def test_fetch_usage_for_all_services_letter(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_usage_for_all_services_letter(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    results = fetch_usage_for_all_services_letter(datetime(2019, 6, 1), datetime(2019, 9, 30)).all()
 
     assert len(results) == 3
     assert results[0] == (
@@ -830,7 +830,7 @@ def test_fetch_usage_for_all_services_letter(notify_db_session):
 def test_fetch_usage_for_all_services_letter_breakdown(notify_db_session):
     fixtures = set_up_usage_data(datetime(2019, 6, 1))
 
-    results = fetch_usage_for_all_services_letter_breakdown(datetime(2019, 6, 1), datetime(2019, 9, 30))
+    results = fetch_usage_for_all_services_letter_breakdown(datetime(2019, 6, 1), datetime(2019, 9, 30)).all()
 
     assert len(results) == 7
     assert results[0] == (

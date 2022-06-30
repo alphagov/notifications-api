@@ -45,7 +45,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
     charged_units = func.sum(ft_billing_subquery.c.charged_units)
     cost = func.sum(ft_billing_subquery.c.cost)
 
-    query = db.session.query(
+    return db.session.query(
         Organisation.name.label('organisation_name'),
         Organisation.id.label('organisation_id'),
         Service.name.label("service_name"),
@@ -73,8 +73,6 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         Organisation.name,
         Service.name
     )
-
-    return query.all()
 
 
 def _fetch_usage_for_all_services_sms_query(year):
@@ -156,7 +154,7 @@ def _fetch_usage_for_all_services_sms_query(year):
 
 
 def fetch_usage_for_all_services_letter(start_date, end_date):
-    query = db.session.query(
+    return db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
@@ -184,8 +182,6 @@ def fetch_usage_for_all_services_letter(start_date, end_date):
         Service.name
     )
 
-    return query.all()
-
 
 def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     formatted_postage = case(
@@ -199,7 +195,7 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
             else_=0  # assumes never get 0 as a result
     )
 
-    query = db.session.query(
+    return db.session.query(
         Organisation.name.label("organisation_name"),
         Organisation.id.label("organisation_id"),
         Service.name.label("service_name"),
@@ -230,7 +226,6 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
         postage_order,
         FactBilling.rate,
     )
-    return query.all()
 
 
 def fetch_usage_for_service_annual(service_id, year):
@@ -785,7 +780,7 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
         Service.name
     )
 
-    return query.all()
+    return query
 
 
 def _fetch_usage_for_organisation_sms_query(organisation_id, year):
