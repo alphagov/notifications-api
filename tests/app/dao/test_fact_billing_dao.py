@@ -39,11 +39,6 @@ from tests.app.db import (
 
 
 @pytest.fixture
-def sample_service_sms_template(sample_service):
-    return create_template(service=sample_service, template_type="sms")
-
-
-@pytest.fixture
 def sample_service_billing_fy_2016(sample_service):
     sms_template = create_template(service=sample_service, template_type="sms")
     email_template = create_template(service=sample_service, template_type="email")
@@ -677,10 +672,10 @@ def test_fetch_usage_for_all_services_variable_rates(
 
 def test_fetch_usage_for_all_services_sms_remainder(
     sample_service,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=1)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=1)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
     results = fetch_usage_for_all_services_sms(datetime(2016, 4, 1), datetime(2017, 3, 31))
 
@@ -700,10 +695,10 @@ def test_fetch_usage_for_all_services_sms_no_usage(
 
 def test_fetch_usage_for_all_services_sms_no_usage_in_period(
     sample_service,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session,
 ):
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=5)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=5)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=25000, financial_year_start=2016)
 
     results = fetch_usage_for_all_services_sms(datetime(2016, 11, 1), datetime(2017, 1, 31))
@@ -712,10 +707,10 @@ def test_fetch_usage_for_all_services_sms_no_usage_in_period(
 
 def test_fetch_usage_for_all_services_sms_includes_trial_services(
     sample_service,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=5)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 22), billable_unit=5)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
 
     sample_service.restricted = True
@@ -737,11 +732,11 @@ def test_fetch_usage_for_all_services_sms_excludes_email(
 
 def test_fetch_usage_for_all_services_sms_partially_billable(
     sample_service,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2019)
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
 
     results = fetch_usage_for_all_services_sms(datetime(2019, 4, 1), datetime(2019, 5, 31))
     assert len(results) == 1
@@ -783,11 +778,11 @@ def test_fetch_usage_for_all_services_sms_multiple_services(notify_db_session):
 
 def test_fetch_usage_for_all_services_sms_no_org(
     sample_service,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=1000, financial_year_start=2016)
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=5)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=5)
 
     results = fetch_usage_for_all_services_sms(datetime(2016, 4, 15), datetime(2016, 5, 31))
     assert len(results) == 1
@@ -937,12 +932,12 @@ def test_fetch_usage_for_organisation_variable_rates(
 def test_fetch_usage_for_organisation_sms_remainder(
     sample_service,
     sample_organisation,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2016)
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=1)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2016, 4, 20), billable_unit=1)
 
     results = fetch_usage_for_organisation(organisation_id=sample_organisation.id, year=2016)
     assert len(results) == 1
@@ -973,7 +968,7 @@ def test_fetch_usage_for_organisation_no_usage(
 def test_fetch_usage_for_organisation_excludes_trial_services(
     sample_service,
     sample_organisation,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
@@ -990,12 +985,12 @@ def test_fetch_usage_for_organisation_excludes_trial_services(
 def test_fetch_usage_for_organisation_partially_billable(
     sample_service,
     sample_organisation,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session,
 ):
     dao_add_service_to_organisation(service=sample_service, organisation_id=sample_organisation.id)
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=3, financial_year_start=2019)
-    create_ft_billing(template=sample_service_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
+    create_ft_billing(template=sample_sms_template, bst_date=datetime(2019, 4, 20), billable_unit=5, rate=0.11)
 
     results = fetch_usage_for_organisation(sample_organisation.id, 2019)
     assert len(results) == 1
@@ -1040,7 +1035,7 @@ def test_fetch_usage_for_organisation_multiple_services(
 def test_fetch_usage_for_organisation_without_annual_billing(
     sample_service,
     sample_organisation,
-    sample_service_sms_template,
+    sample_sms_template,
     notify_db_session
 ):
     # Example: we don't continue populating annual_billing for inactive services
