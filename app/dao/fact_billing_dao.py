@@ -789,82 +789,10 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
 
 
 def _fetch_usage_for_organisation_sms_query(organisation_id, year):
-    """
-    See docstring for _fetch_usage_for_service_sms()
-    """
-    # ASSUMPTION: AnnualBilling has been populated for year.
-    year_start, year_end = get_financial_year_dates(year)
-
-    # We still return a single row even if a service has no rows in ft_billing
-    # or a row in annual_billing. Coalesce ensures we return a usable value.
-    this_rows_chargeable_units = func.coalesce(
-        FactBilling.billable_units * FactBilling.rate_multiplier,
-        0
-    )
-
-    # Subquery for the number of chargeable units in all rows preceding this one,
-    # which might be none if this is the first row (hence the "coalesce").
-    chargeable_units_used_before_this_row = func.coalesce(
-        func.sum(this_rows_chargeable_units).over(
-            # order is "ASC" by default
-            order_by=[FactBilling.bst_date],
-
-            # partition by service id
-            partition_by=FactBilling.service_id,
-
-            # first row to previous row
-            rows=(None, -1)
-        ).cast(Integer),
-        0
-    )
-
-    # Subquery for how much free allowance we have left before the current row,
-    # so we can work out the cost for this row after taking it into account.
-    remaining_free_allowance_before_this_row = func.greatest(
-        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
-        0
-    )
-
-    # Subquery for the number of chargeable_units that we will actually charge
-    # for, after taking any remaining free allowance into account.
-    charged_units = func.greatest(
-        this_rows_chargeable_units - remaining_free_allowance_before_this_row,
-        0
-    )
-
-    # We still return a single row even if a service has no rows in ft_billing
-    # or a row in annual_billing. Coalesce ensures we return a usable value.
-    this_rows_rate = func.coalesce(FactBilling.rate, 0.0)
-
-    free_allowance_left = func.greatest(
-        remaining_free_allowance_before_this_row - this_rows_chargeable_units,
-        0
-    )
-
-    return db.session.query(
-        Service.id.label('service_id'),
-        FactBilling.bst_date,
-        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
-        free_allowance_left.label("free_allowance_left"),
-        this_rows_chargeable_units.label("chargeable_units"),
-        (charged_units * this_rows_rate).label("cost"),
-        charged_units.label("charged_units"),
-    ).outerjoin(
-        AnnualBilling,
-        and_(
-            AnnualBilling.service_id == Service.id,
-            AnnualBilling.financial_year_start == year,
-        )
-    ).outerjoin(
-        FactBilling,
-        and_(
-            Service.id == FactBilling.service_id,
-            FactBilling.bst_date >= year_start,
-            FactBilling.bst_date <= year_end,
-            FactBilling.notification_type == SMS_TYPE,
-        )
+    return _fetch_usage_for_all_services_sms_query(
+        year
     ).filter(
-        Service.organisation_id == organisation_id,
+        Service.organisation_id == organisation_id
     )
 
 
