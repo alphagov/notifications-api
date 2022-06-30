@@ -229,6 +229,8 @@ def _sample_service_custom_letter_contact_block(sample_service):
 
 @pytest.fixture(scope='function')
 def sample_template(sample_user):
+    # This will be the same service as the one returned by the sample_service fixture as we look for a
+    # service with the same name - "Sample service" - before creating a new one.
     service = create_service(service_permissions=[EMAIL_TYPE, SMS_TYPE], check_if_service_exists=True)
 
     data = {
@@ -245,6 +247,11 @@ def sample_template(sample_user):
     dao_create_template(template)
 
     return template
+
+
+@pytest.fixture
+def sample_sms_template(sample_template):
+    return sample_template
 
 
 @pytest.fixture(scope='function')
