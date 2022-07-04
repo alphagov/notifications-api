@@ -87,14 +87,12 @@ clean:
 preview: ## Set environment to preview
 	$(eval export DEPLOY_ENV=preview)
 	$(eval export DNS_NAME="notify.works")
-	$(eval export USE_DROPLETS="yes")
 	@true
 
 .PHONY: staging
 staging: ## Set environment to staging
 	$(eval export DEPLOY_ENV=staging)
 	$(eval export DNS_NAME="staging-notify.works")
-	$(eval export USE_DROPLETS="yes")
 	@true
 
 .PHONY: production
