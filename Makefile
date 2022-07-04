@@ -87,12 +87,14 @@ clean:
 preview: ## Set environment to preview
 	$(eval export DEPLOY_ENV=preview)
 	$(eval export DNS_NAME="notify.works")
+	$(eval export USE_DROPLETS="yes")
 	@true
 
 .PHONY: staging
 staging: ## Set environment to staging
 	$(eval export DEPLOY_ENV=staging)
 	$(eval export DNS_NAME="staging-notify.works")
+	$(eval export USE_DROPLETS="yes")
 	@true
 
 .PHONY: production
@@ -135,9 +137,7 @@ cf-deploy: ## Deploys the app to Cloud Foundry
 	# generate manifest (including secrets) and write it to CF_MANIFEST_PATH (in /tmp/)
 	make -s CF_APP=${CF_APP} generate-manifest > ${CF_MANIFEST_PATH}
 
-	# fails after 15 mins if deploy doesn't work
-	# reads manifest from CF_MANIFEST_PATH
-	CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f ${CF_MANIFEST_PATH}
+	$(if ${USE_DROPLETS},CF_APP=${CF_APP} CF_MANIFEST_PATH=${CF_MANIFEST_PATH} ./scripts/deploy.sh,CF_STARTUP_TIMEOUT=15 cf push ${CF_APP} --strategy=rolling -f ${CF_MANIFEST_PATH})
 	# delete old manifest file
 	rm ${CF_MANIFEST_PATH}
 
