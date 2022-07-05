@@ -399,6 +399,7 @@ class Organisation(db.Model):
         'Domain',
     )
 
+    # this is default email branding for organisation, not to be confused with email branding pool
     email_branding = db.relationship('EmailBranding')
     email_branding_id = db.Column(
         UUID(as_uuid=True),
@@ -412,6 +413,7 @@ class Organisation(db.Model):
         backref='organisations'
     )
 
+    # this is default letter branding for organisation
     letter_branding = db.relationship('LetterBranding')
     letter_branding_id = db.Column(
         UUID(as_uuid=True),
