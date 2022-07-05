@@ -2,19 +2,30 @@
 
 set -eu
 
-[[ ! -f ./.git/short_ref ]] && $(git rev-parse --short HEAD) > ./.git/short_ref
+# if there's not git dir we're in concourse, because the artifact doesn't include the .git dir
+if [[ ! -d ".git" ]]; then
 
-GIT_REF=$(cat ./.git/short_ref)
+  if [[ $(ls -l ./api-droplet-guid-*.txt | wc -l) != 1 ]]; then
+    echo "Error:"
+    echo "Exactly one api-droplet-guid file is expected"
+    exit 1
+  fi
+  ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*.txt)
 
-if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
-  echo "Missing api-droplet-guid file for this commit"
-  echo "If running locally, run ./scripts/create-droplet.sh and try again"
-  exit 1
+else
+
+  GIT_REF=$(git rev-parse --short HEAD)
+  if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
+    echo "Error:"
+    echo "Missing api-droplet-guid file for this commit (${GIT_REF})"
+    echo "Run ./scripts/create-droplet.sh and try again"
+    exit 1
+  fi
+  ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
 fi
 
-ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
+echo "Original droplet guid: ${ORIGINAL_DROPLET_GUID}"
 APP_GUID=$(cf app ${CF_APP} --guid)
-
 
 #
 # Copy droplet
@@ -36,7 +47,7 @@ DROPLET_GUID=$(cf curl "/v3/droplets?source_guid=${ORIGINAL_DROPLET_GUID}" \
 END
 ) | jq -r ".guid")
 
-echo "Droplet GUID: ${DROPLET_GUID}"
+echo "Copied droplet guid: ${DROPLET_GUID}"
 
 # wait a bit for the droplet to be copied
 sleep 5
