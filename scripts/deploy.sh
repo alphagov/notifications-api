@@ -2,19 +2,30 @@
 
 set -eu
 
-[[ ! -f ./.git/short_ref ]] && $(git rev-parse --short HEAD) > ./.git/short_ref
+# if there's not git dir we're in concourse, because the artifact doesn't include the .git dir
+if [[ ! -d ".git" ]]; then
 
-GIT_REF=$(cat ./.git/short_ref)
+  if [[ $(ls -l ./api-droplet-guid-*.txt | wc -l) != 1 ]]; then
+    echo "Error:"
+    echo "Exactly one api-droplet-guid file is expected"
+    exit 1
+  fi
+  ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*.txt)
 
-if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
-  echo "Missing api-droplet-guid file for this commit"
-  echo "If running locally, run ./scripts/create-droplet.sh and try again"
-  exit 1
+else
+
+  GIT_REF=$(git rev-parse --short HEAD)
+  if [[ ! $(ls ./api-droplet-guid-*-${GIT_REF}.txt) ]]; then
+    echo "Error:"
+    echo "Missing api-droplet-guid file for this commit (${GIT_REF})"
+    echo "Run ./scripts/create-droplet.sh and try again"
+    exit 1
+  fi
+  ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
 fi
 
-ORIGINAL_DROPLET_GUID=$(cat ./api-droplet-guid-*-${GIT_REF}.txt)
+echo "Original droplet guid: ${ORIGINAL_DROPLET_GUID}"
 APP_GUID=$(cf app ${CF_APP} --guid)
-
 
 #
 # Copy droplet
@@ -36,7 +47,7 @@ DROPLET_GUID=$(cf curl "/v3/droplets?source_guid=${ORIGINAL_DROPLET_GUID}" \
 END
 ) | jq -r ".guid")
 
-echo "Droplet GUID: ${DROPLET_GUID}"
+echo "Copied droplet guid: ${DROPLET_GUID}"
 
 # wait a bit for the droplet to be copied
 sleep 5
@@ -51,34 +62,8 @@ sleep 5
 echo "Applying manifest..."
 cf apply-manifest -f ${CF_MANIFEST_PATH}
 
-#
-# Trigger a new deployment using the new droplet guid
-#
+echo "Set the new droplet for the app"
+cf set-droplet ${CF_APP} ${DROPLET_GUID}
 
-echo "Triggering a new deployment..."
-DEPLOYMENT_GUID=$(cf curl "/v3/deployments" \
-  -X POST \
-  -H "Content-type: application/json" \
-  -d @<(cat <<END
-{
-  "droplet": {
-    "guid": "${DROPLET_GUID}"
-  },
-  "strategy": "rolling",
-  "relationships": {
-    "app": {
-      "data": {
-        "guid": "${APP_GUID}"
-      }
-    }
-  }
-}
-END
-) | jq -r ".guid")
-echo "Deployment GUID: ${DEPLOYMENT_GUID}"
-
-#
-# Wait for 15 minutes for the deployment to reach "FINALIZED" status
-# If it doesn't, then, according to `timeout --help`, it will exit with an exit status of 124
-#
-timeout 15m bash -c -- "until [[ \${STATUS} == FINALIZED ]]; do sleep 5; STATUS=\$(cf curl v3/deployments/${DEPLOYMENT_GUID} | jq -r \".status.value\"); echo \"Deployment status: \${STATUS}\"; done"
+echo "Restart the app to pickup the new droplet"
+CF_STARTUP_TIMEOUT=15 cf restart ${CF_APP} --strategy rolling
