@@ -250,7 +250,7 @@ sqlalchemy==1.4.39
     #   marshmallow-sqlalchemy
 statsd==3.3.0
     # via notifications-utils
-typing-extensions==4.2.0
+typing-extensions==4.3.0
     # via pypdf2
 uri-template==1.2.0
     # via jsonschema
