@@ -11,7 +11,9 @@ from app.dao.date_util import (
     get_financial_year_dates,
     get_financial_year_for_datetime,
 )
-from app.dao.organisation_dao import dao_get_organisation_live_services
+from app.dao.organisation_dao import (
+    dao_get_organisation_live_services_and_their_free_allowance,
+)
 from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_POSTAGE_TYPES,
@@ -794,7 +796,7 @@ def _fetch_usage_for_organisation_sms_query(organisation_id, year):
 def fetch_usage_for_organisation(organisation_id, year):
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
-    services = dao_get_organisation_live_services(organisation_id)
+    services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
@@ -808,8 +810,9 @@ def fetch_usage_for_organisation(organisation_id, year):
         service_with_usage[str(service.id)] = {
             'service_id': service.id,
             'service_name': service.name,
-            'free_sms_limit': 0,
-            'sms_remainder': 0,
+            'free_sms_limit': service.free_sms_fragment_limit,
+            # if sms usage is 0, then remainder is equiv to the free sms fragment limit
+            'sms_remainder': service.free_sms_fragment_limit,
             'sms_billable_units': 0,
             'chargeable_billable_sms': 0,
             'sms_cost': 0.0,
@@ -821,23 +824,17 @@ def fetch_usage_for_organisation(organisation_id, year):
     letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
     email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
     for usage in sms_usages:
-        service_with_usage[str(usage.service_id)] = {
-            'service_id': usage.service_id,
-            'service_name': usage.service_name,
-            'free_sms_limit': usage.free_allowance,
+        # update sms fields
+        service_with_usage[str(usage.service_id)] |= {
             'sms_remainder': usage.free_allowance_left,
             'sms_billable_units': usage.chargeable_units,
             'chargeable_billable_sms': usage.charged_units,
             'sms_cost': float(usage.cost),
-            'letter_cost': 0.0,
-            'emails_sent': 0,
-            'active': usage.active
         }
     for letter_usage in letter_usages:
         service_with_usage[str(letter_usage.service_id)]['letter_cost'] = float(letter_usage.letter_cost)
     for email_usage in email_usages:
         service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
-
     return service_with_usage
 
 
