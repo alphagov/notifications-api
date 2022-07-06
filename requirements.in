@@ -19,7 +19,7 @@ marshmallow==3.17.0
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
 SQLAlchemy==1.4.39
-cachetools==5.1.0
+cachetools==5.2.0
 beautifulsoup4==4.11.1
 lxml==4.8.0
 Werkzeug==2.0.3  # pyup: <2.1.0 # later versions are not compatible with the version of flask-sqlalchemy we have pinned
