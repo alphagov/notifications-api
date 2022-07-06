@@ -7,6 +7,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.organisation_dao import (
+    dao_add_email_branding_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
 )
@@ -995,3 +996,29 @@ def test_get_organisation_services_usage_returns_400_if_year_is_empty(admin_requ
         _expected_status=400
     )
     assert response['message'] == 'No valid year provided'
+
+
+def test_get_organisation_email_branding_pool_returns_email_brandings_for_organisation(
+    admin_request, sample_organisation
+):
+    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=first_branding.id
+    )
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=second_branding.id
+    )
+
+    response = admin_request.get(
+        'organisation.get_organisation_email_branding_pool',
+        organisation_id=sample_organisation.id,
+        _expected_status=200
+    )
+
+    assert len(response['data']) == 2
+    assert response['data'][0]['id'] == str(first_branding.id)
+    assert response['data'][1]['id'] == str(second_branding.id)

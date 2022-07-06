@@ -7,9 +7,11 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.organisation_dao import (
+    dao_add_email_branding_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
+    dao_get_email_branding_pool_for_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
@@ -383,3 +385,34 @@ def test_get_organisation_by_email_address_ignores_gsi_gov_uk(notify_db_session)
 
     found_org = dao_get_organisation_by_email_address('test_gsi_address@example.gsi.gov.uk')
     assert org == found_org
+
+
+def test_add_to_and_get_email_branding_pool_for_organisation(sample_organisation):
+    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
+    third_branding = create_email_branding(colour='indigo', logo='test_x3.png', name='email_branding_3')
+
+    organisation_1 = sample_organisation
+    organisation_2 = create_organisation()
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=organisation_1.id,
+        email_branding_id=first_branding.id
+    )
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=organisation_1.id,
+        email_branding_id=second_branding.id
+    )
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=organisation_2.id,
+        email_branding_id=third_branding.id
+    )
+
+    results = dao_get_email_branding_pool_for_organisation(organisation_id=organisation_1.id)
+
+    assert len(results) == 2
+    assert results[0] == first_branding
+    assert results[1] == second_branding
+    # We test to ensure that branding that belongs to \
+    # another Organisation's email branding pool is not returned
+    assert third_branding not in results

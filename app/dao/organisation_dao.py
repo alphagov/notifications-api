@@ -2,7 +2,7 @@ from sqlalchemy.sql.expression import func
 
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
-from app.models import Domain, Organisation, Service, User
+from app.models import Domain, EmailBranding, Organisation, Service, User
 from app.utils import get_archived_db_column_value
 
 
@@ -158,3 +158,22 @@ def dao_add_user_to_organisation(organisation_id, user_id):
 @autocommit
 def dao_remove_user_from_organisation(organisation, user):
     organisation.users.remove(user)
+
+
+@autocommit
+def dao_add_email_branding_to_organisation_pool(organisation_id, email_branding_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    email_branding = EmailBranding.query.filter_by(id=email_branding_id).one()
+    organisation.email_branding_pool.append(email_branding)
+    db.session.add(organisation)
+    return email_branding
+
+
+def dao_get_email_branding_pool_for_organisation(organisation_id):
+    return db.session.query(
+        EmailBranding
+    ).join(
+        EmailBranding.organisations
+    ).filter(
+        Organisation.id == organisation_id,
+    ).order_by(EmailBranding.name).all()

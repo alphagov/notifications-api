@@ -399,6 +399,7 @@ class Organisation(db.Model):
         'Domain',
     )
 
+    # this is default email branding for organisation, not to be confused with email branding pool
     email_branding = db.relationship('EmailBranding')
     email_branding_id = db.Column(
         UUID(as_uuid=True),
@@ -406,6 +407,13 @@ class Organisation(db.Model):
         nullable=True,
     )
 
+    email_branding_pool = db.relationship(
+        'EmailBranding',
+        secondary='email_branding_to_organisation',
+        backref='organisations'
+    )
+
+    # this is default letter branding for organisation
     letter_branding = db.relationship('LetterBranding')
     letter_branding_id = db.Column(
         UUID(as_uuid=True),
@@ -466,6 +474,16 @@ class Organisation(db.Model):
             'domains': self.domain_list,
             'organisation_type': self.organisation_type,
         }
+
+
+class OrganisationEmailBranding(db.Model):
+    __tablename__ = 'email_branding_to_organisation'
+    organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey('organisation.id'), primary_key=True)
+    email_branding_id = db.Column(UUID(as_uuid=True), db.ForeignKey('email_branding.id'), primary_key=True)
+
+    __table_args__ = (
+        UniqueConstraint('organisation_id', 'email_branding_id', name='uix_email_branding_to_organisation'),
+    )
 
 
 class Service(db.Model, Versioned):
