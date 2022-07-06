@@ -39,7 +39,7 @@ cachetools==5.1.0
     # via
     #   -r requirements.in
     #   notifications-utils
-celery[sqs]==5.2.6
+celery[sqs]==5.2.7
     # via -r requirements.in
 certifi==2022.5.18.1
     # via
