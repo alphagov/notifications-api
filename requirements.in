@@ -18,7 +18,7 @@ marshmallow-sqlalchemy==0.28.0
 marshmallow==3.17.0
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
-SQLAlchemy==1.4.36
+SQLAlchemy==1.4.39
 cachetools==5.1.0
 beautifulsoup4==4.11.1
 lxml==4.8.0
