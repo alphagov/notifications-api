@@ -57,6 +57,7 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
         chargeable_units.label('chargeable_units'),
         charged_units.label("charged_units"),
         cost.label('cost'),
+        Service.active,
     ).select_from(
         Service
     ).outerjoin(
@@ -751,45 +752,10 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 
 
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
-    ft_billing_subquery = _fetch_usage_for_organisation_sms_query(organisation_id, financial_year).subquery()
-
-    free_allowance = func.max(ft_billing_subquery.c.free_allowance)
-    free_allowance_left = func.min(ft_billing_subquery.c.free_allowance_left)
-    chargeable_units = func.sum(ft_billing_subquery.c.chargeable_units)
-    charged_units = func.sum(ft_billing_subquery.c.charged_units)
-    cost = func.sum(ft_billing_subquery.c.cost)
-
-    query = db.session.query(
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        free_allowance.label("free_allowance"),
-        free_allowance_left.label("free_allowance_left"),
-        chargeable_units.label('chargeable_units'),
-        charged_units.label("charged_units"),
-        cost.label('cost'),
-        Service.active
-    ).select_from(
-        Service
-    ).outerjoin(
-        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
-    ).filter(
+    year_start, year_end = get_financial_year_dates(financial_year)
+    return fetch_usage_for_all_services_sms(year_start, year_end).filter(
         Service.organisation_id == organisation_id,
         Service.restricted.is_(False)
-    ).group_by(
-        Service.id,
-        Service.name,
-    ).order_by(
-        Service.name
-    )
-
-    return query
-
-
-def _fetch_usage_for_organisation_sms_query(organisation_id, year):
-    return _fetch_usage_for_all_services_sms_query(
-        year
-    ).filter(
-        Service.organisation_id == organisation_id
     )
 
 
