@@ -453,3 +453,23 @@ def test_create_p1_zendesk_alert_doesnt_alert_on_staging(mocker, notify_api, sam
         _create_p1_zendesk_alert(broadcast_message)
 
     mock_send_ticket_to_zendesk.assert_not_called()
+
+
+def test_create_p1_zendesk_alert_doesnt_alert_for_stubbed_messages(mocker, notify_api, sample_broadcast_service):
+    broadcast_message = create_broadcast_message(
+        service=sample_broadcast_service,
+        content='tailor made emergency broadcast content',
+        status=BroadcastStatusType.BROADCASTING,
+        areas={"names": ["England", "Scotland"]},
+        stubbed=True
+    )
+
+    mock_send_ticket_to_zendesk = mocker.patch(
+        'app.broadcast_message.utils.zendesk_client.send_ticket_to_zendesk',
+        autospec=True,
+    )
+
+    with set_config(notify_api, 'NOTIFY_ENVIRONMENT', 'live'):
+        _create_p1_zendesk_alert(broadcast_message)
+
+    mock_send_ticket_to_zendesk.assert_not_called()

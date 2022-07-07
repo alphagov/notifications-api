@@ -70,6 +70,9 @@ def _create_p1_zendesk_alert(broadcast_message):
     if broadcast_message.status != BroadcastStatusType.BROADCASTING:
         return
 
+    if broadcast_message.stubbed:
+        return
+
     message = inspect.cleandoc(f"""
         Broadcast Sent
 
