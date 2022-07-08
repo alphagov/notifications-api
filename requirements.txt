@@ -109,15 +109,15 @@ geojson==2.5.0
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==1.1.2
-    # via eventlet
+    # via
+    #   eventlet
+    #   sqlalchemy
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via -r requirements.in
 idna==3.3
     # via
     #   jsonschema
     #   requests
-importlib-metadata==4.11.4
-    # via flask
 iso8601==1.0.2
     # via -r requirements.in
 isoduration==20.11.0
@@ -141,7 +141,7 @@ jsonschema[format]==4.5.1
     # via -r requirements.in
 kombu==5.2.4
     # via celery
-lxml==4.8.0
+lxml==4.9.1
     # via -r requirements.in
 mako==1.2.0
     # via alembic
@@ -250,8 +250,6 @@ sqlalchemy==1.4.36
     #   marshmallow-sqlalchemy
 statsd==3.3.0
     # via notifications-utils
-typing-extensions==4.2.0
-    # via pypdf2
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.9
@@ -275,8 +273,6 @@ werkzeug==2.0.3
     #   flask
 wrapt==1.14.1
     # via deprecated
-zipp==3.8.0
-    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
