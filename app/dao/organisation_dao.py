@@ -1,8 +1,16 @@
+from sqlalchemy import and_
 from sqlalchemy.sql.expression import func
 
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
-from app.models import Domain, EmailBranding, Organisation, Service, User
+from app.models import (
+    AnnualBilling,
+    Domain,
+    EmailBranding,
+    Organisation,
+    Service,
+    User,
+)
 from app.utils import get_archived_db_column_value
 
 
@@ -26,11 +34,22 @@ def dao_get_organisation_services(organisation_id):
     ).one().services
 
 
-def dao_get_organisation_live_services(organisation_id):
-    return Service.query.filter_by(
-        organisation_id=organisation_id,
-        restricted=False
-    ).all()
+def dao_get_organisation_live_services_and_their_free_allowance(organisation_id, financial_year):
+    return db.session.query(
+        Service.id,
+        Service.name,
+        Service.active,
+        func.coalesce(AnnualBilling.free_sms_fragment_limit, 0).label('free_sms_fragment_limit')
+    ).outerjoin(
+        AnnualBilling,
+        and_(
+            Service.id == AnnualBilling.service_id,
+            AnnualBilling.financial_year_start == financial_year
+        )
+    ).filter(
+        Service.organisation_id == organisation_id,
+        Service.restricted.is_(False),
+    )
 
 
 def dao_get_organisation_by_id(organisation_id):
