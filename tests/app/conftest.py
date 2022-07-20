@@ -49,7 +49,10 @@ from app.models import (
     Template,
     TemplateHistory,
 )
-from tests import create_admin_authorization_header
+from tests import (
+    create_admin_authorization_header,
+    create_service_authorization_header,
+)
 from tests.app.db import (
     create_api_key,
     create_email_branding,
@@ -1012,6 +1015,52 @@ def admin_request(client):
             return json_resp
 
     return AdminRequest
+
+
+@pytest.fixture
+def api_client_request(client):
+    """
+    For v2 endpoints. Same as admin_request, except all functions take a required service_id and an optional
+    _api_key_type field.
+    """
+
+    # save us having to convert UUIDs to strings in test data
+    def uuid_convert(o):
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        return json.JSONEncoder().default(o)
+
+    class ApiClientRequest:
+        app = client.application
+
+        @staticmethod
+        def get(service_id, endpoint, _api_key_type='normal', _expected_status=200, **endpoint_kwargs):
+            resp = client.get(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                headers=[create_service_authorization_header(service_id, _api_key_type)]
+            )
+            json_resp = resp.json
+            assert resp.status_code == _expected_status
+            return json_resp
+
+        @staticmethod
+        def post(service_id, endpoint, _api_key_type='normal', _data=None, _expected_status=200, **endpoint_kwargs):
+            resp = client.post(
+                url_for(endpoint, **(endpoint_kwargs or {})),
+                data=json.dumps(_data, default=uuid_convert),
+                headers=[
+                    ('Content-Type', 'application/json'),
+                    create_service_authorization_header(service_id, _api_key_type)
+                ]
+            )
+            if resp.get_data():
+                json_resp = resp.json
+            else:
+                json_resp = None
+            assert resp.status_code == _expected_status
+            return json_resp
+
+    return ApiClientRequest
 
 
 def datetime_in_past(days=0, seconds=0):
