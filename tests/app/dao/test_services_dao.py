@@ -36,8 +36,6 @@ from app.dao.services_dao import (
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
     dao_remove_user_from_service,
-    dao_resume_service,
-    dao_suspend_service,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
     get_live_services_with_organisation,
