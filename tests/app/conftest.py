@@ -1044,7 +1044,8 @@ def api_client_request(client):
             return json_resp
 
         @staticmethod
-        def post(service_id, endpoint, _api_key_type='normal', _data=None, _expected_status=200, **endpoint_kwargs):
+        def post(service_id, endpoint, _api_key_type='normal', _data=None, _expected_status=201, **endpoint_kwargs):
+            # note that _expected_status is 201 since this endpoint is primarily used for create endpoints
             resp = client.post(
                 url_for(endpoint, **(endpoint_kwargs or {})),
                 data=json.dumps(_data, default=uuid_convert),

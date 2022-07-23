@@ -48,7 +48,6 @@ def test_post_sms_notification_returns_201(api_client_request, sample_template_w
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_sms_response) == resp_json
@@ -88,7 +87,6 @@ def test_post_sms_notification_uses_inbound_number_as_sender(api_client_request,
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_sms_response) == resp_json
@@ -117,7 +115,6 @@ def test_post_sms_notification_uses_inbound_number_reply_to_as_sender(api_client
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_sms_response) == resp_json
@@ -147,7 +144,6 @@ def test_post_sms_notification_returns_201_with_sms_sender_id(
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_sms_response) == resp_json
@@ -175,7 +171,6 @@ def test_post_sms_notification_uses_sms_sender_id_reply_to(
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_sms_response) == resp_json
@@ -203,7 +198,6 @@ def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     dao_update_service_sms_sender(service_id=sample_template.service_id,
@@ -235,7 +229,6 @@ def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sam
             'v2_notifications.post_notification',
             notification_type='sms',
             _data=data,
-            _expected_status=201
         )
 
     assert mock_get_template.call_count == 1
@@ -269,7 +262,6 @@ def test_should_cache_template_and_service_in_redis(mocker, api_client_request, 
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     expected_service_key = f'service-{sample_template.service_id}'
@@ -328,7 +320,6 @@ def test_should_return_template_if_found_in_redis(mocker, api_client_request, sa
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     assert mock_get_template.called is False
@@ -442,7 +433,6 @@ def test_post_email_notification_returns_201(
         'v2_notifications.post_notification',
         notification_type='email',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_email_response) == resp_json
@@ -504,7 +494,6 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
         'v2_notifications.post_notification',
         notification_type=notification_type,
         _data=data,
-        _expected_status=201
     )
 
     apply_async.assert_not_called()
@@ -542,7 +531,6 @@ def test_send_notification_uses_priority_queue_when_template_is_marked_as_priori
         'v2_notifications.post_notification',
         notification_type=notification_type,
         _data=data,
-        _expected_status=201
     )
 
     notification_id = resp_json['id']
@@ -724,7 +712,6 @@ def test_post_sms_notification_returns_201_if_allowed_to_send_int_sms(
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
 
@@ -741,7 +728,6 @@ def test_post_sms_should_persist_supplied_sms_number(api_client_request, sample_
         'v2_notifications.post_notification',
         notification_type='sms',
         _data=data,
-        _expected_status=201
     )
 
     notifications = Notification.query.all()
@@ -818,7 +804,6 @@ def test_post_email_notification_with_valid_reply_to_id_returns_201(api_client_r
         'v2_notifications.post_notification',
         notification_type='email',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_email_response) == resp_json
@@ -922,7 +907,6 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
         'v2_notifications.post_notification',
         notification_type='email',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_email_response) == resp_json
@@ -967,7 +951,6 @@ def test_post_notification_with_document_upload_simulated(api_client_request, no
         'v2_notifications.post_notification',
         notification_type='email',
         _data=data,
-        _expected_status=201
     )
 
     assert validate(resp_json, post_email_response) == resp_json
@@ -1149,7 +1132,6 @@ def test_post_notifications_saves_email_or_sms_normally_if_saving_to_queue_fails
             'v2_notifications.post_notification',
             notification_type=notification_type,
             _data=data,
-            _expected_status=201
         )
 
         assert json_resp['id']
@@ -1187,7 +1169,6 @@ def test_post_notifications_doesnt_use_save_queue_for_test_notifications(
             _api_key_type='test',
             notification_type=notification_type,
             _data=data,
-            _expected_status=201
         )
 
         assert json_resp['id']
@@ -1220,7 +1201,6 @@ def test_post_notification_does_not_use_save_queue_for_letters(api_client_reques
             'v2_notifications.post_notification',
             notification_type='letter',
             _data=data,
-            _expected_status=201
         )
 
         assert not mock_save.called
