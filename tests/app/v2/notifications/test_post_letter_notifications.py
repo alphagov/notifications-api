@@ -2,13 +2,12 @@ import uuid
 from unittest.mock import ANY
 
 import pytest
-from flask import json, url_for
+from flask import json
 
 from app.config import QueueNames
 from app.models import (
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
-    KEY_TYPE_NORMAL,
     KEY_TYPE_TEAM,
     KEY_TYPE_TEST,
     LETTER_TYPE,
@@ -37,26 +36,8 @@ test_address = {
 }
 
 
-def letter_request(client, data, service_id, key_type=KEY_TYPE_NORMAL, _expected_status=201, precompiled=False):
-    if precompiled:
-        url = url_for('v2_notifications.post_precompiled_letter_notification')
-    else:
-        url = url_for('v2_notifications.post_notification', notification_type=LETTER_TYPE)
-    resp = client.post(
-        url,
-        data=json.dumps(data),
-        headers=[
-            ('Content-Type', 'application/json'),
-            create_service_authorization_header(service_id=service_id, key_type=key_type)
-        ]
-    )
-    json_resp = json.loads(resp.get_data(as_text=True))
-    assert resp.status_code == _expected_status, json_resp
-    return json_resp
-
-
 @pytest.mark.parametrize('reference', [None, 'reference_from_client'])
-def test_post_letter_notification_returns_201(client, sample_letter_template, mocker, reference):
+def test_post_letter_notification_returns_201(api_client_request, sample_letter_template, mocker, reference):
     mock = mocker.patch('app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
@@ -72,7 +53,12 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
     if reference:
         data.update({'reference': reference})
 
-    resp_json = letter_request(client, data, service_id=sample_letter_template.service_id)
+    resp_json = api_client_request.post(
+        sample_letter_template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data
+    )
 
     assert validate(resp_json, post_letter_response) == resp_json
     assert Job.query.count() == 0
@@ -97,7 +83,7 @@ def test_post_letter_notification_returns_201(client, sample_letter_template, mo
 
 
 def test_post_letter_notification_sets_postage(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
@@ -113,7 +99,12 @@ def test_post_letter_notification_sets_postage(
         }
     }
 
-    resp_json = letter_request(client, data, service_id=service.id)
+    resp_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data
+    )
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -121,7 +112,7 @@ def test_post_letter_notification_sets_postage(
 
 
 def test_post_letter_notification_formats_postcode(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter")
@@ -137,7 +128,12 @@ def test_post_letter_notification_formats_postcode(
         }
     }
 
-    resp_json = letter_request(client, data, service_id=service.id)
+    resp_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data
+    )
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -147,7 +143,7 @@ def test_post_letter_notification_formats_postcode(
 
 
 def test_post_letter_notification_stores_country(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
     template = create_template(service, template_type="letter")
@@ -161,7 +157,12 @@ def test_post_letter_notification_stores_country(
         }
     }
 
-    resp_json = letter_request(client, data, service_id=service.id)
+    resp_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data
+    )
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -180,7 +181,7 @@ def test_post_letter_notification_stores_country(
 
 
 def test_post_letter_notification_international_sets_rest_of_world(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
     template = create_template(service, template_type="letter")
@@ -194,7 +195,12 @@ def test_post_letter_notification_international_sets_rest_of_world(
         }
     }
 
-    resp_json = letter_request(client, data, service_id=service.id)
+    resp_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data
+    )
 
     assert validate(resp_json, post_letter_response) == resp_json
     notification = Notification.query.one()
@@ -237,7 +243,7 @@ def test_post_letter_notification_international_sets_rest_of_world(
     ),
 ))
 def test_post_letter_notification_throws_error_for_bad_address(
-    client, notify_db_session, mocker, permissions, personalisation, expected_error
+    api_client_request, notify_db_session, mocker, permissions, personalisation, expected_error
 ):
     service = create_service(service_permissions=permissions)
     template = create_template(service, template_type="letter", postage="first")
@@ -247,7 +253,13 @@ def test_post_letter_notification_throws_error_for_bad_address(
         'personalisation': personalisation
     }
 
-    error_json = letter_request(client, data, service_id=service.id, _expected_status=400)
+    error_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
+    )
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
@@ -261,8 +273,12 @@ def test_post_letter_notification_throws_error_for_bad_address(
     'live',
 ])
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_delivered(
-        notify_api, client, sample_letter_template, mocker, env):
-
+    notify_api,
+    api_client_request,
+    sample_letter_template,
+    mocker,
+    env
+):
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {
@@ -282,7 +298,13 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     with set_config_values(notify_api, {
         'NOTIFY_ENVIRONMENT': env
     }):
-        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+        api_client_request.post(
+            sample_letter_template.service_id,
+            'v2_notifications.post_notification',
+            notification_type='letter',
+            _data=data,
+            _api_key_type=KEY_TYPE_TEST
+        )
 
     notification = Notification.query.one()
 
@@ -297,7 +319,12 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_d
     'preview',
 ])
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_sending_and_sends_fake_response_file(
-        notify_api, client, sample_letter_template, mocker, env):
+    notify_api,
+    api_client_request,
+    sample_letter_template,
+    mocker,
+    env
+):
 
     data = {
         'template_id': str(sample_letter_template.id),
@@ -317,7 +344,13 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
     with set_config_values(notify_api, {
         'NOTIFY_ENVIRONMENT': env
     }):
-        letter_request(client, data, service_id=sample_letter_template.service_id, key_type=KEY_TYPE_TEST)
+        api_client_request.post(
+            sample_letter_template.service_id,
+            'v2_notifications.post_notification',
+            notification_type='letter',
+            _data=data,
+            _api_key_type=KEY_TYPE_TEST
+        )
 
     notification = Notification.query.one()
 
@@ -327,7 +360,7 @@ def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_s
 
 
 def test_post_letter_notification_returns_400_and_missing_template(
-    client,
+    api_client_request,
     sample_service_full_permissions
 ):
     data = {
@@ -335,14 +368,20 @@ def test_post_letter_notification_returns_400_and_missing_template(
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
+    error_json = api_client_request.post(
+        sample_service_full_permissions.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
+    )
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Template not found'}]
 
 
 def test_post_letter_notification_returns_400_for_empty_personalisation(
-    client,
+    api_client_request,
     sample_service_full_permissions,
     sample_letter_template
 ):
@@ -351,7 +390,13 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
         'personalisation': {'address_line_1': '', 'address_line_2': '', 'postcode': ''}
     }
 
-    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
+    error_json = api_client_request.post(
+        sample_service_full_permissions.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
+    )
 
     assert error_json['status_code'] == 400
     assert all([e['error'] == 'ValidationError' for e in error_json['errors']])
@@ -361,7 +406,7 @@ def test_post_letter_notification_returns_400_for_empty_personalisation(
 
 
 def test_post_notification_returns_400_for_missing_letter_contact_block_personalisation(
-    client,
+    api_client_request,
     sample_service,
 ):
     letter_contact_block = create_letter_contact(
@@ -381,11 +426,12 @@ def test_post_notification_returns_400_for_missing_letter_contact_block_personal
         },
     }
 
-    error_json = letter_request(
-        client,
-        data,
-        service_id=sample_service.id,
-        _expected_status=400,
+    error_json = api_client_request.post(
+        sample_service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
     )
 
     assert error_json['status_code'] == 400
@@ -396,14 +442,20 @@ def test_post_notification_returns_400_for_missing_letter_contact_block_personal
 
 
 def test_notification_returns_400_for_missing_template_field(
-    client,
+    api_client_request,
     sample_service_full_permissions
 ):
     data = {
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=sample_service_full_permissions.id, _expected_status=400)
+    error_json = api_client_request.post(
+        sample_service_full_permissions.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
+    )
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [{
@@ -413,7 +465,7 @@ def test_notification_returns_400_for_missing_template_field(
 
 
 def test_notification_returns_400_if_address_doesnt_have_underscores(
-    client,
+    api_client_request,
     sample_letter_template
 ):
     data = {
@@ -425,7 +477,13 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
         }
     }
 
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=400)
+    error_json = api_client_request.post(
+        sample_letter_template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=400
+    )
 
     assert error_json['status_code'] == 400
     assert error_json['errors'] == [
@@ -437,7 +495,7 @@ def test_notification_returns_400_if_address_doesnt_have_underscores(
 
 
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
-    client,
+    api_client_request,
     sample_letter_template,
     mocker
 ):
@@ -452,7 +510,13 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=sample_letter_template.service_id, _expected_status=429)
+    error_json = api_client_request.post(
+        sample_letter_template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=429
+    )
 
     assert error_json['status_code'] == 429
     assert error_json['errors'] == [{
@@ -476,7 +540,7 @@ def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     )
 ])
 def test_post_letter_notification_returns_403_if_not_allowed_to_send_notification(
-    client,
+    api_client_request,
     notify_db_session,
     service_args,
     expected_status,
@@ -490,25 +554,33 @@ def test_post_letter_notification_returns_403_if_not_allowed_to_send_notificatio
         'personalisation': test_address
     }
 
-    error_json = letter_request(client, data, service_id=service.id, _expected_status=expected_status)
+    error_json = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _expected_status=expected_status,
+    )
+
     assert error_json['status_code'] == expected_status
     assert error_json['errors'] == [
         {'error': 'BadRequestError', 'message': expected_message}
     ]
 
 
-def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_template, mocker):
+def test_post_letter_notification_doesnt_accept_team_key(api_client_request, sample_letter_template, mocker):
     mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
-    error_json = letter_request(
-        client,
-        data,
+    error_json = api_client_request.post(
         sample_letter_template.service_id,
-        key_type=KEY_TYPE_TEAM,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _api_key_type=KEY_TYPE_TEAM,
         _expected_status=403
     )
 
@@ -516,17 +588,18 @@ def test_post_letter_notification_doesnt_accept_team_key(client, sample_letter_t
     assert error_json['errors'] == [{'error': 'BadRequestError', 'message': 'Cannot send letters with a team api key'}]
 
 
-def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_letter_template, mocker):
+def test_post_letter_notification_doesnt_send_in_trial(api_client_request, sample_trial_letter_template, mocker):
     mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
     data = {
         'template_id': str(sample_trial_letter_template.id),
         'personalisation': {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'Baz'}
     }
 
-    error_json = letter_request(
-        client,
-        data,
+    error_json = api_client_request.post(
         sample_trial_letter_template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
         _expected_status=403
     )
 
@@ -536,7 +609,7 @@ def test_post_letter_notification_doesnt_send_in_trial(client, sample_trial_lett
 
 
 def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial_mode_and_using_test_key(
-    client,
+    api_client_request,
     sample_trial_letter_template,
     mocker
 ):
@@ -547,7 +620,13 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
     }
 
-    letter_request(client, data=data, service_id=sample_trial_letter_template.service_id, key_type=KEY_TYPE_TEST)
+    api_client_request.post(
+        sample_trial_letter_template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+        _api_key_type=KEY_TYPE_TEST
+    )
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_DELIVERED
@@ -555,8 +634,7 @@ def test_post_letter_notification_is_delivered_but_still_creates_pdf_if_in_trial
 
 
 def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_letters_bucket_using_test_key(
-    client,
-    notify_user,
+    api_client_request,
     mocker
 ):
     sample_letter_service = create_service(service_permissions=['letter'])
@@ -566,12 +644,13 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ="
     }
-    letter_request(
-        client,
-        data=data,
-        service_id=str(sample_letter_service.id),
-        key_type=KEY_TYPE_TEST,
-        precompiled=True)
+
+    api_client_request.post(
+        sample_letter_service.id,
+        'v2_notifications.post_precompiled_letter_notification',
+        _data=data,
+        _api_key_type=KEY_TYPE_TEST,
+    )
 
     notification = Notification.query.one()
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
@@ -579,7 +658,7 @@ def test_post_letter_notification_is_delivered_and_has_pdf_uploaded_to_test_lett
 
 
 def test_post_letter_notification_ignores_reply_to_text_for_service(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
 
@@ -590,7 +669,12 @@ def test_post_letter_notification_ignores_reply_to_text_for_service(
         "template_id": template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
     }
-    letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_NORMAL)
+
+    api_client_request.post(
+        service.id,
+        'v2_notifications.post_precompiled_letter_notification',
+        _data=data,
+    )
 
     notifications = Notification.query.all()
     assert len(notifications) == 1
@@ -598,7 +682,7 @@ def test_post_letter_notification_ignores_reply_to_text_for_service(
 
 
 def test_post_letter_notification_persists_notification_reply_to_text_for_template(
-    client, notify_db_session, mocker
+    api_client_request, notify_db_session, mocker
 ):
     mocker.patch('app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async')
 
@@ -610,14 +694,20 @@ def test_post_letter_notification_persists_notification_reply_to_text_for_templa
         "template_id": template.id,
         "personalisation": {'address_line_1': 'Foo', 'address_line_2': 'Bar', 'postcode': 'BA5 5AB'}
     }
-    letter_request(client, data=data, service_id=service.id, key_type=KEY_TYPE_NORMAL)
+
+    api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='letter',
+        _data=data,
+    )
 
     notifications = Notification.query.all()
     assert len(notifications) == 1
     assert notifications[0].reply_to_text == 'not the default'
 
 
-def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker):
+def test_post_precompiled_letter_with_invalid_base64(api_client_request, mocker):
     sample_service = create_service(service_permissions=['letter'])
     mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
 
@@ -625,14 +715,14 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
         "reference": "letter-reference",
         "content": "hi"
     }
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 400, response.get_data(as_text=True)
-    resp_json = json.loads(response.get_data(as_text=True))
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_notifications.post_precompiled_letter_notification',
+        _data=data,
+        _expected_status=400
+    )
+
     assert resp_json['errors'][0]['message'] == 'Cannot decode letter content (invalid base64 encoding)'
 
     assert not Notification.query.first()
@@ -644,7 +734,7 @@ def test_post_precompiled_letter_with_invalid_base64(client, notify_user, mocker
     (None, 'second')
 ])
 def test_post_precompiled_letter_notification_returns_201(
-    client, notify_user, mocker, notification_postage, expected_postage
+    api_client_request, mocker, notification_postage, expected_postage
 ):
     sample_service = create_service(service_permissions=['letter'])
     s3mock = mocker.patch('app.v2.notifications.post_notifications.upload_letter_pdf')
@@ -655,13 +745,12 @@ def test_post_precompiled_letter_notification_returns_201(
     }
     if notification_postage:
         data["postage"] = notification_postage
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
 
-    assert response.status_code == 201, response.get_data(as_text=True)
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_notifications.post_precompiled_letter_notification',
+        _data=data
+    )
 
     s3mock.assert_called_once_with(ANY, b'letter-content', precompiled=True)
 
@@ -671,12 +760,11 @@ def test_post_precompiled_letter_notification_returns_201(
     assert notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
     assert notification.postage == expected_postage
 
-    resp_json = json.loads(response.get_data(as_text=True))
     assert resp_json == {'id': str(notification.id), 'reference': 'letter-reference', 'postage': expected_postage}
 
 
 def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is_not_persisted(
-    client, notify_user, mocker
+    api_client_request, mocker
 ):
     sample_service = create_service(service_permissions=['letter'])
     persist_letter_mock = mocker.patch('app.v2.notifications.post_notifications.create_letter_notification',
@@ -688,33 +776,31 @@ def test_post_precompiled_letter_notification_if_s3_upload_fails_notification_is
         "content": "bGV0dGVyLWNvbnRlbnQ="
     }
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
     with pytest.raises(expected_exception=Exception):
-        client.post(
-            path="v2/notifications/letter",
-            data=json.dumps(data),
-            headers=[('Content-Type', 'application/json'), auth_header])
+        api_client_request.post(
+            sample_service.id,
+            'v2_notifications.post_precompiled_letter_notification',
+            _data=data
+        )
 
     assert s3mock.called
     assert persist_letter_mock.called
     assert Notification.query.count() == 0
 
 
-def test_post_letter_notification_throws_error_for_invalid_postage(client, notify_user, mocker):
+def test_post_letter_notification_throws_error_for_invalid_postage(api_client_request, mocker):
     sample_service = create_service(service_permissions=['letter'])
     data = {
         "reference": "letter-reference",
         "content": "bGV0dGVyLWNvbnRlbnQ=",
         "postage": "space unicorn"
     }
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-    response = client.post(
-        path="v2/notifications/letter",
-        data=json.dumps(data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400, response.get_data(as_text=True)
-    resp_json = json.loads(response.get_data(as_text=True))
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_notifications.post_precompiled_letter_notification',
+        _data=data,
+        _expected_status=400
+    )
     assert resp_json['errors'][0]['message'] == "postage invalid. It must be first, second, europe or rest-of-world."
 
     assert not Notification.query.first()
