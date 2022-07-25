@@ -985,6 +985,47 @@ def test_post_notification_without_document_upload_permission(api_client_request
     )
 
 
+@pytest.mark.parametrize('notification_type, contact_data', [
+    ('letter', {}),
+    ('sms', {'phone_number': '07700900100'}),
+])
+def test_post_notification_with_document_rejects_sms_and_letter(
+    api_client_request,
+    sample_service,
+    notification_type,
+    contact_data
+):
+    sample_service.contact_link = 'contact.me@gov.uk'
+    template = create_template(
+        service=sample_service,
+        template_type=notification_type,
+        content="Document: ((document))"
+    )
+
+    data = {
+        "template_id": template.id,
+        "personalisation": {"document": {"file": "abababab"}}
+    } | contact_data
+
+    response_json = api_client_request.post(
+        sample_service.id,
+        'v2_notifications.post_notification',
+        notification_type=notification_type,
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response_json == {
+        'status_code': 400,
+        'errors': [
+            {
+                'error': 'BadRequestError',
+                'message': 'Can only send a file by email',
+            }
+        ]
+    }
+
+
 def test_post_notification_returns_400_when_get_json_throws_exception(client, sample_email_template):
     auth_header = create_service_authorization_header(service_id=sample_email_template.service_id)
     response = client.post(
