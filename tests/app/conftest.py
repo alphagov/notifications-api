@@ -1018,7 +1018,7 @@ def admin_request(client):
 
 
 @pytest.fixture
-def api_client_request(client):
+def api_client_request(client, notify_user):
     """
     For v2 endpoints. Same as admin_request, except all functions take a required service_id and an optional
     _api_key_type field.
