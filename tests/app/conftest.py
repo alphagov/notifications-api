@@ -1041,6 +1041,7 @@ def api_client_request(client):
             )
             json_resp = resp.json
             assert resp.status_code == _expected_status
+            assert resp.headers['Content-type'] == 'application/json'
             return json_resp
 
         @staticmethod
@@ -1056,6 +1057,7 @@ def api_client_request(client):
             )
             if resp.get_data():
                 json_resp = resp.json
+                assert resp.headers['Content-type'] == 'application/json'
             else:
                 json_resp = None
             assert resp.status_code == _expected_status
