@@ -1,7 +1,7 @@
 import datetime
 
 import pytest
-from flask import json, url_for
+from flask import url_for
 
 from app.utils import DATETIME_FORMAT
 from tests import create_service_authorization_header
@@ -14,7 +14,7 @@ from tests.app.db import create_notification, create_template
     (1, None)
 ])
 def test_get_notification_by_id_returns_200(
-        client, billable_units, provider, sample_template
+    api_client_request, billable_units, provider, sample_template
 ):
     sample_notification = create_notification(
         template=sample_template,
@@ -29,15 +29,11 @@ def test_get_notification_by_id_returns_200(
         sent_by=provider,
     )
 
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/{}'.format(sample_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=sample_notification.id
+    )
 
     expected_template_response = {
         'id': '{}'.format(sample_notification.serialize()['template']['id']),
@@ -74,22 +70,18 @@ def test_get_notification_by_id_returns_200(
 
 
 def test_get_notification_by_id_with_placeholders_returns_200(
-        client, sample_email_template_with_placeholders
+    api_client_request, sample_email_template_with_placeholders
 ):
     sample_notification = create_notification(
         template=sample_email_template_with_placeholders,
         personalisation={"name": "Bob"}
     )
 
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/{}'.format(sample_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=sample_notification.id
+    )
 
     expected_template_response = {
         'id': '{}'.format(sample_notification.serialize()['template']['id']),
@@ -125,19 +117,16 @@ def test_get_notification_by_id_with_placeholders_returns_200(
     assert json_response == expected_response
 
 
-def test_get_notification_by_reference_returns_200(client, sample_template):
+def test_get_notification_by_reference_returns_200(api_client_request, sample_template):
     sample_notification_with_reference = create_notification(template=sample_template,
                                                              client_reference='some-client-reference')
 
-    auth_header = create_service_authorization_header(service_id=sample_notification_with_reference.service_id)
-    response = client.get(
-        path='/v2/notifications?reference={}'.format(sample_notification_with_reference.client_reference),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_notification_with_reference.service_id,
+        'v2_notifications.get_notifications',
+        reference=sample_notification_with_reference.client_reference
+    )
 
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
     assert len(json_response['notifications']) == 1
 
     assert json_response['notifications'][0]['id'] == str(sample_notification_with_reference.id)
@@ -145,46 +134,43 @@ def test_get_notification_by_reference_returns_200(client, sample_template):
 
 
 def test_get_notification_by_id_returns_created_by_name_if_notification_created_by_id(
-    client,
+    api_client_request,
     sample_user,
     sample_template,
 ):
     sms_notification = create_notification(template=sample_template)
     sms_notification.created_by_id = sample_user.id
 
-    auth_header = create_service_authorization_header(service_id=sms_notification.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_notification_by_id', notification_id=sms_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    json_response = api_client_request.get(
+        sms_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=sms_notification.id
     )
 
-    json_response = response.get_json()
     assert json_response['created_by_name'] == 'Test User'
 
 
-def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(client, sample_service):
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-    response = client.get(
-        path='/v2/notifications?reference={}'.format('nonexistent-reference'),
-        headers=[('Content-Type', 'application/json'), auth_header])
+def test_get_notification_by_reference_nonexistent_reference_returns_no_notifications(
+    api_client_request,
+    sample_service
+):
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_notifications.get_notifications',
+        reference='nonexistent-reference'
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert len(json_response['notifications']) == 0
 
 
-def test_get_notification_by_id_nonexistent_id(client, sample_notification):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/dd4b8b9d-d414-4a83-9256-580046bf18f9',
-        headers=[('Content-Type', 'application/json'), auth_header])
+def test_get_notification_by_id_nonexistent_id(api_client_request, sample_notification):
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id='dd4b8b9d-d414-4a83-9256-580046bf18f9',
+        _expected_status=404
+    )
 
-    assert response.status_code == 404
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
     assert json_response == {
         "errors": [
             {
@@ -197,16 +183,14 @@ def test_get_notification_by_id_nonexistent_id(client, sample_notification):
 
 
 @pytest.mark.parametrize("id", ["1234-badly-formatted-id-7890", "0"])
-def test_get_notification_by_id_invalid_id(client, sample_notification, id):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/{}'.format(id),
-        headers=[('Content-Type', 'application/json'), auth_header])
+def test_get_notification_by_id_invalid_id(api_client_request, sample_notification, id):
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=id,
+        _expected_status=400
+    )
 
-    assert response.status_code == 400
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
     assert json_response == {"errors": [
         {"error": "ValidationError",
          "message": "notification_id is not a valid UUID"
@@ -222,7 +206,7 @@ def test_get_notification_by_id_invalid_id(client, sample_notification, id):
     (6, 'first', '2000-06-03T15:00:00.000000Z'),  # 4pm BST in summer (two days before 2nd class due to weekends)
 ])
 def test_get_notification_adds_delivery_estimate_for_letters(
-    client,
+    api_client_request,
     sample_letter_notification,
     created_at_month,
     postage,
@@ -231,46 +215,43 @@ def test_get_notification_adds_delivery_estimate_for_letters(
     sample_letter_notification.created_at = datetime.date(2000, created_at_month, 1)
     sample_letter_notification.postage = postage
 
-    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/{}'.format(sample_letter_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    json_response = api_client_request.get(
+        sample_letter_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=sample_letter_notification.id
     )
 
-    json_response = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
     assert json_response['postage'] == postage
     assert json_response['estimated_delivery'] == estimated_delivery
 
 
 @pytest.mark.parametrize('template_type', ['sms', 'email'])
-def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(client, sample_service, template_type):
+def test_get_notification_doesnt_have_delivery_estimate_for_non_letters(
+    api_client_request,
+    sample_service,
+    template_type
+):
     template = create_template(service=sample_service, template_type=template_type)
     mocked_notification = create_notification(template=template)
 
-    auth_header = create_service_authorization_header(service_id=mocked_notification.service_id)
-    response = client.get(
-        path='/v2/notifications/{}'.format(mocked_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    json_response = api_client_request.get(
+        mocked_notification.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=mocked_notification.id
     )
-    assert response.status_code == 200
-    assert 'estimated_delivery' not in json.loads(response.get_data(as_text=True))
+    assert 'estimated_delivery' not in json_response
 
 
-def test_get_all_notifications_except_job_notifications_returns_200(client, sample_template, sample_job):
+def test_get_all_notifications_except_job_notifications_returns_200(api_client_request, sample_template, sample_job):
     create_notification(template=sample_template, job=sample_job)  # should not return this job notification
     notifications = [create_notification(template=sample_template) for _ in range(2)]
     notification = notifications[-1]
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_template.service_id,
+        'v2_notifications.get_notifications'
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 2
@@ -288,7 +269,7 @@ def test_get_all_notifications_except_job_notifications_returns_200(client, samp
 
 
 def test_get_all_notifications_with_include_jobs_arg_returns_200(
-    client, sample_template, sample_job
+    api_client_request, sample_template, sample_job
 ):
     notifications = [
         create_notification(template=sample_template, job=sample_job),
@@ -296,14 +277,12 @@ def test_get_all_notifications_with_include_jobs_arg_returns_200(
     ]
     notification = notifications[-1]
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications?include_jobs=true',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_template.service_id,
+        'v2_notifications.get_notifications',
+        include_jobs='true',
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
     assert json_response['links']['current'].endswith("/v2/notifications?include_jobs=true")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 2
@@ -315,37 +294,30 @@ def test_get_all_notifications_with_include_jobs_arg_returns_200(
     assert not json_response['notifications'][0]['scheduled_for']
 
 
-def test_get_all_notifications_no_notifications_if_no_notifications(client, sample_service):
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-    response = client.get(
-        path='/v2/notifications',
-        headers=[('Content-Type', 'application/json'), auth_header])
+def test_get_all_notifications_no_notifications_if_no_notifications(api_client_request, sample_service):
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_notifications.get_notifications',
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications")
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
 
-def test_get_all_notifications_filter_by_template_type(client, sample_service):
+def test_get_all_notifications_filter_by_template_type(api_client_request, sample_service):
     email_template = create_template(service=sample_service, template_type="email")
     sms_template = create_template(service=sample_service, template_type="sms")
 
     notification = create_notification(template=email_template, to_field="don.draper@scdp.biz")
     create_notification(template=sms_template)
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications?template_type=email',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        notification.service_id,
+        'v2_notifications.get_notifications',
+        template_type='email',
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?template_type=email")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
@@ -361,35 +333,29 @@ def test_get_all_notifications_filter_by_template_type(client, sample_service):
     assert json_response['notifications'][0]['type'] == "email"
 
 
-def test_get_all_notifications_filter_by_template_type_invalid_template_type(client, sample_notification):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?template_type=orange',
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 400
-    assert response.headers['Content-type'] == "application/json"
+def test_get_all_notifications_filter_by_template_type_invalid_template_type(api_client_request, sample_notification):
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notifications',
+        template_type='orange',
+        _expected_status=400
+    )
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
     assert json_response['errors'][0]['message'] == "template_type orange is not one of [sms, email, letter]"
 
 
-def test_get_all_notifications_filter_by_single_status(client, sample_template):
+def test_get_all_notifications_filter_by_single_status(api_client_request, sample_template):
     notification = create_notification(template=sample_template, status="pending")
     create_notification(template=sample_template)
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications?status=pending',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        notification.service_id,
+        'v2_notifications.get_notifications',
+        status='pending',
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?status=pending")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
@@ -398,16 +364,13 @@ def test_get_all_notifications_filter_by_single_status(client, sample_template):
     assert json_response['notifications'][0]['status'] == "pending"
 
 
-def test_get_all_notifications_filter_by_status_invalid_status(client, sample_notification):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?status=elephant',
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 400
-    assert response.headers['Content-type'] == "application/json"
+def test_get_all_notifications_filter_by_status_invalid_status(api_client_request, sample_notification):
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notifications',
+        status='elephant',
+        _expected_status=400
+    )
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
@@ -416,22 +379,19 @@ def test_get_all_notifications_filter_by_status_invalid_status(client, sample_no
         "pending-virus-check, validation-failed, virus-scan-failed, returned-letter, accepted, received]"
 
 
-def test_get_all_notifications_filter_by_multiple_statuses(client, sample_template):
+def test_get_all_notifications_filter_by_multiple_statuses(api_client_request, sample_template):
     notifications = [
         create_notification(template=sample_template, status=_status)
         for _status in ["created", "pending", "sending"]
     ]
     failed_notification = create_notification(template=sample_template, status="permanent-failure")
 
-    auth_header = create_service_authorization_header(service_id=notifications[0].service_id)
-    response = client.get(
-        path='/v2/notifications?status=created&status=pending&status=sending',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_template.service_id,
+        'v2_notifications.get_notifications',
+        status=['created', 'pending', 'sending']
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?status=created&status=pending&status=sending")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 3
@@ -443,22 +403,19 @@ def test_get_all_notifications_filter_by_multiple_statuses(client, sample_templa
     assert failed_notification.id not in returned_notification_ids
 
 
-def test_get_all_notifications_filter_by_failed_status(client, sample_template):
+def test_get_all_notifications_filter_by_failed_status(api_client_request, sample_template):
     created_notification = create_notification(template=sample_template, status="created")
     failed_notifications = [
         create_notification(template=sample_template, status=_status)
         for _status in ["technical-failure", "temporary-failure", "permanent-failure"]
     ]
 
-    auth_header = create_service_authorization_header(service_id=created_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?status=failed',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_template.service_id,
+        'v2_notifications.get_notifications',
+        status='failed'
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?status=failed")
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 3
@@ -470,19 +427,16 @@ def test_get_all_notifications_filter_by_failed_status(client, sample_template):
     assert created_notification.id not in returned_notification_ids
 
 
-def test_get_all_notifications_filter_by_id(client, sample_template):
+def test_get_all_notifications_filter_by_id(api_client_request, sample_template):
     older_notification = create_notification(template=sample_template)
     newer_notification = create_notification(template=sample_template)
 
-    auth_header = create_service_authorization_header(service_id=newer_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?older_than={}'.format(newer_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        sample_template.service_id,
+        'v2_notifications.get_notifications',
+        older_than=newer_notification.id
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?older_than={}".format(newer_notification.id))
     assert 'next' in json_response['links'].keys()
     assert len(json_response['notifications']) == 1
@@ -490,55 +444,49 @@ def test_get_all_notifications_filter_by_id(client, sample_template):
     assert json_response['notifications'][0]['id'] == str(older_notification.id)
 
 
-def test_get_all_notifications_filter_by_id_invalid_id(client, sample_notification):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?older_than=1234-badly-formatted-id-7890',
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    json_response = json.loads(response.get_data(as_text=True))
+def test_get_all_notifications_filter_by_id_invalid_id(api_client_request, sample_notification):
+    json_response = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_notifications',
+        older_than='1234-badly-formatted-id-7890',
+        _expected_status=400
+    )
 
     assert json_response['status_code'] == 400
     assert len(json_response['errors']) == 1
     assert json_response['errors'][0]['message'] == "older_than is not a valid UUID"
 
 
-def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(client, sample_template):
+def test_get_all_notifications_filter_by_id_no_notifications_if_nonexistent_id(api_client_request, sample_template):
     notification = create_notification(template=sample_template)
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications?older_than=dd4b8b9d-d414-4a83-9256-580046bf18f9',
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        notification.service_id,
+        'v2_notifications.get_notifications',
+        older_than='dd4b8b9d-d414-4a83-9256-580046bf18f9',
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith(
         "/v2/notifications?older_than=dd4b8b9d-d414-4a83-9256-580046bf18f9")
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
 
-def test_get_all_notifications_filter_by_id_no_notifications_if_last_notification(client, sample_template):
+def test_get_all_notifications_filter_by_id_no_notifications_if_last_notification(api_client_request, sample_template):
     notification = create_notification(template=sample_template)
 
-    auth_header = create_service_authorization_header(service_id=notification.service_id)
-    response = client.get(
-        path='/v2/notifications?older_than={}'.format(notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        notification.service_id,
+        'v2_notifications.get_notifications',
+        older_than=notification.id,
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     assert json_response['links']['current'].endswith("/v2/notifications?older_than={}".format(notification.id))
     assert 'next' not in json_response['links'].keys()
     assert len(json_response['notifications']) == 0
 
 
-def test_get_all_notifications_filter_multiple_query_parameters(client, sample_email_template):
+def test_get_all_notifications_filter_multiple_query_parameters(api_client_request, sample_email_template):
     # this is the notification we are looking for
     older_notification = create_notification(
         template=sample_email_template, status="pending")
@@ -555,15 +503,14 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
     # this notification was created too recently
     create_notification(template=sample_email_template, status="pending")
 
-    auth_header = create_service_authorization_header(service_id=newer_notification.service_id)
-    response = client.get(
-        path='/v2/notifications?status=pending&template_type=email&older_than={}'.format(newer_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header])
+    json_response = api_client_request.get(
+        newer_notification.service_id,
+        'v2_notifications.get_notifications',
+        status='pending',
+        template_type='email',
+        older_than=newer_notification.id
+    )
 
-    json_response = json.loads(response.get_data(as_text=True))
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == "application/json"
     # query parameters aren't returned in order
     for url_part in [
         "/v2/notifications?",
@@ -580,19 +527,15 @@ def test_get_all_notifications_filter_multiple_query_parameters(client, sample_e
 
 
 def test_get_all_notifications_renames_letter_statuses(
-    client,
+    api_client_request,
     sample_letter_notification,
     sample_notification,
     sample_email_notification,
 ):
-    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_notifications'),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    json_response = api_client_request.get(
+        sample_letter_notification.service_id,
+        'v2_notifications.get_notifications',
     )
-
-    json_response = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
 
     for noti in json_response['notifications']:
         if noti['type'] == 'sms' or noti['type'] == 'email':
@@ -610,20 +553,24 @@ def test_get_all_notifications_renames_letter_statuses(
     ('pending', 'pending'),
     ('technical-failure', 'technical-failure')
 ])
-def test_get_notifications_renames_letter_statuses(client, sample_letter_template, db_status, expected_status):
+def test_get_notifications_renames_letter_statuses(
+    api_client_request,
+    sample_letter_template,
+    db_status,
+    expected_status
+):
     letter_noti = create_notification(
         sample_letter_template,
         status=db_status,
         personalisation={'address_line_1': 'Mr Foo', 'address_line_2': '1 Bar Street', 'postcode': 'N1'}
     )
-    auth_header = create_service_authorization_header(service_id=letter_noti.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_notification_by_id', notification_id=letter_noti.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+
+    json_response = api_client_request.get(
+        letter_noti.service_id,
+        'v2_notifications.get_notification_by_id',
+        notification_id=letter_noti.id
     )
 
-    json_response = json.loads(response.get_data(as_text=True))
-    assert response.status_code == 200
     assert json_response['status'] == expected_status
 
 
@@ -653,7 +600,7 @@ def test_get_pdf_for_notification_returns_pdf_content(
 
 
 def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
-    client,
+    api_client_request,
     sample_letter_notification,
     mocker,
 ):
@@ -664,14 +611,14 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
     )
     sample_letter_notification.status = 'created'
 
-    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    response_json = api_client_request.get(
+        sample_letter_notification.service_id,
+        'v2_notifications.get_pdf_for_notification',
+        notification_id=sample_letter_notification.id,
+        _expected_status=400
     )
 
-    assert response.status_code == 400
-    assert response.json['errors'] == [{
+    assert response_json['errors'] == [{
         'error': 'PDFNotReadyError',
         'message': 'PDF not available yet, try again later'
     }]
@@ -683,7 +630,7 @@ def test_get_pdf_for_notification_returns_400_if_pdf_not_found(
     ('technical-failure', 'PDF not available for letters in status technical-failure'),
 ])
 def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
-    client,
+    api_client_request,
     sample_letter_notification,
     mocker,
     status,
@@ -698,26 +645,25 @@ def test_get_pdf_for_notification_only_returns_pdf_content_if_right_status(
     )
     sample_letter_notification.status = status
 
-    auth_header = create_service_authorization_header(service_id=sample_letter_notification.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_letter_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+    response_json = api_client_request.get(
+        sample_letter_notification.service_id,
+        'v2_notifications.get_pdf_for_notification',
+        notification_id=sample_letter_notification.id,
+        _expected_status=400
     )
 
-    assert response.status_code == 400
-    assert response.json['errors'] == [{
+    assert response_json['errors'] == [{
         'error': 'BadRequestError',
         'message': expected_message
     }]
     assert mock_get_letter_pdf.called is False
 
 
-def test_get_pdf_for_notification_fails_for_non_letters(client, sample_notification):
-    auth_header = create_service_authorization_header(service_id=sample_notification.service_id)
-    response = client.get(
-        path=url_for('v2_notifications.get_pdf_for_notification', notification_id=sample_notification.id),
-        headers=[('Content-Type', 'application/json'), auth_header]
+def test_get_pdf_for_notification_fails_for_non_letters(api_client_request, sample_notification):
+    response_json = api_client_request.get(
+        sample_notification.service_id,
+        'v2_notifications.get_pdf_for_notification',
+        notification_id=sample_notification.id,
+        _expected_status=400
     )
-
-    assert response.status_code == 400
-    assert response.json['errors'] == [{'error': 'BadRequestError', 'message': 'Notification is not a letter'}]
+    assert response_json['errors'] == [{'error': 'BadRequestError', 'message': 'Notification is not a letter'}]
