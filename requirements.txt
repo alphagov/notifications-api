@@ -35,7 +35,7 @@ botocore==1.26.8
     #   awscli
     #   boto3
     #   s3transfer
-cachetools==5.1.0
+cachetools==5.2.0
     # via
     #   -r requirements.in
     #   notifications-utils
