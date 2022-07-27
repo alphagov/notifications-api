@@ -67,7 +67,7 @@ valid_post = [
     valid_post
 )
 def test_valid_post_template_returns_200(
-    client,
+    api_client_request,
     sample_service,
     tmp_type,
     subject,
@@ -83,16 +83,13 @@ def test_valid_post_template_returns_200(
         subject=subject,
         content=content)
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.post(
-        path='/v2/template/{}/preview'.format(template.id),
-        data=json.dumps(post_data),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-
-    resp_json = json.loads(response.get_data(as_text=True))
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_template.post_template_preview',
+        template_id=template.id,
+        _data=post_data,
+        _expected_status=200,
+    )
 
     assert resp_json['id'] == str(template.id)
 
@@ -109,7 +106,7 @@ def test_valid_post_template_returns_200(
 
 @pytest.mark.parametrize("template_type", (EMAIL_TYPE, LETTER_TYPE))
 def test_email_and_letter_templates_not_rendered_into_content(
-    client,
+    api_client_request,
     sample_service,
     template_type,
 ):
@@ -128,54 +125,44 @@ def test_email_and_letter_templates_not_rendered_into_content(
         ),
     )
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.post(
-        path='/v2/template/{}/preview'.format(template.id),
-        data=json.dumps(None),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-
-    resp_json = json.loads(response.get_data(as_text=True))
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_template.post_template_preview',
+        template_id=template.id,
+        _data=None,
+        _expected_status=200,
+    )
 
     assert resp_json['body'] == template.content
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
-def test_invalid_post_template_returns_400(client, sample_service, tmp_type):
+def test_invalid_post_template_returns_400(api_client_request, sample_service, tmp_type):
     template = create_template(
         sample_service,
         template_type=tmp_type,
         content='Dear ((Name)), Hello ((Missing)). Yours Truly, The Government.')
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.post(
-        path='/v2/template/{}/preview'.format(template.id),
-        data=json.dumps(valid_personalisation),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400
-
-    resp_json = json.loads(response.get_data(as_text=True))
+    resp_json = api_client_request.post(
+        sample_service.id,
+        'v2_template.post_template_preview',
+        template_id=template.id,
+        _data=valid_personalisation,
+        _expected_status=400,
+    )
 
     assert resp_json['errors'][0]['error'] == 'BadRequestError'
     assert 'Missing personalisation: Missing' in resp_json['errors'][0]['message']
 
 
-def test_post_template_with_non_existent_template_id_returns_404(client, fake_uuid, sample_service):
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.post(
-        path='/v2/template/{}/preview'.format(fake_uuid),
-        data=json.dumps(valid_personalisation),
-        headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 404
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+def test_post_template_with_non_existent_template_id_returns_404(api_client_request, fake_uuid, sample_service):
+    json_response = api_client_request.post(
+        sample_service.id,
+        'v2_template.post_template_preview',
+        template_id=fake_uuid,
+        _data=valid_personalisation,
+        _expected_status=404,
+    )
 
     assert json_response == {
         "errors": [
@@ -188,14 +175,14 @@ def test_post_template_with_non_existent_template_id_returns_404(client, fake_uu
     }
 
 
-def test_post_template_returns_200_without_personalisation(client, sample_template):
-    response = client.post(
-        path='/v2/template/{}/preview'.format(sample_template.id),
-        data=None,
-        headers=[('Content-Type', 'application/json'),
-                 create_service_authorization_header(service_id=sample_template.service_id)]
+def test_post_template_returns_200_without_personalisation(api_client_request, sample_template):
+    api_client_request.post(
+        sample_template.service_id,
+        'v2_template.post_template_preview',
+        template_id=sample_template.id,
+        _data=None,
+        _expected_status=200,
     )
-    assert response.status_code == 200
 
 
 def test_post_template_returns_200_without_personalisation_and_missing_content_header(client, sample_template):

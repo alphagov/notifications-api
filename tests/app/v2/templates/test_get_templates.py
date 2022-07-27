@@ -1,14 +1,12 @@
 from itertools import product
 
 import pytest
-from flask import json
 
 from app.models import EMAIL_TYPE, TEMPLATE_TYPES
-from tests import create_service_authorization_header
 from tests.app.db import create_template
 
 
-def test_get_all_templates_returns_200(client, sample_service):
+def test_get_all_templates_returns_200(api_client_request, sample_service):
     templates = [
         create_template(
             sample_service,
@@ -19,15 +17,10 @@ def test_get_all_templates_returns_200(client, sample_service):
         for name, tmp_type in product(('A', 'B', 'C'), TEMPLATE_TYPES)
     ]
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.get(path='/v2/templates',
-                          headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_templates.get_templates',
+    )
 
     assert len(json_response['templates']) == len(templates)
 
@@ -40,7 +33,7 @@ def test_get_all_templates_returns_200(client, sample_service):
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
-def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tmp_type):
+def test_get_all_templates_for_valid_type_returns_200(api_client_request, sample_service, tmp_type):
     templates = [
         create_template(
             sample_service,
@@ -51,15 +44,11 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
         for i in range(3)
     ]
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.get(path='/v2/templates?type={}'.format(tmp_type),
-                          headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_templates.get_templates',
+        type=tmp_type
+    )
 
     assert len(json_response['templates']) == len(templates)
 
@@ -72,7 +61,7 @@ def test_get_all_templates_for_valid_type_returns_200(client, sample_service, tm
 
 
 @pytest.mark.parametrize("tmp_type", TEMPLATE_TYPES)
-def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_service, tmp_type):
+def test_get_correct_num_templates_for_valid_type_returns_200(api_client_request, sample_service, tmp_type):
     num_templates = 3
 
     templates = []
@@ -83,30 +72,24 @@ def test_get_correct_num_templates_for_valid_type_returns_200(client, sample_ser
         if other_type != tmp_type:
             templates.append(create_template(sample_service, template_type=other_type))
 
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
-    response = client.get(path='/v2/templates?type={}'.format(tmp_type),
-                          headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 200
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_templates.get_templates',
+        type=tmp_type
+    )
 
     assert len(json_response['templates']) == num_templates
 
 
-def test_get_all_templates_for_invalid_type_returns_400(client, sample_service):
-    auth_header = create_service_authorization_header(service_id=sample_service.id)
-
+def test_get_all_templates_for_invalid_type_returns_400(api_client_request, sample_service):
     invalid_type = 'coconut'
 
-    response = client.get(path='/v2/templates?type={}'.format(invalid_type),
-                          headers=[('Content-Type', 'application/json'), auth_header])
-
-    assert response.status_code == 400
-    assert response.headers['Content-type'] == 'application/json'
-
-    json_response = json.loads(response.get_data(as_text=True))
+    json_response = api_client_request.get(
+        sample_service.id,
+        'v2_templates.get_templates',
+        type=invalid_type,
+        _expected_status=400
+    )
 
     assert json_response == {
         'status_code': 400,
