@@ -26,7 +26,7 @@ billiard==4.0.0
     # via celery
 bleach==5.0.1
     # via notifications-utils
-blinker==1.4
+blinker==1.5
     # via gds-metrics
 boto3==1.23.8
     # via notifications-utils
