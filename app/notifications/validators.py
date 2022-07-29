@@ -203,6 +203,8 @@ def validate_template(template_id, personalisation, service, notification_type, 
     if check_char_count:
         check_is_message_too_long(template_with_content)
 
+    check_template_can_contain_documents(notification_type, personalisation)
+
     return template, template_with_content
 
 
@@ -274,3 +276,14 @@ def validate_address(service, letter_data):
         return address.postage
     else:
         return None
+
+
+def check_template_can_contain_documents(template_type, personalisation):
+    if (
+        template_type != EMAIL_TYPE and
+        any(
+            isinstance(v, dict) and 'file' in v
+            for v in (personalisation or {}).values()
+        )
+    ):
+        raise BadRequestError(message='Can only send a file by email')
