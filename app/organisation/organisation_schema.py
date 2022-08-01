@@ -60,3 +60,14 @@ post_update_invited_org_user_status_schema = {
     },
     "required": ["status"]
 }
+
+
+post_update_org_email_branding_pool_schema = {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "POST update organisation email branding pool schema",
+    "type": "object",
+    "properties": {
+        "branding_ids": {"type": "array", "items": uuid}
+    },
+    "required": ["branding_ids"]
+}

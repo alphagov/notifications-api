@@ -1022,3 +1022,31 @@ def test_get_organisation_email_branding_pool_returns_email_brandings_for_organi
     assert len(response['data']) == 2
     assert response['data'][0]['id'] == str(first_branding.id)
     assert response['data'][1]['id'] == str(second_branding.id)
+
+
+def test_update_organisation_email_branding_pool_raises_an_error_when_data_not_in_required_format(
+    admin_request,
+    sample_organisation,
+):
+    admin_request.post(
+        'organisation.update_organisation_email_branding_pool',
+        organisation_id=sample_organisation.id,
+        _data='invalid',
+        _expected_status=400
+    )
+
+
+def test_update_organisation_email_branding_pool_updates_branding_pool(
+    admin_request,
+    sample_organisation,
+):
+    branding_1 = create_email_branding(logo='test_x1.png', name='email_branding_1')
+    branding_2 = create_email_branding(logo='test_x2.png', name='email_branding_2')
+
+    admin_request.post(
+        'organisation.update_organisation_email_branding_pool',
+        organisation_id=sample_organisation.id,
+        _data={"branding_ids": [str(branding_1.id), str(branding_2.id)]},
+        _expected_status=204
+    )
+    assert len(sample_organisation.email_branding_pool) == 2
