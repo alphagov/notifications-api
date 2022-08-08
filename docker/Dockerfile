@@ -1,4 +1,4 @@
-FROM python:3.9-slim-bullseye as parent
+FROM python:3.9-slim-bullseye as build
 
 ENV PYTHONUNBUFFERED=1
 ENV DEBIAN_FRONTEND=noninteractive
@@ -15,18 +15,18 @@ RUN echo "Install base packages" && apt-get update \
     && rm -rf /var/lib/apt/lists/* /tmp/*
 
 RUN pip install --upgrade pip
+RUN groupadd -r notify && useradd -r -g notify notify
 
 WORKDIR /home/vcap/app
 
 COPY requirements.txt ./
 
-# RUN useradd celeryuser
-
-RUN \
-    echo "Installing python dependencies" \
+RUN echo "Installing python dependencies" \
     && pip install -r requirements.txt
 
 COPY app app
-COPY run_celery.py .
-COPY environment.sh .
-COPY Makefile .
+COPY migrations migrations
+COPY run_celery.py application.py gunicorn_config.py ./
+
+USER notify
+

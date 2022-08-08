@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 
-from app import db, version
+from app import db
 from app.dao.organisation_dao import dao_count_organisations_with_live_services
 from app.dao.services_dao import dao_count_live_services
 
@@ -15,8 +15,6 @@ def show_status():
     else:
         return jsonify(
             status="ok",  # This should be considered part of the public API
-            git_commit=version.__git_commit__,
-            build_time=version.__time__,
             db_version=get_db_version()), 200
 
 
