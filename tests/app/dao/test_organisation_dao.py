@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import db
 from app.dao.organisation_dao import (
+    dao_add_email_branding_list_to_organisation_pool,
     dao_add_email_branding_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
@@ -418,6 +419,24 @@ def test_add_to_and_get_email_branding_pool_for_organisation(sample_organisation
     # We test to ensure that branding that belongs to \
     # another Organisation's email branding pool is not returned
     assert third_branding not in results
+
+
+def test_dao_add_email_branding_list_to_organisation_pool(sample_organisation):
+    branding_1 = create_email_branding(logo='test_x1.png', name='branding_1')
+    branding_2 = create_email_branding(logo='test_x2.png', name='branding_2')
+    branding_3 = create_email_branding(logo='test_x3.png', name='branding_3')
+
+    dao_add_email_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id])
+
+    assert sample_organisation.email_branding_pool == [branding_1]
+
+    dao_add_email_branding_list_to_organisation_pool(sample_organisation.id, [branding_2.id, branding_3.id])
+
+    # existing brandings remain in the pool, while new ones get added
+    assert len(sample_organisation.email_branding_pool) == 3
+    assert branding_1 in sample_organisation.email_branding_pool
+    assert branding_2 in sample_organisation.email_branding_pool
+    assert branding_3 in sample_organisation.email_branding_pool
 
 
 def test_dao_get_organisation_live_services_with_free_allowance(sample_service, sample_organisation):
