@@ -703,6 +703,41 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             assert "Duplicate service name '{}'".format(service_name) in json_resp['message']['name']
 
 
+@pytest.mark.parametrize(
+    'email_from, should_error',
+    (
+            ('sams.sarnies', False),  # We are happy with plain ascii alnum/full-stops.
+            ('SAMS.SARNIES', True),  # We will reject anything with uppercase characters
+            ('sam\'s.sarnies', True),  # We reject punctuation other than a full-stop `.`
+            ('sams.Бутерброды', True),  # We reject unicode outside of the ascii charset
+            ('sams.ü', True),  # Even if it could theoretically be downcast to ascii
+            ('sams.u', False),  # Like this, which would be fine
+    )
+)
+def test_create_service_allows_only_lowercase_digits_and_fullstops_in_email_from(
+        admin_request, service_factory, sample_user, email_from, should_error
+):
+    first_service = service_factory.get('First service', email_from='first.service')
+    service_name = 'First SERVICE'
+    data = {
+        'name': service_name,
+        'user_id': str(first_service.users[0].id),
+        'message_limit': 1000,
+        'restricted': False,
+        'active': False,
+        'email_from': email_from,
+        'created_by': str(sample_user.id)
+    }
+    json_resp = admin_request.post('service.create_service', _data=data, _expected_status=400 if should_error else 201)
+
+    if should_error:
+        assert json_resp['result'] == 'error'
+        assert (
+            'Unacceptable characters: `email_from` may only contain letters, numbers and full stops.'
+            in json_resp['message']['email_from']
+        )
+
+
 def test_update_service(client, notify_db_session, sample_service):
     brand = EmailBranding(colour='#000000', logo='justice-league.png', name='Justice League')
     notify_db_session.add(brand)
@@ -989,6 +1024,40 @@ def test_update_service_permissions_will_add_service_permissions(client, sample_
 
     assert resp.status_code == 200
     assert set(result['data']['permissions']) == set([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE])
+
+
+@pytest.mark.parametrize(
+    'email_from, should_error',
+    (
+            ('sams.sarnies', False),  # We are happy with plain ascii alnum/full-stops.
+            ('SAMS.SARNIES', True),  # We will reject anything with uppercase characters
+            ('sam\'s.sarnies', True),  # We reject punctuation other than a full-stop `.`
+            ('sams.Бутерброды', True),  # We reject unicode outside of the ascii charset
+            ('sams.ü', True),  # Even if it could theoretically be downcast to ascii
+            ('sams.u', False),  # Like this, which would be fine
+    )
+)
+def test_update_service_allows_only_lowercase_digits_and_fullstops_in_email_from(
+        admin_request, sample_service, email_from, should_error
+):
+    data = {
+        'service_name': 'Sam\'s sarnies',
+        'email_from': email_from
+    }
+
+    result = admin_request.post(
+        'service.update_service',
+        service_id=sample_service.id,
+        _data=data,
+        _expected_status=400 if should_error else 200,
+    )
+
+    if should_error:
+        assert result['result'] == 'error'
+        assert (
+            'Unacceptable characters: `email_from` may only contain letters, numbers and full stops.'
+            in result['message']['email_from']
+        )
 
 
 @pytest.mark.parametrize(
