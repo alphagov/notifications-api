@@ -224,7 +224,7 @@ rfc3987==1.3.8
     # via jsonschema
 rsa==4.9
     # via awscli
-s3transfer==0.5.2
+s3transfer==0.6.0
     # via
     #   awscli
     #   boto3
