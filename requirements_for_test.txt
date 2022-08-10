@@ -2,7 +2,7 @@
 flake8==5.0.4
 flake8-bugbear==22.7.1
 isort==5.10.1
-moto==3.1.9
+moto==3.1.17
 pytest==7.1.2
 pytest-env==0.6.2
 pytest-mock==3.7.0
