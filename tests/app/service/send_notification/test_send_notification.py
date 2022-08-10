@@ -1,11 +1,7 @@
-import random
-import string
-
 import pytest
 from flask import current_app, json
 from freezegun import freeze_time
 from notifications_python_client.authentication import create_jwt_token
-from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 import app
 from app.dao import notifications_dao
@@ -15,7 +11,6 @@ from app.dao.templates_dao import (
     dao_get_all_templates_for_service,
     dao_update_template,
 )
-from app.errors import InvalidRequest
 from app.models import (
     EMAIL_TYPE,
     KEY_TYPE_NORMAL,
@@ -25,7 +20,6 @@ from app.models import (
     ApiKey,
     Notification,
     NotificationHistory,
-    Template,
 )
 from app.service.send_notification import send_one_off_notification
 from app.v2.errors import RateLimitError
@@ -599,7 +593,7 @@ def test_should_send_email_to_anyone_with_test_key(
     auth_header = create_jwt_token(secret=api_key.secret, client_id=str(api_key.service_id))
 
     response = client.post(
-        path='/notifications/email',
+        path='/v2/notifications/email',
         data=json.dumps(data),
         headers=[('Content-Type', 'application/json'), ('Authorization', 'Bearer {}'.format(auth_header))]
     )
@@ -917,52 +911,6 @@ def test_should_error_if_notification_type_does_not_match_template_type(
     assert json_resp['result'] == 'error'
     assert '{0} template is not suitable for {1} notification'.format(template_type, notification_type) \
            in json_resp['message']
-
-
-def test_create_template_raises_invalid_request_exception_with_missing_personalisation(
-        sample_template_with_placeholders):
-    template = Template.query.get(sample_template_with_placeholders.id)
-    from app.notifications.rest import create_template_object_for_notification
-    with pytest.raises(InvalidRequest) as e:
-        create_template_object_for_notification(template, {})
-    assert {'template': ['Missing personalisation:  Name']} == e.value.message
-
-
-def test_create_template_doesnt_raise_with_too_much_personalisation(
-        sample_template_with_placeholders
-):
-    from app.notifications.rest import create_template_object_for_notification
-    template = Template.query.get(sample_template_with_placeholders.id)
-    create_template_object_for_notification(template, {'name': 'Jo', 'extra': 'stuff'})
-
-
-@pytest.mark.parametrize(
-    'template_type, should_error', [
-        (SMS_TYPE, True),
-        (EMAIL_TYPE, False)
-    ]
-)
-def test_create_template_raises_invalid_request_when_content_too_large(
-        sample_service,
-        template_type,
-        should_error
-):
-    sample = create_template(sample_service, template_type=template_type, content="((long_text))")
-    template = Template.query.get(sample.id)
-    from app.notifications.rest import create_template_object_for_notification
-    try:
-        create_template_object_for_notification(template,
-                                                {'long_text':
-                                                    ''.join(
-                                                        random.choice(string.ascii_uppercase + string.digits) for _ in
-                                                        range(SMS_CHAR_COUNT_LIMIT + 1))})
-        if should_error:
-            pytest.fail("expected an InvalidRequest")
-    except InvalidRequest as e:
-        if not should_error:
-            pytest.fail("do not expect an InvalidRequest")
-        assert e.message == {'content': ['Content has a character count greater than the limit of {}'.format(
-            SMS_CHAR_COUNT_LIMIT)]}
 
 
 @pytest.mark.parametrize("notification_type, send_to",

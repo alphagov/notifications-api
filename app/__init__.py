@@ -135,7 +135,6 @@ def create_app(application):
 def register_blueprint(application):
     from app.authentication.auth import (
         requires_admin_auth,
-        requires_auth,
         requires_govuk_alerts_auth,
         requires_no_auth,
     )
@@ -161,7 +160,6 @@ def register_blueprint(application):
     from app.notifications.receive_notifications import (
         receive_notifications_blueprint,
     )
-    from app.notifications.rest import notifications as notifications_blueprint
     from app.organisation.invite_rest import organisation_invite_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.performance_dashboard.rest import performance_dashboard_blueprint
@@ -207,9 +205,6 @@ def register_blueprint(application):
     # inbound sms
     receive_notifications_blueprint.before_request(requires_no_auth)
     application.register_blueprint(receive_notifications_blueprint)
-
-    notifications_blueprint.before_request(requires_auth)
-    application.register_blueprint(notifications_blueprint)
 
     job_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(job_blueprint)
