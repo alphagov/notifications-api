@@ -132,6 +132,7 @@ def create_service(
         billing_contact_names=None,
         billing_contact_email_addresses=None,
         billing_reference=None,
+        contact_link=None,
 ):
     if check_if_service_exists:
         service = Service.query.filter_by(name=service_name).first()
@@ -152,6 +153,7 @@ def create_service(
             billing_contact_names=billing_contact_names,
             billing_contact_email_addresses=billing_contact_email_addresses,
             billing_reference=billing_reference,
+            contact_link=contact_link,
         )
         dao_create_service(
             service,

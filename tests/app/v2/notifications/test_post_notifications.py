@@ -9,6 +9,7 @@ from flask import current_app, json
 from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
+    DOCUMENT_DOWNLOAD_VERIFY_EMAIL,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     NOTIFICATION_CREATED,
@@ -872,16 +873,18 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
 
 
 @pytest.mark.parametrize(
-    'csv_param',
+    'extra',
     (
+        {},
         {'is_csv': None},
         {'is_csv': False},
         {'is_csv': True},
-        {},
+        {'verify_email_before_download': False},
+        {'verify_email_before_download': True},
     )
 )
-def test_post_notification_with_document_upload(api_client_request, notify_db_session, mocker, csv_param):
-    service = create_service(service_permissions=[EMAIL_TYPE])
+def test_post_notification_with_document_upload(api_client_request, notify_db_session, mocker, extra):
+    service = create_service(service_permissions=[EMAIL_TYPE, DOCUMENT_DOWNLOAD_VERIFY_EMAIL])
     service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
@@ -891,14 +894,16 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
-    document_download_mock.upload_document.side_effect = lambda service_id, content, is_csv: f'{content}-link'
+    document_download_mock.upload_document.side_effect = (
+        lambda service_id, content, is_csv, verification_email: f'{content}-link'
+    )
 
     data = {
         "email_address": service.users[0].email_address,
         "template_id": template.id,
         "personalisation": {
-            "first_link": {"file": "abababab", **csv_param},
-            "second_link": {"file": "cdcdcdcd", **csv_param}
+            "first_link": {"file": "abababab", **extra},
+            "second_link": {"file": "cdcdcdcd", **extra}
         }
     }
 
@@ -911,9 +916,10 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
 
     assert validate(resp_json, post_email_response) == resp_json
 
+    verification_email = data['email_address'] if extra.get('verify_email_before_download') else None
     assert document_download_mock.upload_document.call_args_list == [
-        call(str(service.id), 'abababab', csv_param.get('is_csv')),
-        call(str(service.id), 'cdcdcdcd', csv_param.get('is_csv'))
+        call(str(service.id), 'abababab', extra.get('is_csv'), verification_email=verification_email),
+        call(str(service.id), 'cdcdcdcd', extra.get('is_csv'), verification_email=verification_email)
     ]
 
     notification = Notification.query.one()
@@ -1019,6 +1025,40 @@ def test_post_notification_without_document_upload_permission(api_client_request
         notification_type='email',
         _data=data,
         _expected_status=400
+    )
+
+
+def test_post_notification_without_document_email_verification_permission(
+        api_client_request, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[EMAIL_TYPE], contact_link='contact.me@gov.uk')
+    template = create_template(
+        service=service,
+        template_type='email',
+        content="Document: ((document))"
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.return_value = 'https://document-url/'
+
+    data = {
+        "email_address": service.users[0].email_address,
+        "template_id": template.id,
+        "personalisation": {"document": {"file": "abababab", "verify_email_before_download": True}}
+    }
+
+    resp = api_client_request.post(
+        service.id,
+        'v2_notifications.post_notification',
+        notification_type='email',
+        _data=data,
+        _expected_status=400
+    )
+
+    assert (
+        resp['errors'][0]['message'] ==
+        'Email verification flow for document download has not been enabled for this service.'
     )
 
 
