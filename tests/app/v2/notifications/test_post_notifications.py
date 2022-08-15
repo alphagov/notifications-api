@@ -927,6 +927,43 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     assert resp_json['content']['body'] == 'Document 1: abababab-link. Document 2: cdcdcdcd-link'
 
 
+def test_post_notification_with_document_upload_logs_dict_values(
+        api_client_request, notify_db_session, mocker
+):
+    service = create_service(service_permissions=[EMAIL_TYPE])
+    service.contact_link = 'contact.me@gov.uk'
+    template = create_template(
+        service=service,
+        template_type='email',
+        content="Hmm: ((why_this))"
+    )
+
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+
+    data = {
+        "email_address": service.users[0].email_address,
+        "template_id": template.id,
+        "personalisation": {
+            "why_this": {"nothing": "else"},
+        }
+    }
+
+    with mock.patch('app.v2.notifications.post_notifications.current_app.logger.info') as mock_logger:
+        resp_json = api_client_request.post(
+            service.id,
+            'v2_notifications.post_notification',
+            notification_type='email',
+            _data=data,
+        )
+
+    assert validate(resp_json, post_email_response) == resp_json
+
+    assert (
+        mock.call('Notification personalisation contains a dict value without `file` key.')
+        in mock_logger.call_args_list
+    )
+
+
 def test_post_notification_with_document_upload_simulated(api_client_request, notify_db_session, mocker):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = 'contact.me@gov.uk'
