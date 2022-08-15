@@ -4,7 +4,7 @@ from app.models import (
     NOTIFICATION_STATUS_TYPES,
     NOTIFICATION_TYPES,
 )
-from app.schema_validation.definitions import personalisation, uuid
+from app.schema_validation.definitions import uuid
 
 template = {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -123,6 +123,55 @@ get_notifications_response = {
         "notification": get_notification_response
     },
 
+}
+
+personalisation = {
+    "type": "object",
+    "link": "link to our error documentation not yet implemented",
+    "patternProperties": {
+        "^.*$": {
+            "oneOf": [
+                {
+                    "type": ["string", "number", "integer", "array", "boolean", "null"]
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "file": {
+                            "type": "string",
+                            "required": True,
+                        },
+                        "is_csv": {
+                            "type": ["boolean", "null"],
+                            "required": False,
+                        },
+                        "confirm_email_before_download": {
+                            "type": ["null", "boolean"],
+                            "required": False,
+                        },
+                        "retention_period": {
+                            "type": ["null", "string"],
+                            "required": False,
+                        },
+                    }
+                },
+                {
+                    # If they're sending an object (dict) with a 'file' key - it must match our other 'file upload'
+                    # schema above.
+                    # If it doesn't contain a 'file' key - then it can contain anything else.
+                    # This doesn't indicate we officially support sending dicts other than file uploads in
+                    # the personalisation field - we're adding this schema well after the release of the endpoint,
+                    # so it's just to maintain compatability as some services may already be sending objects containing
+                    # other data.
+                    "type": "object",
+                    "properties": {
+                        "file": False,
+                    },
+                },
+            ]
+        },
+    },
 }
 
 post_sms_request = {

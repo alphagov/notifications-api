@@ -318,17 +318,6 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
     Returns modified personalisation dict and a count of document uploads. If there are no document uploads, returns
     a count of `None` rather than `0`.
     """
-    # SW: Temporary logging to get an idea of whether services are providing `dict` values in personalisation outside
-    # of the file-upload use-case. If they are, we can't upgrade the personalisation JSON schema to do some param
-    # validation for us without notifying services / creating a new API version. Feel free to remove after 08/09/2022.
-    bad_file_dicts = [
-        k
-        for k, v in (personalisation_data or {}).items()
-        if isinstance(v, dict) and 'file' in v and not all(k2 in {'file', 'is_csv'} for k2 in v)
-    ]
-    if bad_file_dicts:
-        current_app.logger.info('Notification personalisation contains incompatible `file` dict.')
-
     file_keys = [k for k, v in (personalisation_data or {}).items() if isinstance(v, dict) and 'file' in v]
     if not file_keys:
         return personalisation_data, None
