@@ -122,7 +122,29 @@ get_notifications_response = {
     "definitions": {
         "notification": get_notification_response
     },
+}
 
+send_a_file_validation = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "file": {
+            "type": "string",
+            "required": True,
+        },
+        "is_csv": {
+            "type": ["boolean", "null"],
+            "required": False,
+        },
+        "confirm_email_before_download": {
+            "format": "send_a_file_confirm_email",
+            "required": False,
+        },
+        "retention_period": {
+            "format": "send_a_file_retention_period",
+            "required": False,
+        },
+    }
 }
 
 post_sms_request = {

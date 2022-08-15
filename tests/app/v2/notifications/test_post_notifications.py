@@ -500,6 +500,90 @@ def test_post_email_notification_returns_201(
     assert mocked.called
 
 
+@pytest.mark.parametrize(
+    'personalisation, expected_status, expect_error_message',
+    (
+        ({"doc": 'just some text'}, 201, None),
+        ({"doc": {"file": False}}, 400, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK"}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": None}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": False}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": "bad"}}, 400, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": None}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": True}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": False}}, 201, None),
+        (
+                {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": 'potato'}},
+                400,
+                "Unsupported value for confirm_email_before_download: potato"
+        ),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": None}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "1 week"}}, 201, None),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "70 weeks"}}, 201, None),
+        (
+                {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "9999 weeks"}},
+                400,
+                "Unsupported value for retention_period: 9999 weeks"
+        ),
+        (
+                {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "1 month"}},
+                400,
+                "Unsupported value for retention_period: 1 month"
+        ),
+        (
+                {"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": False}},
+                400,
+                "Unsupported value for retention_period: False"
+        ),
+        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "other": "attribute"}}, 400, None),
+        ({"doc": {"potato": "YSxiLGMKMSwyLDMK"}}, 201, None),
+        ({"doc": {"potato": "YSxiLGMKMSwyLDMK", "is_csv": "cucumber"}}, 201, None),
+    )
+)
+def test_post_email_notification_validates_personalisation_send_a_file_values(
+    api_client_request,
+    mocker,
+    personalisation,
+    expected_status,
+    expect_error_message,
+):
+    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.side_effect = (
+        lambda service_id, content, is_csv, confirmation_email, **kwargs: f'{content}-link'
+    )
+
+    service = create_service(
+        contact_link='test@notify.example',
+        service_permissions=[EMAIL_TYPE],
+    )
+
+    template = create_template(
+        service,
+        template_type=EMAIL_TYPE,
+        subject="Hello",
+        content="Hello.\nHere's a file for you: ((doc))",
+    )
+
+    data = {
+        "email_address": template.service.users[0].email_address,
+        "template_id": template.id,
+        "personalisation": personalisation
+    }
+
+    response = api_client_request.post(
+        template.service_id,
+        'v2_notifications.post_notification',
+        notification_type='email',
+        _data=data,
+        _expected_status=expected_status
+    )
+
+    if expect_error_message:
+        assert expect_error_message in response['errors'][0]['message']
+
+
 @pytest.mark.parametrize('recipient, notification_type', [
     ('simulate-delivered@notifications.service.gov.uk', EMAIL_TYPE),
     ('simulate-delivered-2@notifications.service.gov.uk', EMAIL_TYPE),
@@ -937,7 +1021,7 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
     document_download_mock.upload_document.side_effect = (
-        lambda service_id, content, is_csv, confirmation_email, **kwargs: f'{content}-link'
+        lambda service_id, content, is_csv, **kwargs: f'{content}-link'
     )
 
     data = {
@@ -986,55 +1070,6 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     assert notification.document_download_count == 2
 
     assert resp_json['content']['body'] == 'Document 1: abababab-link. Document 2: cdcdcdcd-link'
-
-
-@pytest.mark.parametrize(
-    'data, should_log',
-    (
-        ({'blah': 'blah'}, False),
-        ('potato', False),
-        ({'file': 'blah', 'is_csv': False}, False),
-        ({'file': 'blah', 'other': 'something'}, True),
-    )
-)
-def test_post_notification_with_document_upload_logs_dict_values(
-        api_client_request, notify_db_session, mocker, data, should_log
-):
-    service = create_service(service_permissions=[EMAIL_TYPE])
-    service.contact_link = 'contact.me@gov.uk'
-    template = create_template(
-        service=service,
-        template_type='email',
-        content="Hmm: ((value))"
-    )
-
-    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
-    document_download_mock.upload_document.return_value = {}
-
-    data = {
-        "email_address": service.users[0].email_address,
-        "template_id": template.id,
-        "personalisation": {
-            "value": data,
-        }
-    }
-
-    with mock.patch('app.v2.notifications.post_notifications.current_app.logger.info') as mock_logger:
-        resp_json = api_client_request.post(
-            service.id,
-            'v2_notifications.post_notification',
-            notification_type='email',
-            _data=data,
-        )
-
-    assert validate(resp_json, post_email_response) == resp_json
-
-    if should_log:
-        assert (
-            mock.call('Notification personalisation contains incompatible `file` dict.')
-            in mock_logger.call_args_list
-        )
 
 
 def test_post_notification_with_document_upload_simulated(api_client_request, notify_db_session, mocker):
