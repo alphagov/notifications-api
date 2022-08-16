@@ -36,8 +36,6 @@ from app.dao.services_dao import (
     dao_find_services_sending_to_tv_numbers,
     dao_find_services_with_high_failure_rates,
     dao_remove_user_from_service,
-    dao_resume_service,
-    dao_suspend_service,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
     get_live_services_with_organisation,
@@ -1045,44 +1043,6 @@ def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notif
 
     assert len(stats) == 1
     assert stats[0].count == 2
-
-
-@freeze_time('2001-01-01T23:59:00')
-def test_dao_suspend_service_with_no_api_keys(notify_db_session):
-    service = create_service()
-    dao_suspend_service(service.id)
-    service = Service.query.get(service.id)
-    assert not service.active
-    assert service.name == service.name
-    assert service.api_keys == []
-
-
-@freeze_time('2001-01-01T23:59:00')
-def test_dao_suspend_service_marks_service_as_inactive_and_expires_api_keys(notify_db_session):
-    service = create_service()
-    api_key = create_api_key(service=service)
-    dao_suspend_service(service.id)
-    service = Service.query.get(service.id)
-    assert not service.active
-    assert service.name == service.name
-
-    api_key = ApiKey.query.get(api_key.id)
-    assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
-
-
-@freeze_time('2001-01-01T23:59:00')
-def test_dao_resume_service_marks_service_as_active_and_api_keys_are_still_revoked(notify_db_session):
-    service = create_service()
-    api_key = create_api_key(service=service)
-    dao_suspend_service(service.id)
-    service = Service.query.get(service.id)
-    assert not service.active
-
-    dao_resume_service(service.id)
-    assert Service.query.get(service.id).active
-
-    api_key = ApiKey.query.get(api_key.id)
-    assert api_key.expiry_date == datetime(2001, 1, 1, 23, 59, 00)
 
 
 def test_dao_fetch_active_users_for_service_returns_active_only(notify_db_session):

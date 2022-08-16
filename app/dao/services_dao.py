@@ -484,32 +484,6 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
     return query.all()
 
 
-@autocommit
-@version_class(
-    VersionOptions(ApiKey, must_write_history=False),
-    VersionOptions(Service),
-)
-def dao_suspend_service(service_id):
-    # have to eager load api keys so that we don't flush when we loop through them
-    # to ensure that db.session still contains the models when it comes to creating history objects
-    service = Service.query.options(
-        joinedload('api_keys'),
-    ).filter(Service.id == service_id).one()
-
-    for api_key in service.api_keys:
-        if not api_key.expiry_date:
-            api_key.expiry_date = datetime.utcnow()
-
-    service.active = False
-
-
-@autocommit
-@version_class(Service)
-def dao_resume_service(service_id):
-    service = Service.query.get(service_id)
-    service.active = True
-
-
 def dao_fetch_active_users_for_service(service_id):
     query = User.query.filter(
         User.services.any(id=service_id),

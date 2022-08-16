@@ -90,8 +90,6 @@ from app.dao.services_dao import (
     dao_fetch_todays_stats_for_all_services,
     dao_fetch_todays_stats_for_service,
     dao_remove_user_from_service,
-    dao_resume_service,
-    dao_suspend_service,
     dao_update_service,
     get_services_by_partial_name,
 )
@@ -682,37 +680,6 @@ def archive_service(service_id):
 
     if service.active:
         dao_archive_service(service.id)
-
-    return '', 204
-
-
-@service_blueprint.route('/<uuid:service_id>/suspend', methods=['POST'])
-def suspend_service(service_id):
-    """
-    Suspending a service will mark the service as inactive and revoke API keys.
-    :param service_id:
-    :return:
-    """
-    service = dao_fetch_service_by_id(service_id)
-
-    if service.active:
-        dao_suspend_service(service.id)
-
-    return '', 204
-
-
-@service_blueprint.route('/<uuid:service_id>/resume', methods=['POST'])
-def resume_service(service_id):
-    """
-    Resuming a service that has been suspended will mark the service as active.
-    The service will need to re-create API keys
-    :param service_id:
-    :return:
-    """
-    service = dao_fetch_service_by_id(service_id)
-
-    if not service.active:
-        dao_resume_service(service.id)
 
     return '', 204
 
