@@ -12,7 +12,7 @@ arrow==1.2.2
     # via isoduration
 async-timeout==4.0.2
     # via redis
-attrs==21.4.0
+attrs==22.1.0
     # via jsonschema
 awscli==1.24.8
     # via awscli-cwlogs
