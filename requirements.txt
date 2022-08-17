@@ -252,7 +252,7 @@ statsd==3.3.0
     # via notifications-utils
 uri-template==1.2.0
     # via jsonschema
-urllib3==1.26.9
+urllib3==1.26.11
     # via
     #   botocore
     #   requests
