@@ -228,7 +228,7 @@ s3transfer==0.6.0
     # via
     #   awscli
     #   boto3
-shapely==1.8.2
+shapely==1.8.3
     # via notifications-utils
 six==1.16.0
     # via
