@@ -22,7 +22,7 @@ bcrypt==3.2.2
     # via flask-bcrypt
 beautifulsoup4==4.11.1
     # via -r requirements.in
-billiard==3.6.4.0
+billiard==4.0.2
     # via celery
 bleach==4.1.0
     # via notifications-utils
