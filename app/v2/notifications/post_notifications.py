@@ -55,6 +55,7 @@ from app.notifications.validators import (
     check_service_email_reply_to_id,
     check_service_has_permission,
     check_service_sms_sender_id,
+    error_if_service_using_email_verification_flow_without_permission,
     validate_address,
     validate_and_format_recipient,
     validate_template,
@@ -191,7 +192,8 @@ def process_sms_or_email_notification(
     personalisation, document_download_count = process_document_uploads(
         form.get('personalisation'),
         service,
-        simulated=simulated
+        send_to=send_to,
+        simulated=simulated,
     )
     if document_download_count:
         # We changed personalisation which means we need to update the content
@@ -311,7 +313,7 @@ def save_email_or_sms_to_queue(
     return Notification(**data)
 
 
-def process_document_uploads(personalisation_data, service, simulated=False):
+def process_document_uploads(personalisation_data, service, send_to: str, simulated=False):
     """
     Returns modified personalisation dict and a count of document uploads. If there are no document uploads, returns
     a count of `None` rather than `0`.
@@ -338,9 +340,19 @@ def process_document_uploads(personalisation_data, service, simulated=False):
         if simulated:
             personalisation_data[key] = document_download_client.get_upload_url(service.id) + '/test-document'
         else:
+            verify_email = personalisation_data[key].get('verify_email_before_download') or False
+
+            error_if_service_using_email_verification_flow_without_permission(
+                verify_email,
+                service.permissions
+            )
+
             try:
                 personalisation_data[key] = document_download_client.upload_document(
-                    service.id, personalisation_data[key]['file'], personalisation_data[key].get('is_csv')
+                    service.id,
+                    personalisation_data[key]['file'],
+                    personalisation_data[key].get('is_csv'),
+                    verification_email=send_to if verify_email else None,
                 )
             except DocumentDownloadError as e:
                 raise BadRequestError(message=e.message, status_code=e.status_code)

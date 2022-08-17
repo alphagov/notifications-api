@@ -36,6 +36,27 @@ def test_upload_document(document_download):
     assert resp == 'https://document-download/services/service-id/documents/uploaded-url'
 
 
+@pytest.mark.parametrize('verification_email', [None, 'dev@test.notify'])
+def test_upload_document_verify_email(document_download, verification_email):
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post('https://document-download/services/service-id/documents', json={
+            'document': {'url': 'https://document-download/services/service-id/documents/uploaded-url'}
+        }, request_headers={
+            'Authorization': 'Bearer test-key',
+        }, status_code=201)
+
+        resp = document_download.upload_document('service-id', 'abababab', verification_email=verification_email)
+
+    assert resp == 'https://document-download/services/service-id/documents/uploaded-url'
+
+    request_json = request_mock.request_history[0].json()
+    if verification_email:
+        assert request_json['verification_email'] == verification_email
+
+    else:
+        assert 'verification_email' not in request_json
+
+
 def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post('https://document-download/services/service-id/documents', json={
