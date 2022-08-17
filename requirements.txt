@@ -267,7 +267,7 @@ webcolors==1.12
     # via jsonschema
 webencodings==0.5.1
     # via bleach
-werkzeug==2.0.3
+werkzeug==2.2.2
     # via
     #   -r requirements.in
     #   flask
