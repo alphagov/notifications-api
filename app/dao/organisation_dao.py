@@ -110,6 +110,10 @@ def dao_update_organisation(organisation_id, **kwargs):
     if 'email_branding_id' in kwargs:
         _update_organisation_services(organisation, 'email_branding')
 
+        # This could be `None` to return an organisation to the default GOV.UK branding (which isn't a real brand).
+        if kwargs['email_branding_id']:
+            dao_add_email_branding_to_organisation_pool(organisation_id, kwargs['email_branding_id'])
+
     if 'letter_branding_id' in kwargs:
         _update_organisation_services(organisation, 'letter_branding')
 
