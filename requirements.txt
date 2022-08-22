@@ -155,7 +155,7 @@ marshmallow==3.15.0
     #   -r requirements.in
     #   flask-marshmallow
     #   marshmallow-sqlalchemy
-marshmallow-sqlalchemy==0.28.0
+marshmallow-sqlalchemy==0.28.1
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
@@ -169,6 +169,7 @@ packaging==21.3
     # via
     #   bleach
     #   marshmallow
+    #   marshmallow-sqlalchemy
     #   redis
 phonenumbers==8.12.48
     # via notifications-utils
