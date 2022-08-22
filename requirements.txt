@@ -45,7 +45,7 @@ certifi==2022.5.18.1
     # via
     #   pyproj
     #   requests
-cffi==1.15.0
+cffi==1.15.1
     # via
     #   -r requirements.in
     #   bcrypt
@@ -86,6 +86,7 @@ flask==2.1.2
     #   flask-marshmallow
     #   flask-migrate
     #   flask-redis
+    #   flask-sqlalchemy
     #   gds-metrics
     #   notifications-utils
 flask-bcrypt==1.0.1
@@ -109,15 +110,15 @@ geojson==2.5.0
 govuk-bank-holidays==0.11
     # via notifications-utils
 greenlet==1.1.2
-    # via
-    #   eventlet
-    #   sqlalchemy
+    # via eventlet
 gunicorn @ git+https://github.com/benoitc/gunicorn.git@1299ea9e967a61ae2edebe191082fd169b864c64
     # via -r requirements.in
 idna==3.3
     # via
     #   jsonschema
     #   requests
+importlib-metadata==4.12.0
+    # via flask
 iso8601==1.0.2
     # via -r requirements.in
 isoduration==20.11.0
@@ -247,9 +248,12 @@ sqlalchemy==1.4.36
     # via
     #   -r requirements.in
     #   alembic
+    #   flask-sqlalchemy
     #   marshmallow-sqlalchemy
 statsd==3.3.0
     # via notifications-utils
+typing-extensions==4.3.0
+    # via pypdf2
 uri-template==1.2.0
     # via jsonschema
 urllib3==1.26.9
@@ -273,6 +277,8 @@ werkzeug==2.0.3
     #   flask
 wrapt==1.14.1
     # via deprecated
+zipp==3.8.1
+    # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
