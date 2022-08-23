@@ -632,7 +632,7 @@ class AnnualBilling(db.Model):
                 "name": self.service.name
             }
 
-        return{
+        return {
             "id": str(self.id),
             'free_sms_fragment_limit': self.free_sms_fragment_limit,
             'service_id': self.service_id,
