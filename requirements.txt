@@ -275,4 +275,4 @@ wrapt==1.14.1
     # via deprecated
 
 # The following packages are considered to be unsafe in a requirements file:
-# setuptools
+setuptools==65.1.1
