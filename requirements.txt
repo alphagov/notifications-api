@@ -257,7 +257,7 @@ typing-extensions==4.3.0
     # via pypdf2
 uri-template==1.2.0
     # via jsonschema
-urllib3==1.26.9
+urllib3==1.26.12
     # via
     #   botocore
     #   requests
