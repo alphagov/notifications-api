@@ -171,7 +171,7 @@ packaging==21.3
     #   marshmallow
     #   marshmallow-sqlalchemy
     #   redis
-phonenumbers==8.12.48
+phonenumbers==8.12.54
     # via notifications-utils
 prometheus-client==0.14.1
     # via
