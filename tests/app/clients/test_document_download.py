@@ -57,6 +57,30 @@ def test_upload_document_verify_email(document_download, verification_email):
         assert 'verification_email' not in request_json
 
 
+@pytest.mark.parametrize('retention_period', [None, '1 week', '5 weeks'])
+def test_upload_document_retention_period(document_download, retention_period):
+    with requests_mock.Mocker() as request_mock:
+        request_mock.post(
+            'https://document-download/services/service-id/documents',
+            json={
+                'document': {'url': 'https://document-download/services/service-id/documents/uploaded-url'}
+            },
+            request_headers={'Authorization': 'Bearer test-key'},
+            status_code=201,
+        )
+
+        resp = document_download.upload_document('service-id', 'abababab', retention_period=retention_period)
+
+    assert resp == 'https://document-download/services/service-id/documents/uploaded-url'
+
+    request_json = request_mock.request_history[0].json()
+    if retention_period:
+        assert request_json['retention_period'] == retention_period
+
+    else:
+        assert 'retention_period' not in request_json
+
+
 def test_should_raise_400s_as_DocumentDownloadErrors(document_download):
     with pytest.raises(DocumentDownloadError) as excinfo, requests_mock.Mocker() as request_mock:
         request_mock.post('https://document-download/services/service-id/documents', json={
