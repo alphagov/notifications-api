@@ -345,9 +345,10 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
             personalisation_data[key] = document_download_client.get_upload_url(service.id) + '/test-document'
         else:
             verify_email = personalisation_data[key].get('verify_email_before_download') or False
+            retention_period = personalisation_data[key].get('retention_period', None)
 
             error_if_service_using_email_verification_flow_without_permission(
-                verify_email,
+                verify_email or bool(retention_period),
                 service.permissions
             )
 
@@ -357,6 +358,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                     personalisation_data[key]['file'],
                     personalisation_data[key].get('is_csv'),
                     verification_email=send_to if verify_email else None,
+                    retention_period=retention_period
                 )
             except DocumentDownloadError as e:
                 raise BadRequestError(message=e.message, status_code=e.status_code)

@@ -25,7 +25,14 @@ class DocumentDownloadClient:
     def get_upload_url(self, service_id):
         return "{}/services/{}/documents".format(self.api_host, service_id)
 
-    def upload_document(self, service_id, file_contents, is_csv=None, verification_email: Optional[str] = None):
+    def upload_document(
+            self,
+            service_id,
+            file_contents,
+            is_csv=None,
+            verification_email: Optional[str] = None,
+            retention_period: Optional[str] = None
+    ):
         try:
             data = {
                 'document': file_contents,
@@ -34,6 +41,9 @@ class DocumentDownloadClient:
 
             if verification_email:
                 data['verification_email'] = verification_email
+
+            if retention_period:
+                data['retention_period'] = retention_period
 
             response = requests.post(
                 self.get_upload_url(service_id),
