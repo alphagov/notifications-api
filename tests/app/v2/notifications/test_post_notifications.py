@@ -933,24 +933,35 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     assert resp_json['content']['body'] == 'Document 1: abababab-link. Document 2: cdcdcdcd-link'
 
 
+@pytest.mark.parametrize(
+    'data, should_log',
+    (
+        ({'blah': 'blah'}, False),
+        ('potato', False),
+        ({'file': 'blah', 'is_csv': False}, False),
+        ({'file': 'blah', 'other': 'something'}, True),
+    )
+)
 def test_post_notification_with_document_upload_logs_dict_values(
-        api_client_request, notify_db_session, mocker
+        api_client_request, notify_db_session, mocker, data, should_log
 ):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
         template_type='email',
-        content="Hmm: ((why_this))"
+        content="Hmm: ((value))"
     )
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.return_value = {}
 
     data = {
         "email_address": service.users[0].email_address,
         "template_id": template.id,
         "personalisation": {
-            "why_this": {"nothing": "else"},
+            "value": data,
         }
     }
 
@@ -964,10 +975,11 @@ def test_post_notification_with_document_upload_logs_dict_values(
 
     assert validate(resp_json, post_email_response) == resp_json
 
-    assert (
-        mock.call('Notification personalisation contains a dict value without `file` key.')
-        in mock_logger.call_args_list
-    )
+    if should_log:
+        assert (
+            mock.call('Notification personalisation contains incompatible `file` dict.')
+            in mock_logger.call_args_list
+        )
 
 
 def test_post_notification_with_document_upload_simulated(api_client_request, notify_db_session, mocker):
