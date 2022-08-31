@@ -1050,3 +1050,72 @@ def test_update_organisation_email_branding_pool_updates_branding_pool(
         _expected_status=204
     )
     assert len(sample_organisation.email_branding_pool) == 2
+
+
+def test_remove_email_branding_from_organisation_pool(
+    admin_request,
+    sample_organisation,
+):
+    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=first_branding.id
+    )
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=second_branding.id
+    )
+    assert sample_organisation.email_branding_pool == [first_branding, second_branding]
+
+    admin_request.delete(
+        'organisation.remove_email_branding_from_organisation_pool',
+        organisation_id=sample_organisation.id,
+        email_branding_id=first_branding.id,
+        _expected_status=204
+    )
+    assert sample_organisation.email_branding_pool == [second_branding]
+
+
+def test_remove_email_branding_from_organisation_pool_cannot_remove_branding_not_in_pool(
+    admin_request,
+    sample_organisation,
+):
+    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=first_branding.id
+    )
+    assert sample_organisation.email_branding_pool == [first_branding]
+
+    admin_request.delete(
+        'organisation.remove_email_branding_from_organisation_pool',
+        organisation_id=sample_organisation.id,
+        email_branding_id=second_branding.id,
+        _expected_status=404
+    )
+    assert sample_organisation.email_branding_pool == [first_branding]
+
+
+def test_remove_email_branding_from_organisation_pool_cannot_remove_default_branding(
+    admin_request,
+    sample_organisation,
+):
+    branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
+
+    dao_add_email_branding_to_organisation_pool(
+        organisation_id=sample_organisation.id,
+        email_branding_id=branding.id
+    )
+    sample_organisation.email_branding_id = branding.id
+
+    admin_request.delete(
+        'organisation.remove_email_branding_from_organisation_pool',
+        organisation_id=sample_organisation.id,
+        email_branding_id=branding.id,
+        _expected_status=400
+    )
+    assert sample_organisation.email_branding_pool == [branding]

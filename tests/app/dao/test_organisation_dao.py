@@ -20,8 +20,10 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_get_organisations,
     dao_get_users_for_organisation,
+    dao_remove_email_branding_from_organisation_pool,
     dao_update_organisation,
 )
+from app.errors import InvalidRequest
 from app.models import Organisation, Service
 from tests.app.db import (
     create_annual_billing,
@@ -484,3 +486,30 @@ def test_dao_get_organisation_live_services_with_free_allowance(sample_service, 
 
     assert org_services[1].id == service_with_no_free_allowance.id
     assert org_services[1].free_sms_fragment_limit == 0
+
+
+def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):
+    branding_1 = create_email_branding(logo='test_x1.png', name='branding_1')
+    branding_2 = create_email_branding(logo='test_x2.png', name='branding_2')
+    branding_3 = create_email_branding(logo='test_x3.png', name='branding_3')
+
+    sample_organisation.email_branding_id = branding_2.id
+    sample_organisation.email_branding_pool += [branding_1, branding_2, branding_3]
+
+    assert sample_organisation.email_branding_pool == [branding_1, branding_2, branding_3]
+
+    dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
+
+    # Error if trying to remove an email branding that's not in the pool
+    with pytest.raises(ValueError):
+        dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
+        assert sample_organisation.email_branding_pool == [branding_2, branding_3]
+
+    # Error if trying to remove the org's default email branding
+    with pytest.raises(InvalidRequest):
+        dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
+        assert sample_organisation.email_branding_pool == [branding_2, branding_3]
+
+    dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_3.id)
+    assert sample_organisation.email_branding_pool == [branding_2]
