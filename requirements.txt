@@ -18,7 +18,7 @@ awscli==1.25.64
     # via awscli-cwlogs
 awscli-cwlogs==1.4.6
     # via -r requirements.in
-bcrypt==3.2.2
+bcrypt==4.0.0
     # via flask-bcrypt
 beautifulsoup4==4.11.1
     # via -r requirements.in
