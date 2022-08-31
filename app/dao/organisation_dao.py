@@ -212,3 +212,17 @@ def dao_get_email_branding_pool_for_organisation(organisation_id):
     ).filter(
         Organisation.id == organisation_id,
     ).order_by(EmailBranding.name).all()
+
+
+@autocommit
+def dao_remove_email_branding_from_organisation_pool(organisation_id, email_branding_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    email_branding = EmailBranding.query.filter_by(id=email_branding_id).one()
+
+    if organisation.email_branding_id == email_branding_id:
+        from app.errors import InvalidRequest
+        raise InvalidRequest("You cannot remove an organisation's default email branding", status_code=400)
+
+    organisation.email_branding_pool.remove(email_branding)
+    db.session.add(organisation)
+    return email_branding

@@ -19,6 +19,7 @@ from app.dao.organisation_dao import (
     dao_get_organisation_services,
     dao_get_organisations,
     dao_get_users_for_organisation,
+    dao_remove_email_branding_from_organisation_pool,
     dao_remove_user_from_organisation,
     dao_update_organisation,
 )
@@ -232,6 +233,23 @@ def update_organisation_email_branding_pool(organisation_id):
     validate(data, post_update_org_email_branding_pool_schema)
 
     dao_add_email_branding_list_to_organisation_pool(organisation_id, data['branding_ids'])
+
+    return {}, 204
+
+
+@organisation_blueprint.route(
+    '/<uuid:organisation_id>/email-branding-pool/<uuid:email_branding_id>',
+    methods=['DELETE']
+)
+def remove_email_branding_from_organisation_pool(organisation_id, email_branding_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    email_branding_ids = {eb.id for eb in organisation.email_branding_pool}
+
+    if email_branding_id not in email_branding_ids:
+        error = f"Email branding {email_branding_id} not in {organisation}'s pool"
+        raise InvalidRequest(error, status_code=404)
+
+    dao_remove_email_branding_from_organisation_pool(organisation_id, email_branding_id)
 
     return {}, 204
 
