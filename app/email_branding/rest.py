@@ -1,4 +1,5 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy.exc import IntegrityError
 
 from app.dao.email_branding_dao import (
     dao_create_email_branding,
@@ -16,6 +17,21 @@ from app.schema_validation import validate
 
 email_branding_blueprint = Blueprint('email_branding', __name__)
 register_errors(email_branding_blueprint)
+
+
+@email_branding_blueprint.errorhandler(IntegrityError)
+def handle_integrity_error(exc):
+    """
+    Handle integrity errors caused by the unique constraint
+    """
+    if 'uq_email_branding_name' in str(exc):
+        return jsonify(
+            result='error',
+            message={'name': ["An email branding with that name already exists."]}
+        ), 400
+
+    current_app.logger.exception(exc)
+    return jsonify(result='error', message="Internal server error"), 500
 
 
 @email_branding_blueprint.route('', methods=['GET'])
@@ -41,6 +57,7 @@ def create_email_branding():
         email_branding.text = email_branding.name
 
     dao_create_email_branding(email_branding)
+
     return jsonify(data=email_branding.serialize()), 201
 
 

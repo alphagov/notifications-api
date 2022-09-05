@@ -256,6 +256,41 @@ def test_create_email_branding_reject_invalid_brand_type(admin_request):
     assert response['errors'][0]['message'] == 'brand_type NOT A TYPE is not one of [org, both, org_banner]'
 
 
+def test_create_email_branding_400s_on_unique_violation(admin_request, notify_db_session):
+    data = {
+        'name': 'test email_branding',
+        'logo': 'images/text_x2.png'
+    }
+    admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=201
+    )
+    response = admin_request.post(
+        'email_branding.create_email_branding',
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response['message']['name'] == ['An email branding with that name already exists.']
+
+
+def test_update_email_branding_400s_on_unique_violation(admin_request, notify_db_session):
+    create_email_branding(name='test 1')
+    email_branding = create_email_branding(name='test 2')
+    data = email_branding.serialize()
+    data['name'] = 'test 1'
+
+    response = admin_request.post(
+        'email_branding.update_email_branding',
+        email_branding_id=data['id'],
+        _data=data,
+        _expected_status=400
+    )
+
+    assert response['message']['name'] == ['An email branding with that name already exists.']
+
+
 def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_db_session):
     email_branding = create_email_branding()
     data = {
