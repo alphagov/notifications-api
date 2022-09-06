@@ -135,7 +135,10 @@ def error_if_service_using_email_verification_flow_without_permission(
     if DOCUMENT_DOWNLOAD_VERIFY_EMAIL not in service_permissions:
         if verify_email:
             raise BadRequestError(
-                message="Email verification flow for document download has not been enabled for this service."
+                message=(
+                    "Email verification and/or custom retention for 'send files by email' "
+                    "has not been enabled for this service."
+                )
             )
 
 

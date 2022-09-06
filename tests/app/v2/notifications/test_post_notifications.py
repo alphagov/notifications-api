@@ -881,6 +881,9 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
         {'is_csv': True},
         {'verify_email_before_download': False},
         {'verify_email_before_download': True},
+        {'retention_period': None},
+        {'retention_period': '1 week'},
+        {'retention_period': '4 weeks'},
     )
 )
 def test_post_notification_with_document_upload(api_client_request, notify_db_session, mocker, extra):
@@ -895,7 +898,7 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
     document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
     document_download_mock.upload_document.side_effect = (
-        lambda service_id, content, is_csv, verification_email: f'{content}-link'
+        lambda service_id, content, is_csv, verification_email, **kwargs: f'{content}-link'
     )
 
     data = {
@@ -917,9 +920,22 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     assert validate(resp_json, post_email_response) == resp_json
 
     verification_email = data['email_address'] if extra.get('verify_email_before_download') else None
+
     assert document_download_mock.upload_document.call_args_list == [
-        call(str(service.id), 'abababab', extra.get('is_csv'), verification_email=verification_email),
-        call(str(service.id), 'cdcdcdcd', extra.get('is_csv'), verification_email=verification_email)
+        call(
+            str(service.id),
+            'abababab',
+            extra.get('is_csv'),
+            verification_email=verification_email,
+            retention_period=extra.get('retention_period'),
+        ),
+        call(
+            str(service.id),
+            'cdcdcdcd',
+            extra.get('is_csv'),
+            verification_email=verification_email,
+            retention_period=extra.get('retention_period'),
+        )
     ]
 
     notification = Notification.query.one()
@@ -933,24 +949,35 @@ def test_post_notification_with_document_upload(api_client_request, notify_db_se
     assert resp_json['content']['body'] == 'Document 1: abababab-link. Document 2: cdcdcdcd-link'
 
 
+@pytest.mark.parametrize(
+    'data, should_log',
+    (
+        ({'blah': 'blah'}, False),
+        ('potato', False),
+        ({'file': 'blah', 'is_csv': False}, False),
+        ({'file': 'blah', 'other': 'something'}, True),
+    )
+)
 def test_post_notification_with_document_upload_logs_dict_values(
-        api_client_request, notify_db_session, mocker
+        api_client_request, notify_db_session, mocker, data, should_log
 ):
     service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
         template_type='email',
-        content="Hmm: ((why_this))"
+        content="Hmm: ((value))"
     )
 
     mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
+    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
+    document_download_mock.upload_document.return_value = {}
 
     data = {
         "email_address": service.users[0].email_address,
         "template_id": template.id,
         "personalisation": {
-            "why_this": {"nothing": "else"},
+            "value": data,
         }
     }
 
@@ -964,10 +991,11 @@ def test_post_notification_with_document_upload_logs_dict_values(
 
     assert validate(resp_json, post_email_response) == resp_json
 
-    assert (
-        mock.call('Notification personalisation contains a dict value without `file` key.')
-        in mock_logger.call_args_list
-    )
+    if should_log:
+        assert (
+            mock.call('Notification personalisation contains incompatible `file` dict.')
+            in mock_logger.call_args_list
+        )
 
 
 def test_post_notification_with_document_upload_simulated(api_client_request, notify_db_session, mocker):
@@ -1058,7 +1086,7 @@ def test_post_notification_without_document_email_verification_permission(
 
     assert (
         resp['errors'][0]['message'] ==
-        'Email verification flow for document download has not been enabled for this service.'
+        "Email verification and/or custom retention for 'send files by email' has not been enabled for this service."
     )
 
 
