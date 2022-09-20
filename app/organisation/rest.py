@@ -9,6 +9,7 @@ from app.dao.fact_billing_dao import fetch_usage_for_organisation
 from app.dao.invited_org_user_dao import get_invited_org_users_for_organisation
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
+    dao_add_email_branding_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
@@ -105,11 +106,24 @@ def create_organisation():
     validate(data, post_create_organisation_schema)
 
     if data["organisation_type"] in NHS_ORGANISATION_TYPES:
-        data["email_branding_id"] = current_app.config['NHS_EMAIL_BRANDING_ID']
+        organisation = _create_nhs_organisation(data)
+    else:
+        organisation = Organisation(**data)
+        dao_create_organisation(organisation)
+
+    return jsonify(organisation.serialize()), 201
+
+
+def _create_nhs_organisation(data):
+    nhs_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
+    data["email_branding_id"] = nhs_branding_id
 
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
-    return jsonify(organisation.serialize()), 201
+
+    dao_add_email_branding_to_organisation_pool(organisation.id, nhs_branding_id)
+
+    return organisation
 
 
 @organisation_blueprint.route('/<uuid:organisation_id>', methods=['POST'])
