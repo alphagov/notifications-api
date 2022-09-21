@@ -104,11 +104,9 @@ def create_organisation():
 
     validate(data, post_create_organisation_schema)
 
-    if data["organisation_type"] in NHS_ORGANISATION_TYPES:
-        data["email_branding_id"] = current_app.config['NHS_EMAIL_BRANDING_ID']
-
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
+
     return jsonify(organisation.serialize()), 201
 
 
