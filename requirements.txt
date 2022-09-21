@@ -14,7 +14,7 @@ async-timeout==4.0.2
     # via redis
 attrs==22.1.0
     # via jsonschema
-awscli==1.25.64
+awscli==1.25.78
     # via awscli-cwlogs
 awscli-cwlogs==1.4.6
     # via -r requirements.in
