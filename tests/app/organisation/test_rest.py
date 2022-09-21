@@ -32,7 +32,7 @@ from tests.app.db import (
 )
 
 
-def test_get_all_organisations(admin_request, notify_db_session):
+def test_get_all_organisations(admin_request, notify_db_session, nhs_email_branding):
     create_organisation(name='inactive org', active=False, organisation_type='nhs_central')
     create_organisation(name='active org', domains=['example.com'])
 
