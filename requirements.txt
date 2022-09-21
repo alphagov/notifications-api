@@ -41,7 +41,7 @@ cachetools==5.2.0
     #   notifications-utils
 celery[sqs]==5.2.7
     # via -r requirements.in
-certifi==2022.6.15
+certifi==2022.9.14
     # via
     #   pyproj
     #   requests
