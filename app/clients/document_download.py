@@ -30,7 +30,7 @@ class DocumentDownloadClient:
             service_id,
             file_contents,
             is_csv=None,
-            verification_email: Optional[str] = None,
+            confirmation_email: Optional[str] = None,
             retention_period: Optional[str] = None
     ):
         try:
@@ -39,8 +39,8 @@ class DocumentDownloadClient:
                 'is_csv': is_csv or False,
             }
 
-            if verification_email:
-                data['verification_email'] = verification_email
+            if confirmation_email:
+                data['confirmation_email'] = confirmation_email
 
             if retention_period:
                 data['retention_period'] = retention_period

@@ -129,14 +129,14 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
         )
 
 
-def error_if_service_using_email_verification_flow_without_permission(
-        verify_email: bool, service_permissions: List[str]
+def error_if_service_using_email_confirmation_flow_without_permission(
+        confirm_email: bool, service_permissions: List[str]
 ):
     if DOCUMENT_DOWNLOAD_VERIFY_EMAIL not in service_permissions:
-        if verify_email:
+        if confirm_email:
             raise BadRequestError(
                 message=(
-                    "Email verification and/or custom retention for 'send files by email' "
+                    "Email confirmation and/or custom retention for 'send files by email' "
                     "has not been enabled for this service."
                 )
             )

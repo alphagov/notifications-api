@@ -55,7 +55,7 @@ from app.notifications.validators import (
     check_service_email_reply_to_id,
     check_service_has_permission,
     check_service_sms_sender_id,
-    error_if_service_using_email_verification_flow_without_permission,
+    error_if_service_using_email_confirmation_flow_without_permission,
     validate_address,
     validate_and_format_recipient,
     validate_template,
@@ -344,11 +344,11 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
         if simulated:
             personalisation_data[key] = document_download_client.get_upload_url(service.id) + '/test-document'
         else:
-            verify_email = personalisation_data[key].get('verify_email_before_download') or False
+            confirm_email = personalisation_data[key].get('confirm_email_before_download') or False
             retention_period = personalisation_data[key].get('retention_period', None)
 
-            error_if_service_using_email_verification_flow_without_permission(
-                verify_email or bool(retention_period),
+            error_if_service_using_email_confirmation_flow_without_permission(
+                confirm_email or bool(retention_period),
                 service.permissions
             )
 
@@ -357,7 +357,7 @@ def process_document_uploads(personalisation_data, service, send_to: str, simula
                     service.id,
                     personalisation_data[key]['file'],
                     personalisation_data[key].get('is_csv'),
-                    verification_email=send_to if verify_email else None,
+                    confirmation_email=send_to if confirm_email else None,
                     retention_period=retention_period
                 )
             except DocumentDownloadError as e:
