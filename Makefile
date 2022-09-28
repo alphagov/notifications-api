@@ -69,6 +69,7 @@ generate-version-file: ## Generates the app version file
 test: ## Run tests
 	flake8 .
 	isort --check-only ./app ./tests
+	black --check --extend-exclude migrations .
 	pytest -n4 --maxfail=10
 
 .PHONY: freeze-requirements
