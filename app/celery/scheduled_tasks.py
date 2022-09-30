@@ -18,6 +18,7 @@ from app.celery.tasks import (
     process_row,
 )
 from app.config import QueueNames, TaskNames
+from app.cronitor import cronitor
 from app.dao.invited_org_user_dao import (
     delete_org_invitations_created_more_than_two_days_ago,
 )
@@ -55,6 +56,7 @@ from app.models import (
     SMS_TYPE,
     BroadcastMessage,
     BroadcastStatusType,
+    Event,
     Job,
 )
 from app.notifications.process_notifications import send_notification_to_queue
@@ -367,3 +369,18 @@ def remove_yesterdays_planned_tests_on_govuk_alerts():
         name=TaskNames.PUBLISH_GOVUK_ALERTS,
         queue=QueueNames.GOVUK_ALERTS
     )
+
+
+@notify_celery.task(name='delete-old-records-from-events-table')
+@cronitor('delete-old-records-from-events-table')
+def delete_old_records_from_events_table():
+    delete_events_before = datetime.utcnow() - timedelta(weeks=52)
+    event_query = Event.query.filter(Event.created_at < delete_events_before)
+
+    deleted_count = event_query.delete()
+
+    current_app.logger.info(
+        f"Deleted {deleted_count} historical events from before {delete_events_before}."
+    )
+
+    db.session.commit()

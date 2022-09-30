@@ -18,6 +18,7 @@ from app.celery.scheduled_tasks import (
     check_if_letters_still_pending_virus_check,
     check_job_status,
     delete_invitations,
+    delete_old_records_from_events_table,
     delete_verify_codes,
     remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
@@ -36,6 +37,7 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
     BroadcastStatusType,
+    Event,
 )
 from tests.app import load_example_csv
 from tests.app.db import (
@@ -750,3 +752,19 @@ def test_remove_yesterdays_planned_tests_on_govuk_alerts(
         name=TaskNames.PUBLISH_GOVUK_ALERTS,
         queue=QueueNames.GOVUK_ALERTS
     )
+
+
+def test_delete_old_records_from_events_table(notify_db_session):
+    old_datetime, recent_datetime = datetime.utcnow() - timedelta(weeks=78), datetime.utcnow() - timedelta(weeks=50)
+    old_event = Event(event_type='test_event', created_at=old_datetime, data={})
+    recent_event = Event(event_type='test_event', created_at=recent_datetime, data={})
+
+    notify_db_session.add(old_event)
+    notify_db_session.add(recent_event)
+    notify_db_session.commit()
+
+    delete_old_records_from_events_table()
+
+    events = Event.query.filter(Event.event_type == 'test_event').all()
+    assert len(events) == 1
+    assert events[0].created_at == recent_datetime

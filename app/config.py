@@ -338,6 +338,11 @@ class Config(object):
                 'schedule': crontab(hour=00, minute=00),
                 'options': {'queue': QueueNames.PERIODIC}
             },
+            'delete-old-records-from-events-table': {
+                'task': 'delete-old-records-from-events-table',
+                'schedule': crontab(hour=3, minute=4),
+                'options': {'queue': QueueNames.PERIODIC}
+            }
         }
     }
 
