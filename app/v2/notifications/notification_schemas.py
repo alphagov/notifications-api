@@ -131,7 +131,7 @@ post_sms_request = {
     "type": "object",
     "title": "POST v2/notifications/sms",
     "properties": {
-        "reference": {"type": "string"},
+        "reference": {"type": "string", "maxLength": 1_000},
         "phone_number": {"type": "string", "format": "phone_number"},
         "template_id": uuid,
         "personalisation": personalisation,
@@ -177,7 +177,7 @@ post_email_request = {
     "type": "object",
     "title": "POST v2/notifications/email",
     "properties": {
-        "reference": {"type": "string"},
+        "reference": {"type": "string", "maxLength": 1_000},
         "email_address": {"type": "string", "format": "email_address"},
         "template_id": uuid,
         "personalisation": personalisation,
@@ -223,7 +223,7 @@ post_letter_request = {
     "type": "object",
     "title": "POST v2/notifications/letter",
     "properties": {
-        "reference": {"type": "string"},
+        "reference": {"type": "string", "maxLength": 1_000},
         "template_id": uuid,
         "personalisation": personalisation
     },

@@ -380,6 +380,46 @@ def test_post_notification_returns_401_and_well_formed_auth_error(client, sample
                                      'message': 'Unauthorized: authentication token must be provided'}]
 
 
+def test_post_notification_with_too_long_reference_returns_400(
+    api_client_request, sample_letter_template, sample_sms_template, sample_email_template,
+):
+    types_and_templates_and_data = [
+        (
+            'letter',
+            sample_letter_template,
+            {'personalisation': {"address_line_1": "The king", "postcode": "SW1 1AA"}}
+        ),
+        (
+            'email',
+            sample_email_template,
+            {'email_address': "sample@email.com"}
+        ),
+        (
+            'sms',
+            sample_sms_template,
+            {"phone_number": "+447700900855"}
+        ),
+    ]
+
+    for notification_type, template, data in types_and_templates_and_data:
+        data['template_id'] = template.id
+        data['reference'] = 'a' * 1001
+
+        error_resp = api_client_request.post(
+            template.service_id,
+            'v2_notifications.post_notification',
+            notification_type=notification_type,
+            _data=data,
+            _expected_status=400,
+            headers=[('Content-Type', 'application/json')]
+        )
+
+        assert error_resp['status_code'] == 400
+        assert error_resp['errors'] == [
+            {'error': "ValidationError", 'message': 'reference ' + ('a' * 1001) + ' is too long'}
+        ]
+
+
 @pytest.mark.parametrize("notification_type, key_send_to, send_to",
                          [("sms", "phone_number", "+447700900855"),
                           ("email", "email_address", "sample@email.com")])
