@@ -242,7 +242,7 @@ smartypants==2.0.1
     # via notifications-utils
 soupsieve==2.3.2.post1
     # via beautifulsoup4
-sqlalchemy==1.4.40
+sqlalchemy==1.4.41
     # via
     #   -r requirements.in
     #   alembic
