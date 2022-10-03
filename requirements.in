@@ -15,7 +15,7 @@ iso8601==1.1.0
 itsdangerous==2.1.2
 jsonschema[format]==4.16.0
 marshmallow-sqlalchemy==0.28.1
-marshmallow==3.17.1
+marshmallow==3.18.0
 psycopg2-binary==2.9.3
 PyJWT==2.4.0
 SQLAlchemy==1.4.40
