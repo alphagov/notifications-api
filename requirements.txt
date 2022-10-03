@@ -46,9 +46,7 @@ certifi==2022.6.15
     #   pyproj
     #   requests
 cffi==1.15.1
-    # via
-    #   -r requirements.in
-    #   bcrypt
+    # via -r requirements.in
 charset-normalizer==2.1.1
     # via requests
 click==8.1.3
@@ -119,7 +117,7 @@ idna==3.3
     #   requests
 importlib-metadata==4.12.0
     # via flask
-iso8601==1.0.2
+iso8601==1.1.0
     # via -r requirements.in
 isoduration==20.11.0
     # via jsonschema
@@ -167,7 +165,6 @@ orderedset==2.0.3
     # via notifications-utils
 packaging==21.3
     # via
-    #   bleach
     #   marshmallow
     #   marshmallow-sqlalchemy
     #   redis
