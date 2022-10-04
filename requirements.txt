@@ -24,8 +24,6 @@ beautifulsoup4==4.11.1
     # via -r requirements.in
 billiard==3.6.4.0
     # via celery
-bleach==5.0.1
-    # via notifications-utils
 blinker==1.5
     # via gds-metrics
 boto3==1.24.84
@@ -159,7 +157,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==6.3.0
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@56.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@57.0.0
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
@@ -232,7 +230,6 @@ shapely==1.8.4
 six==1.16.0
     # via
     #   awscli-cwlogs
-    #   bleach
     #   click-repl
     #   eventlet
     #   flask-marshmallow
@@ -267,8 +264,6 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-webencodings==0.5.1
-    # via bleach
 werkzeug==2.0.3
     # via
     #   -r requirements.in
