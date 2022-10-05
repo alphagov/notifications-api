@@ -1,5 +1,3 @@
-from typing import List
-
 from flask import current_app
 from gds_metrics.metrics import Histogram
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
@@ -20,7 +18,6 @@ from app.dao.service_email_reply_to_dao import dao_get_reply_to_by_id
 from app.dao.service_letter_contact_dao import dao_get_letter_contact_by_id
 from app.dao.service_sms_sender_dao import dao_get_service_sms_senders_by_id
 from app.models import (
-    DOCUMENT_DOWNLOAD_VERIFY_EMAIL,
     EMAIL_TYPE,
     INTERNATIONAL_LETTERS,
     INTERNATIONAL_SMS_TYPE,
@@ -127,19 +124,6 @@ def check_if_service_can_send_files_by_email(service_contact_link, service_id):
             message=f"Send files by email has not been set up - add contact details for your service at "
             f"{current_app.config['ADMIN_BASE_URL']}/services/{service_id}/service-settings/send-files-by-email"
         )
-
-
-def error_if_service_using_email_confirmation_flow_without_permission(
-        confirm_email: bool, service_permissions: List[str]
-):
-    if DOCUMENT_DOWNLOAD_VERIFY_EMAIL not in service_permissions:
-        if confirm_email:
-            raise BadRequestError(
-                message=(
-                    "Email confirmation and/or custom retention for 'send files by email' "
-                    "has not been enabled for this service."
-                )
-            )
 
 
 def validate_and_format_recipient(send_to, key_type, service, notification_type, allow_guest_list_recipients=True):
