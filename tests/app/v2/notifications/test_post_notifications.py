@@ -9,7 +9,6 @@ from flask import current_app, json
 from app.dao import templates_dao
 from app.dao.service_sms_sender_dao import dao_update_service_sms_sender
 from app.models import (
-    DOCUMENT_DOWNLOAD_VERIFY_EMAIL,
     EMAIL_TYPE,
     INTERNATIONAL_SMS_TYPE,
     NOTIFICATION_CREATED,
@@ -927,7 +926,7 @@ def test_post_email_notification_with_archived_reply_to_id_returns_400(
     )
 )
 def test_post_notification_with_document_upload(api_client_request, notify_db_session, mocker, extra):
-    service = create_service(service_permissions=[EMAIL_TYPE, DOCUMENT_DOWNLOAD_VERIFY_EMAIL])
+    service = create_service(service_permissions=[EMAIL_TYPE])
     service.contact_link = 'contact.me@gov.uk'
     template = create_template(
         service=service,
@@ -1093,40 +1092,6 @@ def test_post_notification_without_document_upload_permission(api_client_request
         notification_type='email',
         _data=data,
         _expected_status=400
-    )
-
-
-def test_post_notification_without_document_email_verification_permission(
-        api_client_request, notify_db_session, mocker
-):
-    service = create_service(service_permissions=[EMAIL_TYPE], contact_link='contact.me@gov.uk')
-    template = create_template(
-        service=service,
-        template_type='email',
-        content="Document: ((document))"
-    )
-
-    mocker.patch('app.celery.provider_tasks.deliver_email.apply_async')
-    document_download_mock = mocker.patch('app.v2.notifications.post_notifications.document_download_client')
-    document_download_mock.upload_document.return_value = 'https://document-url/'
-
-    data = {
-        "email_address": service.users[0].email_address,
-        "template_id": template.id,
-        "personalisation": {"document": {"file": "abababab", "confirm_email_before_download": True}}
-    }
-
-    resp = api_client_request.post(
-        service.id,
-        'v2_notifications.post_notification',
-        notification_type='email',
-        _data=data,
-        _expected_status=400
-    )
-
-    assert (
-        resp['errors'][0]['message'] ==
-        "Email confirmation and/or custom retention for 'send files by email' has not been enabled for this service."
     )
 
 
