@@ -509,14 +509,18 @@ def test_post_email_notification_returns_201(
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": None}}, 201, None),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True}}, 201, None),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": False}}, 201, None),
-        ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": "bad"}}, 400, None),
+        (
+                {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": "bad"}},
+                400,
+                "Unsupported value for is_csv: bad. Use a boolean true or false value."
+        ),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": None}}, 201, None),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": True}}, 201, None),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": False}}, 201, None),
         (
                 {"doc": {"file": "YSxiLGMKMSwyLDMK", "is_csv": True, "confirm_email_before_download": 'potato'}},
                 400,
-                "Unsupported value for confirm_email_before_download: potato"
+                "Unsupported value for confirm_email_before_download: potato. Use a boolean true or false value."
         ),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": None}}, 201, None),
         ({"doc": {"file": "YSxiLGMKMSwyLDMK", "retention_period": "1 week"}}, 201, None),

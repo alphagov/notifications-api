@@ -133,11 +133,11 @@ send_a_file_validation = {
             "required": True,
         },
         "is_csv": {
-            "type": ["boolean", "null"],
+            "format": "send_a_file_is_csv",
             "required": False,
         },
         "confirm_email_before_download": {
-            "format": "send_a_file_confirm_email",
+            "format": "send_a_file_confirm_email_before_download",
             "required": False,
         },
         "retention_period": {

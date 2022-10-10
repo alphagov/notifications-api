@@ -75,8 +75,18 @@ def validate_schema_retention_period(instance):
     )
 
 
-@format_checker.checks('send_a_file_confirm_email', raises=ValidationError)
-def validate_schema_send_a_file_confirm_email(instance):
+@format_checker.checks('send_a_file_is_csv', raises=ValidationError)
+def send_a_file_is_csv(instance):
+    if instance is None or isinstance(instance, bool):
+        return True
+
+    raise ValidationError(
+        f"Unsupported value for is_csv: {instance}. Use a boolean true or false value."
+    )
+
+
+@format_checker.checks('send_a_file_confirm_email_before_download', raises=ValidationError)
+def send_a_file_confirm_email_before_download(instance):
     if instance is None or isinstance(instance, bool):
         return True
 
