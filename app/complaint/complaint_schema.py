@@ -1,4 +1,3 @@
-
 complaint_count_request = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "complaint count request schema",
@@ -7,5 +6,5 @@ complaint_count_request = {
     "properties": {
         "start_date": {"type": ["string", "null"], "format": "date"},
         "end_date": {"type": ["string", "null"], "format": "date"},
-    }
+    },
 }

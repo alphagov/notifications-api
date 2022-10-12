@@ -5,12 +5,11 @@ Revises: 0255_another_letter_org
 Create Date: 2019-02-05 14:51:30.808067
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0256_set_postage_tmplt_hstr'
-down_revision = '0255_another_letter_org'
+revision = "0256_set_postage_tmplt_hstr"
+down_revision = "0255_another_letter_org"
 
 
 def upgrade():

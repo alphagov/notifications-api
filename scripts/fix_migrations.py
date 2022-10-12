@@ -6,7 +6,7 @@ import sys
 
 from alembic.script import ScriptDirectory
 
-sys.path.append('.')
+sys.path.append(".")
 
 
 def get_branch_points(migrations):
@@ -14,8 +14,7 @@ def get_branch_points(migrations):
 
 
 def get_branches(migrations, branch_point, heads):
-    return [list(migrations.iterate_revisions(m, branch_point.revision))[::-1]
-            for m in heads]
+    return [list(migrations.iterate_revisions(m, branch_point.revision))[::-1] for m in heads]
 
 
 def choice(prompt, options, option_fmt=lambda x: x):
@@ -42,15 +41,15 @@ def reorder_revisions(revisions, old_base, new_base):
     new_revision_id = rename_revision(head.revision, new_base)
 
     print("Moving {} to {}".format(head.revision, new_revision_id))
-    with open(head.path, 'r') as rev_file:
+    with open(head.path, "r") as rev_file:
         file_data = rev_file.read()
 
     file_data = file_data.replace(head.revision, new_revision_id).replace(old_base, new_base)
     new_filename = head.path.replace(head.revision, new_revision_id)
 
-    assert head.path != new_filename, 'Old filename not same as revision id, please rename file before continuing'
+    assert head.path != new_filename, "Old filename not same as revision id, please rename file before continuing"
 
-    with open(new_filename, 'w') as rev_file:
+    with open(new_filename, "w") as rev_file:
         rev_file.write(file_data)
 
     print("Removing {}".format(head.path))
@@ -63,8 +62,7 @@ def fix_branch_point(migrations, branch_point, heads):
     print("Migrations directory has a branch point at {}".format(branch_point.revision))
 
     branches = get_branches(migrations, branch_point, heads)
-    move_branch = choice("Select migrations to move", branches,
-                         lambda x: " -> ".join(m.revision for m in x))
+    move_branch = choice("Select migrations to move", branches, lambda x: " -> ".join(m.revision for m in x))
     branches.remove(move_branch)
 
     reorder_revisions(move_branch, branch_point.revision, branches[0][-1].revision)
@@ -81,10 +79,13 @@ def main(migrations_path):
     elif len(branch_points) == 1 and len(heads) == 2:
         fix_branch_point(migrations, branch_points[0], heads)
     else:
-        print("Found {} branch points and {} heads, can't fix automatically".format(
-            [bp.revision for bp in branch_points], heads))
+        print(
+            "Found {} branch points and {} heads, can't fix automatically".format(
+                [bp.revision for bp in branch_points], heads
+            )
+        )
         sys.exit(1)
 
 
-if __name__ == '__main__':
-    main('migrations/')
+if __name__ == "__main__":
+    main("migrations/")

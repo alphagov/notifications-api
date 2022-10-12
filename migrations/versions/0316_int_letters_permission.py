@@ -5,12 +5,11 @@ Revises: 0315_document_download_count
 Create Date: 2020-09-13 28:17:17.110495
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0316_int_letters_permission'
-down_revision = '0315_document_download_count'
+revision = "0316_int_letters_permission"
+down_revision = "0315_document_download_count"
 
 
 def upgrade():

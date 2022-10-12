@@ -38,20 +38,18 @@ def get_retry_delay(retry_count):
 def check_event_is_authorised_to_be_sent(broadcast_event, provider):
     if not broadcast_event.service.active:
         raise BroadcastIntegrityError(
-            f'Cannot send broadcast_event {broadcast_event.id} ' +
-            f'to provider {provider}: the service is suspended'
+            f"Cannot send broadcast_event {broadcast_event.id} " + f"to provider {provider}: the service is suspended"
         )
 
     if broadcast_event.service.restricted:
         raise BroadcastIntegrityError(
-            f'Cannot send broadcast_event {broadcast_event.id} ' +
-            f'to provider {provider}: the service is not live'
+            f"Cannot send broadcast_event {broadcast_event.id} " + f"to provider {provider}: the service is not live"
         )
 
     if broadcast_event.broadcast_message.stubbed:
         raise BroadcastIntegrityError(
-            f'Cannot send broadcast_event {broadcast_event.id} ' +
-            f'to provider {provider}: the broadcast message is stubbed'
+            f"Cannot send broadcast_event {broadcast_event.id} "
+            + f"to provider {provider}: the broadcast message is stubbed"
         )
 
 
@@ -78,16 +76,16 @@ def check_event_makes_sense_in_sequence(broadcast_event, provider):
     # if this is the first time a task is being executed, it won't have a provider message yet
     if current_provider_message and current_provider_message.status != BroadcastProviderMessageStatus.SENDING:
         raise BroadcastIntegrityError(
-            f'Cannot send broadcast_event {broadcast_event.id} ' +
-            f'to provider {provider}: ' +
-            f'It is in status {current_provider_message.status}'
+            f"Cannot send broadcast_event {broadcast_event.id} "
+            + f"to provider {provider}: "
+            + f"It is in status {current_provider_message.status}"
         )
 
     if broadcast_event.transmitted_finishes_at < datetime.utcnow():
         raise BroadcastIntegrityError(
-            f'Cannot send broadcast_event {broadcast_event.id} ' +
-            f'to provider {provider}: ' +
-            f'The expiry time of {broadcast_event.transmitted_finishes_at} has already passed'
+            f"Cannot send broadcast_event {broadcast_event.id} "
+            + f"to provider {provider}: "
+            + f"The expiry time of {broadcast_event.transmitted_finishes_at} has already passed"
         )
 
     # get events sorted from earliest to latest
@@ -101,21 +99,21 @@ def check_event_makes_sense_in_sequence(broadcast_event, provider):
             # the previous message hasn't even got round to running `send_broadcast_provider_message` yet.
             if not prev_provider_message:
                 raise BroadcastIntegrityError(
-                    f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
-                    f'(type {prev_event.message_type}) has no provider_message for provider {provider} yet.\n' +
-                    'You must ensure that the other event sends succesfully, then manually kick off this event ' +
-                    'again by re-running send_broadcast_provider_message for this event and provider.'
+                    f"Cannot send {broadcast_event.id}. Previous event {prev_event.id} "
+                    + f"(type {prev_event.message_type}) has no provider_message for provider {provider} yet.\n"
+                    + "You must ensure that the other event sends succesfully, then manually kick off this event "
+                    + "again by re-running send_broadcast_provider_message for this event and provider."
                 )
 
             # if there's a previous message that has started but not finished sending (whether it fatally errored or is
             # currently retrying)
             if prev_provider_message.status != BroadcastProviderMessageStatus.ACK:
                 raise BroadcastIntegrityError(
-                    f'Cannot send {broadcast_event.id}. Previous event {prev_event.id} ' +
-                    f'(type {prev_event.message_type}) has not finished sending to provider {provider} yet.\n' +
-                    f'It is currently in status "{prev_provider_message.status}".\n' +
-                    'You must ensure that the other event sends succesfully, then manually kick off this event ' +
-                    'again by re-running send_broadcast_provider_message for this event and provider.'
+                    f"Cannot send {broadcast_event.id}. Previous event {prev_event.id} "
+                    + f"(type {prev_event.message_type}) has not finished sending to provider {provider} yet.\n"
+                    + f'It is currently in status "{prev_provider_message.status}".\n'
+                    + "You must ensure that the other event sends succesfully, then manually kick off this event "
+                    + "again by re-running send_broadcast_provider_message for this event and provider."
                 )
 
 
@@ -123,22 +121,18 @@ def check_event_makes_sense_in_sequence(broadcast_event, provider):
 def send_broadcast_event(broadcast_event_id):
     broadcast_event = dao_get_broadcast_event_by_id(broadcast_event_id)
 
-    notify_celery.send_task(
-        name=TaskNames.PUBLISH_GOVUK_ALERTS,
-        queue=QueueNames.GOVUK_ALERTS
-    )
+    notify_celery.send_task(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
 
     for provider in broadcast_event.service.get_available_broadcast_providers():
         send_broadcast_provider_message.apply_async(
-            kwargs={'broadcast_event_id': broadcast_event_id, 'provider': provider},
-            queue=QueueNames.BROADCASTS
+            kwargs={"broadcast_event_id": broadcast_event_id, "provider": provider}, queue=QueueNames.BROADCASTS
         )
 
 
 # max_retries=None: retry forever
 @notify_celery.task(bind=True, name="send-broadcast-provider-message", max_retries=None)
 def send_broadcast_provider_message(self, broadcast_event_id, provider):
-    if not current_app.config['CBC_PROXY_ENABLED']:
+    if not current_app.config["CBC_PROXY_ENABLED"]:
         current_app.logger.info(
             "CBC Proxy disabled, not sending broadcast_provider_message for "
             f"broadcast_event_id {broadcast_event_id} with provider {provider}"
@@ -160,15 +154,12 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
         formatted_message_number = format_sequential_number(broadcast_provider_message.message_number)
 
     current_app.logger.info(
-        f'Invoking cbc proxy to send broadcast_provider_message with ID of {broadcast_provider_message.id} '
-        f'and broadcast_event ID of {broadcast_event_id} '
-        f'msgType {broadcast_event.message_type}'
+        f"Invoking cbc proxy to send broadcast_provider_message with ID of {broadcast_provider_message.id} "
+        f"and broadcast_event ID of {broadcast_event_id} "
+        f"msgType {broadcast_event.message_type}"
     )
 
-    areas = [
-        {"polygon": polygon}
-        for polygon in broadcast_event.transmitted_areas["simple_polygons"]
-    ]
+    areas = [{"polygon": polygon} for polygon in broadcast_event.transmitted_areas["simple_polygons"]]
 
     cbc_proxy_provider_client = cbc_proxy_client.get_proxy(provider)
 
@@ -178,18 +169,18 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
                 identifier=str(broadcast_provider_message.id),
                 message_number=formatted_message_number,
                 headline="GOV.UK Notify Broadcast",
-                description=broadcast_event.transmitted_content['body'],
+                description=broadcast_event.transmitted_content["body"],
                 areas=areas,
                 sent=broadcast_event.sent_at_as_cap_datetime_string,
                 expires=broadcast_event.transmitted_finishes_at_as_cap_datetime_string,
-                channel=broadcast_event.service.broadcast_channel
+                channel=broadcast_event.service.broadcast_channel,
             )
         elif broadcast_event.message_type == BroadcastEventMessageType.UPDATE:
             cbc_proxy_provider_client.update_and_send_broadcast(
                 identifier=str(broadcast_provider_message.id),
                 message_number=formatted_message_number,
                 headline="GOV.UK Notify Broadcast",
-                description=broadcast_event.transmitted_content['body'],
+                description=broadcast_event.transmitted_content["body"],
                 areas=areas,
                 previous_provider_messages=broadcast_event.get_earlier_provider_messages(provider),
                 sent=broadcast_event.sent_at_as_cap_datetime_string,
@@ -200,7 +191,7 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
                 # but we are relying on service channels changing almost never, and not mid incident
                 # We may consider in the future, changing this such that we store the channel a broadcast was
                 # sent on on the broadcast message itself and pick the value from there instead of the service
-                channel=broadcast_event.service.broadcast_channel
+                channel=broadcast_event.service.broadcast_channel,
             )
         elif broadcast_event.message_type == BroadcastEventMessageType.CANCEL:
             cbc_proxy_provider_client.cancel_broadcast(
@@ -212,8 +203,8 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
     except CBCProxyRetryableException as exc:
         delay = get_retry_delay(self.request.retries)
         current_app.logger.exception(
-            f'Retrying send_broadcast_provider_message for broadcast event {broadcast_event_id}, '
-            f'provider message {broadcast_provider_message.id}, provider {provider} in {delay} seconds'
+            f"Retrying send_broadcast_provider_message for broadcast event {broadcast_event_id}, "
+            f"provider message {broadcast_provider_message.id}, provider {provider} in {delay} seconds"
         )
 
         self.retry(
@@ -225,6 +216,6 @@ def send_broadcast_provider_message(self, broadcast_event_id, provider):
     update_broadcast_provider_message_status(broadcast_provider_message, status=BroadcastProviderMessageStatus.ACK)
 
 
-@notify_celery.task(name='trigger-link-test')
+@notify_celery.task(name="trigger-link-test")
 def trigger_link_test(provider):
     cbc_proxy_client.get_proxy(provider).send_link_test()

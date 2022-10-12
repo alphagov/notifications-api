@@ -5,16 +5,16 @@ Revises: 0344_stubbed_not_nullable
 Create Date: 2021-02-09 09:19:07.957980
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = '0345_move_broadcast_provider'
-down_revision = '0344_stubbed_not_nullable'
+revision = "0345_move_broadcast_provider"
+down_revision = "0344_stubbed_not_nullable"
 
 
 def upgrade():
-    op.add_column('service_broadcast_settings', sa.Column('provider', sa.String(), nullable=True))
+    op.add_column("service_broadcast_settings", sa.Column("provider", sa.String(), nullable=True))
 
     sql = """
         select service_id, provider
@@ -36,4 +36,4 @@ def upgrade():
 def downgrade():
     # Downgrade does not try and fully undo the upgrade, in particular it does not
     # delete the rows added to the service_broadcast_settings table
-    op.drop_column('service_broadcast_settings', 'provider')
+    op.drop_column("service_broadcast_settings", "provider")

@@ -9,8 +9,8 @@ create_service_contact_list_schema = {
         "id": uuid,
         "original_file_name": {"type": "string"},
         "row_count": {"type": "integer"},
-        "template_type": {"enum": ['email', 'sms']},
-        "created_by": uuid
+        "template_type": {"enum": ["email", "sms"]},
+        "created_by": uuid,
     },
-    "required": ["id", "original_file_name", "row_count", "template_type", "created_by"]
+    "required": ["id", "original_file_name", "row_count", "template_type", "created_by"],
 }

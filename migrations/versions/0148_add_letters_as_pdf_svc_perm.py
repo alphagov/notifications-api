@@ -7,8 +7,8 @@ Create Date: 2017-12-01 13:33:18.581320
 """
 
 # revision identifiers, used by Alembic.
-revision = '0148_add_letters_as_pdf_svc_perm'
-down_revision = '0147_drop_mapping_tables'
+revision = "0148_add_letters_as_pdf_svc_perm"
+down_revision = "0147_drop_mapping_tables"
 
 from alembic import op
 

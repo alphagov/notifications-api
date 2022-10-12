@@ -7,11 +7,11 @@ Create Date: 2017-03-10 16:15:22.153948
 """
 
 # revision identifiers, used by Alembic.
-revision = '0069_add_dvla_job_status'
-down_revision = '0068_add_created_by_to_provider'
+revision = "0069_add_dvla_job_status"
+down_revision = "0068_add_created_by_to_provider"
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 
 def upgrade():

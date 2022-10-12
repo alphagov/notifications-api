@@ -5,59 +5,61 @@ Revises: 0173_create_daily_sorted_letter
 Create Date: 2018-03-07 12:21:53.098887
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = '0174_add_billing_facts'
-down_revision = '0173_create_daily_sorted_letter'
+revision = "0174_add_billing_facts"
+down_revision = "0173_create_daily_sorted_letter"
 
 
 def upgrade():
     # Create notifications_for_today table
-    op.create_table('ft_billing',
-                    sa.Column('bst_date', sa.Date(), nullable=True),
-                    sa.Column('template_id', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('service_id', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('organisation_id', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('annual_billing_id', postgresql.UUID(as_uuid=True), nullable=True),
-                    sa.Column('notification_type', sa.Text(), nullable=True),
-                    sa.Column('provider', sa.Text(), nullable=True),
-                    sa.Column('crown', sa.Text(), nullable=True),
-                    sa.Column('rate_multiplier', sa.Numeric(), nullable=True),
-                    sa.Column('international', sa.Boolean(), nullable=True),
-                    sa.Column('rate', sa.Numeric(), nullable=True),
-                    sa.Column('billable_units', sa.Numeric(), nullable=True),
-                    sa.Column('notifications_sent', sa.Integer(), nullable=True),
-                    sa.PrimaryKeyConstraint('bst_date', 'template_id')
-                    )
+    op.create_table(
+        "ft_billing",
+        sa.Column("bst_date", sa.Date(), nullable=True),
+        sa.Column("template_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("service_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("organisation_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("annual_billing_id", postgresql.UUID(as_uuid=True), nullable=True),
+        sa.Column("notification_type", sa.Text(), nullable=True),
+        sa.Column("provider", sa.Text(), nullable=True),
+        sa.Column("crown", sa.Text(), nullable=True),
+        sa.Column("rate_multiplier", sa.Numeric(), nullable=True),
+        sa.Column("international", sa.Boolean(), nullable=True),
+        sa.Column("rate", sa.Numeric(), nullable=True),
+        sa.Column("billable_units", sa.Numeric(), nullable=True),
+        sa.Column("notifications_sent", sa.Integer(), nullable=True),
+        sa.PrimaryKeyConstraint("bst_date", "template_id"),
+    )
     # Set indexes
-    op.create_index(op.f('ix_ft_billing_bst_date'), 'ft_billing', ['bst_date'], unique=False)
-    op.create_index(op.f('ix_ft_billing_service_id'), 'ft_billing', ['service_id'], unique=False)
+    op.create_index(op.f("ix_ft_billing_bst_date"), "ft_billing", ["bst_date"], unique=False)
+    op.create_index(op.f("ix_ft_billing_service_id"), "ft_billing", ["service_id"], unique=False)
 
     # Create dm_datetime table
-    op.create_table('dm_datetime',
-                    sa.Column('bst_date', sa.Date(), nullable=False),
-                    sa.Column('year', sa.Integer(), nullable=False),
-                    sa.Column('month', sa.Integer(), nullable=False),
-                    sa.Column('month_name', sa.String(), nullable=False),
-                    sa.Column('day', sa.Integer(), nullable=True),
-                    sa.Column('bst_day', sa.Integer(), nullable=False),
-                    sa.Column('day_of_year', sa.Integer(), nullable=False),
-                    sa.Column('week_day_name', sa.String(), nullable=False),
-                    sa.Column('calendar_week', sa.Integer(), nullable=True),
-                    sa.Column('quartal', sa.String(), nullable=False),
-                    sa.Column('year_quartal', sa.String(), nullable=False),
-                    sa.Column('year_month', sa.String(), nullable=False),
-                    sa.Column('year_calendar_week', sa.String(), nullable=False),
-                    sa.Column('financial_year', sa.Integer(), nullable=True),
-                    sa.Column('utc_daytime_start', sa.DateTime(), nullable=False),
-                    sa.Column('utc_daytime_end', sa.DateTime(), nullable=False),
-                    sa.PrimaryKeyConstraint('bst_date')
-                    )
+    op.create_table(
+        "dm_datetime",
+        sa.Column("bst_date", sa.Date(), nullable=False),
+        sa.Column("year", sa.Integer(), nullable=False),
+        sa.Column("month", sa.Integer(), nullable=False),
+        sa.Column("month_name", sa.String(), nullable=False),
+        sa.Column("day", sa.Integer(), nullable=True),
+        sa.Column("bst_day", sa.Integer(), nullable=False),
+        sa.Column("day_of_year", sa.Integer(), nullable=False),
+        sa.Column("week_day_name", sa.String(), nullable=False),
+        sa.Column("calendar_week", sa.Integer(), nullable=True),
+        sa.Column("quartal", sa.String(), nullable=False),
+        sa.Column("year_quartal", sa.String(), nullable=False),
+        sa.Column("year_month", sa.String(), nullable=False),
+        sa.Column("year_calendar_week", sa.String(), nullable=False),
+        sa.Column("financial_year", sa.Integer(), nullable=True),
+        sa.Column("utc_daytime_start", sa.DateTime(), nullable=False),
+        sa.Column("utc_daytime_end", sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint("bst_date"),
+    )
     # Set indexes
-    op.create_index(op.f('ix_dm_datetime_yearmonth'), 'dm_datetime', ['year', 'month'], unique=False)
-    op.create_index(op.f('ix_dm_datetime_bst_date'), 'dm_datetime', ['bst_date'], unique=False)
+    op.create_index(op.f("ix_dm_datetime_yearmonth"), "dm_datetime", ["year", "month"], unique=False)
+    op.create_index(op.f("ix_dm_datetime_bst_date"), "dm_datetime", ["bst_date"], unique=False)
 
     # Insert data into table
     op.execute(
@@ -98,5 +100,5 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table('ft_billing')
-    op.drop_table('dm_datetime')
+    op.drop_table("ft_billing")
+    op.drop_table("dm_datetime")

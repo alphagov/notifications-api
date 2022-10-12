@@ -5,12 +5,12 @@ Revises: 0182_add_upload_document_perm
 Create Date: 2018-03-25 21:23:32.403212
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = '0183_alter_primary_key'
-down_revision = '0182_add_upload_document_perm'
+revision = "0183_alter_primary_key"
+down_revision = "0182_add_upload_document_perm"
 
 
 def upgrade():
@@ -18,7 +18,8 @@ def upgrade():
     op.execute(
         """
         delete from dm_datetime where 1=1;
-        """)
+        """
+    )
 
     op.execute(
         """
@@ -56,23 +57,19 @@ def upgrade():
         """
     )
 
-    op.drop_constraint('ft_billing_pkey', 'ft_billing', type_='primary')
+    op.drop_constraint("ft_billing_pkey", "ft_billing", type_="primary")
 
-    op.create_primary_key('ft_billing_pkey', 'ft_billing', ['bst_date',
-                                                            'template_id',
-                                                            'service_id',
-                                                            'rate_multiplier',
-                                                            'provider',
-                                                            'notification_type'])
+    op.create_primary_key(
+        "ft_billing_pkey",
+        "ft_billing",
+        ["bst_date", "template_id", "service_id", "rate_multiplier", "provider", "notification_type"],
+    )
 
 
 def downgrade():
     # We don't downgrade populated data
-    op.drop_constraint('ft_billing_pkey', 'ft_billing', type_='primary')
+    op.drop_constraint("ft_billing_pkey", "ft_billing", type_="primary")
 
-    op.create_primary_key('ft_billing_pkey', 'ft_billing', ['bst_date',
-                                                            'template_id',
-                                                            'rate_multiplier',
-                                                            'provider',
-                                                            'notification_type'])
-
+    op.create_primary_key(
+        "ft_billing_pkey", "ft_billing", ["bst_date", "template_id", "rate_multiplier", "provider", "notification_type"]
+    )

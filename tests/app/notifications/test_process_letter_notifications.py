@@ -7,16 +7,14 @@ from app.serialised_models import SerialisedTemplate
 
 def test_create_letter_notification_creates_notification(sample_letter_template, sample_api_key):
     data = {
-        'personalisation': {
-            'address_line_1': 'The Queen',
-            'address_line_2': 'Buckingham Palace',
-            'postcode': 'SW1 1AA',
+        "personalisation": {
+            "address_line_1": "The Queen",
+            "address_line_2": "Buckingham Palace",
+            "postcode": "SW1 1AA",
         }
     }
 
-    template = SerialisedTemplate.from_id_and_service_id(
-        sample_letter_template.id, sample_letter_template.service_id
-    )
+    template = SerialisedTemplate.from_id_and_service_id(sample_letter_template.id, sample_letter_template.service_id)
 
     notification = create_letter_notification(
         data,
@@ -36,22 +34,20 @@ def test_create_letter_notification_creates_notification(sample_letter_template,
     assert notification.key_type == sample_api_key.key_type
     assert notification.reference is not None
     assert notification.client_reference is None
-    assert notification.postage == 'second'
+    assert notification.postage == "second"
 
 
 def test_create_letter_notification_sets_reference(sample_letter_template, sample_api_key):
     data = {
-        'personalisation': {
-            'address_line_1': 'The Queen',
-            'address_line_2': 'Buckingham Palace',
-            'postcode': 'SW1 1AA',
+        "personalisation": {
+            "address_line_1": "The Queen",
+            "address_line_2": "Buckingham Palace",
+            "postcode": "SW1 1AA",
         },
-        'reference': 'foo'
+        "reference": "foo",
     }
 
-    template = SerialisedTemplate.from_id_and_service_id(
-        sample_letter_template.id, sample_letter_template.service_id
-    )
+    template = SerialisedTemplate.from_id_and_service_id(sample_letter_template.id, sample_letter_template.service_id)
 
     notification = create_letter_notification(
         data,
@@ -61,21 +57,19 @@ def test_create_letter_notification_sets_reference(sample_letter_template, sampl
         NOTIFICATION_CREATED,
     )
 
-    assert notification.client_reference == 'foo'
+    assert notification.client_reference == "foo"
 
 
 def test_create_letter_notification_sets_billable_units(sample_letter_template, sample_api_key):
     data = {
-        'personalisation': {
-            'address_line_1': 'The Queen',
-            'address_line_2': 'Buckingham Palace',
-            'postcode': 'SW1 1AA',
+        "personalisation": {
+            "address_line_1": "The Queen",
+            "address_line_2": "Buckingham Palace",
+            "postcode": "SW1 1AA",
         },
     }
 
-    template = SerialisedTemplate.from_id_and_service_id(
-        sample_letter_template.id, sample_letter_template.service_id
-    )
+    template = SerialisedTemplate.from_id_and_service_id(sample_letter_template.id, sample_letter_template.service_id)
 
     notification = create_letter_notification(
         data,

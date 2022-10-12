@@ -7,8 +7,8 @@ Create Date: 2016-07-05 10:28:12.947306
 """
 
 # revision identifiers, used by Alembic.
-revision = '0038_test_api_key_type'
-down_revision = '0037_service_sms_sender'
+revision = "0038_test_api_key_type"
+down_revision = "0037_service_sms_sender"
 
 from alembic import op
 

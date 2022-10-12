@@ -7,8 +7,8 @@ Create Date: 2018-03-23 16:20:00
 """
 
 # revision identifiers, used by Alembic.
-revision = '0182_add_upload_document_perm'
-down_revision = '0181_billing_primary_key'
+revision = "0182_add_upload_document_perm"
+down_revision = "0181_billing_primary_key"
 
 from alembic import op
 

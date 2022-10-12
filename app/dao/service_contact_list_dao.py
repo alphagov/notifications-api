@@ -16,9 +16,7 @@ def dao_get_contact_lists(service_id):
     contact_lists = ServiceContactList.query.filter_by(
         service_id=service_id,
         archived=False,
-    ).order_by(
-        ServiceContactList.created_at.desc()
-    )
+    ).order_by(ServiceContactList.created_at.desc())
     return contact_lists.all()
 
 

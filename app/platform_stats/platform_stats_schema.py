@@ -6,5 +6,5 @@ platform_stats_request = {
     "properties": {
         "start_date": {"type": ["string", "null"], "format": "date"},
         "end_date": {"type": ["string", "null"], "format": "date"},
-    }
+    },
 }

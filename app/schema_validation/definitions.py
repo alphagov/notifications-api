@@ -8,7 +8,7 @@ uuid = {
     "format": "validate_uuid",
     "validationMessage": "is not a valid UUID",
     "code": "1001",  # yet to be implemented
-    "link": "link to our error documentation not yet implemented"
+    "link": "link to our error documentation not yet implemented",
 }
 
 nullable_uuid = {
@@ -16,14 +16,14 @@ nullable_uuid = {
     "format": "validate_uuid",
     "validationMessage": "is not a valid UUID",
     "code": "1001",  # yet to be implemented
-    "link": "link to our error documentation not yet implemented"
+    "link": "link to our error documentation not yet implemented",
 }
 
 
 personalisation = {
     "type": "object",
     "code": "1001",  # yet to be implemented
-    "link": "link to our error documentation not yet implemented"
+    "link": "link to our error documentation not yet implemented",
 }
 
 
@@ -33,5 +33,5 @@ https_url = {
     "pattern": "^https.*",
     "validationMessage": "is not a valid https url",
     "code": "1001",  # yet to be implemented
-    "link": "link to our error documentation not yet implemented"
+    "link": "link to our error documentation not yet implemented",
 }

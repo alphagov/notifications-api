@@ -10,11 +10,10 @@ from datetime import datetime
 from alembic import op
 from flask import current_app
 
+revision = "0134_add_email_2fa_template"
+down_revision = "0133_set_services_sms_prefix"
 
-revision = '0134_add_email_2fa_template'
-down_revision = '0133_set_services_sms_prefix'
-
-template_id = '299726d2-dba6-42b8-8209-30e1d66ea164'
+template_id = "299726d2-dba6-42b8-8209-30e1d66ea164"
 
 
 def upgrade():
@@ -27,27 +26,29 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}')
     """
 
-    template_content = '\n'.join([
-        'Hi ((name)),',
-        '',
-        'To sign in to GOV.​UK Notify please open this link:',
-        '((url))',
-    ])
+    template_content = "\n".join(
+        [
+            "Hi ((name)),",
+            "",
+            "To sign in to GOV.​UK Notify please open this link:",
+            "((url))",
+        ]
+    )
 
     template_name = "Notify email verify code"
-    template_subject = 'Sign in to GOV.UK Notify'
+    template_subject = "Sign in to GOV.UK Notify"
 
     op.execute(
         template_history_insert.format(
             template_id,
             template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
@@ -55,25 +56,26 @@ def upgrade():
         template_insert.format(
             template_id,
             template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
+
 # If you are copying this migration, please remember about an insert to TemplateRedacted,
 # which was not originally included here either by mistake or because it was before TemplateRedacted existed
-    # op.execute(
-    #     """
-    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
-    #         VALUES ('{}', '{}', '{}', '{}')
-    #         ;
-    #     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
-    # )
+# op.execute(
+#     """
+#         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+#         VALUES ('{}', '{}', '{}', '{}')
+#         ;
+#     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+# )
 
 
 def downgrade():

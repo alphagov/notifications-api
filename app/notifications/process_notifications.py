@@ -35,8 +35,8 @@ from app.models import (
 from app.v2.errors import BadRequestError
 
 REDIS_GET_AND_INCR_DAILY_LIMIT_DURATION_SECONDS = Histogram(
-    'redis_get_and_incr_daily_limit_duration_seconds',
-    'Time taken to get and possibly incremement the daily limit cache key',
+    "redis_get_and_incr_daily_limit_duration_seconds",
+    "Time taken to get and possibly incremement the daily limit cache key",
 )
 
 
@@ -44,26 +44,26 @@ def create_content_for_notification(template, personalisation):
     if template.template_type == EMAIL_TYPE:
         template_object = PlainTextEmailTemplate(
             {
-                'content': template.content,
-                'subject': template.subject,
-                'template_type': template.template_type,
+                "content": template.content,
+                "subject": template.subject,
+                "template_type": template.template_type,
             },
             personalisation,
         )
     if template.template_type == SMS_TYPE:
         template_object = SMSMessageTemplate(
             {
-                'content': template.content,
-                'template_type': template.template_type,
+                "content": template.content,
+                "template_type": template.template_type,
             },
             personalisation,
         )
     if template.template_type == LETTER_TYPE:
         template_object = LetterPrintTemplate(
             {
-                'content': template.content,
-                'subject': template.subject,
-                'template_type': template.template_type,
+                "content": template.content,
+                "subject": template.subject,
+                "template_type": template.template_type,
             },
             personalisation,
             contact_block=template.reply_to_text,
@@ -76,8 +76,8 @@ def create_content_for_notification(template, personalisation):
 
 def check_placeholders(template_object):
     if template_object.missing_data:
-        message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
-        raise BadRequestError(fields=[{'template': message}], message=message)
+        message = "Missing personalisation: {}".format(", ".join(template_object.missing_data))
+        raise BadRequestError(fields=[{"template": message}], message=message)
 
 
 def persist_notification(
@@ -128,7 +128,7 @@ def persist_notification(
         reply_to_text=reply_to_text,
         billable_units=billable_units,
         document_download_count=document_download_count,
-        updated_at=updated_at
+        updated_at=updated_at,
     )
 
     if notification_type == SMS_TYPE:
@@ -143,12 +143,12 @@ def persist_notification(
     elif notification_type == LETTER_TYPE:
         notification.postage = postage
         notification.international = postage in INTERNATIONAL_POSTAGE_TYPES
-        notification.normalised_to = ''.join(notification.to.split()).lower()
+        notification.normalised_to = "".join(notification.to.split()).lower()
 
     # if simulated create a Notification model to return but do not persist the Notification to the dB
     if not simulated:
         dao_create_notification(notification)
-        if key_type != KEY_TYPE_TEST and current_app.config['REDIS_ENABLED']:
+        if key_type != KEY_TYPE_TEST and current_app.config["REDIS_ENABLED"]:
             cache_key = redis.daily_limit_cache_key(service.id)
             if redis_store.get(cache_key) is None:
                 # if cache does not exist set the cache to 1 with an expiry of 24 hours,
@@ -164,9 +164,7 @@ def persist_notification(
     return notification
 
 
-def send_notification_to_queue_detached(
-    key_type, notification_type, notification_id, research_mode, queue=None
-):
+def send_notification_to_queue_detached(key_type, notification_type, notification_id, research_mode, queue=None):
     if research_mode or key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
 
@@ -190,9 +188,8 @@ def send_notification_to_queue_detached(
         raise
 
     current_app.logger.debug(
-        "{} {} sent to the {} queue for delivery".format(notification_type,
-                                                         notification_id,
-                                                         queue))
+        "{} {} sent to the {} queue for delivery".format(notification_type, notification_id, queue)
+    )
 
 
 def send_notification_to_queue(notification, research_mode, queue=None):
@@ -204,8 +201,8 @@ def send_notification_to_queue(notification, research_mode, queue=None):
 def simulated_recipient(to_address, notification_type):
     if notification_type == SMS_TYPE:
         formatted_simulated_numbers = [
-            validate_and_format_phone_number(number) for number in current_app.config['SIMULATED_SMS_NUMBERS']
+            validate_and_format_phone_number(number) for number in current_app.config["SIMULATED_SMS_NUMBERS"]
         ]
         return to_address in formatted_simulated_numbers
     else:
-        return to_address in current_app.config['SIMULATED_EMAIL_ADDRESSES']
+        return to_address in current_app.config["SIMULATED_EMAIL_ADDRESSES"]

@@ -14,14 +14,13 @@ from app.models import (
 from tests.app.db import create_service, create_service_permission
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def service_without_permissions(notify_db_session):
     return create_service(service_permissions=[])
 
 
 def test_create_service_permission(service_without_permissions):
-    service_permissions = create_service_permission(
-        service_id=service_without_permissions.id, permission=SMS_TYPE)
+    service_permissions = create_service_permission(service_id=service_without_permissions.id, permission=SMS_TYPE)
 
     assert len(service_permissions) == 1
     assert service_permissions[0].service_id == service_without_permissions.id

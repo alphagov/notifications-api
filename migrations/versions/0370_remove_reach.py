@@ -14,9 +14,8 @@ from sqlalchemy.sql import text
 
 from app.models import LetterRate
 
-
-revision = '0370_remove_reach'
-down_revision = '0369_update_sms_rates'
+revision = "0370_remove_reach"
+down_revision = "0369_update_sms_rates"
 
 
 def upgrade():

@@ -9,37 +9,44 @@ import os
 
 from alembic import op
 
-revision = '0365_add_nhs_branding'
-down_revision = '0364_drop_old_column'
+revision = "0365_add_nhs_branding"
+down_revision = "0364_drop_old_column"
 
-environment = os.environ['NOTIFY_ENVIRONMENT']
+environment = os.environ["NOTIFY_ENVIRONMENT"]
 
 
 def upgrade():
     if environment not in ["live", "production"]:
-        op.execute("""
+        op.execute(
+            """
             DELETE FROM service_email_branding
             WHERE email_branding_id in (
                 SELECT id
                 FROM email_branding
                 WHERE name = 'NHS'
             )
-        """)
+        """
+        )
 
-        op.execute("""
+        op.execute(
+            """
             UPDATE organisation SET email_branding_id = null
             WHERE email_branding_id in(
                 SELECT id
                 FROM email_branding
                 WHERE name = 'NHS'
             )
-        """)
+        """
+        )
 
-        op.execute("""
+        op.execute(
+            """
             DELETE FROM email_branding WHERE name = 'NHS'
-        """)
+        """
+        )
 
-        op.execute("""
+        op.execute(
+            """
             INSERT INTO email_branding (
                 id, logo, name, brand_type
             )
@@ -49,7 +56,8 @@ def upgrade():
                 'NHS',
                 'org'
             )
-        """)
+        """
+        )
 
 
 def downgrade():

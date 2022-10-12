@@ -20,14 +20,12 @@ from tests.app.db import (
 
 
 def test_insert_or_update_returned_letters_inserts(sample_letter_template):
-    notification = create_notification(template=sample_letter_template,
-                                       reference='ref1')
-    history = create_notification_history(template=sample_letter_template,
-                                          reference='ref2')
+    notification = create_notification(template=sample_letter_template, reference="ref1")
+    history = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
 
-    insert_or_update_returned_letters(['ref1', 'ref2'])
+    insert_or_update_returned_letters(["ref1", "ref2"])
 
     returned_letters = ReturnedLetter.query.all()
 
@@ -38,14 +36,12 @@ def test_insert_or_update_returned_letters_inserts(sample_letter_template):
 
 
 def test_insert_or_update_returned_letters_updates(sample_letter_template):
-    notification = create_notification(template=sample_letter_template,
-                                       reference='ref1')
-    history = create_notification_history(template=sample_letter_template,
-                                          reference='ref2')
+    notification = create_notification(template=sample_letter_template, reference="ref1")
+    history = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
-    with freeze_time('2019-12-09 13:30'):
-        insert_or_update_returned_letters(['ref1', 'ref2'])
+    with freeze_time("2019-12-09 13:30"):
+        insert_or_update_returned_letters(["ref1", "ref2"])
         returned_letters = ReturnedLetter.query.all()
         assert len(returned_letters) == 2
         for x in returned_letters:
@@ -54,8 +50,8 @@ def test_insert_or_update_returned_letters_updates(sample_letter_template):
             assert not x.updated_at
             assert x.notification_id in [notification.id, history.id]
 
-    with freeze_time('2019-12-10 14:20'):
-        insert_or_update_returned_letters(['ref1', 'ref2'])
+    with freeze_time("2019-12-10 14:20"):
+        insert_or_update_returned_letters(["ref1", "ref2"])
         returned_letters = ReturnedLetter.query.all()
         assert len(returned_letters) == 2
         for x in returned_letters:
@@ -66,18 +62,16 @@ def test_insert_or_update_returned_letters_updates(sample_letter_template):
 
 
 def test_insert_or_update_returned_letters_when_no_notification(notify_db_session):
-    insert_or_update_returned_letters(['ref1'])
+    insert_or_update_returned_letters(["ref1"])
     assert ReturnedLetter.query.count() == 0
 
 
 def test_insert_or_update_returned_letters_for_history_only(sample_letter_template):
-    history_1 = create_notification_history(template=sample_letter_template,
-                                            reference='ref1')
-    history_2 = create_notification_history(template=sample_letter_template,
-                                            reference='ref2')
+    history_1 = create_notification_history(template=sample_letter_template, reference="ref1")
+    history_2 = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
-    insert_or_update_returned_letters(['ref1', 'ref2'])
+    insert_or_update_returned_letters(["ref1", "ref2"])
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
     for x in returned_letters:
@@ -85,13 +79,11 @@ def test_insert_or_update_returned_letters_for_history_only(sample_letter_templa
 
 
 def test_insert_or_update_returned_letters_with_duplicates_in_reference_list(sample_letter_template):
-    notification_1 = create_notification(template=sample_letter_template,
-                                         reference='ref1')
-    notification_2 = create_notification(template=sample_letter_template,
-                                         reference='ref2')
+    notification_1 = create_notification(template=sample_letter_template, reference="ref1")
+    notification_2 = create_notification(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
-    insert_or_update_returned_letters(['ref1', 'ref2', 'ref1', 'ref2'])
+    insert_or_update_returned_letters(["ref1", "ref2", "ref1", "ref2"])
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
     for x in returned_letters:
@@ -100,10 +92,7 @@ def test_insert_or_update_returned_letters_with_duplicates_in_reference_list(sam
 
 def test_get_returned_letter_count(sample_service):
     # Before 7 days – don’t count
-    create_returned_letter(
-        sample_service,
-        reported_at=datetime(2001, 1, 1)
-    )
+    create_returned_letter(sample_service, reported_at=datetime(2001, 1, 1))
     create_returned_letter(
         sample_service,
         reported_at=datetime(2010, 11, 1, 23, 59, 59),
@@ -123,11 +112,11 @@ def test_get_returned_letter_count(sample_service):
     )
     # Different service – don’t count
     create_returned_letter(
-        create_service(service_id=uuid.uuid4(), service_name='Other service'),
+        create_service(service_id=uuid.uuid4(), service_name="Other service"),
         reported_at=datetime(2010, 11, 8, 10, 0),
     )
 
-    with freeze_time('2010-11-08 10:10'):
+    with freeze_time("2010-11-08 10:10"):
         result = fetch_recent_returned_letter_count(sample_service.id)
 
     assert result.returned_letter_count == 3
@@ -146,12 +135,12 @@ def test_fetch_most_recent_returned_letter_for_service(sample_service):
     )
     # Newest, but different service
     create_returned_letter(
-        create_service(service_id=uuid.uuid4(), service_name='Other service'),
+        create_service(service_id=uuid.uuid4(), service_name="Other service"),
         reported_at=datetime(2011, 11, 11, 11, 11),
     )
     result = fetch_most_recent_returned_letter(sample_service.id)
 
-    assert str(result.reported_at) == '2010-10-10'
+    assert str(result.reported_at) == "2010-10-10"
 
 
 def test_get_returned_letter_summary(sample_service):
@@ -190,59 +179,128 @@ def test_fetch_returned_letters_from_notifications_and_notification_history(samp
     today = datetime.now()
     last_month = datetime.now() - timedelta(days=30)
 
-    letter_1 = create_notification(template=sample_letter_template, client_reference='letter_1',
-                                   status=NOTIFICATION_RETURNED_LETTER,
-                                   created_at=datetime.utcnow() - timedelta(days=1))
-    returned_letter_1 = create_returned_letter(service=sample_letter_template.service, reported_at=today,
-                                               notification_id=letter_1.id)
-    letter_2 = create_notification_history(template=sample_letter_template, client_reference='letter_2',
-                                           status=NOTIFICATION_RETURNED_LETTER, created_at=datetime.utcnow())
-    returned_letter_2 = create_returned_letter(service=sample_letter_template.service, reported_at=today,
-                                               notification_id=letter_2.id)
-    letter_3 = create_notification_history(template=sample_letter_template, client_reference='letter_3',
-                                           status=NOTIFICATION_RETURNED_LETTER)
-    create_returned_letter(service=sample_letter_template.service, reported_at=last_month,
-                           notification_id=letter_3.id)
+    letter_1 = create_notification(
+        template=sample_letter_template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(days=1),
+    )
+    returned_letter_1 = create_returned_letter(
+        service=sample_letter_template.service, reported_at=today, notification_id=letter_1.id
+    )
+    letter_2 = create_notification_history(
+        template=sample_letter_template,
+        client_reference="letter_2",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow(),
+    )
+    returned_letter_2 = create_returned_letter(
+        service=sample_letter_template.service, reported_at=today, notification_id=letter_2.id
+    )
+    letter_3 = create_notification_history(
+        template=sample_letter_template, client_reference="letter_3", status=NOTIFICATION_RETURNED_LETTER
+    )
+    create_returned_letter(service=sample_letter_template.service, reported_at=last_month, notification_id=letter_3.id)
 
     results = fetch_returned_letters(service_id=sample_letter_template.service_id, report_date=today.date())
 
     assert len(results) == 2
-    assert results[0] == (letter_2.id, returned_letter_2.reported_at, letter_2.client_reference, letter_2.created_at,
-                          sample_letter_template.name, letter_2.template_id, letter_2.template_version, False, None,
-                          None, None, None, None, None)
-    assert results[1] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
-                          sample_letter_template.name, letter_1.template_id, letter_1.template_version, False,
-                          letter_1.api_key_id, None, None, None, None, None)
+    assert results[0] == (
+        letter_2.id,
+        returned_letter_2.reported_at,
+        letter_2.client_reference,
+        letter_2.created_at,
+        sample_letter_template.name,
+        letter_2.template_id,
+        letter_2.template_version,
+        False,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
+    assert results[1] == (
+        letter_1.id,
+        returned_letter_1.reported_at,
+        letter_1.client_reference,
+        letter_1.created_at,
+        sample_letter_template.name,
+        letter_1.template_id,
+        letter_1.template_version,
+        False,
+        letter_1.api_key_id,
+        None,
+        None,
+        None,
+        None,
+        None,
+    )
 
 
 def test_fetch_returned_letters_with_jobs(sample_letter_job):
     today = datetime.now()
-    letter_1 = create_notification_history(template=sample_letter_job.template, client_reference='letter_1',
-                                           status=NOTIFICATION_RETURNED_LETTER,
-                                           job=sample_letter_job, job_row_number=20,
-                                           created_at=datetime.utcnow() - timedelta(minutes=1))
-    returned_letter_1 = create_returned_letter(service=sample_letter_job.service, reported_at=today,
-                                               notification_id=letter_1.id)
+    letter_1 = create_notification_history(
+        template=sample_letter_job.template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        job=sample_letter_job,
+        job_row_number=20,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+    )
+    returned_letter_1 = create_returned_letter(
+        service=sample_letter_job.service, reported_at=today, notification_id=letter_1.id
+    )
 
     results = fetch_returned_letters(service_id=sample_letter_job.service_id, report_date=today.date())
     assert len(results) == 1
-    assert results[0] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
-                          sample_letter_job.template.name, letter_1.template_id, letter_1.template_version, False, None,
-                          None, None, None, sample_letter_job.original_file_name, 21)
+    assert results[0] == (
+        letter_1.id,
+        returned_letter_1.reported_at,
+        letter_1.client_reference,
+        letter_1.created_at,
+        sample_letter_job.template.name,
+        letter_1.template_id,
+        letter_1.template_version,
+        False,
+        None,
+        None,
+        None,
+        None,
+        sample_letter_job.original_file_name,
+        21,
+    )
 
 
 def test_fetch_returned_letters_with_create_by_user(sample_letter_template):
     today = datetime.now()
-    letter_1 = create_notification_history(template=sample_letter_template, client_reference='letter_1',
-                                           status=NOTIFICATION_RETURNED_LETTER,
-                                           created_at=datetime.utcnow() - timedelta(minutes=1),
-                                           created_by_id=sample_letter_template.service.users[0].id)
-    returned_letter_1 = create_returned_letter(service=sample_letter_template.service, reported_at=today,
-                                               notification_id=letter_1.id)
+    letter_1 = create_notification_history(
+        template=sample_letter_template,
+        client_reference="letter_1",
+        status=NOTIFICATION_RETURNED_LETTER,
+        created_at=datetime.utcnow() - timedelta(minutes=1),
+        created_by_id=sample_letter_template.service.users[0].id,
+    )
+    returned_letter_1 = create_returned_letter(
+        service=sample_letter_template.service, reported_at=today, notification_id=letter_1.id
+    )
 
     results = fetch_returned_letters(service_id=sample_letter_template.service_id, report_date=today.date())
     assert len(results) == 1
-    assert results[0] == (letter_1.id, returned_letter_1.reported_at, letter_1.client_reference, letter_1.created_at,
-                          sample_letter_template.name, letter_1.template_id, letter_1.template_version, False, None,
-                          letter_1.created_by_id, sample_letter_template.service.users[0].name,
-                          sample_letter_template.service.users[0].email_address, None, None)
+    assert results[0] == (
+        letter_1.id,
+        returned_letter_1.reported_at,
+        letter_1.client_reference,
+        letter_1.created_at,
+        sample_letter_template.name,
+        letter_1.template_id,
+        letter_1.template_version,
+        False,
+        None,
+        letter_1.created_by_id,
+        sample_letter_template.service.users[0].name,
+        sample_letter_template.service.users[0].email_address,
+        None,
+        None,
+    )

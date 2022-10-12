@@ -43,7 +43,7 @@ def send_sms_to_provider(notification):
         technical_failure(notification=notification)
         return
 
-    if notification.status == 'created':
+    if notification.status == "created":
         provider = provider_to_use(SMS_TYPE, notification.international)
 
         template_model = SerialisedTemplate.from_id_and_service_id(
@@ -71,11 +71,11 @@ def send_sms_to_provider(notification):
                 # Therefore we pull all the data from our DB models into `send_sms_kwargs`now before
                 # closing the session (as otherwise it would be reopened immediately)
                 send_sms_kwargs = {
-                    'to': notification.normalised_to,
-                    'content': str(template),
-                    'reference': str(notification.id),
-                    'sender': notification.reply_to_text,
-                    'international': notification.international,
+                    "to": notification.normalised_to,
+                    "content": str(template),
+                    "reference": str(notification.id),
+                    "sender": notification.reply_to_text,
+                    "international": notification.international,
                 }
                 db.session.close()  # no commit needed as no changes to objects have been made above
                 provider.send_sms(**send_sms_kwargs)
@@ -107,7 +107,7 @@ def send_email_to_provider(notification):
     if not service.active:
         technical_failure(notification=notification)
         return
-    if notification.status == 'created':
+    if notification.status == "created":
         provider = provider_to_use(EMAIL_TYPE)
 
         template_dict = SerialisedTemplate.from_id_and_service_id(
@@ -115,15 +115,10 @@ def send_email_to_provider(notification):
         ).__dict__
 
         html_email = HTMLEmailTemplate(
-            template_dict,
-            values=notification.personalisation,
-            **get_html_email_options(service)
+            template_dict, values=notification.personalisation, **get_html_email_options(service)
         )
 
-        plain_text_email = PlainTextEmailTemplate(
-            template_dict,
-            values=notification.personalisation
-        )
+        plain_text_email = PlainTextEmailTemplate(template_dict, values=notification.personalisation)
         created_at = notification.created_at
         key_type = notification.key_type
         if service.research_mode or notification.key_type == KEY_TYPE_TEST:
@@ -131,8 +126,9 @@ def send_email_to_provider(notification):
             update_notification_to_sending(notification, provider)
             send_email_response(notification.reference, notification.to)
         else:
-            from_address = '"{}" <{}@{}>'.format(service.name, service.email_from,
-                                                 current_app.config['NOTIFY_EMAIL_DOMAIN'])
+            from_address = '"{}" <{}@{}>'.format(
+                service.name, service.email_from, current_app.config["NOTIFY_EMAIL_DOMAIN"]
+            )
 
             reference = provider.send_email(
                 from_address,
@@ -140,7 +136,7 @@ def send_email_to_provider(notification):
                 plain_text_email.subject,
                 body=str(plain_text_email),
                 html_body=str(html_email),
-                reply_to_address=notification.reply_to_text
+                reply_to_address=notification.reply_to_text,
             )
             notification.reference = reference
             update_notification_to_sending(notification, provider)
@@ -174,9 +170,7 @@ def provider_to_use(notification_type, international=False):
     ]
 
     if not active_providers:
-        current_app.logger.error(
-            "{} failed as no active providers".format(notification_type)
-        )
+        current_app.logger.error("{} failed as no active providers".format(notification_type))
         raise Exception("No active {} providers".format(notification_type))
 
     if len(active_providers) == 1:
@@ -193,19 +187,19 @@ def get_logo_url(base_url, logo_file):
     base_url = parse.urlparse(base_url)
     netloc = base_url.netloc
 
-    if base_url.netloc.startswith('localhost'):
-        netloc = 'notify.tools'
-    elif base_url.netloc.startswith('www'):
+    if base_url.netloc.startswith("localhost"):
+        netloc = "notify.tools"
+    elif base_url.netloc.startswith("www"):
         # strip "www."
         netloc = base_url.netloc[4:]
 
     logo_url = parse.ParseResult(
         scheme=base_url.scheme,
-        netloc='static-logos.' + netloc,
+        netloc="static-logos." + netloc,
         path=logo_file,
         params=base_url.params,
         query=base_url.query,
-        fragment=base_url.fragment
+        fragment=base_url.fragment,
     )
     return parse.urlunparse(logo_url)
 
@@ -213,26 +207,23 @@ def get_logo_url(base_url, logo_file):
 def get_html_email_options(service):
     if service.email_branding is None:
         return {
-            'govuk_banner': True,
-            'brand_banner': False,
+            "govuk_banner": True,
+            "brand_banner": False,
         }
     if isinstance(service, SerialisedService):
         branding = dao_get_email_branding_by_id(service.email_branding)
     else:
         branding = service.email_branding
 
-    logo_url = get_logo_url(
-        current_app.config['ADMIN_BASE_URL'],
-        branding.logo
-    ) if branding.logo else None
+    logo_url = get_logo_url(current_app.config["ADMIN_BASE_URL"], branding.logo) if branding.logo else None
 
     return {
-        'govuk_banner': branding.brand_type == BRANDING_BOTH,
-        'brand_banner': branding.brand_type == BRANDING_ORG_BANNER,
-        'brand_colour': branding.colour,
-        'brand_logo': logo_url,
-        'brand_text': branding.text,
-        'brand_name': branding.name,
+        "govuk_banner": branding.brand_type == BRANDING_BOTH,
+        "brand_banner": branding.brand_type == BRANDING_ORG_BANNER,
+        "brand_colour": branding.colour,
+        "brand_logo": logo_url,
+        "brand_text": branding.text,
+        "brand_name": branding.name,
     }
 
 
@@ -241,6 +232,6 @@ def technical_failure(notification):
     dao_update_notification(notification)
     raise NotificationTechnicalFailureException(
         "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
-            notification.notification_type,
-            notification.id,
-            notification.service_id))
+            notification.notification_type, notification.id, notification.service_id
+        )
+    )

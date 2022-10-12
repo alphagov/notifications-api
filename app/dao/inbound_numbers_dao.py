@@ -35,11 +35,7 @@ def dao_set_inbound_number_active_flag(service_id, active):
 
 @autocommit
 def dao_allocate_number_for_service(service_id, inbound_number_id):
-    updated = InboundNumber.query.filter_by(
-        id=inbound_number_id,
-        active=True,
-        service_id=None
-    ).update(
+    updated = InboundNumber.query.filter_by(id=inbound_number_id, active=True, service_id=None).update(
         {"service_id": service_id}
     )
     if not updated:

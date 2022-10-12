@@ -7,19 +7,19 @@ Create Date: 2019-12-09 12:13:49.432993
 """
 from alembic import op
 
-revision = '0312_populate_returned_letters'
-down_revision = '0311_add_inbound_sms_history'
+revision = "0312_populate_returned_letters"
+down_revision = "0311_add_inbound_sms_history"
 
 
 def upgrade():
     conn = op.get_bind()
     sql = """
         select id, service_id, reference, updated_at
-        from notification_history 
+        from notification_history
         where notification_type = 'letter'
         and notification_status = 'returned-letter'"""
     insert_sql = """
-        insert into returned_letters(id, reported_at, service_id, notification_id, created_at, updated_at) 
+        insert into returned_letters(id, reported_at, service_id, notification_id, created_at, updated_at)
         values(uuid_in(md5(random()::text)::cstring), '{}', '{}', '{}', now(), null)
     """
 

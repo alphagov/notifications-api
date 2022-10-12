@@ -36,12 +36,12 @@ class CBCProxyClient:
     _lambda_client = None
 
     def init_app(self, app):
-        if app.config.get('CBC_PROXY_ENABLED'):
+        if app.config.get("CBC_PROXY_ENABLED"):
             self._lambda_client = boto3.client(
-                'lambda',
-                region_name='eu-west-2',
-                aws_access_key_id=app.config['CBC_PROXY_AWS_ACCESS_KEY_ID'],
-                aws_secret_access_key=app.config['CBC_PROXY_AWS_SECRET_ACCESS_KEY'],
+                "lambda",
+                region_name="eu-west-2",
+                aws_access_key_id=app.config["CBC_PROXY_AWS_ACCESS_KEY_ID"],
+                aws_secret_access_key=app.config["CBC_PROXY_AWS_SECRET_ACCESS_KEY"],
             )
 
     def get_proxy(self, provider):
@@ -85,7 +85,8 @@ class CBCProxyClientBase(ABC):
     def _send_link_test(
         self,
         lambda_name,
-    ): pass
+    ):
+        pass
 
     def create_and_send_broadcast(
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
@@ -95,15 +96,20 @@ class CBCProxyClientBase(ABC):
     # We have not implementated updating a broadcast
     def update_and_send_broadcast(
         self,
-        identifier, previous_provider_messages, headline, description, areas,
-        sent, expires, channel, message_number=None
+        identifier,
+        previous_provider_messages,
+        headline,
+        description,
+        areas,
+        sent,
+        expires,
+        channel,
+        message_number=None,
     ):
         pass
 
     def cancel_broadcast(
-        self,
-        identifier, previous_provider_messages, headline, description, areas,
-        sent, expires, message_number=None
+        self, identifier, previous_provider_messages, headline, description, areas, sent, expires, message_number=None
     ):
         pass
 
@@ -114,35 +120,33 @@ class CBCProxyClientBase(ABC):
             failover_result = self._invoke_lambda(self.failover_lambda_name, payload)
             if not failover_result:
                 raise CBCProxyRetryableException(
-                    f'Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}'
+                    f"Lambda failed for both {self.lambda_name} and {self.failover_lambda_name}"
                 )
 
         return result
 
     def _invoke_lambda(self, lambda_name, payload):
-        payload_bytes = bytes(json.dumps(payload), encoding='utf8')
+        payload_bytes = bytes(json.dumps(payload), encoding="utf8")
         try:
-            current_app.logger.info(
-                f"Calling lambda {lambda_name} with payload {str(payload)[:1000]}"
-            )
+            current_app.logger.info(f"Calling lambda {lambda_name} with payload {str(payload)[:1000]}")
 
             result = self._lambda_client.invoke(
                 FunctionName=lambda_name,
-                InvocationType='RequestResponse',
+                InvocationType="RequestResponse",
                 Payload=payload_bytes,
             )
         except botocore.exceptions.ClientError:
-            current_app.logger.exception(f'Boto ClientError calling lambda {lambda_name}')
+            current_app.logger.exception(f"Boto ClientError calling lambda {lambda_name}")
             success = False
             return success
 
-        if result['StatusCode'] > 299:
+        if result["StatusCode"] > 299:
             current_app.logger.info(
                 f"Error calling lambda {lambda_name} with status code { result['StatusCode']}, {result.get('Payload')}"
             )
             success = False
 
-        elif 'FunctionError' in result:
+        elif "FunctionError" in result:
             current_app.logger.info(
                 f"Error calling lambda {lambda_name} with function error { result['Payload'].read() }"
             )
@@ -160,8 +164,8 @@ class CBCProxyClientBase(ABC):
 
 
 class CBCProxyOne2ManyClient(CBCProxyClientBase):
-    LANGUAGE_ENGLISH = 'en-GB'
-    LANGUAGE_WELSH = 'cy-GB'
+    LANGUAGE_ENGLISH = "en-GB"
+    LANGUAGE_WELSH = "cy-GB"
 
     def _send_link_test(
         self,
@@ -171,11 +175,7 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
         link test - open up a connection to a specific provider, and send them an xml payload with a <msgType> of
         test.
         """
-        payload = {
-            'message_type': 'test',
-            'identifier': str(uuid.uuid4()),
-            'message_format': 'cap'
-        }
+        payload = {"message_type": "test", "identifier": str(uuid.uuid4()), "message_format": "cap"}
 
         self._invoke_lambda(lambda_name=lambda_name, payload=payload)
 
@@ -183,60 +183,54 @@ class CBCProxyOne2ManyClient(CBCProxyClientBase):
         self, identifier, headline, description, areas, sent, expires, channel, message_number=None
     ):
         payload = {
-            'message_type': 'alert',
-            'identifier': identifier,
-            'message_format': 'cap',
-            'headline': headline,
-            'description': description,
-            'areas': areas,
-            'sent': sent,
-            'expires': expires,
-            'language': self.infer_language_from(description),
-            'channel': channel,
+            "message_type": "alert",
+            "identifier": identifier,
+            "message_format": "cap",
+            "headline": headline,
+            "description": description,
+            "areas": areas,
+            "sent": sent,
+            "expires": expires,
+            "language": self.infer_language_from(description),
+            "channel": channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
-    def cancel_broadcast(
-        self,
-        identifier, previous_provider_messages,
-        sent, message_number=None
-    ):
+    def cancel_broadcast(self, identifier, previous_provider_messages, sent, message_number=None):
         payload = {
-            'message_type': 'cancel',
-            'identifier': identifier,
-            'message_format': 'cap',
+            "message_type": "cancel",
+            "identifier": identifier,
+            "message_format": "cap",
             "references": [
-                {
-                    "message_id": str(message.id),
-                    "sent": message.created_at.strftime(DATETIME_FORMAT)
-                } for message in previous_provider_messages
+                {"message_id": str(message.id), "sent": message.created_at.strftime(DATETIME_FORMAT)}
+                for message in previous_provider_messages
             ],
-            'sent': sent,
+            "sent": sent,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
 
 class CBCProxyEE(CBCProxyOne2ManyClient):
-    lambda_name = 'ee-1-proxy'
-    failover_lambda_name = 'ee-2-proxy'
+    lambda_name = "ee-1-proxy"
+    failover_lambda_name = "ee-2-proxy"
 
 
 class CBCProxyThree(CBCProxyOne2ManyClient):
-    lambda_name = 'three-1-proxy'
-    failover_lambda_name = 'three-2-proxy'
+    lambda_name = "three-1-proxy"
+    failover_lambda_name = "three-2-proxy"
 
 
 class CBCProxyO2(CBCProxyOne2ManyClient):
-    lambda_name = 'o2-1-proxy'
-    failover_lambda_name = 'o2-2-proxy'
+    lambda_name = "o2-1-proxy"
+    failover_lambda_name = "o2-2-proxy"
 
 
 class CBCProxyVodafone(CBCProxyClientBase):
-    lambda_name = 'vodafone-1-proxy'
-    failover_lambda_name = 'vodafone-2-proxy'
+    lambda_name = "vodafone-1-proxy"
+    failover_lambda_name = "vodafone-2-proxy"
 
-    LANGUAGE_ENGLISH = 'English'
-    LANGUAGE_WELSH = 'Welsh'
+    LANGUAGE_ENGLISH = "English"
+    LANGUAGE_WELSH = "Welsh"
 
     def _send_link_test(
         self,
@@ -247,15 +241,16 @@ class CBCProxyVodafone(CBCProxyClientBase):
         test.
         """
         from app import db
-        sequence = Sequence('broadcast_provider_message_number_seq')
+
+        sequence = Sequence("broadcast_provider_message_number_seq")
         sequential_number = db.session.connection().execute(sequence)
         formatted_seq_number = format_sequential_number(sequential_number)
 
         payload = {
-            'message_type': 'test',
-            'identifier': str(uuid.uuid4()),
-            'message_number': formatted_seq_number,
-            'message_format': 'ibag'
+            "message_type": "test",
+            "identifier": str(uuid.uuid4()),
+            "message_number": formatted_seq_number,
+            "message_format": "ibag",
         }
 
         self._invoke_lambda(lambda_name=lambda_name, payload=payload)
@@ -264,36 +259,35 @@ class CBCProxyVodafone(CBCProxyClientBase):
         self, identifier, message_number, headline, description, areas, sent, expires, channel
     ):
         payload = {
-            'message_type': 'alert',
-            'identifier': identifier,
-            'message_number': message_number,
-            'message_format': 'ibag',
-            'headline': headline,
-            'description': description,
-            'areas': areas,
-            'sent': sent,
-            'expires': expires,
-            'language': self.infer_language_from(description),
-            'channel': channel,
+            "message_type": "alert",
+            "identifier": identifier,
+            "message_number": message_number,
+            "message_format": "ibag",
+            "headline": headline,
+            "description": description,
+            "areas": areas,
+            "sent": sent,
+            "expires": expires,
+            "language": self.infer_language_from(description),
+            "channel": channel,
         }
         self._invoke_lambda_with_failover(payload=payload)
 
-    def cancel_broadcast(
-        self, identifier, previous_provider_messages, sent, message_number
-    ):
+    def cancel_broadcast(self, identifier, previous_provider_messages, sent, message_number):
 
         payload = {
-            'message_type': 'cancel',
-            'identifier': identifier,
-            'message_number': message_number,
-            'message_format': 'ibag',
+            "message_type": "cancel",
+            "identifier": identifier,
+            "message_number": message_number,
+            "message_format": "ibag",
             "references": [
                 {
                     "message_id": str(message.id),
                     "message_number": format_sequential_number(message.message_number),
-                    "sent": message.created_at.strftime(DATETIME_FORMAT)
-                } for message in previous_provider_messages
+                    "sent": message.created_at.strftime(DATETIME_FORMAT),
+                }
+                for message in previous_provider_messages
             ],
-            'sent': sent,
+            "sent": sent,
         }
         self._invoke_lambda_with_failover(payload=payload)

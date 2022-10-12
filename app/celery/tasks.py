@@ -79,8 +79,7 @@ def process_job(job_id, sender_id=None):
     if not service.active:
         job.job_status = JOB_STATUS_CANCELLED
         dao_update_job(job)
-        current_app.logger.warning(
-            "Job {} has been cancelled, service {} is inactive".format(job_id, service.id))
+        current_app.logger.warning("Job {} has been cancelled, service {} is inactive".format(job_id, service.id))
         return
 
     if __sending_limits_for_job_exceeded(service, job, job_id):
@@ -104,9 +103,7 @@ def job_complete(job, resumed=False, start=None):
     dao_update_job(job)
 
     if resumed:
-        current_app.logger.info(
-            "Resumed Job {} completed at {}".format(job.id, job.created_at)
-        )
+        current_app.logger.info("Resumed Job {} completed at {}".format(job.id, job.created_at))
     else:
         current_app.logger.info(
             "Job {} created at {} started at {} finished at {}".format(job.id, job.created_at, start, finished)
@@ -125,26 +122,24 @@ def get_recipient_csv_and_template_and_sender_id(job):
 
 def process_row(row, template, job, service, sender_id=None):
     template_type = template.template_type
-    encrypted = encryption.encrypt({
-        'template': str(template.id),
-        'template_version': job.template_version,
-        'job': str(job.id),
-        'to': row.recipient,
-        'row_number': row.index,
-        'personalisation': dict(row.personalisation)
-    })
+    encrypted = encryption.encrypt(
+        {
+            "template": str(template.id),
+            "template_version": job.template_version,
+            "job": str(job.id),
+            "to": row.recipient,
+            "row_number": row.index,
+            "personalisation": dict(row.personalisation),
+        }
+    )
 
-    send_fns = {
-        SMS_TYPE: save_sms,
-        EMAIL_TYPE: save_email,
-        LETTER_TYPE: save_letter
-    }
+    send_fns = {SMS_TYPE: save_sms, EMAIL_TYPE: save_email, LETTER_TYPE: save_letter}
 
     send_fn = send_fns[template_type]
 
     task_kwargs = {}
     if sender_id:
-        task_kwargs['sender_id'] = sender_id
+        task_kwargs["sender_id"] = sender_id
 
     notification_id = create_uuid()
     send_fn.apply_async(
@@ -154,7 +149,7 @@ def process_row(row, template, job, service, sender_id=None):
             encrypted,
         ),
         task_kwargs,
-        queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE
+        queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE,
     )
     return notification_id
 
@@ -167,28 +162,25 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
         else:
             return False
     except TooManyRequestsError:
-        job.job_status = 'sending limits exceeded'
+        job.job_status = "sending limits exceeded"
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
             "Job {} size {} error. Sending limits {} exceeded".format(
-                job_id, job.notification_count, service.message_limit)
+                job_id, job.notification_count, service.message_limit
+            )
         )
         return True
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
-def save_sms(self,
-             service_id,
-             notification_id,
-             encrypted_notification,
-             sender_id=None):
+def save_sms(self, service_id, notification_id, encrypted_notification, sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
-        notification['template'],
+        notification["template"],
         service_id=service.id,
-        version=notification['template_version'],
+        version=notification["template_version"],
     )
 
     if sender_id:
@@ -196,39 +188,36 @@ def save_sms(self,
     else:
         reply_to_text = template.reply_to_text
 
-    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
-        current_app.logger.debug(
-            "SMS {} failed as restricted service".format(notification_id)
-        )
+    if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
+        current_app.logger.debug("SMS {} failed as restricted service".format(notification_id))
         return
 
     try:
         saved_notification = persist_notification(
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            recipient=notification['to'],
+            template_id=notification["template"],
+            template_version=notification["template_version"],
+            recipient=notification["to"],
             service=service,
-            personalisation=notification.get('personalisation'),
+            personalisation=notification.get("personalisation"),
             notification_type=SMS_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
+            job_id=notification.get("job", None),
+            job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
-            reply_to_text=reply_to_text
+            reply_to_text=reply_to_text,
         )
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE,
         )
 
         current_app.logger.debug(
             "SMS {} created at {} for job {}".format(
-                saved_notification.id,
-                saved_notification.created_at,
-                notification.get('job', None))
+                saved_notification.id, saved_notification.created_at, notification.get("job", None)
+            )
         )
 
     except SQLAlchemyError as e:
@@ -236,18 +225,14 @@ def save_sms(self,
 
 
 @notify_celery.task(bind=True, name="save-email", max_retries=5, default_retry_delay=300)
-def save_email(self,
-               service_id,
-               notification_id,
-               encrypted_notification,
-               sender_id=None):
+def save_email(self, service_id, notification_id, encrypted_notification, sender_id=None):
     notification = encryption.decrypt(encrypted_notification)
 
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
-        notification['template'],
+        notification["template"],
         service_id=service.id,
-        version=notification['template_version'],
+        version=notification["template_version"],
     )
 
     if sender_id:
@@ -255,30 +240,30 @@ def save_email(self,
     else:
         reply_to_text = template.reply_to_text
 
-    if not service_allowed_to_send_to(notification['to'], service, KEY_TYPE_NORMAL):
+    if not service_allowed_to_send_to(notification["to"], service, KEY_TYPE_NORMAL):
         current_app.logger.info("Email {} failed as restricted service".format(notification_id))
         return
 
     try:
         saved_notification = persist_notification(
-            template_id=notification['template'],
-            template_version=notification['template_version'],
-            recipient=notification['to'],
+            template_id=notification["template"],
+            template_version=notification["template_version"],
+            recipient=notification["to"],
             service=service,
-            personalisation=notification.get('personalisation'),
+            personalisation=notification.get("personalisation"),
             notification_type=EMAIL_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
-            job_id=notification.get('job', None),
-            job_row_number=notification.get('row_number', None),
+            job_id=notification.get("job", None),
+            job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
-            reply_to_text=reply_to_text
+            reply_to_text=reply_to_text,
         )
 
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE
+            queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE,
         )
 
         current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
@@ -299,34 +284,32 @@ def save_api_sms(self, encrypted_notification):
 
 def save_api_email_or_sms(self, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
-    service = SerialisedService.from_id(notification['service_id'])
-    q = QueueNames.SEND_EMAIL if notification['notification_type'] == EMAIL_TYPE else QueueNames.SEND_SMS
-    provider_task = provider_tasks.deliver_email if notification['notification_type'] == EMAIL_TYPE \
-        else provider_tasks.deliver_sms
+    service = SerialisedService.from_id(notification["service_id"])
+    q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
+    provider_task = (
+        provider_tasks.deliver_email if notification["notification_type"] == EMAIL_TYPE else provider_tasks.deliver_sms
+    )
     try:
 
         persist_notification(
             notification_id=notification["id"],
-            template_id=notification['template_id'],
-            template_version=notification['template_version'],
-            recipient=notification['to'],
+            template_id=notification["template_id"],
+            template_version=notification["template_version"],
+            recipient=notification["to"],
             service=service,
-            personalisation=notification.get('personalisation'),
-            notification_type=notification['notification_type'],
-            client_reference=notification['client_reference'],
-            api_key_id=notification.get('api_key_id'),
+            personalisation=notification.get("personalisation"),
+            notification_type=notification["notification_type"],
+            client_reference=notification["client_reference"],
+            api_key_id=notification.get("api_key_id"),
             key_type=KEY_TYPE_NORMAL,
-            created_at=notification['created_at'],
-            reply_to_text=notification['reply_to_text'],
-            status=notification['status'],
-            document_download_count=notification['document_download_count']
+            created_at=notification["created_at"],
+            reply_to_text=notification["reply_to_text"],
+            status=notification["status"],
+            document_download_count=notification["document_download_count"],
         )
 
         q = q if not service.research_mode else QueueNames.RESEARCH_MODE
-        provider_task.apply_async(
-            [notification['id']],
-            queue=q
-        )
+        provider_task.apply_async([notification["id"]], queue=q)
         current_app.logger.debug(
             f"{notification['notification_type']} {notification['id']} has been persisted and sent to delivery queue."
         )
@@ -343,22 +326,20 @@ def save_api_email_or_sms(self, encrypted_notification):
 
 @notify_celery.task(bind=True, name="save-letter", max_retries=5, default_retry_delay=300)
 def save_letter(
-        self,
-        service_id,
-        notification_id,
-        encrypted_notification,
+    self,
+    service_id,
+    notification_id,
+    encrypted_notification,
 ):
     notification = encryption.decrypt(encrypted_notification)
 
-    postal_address = PostalAddress.from_personalisation(
-        InsensitiveDict(notification['personalisation'])
-    )
+    postal_address = PostalAddress.from_personalisation(InsensitiveDict(notification["personalisation"]))
 
     service = SerialisedService.from_id(service_id)
     template = SerialisedTemplate.from_id_and_service_id(
-        notification['template'],
+        notification["template"],
         service_id=service.id,
-        version=notification['template_version'],
+        version=notification["template_version"],
     )
 
     try:
@@ -366,44 +347,42 @@ def save_letter(
         status = NOTIFICATION_CREATED if not service.research_mode else NOTIFICATION_SENDING
 
         saved_notification = persist_notification(
-            template_id=notification['template'],
-            template_version=notification['template_version'],
+            template_id=notification["template"],
+            template_version=notification["template_version"],
             postage=postal_address.postage if postal_address.international else template.postage,
             recipient=postal_address.normalised,
             service=service,
-            personalisation=notification['personalisation'],
+            personalisation=notification["personalisation"],
             notification_type=LETTER_TYPE,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
             created_at=datetime.utcnow(),
-            job_id=notification['job'],
-            job_row_number=notification['row_number'],
+            job_id=notification["job"],
+            job_row_number=notification["row_number"],
             notification_id=notification_id,
             reference=create_random_identifier(),
-            client_reference=get_reference_from_personalisation(notification['personalisation']),
+            client_reference=get_reference_from_personalisation(notification["personalisation"]),
             reply_to_text=template.reply_to_text,
-            status=status
+            status=status,
         )
 
         if not service.research_mode:
             letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-                [str(saved_notification.id)],
-                queue=QueueNames.CREATE_LETTERS_PDF
+                [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
             )
-        elif current_app.config['NOTIFY_ENVIRONMENT'] in ['preview', 'development']:
+        elif current_app.config["NOTIFY_ENVIRONMENT"] in ["preview", "development"]:
             research_mode_tasks.create_fake_letter_response_file.apply_async(
-                (saved_notification.reference,),
-                queue=QueueNames.RESEARCH_MODE
+                (saved_notification.reference,), queue=QueueNames.RESEARCH_MODE
             )
         else:
-            update_notification_status_by_reference(saved_notification.reference, 'delivered')
+            update_notification_status_by_reference(saved_notification.reference, "delivered")
 
         current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:
         handle_exception(self, notification, notification_id, e)
 
 
-@notify_celery.task(bind=True, name='update-letter-notifications-to-sent')
+@notify_celery.task(bind=True, name="update-letter-notifications-to-sent")
 def update_letter_notifications_to_sent_to_dvla(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
     provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
@@ -411,26 +390,22 @@ def update_letter_notifications_to_sent_to_dvla(self, notification_references):
     updated_count, _ = dao_update_notifications_by_reference(
         notification_references,
         {
-            'status': NOTIFICATION_SENDING,
-            'sent_by': provider.identifier,
-            'sent_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow()
-        }
+            "status": NOTIFICATION_SENDING,
+            "sent_by": provider.identifier,
+            "sent_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        },
     )
 
     current_app.logger.info("Updated {} letter notifications to sending".format(updated_count))
 
 
-@notify_celery.task(bind=True, name='update-letter-notifications-to-error')
+@notify_celery.task(bind=True, name="update-letter-notifications-to-error")
 def update_letter_notifications_to_error(self, notification_references):
     # This task will be called by the FTP app to update notifications as sent to DVLA
 
     updated_count, _ = dao_update_notifications_by_reference(
-        notification_references,
-        {
-            'status': NOTIFICATION_TECHNICAL_FAILURE,
-            'updated_at': datetime.utcnow()
-        }
+        notification_references, {"status": NOTIFICATION_TECHNICAL_FAILURE, "updated_at": datetime.utcnow()}
     )
     message = "Updated {} letter notifications to technical-failure with references {}".format(
         updated_count, notification_references
@@ -440,23 +415,23 @@ def update_letter_notifications_to_error(self, notification_references):
 
 def handle_exception(task, notification, notification_id, exc):
     if not get_notification_by_id(notification_id):
-        retry_msg = '{task} notification for job {job} row number {row} and notification id {noti}'.format(
+        retry_msg = "{task} notification for job {job} row number {row} and notification id {noti}".format(
             task=task.__name__,
-            job=notification.get('job', None),
-            row=notification.get('row_number', None),
-            noti=notification_id
+            job=notification.get("job", None),
+            row=notification.get("row_number", None),
+            noti=notification_id,
         )
         # Sometimes, SQS plays the same message twice. We should be able to catch an IntegrityError, but it seems
         # SQLAlchemy is throwing a FlushError. So we check if the notification id already exists then do not
         # send to the retry queue.
-        current_app.logger.exception('Retry' + retry_msg)
+        current_app.logger.exception("Retry" + retry_msg)
         try:
             task.retry(queue=QueueNames.RETRY, exc=exc)
         except task.MaxRetriesExceededError:
-            current_app.logger.error('Max retry failed' + retry_msg)
+            current_app.logger.error("Max retry failed" + retry_msg)
 
 
-@notify_celery.task(bind=True, name='update-letter-notifications-statuses')
+@notify_celery.task(bind=True, name="update-letter-notifications-statuses")
 def update_letter_notifications_statuses(self, filename):
     notification_updates = parse_dvla_file(filename)
 
@@ -467,8 +442,9 @@ def update_letter_notifications_statuses(self, filename):
         update_letter_notification(filename, temporary_failures, update)
     if temporary_failures:
         # This will alert Notify that DVLA was unable to deliver the letters, we need to investigate
-        message = "DVLA response file: {filename} has failed letters with notification.reference {failures}" \
-            .format(filename=filename, failures=temporary_failures)
+        message = "DVLA response file: {filename} has failed letters with notification.reference {failures}".format(
+            filename=filename, failures=temporary_failures
+        )
         raise DVLAException(message)
 
 
@@ -479,33 +455,29 @@ def record_daily_sorted_counts(self, filename):
     for update in notification_updates:
         sorted_letter_counts[update.cost_threshold.lower()] += 1
 
-    unknown_status = sorted_letter_counts.keys() - {'unsorted', 'sorted'}
+    unknown_status = sorted_letter_counts.keys() - {"unsorted", "sorted"}
     if unknown_status:
-        message = 'DVLA response file: {} contains unknown Sorted status {}'.format(
-            filename, unknown_status.__repr__()
-        )
+        message = "DVLA response file: {} contains unknown Sorted status {}".format(filename, unknown_status.__repr__())
         raise DVLAException(message)
 
     billing_date = get_billing_date_in_bst_from_filename(filename)
-    persist_daily_sorted_letter_counts(day=billing_date,
-                                       file_name=filename,
-                                       sorted_letter_counts=sorted_letter_counts)
+    persist_daily_sorted_letter_counts(day=billing_date, file_name=filename, sorted_letter_counts=sorted_letter_counts)
 
 
 def parse_dvla_file(filename):
-    bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
+    bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
     response_file_content = s3.get_s3_file(bucket_location, filename)
 
     try:
         return process_updates_from_file(response_file_content)
     except TypeError:
-        raise DVLAException('DVLA response file: {} has an invalid format'.format(filename))
+        raise DVLAException("DVLA response file: {} has an invalid format".format(filename))
 
 
 def get_billing_date_in_bst_from_filename(filename):
     # exclude seconds from the date since we don't need it. We got a date ending in 60 second - which is not valid.
-    datetime_string = filename.split('-')[1][:-2]
-    datetime_obj = datetime.strptime(datetime_string, '%Y%m%d%H%M')
+    datetime_string = filename.split("-")[1][:-2]
+    datetime_obj = datetime.strptime(datetime_string, "%Y%m%d%H%M")
     return convert_utc_to_bst(datetime_obj).date()
 
 
@@ -513,15 +485,15 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
     daily_letter_count = DailySortedLetter(
         billing_day=day,
         file_name=file_name,
-        unsorted_count=sorted_letter_counts['unsorted'],
-        sorted_count=sorted_letter_counts['sorted']
+        unsorted_count=sorted_letter_counts["unsorted"],
+        sorted_count=sorted_letter_counts["sorted"],
     )
     dao_create_or_update_daily_sorted_letter(daily_letter_count)
 
 
 def process_updates_from_file(response_file):
-    NotificationUpdate = namedtuple('NotificationUpdate', ['reference', 'status', 'page_count', 'cost_threshold'])
-    notification_updates = [NotificationUpdate(*line.split('|')) for line in response_file.splitlines()]
+    NotificationUpdate = namedtuple("NotificationUpdate", ["reference", "status", "page_count", "cost_threshold"])
+    notification_updates = [NotificationUpdate(*line.split("|")) for line in response_file.splitlines()]
     return notification_updates
 
 
@@ -533,16 +505,16 @@ def update_letter_notification(filename, temporary_failures, update):
         temporary_failures.append(update.reference)
 
     updated_count, _ = dao_update_notifications_by_reference(
-        references=[update.reference],
-        update_dict={"status": status,
-                     "updated_at": datetime.utcnow()
-                     }
+        references=[update.reference], update_dict={"status": status, "updated_at": datetime.utcnow()}
     )
 
     if not updated_count:
-        msg = "Update letter notification file {filename} failed: notification either not found " \
-              "or already updated from delivered. Status {status} for notification reference {reference}".format(
-                  filename=filename, status=status, reference=update.reference)
+        msg = (
+            "Update letter notification file {filename} failed: notification either not found "
+            "or already updated from delivered. Status {status} for notification reference {reference}".format(
+                filename=filename, status=status, reference=update.reference
+            )
+        )
         current_app.logger.info(msg)
 
 
@@ -550,8 +522,9 @@ def check_billable_units(notification_update):
     notification = dao_get_notification_or_history_by_reference(notification_update.reference)
 
     if int(notification_update.page_count) != notification.billable_units:
-        msg = 'Notification with id {} has {} billable_units but DVLA says page count is {}'.format(
-            notification.id, notification.billable_units, notification_update.page_count)
+        msg = "Notification with id {} has {} billable_units but DVLA says page count is {}".format(
+            notification.id, notification.billable_units, notification_update.page_count
+        )
         try:
             raise DVLAException(msg)
         except DVLAException:
@@ -565,15 +538,14 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
         # No API data has been set for this service
         return
 
-    inbound_sms = dao_get_inbound_sms_by_id(service_id=service_id,
-                                            inbound_id=inbound_sms_id)
+    inbound_sms = dao_get_inbound_sms_by_id(service_id=service_id, inbound_id=inbound_sms_id)
     data = {
         "id": str(inbound_sms.id),
         # TODO: should we be validating and formatting the phone number here?
         "source_number": inbound_sms.user_number,
         "destination_number": inbound_sms.notify_number,
         "message": inbound_sms.content,
-        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT)
+        "date_received": inbound_sms.provider_date.strftime(DATETIME_FORMAT),
     }
 
     try:
@@ -581,38 +553,35 @@ def send_inbound_sms_to_service(self, inbound_sms_id, service_id):
             method="POST",
             url=inbound_api.url,
             data=json.dumps(data),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer {}'.format(inbound_api.bearer_token)
-            },
-            timeout=60
+            headers={"Content-Type": "application/json", "Authorization": "Bearer {}".format(inbound_api.bearer_token)},
+            timeout=60,
         )
         current_app.logger.debug(
-            f"send_inbound_sms_to_service sending {inbound_sms_id} to {inbound_api.url}, " +
-            f"response {response.status_code}"
+            f"send_inbound_sms_to_service sending {inbound_sms_id} to {inbound_api.url}, "
+            + f"response {response.status_code}"
         )
         response.raise_for_status()
     except RequestException as e:
         current_app.logger.warning(
-            f"send_inbound_sms_to_service failed for service_id: {service_id} for inbound_sms_id: {inbound_sms_id} " +
-            f"and url: {inbound_api.url}. exception: {e}"
+            f"send_inbound_sms_to_service failed for service_id: {service_id} for inbound_sms_id: {inbound_sms_id} "
+            + f"and url: {inbound_api.url}. exception: {e}"
         )
         if not isinstance(e, HTTPError) or e.response.status_code >= 500:
             try:
                 self.retry(queue=QueueNames.RETRY)
             except self.MaxRetriesExceededError:
                 current_app.logger.error(
-                    "Retry: send_inbound_sms_to_service has retried the max number of" +
-                    f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
+                    "Retry: send_inbound_sms_to_service has retried the max number of"
+                    + f"times for service: {service_id} and inbound_sms {inbound_sms_id}"
                 )
         else:
             current_app.logger.warning(
-                f"send_inbound_sms_to_service is not being retried for service_id: {service_id} for " +
-                f"inbound_sms id: {inbound_sms_id} and url: {inbound_api.url}. exception: {e}"
+                f"send_inbound_sms_to_service is not being retried for service_id: {service_id} for "
+                + f"inbound_sms id: {inbound_sms_id} and url: {inbound_api.url}. exception: {e}"
             )
 
 
-@notify_celery.task(name='process-incomplete-jobs')
+@notify_celery.task(name="process-incomplete-jobs")
 def process_incomplete_jobs(job_ids):
     jobs = [dao_get_job_by_id(job_id) for job_id in job_ids]
 
@@ -648,11 +617,10 @@ def process_incomplete_job(job_id):
     job_complete(job, resumed=True)
 
 
-@notify_celery.task(name='process-returned-letters-list')
+@notify_celery.task(name="process-returned-letters-list")
 def process_returned_letters_list(notification_references):
     updated, updated_history = dao_update_notifications_by_reference(
-        notification_references,
-        {"status": NOTIFICATION_RETURNED_LETTER}
+        notification_references, {"status": NOTIFICATION_RETURNED_LETTER}
     )
 
     insert_or_update_returned_letters(notification_references)

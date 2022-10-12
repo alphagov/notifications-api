@@ -47,34 +47,33 @@ def fetch_usage_for_all_services_sms(start_date, end_date):
     charged_units = func.sum(ft_billing_subquery.c.charged_units)
     cost = func.sum(ft_billing_subquery.c.cost)
 
-    return db.session.query(
-        Organisation.name.label('organisation_name'),
-        Organisation.id.label('organisation_id'),
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        free_allowance.label("free_allowance"),
-        free_allowance_left.label("free_allowance_left"),
-        chargeable_units.label('chargeable_units'),
-        charged_units.label("charged_units"),
-        cost.label('cost'),
-        Service.active,
-    ).select_from(
-        Service
-    ).outerjoin(
-        ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id
-    ).outerjoin(
-        Service.organisation
-    ).filter(
-        ft_billing_subquery.c.bst_date >= start_date,
-        ft_billing_subquery.c.bst_date <= end_date,
-    ).group_by(
-        Organisation.name,
-        Organisation.id,
-        Service.id,
-        Service.name,
-    ).order_by(
-        Organisation.name,
-        Service.name
+    return (
+        db.session.query(
+            Organisation.name.label("organisation_name"),
+            Organisation.id.label("organisation_id"),
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            free_allowance.label("free_allowance"),
+            free_allowance_left.label("free_allowance_left"),
+            chargeable_units.label("chargeable_units"),
+            charged_units.label("charged_units"),
+            cost.label("cost"),
+            Service.active,
+        )
+        .select_from(Service)
+        .outerjoin(ft_billing_subquery, Service.id == ft_billing_subquery.c.service_id)
+        .outerjoin(Service.organisation)
+        .filter(
+            ft_billing_subquery.c.bst_date >= start_date,
+            ft_billing_subquery.c.bst_date <= end_date,
+        )
+        .group_by(
+            Organisation.name,
+            Organisation.id,
+            Service.id,
+            Service.name,
+        )
+        .order_by(Organisation.name, Service.name)
     )
 
 
@@ -87,102 +86,98 @@ def _fetch_usage_for_all_services_sms_query(year):
 
     # We still return a single row even if a service has no rows in ft_billing
     # or a row in annual_billing. Coalesce ensures we return a usable value.
-    this_rows_chargeable_units = func.coalesce(
-        FactBilling.billable_units * FactBilling.rate_multiplier,
-        0
-    )
+    this_rows_chargeable_units = func.coalesce(FactBilling.billable_units * FactBilling.rate_multiplier, 0)
 
     # Subquery for the number of chargeable units in all rows preceding this one,
     # which might be none if this is the first row (hence the "coalesce").
     chargeable_units_used_before_this_row = func.coalesce(
-        func.sum(this_rows_chargeable_units).over(
+        func.sum(this_rows_chargeable_units)
+        .over(
             # order is "ASC" by default
             order_by=[FactBilling.bst_date],
-
             # partition by service id
             partition_by=FactBilling.service_id,
-
             # first row to previous row
-            rows=(None, -1)
-        ).cast(Integer),
-        0
+            rows=(None, -1),
+        )
+        .cast(Integer),
+        0,
     )
 
     # Subquery for how much free allowance we have left before the current row,
     # so we can work out the cost for this row after taking it into account.
     remaining_free_allowance_before_this_row = func.greatest(
-        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
-        0
+        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row, 0
     )
 
     # Subquery for the number of chargeable_units that we will actually charge
     # for, after taking any remaining free allowance into account.
-    charged_units = func.greatest(
-        this_rows_chargeable_units - remaining_free_allowance_before_this_row,
-        0
-    )
+    charged_units = func.greatest(this_rows_chargeable_units - remaining_free_allowance_before_this_row, 0)
 
     # We still return a single row even if a service has no rows in ft_billing
     # or a row in annual_billing. Coalesce ensures we return a usable value.
     this_rows_rate = func.coalesce(FactBilling.rate, 0.0)
 
-    free_allowance_left = func.greatest(
-        remaining_free_allowance_before_this_row - this_rows_chargeable_units,
-        0
-    )
+    free_allowance_left = func.greatest(remaining_free_allowance_before_this_row - this_rows_chargeable_units, 0)
 
-    return db.session.query(
-        Service.id.label('service_id'),
-        FactBilling.bst_date,
-        AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
-        free_allowance_left.label("free_allowance_left"),
-        this_rows_chargeable_units.label("chargeable_units"),
-        (charged_units * this_rows_rate).label("cost"),
-        charged_units.label("charged_units"),
-    ).outerjoin(
-        AnnualBilling,
-        and_(
-            AnnualBilling.service_id == Service.id,
-            AnnualBilling.financial_year_start == year,
+    return (
+        db.session.query(
+            Service.id.label("service_id"),
+            FactBilling.bst_date,
+            AnnualBilling.free_sms_fragment_limit.label("free_allowance"),
+            free_allowance_left.label("free_allowance_left"),
+            this_rows_chargeable_units.label("chargeable_units"),
+            (charged_units * this_rows_rate).label("cost"),
+            charged_units.label("charged_units"),
         )
-    ).outerjoin(
-        FactBilling,
-        and_(
-            Service.id == FactBilling.service_id,
-            FactBilling.bst_date >= year_start,
-            FactBilling.bst_date <= year_end,
-            FactBilling.notification_type == SMS_TYPE,
+        .outerjoin(
+            AnnualBilling,
+            and_(
+                AnnualBilling.service_id == Service.id,
+                AnnualBilling.financial_year_start == year,
+            ),
+        )
+        .outerjoin(
+            FactBilling,
+            and_(
+                Service.id == FactBilling.service_id,
+                FactBilling.bst_date >= year_start,
+                FactBilling.bst_date <= year_end,
+                FactBilling.notification_type == SMS_TYPE,
+            ),
         )
     )
 
 
 def fetch_usage_for_all_services_letter(start_date, end_date):
-    return db.session.query(
-        Organisation.name.label("organisation_name"),
-        Organisation.id.label("organisation_id"),
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        func.sum(FactBilling.notifications_sent).label("total_letters"),
-        func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
-    ).select_from(
-        Service
-    ).outerjoin(
-        Service.organisation
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
-    ).filter(
-        FactBilling.service_id == Service.id,
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == LETTER_TYPE,
-    ).group_by(
-        Organisation.name,
-        Organisation.id,
-        Service.id,
-        Service.name,
-    ).order_by(
-        Organisation.name,
-        Service.name
+    return (
+        db.session.query(
+            Organisation.name.label("organisation_name"),
+            Organisation.id.label("organisation_id"),
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            func.sum(FactBilling.notifications_sent).label("total_letters"),
+            func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost"),
+        )
+        .select_from(Service)
+        .outerjoin(Service.organisation)
+        .join(
+            FactBilling,
+            FactBilling.service_id == Service.id,
+        )
+        .filter(
+            FactBilling.service_id == Service.id,
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date <= end_date,
+            FactBilling.notification_type == LETTER_TYPE,
+        )
+        .group_by(
+            Organisation.name,
+            Organisation.id,
+            Service.id,
+            Service.name,
+        )
+        .order_by(Organisation.name, Service.name)
     )
 
 
@@ -192,42 +187,40 @@ def fetch_usage_for_all_services_letter_breakdown(start_date, end_date):
     ).label("postage")
 
     postage_order = case(
-            (formatted_postage == "second", 1),
-            (formatted_postage == "first", 2),
-            (formatted_postage == "international", 3),
-            else_=0  # assumes never get 0 as a result
+        (formatted_postage == "second", 1),
+        (formatted_postage == "first", 2),
+        (formatted_postage == "international", 3),
+        else_=0,  # assumes never get 0 as a result
     )
 
-    return db.session.query(
-        Organisation.name.label("organisation_name"),
-        Organisation.id.label("organisation_id"),
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        FactBilling.rate.label("letter_rate"),
-        formatted_postage,
-        func.sum(FactBilling.notifications_sent).label("letters_sent"),
-    ).select_from(
-        Service
-    ).outerjoin(
-        Service.organisation
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
-    ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == LETTER_TYPE,
-    ).group_by(
-        Organisation.name,
-        Organisation.id,
-        Service.id,
-        Service.name,
-        FactBilling.rate,
-        formatted_postage
-    ).order_by(
-        Organisation.name,
-        Service.name,
-        postage_order,
-        FactBilling.rate,
+    return (
+        db.session.query(
+            Organisation.name.label("organisation_name"),
+            Organisation.id.label("organisation_id"),
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            FactBilling.rate.label("letter_rate"),
+            formatted_postage,
+            func.sum(FactBilling.notifications_sent).label("letters_sent"),
+        )
+        .select_from(Service)
+        .outerjoin(Service.organisation)
+        .join(
+            FactBilling,
+            FactBilling.service_id == Service.id,
+        )
+        .filter(
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date <= end_date,
+            FactBilling.notification_type == LETTER_TYPE,
+        )
+        .group_by(Organisation.name, Organisation.id, Service.id, Service.name, FactBilling.rate, formatted_postage)
+        .order_by(
+            Organisation.name,
+            Service.name,
+            postage_order,
+            FactBilling.rate,
+        )
     )
 
 
@@ -248,31 +241,33 @@ def fetch_usage_for_service_annual(service_id, year):
     a rate multiplier. Each subquery returns the same set of columns, which we
     pick from here before the big union.
     """
-    return db.session.query(
-        union(*[
-            db.session.query(
-                query.c.notification_type.label("notification_type"),
-                query.c.rate.label("rate"),
-
-                func.sum(query.c.notifications_sent).label("notifications_sent"),
-                func.sum(query.c.chargeable_units).label("chargeable_units"),
-                func.sum(query.c.cost).label("cost"),
-                func.sum(query.c.free_allowance_used).label("free_allowance_used"),
-                func.sum(query.c.charged_units).label("charged_units"),
-            ).group_by(
-                query.c.rate,
-                query.c.notification_type
-            )
-            for query in [
-                _fetch_usage_for_service_sms(service_id, year).subquery(),
-                _fetch_usage_for_service_email(service_id, year).subquery(),
-                _fetch_usage_for_service_letter(service_id, year).subquery(),
-            ]
-        ]).subquery()
-    ).order_by(
-        "notification_type",
-        "rate",
-    ).all()
+    return (
+        db.session.query(
+            union(
+                *[
+                    db.session.query(
+                        query.c.notification_type.label("notification_type"),
+                        query.c.rate.label("rate"),
+                        func.sum(query.c.notifications_sent).label("notifications_sent"),
+                        func.sum(query.c.chargeable_units).label("chargeable_units"),
+                        func.sum(query.c.cost).label("cost"),
+                        func.sum(query.c.free_allowance_used).label("free_allowance_used"),
+                        func.sum(query.c.charged_units).label("charged_units"),
+                    ).group_by(query.c.rate, query.c.notification_type)
+                    for query in [
+                        _fetch_usage_for_service_sms(service_id, year).subquery(),
+                        _fetch_usage_for_service_email(service_id, year).subquery(),
+                        _fetch_usage_for_service_letter(service_id, year).subquery(),
+                    ]
+                ]
+            ).subquery()
+        )
+        .order_by(
+            "notification_type",
+            "rate",
+        )
+        .all()
+    )
 
 
 def fetch_usage_for_service_by_month(service_id, year):
@@ -304,36 +299,41 @@ def fetch_usage_for_service_by_month(service_id, year):
         for d in data:
             update_fact_billing(data=d, process_day=today)
 
-    return db.session.query(
-        union(*[
-            db.session.query(
-                query.c.rate.label("rate"),
-                query.c.notification_type.label("notification_type"),
-                query.c.postage.label("postage"),
-                func.date_trunc('month', query.c.bst_date).cast(Date).label("month"),
-
-                func.sum(query.c.notifications_sent).label("notifications_sent"),
-                func.sum(query.c.chargeable_units).label("chargeable_units"),
-                func.sum(query.c.cost).label("cost"),
-                func.sum(query.c.free_allowance_used).label("free_allowance_used"),
-                func.sum(query.c.charged_units).label("charged_units"),
-            ).group_by(
-                query.c.rate,
-                query.c.notification_type,
-                query.c.postage,
-                'month',
-            )
-            for query in [
-                _fetch_usage_for_service_sms(service_id, year).subquery(),
-                _fetch_usage_for_service_email(service_id, year).subquery(),
-                _fetch_usage_for_service_letter(service_id, year).subquery(),
-            ]
-        ]).subquery()
-    ).order_by(
-        "month",
-        "notification_type",
-        "rate",
-    ).all()
+    return (
+        db.session.query(
+            union(
+                *[
+                    db.session.query(
+                        query.c.rate.label("rate"),
+                        query.c.notification_type.label("notification_type"),
+                        query.c.postage.label("postage"),
+                        func.date_trunc("month", query.c.bst_date).cast(Date).label("month"),
+                        func.sum(query.c.notifications_sent).label("notifications_sent"),
+                        func.sum(query.c.chargeable_units).label("chargeable_units"),
+                        func.sum(query.c.cost).label("cost"),
+                        func.sum(query.c.free_allowance_used).label("free_allowance_used"),
+                        func.sum(query.c.charged_units).label("charged_units"),
+                    ).group_by(
+                        query.c.rate,
+                        query.c.notification_type,
+                        query.c.postage,
+                        "month",
+                    )
+                    for query in [
+                        _fetch_usage_for_service_sms(service_id, year).subquery(),
+                        _fetch_usage_for_service_email(service_id, year).subquery(),
+                        _fetch_usage_for_service_letter(service_id, year).subquery(),
+                    ]
+                ]
+            ).subquery()
+        )
+        .order_by(
+            "month",
+            "notification_type",
+            "rate",
+        )
+        .all()
+    )
 
 
 def _fetch_usage_for_service_email(service_id, year):
@@ -353,7 +353,7 @@ def _fetch_usage_for_service_email(service_id, year):
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
-        FactBilling.notification_type == EMAIL_TYPE
+        FactBilling.notification_type == EMAIL_TYPE,
     )
 
 
@@ -377,7 +377,7 @@ def _fetch_usage_for_service_letter(service_id, year):
         FactBilling.service_id == service_id,
         FactBilling.bst_date >= year_start,
         FactBilling.bst_date <= year_end,
-        FactBilling.notification_type == LETTER_TYPE
+        FactBilling.notification_type == LETTER_TYPE,
     )
 
 
@@ -419,20 +419,21 @@ def _fetch_usage_for_service_sms(service_id, year):
     # some reason the end result is a decimal despite all the input columns being
     # integer - this seems to be a Sqlalchemy quirk (works in raw SQL).
     chargeable_units_used_before_this_row = func.coalesce(
-        func.sum(this_rows_chargeable_units).over(
+        func.sum(this_rows_chargeable_units)
+        .over(
             # order is "ASC" by default
             order_by=[FactBilling.bst_date],
             # first row to previous row
-            rows=(None, -1)
-        ).cast(Integer),
-        0
+            rows=(None, -1),
+        )
+        .cast(Integer),
+        0,
     )
 
     # Subquery for how much free allowance we have left before the current row,
     # so we can work out the cost for this row after taking it into account.
     remaining_free_allowance_before_this_row = func.greatest(
-        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row,
-        0
+        AnnualBilling.free_sms_fragment_limit - chargeable_units_used_before_this_row, 0
     )
 
     # Subquery for the number of chargeable_units that we will actually charge
@@ -441,25 +442,26 @@ def _fetch_usage_for_service_sms(service_id, year):
 
     free_allowance_used = func.least(remaining_free_allowance_before_this_row, this_rows_chargeable_units)
 
-    return db.session.query(
-        FactBilling.bst_date,
-        FactBilling.postage,  # should always be "none"
-        FactBilling.notifications_sent,
-        this_rows_chargeable_units.label("chargeable_units"),
-        FactBilling.rate,
-        FactBilling.notification_type,
-        (charged_units * FactBilling.rate).label("cost"),
-        free_allowance_used.label("free_allowance_used"),
-        charged_units.label("charged_units"),
-    ).join(
-        AnnualBilling,
-        AnnualBilling.service_id == service_id
-    ).filter(
-        FactBilling.service_id == service_id,
-        FactBilling.bst_date >= year_start,
-        FactBilling.bst_date <= year_end,
-        FactBilling.notification_type == SMS_TYPE,
-        AnnualBilling.financial_year_start == year,
+    return (
+        db.session.query(
+            FactBilling.bst_date,
+            FactBilling.postage,  # should always be "none"
+            FactBilling.notifications_sent,
+            this_rows_chargeable_units.label("chargeable_units"),
+            FactBilling.rate,
+            FactBilling.notification_type,
+            (charged_units * FactBilling.rate).label("cost"),
+            free_allowance_used.label("free_allowance_used"),
+            charged_units.label("charged_units"),
+        )
+        .join(AnnualBilling, AnnualBilling.service_id == service_id)
+        .filter(
+            FactBilling.service_id == service_id,
+            FactBilling.bst_date >= year_start,
+            FactBilling.bst_date <= year_end,
+            FactBilling.notification_type == SMS_TYPE,
+            AnnualBilling.financial_year_start == year,
+        )
     )
 
 
@@ -469,10 +471,7 @@ def delete_billing_data_for_service_for_day(process_day, service_id):
 
     Returns how many rows were deleted
     """
-    return FactBilling.query.filter(
-        FactBilling.bst_date == process_day,
-        FactBilling.service_id == service_id
-    ).delete()
+    return FactBilling.query.filter(FactBilling.bst_date == process_day, FactBilling.service_id == service_id).delete()
 
 
 def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
@@ -489,10 +488,7 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
             if (not check_permissions) or service.has_permission(notification_type):
                 results = _query_for_billing_data(
-                    notification_type=notification_type,
-                    start_date=start_date,
-                    end_date=end_date,
-                    service=service
+                    notification_type=notification_type, start_date=start_date, end_date=end_date, service=service
                 )
                 transit_data += results
 
@@ -501,94 +497,102 @@ def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=F
 
 def _query_for_billing_data(notification_type, start_date, end_date, service):
     def _email_query():
-        return db.session.query(
-            NotificationAllTimeView.template_id,
-            literal(service.crown).label('crown'),
-            literal(service.id).label('service_id'),
-            literal(notification_type).label('notification_type'),
-            literal('ses').label('sent_by'),
-            literal(0).label('rate_multiplier'),
-            literal(False).label('international'),
-            literal(None).label('letter_page_count'),
-            literal('none').label('postage'),
-            literal(0).label('billable_units'),
-            func.count().label('notifications_sent'),
-        ).filter(
-            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
-            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            NotificationAllTimeView.created_at >= start_date,
-            NotificationAllTimeView.created_at < end_date,
-            NotificationAllTimeView.notification_type == notification_type,
-            NotificationAllTimeView.service_id == service.id
-        ).group_by(
-            NotificationAllTimeView.template_id,
+        return (
+            db.session.query(
+                NotificationAllTimeView.template_id,
+                literal(service.crown).label("crown"),
+                literal(service.id).label("service_id"),
+                literal(notification_type).label("notification_type"),
+                literal("ses").label("sent_by"),
+                literal(0).label("rate_multiplier"),
+                literal(False).label("international"),
+                literal(None).label("letter_page_count"),
+                literal("none").label("postage"),
+                literal(0).label("billable_units"),
+                func.count().label("notifications_sent"),
+            )
+            .filter(
+                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_SENT_EMAILS),
+                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                NotificationAllTimeView.created_at >= start_date,
+                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.notification_type == notification_type,
+                NotificationAllTimeView.service_id == service.id,
+            )
+            .group_by(
+                NotificationAllTimeView.template_id,
+            )
         )
 
     def _sms_query():
-        sent_by = func.coalesce(NotificationAllTimeView.sent_by, 'unknown')
+        sent_by = func.coalesce(NotificationAllTimeView.sent_by, "unknown")
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
         international = func.coalesce(NotificationAllTimeView.international, False)
-        return db.session.query(
-            NotificationAllTimeView.template_id,
-            literal(service.crown).label('crown'),
-            literal(service.id).label('service_id'),
-            literal(notification_type).label('notification_type'),
-            sent_by.label('sent_by'),
-            rate_multiplier.label('rate_multiplier'),
-            international.label('international'),
-            literal(None).label('letter_page_count'),
-            literal('none').label('postage'),
-            func.sum(NotificationAllTimeView.billable_units).label('billable_units'),
-            func.count().label('notifications_sent'),
-        ).filter(
-            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
-            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            NotificationAllTimeView.created_at >= start_date,
-            NotificationAllTimeView.created_at < end_date,
-            NotificationAllTimeView.notification_type == notification_type,
-            NotificationAllTimeView.service_id == service.id
-        ).group_by(
-            NotificationAllTimeView.template_id,
-            sent_by,
-            rate_multiplier,
-            international,
+        return (
+            db.session.query(
+                NotificationAllTimeView.template_id,
+                literal(service.crown).label("crown"),
+                literal(service.id).label("service_id"),
+                literal(notification_type).label("notification_type"),
+                sent_by.label("sent_by"),
+                rate_multiplier.label("rate_multiplier"),
+                international.label("international"),
+                literal(None).label("letter_page_count"),
+                literal("none").label("postage"),
+                func.sum(NotificationAllTimeView.billable_units).label("billable_units"),
+                func.count().label("notifications_sent"),
+            )
+            .filter(
+                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_SMS),
+                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                NotificationAllTimeView.created_at >= start_date,
+                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.notification_type == notification_type,
+                NotificationAllTimeView.service_id == service.id,
+            )
+            .group_by(
+                NotificationAllTimeView.template_id,
+                sent_by,
+                rate_multiplier,
+                international,
+            )
         )
 
     def _letter_query():
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
-        postage = func.coalesce(NotificationAllTimeView.postage, 'none')
-        return db.session.query(
-            NotificationAllTimeView.template_id,
-            literal(service.crown).label('crown'),
-            literal(service.id).label('service_id'),
-            literal(notification_type).label('notification_type'),
-            literal('dvla').label('sent_by'),
-            rate_multiplier.label('rate_multiplier'),
-            NotificationAllTimeView.international,
-            NotificationAllTimeView.billable_units.label('letter_page_count'),
-            postage.label('postage'),
-            func.sum(NotificationAllTimeView.billable_units).label('billable_units'),
-            func.count().label('notifications_sent'),
-        ).filter(
-            NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
-            NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
-            NotificationAllTimeView.created_at >= start_date,
-            NotificationAllTimeView.created_at < end_date,
-            NotificationAllTimeView.notification_type == notification_type,
-            NotificationAllTimeView.service_id == service.id
-        ).group_by(
-            NotificationAllTimeView.template_id,
-            rate_multiplier,
-            NotificationAllTimeView.billable_units,
-            postage,
-            NotificationAllTimeView.international
+        postage = func.coalesce(NotificationAllTimeView.postage, "none")
+        return (
+            db.session.query(
+                NotificationAllTimeView.template_id,
+                literal(service.crown).label("crown"),
+                literal(service.id).label("service_id"),
+                literal(notification_type).label("notification_type"),
+                literal("dvla").label("sent_by"),
+                rate_multiplier.label("rate_multiplier"),
+                NotificationAllTimeView.international,
+                NotificationAllTimeView.billable_units.label("letter_page_count"),
+                postage.label("postage"),
+                func.sum(NotificationAllTimeView.billable_units).label("billable_units"),
+                func.count().label("notifications_sent"),
+            )
+            .filter(
+                NotificationAllTimeView.status.in_(NOTIFICATION_STATUS_TYPES_BILLABLE_FOR_LETTERS),
+                NotificationAllTimeView.key_type.in_((KEY_TYPE_NORMAL, KEY_TYPE_TEAM)),
+                NotificationAllTimeView.created_at >= start_date,
+                NotificationAllTimeView.created_at < end_date,
+                NotificationAllTimeView.notification_type == notification_type,
+                NotificationAllTimeView.service_id == service.id,
+            )
+            .group_by(
+                NotificationAllTimeView.template_id,
+                rate_multiplier,
+                NotificationAllTimeView.billable_units,
+                postage,
+                NotificationAllTimeView.international,
+            )
         )
 
-    query_funcs = {
-        SMS_TYPE: _sms_query,
-        EMAIL_TYPE: _email_query,
-        LETTER_TYPE: _letter_query
-    }
+    query_funcs = {SMS_TYPE: _sms_query, EMAIL_TYPE: _email_query, LETTER_TYPE: _letter_query}
 
     query = query_funcs[notification_type]()
     return query.all()
@@ -601,18 +605,21 @@ def get_rates_for_billing():
 
 
 def get_service_ids_that_need_billing_populated(start_date, end_date):
-    return db.session.query(
-        NotificationHistory.service_id
-    ).filter(
-        NotificationHistory.created_at >= start_date,
-        NotificationHistory.created_at <= end_date,
-        NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
-        NotificationHistory.billable_units != 0
-    ).distinct().all()
+    return (
+        db.session.query(NotificationHistory.service_id)
+        .filter(
+            NotificationHistory.created_at >= start_date,
+            NotificationHistory.created_at <= end_date,
+            NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
+            NotificationHistory.billable_units != 0,
+        )
+        .distinct()
+        .all()
+    )
 
 
 def get_rate(
-    non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None, post_class='second'
+    non_letter_rates, letter_rates, notification_type, date, crown=None, letter_page_count=None, post_class="second"
 ):
     start_of_day = get_london_midnight_in_utc(date)
 
@@ -623,20 +630,19 @@ def get_rate(
         crown = crown or True
         return next(
             r.rate
-            for r in letter_rates if (
-                start_of_day >= r.start_date and
-                crown == r.crown and
-                letter_page_count == r.sheet_count and
-                post_class == r.post_class
+            for r in letter_rates
+            if (
+                start_of_day >= r.start_date
+                and crown == r.crown
+                and letter_page_count == r.sheet_count
+                and post_class == r.post_class
             )
         )
     elif notification_type == SMS_TYPE:
         return next(
             r.rate
-            for r in non_letter_rates if (
-                notification_type == r.notification_type and
-                start_of_day >= r.valid_from
-            )
+            for r in non_letter_rates
+            if (notification_type == r.notification_type and start_of_day >= r.valid_from)
         )
     else:
         return 0
@@ -644,22 +650,24 @@ def get_rate(
 
 def update_fact_billing(data, process_day):
     non_letter_rates, letter_rates = get_rates_for_billing()
-    rate = get_rate(non_letter_rates,
-                    letter_rates,
-                    data.notification_type,
-                    process_day,
-                    data.crown,
-                    data.letter_page_count,
-                    data.postage)
+    rate = get_rate(
+        non_letter_rates,
+        letter_rates,
+        data.notification_type,
+        process_day,
+        data.crown,
+        data.letter_page_count,
+        data.postage,
+    )
     billing_record = create_billing_record(data, rate, process_day)
 
     table = FactBilling.__table__
-    '''
+    """
        This uses the Postgres upsert to avoid race conditions when two threads try to insert
        at the same row. The excluded object refers to values that we tried to insert but were
        rejected.
        http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
-    '''
+    """
     stmt = insert(table).values(
         bst_date=billing_record.bst_date,
         template_id=billing_record.template_id,
@@ -676,10 +684,11 @@ def update_fact_billing(data, process_day):
 
     stmt = stmt.on_conflict_do_update(
         constraint="ft_billing_pkey",
-        set_={"notifications_sent": stmt.excluded.notifications_sent,
-              "billable_units": stmt.excluded.billable_units,
-              "updated_at": datetime.utcnow()
-              }
+        set_={
+            "notifications_sent": stmt.excluded.notifications_sent,
+            "billable_units": stmt.excluded.billable_units,
+            "updated_at": datetime.utcnow(),
+        },
     )
     db.session.connection().execute(stmt)
     db.session.commit()
@@ -703,50 +712,58 @@ def create_billing_record(data, rate, process_day):
 
 
 def _fetch_usage_for_organisation_letter(organisation_id, start_date, end_date):
-    query = db.session.query(
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost")
-    ).select_from(
-        Service
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
-    ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == LETTER_TYPE,
-        Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
-    ).group_by(
-        Service.id,
-        Service.name,
-    ).order_by(
-        Service.name
+    query = (
+        db.session.query(
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            func.sum(FactBilling.notifications_sent * FactBilling.rate).label("letter_cost"),
+        )
+        .select_from(Service)
+        .join(
+            FactBilling,
+            FactBilling.service_id == Service.id,
+        )
+        .filter(
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date <= end_date,
+            FactBilling.notification_type == LETTER_TYPE,
+            Service.organisation_id == organisation_id,
+            Service.restricted.is_(False),
+        )
+        .group_by(
+            Service.id,
+            Service.name,
+        )
+        .order_by(Service.name)
     )
 
     return query.all()
 
 
 def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
-    query = db.session.query(
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        func.sum(FactBilling.notifications_sent).label("emails_sent")
-    ).select_from(
-        Service
-    ).join(
-        FactBilling, FactBilling.service_id == Service.id,
-    ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-        FactBilling.notification_type == EMAIL_TYPE,
-        Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
-    ).group_by(
-        Service.id,
-        Service.name,
-    ).order_by(
-        Service.name
+    query = (
+        db.session.query(
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            func.sum(FactBilling.notifications_sent).label("emails_sent"),
+        )
+        .select_from(Service)
+        .join(
+            FactBilling,
+            FactBilling.service_id == Service.id,
+        )
+        .filter(
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date <= end_date,
+            FactBilling.notification_type == EMAIL_TYPE,
+            Service.organisation_id == organisation_id,
+            Service.restricted.is_(False),
+        )
+        .group_by(
+            Service.id,
+            Service.name,
+        )
+        .order_by(Service.name)
     )
     return query.all()
 
@@ -754,8 +771,7 @@ def _fetch_usage_for_organisation_email(organisation_id, start_date, end_date):
 def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
     year_start, year_end = get_financial_year_dates(financial_year)
     return fetch_usage_for_all_services_sms(year_start, year_end).filter(
-        Service.organisation_id == organisation_id,
-        Service.restricted.is_(False)
+        Service.organisation_id == organisation_id, Service.restricted.is_(False)
     )
 
 
@@ -774,17 +790,17 @@ def fetch_usage_for_organisation(organisation_id, year):
     # initialise results
     for service in services:
         service_with_usage[str(service.id)] = {
-            'service_id': service.id,
-            'service_name': service.name,
-            'free_sms_limit': service.free_sms_fragment_limit,
+            "service_id": service.id,
+            "service_name": service.name,
+            "free_sms_limit": service.free_sms_fragment_limit,
             # if sms usage is 0, then remainder is equiv to the free sms fragment limit
-            'sms_remainder': service.free_sms_fragment_limit,
-            'sms_billable_units': 0,
-            'chargeable_billable_sms': 0,
-            'sms_cost': 0.0,
-            'letter_cost': 0.0,
-            'emails_sent': 0,
-            'active': service.active
+            "sms_remainder": service.free_sms_fragment_limit,
+            "sms_billable_units": 0,
+            "chargeable_billable_sms": 0,
+            "sms_cost": 0.0,
+            "letter_cost": 0.0,
+            "emails_sent": 0,
+            "active": service.active,
         }
     sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
     letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
@@ -792,75 +808,70 @@ def fetch_usage_for_organisation(organisation_id, year):
     for usage in sms_usages:
         # update sms fields
         service_with_usage[str(usage.service_id)] |= {
-            'sms_remainder': usage.free_allowance_left,
-            'sms_billable_units': usage.chargeable_units,
-            'chargeable_billable_sms': usage.charged_units,
-            'sms_cost': float(usage.cost),
+            "sms_remainder": usage.free_allowance_left,
+            "sms_billable_units": usage.chargeable_units,
+            "chargeable_billable_sms": usage.charged_units,
+            "sms_cost": float(usage.cost),
         }
     for letter_usage in letter_usages:
-        service_with_usage[str(letter_usage.service_id)]['letter_cost'] = float(letter_usage.letter_cost)
+        service_with_usage[str(letter_usage.service_id)]["letter_cost"] = float(letter_usage.letter_cost)
     for email_usage in email_usages:
-        service_with_usage[str(email_usage.service_id)]['emails_sent'] = email_usage.emails_sent
+        service_with_usage[str(email_usage.service_id)]["emails_sent"] = email_usage.emails_sent
     return service_with_usage
 
 
 def fetch_daily_volumes_for_platform(start_date, end_date):
     # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
 
-    daily_volume_stats = db.session.query(
-        FactBilling.bst_date,
-        func.sum(case(
-            [
-                (FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)
-            ], else_=0
-        )).label('sms_totals'),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units)
-            ], else_=0
-        )).label('sms_fragment_totals'),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)
-            ], else_=0
-        )).label('sms_fragments_times_multiplier'),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)
-            ], else_=0
-        )).label('email_totals'),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)
-            ], else_=0
-        )).label('letter_totals'),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)
-            ], else_=0
-        )).label('letter_sheet_totals')
-    ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date
-    ).group_by(
-        FactBilling.bst_date,
-        FactBilling.notification_type
-    ).subquery()
+    daily_volume_stats = (
+        db.session.query(
+            FactBilling.bst_date,
+            func.sum(
+                case([(FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("sms_totals"),
+            func.sum(case([(FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units)], else_=0)).label(
+                "sms_fragment_totals"
+            ),
+            func.sum(
+                case(
+                    [
+                        (
+                            FactBilling.notification_type == SMS_TYPE,
+                            FactBilling.billable_units * FactBilling.rate_multiplier,
+                        )
+                    ],
+                    else_=0,
+                )
+            ).label("sms_fragments_times_multiplier"),
+            func.sum(
+                case([(FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("email_totals"),
+            func.sum(
+                case([(FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("letter_totals"),
+            func.sum(case([(FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)], else_=0)).label(
+                "letter_sheet_totals"
+            ),
+        )
+        .filter(FactBilling.bst_date >= start_date, FactBilling.bst_date <= end_date)
+        .group_by(FactBilling.bst_date, FactBilling.notification_type)
+        .subquery()
+    )
 
-    aggregated_totals = db.session.query(
-        daily_volume_stats.c.bst_date.cast(db.Text).label('bst_date'),
-        func.sum(daily_volume_stats.c.sms_totals).label('sms_totals'),
-        func.sum(daily_volume_stats.c.sms_fragment_totals).label('sms_fragment_totals'),
-        func.sum(
-            daily_volume_stats.c.sms_fragments_times_multiplier).label('sms_chargeable_units'),
-        func.sum(daily_volume_stats.c.email_totals).label('email_totals'),
-        func.sum(daily_volume_stats.c.letter_totals).label('letter_totals'),
-        func.sum(daily_volume_stats.c.letter_sheet_totals).label('letter_sheet_totals')
-    ).group_by(
-        daily_volume_stats.c.bst_date
-    ).order_by(
-        daily_volume_stats.c.bst_date
-    ).all()
+    aggregated_totals = (
+        db.session.query(
+            daily_volume_stats.c.bst_date.cast(db.Text).label("bst_date"),
+            func.sum(daily_volume_stats.c.sms_totals).label("sms_totals"),
+            func.sum(daily_volume_stats.c.sms_fragment_totals).label("sms_fragment_totals"),
+            func.sum(daily_volume_stats.c.sms_fragments_times_multiplier).label("sms_chargeable_units"),
+            func.sum(daily_volume_stats.c.email_totals).label("email_totals"),
+            func.sum(daily_volume_stats.c.letter_totals).label("letter_totals"),
+            func.sum(daily_volume_stats.c.letter_sheet_totals).label("letter_sheet_totals"),
+        )
+        .group_by(daily_volume_stats.c.bst_date)
+        .order_by(daily_volume_stats.c.bst_date)
+        .all()
+    )
 
     return aggregated_totals
 
@@ -868,24 +879,30 @@ def fetch_daily_volumes_for_platform(start_date, end_date):
 def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date):
     # query to return the total notifications sent per day for each channel. NB start and end dates are inclusive
 
-    daily_volume_stats = db.session.query(
-        FactBilling.bst_date,
-        FactBilling.provider,
-        func.sum(FactBilling.notifications_sent).label('sms_totals'),
-        func.sum(FactBilling.billable_units).label('sms_fragment_totals'),
-        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label('sms_chargeable_units'),
-        func.sum(FactBilling.billable_units * FactBilling.rate_multiplier * FactBilling.rate).label('sms_cost'),
-    ).filter(
-        FactBilling.notification_type == SMS_TYPE,
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date,
-    ).group_by(
-        FactBilling.bst_date,
-        FactBilling.provider,
-    ).order_by(
-        FactBilling.bst_date,
-        FactBilling.provider,
-    ).all()
+    daily_volume_stats = (
+        db.session.query(
+            FactBilling.bst_date,
+            FactBilling.provider,
+            func.sum(FactBilling.notifications_sent).label("sms_totals"),
+            func.sum(FactBilling.billable_units).label("sms_fragment_totals"),
+            func.sum(FactBilling.billable_units * FactBilling.rate_multiplier).label("sms_chargeable_units"),
+            func.sum(FactBilling.billable_units * FactBilling.rate_multiplier * FactBilling.rate).label("sms_cost"),
+        )
+        .filter(
+            FactBilling.notification_type == SMS_TYPE,
+            FactBilling.bst_date >= start_date,
+            FactBilling.bst_date <= end_date,
+        )
+        .group_by(
+            FactBilling.bst_date,
+            FactBilling.provider,
+        )
+        .order_by(
+            FactBilling.bst_date,
+            FactBilling.provider,
+        )
+        .all()
+    )
 
     return daily_volume_stats
 
@@ -893,85 +910,89 @@ def fetch_daily_sms_provider_volumes_for_platform(start_date, end_date):
 def fetch_volumes_by_service(start_date, end_date):
     # query to return the volume totals by service aggregated for the date range given
     # start and end dates are inclusive.
-    year_end_date = int(end_date.strftime('%Y'))
+    year_end_date = int(end_date.strftime("%Y"))
 
-    volume_stats = db.session.query(
-        FactBilling.bst_date,
-        FactBilling.service_id,
-        func.sum(case([
-            (FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)
-        ], else_=0)).label('sms_totals'),
-        func.sum(case([
-            (FactBilling.notification_type == SMS_TYPE, FactBilling.billable_units * FactBilling.rate_multiplier)
-        ], else_=0)).label('sms_fragments_times_multiplier'),
-        func.sum(case([
-            (FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)
-        ], else_=0)).label('email_totals'),
-        func.sum(case([
-            (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)
-        ], else_=0)).label('letter_totals'),
-        func.sum(case([
-            (FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent * FactBilling.rate)
-        ], else_=0)).label("letter_cost"),
-        func.sum(case(
-            [
-                (FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)
-            ], else_=0
-        )).label('letter_sheet_totals')
-    ).filter(
-        FactBilling.bst_date >= start_date,
-        FactBilling.bst_date <= end_date
-    ).group_by(
-        FactBilling.bst_date,
-        FactBilling.service_id,
-        FactBilling.notification_type
-    ).subquery()
+    volume_stats = (
+        db.session.query(
+            FactBilling.bst_date,
+            FactBilling.service_id,
+            func.sum(
+                case([(FactBilling.notification_type == SMS_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("sms_totals"),
+            func.sum(
+                case(
+                    [
+                        (
+                            FactBilling.notification_type == SMS_TYPE,
+                            FactBilling.billable_units * FactBilling.rate_multiplier,
+                        )
+                    ],
+                    else_=0,
+                )
+            ).label("sms_fragments_times_multiplier"),
+            func.sum(
+                case([(FactBilling.notification_type == EMAIL_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("email_totals"),
+            func.sum(
+                case([(FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent)], else_=0)
+            ).label("letter_totals"),
+            func.sum(
+                case(
+                    [(FactBilling.notification_type == LETTER_TYPE, FactBilling.notifications_sent * FactBilling.rate)],
+                    else_=0,
+                )
+            ).label("letter_cost"),
+            func.sum(case([(FactBilling.notification_type == LETTER_TYPE, FactBilling.billable_units)], else_=0)).label(
+                "letter_sheet_totals"
+            ),
+        )
+        .filter(FactBilling.bst_date >= start_date, FactBilling.bst_date <= end_date)
+        .group_by(FactBilling.bst_date, FactBilling.service_id, FactBilling.notification_type)
+        .subquery()
+    )
 
-    annual_billing = db.session.query(
-        func.max(AnnualBilling.financial_year_start).label('financial_year_start'),
-        AnnualBilling.service_id,
-        AnnualBilling.free_sms_fragment_limit
-    ).filter(
-        AnnualBilling.financial_year_start <= year_end_date
-    ).group_by(
-        AnnualBilling.service_id,
-        AnnualBilling.free_sms_fragment_limit
-    ).subquery()
+    annual_billing = (
+        db.session.query(
+            func.max(AnnualBilling.financial_year_start).label("financial_year_start"),
+            AnnualBilling.service_id,
+            AnnualBilling.free_sms_fragment_limit,
+        )
+        .filter(AnnualBilling.financial_year_start <= year_end_date)
+        .group_by(AnnualBilling.service_id, AnnualBilling.free_sms_fragment_limit)
+        .subquery()
+    )
 
-    results = db.session.query(
-        Service.name.label("service_name"),
-        Service.id.label("service_id"),
-        Service.organisation_id.label("organisation_id"),
-        Organisation.name.label("organisation_name"),
-        annual_billing.c.free_sms_fragment_limit.label("free_allowance"),
-        func.coalesce(func.sum(volume_stats.c.sms_totals), 0).label("sms_notifications"),
-        func.coalesce(func.sum(volume_stats.c.sms_fragments_times_multiplier), 0
-                      ).label("sms_chargeable_units"),
-        func.coalesce(func.sum(volume_stats.c.email_totals), 0).label("email_totals"),
-        func.coalesce(func.sum(volume_stats.c.letter_totals), 0).label("letter_totals"),
-        func.coalesce(func.sum(volume_stats.c.letter_cost), 0).label("letter_cost"),
-        func.coalesce(func.sum(volume_stats.c.letter_sheet_totals), 0).label("letter_sheet_totals")
-    ).select_from(
-        Service
-    ).outerjoin(
-        Organisation, Service.organisation_id == Organisation.id
-    ).join(
-        annual_billing, Service.id == annual_billing.c.service_id
-    ).outerjoin(  # include services without volume
-        volume_stats, Service.id == volume_stats.c.service_id
-    ).filter(
-        Service.restricted.is_(False),
-        Service.count_as_live.is_(True),
-        Service.active.is_(True)
-    ).group_by(
-        Service.id,
-        Service.name,
-        Service.organisation_id,
-        Organisation.name,
-        annual_billing.c.free_sms_fragment_limit
-    ).order_by(
-        Organisation.name,
-        Service.name,
-    ).all()
+    results = (
+        db.session.query(
+            Service.name.label("service_name"),
+            Service.id.label("service_id"),
+            Service.organisation_id.label("organisation_id"),
+            Organisation.name.label("organisation_name"),
+            annual_billing.c.free_sms_fragment_limit.label("free_allowance"),
+            func.coalesce(func.sum(volume_stats.c.sms_totals), 0).label("sms_notifications"),
+            func.coalesce(func.sum(volume_stats.c.sms_fragments_times_multiplier), 0).label("sms_chargeable_units"),
+            func.coalesce(func.sum(volume_stats.c.email_totals), 0).label("email_totals"),
+            func.coalesce(func.sum(volume_stats.c.letter_totals), 0).label("letter_totals"),
+            func.coalesce(func.sum(volume_stats.c.letter_cost), 0).label("letter_cost"),
+            func.coalesce(func.sum(volume_stats.c.letter_sheet_totals), 0).label("letter_sheet_totals"),
+        )
+        .select_from(Service)
+        .outerjoin(Organisation, Service.organisation_id == Organisation.id)
+        .join(annual_billing, Service.id == annual_billing.c.service_id)
+        .outerjoin(volume_stats, Service.id == volume_stats.c.service_id)  # include services without volume
+        .filter(Service.restricted.is_(False), Service.count_as_live.is_(True), Service.active.is_(True))
+        .group_by(
+            Service.id,
+            Service.name,
+            Service.organisation_id,
+            Organisation.name,
+            annual_billing.c.free_sms_fragment_limit,
+        )
+        .order_by(
+            Organisation.name,
+            Service.name,
+        )
+        .all()
+    )
 
     return results

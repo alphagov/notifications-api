@@ -36,14 +36,12 @@ from tests.app.db import (
 )
 
 
-def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(
-        notify_db_session
-):
-    m_active_org = create_organisation(name='m_active_organisation')
-    z_inactive_org = create_organisation(name='z_inactive_organisation', active=False)
-    a_inactive_org = create_organisation(name='a_inactive_organisation', active=False)
-    z_active_org = create_organisation(name='z_active_organisation')
-    a_active_org = create_organisation(name='a_active_organisation')
+def test_get_organisations_gets_all_organisations_alphabetically_with_active_organisations_first(notify_db_session):
+    m_active_org = create_organisation(name="m_active_organisation")
+    z_inactive_org = create_organisation(name="z_inactive_organisation", active=False)
+    a_inactive_org = create_organisation(name="a_inactive_organisation", active=False)
+    z_active_org = create_organisation(name="z_active_organisation")
+    a_active_org = create_organisation(name="a_active_organisation")
 
     organisations = dao_get_organisations()
 
@@ -72,9 +70,9 @@ def test_update_organisation(notify_db_session):
     letter_branding = create_letter_branding()
 
     data = {
-        'name': 'new name',
+        "name": "new name",
         "crown": True,
-        "organisation_type": 'local',
+        "organisation_type": "local",
         "agreement_signed": True,
         "agreement_signed_at": datetime.datetime.utcnow(),
         "agreement_signed_by_id": user.id,
@@ -98,16 +96,16 @@ def test_update_organisation(notify_db_session):
     assert organisation.updated_at
 
 
-@pytest.mark.parametrize('domain_list, expected_domains', (
-    (['abc', 'def'], {'abc', 'def'}),
-    (['ABC', 'DEF'], {'abc', 'def'}),
-    ([], set()),
-    (None, {'123', '456'}),
-    pytest.param(
-        ['abc', 'ABC'], {'abc'},
-        marks=pytest.mark.xfail(raises=IntegrityError)
+@pytest.mark.parametrize(
+    "domain_list, expected_domains",
+    (
+        (["abc", "def"], {"abc", "def"}),
+        (["ABC", "DEF"], {"abc", "def"}),
+        ([], set()),
+        (None, {"123", "456"}),
+        pytest.param(["abc", "ABC"], {"abc"}, marks=pytest.mark.xfail(raises=IntegrityError)),
     ),
-))
+)
 def test_update_organisation_domains_lowercases(
     notify_db_session,
     domain_list,
@@ -118,7 +116,7 @@ def test_update_organisation_domains_lowercases(
     organisation = Organisation.query.one()
 
     # Seed some domains
-    dao_update_organisation(organisation.id, domains=['123', '456'])
+    dao_update_organisation(organisation.id, domains=["123", "456"])
 
     # This should overwrite the seeded domains
     dao_update_organisation(organisation.id, domains=domain_list)
@@ -133,22 +131,22 @@ def test_update_organisation_does_not_update_the_service_if_certain_attributes_n
     email_branding = create_email_branding()
     letter_branding = create_letter_branding()
 
-    sample_service.organisation_type = 'local'
-    sample_organisation.organisation_type = 'central'
+    sample_service.organisation_type = "local"
+    sample_organisation.organisation_type = "central"
     sample_organisation.email_branding = email_branding
     sample_organisation.letter_branding = letter_branding
 
     sample_organisation.services.append(sample_service)
     db.session.commit()
 
-    assert sample_organisation.name == 'sample organisation'
+    assert sample_organisation.name == "sample organisation"
 
-    dao_update_organisation(sample_organisation.id, name='updated org name')
+    dao_update_organisation(sample_organisation.id, name="updated org name")
 
-    assert sample_organisation.name == 'updated org name'
+    assert sample_organisation.name == "updated org name"
 
-    assert sample_organisation.organisation_type == 'central'
-    assert sample_service.organisation_type == 'local'
+    assert sample_organisation.organisation_type == "central"
+    assert sample_service.organisation_type == "local"
 
     assert sample_organisation.email_branding == email_branding
     assert sample_service.email_branding is None
@@ -161,20 +159,20 @@ def test_update_organisation_updates_the_service_org_type_if_org_type_is_provide
     sample_service,
     sample_organisation,
 ):
-    sample_service.organisation_type = 'local'
-    sample_organisation.organisation_type = 'local'
+    sample_service.organisation_type = "local"
+    sample_organisation.organisation_type = "local"
 
     sample_organisation.services.append(sample_service)
     db.session.commit()
 
-    dao_update_organisation(sample_organisation.id, organisation_type='central')
+    dao_update_organisation(sample_organisation.id, organisation_type="central")
 
-    assert sample_organisation.organisation_type == 'central'
-    assert sample_service.organisation_type == 'central'
-    assert Service.get_history_model().query.filter_by(
-        id=sample_service.id,
-        version=2
-    ).one().organisation_type == 'central'
+    assert sample_organisation.organisation_type == "central"
+    assert sample_service.organisation_type == "central"
+    assert (
+        Service.get_history_model().query.filter_by(id=sample_service.id, version=2).one().organisation_type
+        == "central"
+    )
 
 
 def test_update_organisation_updates_the_service_branding_if_branding_is_provided(
@@ -201,9 +199,9 @@ def test_update_organisation_does_not_override_service_branding(
     sample_organisation,
 ):
     email_branding = create_email_branding()
-    custom_email_branding = create_email_branding(name='custom')
+    custom_email_branding = create_email_branding(name="custom")
     letter_branding = create_letter_branding()
-    custom_letter_branding = create_letter_branding(name='custom', filename='custom')
+    custom_letter_branding = create_letter_branding(name="custom", filename="custom")
 
     sample_service.email_branding = custom_email_branding
     sample_service.letter_branding = custom_letter_branding
@@ -245,10 +243,7 @@ def test_update_organisation_email_branding_does_not_error_if_returning_to_govuk
     dao_update_organisation(sample_organisation.id, email_branding_id=None)
 
 
-def test_update_organisation_updates_services_with_new_crown_type(
-    sample_service,
-    sample_organisation
-):
+def test_update_organisation_updates_services_with_new_crown_type(sample_service, sample_organisation):
     sample_organisation.services.append(sample_service)
     db.session.commit()
 
@@ -266,7 +261,7 @@ def test_dao_archive_organisation(sample_organisation, fake_uuid):
 
     dao_update_organisation(
         sample_organisation.id,
-        domains=['example.com', 'test.com'],
+        domains=["example.com", "test.com"],
         email_branding_id=email_branding.id,
         letter_branding_id=letter_branding.id,
     )
@@ -279,7 +274,7 @@ def test_dao_archive_organisation(sample_organisation, fake_uuid):
     assert not sample_organisation.letter_branding
     assert not sample_organisation.domains
     assert sample_organisation.active is False
-    assert sample_organisation.name == f'_archived_2022-05-17_{org_name}'
+    assert sample_organisation.name == f"_archived_2022-05-17_{org_name}"
 
 
 def test_add_service_to_organisation(sample_service, sample_organisation):
@@ -296,15 +291,15 @@ def test_add_service_to_organisation(sample_service, sample_organisation):
 
     assert sample_service.organisation_type == sample_organisation.organisation_type
     assert sample_service.crown == sample_organisation.crown
-    assert Service.get_history_model().query.filter_by(
-        id=sample_service.id,
-        version=2
-    ).one().organisation_type == sample_organisation.organisation_type
+    assert (
+        Service.get_history_model().query.filter_by(id=sample_service.id, version=2).one().organisation_type
+        == sample_organisation.organisation_type
+    )
     assert sample_service.organisation_id == sample_organisation.id
 
 
 def test_get_organisation_services(sample_service, sample_organisation):
-    another_service = create_service(service_name='service 2')
+    another_service = create_service(service_name="service 2")
     another_org = create_organisation()
 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
@@ -318,7 +313,7 @@ def test_get_organisation_services(sample_service, sample_organisation):
 
 
 def test_get_organisation_by_service_id(sample_service, sample_organisation):
-    another_service = create_service(service_name='service 2')
+    another_service = create_service(service_name="service 2")
     another_org = create_organisation()
 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
@@ -332,8 +327,8 @@ def test_get_organisation_by_service_id(sample_service, sample_organisation):
 
 
 def test_dao_get_users_for_organisation(sample_organisation):
-    first = create_user(email='first@invited.com')
-    second = create_user(email='another@invited.com')
+    first = create_user(email="first@invited.com")
+    second = create_user(email="another@invited.com")
 
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
@@ -351,13 +346,13 @@ def test_dao_get_users_for_organisation_returns_empty_list(sample_organisation):
 
 
 def test_dao_get_users_for_organisation_only_returns_active_users(sample_organisation):
-    first = create_user(email='first@invited.com')
-    second = create_user(email='another@invited.com')
+    first = create_user(email="first@invited.com")
+    second = create_user(email="another@invited.com")
 
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first.id)
     dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second.id)
 
-    second.state = 'inactive'
+    second.state = "inactive"
 
     results = dao_get_users_for_organisation(organisation_id=sample_organisation.id)
     assert len(results) == 1
@@ -383,25 +378,24 @@ def test_add_user_to_organisation_when_organisation_does_not_exist(sample_user):
         dao_add_user_to_organisation(organisation_id=uuid.uuid4(), user_id=sample_user.id)
 
 
-@pytest.mark.parametrize('domain, expected_org', (
-    ('unknown.gov.uk', False),
-    ('example.gov.uk', True),
-))
-def test_get_organisation_by_email_address(
-    domain,
-    expected_org,
-    notify_db_session
-):
+@pytest.mark.parametrize(
+    "domain, expected_org",
+    (
+        ("unknown.gov.uk", False),
+        ("example.gov.uk", True),
+    ),
+)
+def test_get_organisation_by_email_address(domain, expected_org, notify_db_session):
 
     org = create_organisation()
-    create_domain('example.gov.uk', org.id)
-    create_domain('test.gov.uk', org.id)
+    create_domain("example.gov.uk", org.id)
+    create_domain("test.gov.uk", org.id)
 
-    another_org = create_organisation(name='Another')
-    create_domain('cabinet-office.gov.uk', another_org.id)
-    create_domain('cabinetoffice.gov.uk', another_org.id)
+    another_org = create_organisation(name="Another")
+    create_domain("cabinet-office.gov.uk", another_org.id)
+    create_domain("cabinetoffice.gov.uk", another_org.id)
 
-    found_org = dao_get_organisation_by_email_address('test@{}'.format(domain))
+    found_org = dao_get_organisation_by_email_address("test@{}".format(domain))
 
     if expected_org:
         assert found_org is org
@@ -411,32 +405,23 @@ def test_get_organisation_by_email_address(
 
 def test_get_organisation_by_email_address_ignores_gsi_gov_uk(notify_db_session):
     org = create_organisation()
-    create_domain('example.gov.uk', org.id)
+    create_domain("example.gov.uk", org.id)
 
-    found_org = dao_get_organisation_by_email_address('test_gsi_address@example.gsi.gov.uk')
+    found_org = dao_get_organisation_by_email_address("test_gsi_address@example.gsi.gov.uk")
     assert org == found_org
 
 
 def test_add_to_and_get_email_branding_pool_for_organisation(sample_organisation):
-    first_branding = create_email_branding(colour='blue', logo='test_x1.png', name='email_branding_1')
-    second_branding = create_email_branding(colour='indigo', logo='test_x2.png', name='email_branding_2')
-    third_branding = create_email_branding(colour='indigo', logo='test_x3.png', name='email_branding_3')
+    first_branding = create_email_branding(colour="blue", logo="test_x1.png", name="email_branding_1")
+    second_branding = create_email_branding(colour="indigo", logo="test_x2.png", name="email_branding_2")
+    third_branding = create_email_branding(colour="indigo", logo="test_x3.png", name="email_branding_3")
 
     organisation_1 = sample_organisation
     organisation_2 = create_organisation()
 
-    dao_add_email_branding_to_organisation_pool(
-        organisation_id=organisation_1.id,
-        email_branding_id=first_branding.id
-    )
-    dao_add_email_branding_to_organisation_pool(
-        organisation_id=organisation_1.id,
-        email_branding_id=second_branding.id
-    )
-    dao_add_email_branding_to_organisation_pool(
-        organisation_id=organisation_2.id,
-        email_branding_id=third_branding.id
-    )
+    dao_add_email_branding_to_organisation_pool(organisation_id=organisation_1.id, email_branding_id=first_branding.id)
+    dao_add_email_branding_to_organisation_pool(organisation_id=organisation_1.id, email_branding_id=second_branding.id)
+    dao_add_email_branding_to_organisation_pool(organisation_id=organisation_2.id, email_branding_id=third_branding.id)
 
     results = dao_get_email_branding_pool_for_organisation(organisation_id=organisation_1.id)
 
@@ -449,9 +434,9 @@ def test_add_to_and_get_email_branding_pool_for_organisation(sample_organisation
 
 
 def test_dao_add_email_branding_list_to_organisation_pool(sample_organisation):
-    branding_1 = create_email_branding(logo='test_x1.png', name='branding_1')
-    branding_2 = create_email_branding(logo='test_x2.png', name='branding_2')
-    branding_3 = create_email_branding(logo='test_x3.png', name='branding_3')
+    branding_1 = create_email_branding(logo="test_x1.png", name="branding_1")
+    branding_2 = create_email_branding(logo="test_x2.png", name="branding_2")
+    branding_3 = create_email_branding(logo="test_x3.png", name="branding_3")
 
     dao_add_email_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id])
 
@@ -467,7 +452,7 @@ def test_dao_add_email_branding_list_to_organisation_pool(sample_organisation):
 
 
 def test_dao_get_organisation_live_services_with_free_allowance(sample_service, sample_organisation):
-    service_with_no_free_allowance = create_service(service_name='service 2')
+    service_with_no_free_allowance = create_service(service_name="service 2")
 
     create_annual_billing(sample_service.id, free_sms_fragment_limit=10, financial_year_start=2015)
     create_annual_billing(sample_service.id, free_sms_fragment_limit=20, financial_year_start=2016)
@@ -475,9 +460,11 @@ def test_dao_get_organisation_live_services_with_free_allowance(sample_service, 
     dao_add_service_to_organisation(sample_service, sample_organisation.id)
     dao_add_service_to_organisation(service_with_no_free_allowance, sample_organisation.id)
 
-    org_services = dao_get_organisation_live_services_and_their_free_allowance(
-        sample_organisation.id, 2015
-    ).order_by(Service.name).all()
+    org_services = (
+        dao_get_organisation_live_services_and_their_free_allowance(sample_organisation.id, 2015)
+        .order_by(Service.name)
+        .all()
+    )
 
     assert len(org_services) == 2
 
@@ -489,9 +476,9 @@ def test_dao_get_organisation_live_services_with_free_allowance(sample_service, 
 
 
 def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):
-    branding_1 = create_email_branding(logo='test_x1.png', name='branding_1')
-    branding_2 = create_email_branding(logo='test_x2.png', name='branding_2')
-    branding_3 = create_email_branding(logo='test_x3.png', name='branding_3')
+    branding_1 = create_email_branding(logo="test_x1.png", name="branding_1")
+    branding_2 = create_email_branding(logo="test_x2.png", name="branding_2")
+    branding_3 = create_email_branding(logo="test_x3.png", name="branding_3")
 
     sample_organisation.email_branding_id = branding_2.id
     sample_organisation.email_branding_pool += [branding_1, branding_2, branding_3]

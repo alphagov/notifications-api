@@ -19,7 +19,7 @@ def test_save_service_callback_api(sample_service):
         service_id=sample_service.id,
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
-        updated_by_id=sample_service.users[0].id
+        updated_by_id=sample_service.users[0].id,
     )
 
     save_service_callback_api(service_callback_api)
@@ -50,7 +50,7 @@ def test_save_service_callback_api_fails_if_service_does_not_exist(notify_db_ses
         service_id=uuid.uuid4(),
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
-        updated_by_id=uuid.uuid4()
+        updated_by_id=uuid.uuid4(),
     )
 
     with pytest.raises(SQLAlchemyError):
@@ -63,7 +63,7 @@ def test_update_service_callback_api_unique_constraint(sample_service):
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type='delivery_status'
+        callback_type="delivery_status",
     )
     save_service_callback_api(service_callback_api)
     another = ServiceCallbackApi(
@@ -71,7 +71,7 @@ def test_update_service_callback_api_unique_constraint(sample_service):
         url="https://some_service/another_callback_endpoint",
         bearer_token="different_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type='delivery_status'
+        callback_type="delivery_status",
     )
     with pytest.raises(expected_exception=SQLAlchemyError):
         save_service_callback_api(another)
@@ -83,7 +83,7 @@ def test_update_service_callback_can_add_two_api_of_different_types(sample_servi
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type='delivery_status'
+        callback_type="delivery_status",
     )
     save_service_callback_api(delivery_status)
     complaint = ServiceCallbackApi(
@@ -91,7 +91,7 @@ def test_update_service_callback_can_add_two_api_of_different_types(sample_servi
         url="https://some_service/another_callback_endpoint",
         bearer_token="different_string",
         updated_by_id=sample_service.users[0].id,
-        callback_type='complaint'
+        callback_type="complaint",
     )
     save_service_callback_api(complaint)
     results = ServiceCallbackApi.query.order_by(ServiceCallbackApi.callback_type).all()
@@ -105,7 +105,7 @@ def test_update_service_callback_api(sample_service):
         service_id=sample_service.id,
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
-        updated_by_id=sample_service.users[0].id
+        updated_by_id=sample_service.users[0].id,
     )
 
     save_service_callback_api(service_callback_api)
@@ -113,8 +113,9 @@ def test_update_service_callback_api(sample_service):
     assert len(results) == 1
     saved_callback_api = results[0]
 
-    reset_service_callback_api(saved_callback_api, updated_by_id=sample_service.users[0].id,
-                               url="https://some_service/changed_url")
+    reset_service_callback_api(
+        saved_callback_api, updated_by_id=sample_service.users[0].id, url="https://some_service/changed_url"
+    )
     updated_results = ServiceCallbackApi.query.all()
     assert len(updated_results) == 1
     updated = updated_results[0]
@@ -148,7 +149,7 @@ def test_get_service_callback_api(sample_service):
         service_id=sample_service.id,
         url="https://some_service/callback_endpoint",
         bearer_token="some_unique_string",
-        updated_by_id=sample_service.users[0].id
+        updated_by_id=sample_service.users[0].id,
     )
     save_service_callback_api(service_callback_api)
 

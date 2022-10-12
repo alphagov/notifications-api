@@ -10,17 +10,17 @@ import uuid
 from alembic import op
 from flask import current_app
 
-revision = '0346_notify_number_sms_sender'
-down_revision = '0345_move_broadcast_provider'
+revision = "0346_notify_number_sms_sender"
+down_revision = "0345_move_broadcast_provider"
 
-SMS_SENDER_ID = 'd24b830b-57b4-4f14-bd80-02f46f8d54de'
-NOTIFY_SERVICE_ID = current_app.config['NOTIFY_SERVICE_ID']
-INBOUND_NUMBER = current_app.config['NOTIFY_INTERNATIONAL_SMS_SENDER']
+SMS_SENDER_ID = "d24b830b-57b4-4f14-bd80-02f46f8d54de"
+NOTIFY_SERVICE_ID = current_app.config["NOTIFY_SERVICE_ID"]
+INBOUND_NUMBER = current_app.config["NOTIFY_INTERNATIONAL_SMS_SENDER"]
 
 
 def upgrade():
 
-    sql = f"""INSERT INTO service_sms_senders (id, sms_sender, service_id, is_default, created_at) 
+    sql = f"""INSERT INTO service_sms_senders (id, sms_sender, service_id, is_default, created_at)
             VALUES ('{SMS_SENDER_ID}', '{INBOUND_NUMBER}', '{NOTIFY_SERVICE_ID}',false, now())"""
 
     op.execute(sql)

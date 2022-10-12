@@ -18,11 +18,11 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from app.serialised_models import SerialisedService
 
-GENERAL_TOKEN_ERROR_MESSAGE = 'Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header'  # noqa
+GENERAL_TOKEN_ERROR_MESSAGE = "Invalid token: make sure your API token matches the example at https://docs.notifications.service.gov.uk/rest-api.html#authorisation-header"  # noqa
 
 AUTH_DB_CONNECTION_DURATION_SECONDS = Histogram(
-    'auth_db_connection_duration_seconds',
-    'Time taken to get DB connection and fetch service from database',
+    "auth_db_connection_duration_seconds",
+    "Time taken to get DB connection and fetch service from database",
 )
 
 
@@ -35,21 +35,13 @@ class AuthError(Exception):
         self.api_key_id = api_key_id
 
     def __str__(self):
-        return 'AuthError({message}, {code}, service_id={service_id}, api_key_id={api_key_id})'.format(**self.__dict__)
+        return "AuthError({message}, {code}, service_id={service_id}, api_key_id={api_key_id})".format(**self.__dict__)
 
     def to_dict_v2(self):
-        return {
-            'status_code': self.code,
-            "errors": [
-                {
-                    "error": "AuthError",
-                    "message": self.short_message
-                }
-            ]
-        }
+        return {"status_code": self.code, "errors": [{"error": "AuthError", "message": self.short_message}]}
 
 
-class InternalApiKey():
+class InternalApiKey:
     def __init__(self, client_id, secret):
         self.secret = secret
         self.id = client_id
@@ -61,15 +53,15 @@ def requires_no_auth():
 
 
 def requires_govuk_alerts_auth():
-    requires_internal_auth(current_app.config.get('GOVUK_ALERTS_CLIENT_ID'))
+    requires_internal_auth(current_app.config.get("GOVUK_ALERTS_CLIENT_ID"))
 
 
 def requires_admin_auth():
-    requires_internal_auth(current_app.config.get('ADMIN_CLIENT_ID'))
+    requires_internal_auth(current_app.config.get("ADMIN_CLIENT_ID"))
 
 
 def requires_internal_auth(expected_client_id):
-    if expected_client_id not in current_app.config.get('INTERNAL_CLIENT_API_KEYS'):
+    if expected_client_id not in current_app.config.get("INTERNAL_CLIENT_API_KEYS"):
         raise TypeError("Unknown client_id for internal auth")
 
     request_helper.check_proxy_header_before_request()
@@ -80,8 +72,7 @@ def requires_internal_auth(expected_client_id):
         raise AuthError("Unauthorized: not allowed to perform this action", 401)
 
     api_keys = [
-        InternalApiKey(client_id, secret)
-        for secret in current_app.config.get('INTERNAL_CLIENT_API_KEYS')[client_id]
+        InternalApiKey(client_id, secret) for secret in current_app.config.get("INTERNAL_CLIENT_API_KEYS")[client_id]
     ]
 
     _decode_jwt_token(auth_token, api_keys, client_id)
@@ -113,12 +104,11 @@ def requires_auth():
 
     api_key = _decode_jwt_token(auth_token, service.api_keys, service.id)
 
-    current_app.logger.info('API authorised for service {} with api key {}, using issuer {} for URL: {}'.format(
-        service_id,
-        api_key.id,
-        request.headers.get('User-Agent'),
-        request.base_url
-    ))
+    current_app.logger.info(
+        "API authorised for service {} with api key {}, using issuer {} for URL: {}".format(
+            service_id, api_key.id, request.headers.get("User-Agent"), request.base_url
+        )
+    )
 
     g.api_user = api_key
     g.service_id = service_id
@@ -156,14 +146,14 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
 
 
 def _get_auth_token(req):
-    auth_header = req.headers.get('Authorization', None)
+    auth_header = req.headers.get("Authorization", None)
     if not auth_header:
-        raise AuthError('Unauthorized: authentication token must be provided', 401)
+        raise AuthError("Unauthorized: authentication token must be provided", 401)
 
     auth_scheme = auth_header[:7].title()
 
-    if auth_scheme != 'Bearer ':
-        raise AuthError('Unauthorized: authentication bearer scheme must be used', 401)
+    if auth_scheme != "Bearer ":
+        raise AuthError("Unauthorized: authentication bearer scheme must be used", 401)
 
     return auth_header[7:]
 

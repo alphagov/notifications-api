@@ -9,13 +9,13 @@ Create Date: 2016-07-07 16:02:06.241769
 # revision identifiers, used by Alembic.
 from datetime import datetime
 
-revision = '0041_email_template'
-down_revision = '0040_adjust_mmg_provider_rate'
+revision = "0041_email_template"
+down_revision = "0040_adjust_mmg_provider_rate"
 
 from alembic import op
 
-user_id = '6af522d0-2915-4e52-83a3-3690455a5fe6'
-service_id = 'd6aa2c68-a2d9-4437-ab19-3ae8eb202553'
+user_id = "6af522d0-2915-4e52-83a3-3690455a5fe6"
+service_id = "d6aa2c68-a2d9-4437-ab19-3ae8eb202553"
 
 
 def upgrade():
@@ -38,24 +38,41 @@ If you’ve forgotten your password, you can reset it here: ((forgot_password_ur
 If you didn’t try to register for a GOV.UK Notify account recently, please let us know here: ((feedback_url))"""
 
     op.get_bind()
-    op.execute(template_history_insert.format('0880fbb1-a0c6-46f0-9a8e-36c986381ceb',
-                                              'Your GOV.UK Notify account', 'email',
-                                              datetime.utcnow(), content, service_id,
-                                              'Your GOV.UK Notify account', user_id))
     op.execute(
-        template_insert.format('0880fbb1-a0c6-46f0-9a8e-36c986381ceb', 'Your GOV.UK Notify account', 'email',
-                               datetime.utcnow(), content, service_id,
-                               'Your GOV.UK Notify account', user_id))
+        template_history_insert.format(
+            "0880fbb1-a0c6-46f0-9a8e-36c986381ceb",
+            "Your GOV.UK Notify account",
+            "email",
+            datetime.utcnow(),
+            content,
+            service_id,
+            "Your GOV.UK Notify account",
+            user_id,
+        )
+    )
+    op.execute(
+        template_insert.format(
+            "0880fbb1-a0c6-46f0-9a8e-36c986381ceb",
+            "Your GOV.UK Notify account",
+            "email",
+            datetime.utcnow(),
+            content,
+            service_id,
+            "Your GOV.UK Notify account",
+            user_id,
+        )
+    )
+
 
 # If you are copying this migration, please remember about an insert to TemplateRedacted,
 # which was not originally included here either by mistake or because it was before TemplateRedacted existed
-    # op.execute(
-    #     """
-    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
-    #         VALUES ('0880fbb1-a0c6-46f0-9a8e-36c986381ceb', '{}', '{}', '{}')
-    #         ;
-    #     """.format(False, datetime.utcnow(), user_id)
-    # )
+# op.execute(
+#     """
+#         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+#         VALUES ('0880fbb1-a0c6-46f0-9a8e-36c986381ceb', '{}', '{}', '{}')
+#         ;
+#     """.format(False, datetime.utcnow(), user_id)
+# )
 
 
 def downgrade():

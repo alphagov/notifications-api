@@ -17,7 +17,7 @@ from tests.app.db import (
 )
 
 
-def create_uploaded_letter(letter_template, service, status='created', created_at=None):
+def create_uploaded_letter(letter_template, service, status="created", created_at=None):
     return create_notification(
         template=letter_template,
         to_field="file-name",
@@ -26,7 +26,7 @@ def create_uploaded_letter(letter_template, service, status='created', created_a
         client_reference="file-name",
         one_off=True,
         created_by_id=service.users[0].id,
-        created_at=created_at
+        created_at=created_at,
     )
 
 
@@ -34,8 +34,8 @@ def create_uploaded_template(service):
     return create_template(
         service,
         template_type=LETTER_TYPE,
-        template_name='Pre-compiled PDF',
-        subject='Pre-compiled PDF',
+        template_name="Pre-compiled PDF",
+        subject="Pre-compiled PDF",
         content="",
         hidden=True,
         postage="second",
@@ -44,7 +44,7 @@ def create_uploaded_template(service):
 
 @freeze_time("2020-02-02 14:00")  # GMT time
 def test_get_uploads_for_service(sample_template):
-    create_service_data_retention(sample_template.service, 'sms', days_of_retention=9)
+    create_service_data_retention(sample_template.service, "sms", days_of_retention=9)
     contact_list = create_service_contact_list()
     # Jobs created from contact lists should be filtered out
     create_job(sample_template, contact_list_id=contact_list.id)
@@ -65,22 +65,22 @@ def test_get_uploads_for_service(sample_template):
 
     assert uploads_from_db[0] == (
         None,
-        'Uploaded letters',
+        "Uploaded letters",
         1,
-        'letter',
+        "letter",
         None,
         letter.created_at.replace(hour=17, minute=30, second=0, microsecond=0),
         None,
         letter.created_at.replace(hour=17, minute=30, second=0, microsecond=0),
         None,
-        'letter_day',
+        "letter_day",
         None,
     )
     assert uploads_from_db[1] == (
         job.id,
         job.original_file_name,
         job.notification_count,
-        'sms',
+        "sms",
         9,
         job.created_at,
         job.scheduled_for,
@@ -93,9 +93,9 @@ def test_get_uploads_for_service(sample_template):
     assert len(other_uploads_from_db) == 2
     assert other_uploads_from_db[0] == (
         None,
-        'Uploaded letters',
+        "Uploaded letters",
         1,
-        'letter',
+        "letter",
         None,
         letter.created_at.replace(hour=17, minute=30, second=0, microsecond=0),
         None,
@@ -104,17 +104,19 @@ def test_get_uploads_for_service(sample_template):
         "letter_day",
         None,
     )
-    assert other_uploads_from_db[1] == (other_job.id,
-                                        other_job.original_file_name,
-                                        other_job.notification_count,
-                                        other_job.template.template_type,
-                                        7,
-                                        other_job.created_at,
-                                        other_job.scheduled_for,
-                                        other_job.processing_started,
-                                        other_job.job_status,
-                                        "job",
-                                        None)
+    assert other_uploads_from_db[1] == (
+        other_job.id,
+        other_job.original_file_name,
+        other_job.notification_count,
+        other_job.template.template_type,
+        7,
+        other_job.created_at,
+        other_job.scheduled_for,
+        other_job.processing_started,
+        other_job.job_status,
+        "job",
+        None,
+    )
 
     assert uploads_from_db[1] != other_uploads_from_db[1]
 
@@ -124,34 +126,21 @@ def test_get_uploads_for_service_groups_letters(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
     # Just gets into yesterday’s print run
-    create_uploaded_letter(letter_template, sample_template.service, created_at=(
-        datetime(2020, 2, 1, 17, 29, 59)
-    ))
+    create_uploaded_letter(letter_template, sample_template.service, created_at=(datetime(2020, 2, 1, 17, 29, 59)))
 
     # Yesterday but in today’s print run
-    create_uploaded_letter(letter_template, sample_template.service, created_at=(
-        datetime(2020, 2, 1, 17, 30)
-    ))
+    create_uploaded_letter(letter_template, sample_template.service, created_at=(datetime(2020, 2, 1, 17, 30)))
     # First thing today
-    create_uploaded_letter(letter_template, sample_template.service, created_at=(
-        datetime(2020, 2, 2, 0, 0)
-    ))
+    create_uploaded_letter(letter_template, sample_template.service, created_at=(datetime(2020, 2, 2, 0, 0)))
     # Just before today’s print deadline
-    create_uploaded_letter(letter_template, sample_template.service, created_at=(
-        datetime(2020, 2, 2, 17, 29, 59)
-    ))
+    create_uploaded_letter(letter_template, sample_template.service, created_at=(datetime(2020, 2, 2, 17, 29, 59)))
 
     # Just missed today’s print deadline
-    create_uploaded_letter(letter_template, sample_template.service, created_at=(
-        datetime(2020, 2, 2, 17, 30)
-    ))
+    create_uploaded_letter(letter_template, sample_template.service, created_at=(datetime(2020, 2, 2, 17, 30)))
 
     uploads_from_db = dao_get_uploads_by_service_id(sample_template.service_id).items
 
-    assert [
-        (upload.notification_count, upload.created_at)
-        for upload in uploads_from_db
-    ] == [
+    assert [(upload.notification_count, upload.created_at) for upload in uploads_from_db] == [
         (1, datetime(2020, 2, 3, 17, 30)),
         (3, datetime(2020, 2, 2, 17, 30)),
         (1, datetime(2020, 2, 1, 17, 30)),
@@ -159,10 +148,10 @@ def test_get_uploads_for_service_groups_letters(sample_template):
 
 
 def test_get_uploads_does_not_return_cancelled_jobs_or_letters(sample_template):
-    create_job(sample_template, job_status='scheduled')
-    create_job(sample_template, job_status='cancelled')
+    create_job(sample_template, job_status="scheduled")
+    create_job(sample_template, job_status="cancelled")
     letter_template = create_uploaded_template(sample_template.service)
-    create_uploaded_letter(letter_template, sample_template.service, status='cancelled')
+    create_uploaded_letter(letter_template, sample_template.service, status="cancelled")
 
     assert len(dao_get_uploads_by_service_id(sample_template.service_id).items) == 0
 
@@ -170,31 +159,33 @@ def test_get_uploads_does_not_return_cancelled_jobs_or_letters(sample_template):
 def test_get_uploads_orders_by_created_at_desc(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
-    upload_1 = create_job(sample_template, processing_started=datetime.utcnow(),
-                          job_status=JOB_STATUS_IN_PROGRESS)
-    upload_2 = create_job(sample_template, processing_started=datetime.utcnow(),
-                          job_status=JOB_STATUS_IN_PROGRESS)
-    create_uploaded_letter(letter_template, sample_template.service, status='delivered')
+    upload_1 = create_job(sample_template, processing_started=datetime.utcnow(), job_status=JOB_STATUS_IN_PROGRESS)
+    upload_2 = create_job(sample_template, processing_started=datetime.utcnow(), job_status=JOB_STATUS_IN_PROGRESS)
+    create_uploaded_letter(letter_template, sample_template.service, status="delivered")
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
 
-    assert [
-        (result.id, result.upload_type) for result in results
-    ] == [
-        (None, 'letter_day'),
-        (upload_2.id, 'job'),
-        (upload_1.id, 'job'),
+    assert [(result.id, result.upload_type) for result in results] == [
+        (None, "letter_day"),
+        (upload_2.id, "job"),
+        (upload_1.id, "job"),
     ]
 
 
 def test_get_uploads_orders_by_processing_started_desc(sample_template):
     days_ago = datetime.utcnow() - timedelta(days=3)
-    upload_1 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=1),
-                          created_at=days_ago,
-                          job_status=JOB_STATUS_IN_PROGRESS)
-    upload_2 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=2),
-                          created_at=days_ago,
-                          job_status=JOB_STATUS_IN_PROGRESS)
+    upload_1 = create_job(
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=1),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
+    )
+    upload_2 = create_job(
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=2),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
+    )
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
 
@@ -209,14 +200,21 @@ def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_tem
 
     days_ago = datetime.utcnow() - timedelta(days=4)
     create_uploaded_letter(letter_template, service=letter_template.service)
-    upload_2 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=1),
-                          created_at=days_ago,
-                          job_status=JOB_STATUS_IN_PROGRESS)
-    upload_3 = create_job(sample_template, processing_started=datetime.utcnow() - timedelta(days=2),
-                          created_at=days_ago,
-                          job_status=JOB_STATUS_IN_PROGRESS)
-    create_uploaded_letter(letter_template, service=letter_template.service,
-                           created_at=datetime.utcnow() - timedelta(days=3))
+    upload_2 = create_job(
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=1),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
+    )
+    upload_3 = create_job(
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=2),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
+    )
+    create_uploaded_letter(
+        letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=3)
+    )
 
     results = dao_get_uploads_by_service_id(service_id=sample_template.service_id).items
 
@@ -227,21 +225,25 @@ def test_get_uploads_orders_by_processing_started_and_created_at_desc(sample_tem
     assert results[3].id is None
 
 
-@freeze_time('2020-04-02 14:00')  # Few days after the clocks go forward
+@freeze_time("2020-04-02 14:00")  # Few days after the clocks go forward
 def test_get_uploads_only_gets_uploads_within_service_retention_period(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
-    create_service_data_retention(sample_template.service, 'sms', days_of_retention=3)
+    create_service_data_retention(sample_template.service, "sms", days_of_retention=3)
 
     days_ago = datetime.utcnow() - timedelta(days=4)
     upload_1 = create_uploaded_letter(letter_template, service=letter_template.service)
     upload_2 = create_job(
-        sample_template, processing_started=datetime.utcnow() - timedelta(days=1), created_at=days_ago,
-        job_status=JOB_STATUS_IN_PROGRESS
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=1),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
     )
     # older than custom retention for sms:
     create_job(
-        sample_template, processing_started=datetime.utcnow() - timedelta(days=5), created_at=days_ago,
-        job_status=JOB_STATUS_IN_PROGRESS
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(days=5),
+        created_at=days_ago,
+        job_status=JOB_STATUS_IN_PROGRESS,
     )
     upload_3 = create_uploaded_letter(
         letter_template, service=letter_template.service, created_at=datetime.utcnow() - timedelta(days=3)
@@ -276,24 +278,30 @@ def test_get_uploads_only_gets_uploads_within_service_retention_period(sample_te
     assert results[3].created_at == upload_4.created_at.replace(hour=17, minute=30, second=0, microsecond=0)
 
 
-@freeze_time('2020-02-02 14:00')
+@freeze_time("2020-02-02 14:00")
 def test_get_uploads_is_paginated(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
     create_uploaded_letter(
-        letter_template, sample_template.service, status='delivered',
+        letter_template,
+        sample_template.service,
+        status="delivered",
         created_at=datetime.utcnow() - timedelta(minutes=3),
     )
     create_job(
-        sample_template, processing_started=datetime.utcnow() - timedelta(minutes=2),
+        sample_template,
+        processing_started=datetime.utcnow() - timedelta(minutes=2),
         job_status=JOB_STATUS_IN_PROGRESS,
     )
     create_uploaded_letter(
-        letter_template, sample_template.service, status='delivered',
+        letter_template,
+        sample_template.service,
+        status="delivered",
         created_at=datetime.utcnow() - timedelta(minutes=1),
     )
     create_job(
-        sample_template, processing_started=datetime.utcnow(),
+        sample_template,
+        processing_started=datetime.utcnow(),
         job_status=JOB_STATUS_IN_PROGRESS,
     )
 
@@ -304,14 +312,14 @@ def test_get_uploads_is_paginated(sample_template):
     assert len(results.items) == 1
     assert results.items[0].created_at == datetime.utcnow().replace(hour=17, minute=30, second=0, microsecond=0)
     assert results.items[0].notification_count == 2
-    assert results.items[0].upload_type == 'letter_day'
+    assert results.items[0].upload_type == "letter_day"
 
     results = dao_get_uploads_by_service_id(sample_template.service_id, page=2, page_size=1)
 
     assert len(results.items) == 1
     assert results.items[0].created_at == datetime.utcnow().replace(hour=14, minute=0, second=0, microsecond=0)
     assert results.items[0].notification_count == 1
-    assert results.items[0].upload_type == 'job'
+    assert results.items[0].upload_type == "job"
 
 
 def test_get_uploads_returns_empty_list(sample_service):
@@ -319,36 +327,44 @@ def test_get_uploads_returns_empty_list(sample_service):
     assert items == []
 
 
-@freeze_time('2020-02-02 14:00')
+@freeze_time("2020-02-02 14:00")
 def test_get_uploaded_letters_by_print_date(sample_template):
     letter_template = create_uploaded_template(sample_template.service)
 
     # Letters for the previous day’s run
     for _ in range(3):
         create_uploaded_letter(
-            letter_template, sample_template.service, status='delivered',
-            created_at=datetime.utcnow().replace(day=1, hour=17, minute=29, second=59)
+            letter_template,
+            sample_template.service,
+            status="delivered",
+            created_at=datetime.utcnow().replace(day=1, hour=17, minute=29, second=59),
         )
 
     # Letters from yesterday that rolled into today’s run
     for _ in range(30):
         create_uploaded_letter(
-            letter_template, sample_template.service, status='delivered',
-            created_at=datetime.utcnow().replace(day=1, hour=17, minute=30, second=0)
+            letter_template,
+            sample_template.service,
+            status="delivered",
+            created_at=datetime.utcnow().replace(day=1, hour=17, minute=30, second=0),
         )
 
     # Letters that just made today’s run
     for _ in range(30):
         create_uploaded_letter(
-            letter_template, sample_template.service, status='delivered',
-            created_at=datetime.utcnow().replace(hour=17, minute=29, second=59)
+            letter_template,
+            sample_template.service,
+            status="delivered",
+            created_at=datetime.utcnow().replace(hour=17, minute=29, second=59),
         )
 
     # Letters that just missed today’s run
     for _ in range(3):
         create_uploaded_letter(
-            letter_template, sample_template.service, status='delivered',
-            created_at=datetime.utcnow().replace(hour=17, minute=30, second=0)
+            letter_template,
+            sample_template.service,
+            status="delivered",
+            created_at=datetime.utcnow().replace(hour=17, minute=30, second=0),
         )
 
     result = dao_get_uploaded_letters_by_print_date(

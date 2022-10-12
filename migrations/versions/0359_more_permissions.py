@@ -5,25 +5,25 @@ Revises: 0358_operator_channel
 Create Date: 2021-06-15 17:47:16.871071
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-revision = '0359_more_permissions'
-down_revision = '0358_operator_channel'
+revision = "0359_more_permissions"
+down_revision = "0358_operator_channel"
 
-enum_name = 'permission_types'
-tmp_name = 'tmp_' + enum_name
+enum_name = "permission_types"
+tmp_name = "tmp_" + enum_name
 
 old_options = (
-    'manage_users',
-    'manage_templates',
-    'manage_settings',
-    'send_texts',
-    'send_emails',
-    'send_letters',
-    'manage_api_keys',
-    'platform_admin',
-    'view_activity',
+    "manage_users",
+    "manage_templates",
+    "manage_settings",
+    "send_texts",
+    "send_emails",
+    "send_letters",
+    "manage_api_keys",
+    "platform_admin",
+    "view_activity",
 )
 old_type = sa.Enum(*old_options, name=enum_name)
 
@@ -44,7 +44,7 @@ def downgrade():
         "('create_broadcasts', 'approve_broadcasts', 'cancel_broadcasts', 'reject_broadcasts')"
     )
 
-    op.execute(f'ALTER TYPE {enum_name} RENAME TO {tmp_name}')
+    op.execute(f"ALTER TYPE {enum_name} RENAME TO {tmp_name}")
     old_type.create(op.get_bind())
-    op.execute(f'ALTER TABLE permissions ALTER COLUMN permission TYPE {enum_name} USING permission::text::{enum_name}')
-    op.execute(f'DROP TYPE {tmp_name}')
+    op.execute(f"ALTER TABLE permissions ALTER COLUMN permission TYPE {enum_name} USING permission::text::{enum_name}")
+    op.execute(f"DROP TYPE {tmp_name}")

@@ -6,27 +6,26 @@ from app.models import ServiceLetterContact, Template
 
 
 def dao_get_letter_contacts_by_service_id(service_id):
-    letter_contacts = db.session.query(
-        ServiceLetterContact
-    ).filter(
-        ServiceLetterContact.service_id == service_id,
-        ServiceLetterContact.archived == False  # noqa
-    ).order_by(
-        desc(ServiceLetterContact.is_default),
-        desc(ServiceLetterContact.created_at)
-    ).all()
+    letter_contacts = (
+        db.session.query(ServiceLetterContact)
+        .filter(ServiceLetterContact.service_id == service_id, ServiceLetterContact.archived == False)  # noqa
+        .order_by(desc(ServiceLetterContact.is_default), desc(ServiceLetterContact.created_at))
+        .all()
+    )
 
     return letter_contacts
 
 
 def dao_get_letter_contact_by_id(service_id, letter_contact_id):
-    letter_contact = db.session.query(
-        ServiceLetterContact
-    ).filter(
-        ServiceLetterContact.service_id == service_id,
-        ServiceLetterContact.id == letter_contact_id,
-        ServiceLetterContact.archived == False  # noqa
-    ).one()
+    letter_contact = (
+        db.session.query(ServiceLetterContact)
+        .filter(
+            ServiceLetterContact.service_id == service_id,
+            ServiceLetterContact.id == letter_contact_id,
+            ServiceLetterContact.archived == False,  # noqa
+        )
+        .one()
+    )
     return letter_contact
 
 
@@ -36,11 +35,7 @@ def add_letter_contact_for_service(service_id, contact_block, is_default):
     if is_default:
         _reset_old_default_to_false(old_default)
 
-    new_letter_contact = ServiceLetterContact(
-        service_id=service_id,
-        contact_block=contact_block,
-        is_default=is_default
-    )
+    new_letter_contact = ServiceLetterContact(service_id=service_id, contact_block=contact_block, is_default=is_default)
     db.session.add(new_letter_contact)
     return new_letter_contact
 
@@ -61,16 +56,9 @@ def update_letter_contact(service_id, letter_contact_id, contact_block, is_defau
 
 @autocommit
 def archive_letter_contact(service_id, letter_contact_id):
-    letter_contact_to_archive = ServiceLetterContact.query.filter_by(
-        id=letter_contact_id,
-        service_id=service_id
-    ).one()
+    letter_contact_to_archive = ServiceLetterContact.query.filter_by(id=letter_contact_id, service_id=service_id).one()
 
-    Template.query.filter_by(
-        service_letter_contact_id=letter_contact_id
-    ).update({
-        'service_letter_contact_id': None
-    })
+    Template.query.filter_by(service_letter_contact_id=letter_contact_id).update({"service_letter_contact_id": None})
 
     letter_contact_to_archive.archived = True
 
@@ -79,11 +67,7 @@ def archive_letter_contact(service_id, letter_contact_id):
 
 
 def _get_existing_default(service_id):
-    old_defaults = [
-        x for x
-        in dao_get_letter_contacts_by_service_id(service_id=service_id)
-        if x.is_default
-    ]
+    old_defaults = [x for x in dao_get_letter_contacts_by_service_id(service_id=service_id) if x.is_default]
 
     if len(old_defaults) == 0:
         return None
@@ -93,8 +77,7 @@ def _get_existing_default(service_id):
 
     raise Exception(
         "There should only be one default letter contact for each service. Service {} has {}".format(
-            service_id,
-            len(old_defaults)
+            service_id, len(old_defaults)
         )
     )
 

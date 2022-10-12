@@ -54,23 +54,24 @@ from app.utils import (
 
 
 def dao_get_last_date_template_was_used(template_id, service_id):
-    last_date_from_notifications = db.session.query(
-        functions.max(Notification.created_at)
-    ).filter(
-        Notification.service_id == service_id,
-        Notification.template_id == template_id,
-        Notification.key_type != KEY_TYPE_TEST
-    ).scalar()
+    last_date_from_notifications = (
+        db.session.query(functions.max(Notification.created_at))
+        .filter(
+            Notification.service_id == service_id,
+            Notification.template_id == template_id,
+            Notification.key_type != KEY_TYPE_TEST,
+        )
+        .scalar()
+    )
 
     if last_date_from_notifications:
         return last_date_from_notifications
 
-    last_date = db.session.query(
-        functions.max(FactNotificationStatus.bst_date)
-    ).filter(
-        FactNotificationStatus.template_id == template_id,
-        FactNotificationStatus.key_type != KEY_TYPE_TEST
-    ).scalar()
+    last_date = (
+        db.session.query(functions.max(FactNotificationStatus.bst_date))
+        .filter(FactNotificationStatus.template_id == template_id, FactNotificationStatus.key_type != KEY_TYPE_TEST)
+        .scalar()
+    )
 
     return last_date
 
@@ -90,15 +91,16 @@ def _decide_permanent_temporary_failure(status, notification, detailed_status_co
     # Firetext will send us a pending status, followed by a success or failure status.
     # When we get a failure status we need to look at the detailed_status_code to determine if the failure type
     # is a permanent-failure or temporary-failure.
-    if notification.sent_by == 'firetext':
+    if notification.sent_by == "firetext":
         if status == NOTIFICATION_PERMANENT_FAILURE and detailed_status_code:
             try:
                 status, reason = get_message_status_and_reason_from_firetext_code(detailed_status_code)
                 current_app.logger.info(
-                    f'Updating notification id {notification.id} to status {status}, reason: {reason}')
+                    f"Updating notification id {notification.id} to status {status}, reason: {reason}"
+                )
                 return status
             except KeyError:
-                current_app.logger.warning(f'Failure code {detailed_status_code} from Firetext not recognised')
+                current_app.logger.warning(f"Failure code {detailed_status_code} from Firetext not recognised")
         # fallback option:
         if status == NOTIFICATION_PERMANENT_FAILURE and notification.status == NOTIFICATION_PENDING:
             status = NOTIFICATION_TEMPORARY_FAILURE
@@ -106,8 +108,8 @@ def _decide_permanent_temporary_failure(status, notification, detailed_status_co
 
 
 def country_records_delivery(phone_prefix):
-    dlr = INTERNATIONAL_BILLING_RATES[phone_prefix]['attributes']['dlr']
-    return dlr and dlr.lower() == 'yes'
+    dlr = INTERNATIONAL_BILLING_RATES[phone_prefix]["attributes"]["dlr"]
+    return dlr and dlr.lower() == "yes"
 
 
 def _update_notification_status(notification, status, detailed_status_code=None):
@@ -124,10 +126,9 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
     notification = Notification.query.with_for_update().filter(Notification.id == notification_id).first()
 
     if not notification:
-        current_app.logger.info('notification not found for id {} (update to status {})'.format(
-            notification_id,
-            status
-        ))
+        current_app.logger.info(
+            "notification not found for id {} (update to status {})".format(notification_id, status)
+        )
         return None
 
     if notification.status not in {
@@ -135,7 +136,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
         NOTIFICATION_SENDING,
         NOTIFICATION_PENDING,
         NOTIFICATION_SENT,
-        NOTIFICATION_PENDING_VIRUS_CHECK
+        NOTIFICATION_PENDING_VIRUS_CHECK,
     }:
         _duplicate_update_warning(notification, status)
         return None
@@ -149,9 +150,7 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
     if not notification.sent_by and sent_by:
         notification.sent_by = sent_by
     return _update_notification_status(
-        notification=notification,
-        status=status,
-        detailed_status_code=detailed_status_code
+        notification=notification, status=status, detailed_status_code=detailed_status_code
     )
 
 
@@ -161,20 +160,14 @@ def update_notification_status_by_reference(reference, status):
     notification = Notification.query.filter(Notification.reference == reference).first()
 
     if not notification:
-        current_app.logger.error('notification not found for reference {} (update to {})'.format(reference, status))
+        current_app.logger.error("notification not found for reference {} (update to {})".format(reference, status))
         return None
 
-    if notification.status not in {
-        NOTIFICATION_SENDING,
-        NOTIFICATION_PENDING
-    }:
+    if notification.status not in {NOTIFICATION_SENDING, NOTIFICATION_PENDING}:
         _duplicate_update_warning(notification, status)
         return None
 
-    return _update_notification_status(
-        notification=notification,
-        status=status
-    )
+    return _update_notification_status(notification=notification, status=status)
 
 
 @autocommit
@@ -185,13 +178,10 @@ def dao_update_notification(notification):
 
 def get_notifications_for_job(service_id, job_id, filter_dict=None, page=1, page_size=None):
     if page_size is None:
-        page_size = current_app.config['PAGE_SIZE']
+        page_size = current_app.config["PAGE_SIZE"]
     query = Notification.query.filter_by(service_id=service_id, job_id=job_id)
     query = _filter_query(query, filter_dict)
-    return query.order_by(asc(Notification.job_row_number)).paginate(
-        page=page,
-        per_page=page_size
-    )
+    return query.order_by(asc(Notification.job_row_number)).paginate(page=page, per_page=page_size)
 
 
 def dao_get_notification_count_for_job_id(*, job_id):
@@ -199,11 +189,11 @@ def dao_get_notification_count_for_job_id(*, job_id):
 
 
 def get_notification_with_personalisation(service_id, notification_id, key_type):
-    filter_dict = {'service_id': service_id, 'id': notification_id}
+    filter_dict = {"service_id": service_id, "id": notification_id}
     if key_type:
-        filter_dict['key_type'] = key_type
+        filter_dict["key_type"] = key_type
 
-    return Notification.query.filter_by(**filter_dict).options(joinedload('template')).one()
+    return Notification.query.filter_by(**filter_dict).options(joinedload("template")).one()
 
 
 def get_notification_by_id(notification_id, service_id=None, _raise=False):
@@ -218,23 +208,23 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
 
 
 def get_notifications_for_service(
-        service_id,
-        filter_dict=None,
-        page=1,
-        page_size=None,
-        count_pages=True,
-        limit_days=None,
-        key_type=None,
-        personalisation=False,
-        include_jobs=False,
-        include_from_test_key=False,
-        older_than=None,
-        client_reference=None,
-        include_one_off=True,
-        error_out=True
+    service_id,
+    filter_dict=None,
+    page=1,
+    page_size=None,
+    count_pages=True,
+    limit_days=None,
+    key_type=None,
+    personalisation=False,
+    include_jobs=False,
+    include_from_test_key=False,
+    older_than=None,
+    client_reference=None,
+    include_one_off=True,
+    error_out=True,
 ):
     if page_size is None:
-        page_size = current_app.config['PAGE_SIZE']
+        page_size = current_app.config["PAGE_SIZE"]
 
     filters = [Notification.service_id == service_id]
 
@@ -242,8 +232,9 @@ def get_notifications_for_service(
         filters.append(Notification.created_at >= midnight_n_days_ago(limit_days))
 
     if older_than is not None:
-        older_than_created_at = db.session.query(
-            Notification.created_at).filter(Notification.id == older_than).as_scalar()
+        older_than_created_at = (
+            db.session.query(Notification.created_at).filter(Notification.id == older_than).as_scalar()
+        )
         filters.append(Notification.created_at < older_than_created_at)
 
     if not include_jobs:
@@ -263,9 +254,7 @@ def get_notifications_for_service(
     query = Notification.query.filter(*filters)
     query = _filter_query(query, filter_dict)
     if personalisation:
-        query = query.options(
-            joinedload('template')
-        )
+        query = query.options(joinedload("template"))
 
     return query.order_by(desc(Notification.created_at)).paginate(
         page=page,
@@ -282,13 +271,13 @@ def _filter_query(query, filter_dict=None):
     multidict = MultiDict(filter_dict)
 
     # filter by status
-    statuses = multidict.getlist('status')
+    statuses = multidict.getlist("status")
     if statuses:
         statuses = Notification.substitute_status(statuses)
         query = query.filter(Notification.status.in_(statuses))
 
     # filter by template
-    template_types = multidict.getlist('template_type')
+    template_types = multidict.getlist("template_type")
     if template_types:
         query = query.filter(Notification.notification_type.in_(template_types))
 
@@ -358,10 +347,10 @@ def insert_notification_history_delete_notifications(
         "service_id": service_id,
         "notification_type": notification_type,
         "timestamp_to_delete_backwards_from": timestamp_to_delete_backwards_from,
-        "qry_limit": qry_limit
+        "qry_limit": qry_limit,
     }
 
-    select_to_use = select_into_temp_table_for_letters if notification_type == 'letter' else select_into_temp_table
+    select_to_use = select_into_temp_table_for_letters if notification_type == "letter" else select_into_temp_table
     db.session.execute(select_to_use, input_params)
 
     result = db.session.execute("select count(*) from NOTIFICATION_ARCHIVE").fetchone()[0]
@@ -374,23 +363,18 @@ def insert_notification_history_delete_notifications(
 
 
 def move_notifications_to_notification_history(
-    notification_type,
-    service_id,
-    timestamp_to_delete_backwards_from,
-    qry_limit=50000
+    notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit=50000
 ):
     deleted = 0
     if notification_type == LETTER_TYPE:
-        _delete_letters_from_s3(
-            notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit
-        )
+        _delete_letters_from_s3(notification_type, service_id, timestamp_to_delete_backwards_from, qry_limit)
     delete_count_per_call = 1
     while delete_count_per_call > 0:
         delete_count_per_call = insert_notification_history_delete_notifications(
             notification_type=notification_type,
             service_id=service_id,
             timestamp_to_delete_backwards_from=timestamp_to_delete_backwards_from,
-            qry_limit=qry_limit
+            qry_limit=qry_limit,
         )
         deleted += delete_count_per_call
 
@@ -399,44 +383,41 @@ def move_notifications_to_notification_history(
         Notification.notification_type == notification_type,
         Notification.service_id == service_id,
         Notification.created_at < timestamp_to_delete_backwards_from,
-        Notification.key_type == KEY_TYPE_TEST
+        Notification.key_type == KEY_TYPE_TEST,
     ).delete(synchronize_session=False)
     db.session.commit()
 
     return deleted
 
 
-def _delete_letters_from_s3(
-        notification_type, service_id, date_to_delete_from, query_limit
-):
-    letters_to_delete_from_s3 = db.session.query(
-        Notification
-    ).filter(
-        Notification.notification_type == notification_type,
-        Notification.created_at < date_to_delete_from,
-        Notification.service_id == service_id,
-        # although letters in non completed statuses do have PDFs in s3, they do not exist in the
-        # production-letters-pdf bucket as they never made it that far so we do not try and delete
-        # them from it
-        Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED)
-    ).limit(query_limit).all()
+def _delete_letters_from_s3(notification_type, service_id, date_to_delete_from, query_limit):
+    letters_to_delete_from_s3 = (
+        db.session.query(Notification)
+        .filter(
+            Notification.notification_type == notification_type,
+            Notification.created_at < date_to_delete_from,
+            Notification.service_id == service_id,
+            # although letters in non completed statuses do have PDFs in s3, they do not exist in the
+            # production-letters-pdf bucket as they never made it that far so we do not try and delete
+            # them from it
+            Notification.status.in_(NOTIFICATION_STATUS_TYPES_COMPLETED),
+        )
+        .limit(query_limit)
+        .all()
+    )
     for letter in letters_to_delete_from_s3:
         try:
             letter_pdf = find_letter_pdf_in_s3(letter)
             letter_pdf.delete()
         except ClientError:
-            current_app.logger.exception(
-                "Error deleting S3 object for letter: {}".format(letter.id))
+            current_app.logger.exception("Error deleting S3 object for letter: {}".format(letter.id))
         except LetterPDFNotFound:
-            current_app.logger.warning(
-                "No S3 object to delete for letter: {}".format(letter.id))
+            current_app.logger.warning("No S3 object to delete for letter: {}".format(letter.id))
 
 
 @autocommit
 def dao_delete_notifications_by_id(notification_id):
-    db.session.query(Notification).filter(
-        Notification.id == notification_id
-    ).delete(synchronize_session='fetch')
+    db.session.query(Notification).filter(Notification.id == notification_id).delete(synchronize_session="fetch")
 
 
 def dao_timeout_notifications(cutoff_time, limit=100000):
@@ -448,27 +429,28 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     current_statuses = [NOTIFICATION_SENDING, NOTIFICATION_PENDING]
     new_status = NOTIFICATION_TEMPORARY_FAILURE
 
-    notifications = Notification.query.filter(
-        Notification.created_at < cutoff_time,
-        Notification.status.in_(current_statuses),
-        Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE])
-    ).limit(limit).all()
+    notifications = (
+        Notification.query.filter(
+            Notification.created_at < cutoff_time,
+            Notification.status.in_(current_statuses),
+            Notification.notification_type.in_([SMS_TYPE, EMAIL_TYPE]),
+        )
+        .limit(limit)
+        .all()
+    )
 
     Notification.query.filter(
         Notification.id.in_([n.id for n in notifications]),
-    ).update(
-        {'status': new_status, 'updated_at': updated_at},
-        synchronize_session=False
-    )
+    ).update({"status": new_status, "updated_at": updated_at}, synchronize_session=False)
 
     db.session.commit()
     return notifications
 
 
 def is_delivery_slow_for_providers(
-        created_at,
-        threshold,
-        delivery_time,
+    created_at,
+    threshold,
+    delivery_time,
 ):
     """
     Returns a dict of providers and whether they are currently slow or not. eg:
@@ -477,65 +459,59 @@ def is_delivery_slow_for_providers(
         'firetext': False
     }
     """
-    slow_notification_counts = db.session.query(
-        ProviderDetails.identifier,
-        case(
-            [(
-                Notification.status == NOTIFICATION_DELIVERED,
-                (Notification.updated_at - Notification.sent_at) >= delivery_time
-            )],
-            else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time
-        ).label("slow"),
-        func.count().label('count')
-    ).select_from(
-        ProviderDetails
-    ).outerjoin(
-        Notification, and_(
-            Notification.notification_type == SMS_TYPE,
-            Notification.sent_by == ProviderDetails.identifier,
-            Notification.created_at >= created_at,
-            Notification.sent_at.isnot(None),
-            Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
-            Notification.key_type != KEY_TYPE_TEST
+    slow_notification_counts = (
+        db.session.query(
+            ProviderDetails.identifier,
+            case(
+                [
+                    (
+                        Notification.status == NOTIFICATION_DELIVERED,
+                        (Notification.updated_at - Notification.sent_at) >= delivery_time,
+                    )
+                ],
+                else_=(datetime.utcnow() - Notification.sent_at) >= delivery_time,
+            ).label("slow"),
+            func.count().label("count"),
         )
-    ).filter(
-        ProviderDetails.notification_type == 'sms',
-        ProviderDetails.active
-    ).order_by(
-        ProviderDetails.identifier
-    ).group_by(
-        ProviderDetails.identifier,
-        "slow"
+        .select_from(ProviderDetails)
+        .outerjoin(
+            Notification,
+            and_(
+                Notification.notification_type == SMS_TYPE,
+                Notification.sent_by == ProviderDetails.identifier,
+                Notification.created_at >= created_at,
+                Notification.sent_at.isnot(None),
+                Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
+                Notification.key_type != KEY_TYPE_TEST,
+            ),
+        )
+        .filter(ProviderDetails.notification_type == "sms", ProviderDetails.active)
+        .order_by(ProviderDetails.identifier)
+        .group_by(ProviderDetails.identifier, "slow")
     )
 
     slow_providers = {}
-    for provider, rows in groupby(slow_notification_counts, key=attrgetter('identifier')):
+    for provider, rows in groupby(slow_notification_counts, key=attrgetter("identifier")):
         rows = list(rows)
         total_notifications = sum(row.count for row in rows)
         slow_notifications = sum(row.count for row in rows if row.slow)
 
-        slow_providers[provider] = (slow_notifications / total_notifications >= threshold)
-        statsd_client.gauge(f'slow-delivery.{provider}.ratio', slow_notifications / total_notifications)
+        slow_providers[provider] = slow_notifications / total_notifications >= threshold
+        statsd_client.gauge(f"slow-delivery.{provider}.ratio", slow_notifications / total_notifications)
 
     return slow_providers
 
 
 @autocommit
 def dao_update_notifications_by_reference(references, update_dict):
-    updated_count = Notification.query.filter(
-        Notification.reference.in_(references)
-    ).update(
-        update_dict,
-        synchronize_session=False
+    updated_count = Notification.query.filter(Notification.reference.in_(references)).update(
+        update_dict, synchronize_session=False
     )
 
     updated_history_count = 0
     if updated_count != len(references):
-        updated_history_count = NotificationHistory.query.filter(
-            NotificationHistory.reference.in_(references)
-        ).update(
-            update_dict,
-            synchronize_session=False
+        updated_history_count = NotificationHistory.query.filter(NotificationHistory.reference.in_(references)).update(
+            update_dict, synchronize_session=False
         )
 
     return updated_count, updated_history_count
@@ -554,10 +530,10 @@ def dao_get_notifications_by_recipient_or_reference(
     if notification_type == SMS_TYPE:
         normalised = try_validate_and_format_phone_number(search_term)
 
-        for character in {'(', ')', ' ', '-'}:
-            normalised = normalised.replace(character, '')
+        for character in {"(", ")", " ", "-"}:
+            normalised = normalised.replace(character, "")
 
-        normalised = normalised.lstrip('+0')
+        normalised = normalised.lstrip("+0")
 
     elif notification_type == EMAIL_TYPE:
         try:
@@ -572,12 +548,10 @@ def dao_get_notifications_by_recipient_or_reference(
         # happen if a user doesn’t have permission to see the dashboard)
         # because email addresses and phone numbers will never be stored
         # with spaces either.
-        normalised = ''.join(search_term.split()).lower()
+        normalised = "".join(search_term.split()).lower()
 
     else:
-        raise TypeError(
-            f'Notification type must be {EMAIL_TYPE}, {SMS_TYPE}, {LETTER_TYPE} or None'
-        )
+        raise TypeError(f"Notification type must be {EMAIL_TYPE}, {SMS_TYPE}, {LETTER_TYPE} or None")
 
     normalised = escape_special_characters(normalised)
     search_term = escape_special_characters(search_term)
@@ -596,30 +570,26 @@ def dao_get_notifications_by_recipient_or_reference(
     if notification_type:
         filters.append(Notification.notification_type == notification_type)
 
-    results = db.session.query(Notification)\
-        .filter(*filters)\
-        .order_by(desc(Notification.created_at))\
+    results = (
+        db.session.query(Notification)
+        .filter(*filters)
+        .order_by(desc(Notification.created_at))
         .paginate(page=page, per_page=page_size, count=False, error_out=error_out)
+    )
     return results
 
 
 def dao_get_notification_by_reference(reference):
-    return Notification.query.filter(
-        Notification.reference == reference
-    ).one()
+    return Notification.query.filter(Notification.reference == reference).one()
 
 
 def dao_get_notification_or_history_by_reference(reference):
     try:
         # This try except is necessary because in test keys and research mode does not create notification history.
         # Otherwise we could just search for the NotificationHistory object
-        return Notification.query.filter(
-            Notification.reference == reference
-        ).one()
+        return Notification.query.filter(Notification.reference == reference).one()
     except NoResultFound:
-        return NotificationHistory.query.filter(
-            NotificationHistory.reference == reference
-        ).one()
+        return NotificationHistory.query.filter(NotificationHistory.reference == reference).one()
 
 
 def dao_get_notifications_processing_time_stats(start_date, end_date):
@@ -639,33 +609,27 @@ def dao_get_notifications_processing_time_stats(start_date, end_date):
     notification_type != 'letter';
     """
     under_10_secs = Notification.sent_at - Notification.created_at <= timedelta(seconds=10)
-    sum_column = functions.coalesce(functions.sum(
-        case(
-            [
-                (under_10_secs, 1)
-            ],
-            else_=0
-        )
-    ), 0)
+    sum_column = functions.coalesce(functions.sum(case([(under_10_secs, 1)], else_=0)), 0)
 
-    return db.session.query(
-        func.count(Notification.id).label('messages_total'),
-        sum_column.label('messages_within_10_secs')
-    ).filter(
-        Notification.created_at >= start_date,
-        Notification.created_at < end_date,
-        Notification.api_key_id.isnot(None),
-        Notification.key_type != KEY_TYPE_TEST,
-        Notification.notification_type != LETTER_TYPE
-    ).one()
+    return (
+        db.session.query(
+            func.count(Notification.id).label("messages_total"), sum_column.label("messages_within_10_secs")
+        )
+        .filter(
+            Notification.created_at >= start_date,
+            Notification.created_at < end_date,
+            Notification.api_key_id.isnot(None),
+            Notification.key_type != KEY_TYPE_TEST,
+            Notification.notification_type != LETTER_TYPE,
+        )
+        .one()
+    )
 
 
 def dao_get_last_notification_added_for_job_id(job_id):
-    last_notification_added = Notification.query.filter(
-        Notification.job_id == job_id
-    ).order_by(
-        Notification.job_row_number.desc()
-    ).first()
+    last_notification_added = (
+        Notification.query.filter(Notification.job_id == job_id).order_by(Notification.job_row_number.desc()).first()
+    )
 
     return last_notification_added
 
@@ -676,7 +640,7 @@ def notifications_not_yet_sent(should_be_sending_after_seconds, notification_typ
     notifications = Notification.query.filter(
         Notification.created_at <= older_than_date,
         Notification.notification_type == notification_type,
-        Notification.status == NOTIFICATION_CREATED
+        Notification.status == NOTIFICATION_CREATED,
     ).all()
     return notifications
 
@@ -696,36 +660,39 @@ def dao_get_letters_to_be_printed(print_run_deadline, postage, query_limit=10000
     https://docs.sqlalchemy.org/en/13/orm/query.html?highlight=yield_per#sqlalchemy.orm.query.Query.yield_per
     https://www.mail-archive.com/sqlalchemy@googlegroups.com/msg12443.html
     """
-    notifications = Notification.query.filter(
-        Notification.created_at < convert_bst_to_utc(print_run_deadline),
-        Notification.notification_type == LETTER_TYPE,
-        Notification.status == NOTIFICATION_CREATED,
-        Notification.key_type == KEY_TYPE_NORMAL,
-        Notification.postage == postage,
-        Notification.billable_units > 0
-    ).order_by(
-        Notification.service_id,
-        Notification.created_at
-    ).yield_per(query_limit)
+    notifications = (
+        Notification.query.filter(
+            Notification.created_at < convert_bst_to_utc(print_run_deadline),
+            Notification.notification_type == LETTER_TYPE,
+            Notification.status == NOTIFICATION_CREATED,
+            Notification.key_type == KEY_TYPE_NORMAL,
+            Notification.postage == postage,
+            Notification.billable_units > 0,
+        )
+        .order_by(Notification.service_id, Notification.created_at)
+        .yield_per(query_limit)
+    )
     return notifications
 
 
 def dao_get_letters_and_sheets_volume_by_postage(print_run_deadline):
-    notifications = db.session.query(
-        func.count(Notification.id).label('letters_count'),
-        func.sum(Notification.billable_units).label('sheets_count'),
-        Notification.postage
-    ).filter(
-        Notification.created_at < convert_bst_to_utc(print_run_deadline),
-        Notification.notification_type == LETTER_TYPE,
-        Notification.status == NOTIFICATION_CREATED,
-        Notification.key_type == KEY_TYPE_NORMAL,
-        Notification.billable_units > 0
-    ).group_by(
-        Notification.postage
-    ).order_by(
-        Notification.postage
-    ).all()
+    notifications = (
+        db.session.query(
+            func.count(Notification.id).label("letters_count"),
+            func.sum(Notification.billable_units).label("sheets_count"),
+            Notification.postage,
+        )
+        .filter(
+            Notification.created_at < convert_bst_to_utc(print_run_deadline),
+            Notification.notification_type == LETTER_TYPE,
+            Notification.status == NOTIFICATION_CREATED,
+            Notification.key_type == KEY_TYPE_NORMAL,
+            Notification.billable_units > 0,
+        )
+        .group_by(Notification.postage)
+        .order_by(Notification.postage)
+        .all()
+    )
     return notifications
 
 
@@ -733,29 +700,33 @@ def dao_old_letters_with_created_status():
     yesterday_bst = convert_utc_to_bst(datetime.utcnow()) - timedelta(days=1)
     last_processing_deadline = yesterday_bst.replace(hour=17, minute=30, second=0, microsecond=0)
 
-    notifications = Notification.query.filter(
-        Notification.created_at < convert_bst_to_utc(last_processing_deadline),
-        Notification.notification_type == LETTER_TYPE,
-        Notification.status == NOTIFICATION_CREATED
-    ).order_by(
-        Notification.created_at
-    ).all()
+    notifications = (
+        Notification.query.filter(
+            Notification.created_at < convert_bst_to_utc(last_processing_deadline),
+            Notification.notification_type == LETTER_TYPE,
+            Notification.status == NOTIFICATION_CREATED,
+        )
+        .order_by(Notification.created_at)
+        .all()
+    )
     return notifications
 
 
 def letters_missing_from_sending_bucket(seconds_to_subtract):
     older_than_date = datetime.utcnow() - timedelta(seconds=seconds_to_subtract)
     # We expect letters to have a `created` status, updated_at timestamp and billable units greater than zero.
-    notifications = Notification.query.filter(
-        Notification.billable_units == 0,
-        Notification.updated_at == None,  # noqa
-        Notification.status == NOTIFICATION_CREATED,
-        Notification.created_at <= older_than_date,
-        Notification.notification_type == LETTER_TYPE,
-        Notification.key_type == KEY_TYPE_NORMAL
-    ).order_by(
-        Notification.created_at
-    ).all()
+    notifications = (
+        Notification.query.filter(
+            Notification.billable_units == 0,
+            Notification.updated_at == None,  # noqa
+            Notification.status == NOTIFICATION_CREATED,
+            Notification.created_at <= older_than_date,
+            Notification.notification_type == LETTER_TYPE,
+            Notification.key_type == KEY_TYPE_NORMAL,
+        )
+        .order_by(Notification.created_at)
+        .all()
+    )
 
     return notifications
 
@@ -763,22 +734,23 @@ def letters_missing_from_sending_bucket(seconds_to_subtract):
 def dao_precompiled_letters_still_pending_virus_check():
     ninety_minutes_ago = datetime.utcnow() - timedelta(seconds=5400)
 
-    notifications = Notification.query.filter(
-        Notification.created_at < ninety_minutes_ago,
-        Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
-    ).order_by(
-        Notification.created_at
-    ).all()
+    notifications = (
+        Notification.query.filter(
+            Notification.created_at < ninety_minutes_ago, Notification.status == NOTIFICATION_PENDING_VIRUS_CHECK
+        )
+        .order_by(Notification.created_at)
+        .all()
+    )
     return notifications
 
 
 def _duplicate_update_warning(notification, status):
     current_app.logger.info(
         (
-            'Duplicate callback received for service {service_id}. '
-            'Notification ID {id} with type {type} sent by {sent_by}. '
-            'New status was {new_status}, current status is {old_status}. '
-            'This happened {time_diff} after being first set.'
+            "Duplicate callback received for service {service_id}. "
+            "Notification ID {id} with type {type} sent by {sent_by}. "
+            "New status was {new_status}, current status is {old_status}. "
+            "This happened {time_diff} after being first set."
         ).format(
             id=notification.id,
             old_status=notification.status,
@@ -786,7 +758,7 @@ def _duplicate_update_warning(notification, status):
             time_diff=datetime.utcnow() - (notification.updated_at or notification.created_at),
             type=notification.notification_type,
             sent_by=notification.sent_by,
-            service_id=notification.service_id
+            service_id=notification.service_id,
         )
     )
 
@@ -794,12 +766,9 @@ def _duplicate_update_warning(notification, status):
 def get_service_ids_with_notifications_before(notification_type, timestamp):
     return {
         row.service_id
-        for row in db.session.query(
-            Notification.service_id
-        ).filter(
-            Notification.notification_type == notification_type,
-            Notification.created_at < timestamp
-        ).distinct()
+        for row in db.session.query(Notification.service_id)
+        .filter(Notification.notification_type == notification_type, Notification.created_at < timestamp)
+        .distinct()
     }
 
 
@@ -807,9 +776,7 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
     start_date = get_london_midnight_in_utc(date)
     end_date = get_london_midnight_in_utc(date + timedelta(days=1))
 
-    notification_table_query = db.session.query(
-        Notification.service_id.label('service_id')
-    ).filter(
+    notification_table_query = db.session.query(Notification.service_id.label("service_id")).filter(
         Notification.notification_type == notification_type,
         # using >= + < is much more efficient than date(created_at)
         Notification.created_at >= start_date,
@@ -818,15 +785,12 @@ def get_service_ids_with_notifications_on_date(notification_type, date):
 
     # Looking at this table is more efficient for historical notifications,
     # provided the task to populate it has run before they were archived.
-    ft_status_table_query = db.session.query(
-        FactNotificationStatus.service_id.label('service_id')
-    ).filter(
+    ft_status_table_query = db.session.query(FactNotificationStatus.service_id.label("service_id")).filter(
         FactNotificationStatus.notification_type == notification_type,
         FactNotificationStatus.bst_date == date,
     )
 
     return {
-        row.service_id for row in db.session.query(union(
-            notification_table_query, ft_status_table_query
-        ).subquery()).distinct()
+        row.service_id
+        for row in db.session.query(union(notification_table_query, ft_status_table_query).subquery()).distinct()
     }

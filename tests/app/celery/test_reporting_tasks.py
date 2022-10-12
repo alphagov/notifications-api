@@ -46,21 +46,24 @@ def mocker_get_rate(
         return Decimal(0)
 
 
-@freeze_time('2019-08-01')
-@pytest.mark.parametrize('day_start, expected_kwargs', [
-    (None, [f'2019-07-{31-i}' for i in range(10)]),
-    ('2019-07-21', [f'2019-07-{21-i}' for i in range(10)]),
-])
+@freeze_time("2019-08-01")
+@pytest.mark.parametrize(
+    "day_start, expected_kwargs",
+    [
+        (None, [f"2019-07-{31-i}" for i in range(10)]),
+        ("2019-07-21", [f"2019-07-{21-i}" for i in range(10)]),
+    ],
+)
 def test_create_nightly_billing_triggers_tasks_for_days(notify_api, mocker, day_start, expected_kwargs):
-    mock_celery = mocker.patch('app.celery.reporting_tasks.create_nightly_billing_for_day')
+    mock_celery = mocker.patch("app.celery.reporting_tasks.create_nightly_billing_for_day")
     create_nightly_billing(day_start)
 
     assert mock_celery.apply_async.call_count == 10
     for i in range(10):
-        assert mock_celery.apply_async.call_args_list[i][1]['kwargs'] == {'process_day': expected_kwargs[i]}
+        assert mock_celery.apply_async.call_args_list[i][1]["kwargs"] == {"process_day": expected_kwargs[i]}
 
 
-@freeze_time('2019-08-01T00:30')
+@freeze_time("2019-08-01T00:30")
 def test_create_nightly_notification_status_triggers_tasks(
     notify_api,
     sample_service,
@@ -68,31 +71,30 @@ def test_create_nightly_notification_status_triggers_tasks(
     mocker,
 ):
     mock_celery = mocker.patch(
-        'app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day'
+        "app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day"
     ).apply_async
 
-    create_notification(template=sample_template, created_at='2019-07-31')
+    create_notification(template=sample_template, created_at="2019-07-31")
     create_nightly_notification_status()
 
     mock_celery.assert_called_with(
-        kwargs={
-            'service_id': sample_service.id,
-            'process_day': '2019-07-31',
-            'notification_type': SMS_TYPE
-        },
-        queue=QueueNames.REPORTING
+        kwargs={"service_id": sample_service.id, "process_day": "2019-07-31", "notification_type": SMS_TYPE},
+        queue=QueueNames.REPORTING,
     )
 
 
-@freeze_time('2019-08-01T00:30')
-@pytest.mark.parametrize('notification_date, expected_types_aggregated', [
-    ('2019-08-01', set()),
-    ('2019-07-31', {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
-    ('2019-07-28', {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
-    ('2019-07-27', {LETTER_TYPE}),
-    ('2019-07-22', {LETTER_TYPE}),
-    ('2019-07-21', set()),
-])
+@freeze_time("2019-08-01T00:30")
+@pytest.mark.parametrize(
+    "notification_date, expected_types_aggregated",
+    [
+        ("2019-08-01", set()),
+        ("2019-07-31", {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
+        ("2019-07-28", {EMAIL_TYPE, SMS_TYPE, LETTER_TYPE}),
+        ("2019-07-27", {LETTER_TYPE}),
+        ("2019-07-22", {LETTER_TYPE}),
+        ("2019-07-21", set()),
+    ],
+)
 def test_create_nightly_notification_status_triggers_relevant_tasks(
     notify_api,
     sample_service,
@@ -101,7 +103,7 @@ def test_create_nightly_notification_status_triggers_relevant_tasks(
     expected_types_aggregated,
 ):
     mock_celery = mocker.patch(
-        'app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day'
+        "app.celery.reporting_tasks.create_nightly_notification_status_for_service_and_day"
     ).apply_async
 
     for notification_type in NOTIFICATION_TYPES:
@@ -110,28 +112,24 @@ def test_create_nightly_notification_status_triggers_relevant_tasks(
 
     create_nightly_notification_status()
 
-    types = {call.kwargs['kwargs']['notification_type'] for call in mock_celery.mock_calls}
+    types = {call.kwargs["kwargs"]["notification_type"] for call in mock_celery.mock_calls}
     assert types == expected_types_aggregated
 
 
-def test_create_nightly_billing_for_day_checks_history(
-    sample_service,
-    sample_letter_template,
-    mocker
-):
+def test_create_nightly_billing_for_day_checks_history(sample_service, sample_letter_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     create_notification(
         created_at=yesterday,
         template=sample_letter_template,
-        status='sending',
+        status="sending",
     )
 
     create_notification_history(
         created_at=yesterday,
         template=sample_letter_template,
-        status='delivered',
+        status="delivered",
     )
 
     records = FactBilling.query.all()
@@ -146,29 +144,23 @@ def test_create_nightly_billing_for_day_checks_history(
     assert record.notifications_sent == 2
 
 
-@pytest.mark.parametrize('second_rate, records_num, billable_units, multiplier',
-                         [(1.0, 1, 2, [1]),
-                          (2.0, 2, 1, [1, 2])])
+@pytest.mark.parametrize(
+    "second_rate, records_num, billable_units, multiplier", [(1.0, 1, 2, [1]), (2.0, 2, 1, [1, 2])]
+)
 def test_create_nightly_billing_for_day_sms_rate_multiplier(
-    sample_service,
-    sample_template,
-    mocker,
-    second_rate,
-    records_num,
-    billable_units,
-    multiplier
+    sample_service, sample_template, mocker, second_rate, records_num, billable_units, multiplier
 ):
 
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     # These are sms notifications
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
-        sent_by='mmg',
+        status="delivered",
+        sent_by="mmg",
         international=False,
         rate_multiplier=1.0,
         billable_units=1,
@@ -176,8 +168,8 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
-        sent_by='mmg',
+        status="delivered",
+        sent_by="mmg",
         international=False,
         rate_multiplier=second_rate,
         billable_units=1,
@@ -187,7 +179,7 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
     assert len(records) == 0
 
     create_nightly_billing_for_day(str(yesterday.date()))
-    records = FactBilling.query.order_by('rate_multiplier').all()
+    records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == records_num
 
     for i, record in enumerate(records):
@@ -198,20 +190,17 @@ def test_create_nightly_billing_for_day_sms_rate_multiplier(
 
 
 def test_create_nightly_billing_for_day_different_templates(
-        sample_service,
-        sample_template,
-        sample_email_template,
-        mocker
+    sample_service, sample_template, sample_email_template, mocker
 ):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
-        sent_by='mmg',
+        status="delivered",
+        sent_by="mmg",
         international=False,
         rate_multiplier=1.0,
         billable_units=1,
@@ -219,8 +208,8 @@ def test_create_nightly_billing_for_day_different_templates(
     create_notification(
         created_at=yesterday,
         template=sample_email_template,
-        status='delivered',
-        sent_by='ses',
+        status="delivered",
+        sent_by="ses",
         international=False,
         rate_multiplier=0,
         billable_units=0,
@@ -230,7 +219,7 @@ def test_create_nightly_billing_for_day_different_templates(
     assert len(records) == 0
     create_nightly_billing_for_day(str(yesterday.date()))
 
-    records = FactBilling.query.order_by('rate_multiplier').all()
+    records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 2
     multiplier = [0, 1]
     billable_units = [0, 1]
@@ -244,21 +233,18 @@ def test_create_nightly_billing_for_day_different_templates(
 
 
 def test_create_nightly_billing_for_day_different_sent_by(
-    sample_service,
-    sample_template,
-    sample_email_template,
-    mocker
+    sample_service, sample_template, sample_email_template, mocker
 ):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     # These are sms notifications
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
-        sent_by='mmg',
+        status="delivered",
+        sent_by="mmg",
         international=False,
         rate_multiplier=1.0,
         billable_units=1,
@@ -266,8 +252,8 @@ def test_create_nightly_billing_for_day_different_sent_by(
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
-        sent_by='firetext',
+        status="delivered",
+        sent_by="firetext",
         international=False,
         rate_multiplier=1.0,
         billable_units=1,
@@ -277,7 +263,7 @@ def test_create_nightly_billing_for_day_different_sent_by(
     assert len(records) == 0
     create_nightly_billing_for_day(str(yesterday.date()))
 
-    records = FactBilling.query.order_by('rate_multiplier').all()
+    records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 2
 
     for _, record in enumerate(records):
@@ -287,94 +273,86 @@ def test_create_nightly_billing_for_day_different_sent_by(
         assert record.rate_multiplier == 1.0
 
 
-def test_create_nightly_billing_for_day_different_letter_postage(
-    notify_db_session,
-    sample_letter_template,
-    mocker
-):
+def test_create_nightly_billing_for_day_different_letter_postage(notify_db_session, sample_letter_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     for _ in range(2):
         create_notification(
             created_at=yesterday,
             template=sample_letter_template,
-            status='delivered',
-            sent_by='dvla',
+            status="delivered",
+            sent_by="dvla",
             billable_units=2,
-            postage='first'
+            postage="first",
         )
     create_notification(
         created_at=yesterday,
         template=sample_letter_template,
-        status='delivered',
-        sent_by='dvla',
+        status="delivered",
+        sent_by="dvla",
         billable_units=2,
-        postage='second'
+        postage="second",
     )
     create_notification(
         created_at=yesterday,
         template=sample_letter_template,
-        status='delivered',
-        sent_by='dvla',
+        status="delivered",
+        sent_by="dvla",
         billable_units=1,
-        postage='europe'
+        postage="europe",
     )
     create_notification(
         created_at=yesterday,
         template=sample_letter_template,
-        status='delivered',
-        sent_by='dvla',
+        status="delivered",
+        sent_by="dvla",
         billable_units=3,
-        postage='rest-of-world'
+        postage="rest-of-world",
     )
 
     records = FactBilling.query.all()
     assert len(records) == 0
     create_nightly_billing_for_day(str(yesterday.date()))
 
-    records = FactBilling.query.order_by('postage').all()
+    records = FactBilling.query.order_by("postage").all()
     assert len(records) == 4
 
     assert records[0].notification_type == LETTER_TYPE
     assert records[0].bst_date == datetime.date(yesterday)
-    assert records[0].postage == 'europe'
+    assert records[0].postage == "europe"
     assert records[0].notifications_sent == 1
     assert records[0].billable_units == 1
 
     assert records[1].notification_type == LETTER_TYPE
     assert records[1].bst_date == datetime.date(yesterday)
-    assert records[1].postage == 'first'
+    assert records[1].postage == "first"
     assert records[1].notifications_sent == 2
     assert records[1].billable_units == 4
 
     assert records[2].notification_type == LETTER_TYPE
     assert records[2].bst_date == datetime.date(yesterday)
-    assert records[2].postage == 'rest-of-world'
+    assert records[2].postage == "rest-of-world"
     assert records[2].notifications_sent == 1
     assert records[2].billable_units == 3
 
     assert records[3].notification_type == LETTER_TYPE
     assert records[3].bst_date == datetime.date(yesterday)
-    assert records[3].postage == 'second'
+    assert records[3].postage == "second"
     assert records[3].notifications_sent == 1
     assert records[3].billable_units == 2
 
 
-def test_create_nightly_billing_for_day_letter(
-    sample_service,
-    sample_letter_template,
-    mocker
-):
+def test_create_nightly_billing_for_day_letter(sample_service, sample_letter_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     create_notification(
         created_at=yesterday,
         template=sample_letter_template,
-        status='delivered',
-        sent_by='dvla',
+        status="delivered",
+        sent_by="dvla",
         international=False,
         rate_multiplier=2.0,
         billable_units=2,
@@ -384,7 +362,7 @@ def test_create_nightly_billing_for_day_letter(
     assert len(records) == 0
     create_nightly_billing_for_day(str(yesterday.date()))
 
-    records = FactBilling.query.order_by('rate_multiplier').all()
+    records = FactBilling.query.order_by("rate_multiplier").all()
     assert len(records) == 1
 
     record = records[0]
@@ -395,19 +373,15 @@ def test_create_nightly_billing_for_day_letter(
     assert record.rate_multiplier == 2.0
 
 
-def test_create_nightly_billing_for_day_null_sent_by_sms(
-    sample_service,
-    sample_template,
-    mocker
-):
+def test_create_nightly_billing_for_day_null_sent_by_sms(sample_service, sample_template, mocker):
     yesterday = datetime.now() - timedelta(days=1)
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     create_notification(
         created_at=yesterday,
         template=sample_template,
-        status='delivered',
+        status="delivered",
         sent_by=None,
         international=False,
         rate_multiplier=1.0,
@@ -426,35 +400,35 @@ def test_create_nightly_billing_for_day_null_sent_by_sms(
     assert record.rate == Decimal(1.33)
     assert record.billable_units == 1
     assert record.rate_multiplier == 1
-    assert record.provider == 'unknown'
+    assert record.provider == "unknown"
 
 
 def test_get_rate_for_letter_latest(notify_db_session):
     # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count,
     # rate and post_class
-    new = create_letter_rate(datetime(2017, 12, 1), crown=True, sheet_count=1, rate=0.33, post_class='second')
-    old = create_letter_rate(datetime(2016, 12, 1), crown=True, sheet_count=1, rate=0.30, post_class='second')
+    new = create_letter_rate(datetime(2017, 12, 1), crown=True, sheet_count=1, rate=0.33, post_class="second")
+    old = create_letter_rate(datetime(2016, 12, 1), crown=True, sheet_count=1, rate=0.30, post_class="second")
     letter_rates = [new, old]
 
     rate = get_rate([], letter_rates, LETTER_TYPE, date(2018, 1, 1), True, 1)
-    assert rate == Decimal('0.33')
+    assert rate == Decimal("0.33")
 
 
 def test_get_rate_for_letter_latest_if_crown_is_none(notify_db_session):
     # letter rates should be passed into the get_rate function as a tuple of start_date, crown, sheet_count,
     # rate and post_class
-    crown = create_letter_rate(datetime(2017, 12, 1), crown=True, sheet_count=1, rate=0.33, post_class='second')
-    non_crown = create_letter_rate(datetime(2017, 12, 1), crown=False, sheet_count=1, rate=0.35, post_class='second')
+    crown = create_letter_rate(datetime(2017, 12, 1), crown=True, sheet_count=1, rate=0.33, post_class="second")
+    non_crown = create_letter_rate(datetime(2017, 12, 1), crown=False, sheet_count=1, rate=0.35, post_class="second")
     letter_rates = [crown, non_crown]
 
     rate = get_rate([], letter_rates, LETTER_TYPE, date(2018, 1, 1), crown=None, letter_page_count=1)
-    assert rate == Decimal('0.33')
+    assert rate == Decimal("0.33")
 
 
 def test_get_rate_for_sms_and_email(notify_db_session):
     non_letter_rates = [
         create_rate(datetime(2017, 12, 1), 0.15, SMS_TYPE),
-        create_rate(datetime(2017, 12, 1), 0, EMAIL_TYPE)
+        create_rate(datetime(2017, 12, 1), 0, EMAIL_TYPE),
     ]
 
     rate = get_rate(non_letter_rates, [], SMS_TYPE, date(2018, 1, 1))
@@ -464,20 +438,17 @@ def test_get_rate_for_sms_and_email(notify_db_session):
     assert rate == Decimal(0)
 
 
-@freeze_time('2018-03-30T01:00:00')
+@freeze_time("2018-03-30T01:00:00")
 # summer time starts on 2018-03-25
-def test_create_nightly_billing_for_day_use_BST(
-        sample_service,
-        sample_template,
-        mocker):
+def test_create_nightly_billing_for_day_use_BST(sample_service, sample_template, mocker):
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     # too late
     create_notification(
         created_at=datetime(2018, 3, 25, 23, 1),
         template=sample_template,
-        status='delivered',
+        status="delivered",
         rate_multiplier=1.0,
         billable_units=1,
     )
@@ -485,7 +456,7 @@ def test_create_nightly_billing_for_day_use_BST(
     create_notification(
         created_at=datetime(2018, 3, 25, 22, 59),
         template=sample_template,
-        status='delivered',
+        status="delivered",
         rate_multiplier=1.0,
         billable_units=2,
     )
@@ -494,7 +465,7 @@ def test_create_nightly_billing_for_day_use_BST(
     create_notification(
         created_at=datetime(2018, 3, 24, 23, 59),
         template=sample_template,
-        status='delivered',
+        status="delivered",
         rate_multiplier=1.0,
         billable_units=4,
     )
@@ -502,7 +473,7 @@ def test_create_nightly_billing_for_day_use_BST(
     assert Notification.query.count() == 3
     assert FactBilling.query.count() == 0
 
-    create_nightly_billing_for_day('2018-03-25')
+    create_nightly_billing_for_day("2018-03-25")
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
     assert len(records) == 1
@@ -510,18 +481,15 @@ def test_create_nightly_billing_for_day_use_BST(
     assert records[0].billable_units == 2
 
 
-@freeze_time('2018-01-15T03:30:00')
-def test_create_nightly_billing_for_day_update_when_record_exists(
-        sample_service,
-        sample_template,
-        mocker):
+@freeze_time("2018-01-15T03:30:00")
+def test_create_nightly_billing_for_day_update_when_record_exists(sample_service, sample_template, mocker):
 
-    mocker.patch('app.dao.fact_billing_dao.get_rate', side_effect=mocker_get_rate)
+    mocker.patch("app.dao.fact_billing_dao.get_rate", side_effect=mocker_get_rate)
 
     create_notification(
         created_at=datetime.now() - timedelta(days=1),
         template=sample_template,
-        status='delivered',
+        status="delivered",
         sent_by=None,
         international=False,
         rate_multiplier=1.0,
@@ -531,7 +499,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(
     records = FactBilling.query.all()
     assert len(records) == 0
 
-    create_nightly_billing_for_day('2018-01-14')
+    create_nightly_billing_for_day("2018-01-14")
     records = FactBilling.query.order_by(FactBilling.bst_date).all()
 
     assert len(records) == 1
@@ -542,7 +510,7 @@ def test_create_nightly_billing_for_day_update_when_record_exists(
     create_notification(
         created_at=datetime.now() - timedelta(days=1),
         template=sample_template,
-        status='delivered',
+        status="delivered",
         sent_by=None,
         international=False,
         rate_multiplier=1.0,
@@ -550,32 +518,32 @@ def test_create_nightly_billing_for_day_update_when_record_exists(
     )
 
     # run again, make sure create_nightly_billing() updates with no error
-    create_nightly_billing_for_day('2018-01-14')
+    create_nightly_billing_for_day("2018-01-14")
     assert len(records) == 1
     assert records[0].billable_units == 2
     assert records[0].updated_at
 
 
 def test_create_nightly_notification_status_for_service_and_day(notify_db_session):
-    first_service = create_service(service_name='First Service')
+    first_service = create_service(service_name="First Service")
     first_template = create_template(service=first_service)
-    second_service = create_service(service_name='second Service')
-    second_template = create_template(service=second_service, template_type='email')
-    third_template = create_template(service=second_service, template_type='letter')
+    second_service = create_service(service_name="second Service")
+    second_template = create_template(service=second_service, template_type="email")
+    third_template = create_template(service=second_service, template_type="letter")
 
     process_day = date.today() - timedelta(days=5)
     with freeze_time(datetime.combine(process_day, time.min)):
-        create_notification(template=first_template, status='delivered')
-        create_notification(template=second_template, status='temporary-failure')
+        create_notification(template=first_template, status="delivered")
+        create_notification(template=second_template, status="temporary-failure")
 
         # team API key notifications are included
-        create_notification(template=third_template, status='sending', key_type=KEY_TYPE_TEAM)
+        create_notification(template=third_template, status="sending", key_type=KEY_TYPE_TEAM)
 
         # test notifications are ignored
-        create_notification(template=third_template, status='sending', key_type=KEY_TYPE_TEST)
+        create_notification(template=third_template, status="sending", key_type=KEY_TYPE_TEST)
 
         # historical notifications are included
-        create_notification_history(template=third_template, status='delivered')
+        create_notification_history(template=third_template, status="delivered")
 
     # these created notifications from a different day get ignored
     with freeze_time(datetime.combine(date.today() - timedelta(days=4), time.min)):
@@ -585,9 +553,9 @@ def test_create_nightly_notification_status_for_service_and_day(notify_db_sessio
 
     assert len(FactNotificationStatus.query.all()) == 0
 
-    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
-    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, 'email')
-    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, 'letter')
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, "sms")
+    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, "email")
+    create_nightly_notification_status_for_service_and_day(str(process_day), second_service.id, "letter")
 
     new_fact_data = FactNotificationStatus.query.order_by(
         FactNotificationStatus.notification_type,
@@ -600,82 +568,80 @@ def test_create_nightly_notification_status_for_service_and_day(notify_db_sessio
     assert email_failure_row.bst_date == process_day
     assert email_failure_row.template_id == second_template.id
     assert email_failure_row.service_id == second_service.id
-    assert email_failure_row.job_id == UUID('00000000-0000-0000-0000-000000000000')
-    assert email_failure_row.notification_type == 'email'
-    assert email_failure_row.notification_status == 'temporary-failure'
+    assert email_failure_row.job_id == UUID("00000000-0000-0000-0000-000000000000")
+    assert email_failure_row.notification_type == "email"
+    assert email_failure_row.notification_status == "temporary-failure"
     assert email_failure_row.notification_count == 1
     assert email_failure_row.key_type == KEY_TYPE_NORMAL
 
     letter_delivered_row = new_fact_data[1]
     assert letter_delivered_row.template_id == third_template.id
     assert letter_delivered_row.service_id == second_service.id
-    assert letter_delivered_row.notification_type == 'letter'
-    assert letter_delivered_row.notification_status == 'delivered'
+    assert letter_delivered_row.notification_type == "letter"
+    assert letter_delivered_row.notification_status == "delivered"
     assert letter_delivered_row.notification_count == 1
     assert letter_delivered_row.key_type == KEY_TYPE_NORMAL
 
     letter_sending_row = new_fact_data[2]
     assert letter_sending_row.template_id == third_template.id
     assert letter_sending_row.service_id == second_service.id
-    assert letter_sending_row.notification_type == 'letter'
-    assert letter_sending_row.notification_status == 'sending'
+    assert letter_sending_row.notification_type == "letter"
+    assert letter_sending_row.notification_status == "sending"
     assert letter_sending_row.notification_count == 1
     assert letter_sending_row.key_type == KEY_TYPE_TEAM
 
     sms_delivered_row = new_fact_data[3]
     assert sms_delivered_row.template_id == first_template.id
     assert sms_delivered_row.service_id == first_service.id
-    assert sms_delivered_row.notification_type == 'sms'
-    assert sms_delivered_row.notification_status == 'delivered'
+    assert sms_delivered_row.notification_type == "sms"
+    assert sms_delivered_row.notification_status == "delivered"
     assert sms_delivered_row.notification_count == 1
     assert sms_delivered_row.key_type == KEY_TYPE_NORMAL
 
 
 def test_create_nightly_notification_status_for_service_and_day_overwrites_old_data(notify_db_session):
-    first_service = create_service(service_name='First Service')
+    first_service = create_service(service_name="First Service")
     first_template = create_template(service=first_service)
     process_day = date.today()
 
     # first run: one notification, expect one row (just one status)
-    notification = create_notification(template=first_template, status='sending')
-    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
+    notification = create_notification(template=first_template, status="sending")
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, "sms")
 
     new_fact_data = FactNotificationStatus.query.all()
 
     assert len(new_fact_data) == 1
     assert new_fact_data[0].notification_count == 1
-    assert new_fact_data[0].notification_status == 'sending'
+    assert new_fact_data[0].notification_status == "sending"
 
     # second run: status changed, still expect one row (one status)
-    notification.status = 'delivered'
-    create_notification(template=first_template, status='created')
-    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, 'sms')
+    notification.status = "delivered"
+    create_notification(template=first_template, status="created")
+    create_nightly_notification_status_for_service_and_day(str(process_day), first_service.id, "sms")
 
-    updated_fact_data = FactNotificationStatus.query.order_by(
-        FactNotificationStatus.notification_status
-    ).all()
+    updated_fact_data = FactNotificationStatus.query.order_by(FactNotificationStatus.notification_status).all()
 
     assert len(updated_fact_data) == 2
     assert updated_fact_data[0].notification_count == 1
-    assert updated_fact_data[0].notification_status == 'created'
+    assert updated_fact_data[0].notification_status == "created"
     assert updated_fact_data[1].notification_count == 1
-    assert updated_fact_data[1].notification_status == 'delivered'
+    assert updated_fact_data[1].notification_status == "delivered"
 
 
 # the job runs at 12:30am London time. 04/01 is in BST.
-@freeze_time('2019-04-01T23:30')
+@freeze_time("2019-04-01T23:30")
 def test_create_nightly_notification_status_for_service_and_day_respects_bst(sample_template):
-    create_notification(sample_template, status='delivered', created_at=datetime(2019, 4, 1, 23, 0))  # too new
+    create_notification(sample_template, status="delivered", created_at=datetime(2019, 4, 1, 23, 0))  # too new
 
-    create_notification(sample_template, status='created', created_at=datetime(2019, 4, 1, 22, 59))
-    create_notification(sample_template, status='created', created_at=datetime(2019, 3, 31, 23, 0))
+    create_notification(sample_template, status="created", created_at=datetime(2019, 4, 1, 22, 59))
+    create_notification(sample_template, status="created", created_at=datetime(2019, 3, 31, 23, 0))
 
-    create_notification(sample_template, status='delivered', created_at=datetime(2019, 3, 31, 22, 59))  # too old
+    create_notification(sample_template, status="delivered", created_at=datetime(2019, 3, 31, 22, 59))  # too old
 
-    create_nightly_notification_status_for_service_and_day('2019-04-01', sample_template.service_id, 'sms')
+    create_nightly_notification_status_for_service_and_day("2019-04-01", sample_template.service_id, "sms")
 
     noti_status = FactNotificationStatus.query.order_by(FactNotificationStatus.bst_date).all()
     assert len(noti_status) == 1
 
     assert noti_status[0].bst_date == date(2019, 4, 1)
-    assert noti_status[0].notification_status == 'created'
+    assert noti_status[0].notification_status == "created"

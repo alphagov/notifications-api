@@ -31,7 +31,7 @@ def update_broadcast_message_status(broadcast_message, new_status, updating_user
         broadcast_message.cancelled_by_api_key_id = api_key_id
 
     current_app.logger.info(
-        f'broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}'
+        f"broadcast_message {broadcast_message.id} moving from {broadcast_message.status} to {new_status}"
     )
     broadcast_message.status = new_status
 
@@ -45,26 +45,26 @@ def update_broadcast_message_status(broadcast_message, new_status, updating_user
 def _validate_broadcast_update(broadcast_message, new_status, updating_user):
     if new_status not in BroadcastStatusType.ALLOWED_STATUS_TRANSITIONS[broadcast_message.status]:
         raise InvalidRequest(
-            f'Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}',
-            status_code=400
+            f"Cannot move broadcast_message {broadcast_message.id} from {broadcast_message.status} to {new_status}",
+            status_code=400,
         )
 
     if new_status == BroadcastStatusType.BROADCASTING:
         # training mode services can approve their own broadcasts
         if updating_user == broadcast_message.created_by and not broadcast_message.service.restricted:
             raise InvalidRequest(
-                f'User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}',
-                status_code=400
+                f"User {updating_user.id} cannot approve their own broadcast_message {broadcast_message.id}",
+                status_code=400,
             )
-        elif len(broadcast_message.areas['simple_polygons']) == 0:
+        elif len(broadcast_message.areas["simple_polygons"]) == 0:
             raise InvalidRequest(
-                f'broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.',
-                status_code=400
+                f"broadcast_message {broadcast_message.id} has no selected areas and so cannot be broadcasted.",
+                status_code=400,
             )
 
 
 def _create_p1_zendesk_alert(broadcast_message):
-    if current_app.config['NOTIFY_ENVIRONMENT'] != 'live':
+    if current_app.config["NOTIFY_ENVIRONMENT"] != "live":
         return
 
     if broadcast_message.status != BroadcastStatusType.BROADCASTING:
@@ -73,7 +73,8 @@ def _create_p1_zendesk_alert(broadcast_message):
     if broadcast_message.stubbed:
         return
 
-    message = inspect.cleandoc(f"""
+    message = inspect.cleandoc(
+        f"""
         Broadcast Sent
 
         https://www.notifications.service.gov.uk/services/{broadcast_message.service_id}/current-alerts/{broadcast_message.id}
@@ -84,17 +85,18 @@ def _create_p1_zendesk_alert(broadcast_message):
 
         Follow the runbook to check the broadcast went out OK:
         https://docs.google.com/document/d/1J99yOlfp4nQz6et0w5oJVqi-KywtIXkxrEIyq_g2XUs/edit#heading=h.lzr9aq5b4wg
-    """)
+    """
+    )
 
     ticket = NotifySupportTicket(
-        subject='Live broadcast sent',
+        subject="Live broadcast sent",
         message=message,
         ticket_type=NotifySupportTicket.TYPE_INCIDENT,
         technical_ticket=True,
-        org_id=current_app.config['BROADCAST_ORGANISATION_ID'],
-        org_type='central',
+        org_id=current_app.config["BROADCAST_ORGANISATION_ID"],
+        org_type="central",
         service_id=str(broadcast_message.service_id),
-        p1=True
+        p1=True,
     )
     zendesk_client.send_ticket_to_zendesk(ticket)
 
@@ -120,8 +122,7 @@ def _create_broadcast_event(broadcast_message):
             transmitted_areas=broadcast_message.areas,
             # TODO: Probably move this somewhere more standalone too and imply that it shouldn't change. Should it
             # include a service based identifier too? eg "flood-warnings@notifications.service.gov.uk" or similar
-            transmitted_sender='notifications.service.gov.uk',
-
+            transmitted_sender="notifications.service.gov.uk",
             # TODO: Should this be set to now? Or the original starts_at?
             transmitted_starts_at=broadcast_message.starts_at,
             transmitted_finishes_at=broadcast_message.finishes_at,
@@ -129,15 +130,12 @@ def _create_broadcast_event(broadcast_message):
 
         dao_save_object(event)
 
-        send_broadcast_event.apply_async(
-            kwargs={'broadcast_event_id': str(event.id)},
-            queue=QueueNames.BROADCASTS
-        )
+        send_broadcast_event.apply_async(kwargs={"broadcast_event_id": str(event.id)}, queue=QueueNames.BROADCASTS)
     elif broadcast_message.stubbed != service.restricted:
         # It's possible for a service to create a broadcast in trial mode, and then approve it after the
         # service is live (or vice versa). We don't think it's safe to send such broadcasts, as the service
         # has changed since they were created. Log an error instead.
         current_app.logger.error(
-            f'Broadcast event not created. Stubbed status of broadcast message was {broadcast_message.stubbed}'
+            f"Broadcast event not created. Stubbed status of broadcast message was {broadcast_message.stubbed}"
             f' but service was {"in trial mode" if service.restricted else "live"}'
         )

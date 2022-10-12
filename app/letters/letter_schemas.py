@@ -4,14 +4,7 @@ letter_references = {
     "type": "object",
     "title": "references",
     "properties": {
-        "references": {
-            "type": "array",
-            "items": {
-                "type": "string",
-                "pattern": "^[0-9A-Z]{16}$"
-            },
-            "minItems": 1
-        },
+        "references": {"type": "array", "items": {"type": "string", "pattern": "^[0-9A-Z]{16}$"}, "minItems": 1},
     },
-    "required": ["references"]
+    "required": ["references"],
 }

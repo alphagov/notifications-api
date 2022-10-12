@@ -22,12 +22,12 @@ from app.schema_validation import validate
 from app.service.statistics import format_admin_stats
 from app.utils import get_london_midnight_in_utc
 
-platform_stats_blueprint = Blueprint('platform_stats', __name__)
+platform_stats_blueprint = Blueprint("platform_stats", __name__)
 
 register_errors(platform_stats_blueprint)
 
 
-@platform_stats_blueprint.route('')
+@platform_stats_blueprint.route("")
 def get_platform_stats():
     if request.args:
         validate(request.args, platform_stats_request)
@@ -35,8 +35,8 @@ def get_platform_stats():
     # If start and end date are not set, we are expecting today's stats.
     today = str(datetime.utcnow().date())
 
-    start_date = datetime.strptime(request.args.get('start_date', today), '%Y-%m-%d').date()
-    end_date = datetime.strptime(request.args.get('end_date', today), '%Y-%m-%d').date()
+    start_date = datetime.strptime(request.args.get("start_date", today), "%Y-%m-%d").date()
+    end_date = datetime.strptime(request.args.get("end_date", today), "%Y-%m-%d").date()
     data = fetch_notification_status_totals_for_all_services(start_date=start_date, end_date=end_date)
     stats = format_admin_stats(data)
 
@@ -66,10 +66,10 @@ def validate_date_range_is_within_a_financial_year(start_date, end_date):
     return start_date, end_date
 
 
-@platform_stats_blueprint.route('data-for-billing-report')
+@platform_stats_blueprint.route("data-for-billing-report")
 def get_data_for_billing_report():
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
 
     start_date, end_date = validate_date_range_is_within_a_financial_year(start_date, end_date)
 
@@ -78,8 +78,10 @@ def get_data_for_billing_report():
     letter_breakdown = fetch_usage_for_all_services_letter_breakdown(start_date, end_date)
 
     lb_by_service = [
-        (lb.service_id,
-         f"{lb.letters_sent} {postage_description(lb.postage)} letters at {format_letter_rate(lb.letter_rate)}")
+        (
+            lb.service_id,
+            f"{lb.letters_sent} {postage_description(lb.postage)} letters at {format_letter_rate(lb.letter_rate)}",
+        )
         for lb in letter_breakdown
     ]
     combined = {}
@@ -94,14 +96,14 @@ def get_data_for_billing_report():
                 "sms_chargeable_units": s.charged_units,
                 "total_letters": 0,
                 "letter_cost": 0,
-                "letter_breakdown": ""
+                "letter_breakdown": "",
             }
             combined[s.service_id] = entry
 
     for data in letter_overview:
         if data.service_id in combined:
             combined[data.service_id].update(
-                {'total_letters': data.total_letters, 'letter_cost': float(data.letter_cost)}
+                {"total_letters": data.total_letters, "letter_cost": float(data.letter_cost)}
             )
 
         else:
@@ -114,105 +116,111 @@ def get_data_for_billing_report():
                 "sms_chargeable_units": 0,
                 "total_letters": data.total_letters,
                 "letter_cost": float(data.letter_cost),
-                "letter_breakdown": ""
+                "letter_breakdown": "",
             }
             combined[data.service_id] = letter_entry
     for service_id, breakdown in lb_by_service:
-        combined[service_id]['letter_breakdown'] += (breakdown + '\n')
+        combined[service_id]["letter_breakdown"] += breakdown + "\n"
 
     billing_details = fetch_billing_details_for_all_services()
     for service in billing_details:
         if service.service_id in combined:
-            combined[service.service_id].update({
-                    'purchase_order_number': service.purchase_order_number,
-                    'contact_names': service.billing_contact_names,
-                    'contact_email_addresses': service.billing_contact_email_addresses,
-                    'billing_reference': service.billing_reference
-                })
+            combined[service.service_id].update(
+                {
+                    "purchase_order_number": service.purchase_order_number,
+                    "contact_names": service.billing_contact_names,
+                    "contact_email_addresses": service.billing_contact_email_addresses,
+                    "billing_reference": service.billing_reference,
+                }
+            )
 
     # sorting first by name == '' means that blank orgs will be sorted last.
 
-    result = sorted(combined.values(), key=lambda x: (
-        x['organisation_name'] == '',
-        x['organisation_name'],
-        x['service_name']
-    ))
+    result = sorted(
+        combined.values(), key=lambda x: (x["organisation_name"] == "", x["organisation_name"], x["service_name"])
+    )
     return jsonify(result)
 
 
-@platform_stats_blueprint.route('daily-volumes-report')
+@platform_stats_blueprint.route("daily-volumes-report")
 def daily_volumes_report():
-    start_date = validate_date_format(request.args.get('start_date'))
-    end_date = validate_date_format(request.args.get('end_date'))
+    start_date = validate_date_format(request.args.get("start_date"))
+    end_date = validate_date_format(request.args.get("end_date"))
 
     daily_volumes = fetch_daily_volumes_for_platform(start_date, end_date)
     report = []
 
     for row in daily_volumes:
-        report.append({
-            "day": row.bst_date,
-            "sms_totals": int(row.sms_totals),
-            "sms_fragment_totals": int(row.sms_fragment_totals),
-            "sms_chargeable_units": int(row.sms_chargeable_units),
-            "email_totals": int(row.email_totals),
-            "letter_totals": int(row.letter_totals),
-            "letter_sheet_totals": int(row.letter_sheet_totals)
-        })
+        report.append(
+            {
+                "day": row.bst_date,
+                "sms_totals": int(row.sms_totals),
+                "sms_fragment_totals": int(row.sms_fragment_totals),
+                "sms_chargeable_units": int(row.sms_chargeable_units),
+                "email_totals": int(row.email_totals),
+                "letter_totals": int(row.letter_totals),
+                "letter_sheet_totals": int(row.letter_sheet_totals),
+            }
+        )
     return jsonify(report)
 
 
-@platform_stats_blueprint.route('daily-sms-provider-volumes-report')
+@platform_stats_blueprint.route("daily-sms-provider-volumes-report")
 def daily_sms_provider_volumes_report():
-    start_date = validate_date_format(request.args.get('start_date'))
-    end_date = validate_date_format(request.args.get('end_date'))
+    start_date = validate_date_format(request.args.get("start_date"))
+    end_date = validate_date_format(request.args.get("end_date"))
 
     daily_volumes = fetch_daily_sms_provider_volumes_for_platform(start_date, end_date)
     report = []
 
     for row in daily_volumes:
-        report.append({
-            'day': row.bst_date.isoformat(),
-            'provider': row.provider,
-            'sms_totals': int(row.sms_totals),
-            'sms_fragment_totals': int(row.sms_fragment_totals),
-            'sms_chargeable_units': int(row.sms_chargeable_units),
-            # convert from Decimal to float as it's not json serialisable
-            'sms_cost': float(row.sms_cost),
-        })
+        report.append(
+            {
+                "day": row.bst_date.isoformat(),
+                "provider": row.provider,
+                "sms_totals": int(row.sms_totals),
+                "sms_fragment_totals": int(row.sms_fragment_totals),
+                "sms_chargeable_units": int(row.sms_chargeable_units),
+                # convert from Decimal to float as it's not json serialisable
+                "sms_cost": float(row.sms_cost),
+            }
+        )
     return jsonify(report)
 
 
-@platform_stats_blueprint.route('volumes-by-service')
+@platform_stats_blueprint.route("volumes-by-service")
 def volumes_by_service_report():
-    start_date = validate_date_format(request.args.get('start_date'))
-    end_date = validate_date_format(request.args.get('end_date'))
+    start_date = validate_date_format(request.args.get("start_date"))
+    end_date = validate_date_format(request.args.get("end_date"))
 
     volumes_by_service = fetch_volumes_by_service(start_date, end_date)
     report = []
 
     for row in volumes_by_service:
-        report.append({
-            "service_name": row.service_name,
-            "service_id": str(row.service_id),
-            "organisation_name": row.organisation_name if row.organisation_name else '',
-            "organisation_id": str(row.organisation_id) if row.organisation_id else '',
-            "free_allowance": int(row.free_allowance),
-            "sms_notifications": int(row.sms_notifications),
-            "sms_chargeable_units": int(row.sms_chargeable_units),
-            "email_totals": int(row.email_totals),
-            "letter_totals": int(row.letter_totals),
-            "letter_sheet_totals": int(row.letter_sheet_totals),
-            "letter_cost": float(row.letter_cost),
-        })
+        report.append(
+            {
+                "service_name": row.service_name,
+                "service_id": str(row.service_id),
+                "organisation_name": row.organisation_name if row.organisation_name else "",
+                "organisation_id": str(row.organisation_id) if row.organisation_id else "",
+                "free_allowance": int(row.free_allowance),
+                "sms_notifications": int(row.sms_notifications),
+                "sms_chargeable_units": int(row.sms_chargeable_units),
+                "email_totals": int(row.email_totals),
+                "letter_totals": int(row.letter_totals),
+                "letter_sheet_totals": int(row.letter_sheet_totals),
+                "letter_cost": float(row.letter_cost),
+            }
+        )
 
     return jsonify(report)
 
 
 def postage_description(postage):
     if postage in UK_POSTAGE_TYPES:
-        return f'{postage} class'
+        return f"{postage} class"
     else:
-        return 'international'
+        return "international"
 
 
 def format_letter_rate(number):

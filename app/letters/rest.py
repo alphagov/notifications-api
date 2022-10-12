@@ -13,15 +13,15 @@ register_errors(letter_job)
 MAX_REFERENCES_PER_TASK = 5000
 
 
-@letter_job.route('/letters/returned', methods=['POST'])
+@letter_job.route("/letters/returned", methods=["POST"])
 def create_process_returned_letters_job():
-    references = validate(request.get_json(), letter_references)['references']
+    references = validate(request.get_json(), letter_references)["references"]
 
     for start_index in range(0, len(references), MAX_REFERENCES_PER_TASK):
         process_returned_letters_list.apply_async(
-            args=(references[start_index:start_index + MAX_REFERENCES_PER_TASK], ),
+            args=(references[start_index : start_index + MAX_REFERENCES_PER_TASK],),
             queue=QueueNames.DATABASE,
-            compression='zlib'
+            compression="zlib",
         )
 
     return jsonify(references=references), 200

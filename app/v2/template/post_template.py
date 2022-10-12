@@ -12,7 +12,7 @@ from app.v2.template.template_schemas import (
 from app.v2.utils import get_valid_json
 
 
-@v2_template_blueprint.route("/<template_id>/preview", methods=['POST'])
+@v2_template_blueprint.route("/<template_id>/preview", methods=["POST"])
 def post_template_preview(template_id):
     # The payload is empty when there are no place holders in the template.
     _data = request.get_data(as_text=True)
@@ -21,26 +21,22 @@ def post_template_preview(template_id):
     else:
         _data = get_valid_json()
 
-    _data['id'] = template_id
+    _data["id"] = template_id
 
     data = validate(_data, post_template_preview_request)
 
-    template = templates_dao.dao_get_template_by_id_and_service_id(
-        template_id, authenticated_service.id)
+    template = templates_dao.dao_get_template_by_id_and_service_id(template_id, authenticated_service.id)
 
-    template_object = template._as_utils_template_with_personalisation(
-        data.get('personalisation')
-    )
+    template_object = template._as_utils_template_with_personalisation(data.get("personalisation"))
 
     check_placeholders(template_object)
 
-    resp = create_post_template_preview_response(template=template,
-                                                 template_object=template_object)
+    resp = create_post_template_preview_response(template=template, template_object=template_object)
 
     return jsonify(resp), 200
 
 
 def check_placeholders(template_object):
     if template_object.missing_data:
-        message = 'Missing personalisation: {}'.format(", ".join(template_object.missing_data))
-        raise BadRequestError(message=message, fields=[{'template': message}])
+        message = "Missing personalisation: {}".format(", ".join(template_object.missing_data))
+        raise BadRequestError(message=message, fields=[{"template": message}])

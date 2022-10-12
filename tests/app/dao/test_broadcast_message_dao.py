@@ -26,27 +26,27 @@ def test_get_earlier_events_for_broadcast_event(sample_service):
             bm,
             sent_at=datetime(2020, 1, 1, 12, 0, 0),
             message_type=BroadcastEventMessageType.ALERT,
-            transmitted_content={'body': 'Initial content'}
+            transmitted_content={"body": "Initial content"},
         ),
         create_broadcast_event(
             bm,
             sent_at=datetime(2020, 1, 1, 13, 0, 0),
             message_type=BroadcastEventMessageType.UPDATE,
-            transmitted_content={'body': 'Updated content'}
+            transmitted_content={"body": "Updated content"},
         ),
         create_broadcast_event(
             bm,
             sent_at=datetime(2020, 1, 1, 14, 0, 0),
             message_type=BroadcastEventMessageType.UPDATE,
-            transmitted_content={'body': 'Updated content'},
-            transmitted_areas=['wales']
+            transmitted_content={"body": "Updated content"},
+            transmitted_areas=["wales"],
         ),
         create_broadcast_event(
             bm,
             sent_at=datetime(2020, 1, 1, 15, 0, 0),
             message_type=BroadcastEventMessageType.CANCEL,
             transmitted_finishes_at=datetime(2020, 1, 1, 15, 0, 0),
-        )
+        ),
     ]
 
     # only fetches earlier events, and they're in time order
@@ -61,12 +61,12 @@ def test_create_broadcast_provider_message_creates_in_correct_state(sample_broad
         broadcast_message,
         sent_at=datetime(2020, 1, 1, 12, 0, 0),
         message_type=BroadcastEventMessageType.ALERT,
-        transmitted_content={'body': 'Initial content'}
+        transmitted_content={"body": "Initial content"},
     )
 
-    broadcast_provider_message = create_broadcast_provider_message(broadcast_event, 'fake-provider')
+    broadcast_provider_message = create_broadcast_provider_message(broadcast_event, "fake-provider")
 
-    assert broadcast_provider_message.status == 'sending'
+    assert broadcast_provider_message.status == "sending"
     assert broadcast_provider_message.broadcast_event_id == broadcast_event.id
     assert broadcast_provider_message.created_at is not None
     assert broadcast_provider_message.updated_at is None
@@ -76,14 +76,10 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
     template_1 = create_template(sample_broadcast_service, BROADCAST_TYPE)
     # older message, should appear second in list
     broadcast_message_1 = create_broadcast_message(
-        template_1,
-        starts_at=datetime(2021, 6, 15, 12, 0, 0),
-        status='cancelled')
-
-    service_2 = create_service(
-        service_name="broadcast service 2",
-        service_permissions=[BROADCAST_TYPE]
+        template_1, starts_at=datetime(2021, 6, 15, 12, 0, 0), status="cancelled"
     )
+
+    service_2 = create_service(service_name="broadcast service 2", service_permissions=[BROADCAST_TYPE])
     insert_or_update_service_broadcast_settings(service_2, channel="severe")
 
     template_2 = create_template(service_2, BROADCAST_TYPE)
@@ -91,7 +87,7 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
     broadcast_message_2 = create_broadcast_message(
         template_2,
         stubbed=False,
-        status='broadcasting',
+        status="broadcasting",
         starts_at=datetime(2021, 6, 20, 12, 0, 0),
     )
 
@@ -99,21 +95,21 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
     create_broadcast_message(
         template_2,
         stubbed=True,
-        status='broadcasting',
+        status="broadcasting",
         starts_at=datetime(2021, 6, 15, 12, 0, 0),
     )
     # broadcast_message_old
     create_broadcast_message(
         template_2,
         stubbed=False,
-        status='completed',
+        status="completed",
         starts_at=datetime(2021, 5, 20, 12, 0, 0),
     )
     # broadcast_message_rejected
     create_broadcast_message(
         template_2,
         stubbed=False,
-        status='rejected',
+        status="rejected",
         starts_at=datetime(2021, 6, 15, 12, 0, 0),
     )
 
@@ -121,11 +117,27 @@ def test_dao_get_all_broadcast_messages(sample_broadcast_service):
     assert len(broadcast_messages) == 2
     assert broadcast_messages == [
         (
-            broadcast_message_2.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
-            {'ids': [], 'simple_polygons': []}, 'broadcasting', datetime(2021, 6, 20, 12, 0),
-            None, None, None),
+            broadcast_message_2.id,
+            None,
+            "severe",
+            "Dear Sir/Madam, Hello. Yours Truly, The Government.",
+            {"ids": [], "simple_polygons": []},
+            "broadcasting",
+            datetime(2021, 6, 20, 12, 0),
+            None,
+            None,
+            None,
+        ),
         (
-            broadcast_message_1.id, None, 'severe', 'Dear Sir/Madam, Hello. Yours Truly, The Government.',
-            {'ids': [], 'simple_polygons': []}, 'cancelled', datetime(2021, 6, 15, 12, 0),
-            None, None, None)
+            broadcast_message_1.id,
+            None,
+            "severe",
+            "Dear Sir/Madam, Hello. Yours Truly, The Government.",
+            {"ids": [], "simple_polygons": []},
+            "cancelled",
+            datetime(2021, 6, 15, 12, 0),
+            None,
+            None,
+            None,
+        ),
     ]

@@ -7,9 +7,8 @@ Create Date: 2020-09-07 16:00:27.545673
 """
 from alembic import op
 
-
-revision = '0329_purge_broadcast_data'
-down_revision = '0328_international_letters_perm'
+revision = "0329_purge_broadcast_data"
+down_revision = "0328_international_letters_perm"
 
 
 def upgrade():

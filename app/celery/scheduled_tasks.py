@@ -100,7 +100,7 @@ def delete_invitations():
         raise
 
 
-@notify_celery.task(name='switch-current-sms-provider-on-slow-delivery')
+@notify_celery.task(name="switch-current-sms-provider-on-slow-delivery")
 def switch_current_sms_provider_on_slow_delivery():
     """
     Reduce provider's priority if at least 30% of notifications took more than four minutes to be delivered
@@ -118,16 +118,16 @@ def switch_current_sms_provider_on_slow_delivery():
     if len(set(slow_delivery_notifications.values())) != 1:
         for provider_name, is_slow in slow_delivery_notifications.items():
             if is_slow:
-                current_app.logger.warning('Slow delivery notifications detected for provider {}'.format(provider_name))
+                current_app.logger.warning("Slow delivery notifications detected for provider {}".format(provider_name))
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
 
 
-@notify_celery.task(name='tend-providers-back-to-middle')
+@notify_celery.task(name="tend-providers-back-to-middle")
 def tend_providers_back_to_middle():
     dao_adjust_provider_priority_back_to_resting_points()
 
 
-@notify_celery.task(name='check-job-status')
+@notify_celery.task(name="check-job-status")
 def check_job_status():
     """
     every x minutes do this check
@@ -146,19 +146,19 @@ def check_job_status():
 
     incomplete_in_progress_jobs = Job.query.filter(
         Job.job_status == JOB_STATUS_IN_PROGRESS,
-        between(Job.processing_started, thirty_five_minutes_ago, thirty_minutes_ago)
+        between(Job.processing_started, thirty_five_minutes_ago, thirty_minutes_ago),
     )
     incomplete_pending_jobs = Job.query.filter(
         Job.job_status == JOB_STATUS_PENDING,
         Job.scheduled_for.isnot(None),
-        between(Job.scheduled_for, thirty_five_minutes_ago, thirty_minutes_ago)
+        between(Job.scheduled_for, thirty_five_minutes_ago, thirty_minutes_ago),
     )
 
-    jobs_not_complete_after_30_minutes = incomplete_in_progress_jobs.union(
-        incomplete_pending_jobs
-    ).order_by(
-        Job.processing_started, Job.scheduled_for
-    ).all()
+    jobs_not_complete_after_30_minutes = (
+        incomplete_in_progress_jobs.union(incomplete_pending_jobs)
+        .order_by(Job.processing_started, Job.scheduled_for)
+        .all()
+    )
 
     # temporarily mark them as ERROR so that they don't get picked up by future check_job_status tasks
     # if they haven't been re-processed in time.
@@ -170,26 +170,22 @@ def check_job_status():
 
     if job_ids:
         current_app.logger.info("Job(s) {} have not completed.".format(job_ids))
-        process_incomplete_jobs.apply_async(
-            [job_ids],
-            queue=QueueNames.JOBS
-        )
+        process_incomplete_jobs.apply_async([job_ids], queue=QueueNames.JOBS)
 
 
-@notify_celery.task(name='replay-created-notifications')
+@notify_celery.task(name="replay-created-notifications")
 def replay_created_notifications():
     # if the notification has not be send after 1 hour, then try to resend.
-    resend_created_notifications_older_than = (60 * 60)
+    resend_created_notifications_older_than = 60 * 60
     for notification_type in (EMAIL_TYPE, SMS_TYPE):
-        notifications_to_resend = notifications_not_yet_sent(
-            resend_created_notifications_older_than,
-            notification_type
-        )
+        notifications_to_resend = notifications_not_yet_sent(resend_created_notifications_older_than, notification_type)
 
         if len(notifications_to_resend) > 0:
-            current_app.logger.info("Sending {} {} notifications "
-                                    "to the delivery queue because the notification "
-                                    "status was created.".format(len(notifications_to_resend), notification_type))
+            current_app.logger.info(
+                "Sending {} {} notifications "
+                "to the delivery queue because the notification "
+                "status was created.".format(len(notifications_to_resend), notification_type)
+            )
 
         for n in notifications_to_resend:
             send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
@@ -198,37 +194,36 @@ def replay_created_notifications():
     letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)
 
     if len(letters) > 0:
-        msg = "{} letters were created over an hour ago, " \
-              "but do not have an updated_at timestamp or billable units. " \
-              "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 " \
-              "and update notifications for the following notification ids: " \
-              "\n {}".format(len(letters), [x.id for x in letters])
+        msg = (
+            "{} letters were created over an hour ago, "
+            "but do not have an updated_at timestamp or billable units. "
+            "\n Creating app.celery.letters_pdf_tasks.create_letters tasks to upload letter to S3 "
+            "and update notifications for the following notification ids: "
+            "\n {}".format(len(letters), [x.id for x in letters])
+        )
 
         current_app.logger.info(msg)
         for letter in letters:
             get_pdf_for_templated_letter.apply_async([str(letter.id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
-@notify_celery.task(name='check-if-letters-still-pending-virus-check')
+@notify_celery.task(name="check-if-letters-still-pending-virus-check")
 def check_if_letters_still_pending_virus_check():
     letters = []
 
     for letter in dao_precompiled_letters_still_pending_virus_check():
         # find letter in the scan bucket
         filename = generate_letter_pdf_filename(
-            letter.reference,
-            letter.created_at,
-            ignore_folder=True,
-            postage=letter.postage
+            letter.reference, letter.created_at, ignore_folder=True, postage=letter.postage
         )
 
-        if s3.file_exists(current_app.config['LETTERS_SCAN_BUCKET_NAME'], filename):
+        if s3.file_exists(current_app.config["LETTERS_SCAN_BUCKET_NAME"], filename):
             current_app.logger.warning(
-                f'Letter id {letter.id} got stuck in pending-virus-check. Sending off for scan again.'
+                f"Letter id {letter.id} got stuck in pending-virus-check. Sending off for scan again."
             )
             notify_celery.send_task(
                 name=TaskNames.SCAN_FILE,
-                kwargs={'filename': filename},
+                kwargs={"filename": filename},
                 queue=QueueNames.ANTIVIRUS,
             )
         else:
@@ -243,41 +238,43 @@ def check_if_letters_still_pending_virus_check():
 
             Notifications: {sorted(letter_ids)}"""
 
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
                 message=msg,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
                 technical_ticket=True,
-                ticket_categories=['notify_letters']
+                ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(msg)
 
 
-@notify_celery.task(name='check-if-letters-still-in-created')
+@notify_celery.task(name="check-if-letters-still-in-created")
 def check_if_letters_still_in_created():
     letters = dao_old_letters_with_created_status()
 
     if len(letters) > 0:
-        msg = "{} letters were created before 17.30 yesterday and still have 'created' status. " \
-              "Follow runbook to resolve: " \
-              "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook" \
-              "#deal-with-Letters-still-in-created.".format(len(letters))
+        msg = (
+            "{} letters were created before 17.30 yesterday and still have 'created' status. "
+            "Follow runbook to resolve: "
+            "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook"
+            "#deal-with-Letters-still-in-created.".format(len(letters))
+        )
 
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
+        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still in 'created' status",
                 message=msg,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
                 technical_ticket=True,
-                ticket_categories=['notify_letters']
+                ticket_categories=["notify_letters"],
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
             current_app.logger.error(msg)
 
 
-@notify_celery.task(name='check-for-missing-rows-in-completed-jobs')
+@notify_celery.task(name="check-for-missing-rows-in-completed-jobs")
 def check_for_missing_rows_in_completed_jobs():
     jobs = find_jobs_with_missing_rows()
     for job in jobs:
@@ -285,14 +282,13 @@ def check_for_missing_rows_in_completed_jobs():
         missing_rows = find_missing_row_for_job(job.id, job.notification_count)
         for row_to_process in missing_rows:
             row = recipient_csv[row_to_process.missing_row]
-            current_app.logger.info(
-                "Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
+            current_app.logger.info("Processing missing row: {} for job: {}".format(row_to_process.missing_row, job.id))
             process_row(row, template, job, job.service, sender_id=sender_id)
 
 
-@notify_celery.task(name='check-for-services-with-high-failure-rates-or-sending-to-tv-numbers')
+@notify_celery.task(name="check-for-services-with-high-failure-rates-or-sending-to-tv-numbers")
 def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
-    start_date = (datetime.utcnow() - timedelta(days=1))
+    start_date = datetime.utcnow() - timedelta(days=1)
     end_date = datetime.utcnow()
     message = ""
 
@@ -305,7 +301,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         )
         for service in services_with_failures:
             service_dashboard = "{}/services/{}".format(
-                current_app.config['ADMIN_BASE_URL'],
+                current_app.config["ADMIN_BASE_URL"],
                 str(service.service_id),
             )
             message += "service: {} failure rate: {},\n".format(service_dashboard, service.permanent_failure_rate)
@@ -315,7 +311,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
         )
         for service in services_sending_to_tv_numbers:
             service_dashboard = "{}/services/{}".format(
-                current_app.config['ADMIN_BASE_URL'],
+                current_app.config["ADMIN_BASE_URL"],
                 str(service.service_id),
             )
             message += "service: {} count of sms to tv numbers: {},\n".format(
@@ -325,26 +321,28 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     if services_with_failures or services_sending_to_tv_numbers:
         current_app.logger.warning(message)
 
-        if current_app.config['NOTIFY_ENVIRONMENT'] in ['live', 'production', 'test']:
-            message += ("\nYou can find instructions for this ticket in our manual:\n"
-                        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers")  # noqa
+        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+            message += (
+                "\nYou can find instructions for this ticket in our manual:\n"
+                "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
+            )  # noqa
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] High failure rates for sms spotted for services",
                 message=message,
                 ticket_type=NotifySupportTicket.TYPE_INCIDENT,
-                technical_ticket=True
+                technical_ticket=True,
             )
             zendesk_client.send_ticket_to_zendesk(ticket)
 
 
-@notify_celery.task(name='trigger-link-tests')
+@notify_celery.task(name="trigger-link-tests")
 def trigger_link_tests():
-    if current_app.config['CBC_PROXY_ENABLED']:
-        for cbc_name in current_app.config['ENABLED_CBCS']:
-            trigger_link_test.apply_async(kwargs={'provider': cbc_name}, queue=QueueNames.BROADCASTS)
+    if current_app.config["CBC_PROXY_ENABLED"]:
+        for cbc_name in current_app.config["ENABLED_CBCS"]:
+            trigger_link_test.apply_async(kwargs={"provider": cbc_name}, queue=QueueNames.BROADCASTS)
 
 
-@notify_celery.task(name='auto-expire-broadcast-messages')
+@notify_celery.task(name="auto-expire-broadcast-messages")
 def auto_expire_broadcast_messages():
     expired_broadcasts = BroadcastMessage.query.filter(
         BroadcastMessage.finishes_at <= datetime.now(),
@@ -357,30 +355,22 @@ def auto_expire_broadcast_messages():
     db.session.commit()
 
     if expired_broadcasts:
-        notify_celery.send_task(
-            name=TaskNames.PUBLISH_GOVUK_ALERTS,
-            queue=QueueNames.GOVUK_ALERTS
-        )
+        notify_celery.send_task(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
 
 
-@notify_celery.task(name='remove-yesterdays-planned-tests-on-govuk-alerts')
+@notify_celery.task(name="remove-yesterdays-planned-tests-on-govuk-alerts")
 def remove_yesterdays_planned_tests_on_govuk_alerts():
-    notify_celery.send_task(
-        name=TaskNames.PUBLISH_GOVUK_ALERTS,
-        queue=QueueNames.GOVUK_ALERTS
-    )
+    notify_celery.send_task(name=TaskNames.PUBLISH_GOVUK_ALERTS, queue=QueueNames.GOVUK_ALERTS)
 
 
-@notify_celery.task(name='delete-old-records-from-events-table')
-@cronitor('delete-old-records-from-events-table')
+@notify_celery.task(name="delete-old-records-from-events-table")
+@cronitor("delete-old-records-from-events-table")
 def delete_old_records_from_events_table():
     delete_events_before = datetime.utcnow() - timedelta(weeks=52)
     event_query = Event.query.filter(Event.created_at < delete_events_before)
 
     deleted_count = event_query.delete()
 
-    current_app.logger.info(
-        f"Deleted {deleted_count} historical events from before {delete_events_before}."
-    )
+    current_app.logger.info(f"Deleted {deleted_count} historical events from before {delete_events_before}.")
 
     db.session.commit()
