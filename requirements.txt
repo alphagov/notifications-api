@@ -22,7 +22,7 @@ bcrypt==4.0.1
     # via flask-bcrypt
 beautifulsoup4==4.11.1
     # via -r requirements.in
-billiard==3.6.4.0
+billiard==4.0.2
     # via celery
 blinker==1.5
     # via gds-metrics
