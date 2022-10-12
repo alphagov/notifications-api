@@ -7,15 +7,16 @@ Create Date: 2016-10-25 17:37:27.660723
 """
 
 # revision identifiers, used by Alembic.
-revision = '0284_0283_retry'
-down_revision = '0283_platform_admin_not_live'
+revision = "0284_0283_retry"
+down_revision = "0283_platform_admin_not_live"
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 
 def upgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE
             services
         SET
@@ -27,13 +28,17 @@ def upgrade():
             services_history.version = 1 and
             services_history.created_by_id = users.id
         ;
-    """)
+    """
+    )
+
 
 def downgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE
             services
         SET
             count_as_live = true
         ;
-    """)
+    """
+    )

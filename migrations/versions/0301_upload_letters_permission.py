@@ -5,12 +5,11 @@ Revises: 0300_migrate_org_types
 Create Date: 2019-08-05 10:49:27.467361
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0301_upload_letters_permission'
-down_revision = '0300_migrate_org_types'
+revision = "0301_upload_letters_permission"
+down_revision = "0300_migrate_org_types"
 
 
 def upgrade():

@@ -21,25 +21,25 @@ from app.notifications.notifications_ses_callback import (
 @notify_celery.task(bind=True, name="process-ses-result", max_retries=5, default_retry_delay=300)
 def process_ses_results(self, response):
     try:
-        ses_message = json.loads(response['Message'])
-        notification_type = ses_message['notificationType']
+        ses_message = json.loads(response["Message"])
+        notification_type = ses_message["notificationType"]
         bounce_message = None
 
-        if notification_type == 'Bounce':
+        if notification_type == "Bounce":
             notification_type, bounce_message = determine_notification_bounce_type(notification_type, ses_message)
-        elif notification_type == 'Complaint':
+        elif notification_type == "Complaint":
             _check_and_queue_complaint_callback_task(*handle_complaint(ses_message))
             return True
 
         aws_response_dict = get_aws_responses(notification_type)
 
-        notification_status = aws_response_dict['notification_status']
-        reference = ses_message['mail']['messageId']
+        notification_status = aws_response_dict["notification_status"]
+        reference = ses_message["mail"]["messageId"]
 
         try:
             notification = notifications_dao.dao_get_notification_or_history_by_reference(reference=reference)
         except NoResultFound:
-            message_time = iso8601.parse_date(ses_message['mail']['timestamp']).replace(tzinfo=None)
+            message_time = iso8601.parse_date(ses_message["mail"]["timestamp"]).replace(tzinfo=None)
             if datetime.utcnow() - message_time < timedelta(minutes=5):
                 current_app.logger.info(
                     f"notification not found for reference: {reference} (update to {notification_status}). "
@@ -56,24 +56,18 @@ def process_ses_results(self, response):
             current_app.logger.info(f"SES bounce for notification ID {notification.id}: {bounce_message}")
 
         if notification.status not in [NOTIFICATION_SENDING, NOTIFICATION_PENDING]:
-            notifications_dao._duplicate_update_warning(
-                notification=notification,
-                status=notification_status
-            )
+            notifications_dao._duplicate_update_warning(notification=notification, status=notification_status)
             return
         else:
             notifications_dao.dao_update_notifications_by_reference(
-                references=[reference],
-                update_dict={'status': notification_status}
+                references=[reference], update_dict={"status": notification_status}
             )
 
-        statsd_client.incr('callback.ses.{}'.format(notification_status))
+        statsd_client.incr("callback.ses.{}".format(notification_status))
 
         if notification.sent_at:
             statsd_client.timing_with_dates(
-                f'callback.ses.{notification_status}.elapsed-time',
-                datetime.utcnow(),
-                notification.sent_at
+                f"callback.ses.{notification_status}.elapsed-time", datetime.utcnow(), notification.sent_at
             )
 
         check_and_queue_callback_task(notification)
@@ -84,5 +78,5 @@ def process_ses_results(self, response):
         raise
 
     except Exception as e:
-        current_app.logger.exception('Error processing SES results: {}'.format(type(e)))
+        current_app.logger.exception("Error processing SES results: {}".format(type(e)))
         self.retry(queue=QueueNames.RETRY)

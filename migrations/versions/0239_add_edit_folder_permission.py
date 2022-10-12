@@ -5,12 +5,11 @@ Revises: 0238_add_validation_failed
 Create Date: 2018-09-03 11:24:58.773824
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0239_add_edit_folder_permission'
-down_revision = '0238_add_validation_failed'
+revision = "0239_add_edit_folder_permission"
+down_revision = "0238_add_validation_failed"
 
 
 def upgrade():

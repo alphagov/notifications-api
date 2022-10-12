@@ -11,7 +11,7 @@ post_create_email_branding_schema = {
         "logo": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
     },
-    "required": ["name"]
+    "required": ["name"],
 }
 
 post_update_email_branding_schema = {
@@ -25,5 +25,5 @@ post_update_email_branding_schema = {
         "logo": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
     },
-    "required": []
+    "required": [],
 }

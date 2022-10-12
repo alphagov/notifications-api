@@ -7,8 +7,8 @@ Create Date: 2017-05-26 14:53:18.581320
 """
 
 # revision identifiers, used by Alembic.
-revision = '0088_add_schedule_serv_perm'
-down_revision = '0087_scheduled_notifications'
+revision = "0088_add_schedule_serv_perm"
+down_revision = "0087_scheduled_notifications"
 
 from alembic import op
 

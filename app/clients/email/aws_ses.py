@@ -12,30 +12,30 @@ from app.clients.email import (
 )
 
 ses_response_map = {
-    'Permanent': {
-        "message": 'Hard bounced',
+    "Permanent": {
+        "message": "Hard bounced",
         "success": False,
-        "notification_status": 'permanent-failure',
-        "notification_statistics_status": STATISTICS_FAILURE
+        "notification_status": "permanent-failure",
+        "notification_statistics_status": STATISTICS_FAILURE,
     },
-    'Temporary': {
-        "message": 'Soft bounced',
+    "Temporary": {
+        "message": "Soft bounced",
         "success": False,
-        "notification_status": 'temporary-failure',
-        "notification_statistics_status": STATISTICS_FAILURE
+        "notification_status": "temporary-failure",
+        "notification_statistics_status": STATISTICS_FAILURE,
     },
-    'Delivery': {
-        "message": 'Delivered',
+    "Delivery": {
+        "message": "Delivered",
         "success": True,
-        "notification_status": 'delivered',
-        "notification_statistics_status": STATISTICS_DELIVERED
+        "notification_status": "delivered",
+        "notification_statistics_status": STATISTICS_DELIVERED,
     },
-    'Complaint': {
-        "message": 'Complaint',
+    "Complaint": {
+        "message": "Complaint",
         "success": True,
-        "notification_status": 'delivered',
-        "notification_statistics_status": STATISTICS_DELIVERED
-    }
+        "notification_status": "delivered",
+        "notification_statistics_status": STATISTICS_DELIVERED,
+    },
 }
 
 
@@ -52,66 +52,56 @@ class AwsSesClientThrottlingSendRateException(AwsSesClientException):
 
 
 class AwsSesClient(EmailClient):
-    '''
+    """
     Amazon SES email client.
-    '''
+    """
 
     def init_app(self, region, statsd_client, *args, **kwargs):
-        self._client = boto3.client('ses', region_name=region)
+        self._client = boto3.client("ses", region_name=region)
         super(AwsSesClient, self).__init__(*args, **kwargs)
         self.statsd_client = statsd_client
 
     @property
     def name(self):
-        return 'ses'
+        return "ses"
 
-    def send_email(self,
-                   source,
-                   to_addresses,
-                   subject,
-                   body,
-                   html_body='',
-                   reply_to_address=None):
+    def send_email(self, source, to_addresses, subject, body, html_body="", reply_to_address=None):
         try:
             if isinstance(to_addresses, str):
                 to_addresses = [to_addresses]
 
             reply_to_addresses = [reply_to_address] if reply_to_address else []
 
-            body = {
-                'Text': {'Data': body}
-            }
+            body = {"Text": {"Data": body}}
 
             if html_body:
-                body.update({
-                    'Html': {'Data': html_body}
-                })
+                body.update({"Html": {"Data": html_body}})
 
             start_time = monotonic()
             response = self._client.send_email(
                 Source=source,
                 Destination={
-                    'ToAddresses': [punycode_encode_email(addr) for addr in to_addresses],
-                    'CcAddresses': [],
-                    'BccAddresses': []
+                    "ToAddresses": [punycode_encode_email(addr) for addr in to_addresses],
+                    "CcAddresses": [],
+                    "BccAddresses": [],
                 },
                 Message={
-                    'Subject': {
-                        'Data': subject,
+                    "Subject": {
+                        "Data": subject,
                     },
-                    'Body': body
+                    "Body": body,
                 },
-                ReplyToAddresses=[punycode_encode_email(addr) for addr in reply_to_addresses]
+                ReplyToAddresses=[punycode_encode_email(addr) for addr in reply_to_addresses],
             )
         except botocore.exceptions.ClientError as e:
             self.statsd_client.incr("clients.ses.error")
 
             # http://docs.aws.amazon.com/ses/latest/DeveloperGuide/api-error-codes.html
-            if e.response['Error']['Code'] == 'InvalidParameterValue':
-                raise EmailClientNonRetryableException(e.response['Error']['Message'])
+            if e.response["Error"]["Code"] == "InvalidParameterValue":
+                raise EmailClientNonRetryableException(e.response["Error"]["Message"])
             elif (
-                e.response['Error']['Code'] == 'Throttling'
-                and e.response['Error']['Message'] == 'Maximum sending rate exceeded.'
+                e.response["Error"]["Code"] == "Throttling"
+                and e.response["Error"]["Message"] == "Maximum sending rate exceeded."
             ):
                 raise AwsSesClientThrottlingSendRateException(str(e))
             else:
@@ -125,10 +115,10 @@ class AwsSesClient(EmailClient):
             current_app.logger.info("AWS SES request finished in {}".format(elapsed_time))
             self.statsd_client.timing("clients.ses.request-time", elapsed_time)
             self.statsd_client.incr("clients.ses.success")
-            return response['MessageId']
+            return response["MessageId"]
 
 
 def punycode_encode_email(email_address):
     # only the hostname should ever be punycode encoded.
-    local, hostname = email_address.split('@')
-    return '{}@{}'.format(local, hostname.encode('idna').decode('utf-8'))
+    local, hostname = email_address.split("@")
+    return "{}@{}".format(local, hostname.encode("idna").decode("utf-8"))

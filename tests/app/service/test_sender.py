@@ -7,17 +7,11 @@ from app.service.sender import send_notification_to_service_users
 from tests.app.db import create_service, create_template, create_user
 
 
-@pytest.mark.parametrize('notification_type', [
-    EMAIL_TYPE,
-    SMS_TYPE
-])
+@pytest.mark.parametrize("notification_type", [EMAIL_TYPE, SMS_TYPE])
 def test_send_notification_to_service_users_persists_notifications_correctly(
-    notify_service,
-    notification_type,
-    sample_service,
-    mocker
+    notify_service, notification_type, sample_service, mocker
 ):
-    mocker.patch('app.service.sender.send_notification_to_queue')
+    mocker.patch("app.service.sender.send_notification_to_queue")
 
     user = sample_service.users[0]
     template = create_template(sample_service, template_type=notification_type)
@@ -28,19 +22,15 @@ def test_send_notification_to_service_users_persists_notifications_correctly(
 
     assert Notification.query.count() == 1
     assert notification.to == to
-    assert str(notification.service_id) == current_app.config['NOTIFY_SERVICE_ID']
+    assert str(notification.service_id) == current_app.config["NOTIFY_SERVICE_ID"]
     assert notification.template.id == template.id
     assert notification.template.template_type == notification_type
     assert notification.notification_type == notification_type
     assert notification.reply_to_text == notify_service.get_default_reply_to_email_address()
 
 
-def test_send_notification_to_service_users_sends_to_queue(
-    notify_service,
-    sample_service,
-    mocker
-):
-    send_mock = mocker.patch('app.service.sender.send_notification_to_queue')
+def test_send_notification_to_service_users_sends_to_queue(notify_service, sample_service, mocker):
+    send_mock = mocker.patch("app.service.sender.send_notification_to_queue")
 
     template = create_template(sample_service, template_type=EMAIL_TYPE)
     send_notification_to_service_users(service_id=sample_service.id, template_id=template.id)
@@ -50,41 +40,34 @@ def test_send_notification_to_service_users_sends_to_queue(
 
 
 def test_send_notification_to_service_users_includes_user_fields_in_personalisation(
-    notify_service,
-    sample_service,
-    mocker
+    notify_service, sample_service, mocker
 ):
-    persist_mock = mocker.patch('app.service.sender.persist_notification')
-    mocker.patch('app.service.sender.send_notification_to_queue')
+    persist_mock = mocker.patch("app.service.sender.persist_notification")
+    mocker.patch("app.service.sender.send_notification_to_queue")
 
     user = sample_service.users[0]
 
     template = create_template(sample_service, template_type=EMAIL_TYPE)
     send_notification_to_service_users(
-        service_id=sample_service.id,
-        template_id=template.id,
-        include_user_fields=['name', 'email_address', 'state']
+        service_id=sample_service.id, template_id=template.id, include_user_fields=["name", "email_address", "state"]
     )
 
     persist_call = persist_mock.call_args_list[0][1]
 
     assert len(persist_mock.call_args_list) == 1
-    assert persist_call['personalisation'] == {
-        'name': user.name,
-        'email_address': user.email_address,
-        'state': user.state,
+    assert persist_call["personalisation"] == {
+        "name": user.name,
+        "email_address": user.email_address,
+        "state": user.state,
     }
 
 
-def test_send_notification_to_service_users_sends_to_active_users_only(
-    notify_service,
-    mocker
-):
-    mocker.patch('app.service.sender.send_notification_to_queue')
+def test_send_notification_to_service_users_sends_to_active_users_only(notify_service, mocker):
+    mocker.patch("app.service.sender.send_notification_to_queue")
 
-    first_active_user = create_user(email='foo@bar.com', state='active')
-    second_active_user = create_user(email='foo1@bar.com', state='active')
-    pending_user = create_user(email='foo2@bar.com', state='pending')
+    first_active_user = create_user(email="foo@bar.com", state="active")
+    second_active_user = create_user(email="foo1@bar.com", state="active")
+    pending_user = create_user(email="foo2@bar.com", state="pending")
     service = create_service(user=first_active_user)
     dao_add_user_to_service(service, second_active_user)
     dao_add_user_to_service(service, pending_user)

@@ -9,15 +9,14 @@ Create Date: 2017-05-10 16:06:04.070874
 # revision identifiers, used by Alembic.
 from datetime import datetime
 
+import sqlalchemy as sa
+from alembic import op
 from flask import current_app
 
-from alembic import op
-import sqlalchemy as sa
+revision = "0082_add_go_live_template"
+down_revision = "0081_noti_status_as_enum"
 
-revision = '0082_add_go_live_template'
-down_revision = '0081_noti_status_as_enum'
-
-template_id = '618185c6-3636-49cd-b7d2-6f6f5eb3bdde'
+template_id = "618185c6-3636-49cd-b7d2-6f6f5eb3bdde"
 
 
 def upgrade():
@@ -83,19 +82,19 @@ GOV.UK Notify team
 """
 
     template_name = "Automated \"You''re now live\" message"
-    template_subject = '((service name)) is now live on GOV.UK Notify'
+    template_subject = "((service name)) is now live on GOV.UK Notify"
 
     op.execute(
         template_history_insert.format(
             template_id,
             template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
@@ -103,25 +102,26 @@ GOV.UK Notify team
         template_insert.format(
             template_id,
             template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
+
 # If you are copying this migration, please remember about an insert to TemplateRedacted,
 # which was not originally included here either by mistake or because it was before TemplateRedacted existed
-    # op.execute(
-    #     """
-    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
-    #         VALUES ('{}', '{}', '{}', '{}')
-    #         ;
-    #     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
-    # )
+# op.execute(
+#     """
+#         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+#         VALUES ('{}', '{}', '{}', '{}')
+#         ;
+#     """.format(template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+# )
 
 
 def downgrade():

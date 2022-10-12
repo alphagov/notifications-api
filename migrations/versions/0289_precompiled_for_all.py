@@ -7,9 +7,8 @@ Create Date: 2019-05-13 10:44:51.867661
 """
 from alembic import op
 
-
-revision = '0289_precompiled_for_all'
-down_revision = '0288_add_go_live_user'
+revision = "0289_precompiled_for_all"
+down_revision = "0288_add_go_live_user"
 
 
 def upgrade():
@@ -19,7 +18,8 @@ def upgrade():
 
 def downgrade():
     op.execute("INSERT INTO service_permission_types values('precompiled_letter')")
-    op.execute("""
+    op.execute(
+        """
            INSERT INTO
                service_permissions (service_id, permission, created_at)
            SELECT
@@ -36,5 +36,6 @@ def downgrade():
                        permission = '{permission}'
                )
        """.format(
-        permission='precompiled_letter'
-    ))
+            permission="precompiled_letter"
+        )
+    )

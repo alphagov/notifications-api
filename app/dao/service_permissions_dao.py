@@ -4,8 +4,7 @@ from app.models import ServicePermission
 
 
 def dao_fetch_service_permissions(service_id):
-    return ServicePermission.query.filter(
-        ServicePermission.service_id == service_id).all()
+    return ServicePermission.query.filter(ServicePermission.service_id == service_id).all()
 
 
 @autocommit
@@ -16,7 +15,7 @@ def dao_add_service_permission(service_id, permission):
 
 def dao_remove_service_permission(service_id, permission):
     deleted = ServicePermission.query.filter(
-        ServicePermission.service_id == service_id,
-        ServicePermission.permission == permission).delete()
+        ServicePermission.service_id == service_id, ServicePermission.permission == permission
+    ).delete()
     db.session.commit()
     return deleted

@@ -18,40 +18,43 @@ from app.utils import get_archived_db_column_value
 
 
 def dao_get_organisations():
-    return Organisation.query.order_by(
-        Organisation.active.desc(), Organisation.name.asc()
-    ).all()
+    return Organisation.query.order_by(Organisation.active.desc(), Organisation.name.asc()).all()
 
 
 def dao_count_organisations_with_live_services():
-    return db.session.query(Organisation.id).join(Organisation.services).filter(
-        Service.active.is_(True),
-        Service.restricted.is_(False),
-        Service.count_as_live.is_(True),
-    ).distinct().count()
+    return (
+        db.session.query(Organisation.id)
+        .join(Organisation.services)
+        .filter(
+            Service.active.is_(True),
+            Service.restricted.is_(False),
+            Service.count_as_live.is_(True),
+        )
+        .distinct()
+        .count()
+    )
 
 
 def dao_get_organisation_services(organisation_id):
-    return Organisation.query.filter_by(
-        id=organisation_id
-    ).one().services
+    return Organisation.query.filter_by(id=organisation_id).one().services
 
 
 def dao_get_organisation_live_services_and_their_free_allowance(organisation_id, financial_year):
-    return db.session.query(
-        Service.id,
-        Service.name,
-        Service.active,
-        func.coalesce(AnnualBilling.free_sms_fragment_limit, 0).label('free_sms_fragment_limit')
-    ).outerjoin(
-        AnnualBilling,
-        and_(
-            Service.id == AnnualBilling.service_id,
-            AnnualBilling.financial_year_start == financial_year
+    return (
+        db.session.query(
+            Service.id,
+            Service.name,
+            Service.active,
+            func.coalesce(AnnualBilling.free_sms_fragment_limit, 0).label("free_sms_fragment_limit"),
         )
-    ).filter(
-        Service.organisation_id == organisation_id,
-        Service.restricted.is_(False),
+        .outerjoin(
+            AnnualBilling,
+            and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == financial_year),
+        )
+        .filter(
+            Service.organisation_id == organisation_id,
+            Service.restricted.is_(False),
+        )
     )
 
 
@@ -61,14 +64,11 @@ def dao_get_organisation_by_id(organisation_id):
 
 def dao_get_organisation_by_email_address(email_address):
 
-    email_address = email_address.lower().replace('.gsi.gov.uk', '.gov.uk')
+    email_address = email_address.lower().replace(".gsi.gov.uk", ".gov.uk")
 
     for domain in Domain.query.order_by(func.char_length(Domain.domain).desc()).all():
 
-        if (
-            email_address.endswith("@{}".format(domain.domain)) or
-            email_address.endswith(".{}".format(domain.domain))
-        ):
+        if email_address.endswith("@{}".format(domain.domain)) or email_address.endswith(".{}".format(domain.domain)):
             return Organisation.query.filter_by(id=domain.organisation_id).one()
 
     return None
@@ -81,7 +81,7 @@ def dao_get_organisation_by_service_id(service_id):
 @autocommit
 def dao_create_organisation(organisation):
     if organisation.organisation_type in NHS_ORGANISATION_TYPES:
-        organisation.email_branding_id = current_app.config['NHS_EMAIL_BRANDING_ID']
+        organisation.email_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"]
 
     db.session.add(organisation)
     db.session.commit()
@@ -93,38 +93,35 @@ def dao_create_organisation(organisation):
 @autocommit
 def dao_update_organisation(organisation_id, **kwargs):
 
-    domains = kwargs.pop('domains', None)
+    domains = kwargs.pop("domains", None)
 
-    num_updated = Organisation.query.filter_by(id=organisation_id).update(
-        kwargs
-    )
+    num_updated = Organisation.query.filter_by(id=organisation_id).update(kwargs)
 
     if isinstance(domains, list):
 
         Domain.query.filter_by(organisation_id=organisation_id).delete()
 
-        db.session.bulk_save_objects([
-            Domain(domain=domain.lower(), organisation_id=organisation_id)
-            for domain in domains
-        ])
+        db.session.bulk_save_objects(
+            [Domain(domain=domain.lower(), organisation_id=organisation_id) for domain in domains]
+        )
 
     organisation = Organisation.query.get(organisation_id)
 
-    if 'organisation_type' in kwargs:
-        _update_organisation_services(organisation, 'organisation_type', only_where_none=False)
+    if "organisation_type" in kwargs:
+        _update_organisation_services(organisation, "organisation_type", only_where_none=False)
 
-    if 'crown' in kwargs:
-        _update_organisation_services(organisation, 'crown', only_where_none=False)
+    if "crown" in kwargs:
+        _update_organisation_services(organisation, "crown", only_where_none=False)
 
-    if 'email_branding_id' in kwargs:
-        _update_organisation_services(organisation, 'email_branding')
+    if "email_branding_id" in kwargs:
+        _update_organisation_services(organisation, "email_branding")
 
         # This could be `None` to return an organisation to the default GOV.UK branding (which isn't a real brand).
-        if kwargs['email_branding_id']:
-            dao_add_email_branding_to_organisation_pool(organisation_id, kwargs['email_branding_id'])
+        if kwargs["email_branding_id"]:
+            dao_add_email_branding_to_organisation_pool(organisation_id, kwargs["email_branding_id"])
 
-    if 'letter_branding_id' in kwargs:
-        _update_organisation_services(organisation, 'letter_branding')
+    if "letter_branding_id" in kwargs:
+        _update_organisation_services(organisation, "letter_branding")
 
     return num_updated
 
@@ -157,9 +154,7 @@ def dao_archive_organisation(organisation_id):
 @autocommit
 @version_class(Service)
 def dao_add_service_to_organisation(service, organisation_id):
-    organisation = Organisation.query.filter_by(
-        id=organisation_id
-    ).one()
+    organisation = Organisation.query.filter_by(id=organisation_id).one()
 
     service.organisation_id = organisation_id
     service.organisation_type = organisation.organisation_type
@@ -169,14 +164,13 @@ def dao_add_service_to_organisation(service, organisation_id):
 
 
 def dao_get_users_for_organisation(organisation_id):
-    return db.session.query(
-        User
-    ).join(
-        User.organisations
-    ).filter(
-        Organisation.id == organisation_id,
-        User.state == 'active'
-    ).order_by(User.created_at).all()
+    return (
+        db.session.query(User)
+        .join(User.organisations)
+        .filter(Organisation.id == organisation_id, User.state == "active")
+        .order_by(User.created_at)
+        .all()
+    )
 
 
 @autocommit
@@ -205,22 +199,21 @@ def dao_add_email_branding_to_organisation_pool(organisation_id, email_branding_
 @autocommit
 def dao_add_email_branding_list_to_organisation_pool(organisation_id, email_branding_ids):
     organisation = dao_get_organisation_by_id(organisation_id)
-    email_brandings = [
-        dao_get_email_branding_by_id(branding_id)
-        for branding_id in email_branding_ids
-    ]
+    email_brandings = [dao_get_email_branding_by_id(branding_id) for branding_id in email_branding_ids]
 
     organisation.email_branding_pool.extend(email_brandings)
 
 
 def dao_get_email_branding_pool_for_organisation(organisation_id):
-    return db.session.query(
-        EmailBranding
-    ).join(
-        EmailBranding.organisations
-    ).filter(
-        Organisation.id == organisation_id,
-    ).order_by(EmailBranding.name).all()
+    return (
+        db.session.query(EmailBranding)
+        .join(EmailBranding.organisations)
+        .filter(
+            Organisation.id == organisation_id,
+        )
+        .order_by(EmailBranding.name)
+        .all()
+    )
 
 
 @autocommit
@@ -230,6 +223,7 @@ def dao_remove_email_branding_from_organisation_pool(organisation_id, email_bran
 
     if organisation.email_branding_id == email_branding_id:
         from app.errors import InvalidRequest
+
         raise InvalidRequest("You cannot remove an organisation's default email branding", status_code=400)
 
     organisation.email_branding_pool.remove(email_branding)

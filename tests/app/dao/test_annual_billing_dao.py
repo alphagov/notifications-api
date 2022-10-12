@@ -46,33 +46,36 @@ def test_dao_update_annual_billing_for_future_years(notify_db_session, sample_se
     assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year + 2).free_sms_fragment_limit == 9999
 
 
-@pytest.mark.parametrize('org_type, year, expected_default',
-                         [('central', 2021, 150000),
-                          ('local', 2021, 25000),
-                          ('nhs_central', 2021, 150000),
-                          ('nhs_local', 2021, 25000),
-                          ('nhs_gp', 2021, 10000),
-                          ('emergency_service', 2021, 25000),
-                          ('school_or_college', 2021, 10000),
-                          ('other', 2021, 10000),
-                          (None, 2021, 10000),
-                          ('central', 2020, 250000),
-                          ('local', 2020, 25000),
-                          ('nhs_central', 2020, 250000),
-                          ('nhs_local', 2020, 25000),
-                          ('nhs_gp', 2020, 25000),
-                          ('emergency_service', 2020, 25000),
-                          ('school_or_college', 2020, 25000),
-                          ('other', 2020, 25000),
-                          (None, 2020, 25000),
-                          ('central', 2019, 250000),
-                          ('school_or_college', 2022, 10000),
-                          ('central', 2022, 40000),
-                          ('local', 2022, 20000),
-                          ('nhs_local', 2022, 20000),
-                          ('emergency_service', 2022, 20000),
-                          ('central', 2023, 40000),
-                          ])
+@pytest.mark.parametrize(
+    "org_type, year, expected_default",
+    [
+        ("central", 2021, 150000),
+        ("local", 2021, 25000),
+        ("nhs_central", 2021, 150000),
+        ("nhs_local", 2021, 25000),
+        ("nhs_gp", 2021, 10000),
+        ("emergency_service", 2021, 25000),
+        ("school_or_college", 2021, 10000),
+        ("other", 2021, 10000),
+        (None, 2021, 10000),
+        ("central", 2020, 250000),
+        ("local", 2020, 25000),
+        ("nhs_central", 2020, 250000),
+        ("nhs_local", 2020, 25000),
+        ("nhs_gp", 2020, 25000),
+        ("emergency_service", 2020, 25000),
+        ("school_or_college", 2020, 25000),
+        ("other", 2020, 25000),
+        (None, 2020, 25000),
+        ("central", 2019, 250000),
+        ("school_or_college", 2022, 10000),
+        ("central", 2022, 40000),
+        ("local", 2022, 20000),
+        ("nhs_local", 2022, 20000),
+        ("emergency_service", 2022, 20000),
+        ("central", 2023, 40000),
+    ],
+)
 def test_set_default_free_allowance_for_service(notify_db_session, org_type, year, expected_default):
 
     service = create_service(organisation_type=org_type)
@@ -86,19 +89,15 @@ def test_set_default_free_allowance_for_service(notify_db_session, org_type, yea
     assert annual_billing[0].free_sms_fragment_limit == expected_default
 
 
-@freeze_time('2021-03-29 14:02:00')
+@freeze_time("2021-03-29 14:02:00")
 def test_set_default_free_allowance_for_service_using_correct_year(sample_service, mocker):
-    mock_dao = mocker.patch('app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year')
+    mock_dao = mocker.patch("app.dao.annual_billing_dao.dao_create_or_update_annual_billing_for_year")
     set_default_free_allowance_for_service(service=sample_service, year_start=None)
 
-    mock_dao.assert_called_once_with(
-        sample_service.id,
-        25000,
-        2020
-    )
+    mock_dao.assert_called_once_with(sample_service.id, 25000, 2020)
 
 
-@freeze_time('2021-04-01 14:02:00')
+@freeze_time("2021-04-01 14:02:00")
 def test_set_default_free_allowance_for_service_updates_existing_year(sample_service):
     set_default_free_allowance_for_service(service=sample_service, year_start=None)
     annual_billing = AnnualBilling.query.all()
@@ -107,7 +106,7 @@ def test_set_default_free_allowance_for_service_updates_existing_year(sample_ser
     assert annual_billing[0].service_id == sample_service.id
     assert annual_billing[0].free_sms_fragment_limit == 10000
 
-    sample_service.organisation_type = 'central'
+    sample_service.organisation_type = "central"
 
     set_default_free_allowance_for_service(service=sample_service, year_start=None)
     annual_billing = AnnualBilling.query.all()

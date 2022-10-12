@@ -5,12 +5,11 @@ Revises: 0262_remove_edit_folders
 Create Date: 2019-02-15 14:38:13.823432
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0263_remove_edit_folders_2'
-down_revision = '0262_remove_edit_folders'
+revision = "0263_remove_edit_folders_2"
+down_revision = "0262_remove_edit_folders"
 
 
 def upgrade():

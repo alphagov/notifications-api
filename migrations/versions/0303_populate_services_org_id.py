@@ -5,12 +5,12 @@ Revises: 0302_add_org_id_to_services
 Create Date: 2019-08-06 09:43:57.993510
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.sql import text
 
-revision = '0303_populate_services_org_id'
-down_revision = '0302_add_org_id_to_services'
+revision = "0303_populate_services_org_id"
+down_revision = "0302_add_org_id_to_services"
 
 
 def upgrade():
@@ -28,7 +28,7 @@ def upgrade():
             UPDATE services_history
                SET organisation_id = :organisation_id
             WHERE id = :service_id
-              AND version = (select max(version) from services_history sh2 where id = services_history.id); 
+              AND version = (select max(version) from services_history sh2 where id = services_history.id);
         """
         conn.execute(text(history_sql), service_id=str(x.service_id), organisation_id=str(x.organisation_id))
 

@@ -7,11 +7,12 @@ Create Date: 2019-10-22 17:30
 
 """
 import uuid
+
 from alembic import op
 from sqlalchemy.sql import text
 
-revision = '0308_delete_loadtesting_provider'
-down_revision = '0307_delete_dm_datetime'
+revision = "0308_delete_loadtesting_provider"
+down_revision = "0307_delete_dm_datetime"
 
 
 def upgrade():
@@ -23,7 +24,8 @@ def upgrade():
 def downgrade():
     conn = op.get_bind()
     conn.execute(
-        text("""
+        text(
+            """
         INSERT INTO
         provider_details
         (id, display_name, identifier, priority, notification_type, active, version, supports_international)
@@ -34,6 +36,7 @@ def downgrade():
         (id, display_name, identifier, priority, notification_type, active, version, supports_international)
         VALUES
         (:uuid, 'Loadtesting', 'loadtesting', 100, 'sms', true, 1, false)
-        """),
-        uuid=uuid.uuid4()
+        """
+        ),
+        uuid=uuid.uuid4(),
     )

@@ -8,7 +8,7 @@ post_create_webauthn_credential_schema = {
         "registration_response": {"type": "string", "minLength": 1},
     },
     "required": ["name", "credential_data", "registration_response"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }
 
 post_update_webauthn_credential_schema = {
@@ -19,5 +19,5 @@ post_update_webauthn_credential_schema = {
         "name": {"type": "string", "minLength": 1},
     },
     "required": ["name"],
-    "additionalProperties": False
+    "additionalProperties": False,
 }

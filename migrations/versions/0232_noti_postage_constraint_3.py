@@ -7,9 +7,8 @@ Create Date: 2018-09-19 11:42:52.229430
 """
 from alembic import op
 
-
-revision = '0230_noti_postage_constraint_3'
-down_revision = '0230_noti_postage_constraint_2'
+revision = "0230_noti_postage_constraint_3"
+down_revision = "0230_noti_postage_constraint_2"
 
 
 def upgrade():

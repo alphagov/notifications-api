@@ -8,7 +8,7 @@ create_or_update_free_sms_fragment_limit_schema = {
     "properties": {
         "free_sms_fragment_limit": {"type": "integer", "minimum": 0},
     },
-    "required": ["free_sms_fragment_limit"]
+    "required": ["free_sms_fragment_limit"],
 }
 
 
@@ -26,7 +26,7 @@ def serialize_ft_billing_remove_emails(rows):
             "charged_units": row.charged_units,
         }
         for row in rows
-        if row.notification_type != 'email'
+        if row.notification_type != "email"
     ]
 
 

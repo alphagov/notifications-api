@@ -76,7 +76,7 @@ post_broadcast_schema = {
                 #    "Ack",
                 #    "Error",
             ],
-        }
+        },
     },
     "definitions": {
         "area": {
@@ -113,9 +113,7 @@ post_broadcast_schema = {
         },
         "coordinatePair": {
             "type": "array",
-            "items": {
-                "type": "number"
-            },
+            "items": {"type": "number"},
             "minItems": 2,
             "maxItems": 2,
         },

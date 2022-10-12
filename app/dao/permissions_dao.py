@@ -21,11 +21,11 @@ default_service_permissions = [
     SEND_EMAILS,
     SEND_LETTERS,
     MANAGE_API_KEYS,
-    VIEW_ACTIVITY]
+    VIEW_ACTIVITY,
+]
 
 
 class PermissionDAO(DAOClass):
-
     class Meta:
         model = Permission
 
@@ -60,12 +60,15 @@ class PermissionDAO(DAOClass):
                 db.session.commit()
 
     def get_permissions_by_user_id(self, user_id):
-        return self.Meta.model.query.filter_by(user_id=user_id)\
-                                    .join(Permission.service).filter_by(active=True).all()
+        return self.Meta.model.query.filter_by(user_id=user_id).join(Permission.service).filter_by(active=True).all()
 
     def get_permissions_by_user_id_and_service_id(self, user_id, service_id):
-        return self.Meta.model.query.filter_by(user_id=user_id)\
-                                    .join(Permission.service).filter_by(active=True, id=service_id).all()
+        return (
+            self.Meta.model.query.filter_by(user_id=user_id)
+            .join(Permission.service)
+            .filter_by(active=True, id=service_id)
+            .all()
+        )
 
 
 permission_dao = PermissionDAO()

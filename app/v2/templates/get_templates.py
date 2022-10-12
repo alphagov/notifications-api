@@ -7,12 +7,10 @@ from app.v2.templates import v2_templates_blueprint
 from app.v2.templates.templates_schemas import get_all_template_request
 
 
-@v2_templates_blueprint.route("", methods=['GET'])
+@v2_templates_blueprint.route("", methods=["GET"])
 def get_templates():
     data = validate(request.args.to_dict(), get_all_template_request)
 
-    templates = templates_dao.dao_get_all_templates_for_service(authenticated_service.id, data.get('type'))
+    templates = templates_dao.dao_get_all_templates_for_service(authenticated_service.id, data.get("type"))
 
-    return jsonify(
-        templates=[template.serialize_for_v2() for template in templates]
-    ), 200
+    return jsonify(templates=[template.serialize_for_v2() for template in templates]), 200

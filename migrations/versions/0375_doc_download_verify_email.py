@@ -5,12 +5,11 @@ Revises: 0374_email_branding_to_org
 Create Date: 2020-09-13 28:17:17.110495
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0375_doc_download_verify_email'
-down_revision = '0374_email_branding_to_org'
+revision = "0375_doc_download_verify_email"
+down_revision = "0374_email_branding_to_org"
 
 
 def upgrade():

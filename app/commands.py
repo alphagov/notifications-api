@@ -71,7 +71,7 @@ from app.models import (
 from app.utils import get_london_midnight_in_utc
 
 
-@click.group(name='command', help='Additional commands')
+@click.group(name="command", help="Additional commands")
 def command_group():
     pass
 
@@ -88,7 +88,7 @@ class notify_command:
 
         # in the test environment the app context is already provided and having
         # another will lead to the test db connection being closed prematurely
-        if os.getenv('NOTIFY_ENVIRONMENT', '') != 'test':
+        if os.getenv("NOTIFY_ENVIRONMENT", "") != "test":
             # with_appcontext ensures the config is loaded, db connected, etc.
             decorators.insert(0, flask.cli.with_appcontext)
 
@@ -104,9 +104,14 @@ class notify_command:
 
 
 @notify_command()
-@click.option('-u', '--user_email_prefix', required=True, help="""
+@click.option(
+    "-u",
+    "--user_email_prefix",
+    required=True,
+    help="""
     Functional test user email prefix. eg "notify-test-preview"
-""")  # noqa
+""",
+)  # noqa
 def purge_functional_test_data(user_email_prefix):
     """
     Remove non-seeded functional test data
@@ -118,7 +123,7 @@ def purge_functional_test_data(user_email_prefix):
         # Make sure the full email includes a uuid in it
         # Just in case someone decides to use a similar email address.
         try:
-            uuid.UUID(usr.email_address.split("@")[0].split('+')[1])
+            uuid.UUID(usr.email_address.split("@")[0].split("+")[1])
         except ValueError:
             print("Skipping {} as the user email doesn't contain a UUID.".format(usr.email_address))
         else:
@@ -157,7 +162,7 @@ def backfill_notification_statuses():
 
     while len(result) > 0:
         db.session.execute(update)
-        print('commit {} updates at {}'.format(LIMIT, datetime.utcnow()))
+        print("commit {} updates at {}".format(LIMIT, datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -174,7 +179,7 @@ def update_notification_international_flag():
 
     while len(result) > 0:
         db.session.execute(update)
-        print('commit 250000 updates at {}'.format(datetime.utcnow()))
+        print("commit 250000 updates at {}".format(datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
@@ -184,7 +189,7 @@ def update_notification_international_flag():
     result_history = db.session.execute(subq_history).fetchall()
     while len(result_history) > 0:
         db.session.execute(update_history)
-        print('commit 250000 updates at {}'.format(datetime.utcnow()))
+        print("commit 250000 updates at {}".format(datetime.utcnow()))
         db.session.commit()
         result_history = db.session.execute(subq_history).fetchall()
 
@@ -207,26 +212,31 @@ def fix_notification_statuses_not_in_sync():
 
     while len(result) > 0:
         db.session.execute(update)
-        print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
+        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq).fetchall()
 
-    subq_hist = "SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {}" \
-        .format(MAX)
+    subq_hist = (
+        "SELECT id FROM notification_history WHERE cast (status as text) != notification_status LIMIT {}".format(MAX)
+    )
     update = "UPDATE notification_history SET notification_status = status WHERE id in ({})".format(subq_hist)
     result = db.session.execute(subq_hist).fetchall()
 
     while len(result) > 0:
         db.session.execute(update)
-        print('Committed {} updates at {}'.format(len(result), datetime.utcnow()))
+        print("Committed {} updates at {}".format(len(result), datetime.utcnow()))
         db.session.commit()
         result = db.session.execute(subq_hist).fetchall()
 
 
-@notify_command(name='insert-inbound-numbers')
-@click.option('-f', '--file_name', required=True,
-              help="""Full path of the file to upload, file is a contains inbound numbers,
-              one number per line. The number must have the format of 07... not 447....""")
+@notify_command(name="insert-inbound-numbers")
+@click.option(
+    "-f",
+    "--file_name",
+    required=True,
+    help="""Full path of the file to upload, file is a contains inbound numbers,
+              one number per line. The number must have the format of 07... not 447....""",
+)
 def insert_inbound_numbers_from_file(file_name):
     print("Inserting inbound numbers from {}".format(file_name))
     with open(file_name) as file:
@@ -240,17 +250,27 @@ def insert_inbound_numbers_from_file(file_name):
                 db.session.commit()
 
 
-@notify_command(name='replay-create-pdf-for-templated-letter')
-@click.option('-n', '--notification_id', type=click.UUID, required=True,
-              help="Notification id of the letter that needs the get_pdf_for_templated_letter task replayed")
+@notify_command(name="replay-create-pdf-for-templated-letter")
+@click.option(
+    "-n",
+    "--notification_id",
+    type=click.UUID,
+    required=True,
+    help="Notification id of the letter that needs the get_pdf_for_templated_letter task replayed",
+)
 def replay_create_pdf_for_templated_letter(notification_id):
     print("Create task to get_pdf_for_templated_letter for notification: {}".format(notification_id))
     get_pdf_for_templated_letter.apply_async([str(notification_id)], queue=QueueNames.CREATE_LETTERS_PDF)
 
 
-@notify_command(name='recreate-pdf-for-precompiled-or-uploaded-letter')
-@click.option('-n', '--notification_id', type=click.UUID, required=True,
-              help="Notification ID of the precompiled or uploaded letter")
+@notify_command(name="recreate-pdf-for-precompiled-or-uploaded-letter")
+@click.option(
+    "-n",
+    "--notification_id",
+    type=click.UUID,
+    required=True,
+    help="Notification ID of the precompiled or uploaded letter",
+)
 def recreate_pdf_for_precompiled_or_uploaded_letter(notification_id):
     print(f"Call resanitise_pdf task for notification: {notification_id}")
     resanitise_pdf.apply_async([str(notification_id)], queue=QueueNames.LETTERS)
@@ -260,31 +280,29 @@ def setup_commands(application):
     application.cli.add_command(command_group)
 
 
-@notify_command(name='rebuild-ft-billing-for-day')
-@click.option('-s', '--service_id', required=False, type=click.UUID)
-@click.option('-d', '--day', help="The date to recalculate, as YYYY-MM-DD", required=True,
-              type=click_dt(format='%Y-%m-%d'))
+@notify_command(name="rebuild-ft-billing-for-day")
+@click.option("-s", "--service_id", required=False, type=click.UUID)
+@click.option(
+    "-d", "--day", help="The date to recalculate, as YYYY-MM-DD", required=True, type=click_dt(format="%Y-%m-%d")
+)
 def rebuild_ft_billing_for_day(service_id, day):
     """
     Rebuild the data in ft_billing for the given service_id and date
     """
+
     def rebuild_ft_data(process_day, service):
         deleted_rows = delete_billing_data_for_service_for_day(process_day, service)
-        current_app.logger.info('deleted {} existing billing rows for {} on {}'.format(
-            deleted_rows,
-            service,
-            process_day
-        ))
+        current_app.logger.info(
+            "deleted {} existing billing rows for {} on {}".format(deleted_rows, service, process_day)
+        )
         transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
         # transit_data = every row that should exist
         for data in transit_data:
             # upsert existing rows
             update_fact_billing(data, process_day)
-        current_app.logger.info('added/updated {} billing rows for {} on {}'.format(
-            len(transit_data),
-            service,
-            process_day
-        ))
+        current_app.logger.info(
+            "added/updated {} billing rows for {} on {}".format(len(transit_data), service, process_day)
+        )
 
     if service_id:
         # confirm the service exists
@@ -292,21 +310,28 @@ def rebuild_ft_billing_for_day(service_id, day):
         rebuild_ft_data(day, service_id)
     else:
         services = get_service_ids_that_need_billing_populated(
-            get_london_midnight_in_utc(day),
-            get_london_midnight_in_utc(day + timedelta(days=1))
+            get_london_midnight_in_utc(day), get_london_midnight_in_utc(day + timedelta(days=1))
         )
         for row in services:
             rebuild_ft_data(day, row.service_id)
 
 
-@notify_command(name='bulk-invite-user-to-service')
-@click.option('-f', '--file_name', required=True,
-              help="Full path of the file containing a list of email address for people to invite to a service")
-@click.option('-s', '--service_id', required=True, help='The id of the service that the invite is for')
-@click.option('-u', '--user_id', required=True, help='The id of the user that the invite is from')
-@click.option('-a', '--auth_type', required=False,
-              help='The authentication type for the user, sms_auth or email_auth. Defaults to sms_auth if not provided')
-@click.option('-p', '--permissions', required=True, help='Comma separated list of permissions.')
+@notify_command(name="bulk-invite-user-to-service")
+@click.option(
+    "-f",
+    "--file_name",
+    required=True,
+    help="Full path of the file containing a list of email address for people to invite to a service",
+)
+@click.option("-s", "--service_id", required=True, help="The id of the service that the invite is for")
+@click.option("-u", "--user_id", required=True, help="The id of the user that the invite is from")
+@click.option(
+    "-a",
+    "--auth_type",
+    required=False,
+    help="The authentication type for the user, sms_auth or email_auth. Defaults to sms_auth if not provided",
+)
+@click.option("-p", "--permissions", required=True, help="Comma separated list of permissions.")
 def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permissions):
     #  permissions
     #  manage_users | manage_templates | manage_settings
@@ -316,21 +341,22 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
     #  view_activity
     # "send_texts,send_emails,send_letters,view_activity"
     from app.service_invite.rest import create_invited_user
+
     file = open(file_name)
     for email_address in file:
         data = {
-            'service': service_id,
-            'email_address': email_address.strip(),
-            'from_user': user_id,
-            'permissions': permissions,
-            'auth_type': auth_type,
-            'invite_link_host': current_app.config['ADMIN_BASE_URL']
+            "service": service_id,
+            "email_address": email_address.strip(),
+            "from_user": user_id,
+            "permissions": permissions,
+            "auth_type": auth_type,
+            "invite_link_host": current_app.config["ADMIN_BASE_URL"],
         }
         with current_app.test_request_context(
-            path='/service/{}/invite/'.format(service_id),
-            method='POST',
+            path="/service/{}/invite/".format(service_id),
+            method="POST",
             data=json.dumps(data),
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         ):
             try:
                 response = create_invited_user(service_id)
@@ -343,17 +369,13 @@ def bulk_invite_user_to_service(file_name, service_id, user_id, auth_type, permi
     file.close()
 
 
-@notify_command(name='populate-notification-postage')
+@notify_command(name="populate-notification-postage")
 @click.option(
-    '-s',
-    '--start_date',
-    default=datetime(2017, 2, 1),
-    help="start date inclusive",
-    type=click_dt(format='%Y-%m-%d')
+    "-s", "--start_date", default=datetime(2017, 2, 1), help="start date inclusive", type=click_dt(format="%Y-%m-%d")
 )
 @statsd(namespace="tasks")
 def populate_notification_postage(start_date):
-    current_app.logger.info('populating historical notification postage')
+    current_app.logger.info("populating historical notification postage")
 
     total_updated = 0
 
@@ -361,8 +383,7 @@ def populate_notification_postage(start_date):
         # process in ten day chunks
         end_date = start_date + timedelta(days=10)
 
-        sql = \
-            """
+        sql = """
             UPDATE {}
             SET postage = 'second'
             WHERE notification_type = 'letter' AND
@@ -373,28 +394,31 @@ def populate_notification_postage(start_date):
         execution_start = datetime.utcnow()
 
         if end_date > datetime.utcnow() - timedelta(days=8):
-            print('Updating notifications table as well')
-            db.session.execute(sql.format('notifications'), {'start': start_date, 'end': end_date})
+            print("Updating notifications table as well")
+            db.session.execute(sql.format("notifications"), {"start": start_date, "end": end_date})
 
-        result = db.session.execute(sql.format('notification_history'), {'start': start_date, 'end': end_date})
+        result = db.session.execute(sql.format("notification_history"), {"start": start_date, "end": end_date})
         db.session.commit()
 
-        current_app.logger.info('notification postage took {}ms. Migrated {} rows for {} to {}'.format(
-            datetime.utcnow() - execution_start, result.rowcount, start_date, end_date))
+        current_app.logger.info(
+            "notification postage took {}ms. Migrated {} rows for {} to {}".format(
+                datetime.utcnow() - execution_start, result.rowcount, start_date, end_date
+            )
+        )
 
         start_date += timedelta(days=10)
 
         total_updated += result.rowcount
 
-    current_app.logger.info('Total inserted/updated records = {}'.format(total_updated))
+    current_app.logger.info("Total inserted/updated records = {}".format(total_updated))
 
 
-@notify_command(name='archive-jobs-created-between-dates')
-@click.option('-s', '--start_date', required=True, help="start date inclusive", type=click_dt(format='%Y-%m-%d'))
-@click.option('-e', '--end_date', required=True, help="end date inclusive", type=click_dt(format='%Y-%m-%d'))
+@notify_command(name="archive-jobs-created-between-dates")
+@click.option("-s", "--start_date", required=True, help="start date inclusive", type=click_dt(format="%Y-%m-%d"))
+@click.option("-e", "--end_date", required=True, help="end date inclusive", type=click_dt(format="%Y-%m-%d"))
 @statsd(namespace="tasks")
 def update_jobs_archived_flag(start_date, end_date):
-    current_app.logger.info('Archiving jobs created between {} to {}'.format(start_date, end_date))
+    current_app.logger.info("Archiving jobs created between {} to {}".format(start_date, end_date))
 
     process_date = start_date
     total_updated = 0
@@ -410,17 +434,20 @@ def update_jobs_archived_flag(start_date, end_date):
 
         result = db.session.execute(sql, {"start": process_date, "end": process_date + timedelta(days=1)})
         db.session.commit()
-        current_app.logger.info('jobs: --- Completed took {}ms. Archived {} jobs for {}'.format(
-            datetime.now() - start_time, result.rowcount, process_date))
+        current_app.logger.info(
+            "jobs: --- Completed took {}ms. Archived {} jobs for {}".format(
+                datetime.now() - start_time, result.rowcount, process_date
+            )
+        )
 
         process_date += timedelta(days=1)
 
         total_updated += result.rowcount
-    current_app.logger.info('Total archived jobs = {}'.format(total_updated))
+    current_app.logger.info("Total archived jobs = {}".format(total_updated))
 
 
-@notify_command(name='update-emails-to-remove-gsi')
-@click.option('-s', '--service_id', required=True, help="service id. Update all user.email_address to remove .gsi")
+@notify_command(name="update-emails-to-remove-gsi")
+@click.option("-s", "--service_id", required=True, help="service id. Update all user.email_address to remove .gsi")
 @statsd(namespace="tasks")
 def update_emails_to_remove_gsi(service_id):
     users_to_update = """SELECT u.id user_id, u.name, email_address, s.id, s.name
@@ -430,11 +457,11 @@ def update_emails_to_remove_gsi(service_id):
                           WHERE s.id = :service_id
                             AND u.email_address ilike ('%.gsi.gov.uk%')
     """
-    results = db.session.execute(users_to_update, {'service_id': service_id})
+    results = db.session.execute(users_to_update, {"service_id": service_id})
     print("Updating {} users.".format(results.rowcount))
 
     for user in results:
-        print('User with id {} updated'.format(user.user_id))
+        print("User with id {} updated".format(user.user_id))
 
         update_stmt = """
         UPDATE users
@@ -442,25 +469,29 @@ def update_emails_to_remove_gsi(service_id):
                updated_at = now()
          WHERE id = :user_id
         """
-        db.session.execute(update_stmt, {'user_id': str(user.user_id)})
+        db.session.execute(update_stmt, {"user_id": str(user.user_id)})
         db.session.commit()
 
 
-@notify_command(name='replay-daily-sorted-count-files')
-@click.option('-f', '--file_extension', required=False, help="File extension to search for, defaults to rs.txt")
+@notify_command(name="replay-daily-sorted-count-files")
+@click.option("-f", "--file_extension", required=False, help="File extension to search for, defaults to rs.txt")
 @statsd(namespace="tasks")
 def replay_daily_sorted_count_files(file_extension):
-    bucket_location = '{}-ftp'.format(current_app.config['NOTIFY_EMAIL_DOMAIN'])
-    for filename in s3.get_list_of_files_by_suffix(bucket_name=bucket_location,
-                                                   subfolder='root/dispatch',
-                                                   suffix=file_extension or '.rs.txt'):
+    bucket_location = "{}-ftp".format(current_app.config["NOTIFY_EMAIL_DOMAIN"])
+    for filename in s3.get_list_of_files_by_suffix(
+        bucket_name=bucket_location, subfolder="root/dispatch", suffix=file_extension or ".rs.txt"
+    ):
         print("Create task to record daily sorted counts for file: ", filename)
         record_daily_sorted_counts.apply_async([filename], queue=QueueNames.NOTIFY)
 
 
-@notify_command(name='populate-organisations-from-file')
-@click.option('-f', '--file_name', required=True,
-              help="Pipe delimited file containing organisation name, sector, crown, argeement_signed, domains")
+@notify_command(name="populate-organisations-from-file")
+@click.option(
+    "-f",
+    "--file_name",
+    required=True,
+    help="Pipe delimited file containing organisation name, sector, crown, argeement_signed, domains",
+)
 def populate_organisations_from_file(file_name):
     # [0] organisation name:: name of the organisation insert if organisation is missing.
     # [1] sector:: Central | Local | NHS only
@@ -473,17 +504,18 @@ def populate_organisations_from_file(file_name):
     # The expectation is that the organisation, organisation_to_service
     # and user_to_organisation will be cleared before running this command.
     # Ignoring duplicates allows us to run the command again with the same file or same file with new rows.
-    with open(file_name, 'r') as f:
+    with open(file_name, "r") as f:
+
         def boolean_or_none(field):
-            if field == '1':
+            if field == "1":
                 return True
-            elif field == '0':
+            elif field == "0":
                 return False
-            elif field == '':
+            elif field == "":
                 return None
 
         for line in itertools.islice(f, 1, None):
-            columns = line.split('|')
+            columns = line.split("|")
             print(columns)
             email_branding = None
             email_branding_column = columns[5].strip()
@@ -494,14 +526,13 @@ def populate_organisations_from_file(file_name):
             if len(letter_branding_column) > 0:
                 letter_branding = LetterBranding.query.filter(LetterBranding.name == letter_branding_column).one()
             data = {
-                'name': columns[0],
-                'active': True,
-                'agreement_signed': boolean_or_none(columns[3]),
-                'crown': boolean_or_none(columns[2]),
-                'organisation_type': columns[1].lower(),
-                'email_branding_id': email_branding.id if email_branding else None,
-                'letter_branding_id': letter_branding.id if letter_branding else None
-
+                "name": columns[0],
+                "active": True,
+                "agreement_signed": boolean_or_none(columns[3]),
+                "crown": boolean_or_none(columns[2]),
+                "organisation_type": columns[1].lower(),
+                "email_branding_id": email_branding.id if email_branding else None,
+                "letter_branding_id": letter_branding.id if letter_branding else None,
             }
             org = Organisation(**data)
             try:
@@ -510,7 +541,7 @@ def populate_organisations_from_file(file_name):
             except IntegrityError:
                 print("duplicate org", org.name)
                 db.session.rollback()
-            domains = columns[4].split(',')
+            domains = columns[4].split(",")
             for d in domains:
                 if len(d.strip()) > 0:
                     domain = Domain(domain=d.strip(), organisation_id=org.id)
@@ -522,10 +553,13 @@ def populate_organisations_from_file(file_name):
                         db.session.rollback()
 
 
-@notify_command(name='populate-organisation-agreement-details-from-file')
-@click.option('-f', '--file_name', required=True,
-              help="CSV file containing id, agreement_signed_version, "
-              "agreement_signed_on_behalf_of_name, agreement_signed_at")
+@notify_command(name="populate-organisation-agreement-details-from-file")
+@click.option(
+    "-f",
+    "--file_name",
+    required=True,
+    help="CSV file containing id, agreement_signed_version, " "agreement_signed_on_behalf_of_name, agreement_signed_at",
+)
 def populate_organisation_agreement_details_from_file(file_name):
     """
     The input file should be a comma separated CSV file with a header row and 4 columns
@@ -555,8 +589,8 @@ def populate_organisation_agreement_details_from_file(file_name):
             db.session.commit()
 
 
-@notify_command(name='get-letter-details-from-zips-sent-file')
-@click.argument('file_paths', required=True, nargs=-1)
+@notify_command(name="get-letter-details-from-zips-sent-file")
+@click.argument("file_paths", required=True, nargs=-1)
 @statsd(namespace="tasks")
 def get_letter_details_from_zips_sent_file(file_paths):
     """Get notification details from letters listed in zips_sent file(s)
@@ -568,19 +602,20 @@ def get_letter_details_from_zips_sent_file(file_paths):
     rows_from_file = []
 
     for path in file_paths:
-        file_contents = s3.get_s3_file(
-            bucket_name=current_app.config['LETTERS_PDF_BUCKET_NAME'],
-            file_location=path
-        )
+        file_contents = s3.get_s3_file(bucket_name=current_app.config["LETTERS_PDF_BUCKET_NAME"], file_location=path)
         rows_from_file.extend(json.loads(file_contents))
 
     notification_references = tuple(row[18:34] for row in rows_from_file)
     get_letters_data_from_references(notification_references)
 
 
-@notify_command(name='get-notification-and-service-ids-for-letters-that-failed-to-print')
-@click.option('-f', '--file_name', required=True,
-              help="""Full path of the file to upload, file should contain letter filenames, one per line""")
+@notify_command(name="get-notification-and-service-ids-for-letters-that-failed-to-print")
+@click.option(
+    "-f",
+    "--file_name",
+    required=True,
+    help="""Full path of the file to upload, file should contain letter filenames, one per line""",
+)
 def get_notification_and_service_ids_for_letters_that_failed_to_print(file_name):
     print("Getting service and notification ids for letter filenames list {}".format(file_name))
     file = open(file_name)
@@ -596,21 +631,19 @@ def get_letters_data_from_references(notification_references):
         FROM notifications
         WHERE reference IN :notification_references
         ORDER BY service_id, job_id"""
-    result = db.session.execute(sql, {'notification_references': notification_references}).fetchall()
+    result = db.session.execute(sql, {"notification_references": notification_references}).fetchall()
 
-    with open('zips_sent_details.csv', 'w') as csvfile:
+    with open("zips_sent_details.csv", "w") as csvfile:
         csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(['notification_id', 'service_id', 'template_id', 'reference', 'job_id', 'created_at'])
+        csv_writer.writerow(["notification_id", "service_id", "template_id", "reference", "job_id", "created_at"])
 
         for row in result:
             csv_writer.writerow(row)
 
 
-@notify_command(name='associate-services-to-organisations')
+@notify_command(name="associate-services-to-organisations")
 def associate_services_to_organisations():
-    services = Service.get_history_model().query.filter_by(
-        version=1
-    ).all()
+    services = Service.get_history_model().query.filter_by(version=1).all()
 
     for s in services:
         created_by_user = User.query.filter_by(id=s.created_by_id).first()
@@ -622,18 +655,17 @@ def associate_services_to_organisations():
     print("finished associating services to organisations")
 
 
-@notify_command(name='populate-service-volume-intentions')
-@click.option('-f', '--file_name', required=True,
-              help="Pipe delimited file containing service_id, SMS, email, letters")
+@notify_command(name="populate-service-volume-intentions")
+@click.option("-f", "--file_name", required=True, help="Pipe delimited file containing service_id, SMS, email, letters")
 def populate_service_volume_intentions(file_name):
     # [0] service_id
     # [1] SMS:: volume intentions for service
     # [2] Email:: volume intentions for service
     # [3] Letters:: volume intentions for service
 
-    with open(file_name, 'r') as f:
+    with open(file_name, "r") as f:
         for line in itertools.islice(f, 1, None):
-            columns = line.split(',')
+            columns = line.split(",")
             print(columns)
             service = dao_fetch_service_by_id(columns[0])
             service.volume_sms = columns[1]
@@ -643,14 +675,15 @@ def populate_service_volume_intentions(file_name):
     print("populate-service-volume-intentions complete")
 
 
-@notify_command(name='populate-go-live')
-@click.option('-f', '--file_name', required=True, help='CSV file containing live service data')
+@notify_command(name="populate-go-live")
+@click.option("-f", "--file_name", required=True, help="CSV file containing live service data")
 def populate_go_live(file_name):
     # 0 - count, 1- Link, 2- Service ID, 3- DEPT, 4- Service Name, 5- Main contact,
     # 6- Contact detail, 7-MOU, 8- LIVE date, 9- SMS, 10 - Email, 11 - Letters, 12 -CRM, 13 - Blue badge
     import csv
+
     print("Populate go live user and date")
-    with open(file_name, 'r') as f:
+    with open(file_name, "r") as f:
         rows = csv.reader(
             f,
             quoting=csv.QUOTE_MINIMAL,
@@ -661,7 +694,7 @@ def populate_go_live(file_name):
             print(index, row)
             service_id = row[2]
             go_live_email = row[6]
-            go_live_date = datetime.strptime(row[8], '%d/%m/%Y') + timedelta(hours=12)
+            go_live_date = datetime.strptime(row[8], "%d/%m/%Y") + timedelta(hours=12)
             print(service_id, go_live_email, go_live_date)
             try:
                 if go_live_email:
@@ -681,7 +714,7 @@ def populate_go_live(file_name):
             dao_update_service(service)
 
 
-@notify_command(name='fix-billable-units')
+@notify_command(name="fix-billable-units")
 def fix_billable_units():
     query = Notification.query.filter(
         Notification.notification_type == SMS_TYPE,
@@ -702,18 +735,16 @@ def fix_billable_units():
         )
         print("Updating notification: {} with {} billable_units".format(notification.id, template.fragment_count))
 
-        Notification.query.filter(
-            Notification.id == notification.id
-        ).update(
+        Notification.query.filter(Notification.id == notification.id).update(
             {"billable_units": template.fragment_count}
         )
     db.session.commit()
     print("End fix_billable_units")
 
 
-@notify_command(name='process-row-from-job')
-@click.option('-j', '--job_id', required=True, help='Job id')
-@click.option('-n', '--job_row_number', type=int, required=True, help='Job id')
+@notify_command(name="process-row-from-job")
+@click.option("-j", "--job_id", required=True, help="Job id")
+@click.option("-n", "--job_row_number", type=int, required=True, help="Job id")
 def process_row_from_job(job_id, job_row_number):
     job = dao_get_job_by_id(job_id)
     db_template = dao_get_template_by_id(job.template_id, job.template_version)
@@ -721,19 +752,21 @@ def process_row_from_job(job_id, job_row_number):
     template = db_template._as_utils_template()
 
     for row in RecipientCSV(
-            s3.get_job_from_s3(str(job.service_id), str(job.id)),
-            template_type=template.template_type,
-            placeholders=template.placeholders
+        s3.get_job_from_s3(str(job.service_id), str(job.id)),
+        template_type=template.template_type,
+        placeholders=template.placeholders,
     ).get_rows():
         if row.index == job_row_number:
             notification_id = process_row(row, template, job, job.service)
-            current_app.logger.info("Process row {} for job {} created notification_id: {}".format(
-                job_row_number, job_id, notification_id))
+            current_app.logger.info(
+                "Process row {} for job {} created notification_id: {}".format(job_row_number, job_id, notification_id)
+            )
 
 
-@notify_command(name='populate-annual-billing-with-the-previous-years-allowance')
-@click.option('-y', '--year', required=True, type=int,
-              help="""The year to populate the annual billing data for, i.e. 2019""")
+@notify_command(name="populate-annual-billing-with-the-previous-years-allowance")
+@click.option(
+    "-y", "--year", required=True, type=int, help="""The year to populate the annual billing data for, i.e. 2019"""
+)
 def populate_annual_billing_with_the_previous_years_allowance(year):
     """
     add annual_billing for given year.
@@ -754,19 +787,25 @@ def populate_annual_billing_with_the_previous_years_allowance(year):
             order by financial_year_start desc limit 1
         """
         free_allowance_rows = db.session.execute(latest_annual_billing, {"service_id": row.id})
-        free_allowance = [x[0]for x in free_allowance_rows]
+        free_allowance = [x[0] for x in free_allowance_rows]
         print("create free limit of {} for service: {}".format(free_allowance[0], row.id))
-        dao_create_or_update_annual_billing_for_year(service_id=row.id,
-                                                     free_sms_fragment_limit=free_allowance[0],
-                                                     financial_year_start=int(year))
+        dao_create_or_update_annual_billing_for_year(
+            service_id=row.id, free_sms_fragment_limit=free_allowance[0], financial_year_start=int(year)
+        )
 
 
-@notify_command(name='populate-annual-billing-with-defaults')
-@click.option('-y', '--year', required=True, type=int,
-              help="""The year to populate the annual billing data for, i.e. 2021""")
-@click.option('-m', '--missing-services-only', default=True, type=bool,
-              help="""If true then only populate services missing from annual billing for the year.
-                      If false populate the default values for all active services.""")
+@notify_command(name="populate-annual-billing-with-defaults")
+@click.option(
+    "-y", "--year", required=True, type=int, help="""The year to populate the annual billing data for, i.e. 2021"""
+)
+@click.option(
+    "-m",
+    "--missing-services-only",
+    default=True,
+    type=bool,
+    help="""If true then only populate services missing from annual billing for the year.
+                      If false populate the default values for all active services.""",
+)
 def populate_annual_billing_with_defaults(year, missing_services_only):
     """
     Add or update annual billing with free allowance defaults for all active services.
@@ -779,22 +818,22 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
     This is useful to ensure all services start the new year with the correct annual billing.
     """
     if missing_services_only:
-        active_services = Service.query.filter(
-            Service.active
-        ).outerjoin(
-            AnnualBilling, and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == year)
-        ).filter(
-            AnnualBilling.id == None  # noqa
-        ).all()
+        active_services = (
+            Service.query.filter(Service.active)
+            .outerjoin(
+                AnnualBilling, and_(Service.id == AnnualBilling.service_id, AnnualBilling.financial_year_start == year)
+            )
+            .filter(AnnualBilling.id == None)  # noqa
+            .all()
+        )
     else:
-        active_services = Service.query.filter(
-            Service.active
-        ).all()
+        active_services = Service.query.filter(Service.active).all()
     previous_year = year - 1
-    services_with_zero_free_allowance = db.session.query(AnnualBilling.service_id).filter(
-        AnnualBilling.financial_year_start == previous_year,
-        AnnualBilling.free_sms_fragment_limit == 0
-    ).all()
+    services_with_zero_free_allowance = (
+        db.session.query(AnnualBilling.service_id)
+        .filter(AnnualBilling.financial_year_start == previous_year, AnnualBilling.free_sms_fragment_limit == 0)
+        .all()
+    )
 
     for service in active_services:
 
@@ -802,42 +841,39 @@ def populate_annual_billing_with_defaults(year, missing_services_only):
         # set the free allowance for this year to 0 as well.
         # Else use the default free allowance for the service.
         if service.id in [x.service_id for x in services_with_zero_free_allowance]:
-            print(f'update service {service.id} to 0')
+            print(f"update service {service.id} to 0")
             dao_create_or_update_annual_billing_for_year(
-                service_id=service.id,
-                free_sms_fragment_limit=0,
-                financial_year_start=year
+                service_id=service.id, free_sms_fragment_limit=0, financial_year_start=year
             )
         else:
-            print(f'update service {service.id} with default')
+            print(f"update service {service.id} with default")
             set_default_free_allowance_for_service(service, year)
 
 
-@click.option('-u', '--user-id', required=True)
-@notify_command(name='local-dev-broadcast-permissions')
+@click.option("-u", "--user-id", required=True)
+@notify_command(name="local-dev-broadcast-permissions")
 def local_dev_broadcast_permissions(user_id):
-    if os.getenv('NOTIFY_ENVIRONMENT', '') not in ['development', 'test']:
-        current_app.logger.error('Can only be run in development')
+    if os.getenv("NOTIFY_ENVIRONMENT", "") not in ["development", "test"]:
+        current_app.logger.error("Can only be run in development")
         return
 
     user = User.query.filter_by(id=user_id).one()
 
     user_broadcast_services = Service.query.filter(
-        Service.permissions.any(permission='broadcast'),
-        Service.users.any(id=user_id)
+        Service.permissions.any(permission="broadcast"), Service.users.any(id=user_id)
     )
 
     for service in user_broadcast_services:
         permission_list = [
             Permission(service_id=service.id, user_id=user_id, permission=permission)
             for permission in [
-                'reject_broadcasts', 'cancel_broadcasts',  # required to create / approve
-                'create_broadcasts', 'approve_broadcasts',  # minimum for testing
-                'manage_templates',  # unlikely but might be useful
-                'view_activity',  # normally added on invite / service creation
+                "reject_broadcasts",
+                "cancel_broadcasts",  # required to create / approve
+                "create_broadcasts",
+                "approve_broadcasts",  # minimum for testing
+                "manage_templates",  # unlikely but might be useful
+                "view_activity",  # normally added on invite / service creation
             ]
         ]
 
-        permission_dao.set_user_service_permission(
-            user, service, permission_list, _commit=True, replace=True
-        )
+        permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)

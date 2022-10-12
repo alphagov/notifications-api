@@ -22,13 +22,10 @@ IN_JUN_2016 = datetime(2016, 6, 3, 23, 00, 00)
 
 def test_create_update_free_sms_fragment_limit_invalid_schema(admin_request, sample_service):
     json_response = admin_request.post(
-        'billing.create_or_update_free_sms_fragment_limit',
-        service_id=sample_service.id,
-        _data={},
-        _expected_status=400
+        "billing.create_or_update_free_sms_fragment_limit", service_id=sample_service.id, _data={}, _expected_status=400
     )
 
-    assert 'errors' in json_response
+    assert "errors" in json_response
 
 
 def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_request, sample_service):
@@ -36,10 +33,10 @@ def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_
     future_billing = create_annual_billing(sample_service.id, 1, current_year + 1)
 
     admin_request.post(
-        'billing.create_or_update_free_sms_fragment_limit',
+        "billing.create_or_update_free_sms_fragment_limit",
         service_id=sample_service.id,
-        _data={'free_sms_fragment_limit': 9999},
-        _expected_status=201
+        _data={"free_sms_fragment_limit": 9999},
+        _expected_status=201,
     )
 
     current_billing = dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year)
@@ -48,23 +45,22 @@ def test_create_free_sms_fragment_limit_current_year_updates_future_years(admin_
     assert current_billing.free_sms_fragment_limit == 9999
 
 
-@pytest.mark.parametrize('update_existing', [True, False])
+@pytest.mark.parametrize("update_existing", [True, False])
 def test_create_or_update_free_sms_fragment_limit_past_year_doenst_update_other_years(
-    admin_request,
-    sample_service,
-    update_existing
+    admin_request, sample_service, update_existing
 ):
     current_year = get_current_financial_year_start_year()
     create_annual_billing(sample_service.id, 1, current_year)
     if update_existing:
         create_annual_billing(sample_service.id, 1, current_year - 1)
 
-    data = {'financial_year_start': current_year - 1, 'free_sms_fragment_limit': 9999}
+    data = {"financial_year_start": current_year - 1, "free_sms_fragment_limit": 9999}
     admin_request.post(
-        'billing.create_or_update_free_sms_fragment_limit',
+        "billing.create_or_update_free_sms_fragment_limit",
         service_id=sample_service.id,
         _data=data,
-        _expected_status=201)
+        _expected_status=201,
+    )
 
     assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year - 1).free_sms_fragment_limit == 9999
     assert dao_get_free_sms_fragment_limit_for_year(sample_service.id, current_year).free_sms_fragment_limit == 1
@@ -75,40 +71,33 @@ def test_create_free_sms_fragment_limit_updates_existing_year(admin_request, sam
     annual_billing = create_annual_billing(sample_service.id, 1, current_year)
 
     admin_request.post(
-        'billing.create_or_update_free_sms_fragment_limit',
+        "billing.create_or_update_free_sms_fragment_limit",
         service_id=sample_service.id,
-        _data={'financial_year_start': current_year, 'free_sms_fragment_limit': 2},
-        _expected_status=201)
+        _data={"financial_year_start": current_year, "free_sms_fragment_limit": 2},
+        _expected_status=201,
+    )
 
     assert annual_billing.free_sms_fragment_limit == 2
 
 
-@freeze_time('2021-04-02 13:00')
-def test_get_free_sms_fragment_limit(
-    admin_request, sample_service
-):
+@freeze_time("2021-04-02 13:00")
+def test_get_free_sms_fragment_limit(admin_request, sample_service):
     create_annual_billing(service_id=sample_service.id, free_sms_fragment_limit=11000, financial_year_start=2021)
 
-    json_response = admin_request.get(
-        'billing.get_free_sms_fragment_limit',
-        service_id=sample_service.id
-    )
+    json_response = admin_request.get("billing.get_free_sms_fragment_limit", service_id=sample_service.id)
 
-    assert json_response['financial_year_start'] == 2021
-    assert json_response['free_sms_fragment_limit'] == 11000
+    assert json_response["financial_year_start"] == 2021
+    assert json_response["free_sms_fragment_limit"] == 11000
 
 
-@freeze_time('2021-04-02 13:00')
+@freeze_time("2021-04-02 13:00")
 def test_get_free_sms_fragment_limit_current_year_creates_new_row_if_annual_billing_is_missing(
     admin_request, sample_service
 ):
-    json_response = admin_request.get(
-        'billing.get_free_sms_fragment_limit',
-        service_id=sample_service.id
-    )
+    json_response = admin_request.get("billing.get_free_sms_fragment_limit", service_id=sample_service.id)
 
-    assert json_response['financial_year_start'] == 2021
-    assert json_response['free_sms_fragment_limit'] == 10000  # based on other organisation type
+    assert json_response["financial_year_start"] == 2021
+    assert json_response["free_sms_fragment_limit"] == 10000  # based on other organisation type
 
 
 def test_update_free_sms_fragment_limit_data(client, sample_service):
@@ -132,21 +121,19 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
     for dt in (date(2016, 4, 28), date(2016, 11, 10), date(2017, 2, 26)):
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.0162)
         create_ft_billing(bst_date=dt, template=email_template, billable_unit=0, rate=0)
-        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage="second")
 
     json_response = admin_request.get(
-        'billing.get_yearly_usage_by_monthly_from_ft_billing',
-        service_id=service.id,
-        year=2016
+        "billing.get_yearly_usage_by_monthly_from_ft_billing", service_id=service.id, year=2016
     )
 
     assert len(json_response) == 6  # 3 billed months for SMS and letters
 
-    email_rows = [row for row in json_response if row['notification_type'] == 'email']
+    email_rows = [row for row in json_response if row["notification_type"] == "email"]
     assert len(email_rows) == 0
 
-    letter_row = next(x for x in json_response if x['notification_type'] == 'letter')
-    sms_row = next(x for x in json_response if x['notification_type'] == 'sms')
+    letter_row = next(x for x in json_response if x["notification_type"] == "letter")
+    sms_row = next(x for x in json_response if x["notification_type"] == "sms")
 
     assert letter_row["month"] == "April"
     assert letter_row["notification_type"] == "letter"
@@ -172,22 +159,16 @@ def test_get_yearly_usage_by_monthly_from_ft_billing(admin_request, notify_db_se
 
 def test_get_yearly_billing_usage_summary_from_ft_billing_returns_400_if_missing_year(admin_request, sample_service):
     json_response = admin_request.get(
-        'billing.get_yearly_billing_usage_summary_from_ft_billing',
-        service_id=sample_service.id,
-        _expected_status=400
+        "billing.get_yearly_billing_usage_summary_from_ft_billing", service_id=sample_service.id, _expected_status=400
     )
-    assert json_response == {
-        'message': 'No valid year provided', 'result': 'error'
-    }
+    assert json_response == {"message": "No valid year provided", "result": "error"}
 
 
 def test_get_yearly_billing_usage_summary_from_ft_billing_returns_empty_list_if_no_billing_data(
     admin_request, sample_service
 ):
     json_response = admin_request.get(
-        'billing.get_yearly_billing_usage_summary_from_ft_billing',
-        service_id=sample_service.id,
-        year=2016
+        "billing.get_yearly_billing_usage_summary_from_ft_billing", service_id=sample_service.id, year=2016
     )
     assert json_response == []
 
@@ -203,36 +184,34 @@ def test_get_yearly_billing_usage_summary_from_ft_billing(admin_request, notify_
     for dt in (date(2016, 4, 28), date(2016, 11, 10), date(2017, 2, 26)):
         create_ft_billing(bst_date=dt, template=sms_template, rate=0.0162)
         create_ft_billing(bst_date=dt, template=email_template, billable_unit=0, rate=0)
-        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage='second')
+        create_ft_billing(bst_date=dt, template=letter_template, rate=0.33, postage="second")
 
     json_response = admin_request.get(
-        'billing.get_yearly_billing_usage_summary_from_ft_billing',
-        service_id=service.id,
-        year=2016
+        "billing.get_yearly_billing_usage_summary_from_ft_billing", service_id=service.id, year=2016
     )
 
     assert len(json_response) == 3
 
-    assert json_response[0]['notification_type'] == 'email'
-    assert json_response[0]['chargeable_units'] == 0
-    assert json_response[0]['notifications_sent'] == 3
-    assert json_response[0]['rate'] == 0
-    assert json_response[0]['cost'] == 0
-    assert json_response[0]['free_allowance_used'] == 0
-    assert json_response[0]['charged_units'] == 0
+    assert json_response[0]["notification_type"] == "email"
+    assert json_response[0]["chargeable_units"] == 0
+    assert json_response[0]["notifications_sent"] == 3
+    assert json_response[0]["rate"] == 0
+    assert json_response[0]["cost"] == 0
+    assert json_response[0]["free_allowance_used"] == 0
+    assert json_response[0]["charged_units"] == 0
 
-    assert json_response[1]['notification_type'] == 'letter'
-    assert json_response[1]['chargeable_units'] == 3
-    assert json_response[1]['notifications_sent'] == 3
-    assert json_response[1]['rate'] == 0.33
-    assert json_response[1]['cost'] == 0.99
-    assert json_response[1]['free_allowance_used'] == 0
-    assert json_response[1]['charged_units'] == 3
+    assert json_response[1]["notification_type"] == "letter"
+    assert json_response[1]["chargeable_units"] == 3
+    assert json_response[1]["notifications_sent"] == 3
+    assert json_response[1]["rate"] == 0.33
+    assert json_response[1]["cost"] == 0.99
+    assert json_response[1]["free_allowance_used"] == 0
+    assert json_response[1]["charged_units"] == 3
 
-    assert json_response[2]['notification_type'] == 'sms'
-    assert json_response[2]['chargeable_units'] == 3
-    assert json_response[2]['notifications_sent'] == 3
-    assert json_response[2]['rate'] == 0.0162
-    assert json_response[2]['cost'] == 0.0324
-    assert json_response[2]['free_allowance_used'] == 1
-    assert json_response[2]['charged_units'] == 2
+    assert json_response[2]["notification_type"] == "sms"
+    assert json_response[2]["chargeable_units"] == 3
+    assert json_response[2]["notifications_sent"] == 3
+    assert json_response[2]["rate"] == 0.0162
+    assert json_response[2]["cost"] == 0.0324
+    assert json_response[2]["free_allowance_used"] == 1
+    assert json_response[2]["charged_units"] == 2

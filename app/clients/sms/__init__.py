@@ -4,9 +4,9 @@ from app.clients import Client, ClientException
 
 
 class SmsClientResponseException(ClientException):
-    '''
+    """
     Base Exception for SmsClientsResponses
-    '''
+    """
 
     def __init__(self, message):
         self.message = message
@@ -16,9 +16,9 @@ class SmsClientResponseException(ClientException):
 
 
 class SmsClient(Client):
-    '''
+    """
     Base Sms client for sending smss.
-    '''
+    """
 
     def init_app(self, current_app, statsd_client):
         self.current_app = current_app
@@ -54,8 +54,8 @@ class SmsClient(Client):
         return response
 
     def try_send_sms(self, *args, **kwargs):
-        raise NotImplementedError('TODO Need to implement.')
+        raise NotImplementedError("TODO Need to implement.")
 
     @property
     def name(self):
-        raise NotImplementedError('TODO Need to implement.')
+        raise NotImplementedError("TODO Need to implement.")

@@ -7,14 +7,15 @@ Create Date: 2017-06-29 12:44:16.815039
 """
 
 # revision identifiers, used by Alembic.
-revision = '0203_fix_old_incomplete_jobs'
-down_revision = '0202_new_letter_pricing'
+revision = "0203_fix_old_incomplete_jobs"
+down_revision = "0202_new_letter_pricing"
 
 from alembic import op
 
 
 def upgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE
             jobs
         SET
@@ -23,7 +24,8 @@ def upgrade():
             processing_started IS NULL
             AND
             job_status = 'in progress'
-    """)
+    """
+    )
 
 
 def downgrade():

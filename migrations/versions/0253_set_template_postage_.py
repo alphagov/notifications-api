@@ -5,12 +5,11 @@ Revises: 0252_letter_branding_table
 Create Date: 2019-01-30 16:47:08.599448
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
-
-revision = '0253_set_template_postage'
-down_revision = '0252_letter_branding_table'
+revision = "0253_set_template_postage"
+down_revision = "0252_letter_branding_table"
 
 
 def upgrade():

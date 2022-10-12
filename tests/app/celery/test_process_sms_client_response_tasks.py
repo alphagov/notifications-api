@@ -14,11 +14,10 @@ from app.models import NOTIFICATION_TECHNICAL_FAILURE
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
     with pytest.raises(ValueError):
-        process_sms_client_response(
-            status='000', provider_reference='something-bad', client_name='sms-client')
+        process_sms_client_response(status="000", provider_reference="something-bad", client_name="sms-client")
 
 
-@pytest.mark.parametrize('client_name', ('Firetext', 'MMG'))
+@pytest.mark.parametrize("client_name", ("Firetext", "MMG"))
 def test_process_sms_response_raises_client_exception_for_unknown_status(
     sample_notification,
     mocker,
@@ -26,7 +25,7 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
 ):
     with pytest.raises(ClientException) as e:
         process_sms_client_response(
-            status='000',
+            status="000",
             provider_reference=str(sample_notification.id),
             client_name=client_name,
         )
@@ -35,26 +34,23 @@ def test_process_sms_response_raises_client_exception_for_unknown_status(
     assert sample_notification.status == NOTIFICATION_TECHNICAL_FAILURE
 
 
-@pytest.mark.parametrize('status, detailed_status_code, sms_provider, expected_notification_status, reason', [
-    ('0', None, 'Firetext', 'delivered', None),
-    ('1', '101', 'Firetext', 'permanent-failure', 'Unknown Subscriber'),
-    ('2', '102', 'Firetext', 'pending', 'Absent Subscriber'),
-    ('2', '1', 'MMG', 'permanent-failure', "Number does not exist"),
-    ('3', '2', 'MMG', 'delivered', "Delivered to operator"),
-    ('4', '27', 'MMG', 'temporary-failure', "Absent Subscriber"),
-    ('5', '13', 'MMG', 'permanent-failure', "Sender id blacklisted"),
-])
+@pytest.mark.parametrize(
+    "status, detailed_status_code, sms_provider, expected_notification_status, reason",
+    [
+        ("0", None, "Firetext", "delivered", None),
+        ("1", "101", "Firetext", "permanent-failure", "Unknown Subscriber"),
+        ("2", "102", "Firetext", "pending", "Absent Subscriber"),
+        ("2", "1", "MMG", "permanent-failure", "Number does not exist"),
+        ("3", "2", "MMG", "delivered", "Delivered to operator"),
+        ("4", "27", "MMG", "temporary-failure", "Absent Subscriber"),
+        ("5", "13", "MMG", "permanent-failure", "Sender id blacklisted"),
+    ],
+)
 def test_process_sms_client_response_updates_notification_status(
-    sample_notification,
-    mocker,
-    status,
-    detailed_status_code,
-    sms_provider,
-    expected_notification_status,
-    reason
+    sample_notification, mocker, status, detailed_status_code, sms_provider, expected_notification_status, reason
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
-    sample_notification.status = 'sending'
+    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.info")
+    sample_notification.status = "sending"
 
     process_sms_client_response(status, str(sample_notification.id), sms_provider, detailed_status_code)
 
@@ -63,75 +59,72 @@ def test_process_sms_client_response_updates_notification_status(
     assert sample_notification.status == expected_notification_status
 
 
-@pytest.mark.parametrize('detailed_status_code, expected_notification_status, reason', [
-    ('101', 'permanent-failure', 'Unknown Subscriber'),
-    ('102', 'temporary-failure', 'Absent Subscriber'),
-    (None, 'temporary-failure', None),
-    ('000', 'temporary-failure', 'No error reported')
-])
+@pytest.mark.parametrize(
+    "detailed_status_code, expected_notification_status, reason",
+    [
+        ("101", "permanent-failure", "Unknown Subscriber"),
+        ("102", "temporary-failure", "Absent Subscriber"),
+        (None, "temporary-failure", None),
+        ("000", "temporary-failure", "No error reported"),
+    ],
+)
 def test_process_sms_client_response_updates_notification_status_when_called_second_time(
-    sample_notification,
-    mocker,
-    detailed_status_code,
-    expected_notification_status,
-    reason
+    sample_notification, mocker, detailed_status_code, expected_notification_status, reason
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.info')
-    sample_notification.status = 'sending'
-    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.info")
+    sample_notification.status = "sending"
+    process_sms_client_response("2", str(sample_notification.id), "Firetext")
 
-    process_sms_client_response('1', str(sample_notification.id), 'Firetext', detailed_status_code)
+    process_sms_client_response("1", str(sample_notification.id), "Firetext", detailed_status_code)
 
     if detailed_status_code:
-        message = f'Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}'  # noqa
+        message = f"Updating notification id {sample_notification.id} to status {expected_notification_status}, reason: {reason}"  # noqa
         mock_logger.assert_called_with(message)
 
     assert sample_notification.status == expected_notification_status
 
 
-@pytest.mark.parametrize('detailed_status_code', ['102', None, '000'])
+@pytest.mark.parametrize("detailed_status_code", ["102", None, "000"])
 def test_process_sms_client_response_updates_notification_status_to_pending_with_and_without_failure_code_present(
-    sample_notification,
-    mocker,
-    detailed_status_code
+    sample_notification, mocker, detailed_status_code
 ):
-    sample_notification.status = 'sending'
+    sample_notification.status = "sending"
 
-    process_sms_client_response('2', str(sample_notification.id), 'Firetext', detailed_status_code)
+    process_sms_client_response("2", str(sample_notification.id), "Firetext", detailed_status_code)
 
-    assert sample_notification.status == 'pending'
+    assert sample_notification.status == "pending"
 
 
 def test_process_sms_client_response_updates_notification_status_when_detailed_status_code_not_recognised(
     sample_notification,
     mocker,
 ):
-    mock_logger = mocker.patch('app.celery.tasks.current_app.logger.warning')
-    sample_notification.status = 'sending'
-    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+    mock_logger = mocker.patch("app.celery.tasks.current_app.logger.warning")
+    sample_notification.status = "sending"
+    process_sms_client_response("2", str(sample_notification.id), "Firetext")
 
-    process_sms_client_response('1', str(sample_notification.id), 'Firetext', '789')
+    process_sms_client_response("1", str(sample_notification.id), "Firetext", "789")
 
-    mock_logger.assert_called_once_with('Failure code 789 from Firetext not recognised')
-    assert sample_notification.status == 'temporary-failure'
+    mock_logger.assert_called_once_with("Failure code 789 from Firetext not recognised")
+    assert sample_notification.status == "temporary-failure"
 
 
 def test_sms_response_does_not_send_callback_if_notification_is_not_in_the_db(sample_service, mocker):
-    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
+    send_mock = mocker.patch("app.celery.process_sms_client_response_tasks.check_and_queue_callback_task")
     reference = str(uuid.uuid4())
-    process_sms_client_response(status='3', provider_reference=reference, client_name='MMG')
+    process_sms_client_response(status="3", provider_reference=reference, client_name="MMG")
     send_mock.assert_not_called()
 
 
-@freeze_time('2001-01-01T12:00:00')
+@freeze_time("2001-01-01T12:00:00")
 def test_process_sms_client_response_records_statsd_metrics(sample_notification, client, mocker):
-    mocker.patch('app.statsd_client.incr')
-    mocker.patch('app.statsd_client.timing_with_dates')
+    mocker.patch("app.statsd_client.incr")
+    mocker.patch("app.statsd_client.timing_with_dates")
 
-    sample_notification.status = 'sending'
+    sample_notification.status = "sending"
     sample_notification.sent_at = datetime.utcnow()
 
-    process_sms_client_response('0', str(sample_notification.id), 'Firetext')
+    process_sms_client_response("0", str(sample_notification.id), "Firetext")
 
     statsd_client.incr.assert_any_call("callback.firetext.delivered")
     statsd_client.timing_with_dates.assert_any_call(
@@ -141,27 +134,27 @@ def test_process_sms_client_response_records_statsd_metrics(sample_notification,
 
 def test_process_sms_updates_billable_units_if_zero(sample_notification):
     sample_notification.billable_units = 0
-    process_sms_client_response('3', str(sample_notification.id), 'MMG')
+    process_sms_client_response("3", str(sample_notification.id), "MMG")
 
     assert sample_notification.billable_units == 1
 
 
 def test_process_sms_response_does_not_send_service_callback_for_pending_notifications(sample_notification, mocker):
-    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
-    process_sms_client_response('2', str(sample_notification.id), 'Firetext')
+    send_mock = mocker.patch("app.celery.process_sms_client_response_tasks.check_and_queue_callback_task")
+    process_sms_client_response("2", str(sample_notification.id), "Firetext")
     send_mock.assert_not_called()
 
 
 def test_outcome_statistics_called_for_successful_callback(sample_notification, mocker):
-    send_mock = mocker.patch('app.celery.process_sms_client_response_tasks.check_and_queue_callback_task')
+    send_mock = mocker.patch("app.celery.process_sms_client_response_tasks.check_and_queue_callback_task")
     reference = str(sample_notification.id)
 
-    process_sms_client_response('3', reference, 'MMG')
+    process_sms_client_response("3", reference, "MMG")
     send_mock.assert_called_once_with(sample_notification)
 
 
 def test_process_sms_updates_sent_by_with_client_name_if_not_in_noti(sample_notification):
     sample_notification.sent_by = None
-    process_sms_client_response('3', str(sample_notification.id), 'MMG')
+    process_sms_client_response("3", str(sample_notification.id), "MMG")
 
-    assert sample_notification.sent_by == 'mmg'
+    assert sample_notification.sent_by == "mmg"

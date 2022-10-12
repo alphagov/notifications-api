@@ -9,8 +9,8 @@ import uuid
 
 from alembic import op
 
-revision = '0371_fix_apr_2022_sms_rate'
-down_revision = '0370_remove_reach'
+revision = "0371_fix_apr_2022_sms_rate"
+down_revision = "0370_remove_reach"
 
 
 def upgrade():

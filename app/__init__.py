@@ -43,10 +43,10 @@ class SQLAlchemy(_SQLAlchemy):
 
     def apply_driver_hacks(self, app, info, options):
         super().apply_driver_hacks(app, info, options)
-        if 'connect_args' not in options:
-            options['connect_args'] = {}
-        options['connect_args']["options"] = "-c statement_timeout={}".format(
-            int(app.config['SQLALCHEMY_STATEMENT_TIMEOUT']) * 1000
+        if "connect_args" not in options:
+            options["connect_args"] = {}
+        options["connect_args"]["options"] = "-c statement_timeout={}".format(
+            int(app.config["SQLALCHEMY_STATEMENT_TIMEOUT"]) * 1000
         )
 
 
@@ -72,19 +72,19 @@ api_user = LocalProxy(lambda: g.api_user)
 authenticated_service = LocalProxy(lambda: g.authenticated_service)
 
 CONCURRENT_REQUESTS = Gauge(
-    'concurrent_web_request_count',
-    'How many concurrent requests are currently being served',
+    "concurrent_web_request_count",
+    "How many concurrent requests are currently being served",
 )
 
 
 def create_app(application):
     from app.config import configs
 
-    notify_environment = os.environ['NOTIFY_ENVIRONMENT']
+    notify_environment = os.environ["NOTIFY_ENVIRONMENT"]
 
     application.config.from_object(configs[notify_environment])
 
-    application.config['NOTIFY_APP_NAME'] = application.name
+    application.config["NOTIFY_APP_NAME"] = application.name
     init_app(application)
 
     # Metrics intentionally high up to give the most accurate timing and reliability that the metric is recorded
@@ -99,18 +99,13 @@ def create_app(application):
     firetext_client.init_app(application, statsd_client=statsd_client)
     mmg_client.init_app(application, statsd_client=statsd_client)
 
-    aws_ses_client.init_app(application.config['AWS_REGION'], statsd_client=statsd_client)
+    aws_ses_client.init_app(application.config["AWS_REGION"], statsd_client=statsd_client)
     aws_ses_stub_client.init_app(
-        application.config['AWS_REGION'],
-        statsd_client=statsd_client,
-        stub_url=application.config['SES_STUB_URL']
+        application.config["AWS_REGION"], statsd_client=statsd_client, stub_url=application.config["SES_STUB_URL"]
     )
     # If a stub url is provided for SES, then use the stub client rather than the real SES boto client
-    email_clients = [aws_ses_stub_client] if application.config['SES_STUB_URL'] else [aws_ses_client]
-    notification_provider_clients.init_app(
-        sms_clients=[firetext_client, mmg_client],
-        email_clients=email_clients
-    )
+    email_clients = [aws_ses_stub_client] if application.config["SES_STUB_URL"] else [aws_ses_client]
+    notification_provider_clients.init_app(sms_clients=[firetext_client, mmg_client], email_clients=email_clients)
 
     notify_celery.init_app(application)
     encryption.init_app(application)
@@ -124,6 +119,7 @@ def create_app(application):
 
     # avoid circular imports by importing this file later
     from app.commands import setup_commands
+
     setup_commands(application)
 
     # set up sqlalchemy events
@@ -185,10 +181,10 @@ def register_blueprint(application):
     from app.webauthn.rest import webauthn_blueprint
 
     service_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(service_blueprint, url_prefix='/service')
+    application.register_blueprint(service_blueprint, url_prefix="/service")
 
     user_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(user_blueprint, url_prefix='/user')
+    application.register_blueprint(user_blueprint, url_prefix="/user")
 
     webauthn_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(webauthn_blueprint)
@@ -233,10 +229,10 @@ def register_blueprint(application):
     application.register_blueprint(events_blueprint)
 
     provider_details_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(provider_details_blueprint, url_prefix='/provider-details')
+    application.register_blueprint(provider_details_blueprint, url_prefix="/provider-details")
 
     email_branding_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(email_branding_blueprint, url_prefix='/email-branding')
+    application.register_blueprint(email_branding_blueprint, url_prefix="/email-branding")
 
     letter_job.before_request(requires_admin_auth)
     application.register_blueprint(letter_job)
@@ -251,7 +247,7 @@ def register_blueprint(application):
     application.register_blueprint(service_callback_blueprint)
 
     organisation_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(organisation_blueprint, url_prefix='/organisations')
+    application.register_blueprint(organisation_blueprint, url_prefix="/organisations")
 
     complaint_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(complaint_blueprint)
@@ -260,7 +256,7 @@ def register_blueprint(application):
     application.register_blueprint(performance_dashboard_blueprint)
 
     platform_stats_blueprint.before_request(requires_admin_auth)
-    application.register_blueprint(platform_stats_blueprint, url_prefix='/platform-stats')
+    application.register_blueprint(platform_stats_blueprint, url_prefix="/platform-stats")
 
     template_folder_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(template_folder_blueprint)
@@ -311,7 +307,6 @@ def register_v2_blueprints(application):
 
 
 def init_app(app):
-
     @app.before_request
     def record_request_details():
         CONCURRENT_REQUESTS.inc()
@@ -323,31 +318,27 @@ def init_app(app):
     def after_request(response):
         CONCURRENT_REQUESTS.dec()
 
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
+        response.headers.add("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE")
         return response
 
     @app.errorhandler(Exception)
     def exception(error):
         app.logger.exception(error)
         # error.code is set for our exception types.
-        msg = getattr(error, 'message', str(error))
-        code = getattr(error, 'code', 500)
-        return jsonify(result='error', message=msg), code
+        msg = getattr(error, "message", str(error))
+        code = getattr(error, "code", 500)
+        return jsonify(result="error", message=msg), code
 
     @app.errorhandler(WerkzeugHTTPException)
     def werkzeug_exception(e):
-        return make_response(
-            jsonify(result='error', message=e.description),
-            e.code,
-            e.get_headers()
-        )
+        return make_response(jsonify(result="error", message=e.description), e.code, e.get_headers())
 
     @app.errorhandler(404)
     def page_not_found(e):
         msg = e.description or "Not found"
-        return jsonify(result='error', message=msg), 404
+        return jsonify(result="error", message=msg), 404
 
 
 def create_uuid():
@@ -355,47 +346,48 @@ def create_uuid():
 
 
 def create_random_identifier():
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
+    return "".join(random.choice(string.ascii_uppercase + string.digits) for _ in range(16))
 
 
 def setup_sqlalchemy_events(app):
 
     TOTAL_DB_CONNECTIONS = Gauge(
-        'db_connection_total_connected',
-        'How many db connections are currently held (potentially idle) by the server',
+        "db_connection_total_connected",
+        "How many db connections are currently held (potentially idle) by the server",
     )
 
     TOTAL_CHECKED_OUT_DB_CONNECTIONS = Gauge(
-        'db_connection_total_checked_out',
-        'How many db connections are currently checked out by web requests',
+        "db_connection_total_checked_out",
+        "How many db connections are currently checked out by web requests",
     )
 
     DB_CONNECTION_OPEN_DURATION_SECONDS = Histogram(
-        'db_connection_open_duration_seconds',
-        'How long db connections are held open for in seconds',
-        ['method', 'host', 'path']
+        "db_connection_open_duration_seconds",
+        "How long db connections are held open for in seconds",
+        ["method", "host", "path"],
     )
 
     # need this or db.engine isn't accessible
     with app.app_context():
-        @event.listens_for(db.engine, 'connect')
+
+        @event.listens_for(db.engine, "connect")
         def connect(dbapi_connection, connection_record):
             # connection first opened with db
             TOTAL_DB_CONNECTIONS.inc()
 
-        @event.listens_for(db.engine, 'close')
+        @event.listens_for(db.engine, "close")
         def close(dbapi_connection, connection_record):
             # connection closed (probably only happens with overflow connections)
             TOTAL_DB_CONNECTIONS.dec()
 
-        @event.listens_for(db.engine, 'checkout')
+        @event.listens_for(db.engine, "checkout")
         def checkout(dbapi_connection, connection_record, connection_proxy):
             try:
                 # connection given to a web worker
                 TOTAL_CHECKED_OUT_DB_CONNECTIONS.inc()
 
                 # this will overwrite any previous checkout_at timestamp
-                connection_record.info['checkout_at'] = time.monotonic()
+                connection_record.info["checkout_at"] = time.monotonic()
 
                 # checkin runs after the request is already torn down, therefore we add the request_data onto the
                 # connection_record as otherwise it won't have that information when checkin actually runs.
@@ -403,42 +395,42 @@ def setup_sqlalchemy_events(app):
 
                 # web requests
                 if has_request_context():
-                    connection_record.info['request_data'] = {
-                        'method': request.method,
-                        'host': request.host,
-                        'url_rule': request.url_rule.rule if request.url_rule else 'No endpoint'
+                    connection_record.info["request_data"] = {
+                        "method": request.method,
+                        "host": request.host,
+                        "url_rule": request.url_rule.rule if request.url_rule else "No endpoint",
                     }
                 # celery apps
                 elif current_task:
-                    connection_record.info['request_data'] = {
-                        'method': 'celery',
-                        'host': current_app.config['NOTIFY_APP_NAME'],  # worker name
-                        'url_rule': current_task.name,  # task name
+                    connection_record.info["request_data"] = {
+                        "method": "celery",
+                        "host": current_app.config["NOTIFY_APP_NAME"],  # worker name
+                        "url_rule": current_task.name,  # task name
                     }
                 # anything else. migrations possibly, or flask cli commands.
                 else:
-                    current_app.logger.warning('Checked out sqlalchemy connection from outside of request/task')
-                    connection_record.info['request_data'] = {
-                        'method': 'unknown',
-                        'host': 'unknown',
-                        'url_rule': 'unknown',
+                    current_app.logger.warning("Checked out sqlalchemy connection from outside of request/task")
+                    connection_record.info["request_data"] = {
+                        "method": "unknown",
+                        "host": "unknown",
+                        "url_rule": "unknown",
                     }
             except Exception:
                 current_app.logger.exception("Exception caught for checkout event.")
 
-        @event.listens_for(db.engine, 'checkin')
+        @event.listens_for(db.engine, "checkin")
         def checkin(dbapi_connection, connection_record):
             try:
                 # connection returned by a web worker
                 TOTAL_CHECKED_OUT_DB_CONNECTIONS.dec()
 
                 # duration that connection was held by a single web request
-                duration = time.monotonic() - connection_record.info['checkout_at']
+                duration = time.monotonic() - connection_record.info["checkout_at"]
 
                 DB_CONNECTION_OPEN_DURATION_SECONDS.labels(
-                    connection_record.info['request_data']['method'],
-                    connection_record.info['request_data']['host'],
-                    connection_record.info['request_data']['url_rule']
+                    connection_record.info["request_data"]["method"],
+                    connection_record.info["request_data"]["host"],
+                    connection_record.info["request_data"]["url_rule"],
                 ).observe(duration)
             except Exception:
                 current_app.logger.exception("Exception caught for checkin event.")

@@ -20,7 +20,7 @@ def test_fetch_service_guest_list_ignores_other_service(sample_service_guest_lis
 
 
 def test_add_and_commit_guest_list_contacts_saves_data(sample_service):
-    guest_list = ServiceGuestList.from_string(sample_service.id, EMAIL_TYPE, 'foo@example.com')
+    guest_list = ServiceGuestList.from_string(sample_service.id, EMAIL_TYPE, "foo@example.com")
 
     dao_add_and_commit_guest_list_contacts([guest_list])
 
@@ -32,10 +32,12 @@ def test_add_and_commit_guest_list_contacts_saves_data(sample_service):
 def test_remove_service_guest_list_only_removes_for_my_service(notify_db_session):
     service_1 = create_service(service_name="service 1")
     service_2 = create_service(service_name="service 2")
-    dao_add_and_commit_guest_list_contacts([
-        ServiceGuestList.from_string(service_1.id, EMAIL_TYPE, 'service1@example.com'),
-        ServiceGuestList.from_string(service_2.id, EMAIL_TYPE, 'service2@example.com')
-    ])
+    dao_add_and_commit_guest_list_contacts(
+        [
+            ServiceGuestList.from_string(service_1.id, EMAIL_TYPE, "service1@example.com"),
+            ServiceGuestList.from_string(service_2.id, EMAIL_TYPE, "service2@example.com"),
+        ]
+    )
 
     dao_remove_service_guest_list(service_1.id)
 

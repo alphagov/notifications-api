@@ -9,14 +9,16 @@ import uuid
 
 from alembic import op
 
-revision = '0350_update_rates'
-down_revision = '0349_add_ft_processing_time'
+revision = "0350_update_rates"
+down_revision = "0349_add_ft_processing_time"
 
 
 def upgrade():
     op.get_bind()
-    op.execute("INSERT INTO rates(id, valid_from, rate, notification_type) "
-               "VALUES('{}', '2021-03-31 23:00:00', 0.0160, 'sms')".format(uuid.uuid4()))
+    op.execute(
+        "INSERT INTO rates(id, valid_from, rate, notification_type) "
+        "VALUES('{}', '2021-03-31 23:00:00', 0.0160, 'sms')".format(uuid.uuid4())
+    )
 
 
 def downgrade():

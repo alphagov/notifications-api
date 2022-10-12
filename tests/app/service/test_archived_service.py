@@ -15,49 +15,49 @@ from tests.app.db import create_api_key, create_template
 
 def test_archive_only_allows_post(client, notify_db_session):
     auth_header = create_admin_authorization_header()
-    response = client.get('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
+    response = client.get("/service/{}/archive".format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 405
 
 
 def test_archive_service_errors_with_bad_service_id(client, notify_db_session):
     auth_header = create_admin_authorization_header()
-    response = client.post('/service/{}/archive'.format(uuid.uuid4()), headers=[auth_header])
+    response = client.post("/service/{}/archive".format(uuid.uuid4()), headers=[auth_header])
     assert response.status_code == 404
 
 
 def test_deactivating_inactive_service_does_nothing(client, sample_service):
     auth_header = create_admin_authorization_header()
     sample_service.active = False
-    response = client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
+    response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
     assert response.status_code == 204
-    assert sample_service.name == 'Sample service'
+    assert sample_service.name == "Sample service"
 
 
 @pytest.fixture
 def archived_service(client, notify_db_session, sample_service):
-    create_template(sample_service, template_name='a')
-    create_template(sample_service, template_name='b')
+    create_template(sample_service, template_name="a")
+    create_template(sample_service, template_name="b")
     create_api_key(sample_service)
     create_api_key(sample_service)
 
     notify_db_session.commit()
 
     auth_header = create_admin_authorization_header()
-    response = client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
+    response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
     assert response.status_code == 204
-    assert response.data == b''
+    assert response.data == b""
     return sample_service
 
 
-@freeze_time('2018-07-07 12:00:00')
+@freeze_time("2018-07-07 12:00:00")
 def test_deactivating_service_changes_name_and_email(client, sample_service):
     auth_header = create_admin_authorization_header()
-    client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
+    client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
 
     archived_service = dao_fetch_service_by_id(sample_service.id)
 
-    assert archived_service.name == '_archived_2018-07-07_Sample service'
-    assert archived_service.email_from == '_archived_2018-07-07_sample.service'
+    assert archived_service.name == "_archived_2018-07-07_Sample service"
+    assert archived_service.email_from == "_archived_2018-07-07_sample.service"
 
 
 def test_deactivating_service_revokes_api_keys(archived_service):
@@ -76,11 +76,7 @@ def test_deactivating_service_archives_templates(archived_service):
 
 def test_deactivating_service_creates_history(archived_service):
     ServiceHistory = Service.get_history_model()
-    history = ServiceHistory.query.filter_by(
-        id=archived_service.id
-    ).order_by(
-        ServiceHistory.version.desc()
-    ).first()
+    history = ServiceHistory.query.filter_by(id=archived_service.id).order_by(ServiceHistory.version.desc()).first()
 
     assert history.version == 2
     assert history.active is False
@@ -88,8 +84,8 @@ def test_deactivating_service_creates_history(archived_service):
 
 @pytest.fixture
 def archived_service_with_deleted_stuff(client, sample_service):
-    with freeze_time('2001-01-01'):
-        template = create_template(sample_service, template_name='a')
+    with freeze_time("2001-01-01"):
+        template = create_template(sample_service, template_name="a")
         api_key = create_api_key(sample_service)
 
         expire_api_key(sample_service.id, api_key.id)
@@ -97,12 +93,12 @@ def archived_service_with_deleted_stuff(client, sample_service):
         template.archived = True
         dao_update_template(template)
 
-    with freeze_time('2002-02-02'):
+    with freeze_time("2002-02-02"):
         auth_header = create_admin_authorization_header()
-        response = client.post('/service/{}/archive'.format(sample_service.id), headers=[auth_header])
+        response = client.post("/service/{}/archive".format(sample_service.id), headers=[auth_header])
 
     assert response.status_code == 204
-    assert response.data == b''
+    assert response.data == b""
     return sample_service
 
 

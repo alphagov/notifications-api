@@ -16,8 +16,8 @@ from app.notifications.notifications_ses_callback import (
 )
 
 sms_response_mapper = {
-    'MMG': get_mmg_responses,
-    'Firetext': get_firetext_responses,
+    "MMG": get_mmg_responses,
+    "Firetext": get_firetext_responses,
 }
 
 
@@ -27,7 +27,7 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     try:
         uuid.UUID(provider_reference, version=4)
     except ValueError as e:
-        current_app.logger.exception(f'{client_name} callback with invalid reference {provider_reference}')
+        current_app.logger.exception(f"{client_name} callback with invalid reference {provider_reference}")
         raise e
 
     response_parser = sms_response_mapper[client_name]
@@ -36,22 +36,20 @@ def process_sms_client_response(self, status, provider_reference, client_name, d
     try:
         notification_status, detailed_status = response_parser(status, detailed_status_code)
         current_app.logger.info(
-            f'{client_name} callback returned status of {notification_status}'
-            f'({status}): {detailed_status}({detailed_status_code}) for reference: {provider_reference}'
+            f"{client_name} callback returned status of {notification_status}"
+            f"({status}): {detailed_status}({detailed_status_code}) for reference: {provider_reference}"
         )
     except KeyError:
         _process_for_status(
-            notification_status='technical-failure',
-            client_name=client_name,
-            provider_reference=provider_reference
+            notification_status="technical-failure", client_name=client_name, provider_reference=provider_reference
         )
-        raise ClientException(f'{client_name} callback failed: status {status} not found.')
+        raise ClientException(f"{client_name} callback failed: status {status} not found.")
 
     _process_for_status(
         notification_status=notification_status,
         client_name=client_name,
         provider_reference=provider_reference,
-        detailed_status_code=detailed_status_code
+        detailed_status_code=detailed_status_code,
     )
 
 
@@ -61,18 +59,18 @@ def _process_for_status(notification_status, client_name, provider_reference, de
         notification_id=provider_reference,
         status=notification_status,
         sent_by=client_name.lower(),
-        detailed_status_code=detailed_status_code
+        detailed_status_code=detailed_status_code,
     )
     if not notification:
         return
 
-    statsd_client.incr('callback.{}.{}'.format(client_name.lower(), notification_status))
+    statsd_client.incr("callback.{}.{}".format(client_name.lower(), notification_status))
 
     if notification.sent_at:
         statsd_client.timing_with_dates(
-            f'callback.{client_name.lower()}.{notification_status}.elapsed-time',
+            f"callback.{client_name.lower()}.{notification_status}.elapsed-time",
             datetime.utcnow(),
-            notification.sent_at
+            notification.sent_at,
         )
 
     if notification.billable_units == 0:

@@ -5,8 +5,7 @@ from app.models import WebauthnCredential
 
 def dao_get_webauthn_credential_by_user_and_id(user_id, webauthn_credential_id):
     return WebauthnCredential.query.filter(
-        WebauthnCredential.user_id == user_id,
-        WebauthnCredential.id == webauthn_credential_id
+        WebauthnCredential.user_id == user_id, WebauthnCredential.id == webauthn_credential_id
     ).one()
 
 
@@ -19,10 +18,7 @@ def dao_create_webauthn_credential(
     registration_response,
 ):
     webauthn_credential = WebauthnCredential(
-        user_id=user_id,
-        name=name,
-        credential_data=credential_data,
-        registration_response=registration_response
+        user_id=user_id, name=name, credential_data=credential_data, registration_response=registration_response
     )
     db.session.add(webauthn_credential)
     return webauthn_credential

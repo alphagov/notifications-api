@@ -7,9 +7,7 @@ get_all_template_request = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "request schema for parameters allowed when getting all templates",
     "type": "object",
-    "properties": {
-        "type": {"enum": TEMPLATE_TYPES}
-    },
+    "properties": {"type": {"enum": TEMPLATE_TYPES}},
     "additionalProperties": False,
 }
 
@@ -17,17 +15,7 @@ get_all_template_response = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "GET response schema when getting all templates",
     "type": "object",
-    "properties": {
-        "templates": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "$ref": "#/definitions/template"
-            }
-        }
-    },
+    "properties": {"templates": {"type": "array", "items": {"type": "object", "$ref": "#/definitions/template"}}},
     "required": ["templates"],
-    "definitions": {
-        "template": template
-    }
+    "definitions": {"template": template},
 }

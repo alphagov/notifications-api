@@ -18,20 +18,13 @@ get_inbound_sms_single_response = {
     "title": "GET response v2/inbound_sms",
     "properties": {
         "user_number": {"type": "string"},
-        "created_at": {
-            "format": "date-time",
-            "type": "string",
-            "description": "Date+time created at"
-        },
+        "created_at": {"format": "date-time", "type": "string", "description": "Date+time created at"},
         "service_id": uuid,
         "id": uuid,
         "notify_number": {"type": "string"},
         "content": {"type": "string"},
     },
-    "required": [
-        "id", "user_number", "created_at", "service_id",
-        "notify_number", "content"
-    ],
+    "required": ["id", "user_number", "created_at", "service_id", "notify_number", "content"],
     "additionalProperties": False,
 }
 
@@ -40,30 +33,15 @@ get_inbound_sms_response = {
     "description": "GET list of inbound sms response schema",
     "type": "object",
     "properties": {
-        "received_text_messages": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "$ref": "#/definitions/inbound_sms"
-            }
-        },
+        "received_text_messages": {"type": "array", "items": {"type": "object", "$ref": "#/definitions/inbound_sms"}},
         "links": {
             "type": "object",
-            "properties": {
-                "current": {
-                    "type": "string"
-                },
-                "next": {
-                    "type": "string"
-                }
-            },
+            "properties": {"current": {"type": "string"}, "next": {"type": "string"}},
             "additionalProperties": False,
-            "required": ["current"]
-        }
+            "required": ["current"],
+        },
     },
     "required": ["received_text_messages", "links"],
-    "definitions": {
-        "inbound_sms": get_inbound_sms_single_response
-    },
+    "definitions": {"inbound_sms": get_inbound_sms_single_response},
     "additionalProperties": False,
 }

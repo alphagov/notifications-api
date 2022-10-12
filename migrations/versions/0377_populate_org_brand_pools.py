@@ -5,11 +5,12 @@ Revises: 0376_email_branding_pools
 Create Date: 2022-09-16 17:11:24.118619
 
 """
-from alembic import op
 import textwrap
 
-revision = '0377_populate_org_brand_pools'
-down_revision = '0376_email_branding_pools'
+from alembic import op
+
+revision = "0377_populate_org_brand_pools"
+down_revision = "0376_email_branding_pools"
 
 
 def upgrade():

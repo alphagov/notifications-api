@@ -92,74 +92,85 @@ def test_create_service(notify_db_session):
     user = create_user()
     create_letter_branding()
     assert Service.query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      organisation_type='central',
-                      created_by=user)
+    service = Service(
+        name="service_name",
+        email_from="email_from",
+        message_limit=1000,
+        restricted=False,
+        organisation_type="central",
+        created_by=user,
+    )
     dao_create_service(service, user)
     assert Service.query.count() == 1
     service_db = Service.query.one()
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.email_from == 'email_from'
+    assert service_db.email_from == "email_from"
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
     assert service.active is True
     assert user in service_db.users
-    assert service_db.organisation_type == 'central'
+    assert service_db.organisation_type == "central"
     assert service_db.crown is None
     assert not service.letter_branding
     assert not service.organisation_id
 
 
 def test_create_service_with_organisation(notify_db_session):
-    user = create_user(email='local.authority@local-authority.gov.uk')
+    user = create_user(email="local.authority@local-authority.gov.uk")
     organisation = create_organisation(
-        name='Some local authority', organisation_type='local', domains=['local-authority.gov.uk'])
+        name="Some local authority", organisation_type="local", domains=["local-authority.gov.uk"]
+    )
     assert Service.query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      organisation_type='central',
-                      created_by=user)
+    service = Service(
+        name="service_name",
+        email_from="email_from",
+        message_limit=1000,
+        restricted=False,
+        organisation_type="central",
+        created_by=user,
+    )
     dao_create_service(service, user)
     assert Service.query.count() == 1
     service_db = Service.query.one()
     organisation = Organisation.query.get(organisation.id)
     assert service_db.name == "service_name"
     assert service_db.id == service.id
-    assert service_db.email_from == 'email_from'
+    assert service_db.email_from == "email_from"
     assert service_db.research_mode is False
     assert service_db.prefix_sms is True
     assert service.active is True
     assert user in service_db.users
-    assert service_db.organisation_type == 'local'
+    assert service_db.organisation_type == "local"
     assert service_db.crown is None
     assert not service.letter_branding
     assert service.organisation_id == organisation.id
     assert service.organisation == organisation
 
 
-@pytest.mark.parametrize('email_address, organisation_type', (
-    ("test@example.gov.uk", 'nhs_central'),
-    ("test@example.gov.uk", 'nhs_local'),
-    ("test@example.gov.uk", 'nhs_gp'),
-    ("test@nhs.net", 'nhs_local'),
-    ("test@nhs.net", 'local'),
-    ("test@nhs.net", 'central'),
-    ("test@nhs.uk", 'central'),
-    ("test@example.nhs.uk", 'central'),
-    ("TEST@NHS.UK", 'central'),
-))
-@pytest.mark.parametrize('branding_name_to_create, expected_branding', (
-    ('NHS', True),
-    # Need to check that nothing breaks in environments that don’t have
-    # the NHS branding set up
-    ('SHN', False),
-))
+@pytest.mark.parametrize(
+    "email_address, organisation_type",
+    (
+        ("test@example.gov.uk", "nhs_central"),
+        ("test@example.gov.uk", "nhs_local"),
+        ("test@example.gov.uk", "nhs_gp"),
+        ("test@nhs.net", "nhs_local"),
+        ("test@nhs.net", "local"),
+        ("test@nhs.net", "central"),
+        ("test@nhs.uk", "central"),
+        ("test@example.nhs.uk", "central"),
+        ("TEST@NHS.UK", "central"),
+    ),
+)
+@pytest.mark.parametrize(
+    "branding_name_to_create, expected_branding",
+    (
+        ("NHS", True),
+        # Need to check that nothing breaks in environments that don’t have
+        # the NHS branding set up
+        ("SHN", False),
+    ),
+)
 def test_create_nhs_service_get_default_branding_based_on_email_address(
     notify_db_session,
     branding_name_to_create,
@@ -193,17 +204,17 @@ def test_create_nhs_service_get_default_branding_based_on_email_address(
 def test_cannot_create_two_services_with_same_name(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
-    service1 = Service(name="service_name",
-                       email_from="email_from1",
-                       message_limit=1000,
-                       restricted=False,
-                       created_by=user, )
+    service1 = Service(
+        name="service_name",
+        email_from="email_from1",
+        message_limit=1000,
+        restricted=False,
+        created_by=user,
+    )
 
-    service2 = Service(name="service_name",
-                       email_from="email_from2",
-                       message_limit=1000,
-                       restricted=False,
-                       created_by=user)
+    service2 = Service(
+        name="service_name", email_from="email_from2", message_limit=1000, restricted=False, created_by=user
+    )
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, user)
         dao_create_service(service2, user)
@@ -213,16 +224,12 @@ def test_cannot_create_two_services_with_same_name(notify_db_session):
 def test_cannot_create_two_services_with_same_email_from(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
-    service1 = Service(name="service_name1",
-                       email_from="email_from",
-                       message_limit=1000,
-                       restricted=False,
-                       created_by=user)
-    service2 = Service(name="service_name2",
-                       email_from="email_from",
-                       message_limit=1000,
-                       restricted=False,
-                       created_by=user)
+    service1 = Service(
+        name="service_name1", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
+    service2 = Service(
+        name="service_name2", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, user)
         dao_create_service(service2, user)
@@ -232,11 +239,9 @@ def test_cannot_create_two_services_with_same_email_from(notify_db_session):
 def test_cannot_create_service_with_no_user(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     with pytest.raises(ValueError) as excinfo:
         dao_create_service(service, None)
     assert "Can't create a service without a user" in str(excinfo.value)
@@ -244,18 +249,16 @@ def test_cannot_create_service_with_no_user(notify_db_session):
 
 def test_should_add_user_to_service(notify_db_session):
     user = create_user()
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     dao_create_service(service, user)
     assert user in Service.query.first().users
     new_user = User(
-        name='Test User',
-        email_address='new_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900986'
+        name="Test User",
+        email_address="new_user@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+447700900986",
     )
     save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service, new_user)
@@ -280,9 +283,7 @@ def test_dao_add_user_to_service_sets_folder_permissions(sample_user, sample_ser
 
 
 def test_dao_add_user_to_service_ignores_folders_which_do_not_exist_when_setting_permissions(
-    sample_user,
-    sample_service,
-    fake_uuid
+    sample_user, sample_service, fake_uuid
 ):
     valid_folder = create_template_folder(sample_service)
     folder_permissions = [fake_uuid, str(valid_folder.id)]
@@ -298,7 +299,7 @@ def test_dao_add_user_to_service_raises_error_if_adding_folder_permissions_for_a
     sample_service,
 ):
     user = create_user()
-    other_service = create_service(service_name='other service')
+    other_service = create_service(service_name="other service")
     other_service_folder = create_template_folder(other_service)
     folder_permissions = [str(other_service_folder.id)]
 
@@ -314,17 +315,15 @@ def test_dao_add_user_to_service_raises_error_if_adding_folder_permissions_for_a
 
 def test_should_remove_user_from_service(notify_db_session):
     user = create_user()
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     dao_create_service(service, user)
     new_user = User(
-        name='Test User',
-        email_address='new_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900986'
+        name="Test User",
+        email_address="new_user@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+447700900986",
     )
     save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service, new_user)
@@ -345,7 +344,7 @@ def test_removing_a_user_from_a_service_deletes_their_folder_permissions_for_tha
     tf1 = create_template_folder(sample_service)
     tf2 = create_template_folder(sample_service)
 
-    service_2 = create_service(sample_user, service_name='other service')
+    service_2 = create_service(sample_user, service_name="other service")
     tf3 = create_template_folder(service_2)
 
     service_user = dao_get_service_user(sample_user.id, sample_service.id)
@@ -365,25 +364,25 @@ def test_removing_a_user_from_a_service_deletes_their_folder_permissions_for_tha
 
 
 def test_get_all_services(notify_db_session):
-    create_service(service_name='service 1', email_from='service.1')
+    create_service(service_name="service 1", email_from="service.1")
     assert len(dao_fetch_all_services()) == 1
-    assert dao_fetch_all_services()[0].name == 'service 1'
+    assert dao_fetch_all_services()[0].name == "service 1"
 
-    create_service(service_name='service 2', email_from='service.2')
+    create_service(service_name="service 2", email_from="service.2")
     assert len(dao_fetch_all_services()) == 2
-    assert dao_fetch_all_services()[1].name == 'service 2'
+    assert dao_fetch_all_services()[1].name == "service 2"
 
 
 def test_get_all_services_should_return_in_created_order(notify_db_session):
-    create_service(service_name='service 1', email_from='service.1')
-    create_service(service_name='service 2', email_from='service.2')
-    create_service(service_name='service 3', email_from='service.3')
-    create_service(service_name='service 4', email_from='service.4')
+    create_service(service_name="service 1", email_from="service.1")
+    create_service(service_name="service 2", email_from="service.2")
+    create_service(service_name="service 3", email_from="service.3")
+    create_service(service_name="service 4", email_from="service.4")
     assert len(dao_fetch_all_services()) == 4
-    assert dao_fetch_all_services()[0].name == 'service 1'
-    assert dao_fetch_all_services()[1].name == 'service 2'
-    assert dao_fetch_all_services()[2].name == 'service 3'
-    assert dao_fetch_all_services()[3].name == 'service 4'
+    assert dao_fetch_all_services()[0].name == "service 1"
+    assert dao_fetch_all_services()[1].name == "service 2"
+    assert dao_fetch_all_services()[2].name == "service 3"
+    assert dao_fetch_all_services()[3].name == "service 4"
 
 
 def test_get_all_services_should_return_empty_list_if_no_services():
@@ -392,13 +391,13 @@ def test_get_all_services_should_return_empty_list_if_no_services():
 
 def test_get_all_services_for_user(notify_db_session):
     user = create_user()
-    create_service(service_name='service 1', user=user, email_from='service.1')
-    create_service(service_name='service 2', user=user, email_from='service.2')
-    create_service(service_name='service 3', user=user, email_from='service.3')
+    create_service(service_name="service 1", user=user, email_from="service.1")
+    create_service(service_name="service 2", user=user, email_from="service.2")
+    create_service(service_name="service 3", user=user, email_from="service.3")
     assert len(dao_fetch_all_services_by_user(user.id)) == 3
-    assert dao_fetch_all_services_by_user(user.id)[0].name == 'service 1'
-    assert dao_fetch_all_services_by_user(user.id)[1].name == 'service 2'
-    assert dao_fetch_all_services_by_user(user.id)[2].name == 'service 3'
+    assert dao_fetch_all_services_by_user(user.id)[0].name == "service 1"
+    assert dao_fetch_all_services_by_user(user.id)[1].name == "service 2"
+    assert dao_fetch_all_services_by_user(user.id)[2].name == "service 3"
 
 
 def test_get_services_by_partial_name(notify_db_session):
@@ -418,23 +417,23 @@ def test_get_services_by_partial_name_is_case_insensitive(notify_db_session):
 
 def test_get_all_user_services_only_returns_services_user_has_access_to(notify_db_session):
     user = create_user()
-    create_service(service_name='service 1', user=user, email_from='service.1')
-    create_service(service_name='service 2', user=user, email_from='service.2')
-    service_3 = create_service(service_name='service 3', user=user, email_from='service.3')
+    create_service(service_name="service 1", user=user, email_from="service.1")
+    create_service(service_name="service 2", user=user, email_from="service.2")
+    service_3 = create_service(service_name="service 3", user=user, email_from="service.3")
     new_user = User(
-        name='Test User',
-        email_address='new_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900986'
+        name="Test User",
+        email_address="new_user@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+447700900986",
     )
     save_model_user(new_user, validated_email_access=True)
     dao_add_user_to_service(service_3, new_user)
     assert len(dao_fetch_all_services_by_user(user.id)) == 3
-    assert dao_fetch_all_services_by_user(user.id)[0].name == 'service 1'
-    assert dao_fetch_all_services_by_user(user.id)[1].name == 'service 2'
-    assert dao_fetch_all_services_by_user(user.id)[2].name == 'service 3'
+    assert dao_fetch_all_services_by_user(user.id)[0].name == "service 1"
+    assert dao_fetch_all_services_by_user(user.id)[1].name == "service 2"
+    assert dao_fetch_all_services_by_user(user.id)[2].name == "service 3"
     assert len(dao_fetch_all_services_by_user(new_user.id)) == 1
-    assert dao_fetch_all_services_by_user(new_user.id)[0].name == 'service 3'
+    assert dao_fetch_all_services_by_user(new_user.id)[0].name == "service 3"
 
 
 def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(notify_db_session):
@@ -442,32 +441,32 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
     assert len(dao_fetch_all_services_by_user(user.id)) == 0
 
 
-@freeze_time('2019-04-23T10:00:00')
+@freeze_time("2019-04-23T10:00:00")
 def test_dao_fetch_live_services_data(sample_user, nhs_email_branding):
-    org = create_organisation(organisation_type='nhs_central')
-    service = create_service(go_live_user=sample_user, go_live_at='2014-04-20T10:00:00')
+    org = create_organisation(organisation_type="nhs_central")
+    service = create_service(go_live_user=sample_user, go_live_at="2014-04-20T10:00:00")
     sms_template = create_template(service=service)
-    service_2 = create_service(service_name='second', go_live_at='2017-04-20T10:00:00', go_live_user=sample_user)
-    service_3 = create_service(service_name='third', go_live_at='2016-04-20T10:00:00')
+    service_2 = create_service(service_name="second", go_live_at="2017-04-20T10:00:00", go_live_user=sample_user)
+    service_3 = create_service(service_name="third", go_live_at="2016-04-20T10:00:00")
     # below services should be filtered out:
-    create_service(service_name='restricted', restricted=True)
-    create_service(service_name='not_active', active=False)
-    create_service(service_name='not_live', count_as_live=False)
-    email_template = create_template(service=service, template_type='email')
-    template_letter_1 = create_template(service=service, template_type='letter')
-    template_letter_2 = create_template(service=service_2, template_type='letter')
+    create_service(service_name="restricted", restricted=True)
+    create_service(service_name="not_active", active=False)
+    create_service(service_name="not_live", count_as_live=False)
+    email_template = create_template(service=service, template_type="email")
+    template_letter_1 = create_template(service=service, template_type="letter")
+    template_letter_2 = create_template(service=service_2, template_type="letter")
     dao_add_service_to_organisation(service=service, organisation_id=org.id)
     # two sms billing records for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-20', template=sms_template)
-    create_ft_billing(bst_date='2019-04-21', template=sms_template)
+    create_ft_billing(bst_date="2019-04-20", template=sms_template)
+    create_ft_billing(bst_date="2019-04-21", template=sms_template)
     # one sms billing record for 1st service from previous financial year, should not appear in the result:
-    create_ft_billing(bst_date='2018-04-20', template=sms_template)
+    create_ft_billing(bst_date="2018-04-20", template=sms_template)
     # one email billing record for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-20', template=email_template)
+    create_ft_billing(bst_date="2019-04-20", template=email_template)
     # one letter billing record for 1st service within current financial year:
-    create_ft_billing(bst_date='2019-04-15', template=template_letter_1)
+    create_ft_billing(bst_date="2019-04-15", template=template_letter_1)
     # one letter billing record for 2nd service within current financial year:
-    create_ft_billing(bst_date='2019-04-16', template=template_letter_2)
+    create_ft_billing(bst_date="2019-04-16", template=template_letter_2)
 
     # 1st service: billing from 2018 and 2019
     create_annual_billing(service.id, 500, 2018)
@@ -481,57 +480,93 @@ def test_dao_fetch_live_services_data(sample_user, nhs_email_branding):
     assert len(results) == 3
     # checks the results and that they are ordered by date:
     assert results == [
-        {'service_id': mock.ANY, 'service_name': 'Sample service', 'organisation_name': 'test_org_1',
-            'organisation_type': 'nhs_central', 'consent_to_research': None, 'contact_name': 'Test User',
-            'contact_email': 'notify@digital.cabinet-office.gov.uk', 'contact_mobile': '+447700900986',
-            'live_date': datetime(2014, 4, 20, 10, 0), 'sms_volume_intent': None, 'email_volume_intent': None,
-            'letter_volume_intent': None, 'sms_totals': 2, 'email_totals': 1, 'letter_totals': 1,
-            'free_sms_fragment_limit': 100},
-        {'service_id': mock.ANY, 'service_name': 'third', 'organisation_name': None, 'consent_to_research': None,
-            'organisation_type': None, 'contact_name': None, 'contact_email': None,
-            'contact_mobile': None, 'live_date': datetime(2016, 4, 20, 10, 0), 'sms_volume_intent': None,
-            'email_volume_intent': None, 'letter_volume_intent': None,
-            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 0,
-            'free_sms_fragment_limit': 200},
-        {'service_id': mock.ANY, 'service_name': 'second', 'organisation_name': None, 'consent_to_research': None,
-            'contact_name': 'Test User', 'contact_email': 'notify@digital.cabinet-office.gov.uk',
-            'contact_mobile': '+447700900986', 'live_date': datetime(2017, 4, 20, 10, 0), 'sms_volume_intent': None,
-            'organisation_type': None, 'email_volume_intent': None, 'letter_volume_intent': None,
-            'sms_totals': 0, 'email_totals': 0, 'letter_totals': 1,
-            'free_sms_fragment_limit': 300}
+        {
+            "service_id": mock.ANY,
+            "service_name": "Sample service",
+            "organisation_name": "test_org_1",
+            "organisation_type": "nhs_central",
+            "consent_to_research": None,
+            "contact_name": "Test User",
+            "contact_email": "notify@digital.cabinet-office.gov.uk",
+            "contact_mobile": "+447700900986",
+            "live_date": datetime(2014, 4, 20, 10, 0),
+            "sms_volume_intent": None,
+            "email_volume_intent": None,
+            "letter_volume_intent": None,
+            "sms_totals": 2,
+            "email_totals": 1,
+            "letter_totals": 1,
+            "free_sms_fragment_limit": 100,
+        },
+        {
+            "service_id": mock.ANY,
+            "service_name": "third",
+            "organisation_name": None,
+            "consent_to_research": None,
+            "organisation_type": None,
+            "contact_name": None,
+            "contact_email": None,
+            "contact_mobile": None,
+            "live_date": datetime(2016, 4, 20, 10, 0),
+            "sms_volume_intent": None,
+            "email_volume_intent": None,
+            "letter_volume_intent": None,
+            "sms_totals": 0,
+            "email_totals": 0,
+            "letter_totals": 0,
+            "free_sms_fragment_limit": 200,
+        },
+        {
+            "service_id": mock.ANY,
+            "service_name": "second",
+            "organisation_name": None,
+            "consent_to_research": None,
+            "contact_name": "Test User",
+            "contact_email": "notify@digital.cabinet-office.gov.uk",
+            "contact_mobile": "+447700900986",
+            "live_date": datetime(2017, 4, 20, 10, 0),
+            "sms_volume_intent": None,
+            "organisation_type": None,
+            "email_volume_intent": None,
+            "letter_volume_intent": None,
+            "sms_totals": 0,
+            "email_totals": 0,
+            "letter_totals": 1,
+            "free_sms_fragment_limit": 300,
+        },
     ]
 
 
 def test_get_service_by_id_returns_none_if_no_service(notify_db_session):
     with pytest.raises(NoResultFound) as e:
         dao_fetch_service_by_id(str(uuid.uuid4()))
-    assert 'No row was found when one was required' in str(e.value)
+    assert "No row was found when one was required" in str(e.value)
 
 
 def test_get_service_by_id_returns_service(notify_db_session):
-    service = create_service(service_name='testing', email_from='testing')
-    assert dao_fetch_service_by_id(service.id).name == 'testing'
+    service = create_service(service_name="testing", email_from="testing")
+    assert dao_fetch_service_by_id(service.id).name == "testing"
 
 
 def test_create_service_returns_service_with_default_permissions(notify_db_session):
-    service = create_service(service_name='testing', email_from='testing', service_permissions=None)
+    service = create_service(service_name="testing", email_from="testing", service_permissions=None)
 
     service = dao_fetch_service_by_id(service.id)
-    _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    ))
+    _assert_service_permissions(
+        service.permissions,
+        (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS),
+    )
 
 
-@pytest.mark.parametrize("permission_to_remove, permissions_remaining", [
-    (SMS_TYPE, (
-        EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    )),
-    (EMAIL_TYPE, (
-        SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    )),
-])
+@pytest.mark.parametrize(
+    "permission_to_remove, permissions_remaining",
+    [
+        (SMS_TYPE, (EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS)),
+        (EMAIL_TYPE, (SMS_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS)),
+    ],
+)
 def test_remove_permission_from_service_by_id_returns_service_with_correct_permissions(
-        notify_db_session, permission_to_remove, permissions_remaining
+    notify_db_session, permission_to_remove, permissions_remaining
 ):
     service = create_service(service_permissions=None)
     dao_remove_service_permission(service_id=service.id, permission=permission_to_remove)
@@ -554,22 +589,23 @@ def test_removing_all_permission_returns_service_with_no_permissions(notify_db_s
 
 
 def test_create_service_by_id_adding_and_removing_letter_returns_service_without_letter(service_factory):
-    service = service_factory.get('testing', email_from='testing')
+    service = service_factory.get("testing", email_from="testing")
 
     dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
     dao_add_service_permission(service_id=service.id, permission=LETTER_TYPE)
 
     service = dao_fetch_service_by_id(service.id)
-    _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    ))
+    _assert_service_permissions(
+        service.permissions,
+        (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS),
+    )
 
     dao_remove_service_permission(service_id=service.id, permission=LETTER_TYPE)
     service = dao_fetch_service_by_id(service.id)
 
-    _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    ))
+    _assert_service_permissions(
+        service.permissions, (SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS)
+    )
 
 
 def test_create_service_creates_a_history_record_with_current_data(notify_db_session):
@@ -577,11 +613,9 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     create_letter_branding()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     dao_create_service(service, user)
     assert Service.query.count() == 1
     assert Service.get_history_model().query.count() == 1
@@ -601,18 +635,16 @@ def test_update_service_creates_a_history_record_with_current_data(notify_db_ses
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
     dao_create_service(service, user)
 
     assert Service.query.count() == 1
     assert Service.query.first().version == 1
     assert Service.get_history_model().query.count() == 1
 
-    service.name = 'updated_service_name'
+    service.name = "updated_service_name"
     dao_update_service(service)
 
     assert Service.query.count() == 1
@@ -622,26 +654,28 @@ def test_update_service_creates_a_history_record_with_current_data(notify_db_ses
 
     assert service_from_db.version == 2
 
-    assert Service.get_history_model().query.filter_by(name='service_name').one().version == 1
-    assert Service.get_history_model().query.filter_by(name='updated_service_name').one().version == 2
+    assert Service.get_history_model().query.filter_by(name="service_name").one().version == 1
+    assert Service.get_history_model().query.filter_by(name="updated_service_name").one().version == 2
 
 
 def test_update_service_permission_creates_a_history_record_with_current_data(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(name="service_name",
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
-    dao_create_service(service, user, service_permissions=[
-        SMS_TYPE,
-        EMAIL_TYPE,
-        INTERNATIONAL_SMS_TYPE,
-    ])
+    service = Service(
+        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
+    )
+    dao_create_service(
+        service,
+        user,
+        service_permissions=[
+            SMS_TYPE,
+            EMAIL_TYPE,
+            INTERNATIONAL_SMS_TYPE,
+        ],
+    )
 
-    service.permissions.append(ServicePermission(service_id=service.id, permission='letter'))
+    service.permissions.append(ServicePermission(service_id=service.id, permission="letter"))
     dao_update_service(service)
 
     assert Service.query.count() == 1
@@ -651,11 +685,17 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
 
     assert service_from_db.version == 2
 
-    _assert_service_permissions(service.permissions, (
-        SMS_TYPE, EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE,
-    ))
+    _assert_service_permissions(
+        service.permissions,
+        (
+            SMS_TYPE,
+            EMAIL_TYPE,
+            INTERNATIONAL_SMS_TYPE,
+            LETTER_TYPE,
+        ),
+    )
 
-    permission = [p for p in service.permissions if p.permission == 'sms'][0]
+    permission = [p for p in service.permissions if p.permission == "sms"][0]
     service.permissions.remove(permission)
     dao_update_service(service)
 
@@ -664,11 +704,16 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
 
     service_from_db = Service.query.first()
     assert service_from_db.version == 3
-    _assert_service_permissions(service.permissions, (
-        EMAIL_TYPE, INTERNATIONAL_SMS_TYPE, LETTER_TYPE,
-    ))
+    _assert_service_permissions(
+        service.permissions,
+        (
+            EMAIL_TYPE,
+            INTERNATIONAL_SMS_TYPE,
+            LETTER_TYPE,
+        ),
+    )
 
-    history = Service.get_history_model().query.filter_by(name='service_name').order_by('version').all()
+    history = Service.get_history_model().query.filter_by(name="service_name").order_by("version").all()
 
     assert len(history) == 3
     assert history[2].version == 3
@@ -678,11 +723,7 @@ def test_create_service_and_history_is_transactional(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(name=None,
-                      email_from="email_from",
-                      message_limit=1000,
-                      restricted=False,
-                      created_by=user)
+    service = Service(name=None, email_from="email_from", message_limit=1000, restricted=False, created_by=user)
 
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service, user)
@@ -696,17 +737,17 @@ def test_delete_service_and_associated_objects(notify_db_session):
     user = create_user()
     organisation = create_organisation()
     service = create_service(user=user, service_permissions=None, organisation=organisation)
-    create_user_code(user=user, code='somecode', code_type='email')
-    create_user_code(user=user, code='somecode', code_type='sms')
+    create_user_code(user=user, code="somecode", code_type="email")
+    create_user_code(user=user, code="somecode", code_type="sms")
     template = create_template(service=service)
     api_key = create_api_key(service=service)
     create_notification(template=template, api_key=api_key)
     create_invited_user(service=service)
     user.organisations = [organisation]
 
-    assert ServicePermission.query.count() == len((
-        SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS
-    ))
+    assert ServicePermission.query.count() == len(
+        (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE, INTERNATIONAL_SMS_TYPE, UPLOAD_LETTERS, INTERNATIONAL_LETTERS)
+    )
 
     delete_service_and_all_associated_db_objects(service)
     assert VerifyCode.query.count() == 0
@@ -729,11 +770,9 @@ def test_delete_service_and_associated_objects(notify_db_session):
 def test_add_existing_user_to_another_service_doesnot_change_old_permissions(notify_db_session):
     user = create_user()
 
-    service_one = Service(name="service_one",
-                          email_from="service_one",
-                          message_limit=1000,
-                          restricted=False,
-                          created_by=user)
+    service_one = Service(
+        name="service_one", email_from="service_one", message_limit=1000, restricted=False, created_by=user
+    )
 
     dao_create_service(service_one, user)
     assert user.id == service_one.users[0].id
@@ -741,17 +780,15 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(not
     assert len(test_user_permissions) == 8
 
     other_user = User(
-        name='Other Test User',
-        email_address='other_user@digital.cabinet-office.gov.uk',
-        password='password',
-        mobile_number='+447700900987'
+        name="Other Test User",
+        email_address="other_user@digital.cabinet-office.gov.uk",
+        password="password",
+        mobile_number="+447700900987",
     )
     save_model_user(other_user, validated_email_access=True)
-    service_two = Service(name="service_two",
-                          email_from="service_two",
-                          message_limit=1000,
-                          restricted=False,
-                          created_by=other_user)
+    service_two = Service(
+        name="service_two", email_from="service_two", message_limit=1000, restricted=False, created_by=other_user
+    )
     dao_create_service(service_two, other_user)
 
     assert other_user.id == service_two.users[0].id
@@ -763,7 +800,7 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(not
 
     # adding the other_user to service_one should leave all other_user permissions on service_two intact
     permissions = []
-    for p in ['send_emails', 'send_texts', 'send_letters']:
+    for p in ["send_emails", "send_texts", "send_letters"]:
         permissions.append(Permission(permission=p))
 
     dao_add_user_to_service(service_one, other_user, permissions=permissions)
@@ -779,11 +816,9 @@ def test_fetch_stats_filters_on_service(notify_db_session):
     service_one = create_service()
     create_notification(template=create_template(service=service_one))
 
-    service_two = Service(name="service_two",
-                          created_by=service_one.created_by,
-                          email_from="hello",
-                          restricted=False,
-                          message_limit=1000)
+    service_two = Service(
+        name="service_two", created_by=service_one.created_by, email_from="hello", restricted=False, message_limit=1000
+    )
     dao_create_service(service_two, service_one.created_by)
 
     stats = dao_fetch_todays_stats_for_service(service_two.id)
@@ -803,27 +838,27 @@ def test_fetch_stats_ignores_historical_notification_data(sample_template):
 def test_dao_fetch_todays_stats_for_service(notify_db_session):
     service = create_service()
     sms_template = create_template(service=service)
-    email_template = create_template(service=service, template_type='email')
+    email_template = create_template(service=service, template_type="email")
     # two created email, one failed email, and one created sms
-    create_notification(template=email_template, status='created')
-    create_notification(template=email_template, status='created')
-    create_notification(template=email_template, status='technical-failure')
-    create_notification(template=sms_template, status='created')
+    create_notification(template=email_template, status="created")
+    create_notification(template=email_template, status="created")
+    create_notification(template=email_template, status="technical-failure")
+    create_notification(template=sms_template, status="created")
 
     stats = dao_fetch_todays_stats_for_service(service.id)
     stats = sorted(stats, key=lambda x: (x.notification_type, x.status))
     assert len(stats) == 3
 
-    assert stats[0].notification_type == 'email'
-    assert stats[0].status == 'created'
+    assert stats[0].notification_type == "email"
+    assert stats[0].status == "created"
     assert stats[0].count == 2
 
-    assert stats[1].notification_type == 'email'
-    assert stats[1].status == 'technical-failure'
+    assert stats[1].notification_type == "email"
+    assert stats[1].status == "technical-failure"
     assert stats[1].count == 1
 
-    assert stats[2].notification_type == 'sms'
-    assert stats[2].status == 'created'
+    assert stats[2].notification_type == "sms"
+    assert stats[2].status == "created"
     assert stats[2].count == 1
 
 
@@ -842,129 +877,129 @@ def test_dao_fetch_todays_stats_for_service_should_ignore_test_key(notify_db_ses
 
     stats = dao_fetch_todays_stats_for_service(service.id)
     assert len(stats) == 1
-    assert stats[0].notification_type == 'sms'
-    assert stats[0].status == 'created'
+    assert stats[0].notification_type == "sms"
+    assert stats[0].status == "created"
     assert stats[0].count == 3
 
 
 def test_dao_fetch_todays_stats_for_service_only_includes_today(notify_db_session):
     template = create_template(service=create_service())
     # two created email, one failed email, and one created sms
-    with freeze_time('2001-01-01T23:59:00'):
+    with freeze_time("2001-01-01T23:59:00"):
         # just_before_midnight_yesterday
-        create_notification(template=template, to_field='1', status='delivered')
+        create_notification(template=template, to_field="1", status="delivered")
 
-    with freeze_time('2001-01-02T00:01:00'):
+    with freeze_time("2001-01-02T00:01:00"):
         # just_after_midnight_today
-        create_notification(template=template, to_field='2', status='failed')
+        create_notification(template=template, to_field="2", status="failed")
 
-    with freeze_time('2001-01-02T12:00:00'):
+    with freeze_time("2001-01-02T12:00:00"):
         # right_now
-        create_notification(template=template, to_field='3', status='created')
+        create_notification(template=template, to_field="3", status="created")
 
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
-    assert stats['created'] == 1
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
+    assert stats["created"] == 1
 
 
 def test_dao_fetch_todays_stats_for_service_only_includes_today_when_clocks_spring_forward(notify_db_session):
     template = create_template(service=create_service())
-    with freeze_time('2021-03-27T23:59:59'):
+    with freeze_time("2021-03-27T23:59:59"):
         # just before midnight yesterday in UTC -- not included
-        create_notification(template=template, to_field='1', status='permanent-failure')
-    with freeze_time('2021-03-28T00:01:00'):
+        create_notification(template=template, to_field="1", status="permanent-failure")
+    with freeze_time("2021-03-28T00:01:00"):
         # just after midnight yesterday in UTC -- included
-        create_notification(template=template, to_field='2', status='failed')
-    with freeze_time('2021-03-28T12:00:00'):
+        create_notification(template=template, to_field="2", status="failed")
+    with freeze_time("2021-03-28T12:00:00"):
         # we have entered BST at this point but had not for the previous two notifications --included
         # collect stats for this timestamp
-        create_notification(template=template, to_field='3', status='created')
+        create_notification(template=template, to_field="3", status="created")
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
-    assert stats['created'] == 1
-    assert not stats.get('permanent-failure')
-    assert not stats.get('temporary-failure')
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
+    assert stats["created"] == 1
+    assert not stats.get("permanent-failure")
+    assert not stats.get("temporary-failure")
 
 
 def test_dao_fetch_todays_stats_for_service_only_includes_today_during_bst(notify_db_session):
     template = create_template(service=create_service())
-    with freeze_time('2021-03-28T22:59:59'):
+    with freeze_time("2021-03-28T22:59:59"):
         # just before midnight BST -- not included
-        create_notification(template=template, to_field='1', status='permanent-failure')
-    with freeze_time('2021-03-28T23:00:01'):
+        create_notification(template=template, to_field="1", status="permanent-failure")
+    with freeze_time("2021-03-28T23:00:01"):
         # just after midnight BST -- included
-        create_notification(template=template, to_field='2', status='failed')
-    with freeze_time('2021-03-29T12:00:00'):
+        create_notification(template=template, to_field="2", status="failed")
+    with freeze_time("2021-03-29T12:00:00"):
         # well after midnight BST -- included
         # collect stats for this timestamp
-        create_notification(template=template, to_field='3', status='created')
+        create_notification(template=template, to_field="3", status="created")
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
-    assert stats['created'] == 1
-    assert not stats.get('permanent-failure')
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
+    assert stats["created"] == 1
+    assert not stats.get("permanent-failure")
 
 
 def test_dao_fetch_todays_stats_for_service_only_includes_today_when_clocks_fall_back(notify_db_session):
     template = create_template(service=create_service())
-    with freeze_time('2021-10-30T22:59:59'):
+    with freeze_time("2021-10-30T22:59:59"):
         # just before midnight BST -- not included
-        create_notification(template=template, to_field='1', status='permanent-failure')
-    with freeze_time('2021-10-31T23:00:01'):
+        create_notification(template=template, to_field="1", status="permanent-failure")
+    with freeze_time("2021-10-31T23:00:01"):
         # just after midnight BST -- included
-        create_notification(template=template, to_field='2', status='failed')
+        create_notification(template=template, to_field="2", status="failed")
     # clocks go back to UTC on 31 October at 2am
-    with freeze_time('2021-10-31T12:00:00'):
+    with freeze_time("2021-10-31T12:00:00"):
         # well after midnight -- included
         # collect stats for this timestamp
-        create_notification(template=template, to_field='3', status='created')
+        create_notification(template=template, to_field="3", status="created")
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
-    assert stats['created'] == 1
-    assert not stats.get('permanent-failure')
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
+    assert stats["created"] == 1
+    assert not stats.get("permanent-failure")
 
 
 def test_dao_fetch_todays_stats_for_service_only_includes_during_utc(notify_db_session):
     template = create_template(service=create_service())
-    with freeze_time('2021-10-30T12:59:59'):
+    with freeze_time("2021-10-30T12:59:59"):
         # just before midnight UTC -- not included
-        create_notification(template=template, to_field='1', status='permanent-failure')
-    with freeze_time('2021-10-31T00:00:01'):
+        create_notification(template=template, to_field="1", status="permanent-failure")
+    with freeze_time("2021-10-31T00:00:01"):
         # just after midnight UTC -- included
-        create_notification(template=template, to_field='2', status='failed')
+        create_notification(template=template, to_field="2", status="failed")
     # clocks go back to UTC on 31 October at 2am
-    with freeze_time('2021-10-31T12:00:00'):
+    with freeze_time("2021-10-31T12:00:00"):
         # well after midnight -- included
         # collect stats for this timestamp
-        create_notification(template=template, to_field='3', status='created')
+        create_notification(template=template, to_field="3", status="created")
         stats = dao_fetch_todays_stats_for_service(template.service_id)
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
-    assert stats['created'] == 1
-    assert not stats.get('permanent-failure')
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
+    assert stats["created"] == 1
+    assert not stats.get("permanent-failure")
 
 
 def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db_session):
     # two services, each with an email and sms notification
-    service1 = create_service(service_name='service 1', email_from='service.1')
-    service2 = create_service(service_name='service 2', email_from='service.2')
-    template_email_one = create_template(service=service1, template_type='email')
-    template_sms_one = create_template(service=service1, template_type='sms')
-    template_email_two = create_template(service=service2, template_type='email')
-    template_sms_two = create_template(service=service2, template_type='sms')
+    service1 = create_service(service_name="service 1", email_from="service.1")
+    service2 = create_service(service_name="service 2", email_from="service.2")
+    template_email_one = create_template(service=service1, template_type="email")
+    template_sms_one = create_template(service=service1, template_type="sms")
+    template_email_two = create_template(service=service2, template_type="email")
+    template_sms_two = create_template(service=service2, template_type="sms")
     create_notification(template=template_email_one)
     create_notification(template=template_sms_one)
     create_notification(template=template_email_two)
@@ -979,46 +1014,82 @@ def test_dao_fetch_todays_stats_for_all_services_includes_all_services(notify_db
 
 def test_dao_fetch_todays_stats_for_all_services_only_includes_today(notify_db_session):
     template = create_template(service=create_service())
-    with freeze_time('2001-01-01T23:59:00'):
+    with freeze_time("2001-01-01T23:59:00"):
         # just_before_midnight_yesterday
-        create_notification(template=template, to_field='1', status='delivered')
+        create_notification(template=template, to_field="1", status="delivered")
 
-    with freeze_time('2001-01-02T00:01:00'):
+    with freeze_time("2001-01-02T00:01:00"):
         # just_after_midnight_today
-        create_notification(template=template, to_field='2', status='failed')
+        create_notification(template=template, to_field="2", status="failed")
 
-    with freeze_time('2001-01-02T12:00:00'):
+    with freeze_time("2001-01-02T12:00:00"):
         stats = dao_fetch_todays_stats_for_all_services()
 
     stats = {row.status: row.count for row in stats}
-    assert 'delivered' not in stats
-    assert stats['failed'] == 1
+    assert "delivered" not in stats
+    assert stats["failed"] == 1
 
 
 def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_session):
-    service1 = create_service(service_name='service 1', email_from='service.1')
-    service2 = create_service(service_name='service 2', email_from='service.2')
+    service1 = create_service(service_name="service 1", email_from="service.1")
+    service2 = create_service(service_name="service 2", email_from="service.2")
     template_sms = create_template(service=service1)
-    template_email = create_template(service=service1, template_type='email')
+    template_email = create_template(service=service1, template_type="email")
     template_two = create_template(service=service2)
     # service1: 2 sms with status "created" and one "failed", and one email
     create_notification(template=template_sms)
     create_notification(template=template_sms)
-    create_notification(template=template_sms, status='failed')
+    create_notification(template=template_sms, status="failed")
     create_notification(template=template_email)
     # service2: 1 sms "created"
     create_notification(template=template_two)
 
     stats = dao_fetch_todays_stats_for_all_services()
     assert len(stats) == 4
-    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
-            service1.created_at, 'sms', 'created', 2) in stats
-    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
-            service1.created_at, 'sms', 'failed', 1) in stats
-    assert (service1.id, service1.name, service1.restricted, service1.research_mode, service1.active,
-            service1.created_at, 'email', 'created', 1) in stats
-    assert (service2.id, service2.name, service2.restricted, service2.research_mode, service2.active,
-            service2.created_at, 'sms', 'created', 1) in stats
+    assert (
+        service1.id,
+        service1.name,
+        service1.restricted,
+        service1.research_mode,
+        service1.active,
+        service1.created_at,
+        "sms",
+        "created",
+        2,
+    ) in stats
+    assert (
+        service1.id,
+        service1.name,
+        service1.restricted,
+        service1.research_mode,
+        service1.active,
+        service1.created_at,
+        "sms",
+        "failed",
+        1,
+    ) in stats
+    assert (
+        service1.id,
+        service1.name,
+        service1.restricted,
+        service1.research_mode,
+        service1.active,
+        service1.created_at,
+        "email",
+        "created",
+        1,
+    ) in stats
+    assert (
+        service2.id,
+        service2.name,
+        service2.restricted,
+        service2.research_mode,
+        service2.active,
+        service2.created_at,
+        "sms",
+        "created",
+        1,
+    ) in stats
 
 
 def test_dao_fetch_todays_stats_for_all_services_includes_all_keys_by_default(notify_db_session):
@@ -1046,8 +1117,8 @@ def test_dao_fetch_todays_stats_for_all_services_can_exclude_from_test_key(notif
 
 
 def test_dao_fetch_active_users_for_service_returns_active_only(notify_db_session):
-    active_user = create_user(email='active@foo.com', state='active')
-    pending_user = create_user(email='pending@foo.com', state='pending')
+    active_user = create_user(email="active@foo.com", state="active")
+    pending_user = create_user(email="pending@foo.com", state="pending")
     service = create_service(user=active_user)
     dao_add_user_to_service(service, pending_user)
     users = dao_fetch_active_users_for_service(service.id)
@@ -1056,58 +1127,58 @@ def test_dao_fetch_active_users_for_service_returns_active_only(notify_db_sessio
 
 
 def test_dao_fetch_service_by_inbound_number_with_inbound_number(notify_db_session):
-    foo1 = create_service_with_inbound_number(service_name='a', inbound_number='1')
-    create_service_with_defined_sms_sender(service_name='b', sms_sender_value='2')
-    create_service_with_defined_sms_sender(service_name='c', sms_sender_value='3')
-    create_inbound_number('2')
-    create_inbound_number('3')
+    foo1 = create_service_with_inbound_number(service_name="a", inbound_number="1")
+    create_service_with_defined_sms_sender(service_name="b", sms_sender_value="2")
+    create_service_with_defined_sms_sender(service_name="c", sms_sender_value="3")
+    create_inbound_number("2")
+    create_inbound_number("3")
 
-    service = dao_fetch_service_by_inbound_number('1')
+    service = dao_fetch_service_by_inbound_number("1")
 
     assert foo1.id == service.id
 
 
 def test_dao_fetch_service_by_inbound_number_with_inbound_number_not_set(notify_db_session):
-    create_inbound_number('1')
+    create_inbound_number("1")
 
-    service = dao_fetch_service_by_inbound_number('1')
+    service = dao_fetch_service_by_inbound_number("1")
 
     assert service is None
 
 
 def test_dao_fetch_service_by_inbound_number_when_inbound_number_set(notify_db_session):
-    service_1 = create_service_with_inbound_number(inbound_number='1', service_name='a')
-    create_service(service_name='b')
+    service_1 = create_service_with_inbound_number(inbound_number="1", service_name="a")
+    create_service(service_name="b")
 
-    service = dao_fetch_service_by_inbound_number('1')
+    service = dao_fetch_service_by_inbound_number("1")
 
     assert service.id == service_1.id
 
 
 def test_dao_fetch_service_by_inbound_number_with_unknown_number(notify_db_session):
-    create_service_with_inbound_number(inbound_number='1', service_name='a')
+    create_service_with_inbound_number(inbound_number="1", service_name="a")
 
-    service = dao_fetch_service_by_inbound_number('9')
+    service = dao_fetch_service_by_inbound_number("9")
 
     assert service is None
 
 
 def test_dao_fetch_service_by_inbound_number_with_inactive_number_returns_empty(notify_db_session):
-    service = create_service_with_inbound_number(inbound_number='1', service_name='a')
+    service = create_service_with_inbound_number(inbound_number="1", service_name="a")
     dao_set_inbound_number_active_flag(service_id=service.id, active=False)
 
-    service = dao_fetch_service_by_inbound_number('1')
+    service = dao_fetch_service_by_inbound_number("1")
 
     assert service is None
 
 
 def test_dao_allocating_inbound_number_shows_on_service(notify_db_session):
     create_service_with_inbound_number()
-    create_inbound_number(number='07700900003')
+    create_inbound_number(number="07700900003")
 
     inbound_numbers = dao_get_available_inbound_numbers()
 
-    service = create_service(service_name='test service')
+    service = create_service(service_name="test service")
 
     dao_set_inbound_number_to_service(service.id, inbound_numbers[0])
 
@@ -1121,9 +1192,9 @@ def _assert_service_permissions(service_permissions, expected):
 
 def create_email_sms_letter_template():
     service = create_service()
-    template_one = create_template(service=service, template_name='1', template_type='email')
-    template_two = create_template(service=service, template_name='2', template_type='sms')
-    template_three = create_template(service=service, template_name='3', template_type='letter')
+    template_one = create_template(service=service, template_name="1", template_type="email")
+    template_two = create_template(service=service, template_name="2", template_type="sms")
+    template_three = create_template(service=service, template_name="3", template_type="letter")
     return template_one, template_three, template_two
 
 
@@ -1155,13 +1226,13 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
     create_notification(template_2, normalised_to=tv_number, status="permanent-failure")
     for _ in range(0, 5):
         # test key type is excluded
-        create_notification(template_2, normalised_to=tv_number, status="permanent-failure", key_type='test')
+        create_notification(template_2, normalised_to=tv_number, status="permanent-failure", key_type="test")
     for _ in range(0, 5):
         # normal numbers are not counted by the query
         create_notification(template_2, normalised_to=normal_number, status="delivered")
         create_notification(template_2, normalised_to=normal_number_resembling_tv_number, status="delivered")
 
-    start_date = (datetime.utcnow() - timedelta(days=1))
+    start_date = datetime.utcnow() - timedelta(days=1)
     end_date = datetime.utcnow()
 
     result = dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=4)
@@ -1193,10 +1264,10 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
     service_2 = create_service(service_name="Service 2")
     template_2 = create_template(service_2)
     for _ in range(0, 4):
-        create_notification(template_2, status="permanent-failure", key_type='test')  # test key type is excluded
+        create_notification(template_2, status="permanent-failure", key_type="test")  # test key type is excluded
     create_notification(template_2, status="permanent-failure")  # below threshold is excluded
 
-    start_date = (datetime.utcnow() - timedelta(days=1))
+    start_date = datetime.utcnow() - timedelta(days=1)
     end_date = datetime.utcnow()
 
     result = dao_find_services_with_high_failure_rates(start_date, end_date, threshold=3)
@@ -1208,13 +1279,15 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
 
 
 def test_get_live_services_with_organisation(sample_organisation):
-    trial_service = create_service(service_name='trial service', restricted=True)
+    trial_service = create_service(service_name="trial service", restricted=True)
     live_service = create_service(service_name="count as live")
     live_service_diff_org = create_service(service_name="live service different org")
     dont_count_as_live = create_service(service_name="dont count as live", count_as_live=False)
     inactive_service = create_service(service_name="inactive", active=False)
     service_without_org = create_service(service_name="no org")
-    another_org = create_organisation(name='different org', )
+    another_org = create_organisation(
+        name="different org",
+    )
 
     dao_add_service_to_organisation(trial_service, sample_organisation.id)
     dao_add_service_to_organisation(live_service, sample_organisation.id)
@@ -1227,4 +1300,5 @@ def test_get_live_services_with_organisation(sample_organisation):
     assert ([(x.service_name, x.organisation_name) for x in services]) == [
         (live_service_diff_org.name, another_org.name),
         (live_service.name, sample_organisation.name),
-        (service_without_org.name, None)]
+        (service_without_org.name, None),
+    ]

@@ -7,12 +7,13 @@ Create Date: 2022-04-12 18:22:12.069016
 """
 from alembic import op
 
-revision = '0368_move_orgs_to_nhs_branding'
-down_revision = '0367_add_reach'
+revision = "0368_move_orgs_to_nhs_branding"
+down_revision = "0367_add_reach"
 
 
 def upgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE
             organisation
         SET
@@ -21,7 +22,8 @@ def upgrade():
             organisation_type IN ('nhs_central', 'nhs_local', 'nhs_gp')
         AND
             email_branding_id IS NULL
-    """)
+    """
+    )
     # ### end Alembic commands ###
 
 

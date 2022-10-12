@@ -7,11 +7,11 @@ Create Date: 2017-05-03 16:50:11.334116
 """
 
 # revision identifiers, used by Alembic.
-revision = '0080_fix_rate_start_date'
-down_revision = '0079_update_rates'
+revision = "0080_fix_rate_start_date"
+down_revision = "0079_update_rates"
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 
 def upgrade():

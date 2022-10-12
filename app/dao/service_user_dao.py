@@ -1,4 +1,3 @@
-
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import ServiceUser, User
@@ -9,13 +8,10 @@ def dao_get_service_user(user_id, service_id):
 
 
 def dao_get_active_service_users(service_id):
-    query = db.session.query(
-        ServiceUser
-    ).join(
-        User, User.id == ServiceUser.user_id
-    ).filter(
-        User.state == 'active',
-        ServiceUser.service_id == service_id
+    query = (
+        db.session.query(ServiceUser)
+        .join(User, User.id == ServiceUser.user_id)
+        .filter(User.state == "active", ServiceUser.service_id == service_id)
     )
 
     return query.all()

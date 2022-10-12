@@ -5,11 +5,12 @@ Revises: 0375_doc_download_verify_email
 Create Date: 2022-08-22 13:47:31.180072
 
 """
-from alembic import op
 import textwrap
 
-revision = '0376_email_branding_pools'
-down_revision = '0375_doc_download_verify_email'
+from alembic import op
+
+revision = "0376_email_branding_pools"
+down_revision = "0375_doc_download_verify_email"
 
 
 def upgrade():

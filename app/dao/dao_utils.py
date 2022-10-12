@@ -19,6 +19,7 @@ def autocommit(func):
         except Exception:
             db.session.rollback()
             raise
+
     return commit_or_rollback
 
 
@@ -36,8 +37,7 @@ def transaction():
         raise
 
 
-class VersionOptions():
-
+class VersionOptions:
     def __init__(self, model_class, history_class=None, must_write_history=True):
         self.model_class = model_class
         self.history_class = history_class
@@ -59,33 +59,28 @@ def version_class(*version_options):
 
             for version_option in version_options:
                 tmp_session_objects = [
-                    (
-                        session_object, version_option.history_class
-                    )
-                    for session_object in itertools.chain(
-                        db.session.new, db.session.dirty
-                    )
-                    if isinstance(
-                        session_object, version_option.model_class
-                    )
+                    (session_object, version_option.history_class)
+                    for session_object in itertools.chain(db.session.new, db.session.dirty)
+                    if isinstance(session_object, version_option.model_class)
                 ]
 
                 if tmp_session_objects == [] and version_option.must_write_history:
-                    raise RuntimeError((
-                        'Can\'t record history for {} '
-                        '(something in your code has casued the database to '
-                        'flush the session early so there\'s nothing to '
-                        'copy into the history table)'
-                    ).format(version_option.model_class.__name__))
+                    raise RuntimeError(
+                        (
+                            "Can't record history for {} "
+                            "(something in your code has casued the database to "
+                            "flush the session early so there's nothing to "
+                            "copy into the history table)"
+                        ).format(version_option.model_class.__name__)
+                    )
 
                 session_objects += tmp_session_objects
 
             for session_object, history_class in session_objects:
-                db.session.add(
-                    create_history(session_object, history_cls=history_class)
-                )
+                db.session.add(create_history(session_object, history_cls=history_class))
 
         return record_version
+
     return versioned
 
 

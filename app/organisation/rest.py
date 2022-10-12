@@ -1,4 +1,3 @@
-
 from flask import Blueprint, abort, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
@@ -45,7 +44,7 @@ from app.organisation.organisation_schema import (
 )
 from app.schema_validation import validate
 
-organisation_blueprint = Blueprint('organisation', __name__)
+organisation_blueprint = Blueprint("organisation", __name__)
 register_errors(organisation_blueprint)
 
 
@@ -54,43 +53,37 @@ def handle_integrity_error(exc):
     """
     Handle integrity errors caused by the unique constraint on ix_organisation_name
     """
-    if 'ix_organisation_name' in str(exc):
-        return jsonify(result="error",
-                       message="Organisation name already exists"), 400
+    if "ix_organisation_name" in str(exc):
+        return jsonify(result="error", message="Organisation name already exists"), 400
     if 'duplicate key value violates unique constraint "domain_pkey"' in str(exc):
-        return jsonify(result='error',
-                       message='Domain already exists'), 400
+        return jsonify(result="error", message="Domain already exists"), 400
 
     current_app.logger.exception(exc)
-    return jsonify(result='error', message="Internal server error"), 500
+    return jsonify(result="error", message="Internal server error"), 500
 
 
-@organisation_blueprint.route('', methods=['GET'])
+@organisation_blueprint.route("", methods=["GET"])
 def get_organisations():
-    organisations = [
-        org.serialize_for_list() for org in dao_get_organisations()
-    ]
+    organisations = [org.serialize_for_list() for org in dao_get_organisations()]
 
     return jsonify(organisations)
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>', methods=['GET'])
+@organisation_blueprint.route("/<uuid:organisation_id>", methods=["GET"])
 def get_organisation_by_id(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     return jsonify(organisation.serialize())
 
 
-@organisation_blueprint.route('/by-domain', methods=['GET'])
+@organisation_blueprint.route("/by-domain", methods=["GET"])
 def get_organisation_by_domain():
 
-    domain = request.args.get('domain')
+    domain = request.args.get("domain")
 
-    if not domain or '@' in domain:
+    if not domain or "@" in domain:
         abort(400)
 
-    organisation = dao_get_organisation_by_email_address(
-        'example@{}'.format(request.args.get('domain'))
-    )
+    organisation = dao_get_organisation_by_email_address("example@{}".format(request.args.get("domain")))
 
     if not organisation:
         abort(404)
@@ -98,7 +91,7 @@ def get_organisation_by_domain():
     return jsonify(organisation.serialize())
 
 
-@organisation_blueprint.route('', methods=['POST'])
+@organisation_blueprint.route("", methods=["POST"])
 def create_organisation():
     data = request.get_json()
 
@@ -110,30 +103,30 @@ def create_organisation():
     return jsonify(organisation.serialize()), 201
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>', methods=['POST'])
+@organisation_blueprint.route("/<uuid:organisation_id>", methods=["POST"])
 def update_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_update_organisation_schema)
 
     organisation = dao_get_organisation_by_id(organisation_id)
 
-    if data.get('organisation_type') in NHS_ORGANISATION_TYPES and not organisation.email_branding_id:
-        data["email_branding_id"] = current_app.config['NHS_EMAIL_BRANDING_ID']
+    if data.get("organisation_type") in NHS_ORGANISATION_TYPES and not organisation.email_branding_id:
+        data["email_branding_id"] = current_app.config["NHS_EMAIL_BRANDING_ID"]
 
     result = dao_update_organisation(organisation_id, **data)
 
-    if data.get('agreement_signed') is True:
+    if data.get("agreement_signed") is True:
         # if a platform admin has manually adjusted the organisation, don't tell people
-        if data.get('agreement_signed_by_id'):
+        if data.get("agreement_signed_by_id"):
             send_notifications_on_mou_signed(organisation_id)
 
     if result:
-        return '', 204
+        return "", 204
     else:
         raise InvalidRequest("Organisation not found", 404)
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/archive', methods=['POST'])
+@organisation_blueprint.route("/<uuid:organisation_id>/archive", methods=["POST"])
 def archive_organisation(organisation_id):
     """
     All services must be reassigned and all team members removed before an org can be
@@ -144,68 +137,67 @@ def archive_organisation(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
 
     if organisation.services:
-        raise InvalidRequest('Cannot archive an organisation with services', 400)
+        raise InvalidRequest("Cannot archive an organisation with services", 400)
 
     pending_invited_users = [
-        user for user in get_invited_org_users_for_organisation(organisation_id)
-        if user.status == INVITE_PENDING
+        user for user in get_invited_org_users_for_organisation(organisation_id) if user.status == INVITE_PENDING
     ]
 
     if organisation.users or pending_invited_users:
-        raise InvalidRequest('Cannot archive an organisation with team members or invited team members', 400)
+        raise InvalidRequest("Cannot archive an organisation with team members or invited team members", 400)
 
     if organisation.active:
         dao_archive_organisation(organisation_id)
 
-    return '', 204
+    return "", 204
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/service', methods=['POST'])
+@organisation_blueprint.route("/<uuid:organisation_id>/service", methods=["POST"])
 def link_service_to_organisation(organisation_id):
     data = request.get_json()
     validate(data, post_link_service_to_organisation_schema)
-    service = dao_fetch_service_by_id(data['service_id'])
+    service = dao_fetch_service_by_id(data["service_id"])
     service.organisation = None
 
     with transaction():
         dao_add_service_to_organisation(service, organisation_id)
         set_default_free_allowance_for_service(service, year_start=None)
 
-    return '', 204
+    return "", 204
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/services', methods=['GET'])
+@organisation_blueprint.route("/<uuid:organisation_id>/services", methods=["GET"])
 def get_organisation_services(organisation_id):
     services = dao_get_organisation_services(organisation_id)
     sorted_services = sorted(services, key=lambda s: (-s.active, s.name))
     return jsonify([s.serialize_for_org_dashboard() for s in sorted_services])
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/services-with-usage', methods=['GET'])
+@organisation_blueprint.route("/<uuid:organisation_id>/services-with-usage", methods=["GET"])
 def get_organisation_services_usage(organisation_id):
     try:
-        year = int(request.args.get('year', 'none'))
+        year = int(request.args.get("year", "none"))
     except ValueError:
-        return jsonify(result='error', message='No valid year provided'), 400
+        return jsonify(result="error", message="No valid year provided"), 400
     services = fetch_usage_for_organisation(organisation_id, year)
     list_services = services.values()
-    sorted_services = sorted(list_services, key=lambda s: (-s['active'], s['service_name'].lower()))
+    sorted_services = sorted(list_services, key=lambda s: (-s["active"], s["service_name"].lower()))
     return jsonify(services=sorted_services)
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['POST'])
+@organisation_blueprint.route("/<uuid:organisation_id>/users/<uuid:user_id>", methods=["POST"])
 def add_user_to_organisation(organisation_id, user_id):
     new_org_user = dao_add_user_to_organisation(organisation_id, user_id)
     return jsonify(data=new_org_user.serialize())
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/users/<uuid:user_id>', methods=['DELETE'])
+@organisation_blueprint.route("/<uuid:organisation_id>/users/<uuid:user_id>", methods=["DELETE"])
 def remove_user_from_organisation(organisation_id, user_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     user = get_user_by_id(user_id=user_id)
 
     if user not in organisation.users:
-        error = 'User not found'
+        error = "User not found"
         raise InvalidRequest(error, status_code=404)
 
     dao_remove_user_from_organisation(organisation, user)
@@ -213,31 +205,30 @@ def remove_user_from_organisation(organisation_id, user_id):
     return {}, 204
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/users', methods=['GET'])
+@organisation_blueprint.route("/<uuid:organisation_id>/users", methods=["GET"])
 def get_organisation_users(organisation_id):
     org_users = dao_get_users_for_organisation(organisation_id)
     return jsonify(data=[x.serialize() for x in org_users])
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/email-branding-pool', methods=['GET'])
+@organisation_blueprint.route("/<uuid:organisation_id>/email-branding-pool", methods=["GET"])
 def get_organisation_email_branding_pool(organisation_id):
     branding_pool = dao_get_email_branding_pool_for_organisation(organisation_id)
     return jsonify(data=[branding.serialize() for branding in branding_pool])
 
 
-@organisation_blueprint.route('/<uuid:organisation_id>/email-branding-pool', methods=['POST'])
+@organisation_blueprint.route("/<uuid:organisation_id>/email-branding-pool", methods=["POST"])
 def update_organisation_email_branding_pool(organisation_id):
     data = request.get_json()
     validate(data, post_update_org_email_branding_pool_schema)
 
-    dao_add_email_branding_list_to_organisation_pool(organisation_id, data['branding_ids'])
+    dao_add_email_branding_list_to_organisation_pool(organisation_id, data["branding_ids"])
 
     return {}, 204
 
 
 @organisation_blueprint.route(
-    '/<uuid:organisation_id>/email-branding-pool/<uuid:email_branding_id>',
-    methods=['DELETE']
+    "/<uuid:organisation_id>/email-branding-pool/<uuid:email_branding_id>", methods=["DELETE"]
 )
 def remove_email_branding_from_organisation_pool(organisation_id, email_branding_id):
     organisation = dao_get_organisation_by_id(organisation_id)
@@ -253,13 +244,13 @@ def remove_email_branding_from_organisation_pool(organisation_id, email_branding
 
 
 def check_request_args(request):
-    org_id = request.args.get('org_id')
-    name = request.args.get('name', None)
+    org_id = request.args.get("org_id")
+    name = request.args.get("name", None)
     errors = []
     if not org_id:
-        errors.append({'org_id': ["Can't be empty"]})
+        errors.append({"org_id": ["Can't be empty"]})
     if not name:
-        errors.append({'name': ["Can't be empty"]})
+        errors.append({"name": ["Can't be empty"]})
     if errors:
         raise InvalidRequest(errors, status_code=400)
     return org_id, name
@@ -267,7 +258,7 @@ def check_request_args(request):
 
 def send_notifications_on_mou_signed(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
-    notify_service = dao_fetch_service_by_id(current_app.config['NOTIFY_SERVICE_ID'])
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
 
     def _send_notification(template_id, recipient, personalisation):
         template = dao_get_template_by_id(template_id)
@@ -281,39 +272,33 @@ def send_notifications_on_mou_signed(organisation_id):
             notification_type=template.template_type,
             api_key_id=None,
             key_type=KEY_TYPE_NORMAL,
-            reply_to_text=notify_service.get_default_reply_to_email_address()
+            reply_to_text=notify_service.get_default_reply_to_email_address(),
         )
         send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
 
     personalisation = {
-        'mou_link': '{}/agreement/{}.pdf'.format(
-            current_app.config['ADMIN_BASE_URL'],
-            'crown' if organisation.crown else 'non-crown'
+        "mou_link": "{}/agreement/{}.pdf".format(
+            current_app.config["ADMIN_BASE_URL"], "crown" if organisation.crown else "non-crown"
         ),
-        'org_name': organisation.name,
-        'org_dashboard_link': '{}/organisations/{}'.format(
-            current_app.config['ADMIN_BASE_URL'],
-            organisation.id
-        ),
-        'signed_by_name': organisation.agreement_signed_by.name,
-        'on_behalf_of_name': organisation.agreement_signed_on_behalf_of_name
+        "org_name": organisation.name,
+        "org_dashboard_link": "{}/organisations/{}".format(current_app.config["ADMIN_BASE_URL"], organisation.id),
+        "signed_by_name": organisation.agreement_signed_by.name,
+        "on_behalf_of_name": organisation.agreement_signed_on_behalf_of_name,
     }
 
     if not organisation.agreement_signed_on_behalf_of_email_address:
-        signer_template_id = 'MOU_SIGNER_RECEIPT_TEMPLATE_ID'
+        signer_template_id = "MOU_SIGNER_RECEIPT_TEMPLATE_ID"
     else:
-        signer_template_id = 'MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID'
+        signer_template_id = "MOU_SIGNED_ON_BEHALF_SIGNER_RECEIPT_TEMPLATE_ID"
 
         # let the person who has been signed on behalf of know.
         _send_notification(
-            current_app.config['MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID'],
+            current_app.config["MOU_SIGNED_ON_BEHALF_ON_BEHALF_RECEIPT_TEMPLATE_ID"],
             organisation.agreement_signed_on_behalf_of_email_address,
-            personalisation
+            personalisation,
         )
 
     # let the person who signed know - the template is different depending on if they signed on behalf of someone
     _send_notification(
-        current_app.config[signer_template_id],
-        organisation.agreement_signed_by.email_address,
-        personalisation
+        current_app.config[signer_template_id], organisation.agreement_signed_by.email_address, personalisation
     )

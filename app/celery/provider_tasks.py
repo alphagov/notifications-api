@@ -24,13 +24,10 @@ def deliver_sms(self, notification_id):
     except Exception as e:
         if isinstance(e, SmsClientResponseException):
             current_app.logger.warning(
-                "SMS notification delivery for id: {} failed".format(notification_id),
-                exc_info=True
+                "SMS notification delivery for id: {} failed".format(notification_id), exc_info=True
             )
         else:
-            current_app.logger.exception(
-                "SMS notification delivery for id: {} failed".format(notification_id)
-            )
+            current_app.logger.exception("SMS notification delivery for id: {} failed".format(notification_id))
 
         try:
             if self.request.retries == 0:
@@ -38,8 +35,10 @@ def deliver_sms(self, notification_id):
             else:
                 self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
-            message = "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. " \
-                      "Notification has been updated to technical-failure".format(notification_id)
+            message = (
+                "RETRY FAILED: Max retries reached. The task send_sms_to_provider failed for notification {}. "
+                "Notification has been updated to technical-failure".format(notification_id)
+            )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message)
 
@@ -53,25 +52,21 @@ def deliver_email(self, notification_id):
             raise NoResultFound()
         send_to_providers.send_email_to_provider(notification)
     except EmailClientNonRetryableException as e:
-        current_app.logger.exception(
-            f"Email notification {notification_id} failed: {e}"
-        )
-        update_notification_status_by_id(notification_id, 'technical-failure')
+        current_app.logger.exception(f"Email notification {notification_id} failed: {e}")
+        update_notification_status_by_id(notification_id, "technical-failure")
     except Exception as e:
         try:
             if isinstance(e, AwsSesClientThrottlingSendRateException):
-                current_app.logger.warning(
-                    f"RETRY: Email notification {notification_id} was rate limited by SES"
-                )
+                current_app.logger.warning(f"RETRY: Email notification {notification_id} was rate limited by SES")
             else:
-                current_app.logger.exception(
-                    f"RETRY: Email notification {notification_id} failed"
-                )
+                current_app.logger.exception(f"RETRY: Email notification {notification_id} failed")
 
             self.retry(queue=QueueNames.RETRY)
         except self.MaxRetriesExceededError:
-            message = "RETRY FAILED: Max retries reached. " \
-                      "The task send_email_to_provider failed for notification {}. " \
-                      "Notification has been updated to technical-failure".format(notification_id)
+            message = (
+                "RETRY FAILED: Max retries reached. "
+                "The task send_email_to_provider failed for notification {}. "
+                "Notification has been updated to technical-failure".format(notification_id)
+            )
             update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
             raise NotificationTechnicalFailureException(message)

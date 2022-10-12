@@ -7,12 +7,11 @@ Create Date: 2016-10-25 17:37:27.660723
 """
 
 # revision identifiers, used by Alembic.
-revision = '0283_platform_admin_not_live'
-down_revision = '0282_add_count_as_live'
+revision = "0283_platform_admin_not_live"
+down_revision = "0282_add_count_as_live"
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 STATEMENT = """
     UPDATE
@@ -29,7 +28,8 @@ STATEMENT = """
 
 
 def upgrade():
-    op.execute(STATEMENT.format(count_as_live='false'))
+    op.execute(STATEMENT.format(count_as_live="false"))
+
 
 def downgrade():
-    op.execute(STATEMENT.format(count_as_live='true'))
+    op.execute(STATEMENT.format(count_as_live="true"))

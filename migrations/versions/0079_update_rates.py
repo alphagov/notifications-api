@@ -7,8 +7,8 @@ Create Date: 2017-05-03 12:31:20.731069
 """
 
 # revision identifiers, used by Alembic.
-revision = '0079_update_rates'
-down_revision = '0078_sent_notification_status'
+revision = "0079_update_rates"
+down_revision = "0078_sent_notification_status"
 
 from alembic import op
 

@@ -10,9 +10,8 @@ from datetime import datetime
 from alembic import op
 from flask import current_app
 
-
-revision = '0294_add_verify_reply_to'
-down_revision = '0293_drop_complaint_fk'
+revision = "0294_add_verify_reply_to"
+down_revision = "0293_drop_complaint_fk"
 
 email_template_id = "a42f1d17-9404-46d5-a647-d013bdfca3e1"
 
@@ -29,36 +28,38 @@ def upgrade():
         VALUES ('{}', '{}', '{}', '{}', '{}', False, '{}', '{}', '{}', 1, '{}', false)
     """
 
-    email_template_content = '\n'.join([
-        "Hi,",
-        "",
-        "This address has been provided as a reply-to email address for a GOV.​UK Notify account.",
-        "Any replies from users to emails they receive through GOV.​UK Notify will come back to this email address.",
-        "",
-        "This is just a quick check to make sure the address is valid.",
-        "",
-        "No need to reply.",
-        "",
-        "Thanks",
-        "",
-        "GOV.​UK Notify team",
-        "https://www.gov.uk/notify"
-    ])
+    email_template_content = "\n".join(
+        [
+            "Hi,",
+            "",
+            "This address has been provided as a reply-to email address for a GOV.​UK Notify account.",
+            "Any replies from users to emails they receive through GOV.​UK Notify will come back to this email address.",
+            "",
+            "This is just a quick check to make sure the address is valid.",
+            "",
+            "No need to reply.",
+            "",
+            "Thanks",
+            "",
+            "GOV.​UK Notify team",
+            "https://www.gov.uk/notify",
+        ]
+    )
 
     email_template_name = "Verify email reply-to address for a service"
-    email_template_subject = 'Your GOV.UK Notify reply-to email address'
+    email_template_subject = "Your GOV.UK Notify reply-to email address"
 
     op.execute(
         template_history_insert.format(
             email_template_id,
             email_template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             email_template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
@@ -66,25 +67,26 @@ def upgrade():
         template_insert.format(
             email_template_id,
             email_template_name,
-            'email',
+            "email",
             datetime.utcnow(),
             email_template_content,
-            current_app.config['NOTIFY_SERVICE_ID'],
+            current_app.config["NOTIFY_SERVICE_ID"],
             email_template_subject,
-            current_app.config['NOTIFY_USER_ID'],
-            'normal'
+            current_app.config["NOTIFY_USER_ID"],
+            "normal",
         )
     )
 
+
 # If you are copying this migration, please remember about an insert to TemplateRedacted,
 # which was not originally included here either by mistake or because it was before TemplateRedacted existed
-    # op.execute(
-    #     """
-    #         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
-    #         VALUES ('{}', '{}', '{}', '{}')
-    #         ;
-    #     """.format(email_template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
-    # )
+# op.execute(
+#     """
+#         INSERT INTO template_redacted (template_id, redact_personalisation, updated_at, updated_by_id)
+#         VALUES ('{}', '{}', '{}', '{}')
+#         ;
+#     """.format(email_template_id, False, datetime.utcnow(), current_app.config['NOTIFY_USER_ID'])
+# )
 
 
 def downgrade():

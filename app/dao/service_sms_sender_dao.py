@@ -10,26 +10,20 @@ def insert_service_sms_sender(service, sms_sender):
     """
     This method is called from create_service which is wrapped in a transaction.
     """
-    new_sms_sender = ServiceSmsSender(sms_sender=sms_sender,
-                                      service=service,
-                                      is_default=True
-                                      )
+    new_sms_sender = ServiceSmsSender(sms_sender=sms_sender, service=service, is_default=True)
     db.session.add(new_sms_sender)
 
 
 def dao_get_service_sms_senders_by_id(service_id, service_sms_sender_id):
-    return ServiceSmsSender.query.filter_by(
-        id=service_sms_sender_id,
-        service_id=service_id,
-        archived=False
-    ).one()
+    return ServiceSmsSender.query.filter_by(id=service_sms_sender_id, service_id=service_id, archived=False).one()
 
 
 def dao_get_sms_senders_by_service_id(service_id):
-    return ServiceSmsSender.query.filter_by(
-        service_id=service_id,
-        archived=False
-    ).order_by(desc(ServiceSmsSender.is_default)).all()
+    return (
+        ServiceSmsSender.query.filter_by(service_id=service_id, archived=False)
+        .order_by(desc(ServiceSmsSender.is_default))
+        .all()
+    )
 
 
 @autocommit
@@ -41,10 +35,7 @@ def dao_add_sms_sender_for_service(service_id, sms_sender, is_default, inbound_n
         _raise_when_no_default(old_default)
 
     new_sms_sender = ServiceSmsSender(
-        service_id=service_id,
-        sms_sender=sms_sender,
-        is_default=is_default,
-        inbound_number_id=inbound_number_id
+        service_id=service_id, sms_sender=sms_sender, is_default=is_default, inbound_number_id=inbound_number_id
     )
 
     db.session.add(new_sms_sender)
@@ -78,10 +69,7 @@ def update_existing_sms_sender_with_inbound_number(service_sms_sender, sms_sende
 
 @autocommit
 def archive_sms_sender(service_id, sms_sender_id):
-    sms_sender_to_archive = ServiceSmsSender.query.filter_by(
-        id=sms_sender_id,
-        service_id=service_id
-    ).one()
+    sms_sender_to_archive = ServiceSmsSender.query.filter_by(id=sms_sender_id, service_id=service_id).one()
 
     if sms_sender_to_archive.inbound_number_id:
         raise ArchiveValidationError("You cannot delete an inbound number")
@@ -103,8 +91,7 @@ def _get_existing_default(service_id):
         else:
             raise Exception(
                 "There should only be one default sms sender for each service. Service {} has {}".format(
-                    service_id,
-                    len(old_default)
+                    service_id, len(old_default)
                 )
             )
     return None

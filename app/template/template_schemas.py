@@ -17,13 +17,9 @@ post_create_template_schema = {
         "parent_folder_id": uuid,
         "postage": {"type": "string", "format": "postage"},
     },
-    "if": {
-        "properties": {
-            "template_type": {"enum": ["email", "letter"]}
-        }
-    },
+    "if": {"properties": {"template_type": {"enum": ["email", "letter"]}}},
     "then": {"required": ["subject"]},
-    "required": ["name", "template_type", "content", "service", "created_by"]
+    "required": ["name", "template_type", "content", "service", "created_by"],
 }
 
 post_update_template_schema = {
@@ -43,6 +39,6 @@ post_update_template_schema = {
         "reply_to": nullable_uuid,
         "created_by": uuid,
         "archived": {"type": "boolean"},
-        "current_user": uuid
+        "current_user": uuid,
     },
 }

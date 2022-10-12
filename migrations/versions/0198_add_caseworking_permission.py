@@ -7,8 +7,8 @@ Create Date: 2018-02-21 12:05:00
 """
 
 # revision identifiers, used by Alembic.
-revision = '0198_add_caseworking_permission'
-down_revision = '0197_service_contact_link'
+revision = "0198_add_caseworking_permission"
+down_revision = "0197_service_contact_link"
 
 from alembic import op
 

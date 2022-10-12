@@ -5,16 +5,17 @@ Revises: 0330_broadcast_invite_email
 Create Date: 2020-09-23 10:11:01.094412
 
 """
-from alembic import op
-import sqlalchemy as sa
 import os
 
-revision = '0331_add_broadcast_org'
-down_revision = '0330_broadcast_invite_email'
+import sqlalchemy as sa
+from alembic import op
 
-environment = os.environ['NOTIFY_ENVIRONMENT']
+revision = "0331_add_broadcast_org"
+down_revision = "0330_broadcast_invite_email"
 
-organisation_id = '38e4bf69-93b0-445d-acee-53ea53fe02df'
+environment = os.environ["NOTIFY_ENVIRONMENT"]
+
+organisation_id = "38e4bf69-93b0-445d-acee-53ea53fe02df"
 
 
 def upgrade():
@@ -54,16 +55,13 @@ def upgrade():
         conn.execute(
             sa.text(insert_sql),
             id=organisation_id,
-            name=f'Broadcast Services ({environment})',
+            name=f"Broadcast Services ({environment})",
             active=True,
             agreement_signed=None,
             crown=None,
-            organisation_type='central',
+            organisation_type="central",
         )
-        conn.execute(
-            sa.text(update_service_set_broadcast_org_sql),
-            organisation_id=organisation_id
-        )
+        conn.execute(sa.text(update_service_set_broadcast_org_sql), organisation_id=organisation_id)
 
 
 def downgrade():

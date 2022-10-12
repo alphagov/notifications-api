@@ -9,15 +9,15 @@ Create Date: 2016-10-31 15:17:16.716450
 """
 
 # revision identifiers, used by Alembic.
-revision = '0059_set_services_to_active'
-down_revision = '0058_add_letters_flag'
+revision = "0059_set_services_to_active"
+down_revision = "0058_add_letters_flag"
 
 from alembic import op
 
 
 def upgrade():
-    op.execute('UPDATE services SET active = TRUE')
+    op.execute("UPDATE services SET active = TRUE")
 
 
 def downgrade():
-    op.execute('UPDATE services SET active = FALSE')
+    op.execute("UPDATE services SET active = FALSE")

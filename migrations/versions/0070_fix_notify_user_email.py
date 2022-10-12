@@ -7,24 +7,28 @@ Create Date: 2017-03-10 16:15:22.153948
 """
 
 # revision identifiers, used by Alembic.
-revision = '0070_fix_notify_user_email'
-down_revision = '0069_add_dvla_job_status'
+revision = "0070_fix_notify_user_email"
+down_revision = "0069_add_dvla_job_status"
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 
 def upgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE users
         SET email_address = 'notify-service-user@digital.cabinet-office.gov.uk'
         WHERE email_address = 'notify-service-user@digital.cabinet-office'
-    """)
+    """
+    )
 
 
 def downgrade():
-    op.execute("""
+    op.execute(
+        """
         UPDATE users
         SET email_address = 'notify-service-user@digital.cabinet-office'
         WHERE email_address = 'notify-service-user@digital.cabinet-office.gov.uk'
-    """)
+    """
+    )
