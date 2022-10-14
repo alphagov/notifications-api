@@ -3,7 +3,10 @@ from bs4 import BeautifulSoup
 
 def cap_xml_to_dict(cap_xml):
     # This function assumes that it’s being passed valid CAP XML
-    cap = BeautifulSoup(cap_xml, "xml")
+    # We explicitly tell BS4 that we're expecting utf-8 here, otherwise it uses encoding detection heuristics that
+    # can sometimes make the wrong call.
+    cap = BeautifulSoup(cap_xml, "xml", from_encoding="utf-8")
+
     return {
         "msgType": cap.alert.msgType.text,
         "reference": cap.alert.identifier.text,
