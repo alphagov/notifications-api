@@ -37,12 +37,14 @@ def upgrade():
                 SELECT
                     users.id as user_id,
                     events.id AS event_id,
-                    substring(users.email_address, '_archived_(\d{4}-\d{2}-\d{2})_.*') AS archival_date,
-                    substring(users.email_address, '_archived_\d{4}-\d{2}-\d{2}_(.*)') AS original_email_address
+                    substring(users.email_address, '_archived_(\d{4}[-_]\d{1,2}[-_]\d{1,2})_.*')
+                    AS archival_date,
+                    substring(users.email_address, '_archived_\d{4}[-_]\d{1,2}[-_]\d{1,2}_(.*)')
+                    AS original_email_address
                 FROM users
                 LEFT JOIN events on users.id = (events.data->>'user_id')::uuid AND events.event_type = 'archive_user'
                 WHERE
-                    users.email_address ~ '_archived_\d{4}-\d{2}-\d{2}_(.*)'
+                    users.state = 'inactive'
                     AND NOT users.email_address LIKE CONCAT('_archived_%@', :notify_email_domain)
                 ORDER BY
                     users.id;
