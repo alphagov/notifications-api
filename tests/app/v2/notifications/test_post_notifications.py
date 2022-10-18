@@ -207,8 +207,14 @@ def test_notification_reply_to_text_is_original_value_if_sender_is_changed_after
     assert notifications[0].reply_to_text == "123456"
 
 
+# This test checks the memory_caches created in `app.serialised_models`. They have a TTL of 2 seconds (as of writing
+# this comment), which has sometimes caused this test to flake when running slowly (eg on CI). Normally we'd use
+# freezegun to stop time elapsing, but the way we create the cache configures the timers to use `time.monotonic` before
+# freezegun is able to monkeypatch them. We could manually monkeypatch them but it reaches deep into the internal
+# implementation of TimedCaches, so feels a bit more gross than just accepting that this test interacts with time and
+# in rare slow runs, may fail.
+@pytest.mark.flaky(max_runs=3, min_passes=1)
 def test_should_cache_template_lookups_in_memory(mocker, api_client_request, sample_template):
-
     mock_get_template = mocker.patch(
         "app.dao.templates_dao.dao_get_template_by_id_and_service_id",
         wraps=templates_dao.dao_get_template_by_id_and_service_id,
