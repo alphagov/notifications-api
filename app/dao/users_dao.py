@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime, timedelta
 from random import SystemRandom
 
+from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
@@ -163,9 +164,11 @@ def dao_archive_user(user):
     user.organisations = []
 
     user.auth_type = EMAIL_AUTH_TYPE
-    user.email_address = get_archived_db_column_value(user.email_address)
+    user.name = "Archived user"
+    user.email_address = get_archived_db_column_value(f"{user.id}@{current_app.config['NOTIFY_EMAIL_DOMAIN']}")
     user.mobile_number = None
     user.password = str(uuid.uuid4())
+
     # Changing the current_session_id signs the user out
     user.current_session_id = "00000000-0000-0000-0000-000000000000"
     user.state = "inactive"
