@@ -168,7 +168,7 @@ packaging==21.3
     #   redis
 phonenumbers==8.12.56
     # via notifications-utils
-prometheus-client==0.14.1
+prometheus-client==0.15.0
     # via
     #   -r requirements.in
     #   gds-metrics
