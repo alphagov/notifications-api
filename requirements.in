@@ -32,5 +32,5 @@ awscli-cwlogs==1.4.6
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@57.0.1
 
 # gds-metrics requires prometheseus 0.2.0, override that requirement as 0.7.1 brings significant performance gains
-prometheus-client==0.14.1
+prometheus-client==0.15.0
 git+https://github.com/alphagov/gds_metrics_python.git@6f1840a57b6fb1ee40b7e84f2f18ec229de8aa72
