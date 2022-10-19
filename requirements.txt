@@ -203,7 +203,7 @@ pytz==2022.5
     # via
     #   celery
     #   notifications-utils
-pyyaml==5.4.1
+pyyaml==6.0
     # via
     #   awscli
     #   notifications-utils
