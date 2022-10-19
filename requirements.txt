@@ -153,7 +153,7 @@ marshmallow==3.18.0
     #   marshmallow-sqlalchemy
 marshmallow-sqlalchemy==0.28.1
     # via -r requirements.in
-mistune==0.8.4
+mistune==2.0.4
     # via notifications-utils
 notifications-python-client==6.4.0
     # via -r requirements.in
