@@ -270,7 +270,7 @@ werkzeug==2.2.2
     #   flask
 wrapt==1.14.1
     # via deprecated
-zipp==3.8.1
+zipp==3.9.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
