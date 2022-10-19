@@ -1,5 +1,5 @@
 -r requirements.txt
-black==22.8.0
+black==22.10.0
 flake8==5.0.4
 flake8-bugbear==22.9.23
 flaky==3.7.0
