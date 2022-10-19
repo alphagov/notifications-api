@@ -178,16 +178,23 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
     assert email_branding[0].text == email_branding[0].name
 
 
-@freezegun.freeze_time()
-def test_post_update_email_branding_updated_fields(admin_request, notify_db_session, sample_user):
+@freezegun.freeze_time(as_kwarg="frozen_time")
+def test_post_update_email_branding_updated_fields(admin_request, notify_db_session, sample_user, **kwargs):
+    frozen_time = kwargs["frozen_time"]
+    start_time = frozen_time.time_to_freeze
+
     data = {"name": "test email_branding", "logo": "images/text_x2.png"}
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
 
     email_brandings = EmailBranding.query.all()
     email_branding = email_brandings[0]
     assert len(email_brandings) == 1
+    assert email_branding.created_at == start_time
     assert email_branding.updated_by is None
     assert email_branding.updated_at is None
+
+    frozen_time.tick()
+    assert frozen_time.time_to_freeze != start_time
 
     email_branding_id = response["data"]["id"]
     update_data = {"name": "updated email branding name", "updated_by": str(sample_user.id)}
@@ -201,9 +208,9 @@ def test_post_update_email_branding_updated_fields(admin_request, notify_db_sess
     email_brandings = EmailBranding.query.all()
     email_branding = email_brandings[0]
     assert len(email_brandings) == 1
-    assert str(email_branding.id) == email_branding_id
+    assert email_branding.created_at == start_time
     assert str(email_branding.updated_by) == update_data["updated_by"]
-    assert email_branding.updated_at == datetime.datetime.utcnow()
+    assert email_branding.updated_at == frozen_time.time_to_freeze
 
 
 @pytest.mark.parametrize(
