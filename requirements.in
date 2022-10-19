@@ -24,7 +24,7 @@ beautifulsoup4==4.11.1
 lxml==4.9.1
 Werkzeug==2.0.3  # pyup: <2.1.0 # later versions are not compatible with the version of flask-sqlalchemy we have pinned
 
-notifications-python-client==6.3.0
+notifications-python-client==6.4.0
 
 # PaaS
 awscli-cwlogs==1.4.6
