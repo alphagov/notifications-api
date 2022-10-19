@@ -1,3 +1,6 @@
+import datetime
+
+import freezegun
 import pytest
 
 from app.models import BRANDING_ORG, EmailBranding
@@ -37,6 +40,7 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
     assert response["email_branding"]["brand_type"] == str(email_branding.brand_type)
 
 
+@freezegun.freeze_time()
 def test_post_create_email_branding(admin_request, notify_db_session):
     data = {
         "name": "test email_branding",
@@ -50,6 +54,31 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert data["logo"] == response["data"]["logo"]
     assert data["name"] == response["data"]["text"]
     assert data["brand_type"] == response["data"]["brand_type"]
+
+    email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
+    assert email_branding.created_by is None
+    assert email_branding.created_at == datetime.datetime.utcnow()
+
+
+@freezegun.freeze_time()
+def test_post_create_email_branding_with_created_fields(admin_request, notify_db_session, sample_user):
+    data = {
+        "name": "test email_branding",
+        "colour": "#0000ff",
+        "logo": "/images/test_x2.png",
+        "brand_type": BRANDING_ORG,
+        "created_by": str(sample_user.id),
+    }
+    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
+    assert data["name"] == response["data"]["name"]
+    assert data["colour"] == response["data"]["colour"]
+    assert data["logo"] == response["data"]["logo"]
+    assert data["name"] == response["data"]["text"]
+    assert data["brand_type"] == response["data"]["brand_type"]
+
+    email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
+    assert str(email_branding.created_by) == data["created_by"]
+    assert email_branding.created_at == datetime.datetime.utcnow()
 
 
 def test_post_create_email_branding_without_brand_type_defaults(admin_request, notify_db_session):
@@ -147,6 +176,34 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
     for key in data_update.keys():
         assert getattr(email_branding[0], key) == data_update[key]
     assert email_branding[0].text == email_branding[0].name
+
+
+@freezegun.freeze_time()
+def test_post_update_email_branding_updated_fields(admin_request, notify_db_session, sample_user):
+    data = {"name": "test email_branding", "logo": "images/text_x2.png"}
+    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
+
+    email_brandings = EmailBranding.query.all()
+    email_branding = email_brandings[0]
+    assert len(email_brandings) == 1
+    assert email_branding.updated_by is None
+    assert email_branding.updated_at is None
+
+    email_branding_id = response["data"]["id"]
+    update_data = {"name": "updated email branding name", "updated_by": str(sample_user.id)}
+
+    admin_request.post(
+        "email_branding.update_email_branding",
+        _data=update_data,
+        email_branding_id=email_branding_id,
+    )
+
+    email_brandings = EmailBranding.query.all()
+    email_branding = email_brandings[0]
+    assert len(email_brandings) == 1
+    assert str(email_branding.id) == email_branding_id
+    assert str(email_branding.updated_by) == update_data["updated_by"]
+    assert email_branding.updated_at == datetime.datetime.utcnow()
 
 
 @pytest.mark.parametrize(
