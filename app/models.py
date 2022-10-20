@@ -240,6 +240,10 @@ class EmailBranding(db.Model):
     brand_type = db.Column(
         db.String(255), db.ForeignKey("branding_type.name"), index=True, nullable=False, default=BRANDING_ORG
     )
+    created_at = db.Column(db.DateTime, nullable=True, default=lambda: datetime.datetime.utcnow())
+    created_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=lambda: datetime.datetime.utcnow())
+    updated_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     def serialize(self):
         serialized = {
