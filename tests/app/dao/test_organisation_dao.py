@@ -13,6 +13,7 @@ from app.dao.organisation_dao import (
     dao_add_user_to_organisation,
     dao_archive_organisation,
     dao_get_email_branding_pool_for_organisation,
+    dao_get_letter_branding_pool_for_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_by_service_id,
@@ -500,3 +501,17 @@ def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):
 
     dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_3.id)
     assert sample_organisation.email_branding_pool == [branding_2]
+
+
+def test_dao_get_letter_branding_pool_for_organisation(sample_organisation):
+    branding_1 = create_letter_branding("nhs", "nhs.svg")
+    branding_2 = create_letter_branding("cabinet_office", "cabinet_office.svg")
+
+    sample_organisation.letter_branding_pool.append(branding_1)
+    sample_organisation.letter_branding_pool.append(branding_2)
+    db.session.commit()
+
+    assert dao_get_letter_branding_pool_for_organisation(sample_organisation.id) == [
+        branding_2,
+        branding_1,
+    ]

@@ -229,3 +229,9 @@ def dao_remove_email_branding_from_organisation_pool(organisation_id, email_bran
     organisation.email_branding_pool.remove(email_branding)
     db.session.add(organisation)
     return email_branding
+
+
+def dao_get_letter_branding_pool_for_organisation(organisation_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+
+    return sorted(organisation.letter_branding_pool, key=lambda x: x.name)
