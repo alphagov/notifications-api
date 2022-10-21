@@ -13,6 +13,7 @@ from app.dao.organisation_dao import (
     dao_archive_organisation,
     dao_create_organisation,
     dao_get_email_branding_pool_for_organisation,
+    dao_get_letter_branding_pool_for_organisation,
     dao_get_organisation_by_email_address,
     dao_get_organisation_by_id,
     dao_get_organisation_services,
@@ -241,6 +242,12 @@ def remove_email_branding_from_organisation_pool(organisation_id, email_branding
     dao_remove_email_branding_from_organisation_pool(organisation_id, email_branding_id)
 
     return {}, 204
+
+
+@organisation_blueprint.route("/<uuid:organisation_id>/letter-branding-pool", methods=["GET"])
+def get_organisation_letter_branding_pool(organisation_id):
+    branding_pool = dao_get_letter_branding_pool_for_organisation(organisation_id)
+    return jsonify(data=[branding.serialize() for branding in branding_pool])
 
 
 def check_request_args(request):
