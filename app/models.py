@@ -405,6 +405,12 @@ class Organisation(db.Model):
         nullable=True,
     )
 
+    letter_branding_pool = db.relationship(
+        "LetterBranding",
+        secondary="letter_branding_to_organisation",
+        backref="organisations",
+    )
+
     notes = db.Column(db.Text, nullable=True)
     purchase_order_number = db.Column(db.String(255), nullable=True)
     billing_contact_names = db.Column(db.Text, nullable=True)
@@ -463,6 +469,18 @@ class OrganisationEmailBranding(db.Model):
     __table_args__ = (
         UniqueConstraint("organisation_id", "email_branding_id", name="uix_email_branding_to_organisation"),
     )
+
+
+letter_branding_to_organisation = db.Table(
+    "letter_branding_to_organisation",
+    db.Model.metadata,
+    db.Column(
+        "organisation_id", UUID(as_uuid=True), db.ForeignKey("organisation.id"), primary_key=True, nullable=False
+    ),
+    db.Column(
+        "letter_branding_id", UUID(as_uuid=True), db.ForeignKey("letter_branding.id"), primary_key=True, nullable=False
+    ),
+)
 
 
 class Service(db.Model, Versioned):
