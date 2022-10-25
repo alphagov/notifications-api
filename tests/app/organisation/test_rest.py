@@ -6,6 +6,7 @@ from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
+from app import db
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.organisation_dao import (
     dao_add_email_branding_to_organisation_pool,
@@ -1002,3 +1003,23 @@ def test_remove_email_branding_from_organisation_pool_cannot_remove_default_bran
         _expected_status=400,
     )
     assert sample_organisation.email_branding_pool == [branding]
+
+
+def test_get_organisation_letter_branding_pool_returns_letter_brandings_for_organisation(
+    admin_request, sample_organisation
+):
+    branding_1 = create_letter_branding("nhs", "nhs.svg")
+    branding_2 = create_letter_branding("cabinet_office", "cabinet_office.svg")
+
+    sample_organisation.letter_branding_pool.append(branding_1)
+    sample_organisation.letter_branding_pool.append(branding_2)
+    db.session.commit()
+
+    response = admin_request.get(
+        "organisation.get_organisation_letter_branding_pool",
+        organisation_id=sample_organisation.id,
+    )
+
+    assert len(response["data"]) == 2
+    assert response["data"][0]["id"] == str(branding_2.id)
+    assert response["data"][1]["id"] == str(branding_1.id)
