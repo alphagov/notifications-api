@@ -262,19 +262,6 @@ def update_organisation_letter_branding_pool(organisation_id):
     return {}, 204
 
 
-def check_request_args(request):
-    org_id = request.args.get("org_id")
-    name = request.args.get("name", None)
-    errors = []
-    if not org_id:
-        errors.append({"org_id": ["Can't be empty"]})
-    if not name:
-        errors.append({"name": ["Can't be empty"]})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
-    return org_id, name
-
-
 def send_notifications_on_mou_signed(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
     notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
