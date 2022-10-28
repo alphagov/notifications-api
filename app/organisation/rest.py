@@ -8,6 +8,7 @@ from app.dao.fact_billing_dao import fetch_usage_for_organisation
 from app.dao.invited_org_user_dao import get_invited_org_users_for_organisation
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
+    dao_add_letter_branding_list_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
@@ -41,6 +42,7 @@ from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
     post_update_org_email_branding_pool_schema,
+    post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
 )
 from app.schema_validation import validate
@@ -248,6 +250,16 @@ def remove_email_branding_from_organisation_pool(organisation_id, email_branding
 def get_organisation_letter_branding_pool(organisation_id):
     branding_pool = dao_get_letter_branding_pool_for_organisation(organisation_id)
     return jsonify(data=[branding.serialize() for branding in branding_pool])
+
+
+@organisation_blueprint.route("/<uuid:organisation_id>/letter-branding-pool", methods=["POST"])
+def update_organisation_letter_branding_pool(organisation_id):
+    data = request.get_json()
+    validate(data, post_update_org_letter_branding_pool_schema)
+
+    dao_add_letter_branding_list_to_organisation_pool(organisation_id, data["branding_ids"])
+
+    return {}, 204
 
 
 def check_request_args(request):
