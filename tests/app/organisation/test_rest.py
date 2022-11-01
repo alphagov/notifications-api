@@ -878,7 +878,7 @@ def test_get_organisation_services_usage_returns_400_if_year_is_invalid(admin_re
         "organisation.get_organisation_services_usage",
         organisation_id=uuid.uuid4(),
         **{"year": "not-a-valid-year"},
-        _expected_status=400
+        _expected_status=400,
     )
     assert response["message"] == "No valid year provided"
 
@@ -1049,3 +1049,58 @@ def test_update_organisation_letter_branding_pool_updates_branding_pool(
         _expected_status=204,
     )
     assert len(sample_organisation.letter_branding_pool) == 2
+
+
+def test_remove_letter_branding_from_organisation_pool(admin_request, sample_organisation):
+    branding_1 = create_letter_branding("letter_branding_1", "filename_1")
+    branding_2 = create_letter_branding("letter_branding_2", "filename_2")
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id, branding_2.id])
+
+    admin_request.delete(
+        "organisation.remove_letter_branding_from_organisation_pool",
+        organisation_id=sample_organisation.id,
+        letter_branding_id=branding_1.id,
+    )
+    assert sample_organisation.letter_branding_pool == [branding_2]
+
+
+def test_remove_letter_branding_from_organisation_pool_cannot_remove_branding_not_in_pool(
+    admin_request,
+    sample_organisation,
+):
+    branding_1 = create_letter_branding("letter_branding_1", "filename_1")
+    branding_2 = create_letter_branding("letter_branding_2", "filename_2")
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id])
+
+    assert sample_organisation.letter_branding_pool == [branding_1]
+
+    response = admin_request.delete(
+        "organisation.remove_letter_branding_from_organisation_pool",
+        organisation_id=sample_organisation.id,
+        letter_branding_id=branding_2.id,
+        _expected_status=404,
+    )
+
+    assert response["message"] == f"Letter branding {branding_2.id} not in sample organisation's pool"
+    assert sample_organisation.letter_branding_pool == [branding_1]
+
+
+def test_remove_letter_branding_from_organisation_pool_cannot_remove_default_branding(
+    admin_request,
+    sample_organisation,
+):
+    branding = create_letter_branding("letter_branding_1", "filename_1")
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding.id])
+    sample_organisation.letter_branding_id = branding.id
+
+    response = admin_request.delete(
+        "organisation.remove_letter_branding_from_organisation_pool",
+        organisation_id=sample_organisation.id,
+        letter_branding_id=branding.id,
+        _expected_status=400,
+    )
+    assert response["message"] == "You cannot remove an organisation's default letter branding"
+    assert sample_organisation.letter_branding_pool == [branding]

@@ -21,6 +21,7 @@ from app.dao.organisation_dao import (
     dao_get_organisations,
     dao_get_users_for_organisation,
     dao_remove_email_branding_from_organisation_pool,
+    dao_remove_letter_branding_from_organisation_pool,
     dao_remove_user_from_organisation,
     dao_update_organisation,
 )
@@ -258,6 +259,24 @@ def update_organisation_letter_branding_pool(organisation_id):
     validate(data, post_update_org_letter_branding_pool_schema)
 
     dao_add_letter_branding_list_to_organisation_pool(organisation_id, data["branding_ids"])
+
+    return {}, 204
+
+
+@organisation_blueprint.route(
+    "/<uuid:organisation_id>/letter-branding-pool/<uuid:letter_branding_id>", methods=["DELETE"]
+)
+def remove_letter_branding_from_organisation_pool(organisation_id, letter_branding_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    letter_branding_ids = {branding.id for branding in organisation.letter_branding_pool}
+
+    if letter_branding_id not in letter_branding_ids:
+        raise InvalidRequest(f"Letter branding {letter_branding_id} not in {organisation.name}'s pool", status_code=404)
+
+    if organisation.letter_branding_id == letter_branding_id:
+        raise InvalidRequest("You cannot remove an organisation's default letter branding", status_code=400)
+
+    dao_remove_letter_branding_from_organisation_pool(organisation_id, letter_branding_id)
 
     return {}, 204
 
