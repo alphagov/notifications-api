@@ -180,7 +180,7 @@ pyasn1==0.4.8
     # via rsa
 pycparser==2.21
     # via cffi
-pyjwt==2.5.0
+pyjwt==2.6.0
     # via
     #   -r requirements.in
     #   notifications-python-client
