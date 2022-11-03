@@ -1004,22 +1004,6 @@ def get_monthly_notification_data_by_service():
     return jsonify(serialized_results)
 
 
-def check_request_args(request):
-    service_id = request.args.get("service_id")
-    name = request.args.get("name", None)
-    email_from = request.args.get("email_from", None)
-    errors = []
-    if not service_id:
-        errors.append({"service_id": ["Can't be empty"]})
-    if not name:
-        errors.append({"name": ["Can't be empty"]})
-    if not email_from:
-        errors.append({"email_from": ["Can't be empty"]})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
-    return service_id, name, email_from
-
-
 def check_if_reply_to_address_already_in_use(service_id, email_address):
     existing_reply_to_addresses = dao_get_reply_to_by_service_id(service_id)
     if email_address in [i.email_address for i in existing_reply_to_addresses]:

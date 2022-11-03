@@ -9,6 +9,7 @@ from app import db
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
     dao_add_email_branding_to_organisation_pool,
+    dao_add_letter_branding_list_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
@@ -507,11 +508,43 @@ def test_dao_get_letter_branding_pool_for_organisation(sample_organisation):
     branding_1 = create_letter_branding("nhs", "nhs.svg")
     branding_2 = create_letter_branding("cabinet_office", "cabinet_office.svg")
 
-    sample_organisation.letter_branding_pool.append(branding_1)
-    sample_organisation.letter_branding_pool.append(branding_2)
-    db.session.commit()
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id, branding_2.id])
 
     assert dao_get_letter_branding_pool_for_organisation(sample_organisation.id) == [
         branding_2,
         branding_1,
     ]
+
+
+def test_dao_add_letter_branding_list_to_organisation_pool(sample_organisation):
+    branding_1 = create_letter_branding("branding_1", "filename_1")
+    branding_2 = create_letter_branding("branding_2", "filename_2")
+    branding_3 = create_letter_branding("branding_3", "filename_3")
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id])
+
+    assert sample_organisation.letter_branding_pool == [branding_1]
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_2.id, branding_3.id])
+
+    # existing brandings remain in the pool, while new ones get added
+    assert len(sample_organisation.letter_branding_pool) == 3
+    assert branding_1 in sample_organisation.letter_branding_pool
+    assert branding_2 in sample_organisation.letter_branding_pool
+    assert branding_3 in sample_organisation.letter_branding_pool
+
+
+def test_dao_add_letter_branding_list_to_organisation_pool_does_not_error_when_brand_already_in_pool(
+    sample_organisation,
+):
+    branding_1 = create_letter_branding("branding_1", "filename_1")
+    branding_2 = create_letter_branding("branding_2", "filename_2")
+    branding_3 = create_letter_branding("branding_3", "filename_3")
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id, branding_2.id])
+
+    assert sample_organisation.letter_branding_pool == [branding_1, branding_2]
+
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_2.id, branding_3.id])
+
+    assert sample_organisation.letter_branding_pool == [branding_1, branding_2, branding_3]

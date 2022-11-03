@@ -5,6 +5,7 @@ from sqlalchemy.sql.expression import func
 from app import db
 from app.dao.dao_utils import VersionOptions, autocommit, version_class
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.models import (
     NHS_ORGANISATION_TYPES,
     AnnualBilling,
@@ -235,3 +236,13 @@ def dao_get_letter_branding_pool_for_organisation(organisation_id):
     organisation = dao_get_organisation_by_id(organisation_id)
 
     return sorted(organisation.letter_branding_pool, key=lambda x: x.name)
+
+
+@autocommit
+def dao_add_letter_branding_list_to_organisation_pool(organisation_id, letter_branding_ids):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    letter_brandings = [dao_get_letter_branding_by_id(branding_id) for branding_id in letter_branding_ids]
+
+    organisation.letter_branding_pool.extend(letter_brandings)
+
+    db.session.add(organisation)

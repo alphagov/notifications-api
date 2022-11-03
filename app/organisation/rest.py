@@ -8,6 +8,7 @@ from app.dao.fact_billing_dao import fetch_usage_for_organisation
 from app.dao.invited_org_user_dao import get_invited_org_users_for_organisation
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
+    dao_add_letter_branding_list_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
     dao_archive_organisation,
@@ -41,6 +42,7 @@ from app.organisation.organisation_schema import (
     post_create_organisation_schema,
     post_link_service_to_organisation_schema,
     post_update_org_email_branding_pool_schema,
+    post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
 )
 from app.schema_validation import validate
@@ -250,17 +252,14 @@ def get_organisation_letter_branding_pool(organisation_id):
     return jsonify(data=[branding.serialize() for branding in branding_pool])
 
 
-def check_request_args(request):
-    org_id = request.args.get("org_id")
-    name = request.args.get("name", None)
-    errors = []
-    if not org_id:
-        errors.append({"org_id": ["Can't be empty"]})
-    if not name:
-        errors.append({"name": ["Can't be empty"]})
-    if errors:
-        raise InvalidRequest(errors, status_code=400)
-    return org_id, name
+@organisation_blueprint.route("/<uuid:organisation_id>/letter-branding-pool", methods=["POST"])
+def update_organisation_letter_branding_pool(organisation_id):
+    data = request.get_json()
+    validate(data, post_update_org_letter_branding_pool_schema)
+
+    dao_add_letter_branding_list_to_organisation_pool(organisation_id, data["branding_ids"])
+
+    return {}, 204
 
 
 def send_notifications_on_mou_signed(organisation_id):

@@ -6,10 +6,10 @@ from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
 from app.dao.organisation_dao import (
     dao_add_email_branding_to_organisation_pool,
+    dao_add_letter_branding_list_to_organisation_pool,
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
 )
@@ -1011,9 +1011,7 @@ def test_get_organisation_letter_branding_pool_returns_letter_brandings_for_orga
     branding_1 = create_letter_branding("nhs", "nhs.svg")
     branding_2 = create_letter_branding("cabinet_office", "cabinet_office.svg")
 
-    sample_organisation.letter_branding_pool.append(branding_1)
-    sample_organisation.letter_branding_pool.append(branding_2)
-    db.session.commit()
+    dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_1.id, branding_2.id])
 
     response = admin_request.get(
         "organisation.get_organisation_letter_branding_pool",
@@ -1023,3 +1021,31 @@ def test_get_organisation_letter_branding_pool_returns_letter_brandings_for_orga
     assert len(response["data"]) == 2
     assert response["data"][0]["id"] == str(branding_2.id)
     assert response["data"][1]["id"] == str(branding_1.id)
+
+
+def test_update_organisation_letter_branding_pool_raises_an_error_when_data_not_in_required_format(
+    admin_request,
+    sample_organisation,
+):
+    admin_request.post(
+        "organisation.update_organisation_letter_branding_pool",
+        organisation_id=sample_organisation.id,
+        _data="invalid",
+        _expected_status=400,
+    )
+
+
+def test_update_organisation_letter_branding_pool_updates_branding_pool(
+    admin_request,
+    sample_organisation,
+):
+    branding_1 = create_letter_branding("letter_branding_1", "filename_1")
+    branding_2 = create_letter_branding("letter_branding_2", "filename_2")
+
+    admin_request.post(
+        "organisation.update_organisation_letter_branding_pool",
+        organisation_id=sample_organisation.id,
+        _data={"branding_ids": [str(branding_1.id), str(branding_2.id)]},
+        _expected_status=204,
+    )
+    assert len(sample_organisation.letter_branding_pool) == 2
