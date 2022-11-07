@@ -23,6 +23,7 @@ from app.dao.organisation_dao import (
     dao_get_organisations,
     dao_get_users_for_organisation,
     dao_remove_email_branding_from_organisation_pool,
+    dao_remove_letter_branding_from_organisation_pool,
     dao_update_organisation,
 )
 from app.errors import InvalidRequest
@@ -493,12 +494,12 @@ def test_dao_remove_email_branding_from_organisation_pool(sample_organisation):
     # Error if trying to remove an email branding that's not in the pool
     with pytest.raises(ValueError):
         dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
-        assert sample_organisation.email_branding_pool == [branding_2, branding_3]
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
 
     # Error if trying to remove the org's default email branding
     with pytest.raises(InvalidRequest):
         dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
-        assert sample_organisation.email_branding_pool == [branding_2, branding_3]
+    assert sample_organisation.email_branding_pool == [branding_2, branding_3]
 
     dao_remove_email_branding_from_organisation_pool(sample_organisation.id, branding_3.id)
     assert sample_organisation.email_branding_pool == [branding_2]
@@ -548,3 +549,26 @@ def test_dao_add_letter_branding_list_to_organisation_pool_does_not_error_when_b
     dao_add_letter_branding_list_to_organisation_pool(sample_organisation.id, [branding_2.id, branding_3.id])
 
     assert sample_organisation.letter_branding_pool == [branding_1, branding_2, branding_3]
+
+
+def test_dao_remove_letter_branding_from_organisation_pool(sample_organisation):
+    branding_1 = create_letter_branding("branding_1", "filename_1")
+    branding_2 = create_letter_branding("branding_2", "filename_2")
+    branding_3 = create_letter_branding("branding_3", "filename_3")
+
+    dao_add_letter_branding_list_to_organisation_pool(
+        sample_organisation.id, [branding_1.id, branding_2.id, branding_3.id]
+    )
+
+    # branding_1 is the default for the org
+    sample_organisation.letter_branding_id = branding_1.id
+
+    # any branding in the pool can be removed
+    dao_remove_letter_branding_from_organisation_pool(sample_organisation.id, branding_1.id)
+    dao_remove_letter_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
+
+    # branding not in the pool raises an error
+    with pytest.raises(ValueError):
+        dao_remove_letter_branding_from_organisation_pool(sample_organisation.id, branding_2.id)
+
+    assert sample_organisation.letter_branding_pool == [branding_3]

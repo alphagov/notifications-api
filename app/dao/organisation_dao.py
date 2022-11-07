@@ -246,3 +246,13 @@ def dao_add_letter_branding_list_to_organisation_pool(organisation_id, letter_br
     organisation.letter_branding_pool.extend(letter_brandings)
 
     db.session.add(organisation)
+
+
+@autocommit
+def dao_remove_letter_branding_from_organisation_pool(organisation_id, letter_branding_id):
+    organisation = dao_get_organisation_by_id(organisation_id)
+    letter_branding = dao_get_letter_branding_by_id(letter_branding_id)
+
+    organisation.letter_branding_pool.remove(letter_branding)
+
+    return letter_branding
