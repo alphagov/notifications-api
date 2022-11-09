@@ -1,3 +1,4 @@
+import time
 import uuid
 
 from flask import current_app, g, request
@@ -119,8 +120,14 @@ def _decode_jwt_token(auth_token, api_keys, service_id=None):
     for api_key in api_keys:
         try:
             decode_jwt_token(auth_token, api_key.secret)
-        except TokenExpiredError:
+        except TokenExpiredError as e:
             err_msg = "Error: Your system clock must be accurate to within 30 seconds"
+            current_app.logger.info(
+                "Rejecting user authentication with `"
+                + err_msg
+                + f"` (token.iat: {e.token.get('iat')}, us: {int(time.time())}) "
+                + f"[X-Amz-Cf-Id: {request.headers.get('x-amz-cf-id')}]"
+            )
             raise AuthError(err_msg, 403, service_id=service_id, api_key_id=api_key.id)
         except TokenAlgorithmError:
             err_msg = "Invalid token: algorithm used is not HS256"
