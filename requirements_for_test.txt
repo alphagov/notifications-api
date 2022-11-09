@@ -6,7 +6,7 @@ flaky==3.7.0
 isort==5.10.1
 moto==4.0.9
 pytest==7.2.0
-pytest-env==0.6.2
+pytest-env==0.8.1
 pytest-mock==3.9.0
 pytest-cov==4.0.0
 pytest-xdist==2.5.0
