@@ -7,5 +7,7 @@ update: insecure
 
 search: False
 requirements:
-  - requirements.in
-  - requirements_for_test.txt
+  - requirements.in:
+    update: insecure
+  - requirements_for_test.txt:
+    update: insecure
