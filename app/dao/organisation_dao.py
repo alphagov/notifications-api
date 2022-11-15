@@ -126,6 +126,9 @@ def dao_update_organisation(organisation_id, **kwargs):
     if "letter_branding_id" in kwargs:
         _update_organisation_services(organisation, "letter_branding")
 
+        if kwargs["letter_branding_id"]:
+            dao_add_letter_branding_list_to_organisation_pool(organisation_id, [kwargs["letter_branding_id"]])
+
     return num_updated
 
 
