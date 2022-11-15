@@ -891,11 +891,16 @@ def create_template_folder(service, name="foo", parent=None):
     return tf
 
 
-def create_letter_branding(name="HM Government", filename="hm-government"):
-    test_domain_branding = LetterBranding(
-        name=name,
-        filename=filename,
-    )
+def create_letter_branding(name="HM Government", filename="hm-government", id=None):
+    data = {
+        "name": name,
+        "filename": filename,
+    }
+
+    if id:
+        data["id"] = id
+
+    test_domain_branding = LetterBranding(**data)
     db.session.add(test_domain_branding)
     db.session.commit()
     return test_domain_branding

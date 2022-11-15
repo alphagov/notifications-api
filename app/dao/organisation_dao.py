@@ -83,12 +83,14 @@ def dao_get_organisation_by_service_id(service_id):
 def dao_create_organisation(organisation):
     if organisation.organisation_type in NHS_ORGANISATION_TYPES:
         organisation.email_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"]
+        organisation.letter_branding_id = current_app.config["NHS_LETTER_BRANDING_ID"]
 
     db.session.add(organisation)
     db.session.commit()
 
     if organisation.organisation_type in NHS_ORGANISATION_TYPES:
         dao_add_email_branding_to_organisation_pool(organisation.id, organisation.email_branding_id)
+        dao_add_letter_branding_list_to_organisation_pool(organisation.id, [organisation.letter_branding_id])
 
 
 @autocommit

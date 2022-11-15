@@ -442,7 +442,7 @@ def test_get_all_user_services_should_return_empty_list_if_no_services_for_user(
 
 
 @freeze_time("2019-04-23T10:00:00")
-def test_dao_fetch_live_services_data(sample_user, nhs_email_branding):
+def test_dao_fetch_live_services_data(sample_user, nhs_email_branding, nhs_letter_branding):
     org = create_organisation(organisation_type="nhs_central")
     service = create_service(go_live_user=sample_user, go_live_at="2014-04-20T10:00:00")
     sms_template = create_template(service=service)

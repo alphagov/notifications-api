@@ -59,6 +59,7 @@ from tests.app.db import (
     create_inbound_number,
     create_invited_org_user,
     create_job,
+    create_letter_branding,
     create_letter_contact,
     create_notification,
     create_service,
@@ -913,6 +914,17 @@ def nhs_email_branding(notify_db_session):
 
     return create_email_branding(
         id=nhs_email_branding_id, logo="1ac6f483-3105-4c9e-9017-dd7fb2752c44-nhs-blue_x2.png", name="NHS"
+    )
+
+
+@pytest.fixture
+def nhs_letter_branding(notify_db_session):
+    # We wipe the letter_branding table between tests, so we have to recreate this branding
+    # that is normally always present
+    return create_letter_branding(
+        id=current_app.config["NHS_LETTER_BRANDING_ID"],
+        name="NHS",
+        filename="nhs",
     )
 
 
