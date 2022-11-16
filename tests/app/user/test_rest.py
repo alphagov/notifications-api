@@ -25,6 +25,7 @@ from tests.app.db import (
     create_service,
     create_template_folder,
     create_user,
+    create_webauthn_credential,
 )
 
 
@@ -1052,6 +1053,9 @@ def test_complete_login_after_webauthn_authentication_attempt_resets_login_if_su
     assert sample_user.current_session_id is None
     assert sample_user.logged_in_at is None
 
+    webauthn_credential = create_webauthn_credential(sample_user)
+    assert webauthn_credential.logged_in_at is None
+
     admin_request.post(
         "user.complete_login_after_webauthn_authentication_attempt",
         user_id=sample_user.id,
@@ -1062,6 +1066,28 @@ def test_complete_login_after_webauthn_authentication_attempt_resets_login_if_su
     assert sample_user.current_session_id is not None
     assert sample_user.failed_login_count == 0
     assert sample_user.logged_in_at == datetime(2020, 1, 1, 11, 0)
+    assert webauthn_credential.logged_in_at is None
+
+
+@freeze_time("2020-01-01 11:00")
+def test_complete_login_after_webauthn_authentication_attempt_updates_logged_in_at_for_supplied_webauthn_credential(
+    admin_request, sample_user
+):
+    assert sample_user.current_session_id is None
+    assert sample_user.logged_in_at is None
+
+    webauthn_credential = create_webauthn_credential(sample_user)
+    assert webauthn_credential.logged_in_at is None
+
+    admin_request.post(
+        "user.complete_login_after_webauthn_authentication_attempt",
+        user_id=sample_user.id,
+        _data={"successful": True, "webauthn_credential_id": str(webauthn_credential.id)},
+        _expected_status=204,
+    )
+
+    assert sample_user.logged_in_at == datetime(2020, 1, 1, 11, 0)
+    assert webauthn_credential.logged_in_at == datetime(2020, 1, 1, 11, 0)
 
 
 def test_complete_login_after_webauthn_authentication_attempt_returns_204_when_not_successful(

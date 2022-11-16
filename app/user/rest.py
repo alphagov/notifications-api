@@ -38,6 +38,10 @@ from app.dao.users_dao import (
     update_user_password,
     use_user_code,
 )
+from app.dao.webauthn_credential_dao import (
+    dao_get_webauthn_credential_by_user_and_id,
+    dao_update_webauthn_credential_logged_in_at,
+)
 from app.errors import InvalidRequest, register_errors
 from app.models import (
     EMAIL_TYPE,
@@ -252,6 +256,10 @@ def complete_login_after_webauthn_authentication_attempt(user_id):
         user.logged_in_at = datetime.utcnow()
         user.failed_login_count = 0
         save_model_user(user)
+
+        if webauthn_credential_id := data.get("webauthn_credential_id"):
+            webauthn_credential = dao_get_webauthn_credential_by_user_and_id(user_id, webauthn_credential_id)
+            dao_update_webauthn_credential_logged_in_at(webauthn_credential)
     else:
         increment_failed_login_count(user)
 

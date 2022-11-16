@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import WebauthnCredential
@@ -27,6 +29,13 @@ def dao_create_webauthn_credential(
 @autocommit
 def dao_update_webauthn_credential_name(webauthn_credential, new_name):
     webauthn_credential.name = new_name
+    db.session.add(webauthn_credential)
+    return webauthn_credential
+
+
+@autocommit
+def dao_update_webauthn_credential_logged_in_at(webauthn_credential):
+    webauthn_credential.logged_in_at = datetime.utcnow()
     db.session.add(webauthn_credential)
     return webauthn_credential
 
