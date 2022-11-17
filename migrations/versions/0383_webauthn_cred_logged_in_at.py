@@ -1,7 +1,7 @@
 """
 
-Revision ID: 0382_webauthn_cred_logged_in_at
-Revises: 0381_letter_branding_to_org
+Revision ID: 0383_webauthn_cred_logged_in_at
+Revises: 0382_nhs_letter_branding_id
 Create Date: 2022-10-21 14:26:12.421574
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-revision = '0382_webauthn_cred_logged_in_at'
-down_revision = '0381_letter_branding_to_org'
+revision = '0383_webauthn_cred_logged_in_at'
+down_revision = '0382_nhs_letter_branding_id'
 
 
 def upgrade():
