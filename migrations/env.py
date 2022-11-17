@@ -1,9 +1,9 @@
-from __future__ import with_statement
-
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
+
+from pathlib import Path
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -64,6 +64,14 @@ def run_migrations_online():
     try:
         with context.begin_transaction():
             context.run_migrations()
+
+        # if we're running on the main db (as opposed to the test db)
+        if engine.url.database == 'notification_api':
+            with open(Path(__file__).parent / ".current-alembic-head", "w") as f:
+                # write the current head to `.current-alembic-head`. This will prevent conflicting migrations
+                # being merged at the same time and breaking the build.
+                head = context.get_head_revision()
+                f.write(head)
     finally:
         connection.close()
 
