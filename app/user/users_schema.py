@@ -1,3 +1,5 @@
+from app.schema_validation.definitions import nullable_uuid
+
 post_verify_code_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for verifying a 2fa code",
@@ -15,7 +17,8 @@ post_verify_webauthn_schema = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "POST schema for verifying a webauthn login attempt",
     "type": "object",
-    "properties": {"successful": {"type": "boolean"}},
+    "properties": {"successful": {"type": "boolean"}, "webauthn_credential_id": nullable_uuid},
+    # webauthn_credential_id not required until admin is deployed
     "required": ["successful"],
     "additionalProperties": False,
 }
