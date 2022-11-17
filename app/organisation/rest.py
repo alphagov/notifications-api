@@ -114,8 +114,11 @@ def update_organisation(organisation_id):
 
     organisation = dao_get_organisation_by_id(organisation_id)
 
-    if data.get("organisation_type") in NHS_ORGANISATION_TYPES and not organisation.email_branding_id:
-        data["email_branding_id"] = current_app.config["NHS_EMAIL_BRANDING_ID"]
+    if data.get("organisation_type") in NHS_ORGANISATION_TYPES:
+        if not organisation.email_branding_id:
+            data["email_branding_id"] = current_app.config["NHS_EMAIL_BRANDING_ID"]
+        if not organisation.letter_branding_id:
+            data["letter_branding_id"] = current_app.config["NHS_LETTER_BRANDING_ID"]
 
     result = dao_update_organisation(organisation_id, **data)
 

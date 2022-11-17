@@ -622,6 +622,7 @@ def create_organisation(
     billing_contact_email_addresses=None,
     billing_reference=None,
     email_branding_id=None,
+    letter_branding_id=None,
 ):
     data = {
         "id": organisation_id,
@@ -633,6 +634,7 @@ def create_organisation(
         "billing_contact_email_addresses": billing_contact_email_addresses,
         "billing_reference": billing_reference,
         "email_branding_id": email_branding_id,
+        "letter_branding_id": letter_branding_id,
     }
     organisation = Organisation(**data)
     dao_create_organisation(organisation)
@@ -891,11 +893,16 @@ def create_template_folder(service, name="foo", parent=None):
     return tf
 
 
-def create_letter_branding(name="HM Government", filename="hm-government"):
-    test_domain_branding = LetterBranding(
-        name=name,
-        filename=filename,
-    )
+def create_letter_branding(name="HM Government", filename="hm-government", id=None):
+    data = {
+        "name": name,
+        "filename": filename,
+    }
+
+    if id:
+        data["id"] = id
+
+    test_domain_branding = LetterBranding(**data)
     db.session.add(test_domain_branding)
     db.session.commit()
     return test_domain_branding

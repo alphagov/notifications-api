@@ -246,6 +246,30 @@ def test_update_organisation_email_branding_does_not_error_if_returning_to_govuk
     dao_update_organisation(sample_organisation.id, email_branding_id=None)
 
 
+def test_update_organisation_letter_branding_adds_to_pool(sample_organisation):
+    letter_branding = create_letter_branding()
+
+    assert letter_branding not in sample_organisation.letter_branding_pool
+
+    dao_update_organisation(sample_organisation.id, letter_branding_id=letter_branding.id)
+
+    assert letter_branding in sample_organisation.letter_branding_pool
+
+
+def test_update_organisation_letter_branding_does_not_error_if_already_in_pool(sample_organisation):
+    letter_branding = create_letter_branding()
+    sample_organisation.letter_branding_pool.append(letter_branding)
+    db.session.commit()
+
+    assert letter_branding in sample_organisation.letter_branding_pool
+
+    dao_update_organisation(sample_organisation.id, letter_branding_id=letter_branding.id)
+
+
+def test_update_organisation_letter_branding_does_not_error_if_returning_to_no_branding(sample_organisation):
+    dao_update_organisation(sample_organisation.id, letter_branding_id=None)
+
+
 def test_update_organisation_updates_services_with_new_crown_type(sample_service, sample_organisation):
     sample_organisation.services.append(sample_service)
     db.session.commit()

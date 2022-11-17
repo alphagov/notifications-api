@@ -7,6 +7,7 @@ from freezegun import freeze_time
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
+from app.dao.letter_branding_dao import dao_get_letter_branding_by_id
 from app.dao.organisation_dao import (
     dao_add_email_branding_to_organisation_pool,
     dao_add_letter_branding_list_to_organisation_pool,
@@ -33,7 +34,7 @@ from tests.app.db import (
 )
 
 
-def test_get_all_organisations(admin_request, notify_db_session, nhs_email_branding):
+def test_get_all_organisations(admin_request, notify_db_session, nhs_email_branding, nhs_letter_branding):
     create_organisation(name="inactive org", active=False, organisation_type="nhs_central")
     create_organisation(name="active org", domains=["example.com"])
 
@@ -190,7 +191,7 @@ def test_post_create_organisation(admin_request, notify_db_session, crown):
 
 @pytest.mark.parametrize("org_type", ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_create_organisation_sets_default_nhs_branding_and_adds_it_to_org_pool_for_nhs_org_types(
-    admin_request, notify_db_session, nhs_email_branding, org_type
+    admin_request, notify_db_session, nhs_email_branding, nhs_letter_branding, org_type
 ):
     data = {
         "name": "test organisation",
@@ -201,14 +202,15 @@ def test_post_create_organisation_sets_default_nhs_branding_and_adds_it_to_org_p
 
     admin_request.post("organisation.create_organisation", _data=data, _expected_status=201)
 
-    organisations = Organisation.query.all()
-    nhs_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"]
-    nhs_branding = dao_get_email_branding_by_id(nhs_branding_id)
+    organisation = Organisation.query.one()
+    email_branding_nhs = dao_get_email_branding_by_id(current_app.config["NHS_EMAIL_BRANDING_ID"])
+    letter_branding_nhs = dao_get_letter_branding_by_id(current_app.config["NHS_LETTER_BRANDING_ID"])
 
-    assert len(organisations) == 1
-    assert organisations[0].email_branding_id == uuid.UUID(nhs_branding_id)
+    assert organisation.email_branding_id == uuid.UUID(current_app.config["NHS_EMAIL_BRANDING_ID"])
+    assert organisation.letter_branding_id == uuid.UUID(current_app.config["NHS_LETTER_BRANDING_ID"])
 
-    assert organisations[0].email_branding_pool == [nhs_branding]
+    assert organisation.email_branding_pool == [email_branding_nhs]
+    assert organisation.letter_branding_pool == [letter_branding_nhs]
 
 
 def test_post_create_organisation_existing_name_raises_400(admin_request, sample_organisation):
@@ -365,7 +367,7 @@ def test_update_other_organisation_attributes_doesnt_clear_domains(
 
 @pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
-    admin_request, nhs_email_branding, notify_db_session, new_org_type
+    admin_request, nhs_email_branding, nhs_letter_branding, notify_db_session, new_org_type
 ):
     org = create_organisation(organisation_type="central")
     data = {
@@ -374,32 +376,37 @@ def test_post_update_organisation_to_nhs_type_updates_branding_if_none_present(
 
     admin_request.post("organisation.update_organisation", _data=data, organisation_id=org.id, _expected_status=204)
 
-    organisation = Organisation.query.all()
+    organisation = Organisation.query.one()
 
-    assert len(organisation) == 1
-    assert organisation[0].id == org.id
-    assert organisation[0].organisation_type == new_org_type
-    assert organisation[0].email_branding_id == uuid.UUID(current_app.config["NHS_EMAIL_BRANDING_ID"])
+    assert organisation.id == org.id
+    assert organisation.organisation_type == new_org_type
+    assert organisation.email_branding_id == uuid.UUID(current_app.config["NHS_EMAIL_BRANDING_ID"])
+    assert organisation.letter_branding_id == uuid.UUID(current_app.config["NHS_LETTER_BRANDING_ID"])
 
 
 @pytest.mark.parametrize("new_org_type", ["nhs_central", "nhs_local", "nhs_gp"])
 def test_post_update_organisation_to_nhs_type_does_not_update_branding_if_default_branding_set(
-    admin_request, nhs_email_branding, notify_db_session, new_org_type
+    admin_request, nhs_email_branding, nhs_letter_branding, notify_db_session, new_org_type
 ):
-    current_branding = create_email_branding(logo="example.png", name="custom branding")
-    org = create_organisation(organisation_type="central", email_branding_id=current_branding.id)
+    current_email_branding = create_email_branding(logo="example.png", name="custom branding")
+    current_letter_branding = create_letter_branding()
+    org = create_organisation(
+        organisation_type="central",
+        email_branding_id=current_email_branding.id,
+        letter_branding_id=current_letter_branding.id,
+    )
     data = {
         "organisation_type": new_org_type,
     }
 
     admin_request.post("organisation.update_organisation", _data=data, organisation_id=org.id, _expected_status=204)
 
-    organisation = Organisation.query.all()
+    organisation = Organisation.query.one()
 
-    assert len(organisation) == 1
-    assert organisation[0].id == org.id
-    assert organisation[0].organisation_type == new_org_type
-    assert organisation[0].email_branding_id == current_branding.id
+    assert organisation.id == org.id
+    assert organisation.organisation_type == new_org_type
+    assert organisation.email_branding_id == current_email_branding.id
+    assert organisation.letter_branding_id == current_letter_branding.id
 
 
 def test_update_organisation_default_branding(
