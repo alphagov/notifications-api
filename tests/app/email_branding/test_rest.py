@@ -31,13 +31,14 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
         "email_branding.get_email_branding_by_id", _expected_status=200, email_branding_id=email_branding.id
     )
 
-    assert set(response["email_branding"].keys()) == {"colour", "logo", "name", "id", "text", "brand_type"}
+    assert set(response["email_branding"].keys()) == {"colour", "logo", "name", "id", "text", "brand_type", "alt_text"}
     assert response["email_branding"]["colour"] == "#FFFFFF"
     assert response["email_branding"]["logo"] == "/path/image.png"
     assert response["email_branding"]["name"] == "Some Org"
     assert response["email_branding"]["text"] == "My Org"
     assert response["email_branding"]["id"] == str(email_branding.id)
     assert response["email_branding"]["brand_type"] == str(email_branding.brand_type)
+    assert response["email_branding"]["alt_text"] is None
 
 
 @freezegun.freeze_time()
@@ -54,6 +55,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert data["logo"] == response["data"]["logo"]
     assert data["brand_type"] == response["data"]["brand_type"]
     assert response["data"]["text"] is None
+    assert response["data"]["alt_text"] is None
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert email_branding.created_by is None
@@ -74,12 +76,25 @@ def test_post_create_email_branding_with_created_fields(admin_request, notify_db
     assert data["colour"] == response["data"]["colour"]
     assert data["logo"] == response["data"]["logo"]
     assert data["brand_type"] == response["data"]["brand_type"]
-    assert response['data']['text'] is None
+    assert response["data"]["text"] is None
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert str(email_branding.created_by) == data["created_by"]
     assert email_branding.created_at == datetime.datetime.utcnow()
     assert email_branding.text is None
+
+
+@freezegun.freeze_time()
+def test_post_create_email_branding_adds_alt_text(admin_request, notify_db_session):
+    data = {
+        "name": "test email_branding",
+        "alt_text": "foo",
+    }
+    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
+    assert response["data"]["alt_text"] == "foo"
+
+    email_branding = EmailBranding.query.one()
+    assert email_branding.alt_text == "foo"
 
 
 def test_post_create_email_branding_without_brand_type_defaults(admin_request, notify_db_session):
