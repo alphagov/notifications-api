@@ -2,6 +2,7 @@ import datetime
 import uuid
 
 import pytest
+from flask import current_app
 from freezegun import freeze_time
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -232,6 +233,28 @@ def test_update_organisation_email_branding_adds_to_pool(sample_organisation):
     assert email_branding in sample_organisation.email_branding_pool
 
 
+@pytest.mark.parametrize("email_branding_id_present", (True, False))
+def test_update_organisation_email_branding_adds_nhs_branding_to_pool(
+    sample_organisation,
+    nhs_email_branding,
+    nhs_letter_branding,
+    email_branding_id_present,
+):
+    email_branding_id = current_app.config["NHS_EMAIL_BRANDING_ID"] if email_branding_id_present else None
+
+    data = {
+        "organisation_type": "nhs_central",
+        "email_branding_id": email_branding_id,
+    }
+
+    assert not sample_organisation.email_branding_pool
+
+    dao_update_organisation(sample_organisation.id, **data)
+
+    assert len(sample_organisation.email_branding_pool) == 1
+    assert sample_organisation.email_branding_pool[0].id == nhs_email_branding.id
+
+
 def test_update_organisation_email_branding_does_not_error_if_already_in_pool(sample_organisation):
     email_branding = create_email_branding()
     sample_organisation.email_branding_pool.append(email_branding)
@@ -254,6 +277,28 @@ def test_update_organisation_letter_branding_adds_to_pool(sample_organisation):
     dao_update_organisation(sample_organisation.id, letter_branding_id=letter_branding.id)
 
     assert letter_branding in sample_organisation.letter_branding_pool
+
+
+@pytest.mark.parametrize("letter_branding_id_present", (True, False))
+def test_update_organisation_letter_branding_adds_nhs_branding_to_pool(
+    sample_organisation,
+    nhs_email_branding,
+    nhs_letter_branding,
+    letter_branding_id_present,
+):
+    letter_branding_id = current_app.config["NHS_LETTER_BRANDING_ID"] if letter_branding_id_present else None
+
+    data = {
+        "organisation_type": "nhs_central",
+        "letter_branding_id": letter_branding_id,
+    }
+
+    assert not sample_organisation.letter_branding_pool
+
+    dao_update_organisation(sample_organisation.id, **data)
+
+    assert len(sample_organisation.letter_branding_pool) == 1
+    assert sample_organisation.letter_branding_pool[0].id == nhs_letter_branding.id
 
 
 def test_update_organisation_letter_branding_does_not_error_if_already_in_pool(sample_organisation):

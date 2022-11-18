@@ -119,17 +119,28 @@ def dao_update_organisation(organisation_id, **kwargs):
     if "email_branding_id" in kwargs:
         _update_organisation_services(organisation, "email_branding")
 
-        # This could be `None` to return an organisation to the default GOV.UK branding (which isn't a real brand).
-        if kwargs["email_branding_id"]:
-            dao_add_email_branding_to_organisation_pool(organisation_id, kwargs["email_branding_id"])
-
     if "letter_branding_id" in kwargs:
         _update_organisation_services(organisation, "letter_branding")
 
-        if kwargs["letter_branding_id"]:
-            dao_add_letter_branding_list_to_organisation_pool(organisation_id, [kwargs["letter_branding_id"]])
+    _add_branding_to_branding_pool(organisation_id, kwargs)
 
     return num_updated
+
+
+def _add_branding_to_branding_pool(organisation_id, kwargs):
+    if kwargs.get("organisation_type") in NHS_ORGANISATION_TYPES:
+        # If we're setting the organisation_type to one of the NHS types we always want to add the NHS branding to the
+        # pool. This should happen regardless of whether we're changing the branding for the org.
+        dao_add_email_branding_to_organisation_pool(organisation_id, current_app.config["NHS_EMAIL_BRANDING_ID"])
+        dao_add_letter_branding_list_to_organisation_pool(
+            organisation_id, [current_app.config["NHS_LETTER_BRANDING_ID"]]
+        )
+    else:
+        if kwargs.get("email_branding_id"):
+            dao_add_email_branding_to_organisation_pool(organisation_id, kwargs["email_branding_id"])
+
+        if kwargs.get("letter_branding_id"):
+            dao_add_letter_branding_list_to_organisation_pool(organisation_id, [kwargs["letter_branding_id"]])
 
 
 @version_class(
