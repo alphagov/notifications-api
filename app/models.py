@@ -237,6 +237,7 @@ class EmailBranding(db.Model):
     logo = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255), unique=True, nullable=False)
     text = db.Column(db.String(255), nullable=True)
+    alt_text = db.Column(db.String(255), nullable=True)
     brand_type = db.Column(
         db.String(255), db.ForeignKey("branding_type.name"), index=True, nullable=False, default=BRANDING_ORG
     )
@@ -253,6 +254,7 @@ class EmailBranding(db.Model):
             "name": self.name,
             "text": self.text,
             "brand_type": self.brand_type,
+            "alt_text": self.alt_text,
         }
 
         return serialized
