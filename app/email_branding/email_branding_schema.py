@@ -7,6 +7,7 @@ post_create_email_branding_schema = {
     "properties": {
         "colour": {"type": ["string", "null"]},
         "name": {"type": "string"},
+        "alt_text": {"type": ["string", "null"]},
         "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},
@@ -22,6 +23,7 @@ post_update_email_branding_schema = {
     "properties": {
         "colour": {"type": ["string", "null"]},
         "name": {"type": ["string", "null"]},
+        "alt_text": {"type": ["string", "null"]},
         "text": {"type": ["string", "null"]},
         "logo": {"type": ["string", "null"]},
         "brand_type": {"enum": BRANDING_TYPES},

@@ -48,6 +48,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
         "colour": "#0000ff",
         "logo": "/images/test_x2.png",
         "brand_type": BRANDING_ORG,
+        "alt_text": None,
     }
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
     assert data["name"] == response["data"]["name"]
