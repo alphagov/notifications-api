@@ -246,6 +246,14 @@ class EmailBranding(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=lambda: datetime.datetime.utcnow())
     updated_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
+    # one of alt_text or text MUST be supplied
+    __table_args__ = (
+        CheckConstraint(
+            "(text is not null and alt_text is null) or (text is null and alt_text is not null)",
+            name="ck_email_branding_one_of_alt_text_or_text_is_null",
+        ),
+    )
+
     def serialize(self):
         serialized = {
             "id": str(self.id),

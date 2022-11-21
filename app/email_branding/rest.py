@@ -27,6 +27,12 @@ def handle_integrity_error(exc):
     if "uq_email_branding_name" in str(exc):
         return jsonify(result="error", message={"name": ["An email branding with that name already exists."]}), 400
 
+    if "ck_email_branding_one_of_alt_text_or_text_is_null" in str(exc):
+        return (
+            jsonify(result="error", message="Email branding must have exactly one of alt_text and text."),
+            400,
+        )
+
     current_app.logger.exception(exc)
     return jsonify(result="error", message="Internal server error"), 500
 

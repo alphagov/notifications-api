@@ -690,7 +690,7 @@ def test_create_service_allows_only_lowercase_digits_and_fullstops_in_email_from
 
 
 def test_update_service(client, notify_db_session, sample_service):
-    brand = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League")
+    brand = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League", alt_text="Justice League")
     notify_db_session.add(brand)
     notify_db_session.commit()
 
@@ -779,7 +779,7 @@ def test_update_service_remove_letter_branding(client, notify_db_session, sample
 
 
 def test_update_service_remove_email_branding(admin_request, notify_db_session, sample_service):
-    brand = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League")
+    brand = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League", alt_text="Justice League")
     sample_service.email_branding = brand
     notify_db_session.commit()
 
@@ -788,8 +788,8 @@ def test_update_service_remove_email_branding(admin_request, notify_db_session, 
 
 
 def test_update_service_change_email_branding(admin_request, notify_db_session, sample_service):
-    brand1 = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League")
-    brand2 = EmailBranding(colour="#111111", logo="avengers.png", name="Avengers")
+    brand1 = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League", text="Foo")
+    brand2 = EmailBranding(colour="#111111", logo="avengers.png", name="Avengers", text="Foo")
     notify_db_session.add_all([brand1, brand2])
     sample_service.email_branding = brand1
     notify_db_session.commit()
