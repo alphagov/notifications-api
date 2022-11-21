@@ -233,6 +233,17 @@ def test_post_update_email_branding_updates_field_with_text(admin_request, notif
         assert getattr(email_branding[0], key) == data_update[key]
 
 
+def test_post_update_email_branding_rejects_none_value_for_name(admin_request, notify_db_session):
+    email_branding = create_email_branding(name="foo")
+
+    admin_request.post(
+        "email_branding.update_email_branding",
+        email_branding_id=email_branding.id,
+        _data={"name": None},
+        _expected_status=400,
+    )
+
+
 def test_create_email_branding_reject_invalid_brand_type(admin_request):
     data = {"name": "test email_branding", "brand_type": "NOT A TYPE"}
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=400)
