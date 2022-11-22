@@ -63,6 +63,7 @@ from app.notifications.process_notifications import send_notification_to_queue
 
 
 @notify_celery.task(name="run-scheduled-jobs")
+@cronitor("run-scheduled-jobs")
 def run_scheduled_jobs():
     try:
         for job in dao_set_scheduled_jobs_to_pending():
