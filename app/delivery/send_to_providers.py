@@ -223,7 +223,7 @@ def get_html_email_options(service):
         "brand_colour": branding.colour,
         "brand_logo": logo_url,
         "brand_text": branding.text,
-        "brand_name": branding.name,
+        "brand_alt_text": branding.alt_text,
     }
 
 
