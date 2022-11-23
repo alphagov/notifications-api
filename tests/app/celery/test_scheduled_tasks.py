@@ -1,4 +1,3 @@
-import uuid
 from collections import namedtuple
 from datetime import datetime, timedelta
 from unittest import mock
@@ -26,7 +25,6 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
     trigger_link_tests,
-    zendesk_new_email_branding_report,
 )
 from app.config import Config, QueueNames, TaskNames
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -44,10 +42,8 @@ from app.models import (
 from tests.app import load_example_csv
 from tests.app.db import (
     create_broadcast_message,
-    create_email_branding,
     create_job,
     create_notification,
-    create_organisation,
     create_template,
 )
 from tests.conftest import set_config
@@ -786,113 +782,3 @@ def test_delete_old_records_from_events_table(notify_db_session):
     events = Event.query.filter(Event.event_type == "test_event").all()
     assert len(events) == 1
     assert events[0].created_at == recent_datetime
-
-
-@freeze_time("2022-11-01 00:30:00")
-def test_zendesk_new_email_branding_report(notify_db_session, mocker):
-    org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
-    org_2 = create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
-    email_brand_1 = create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
-    email_brand_2 = create_email_branding(id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2")
-    create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
-    org_1.email_branding_pool = [email_brand_1, email_brand_2]
-    org_2.email_branding_pool = [email_brand_2]
-    notify_db_session.commit()
-
-    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
-
-    zendesk_new_email_branding_report()
-
-    assert mock_send_ticket.call_count == 1
-
-    ticket = mock_send_ticket.call_args_list[0][0][0]
-    expected_html = (
-        "<p>There are new email brands to review since Monday 31 October 2022.</p>"
-        "<hr>"
-        "<p>"
-        '<a href="http://localhost:6012/organisations/113d51e7-f204-44d0-99c6-020f3542a527/">org-1</a>:'
-        "</p>"
-        "<ul>"
-        "<li>"
-        '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
-        "</li>"
-        "<li>"
-        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
-        "</li>"
-        "</ul>"
-        "<hr>"
-        "<p>"
-        '<a href="http://localhost:6012/organisations/d6bc2309-9f79-4779-b864-46c2892db90e/">org-2</a>:'
-        "</p>"
-        "<ul>"
-        "<li>"
-        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
-        "</li>"
-        "</ul>"
-        "<hr>"
-        "<p>Unassociated brands:</p>"
-        "<ul>"
-        "<li>"
-        '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
-        "</li>"
-        "</ul>"
-    )
-
-    assert ticket.request_data == {
-        "ticket": {
-            "subject": "Review new email brandings",
-            "comment": {
-                "html_body": expected_html,
-                "public": True,
-            },
-            "group_id": 360000036529,
-            "organization_id": 21891972,
-            "ticket_form_id": 1900000284794,
-            "priority": "normal",
-            "tags": ["govuk_notify_support"],
-            "type": "incident",
-            "custom_fields": [
-                {"id": "1900000744994", "value": "notify_ticket_type_non_technical"},
-                {"id": "360022836500", "value": []},
-                {"id": "360022943959", "value": None},
-                {"id": "360022943979", "value": None},
-                {"id": "1900000745014", "value": None},
-            ],
-        }
-    }
-
-
-@pytest.mark.parametrize(
-    "freeze_datetime, expected_last_day_string",
-    (
-        ("2022-11-20 00:30:00", "Friday 18 November 2022"),
-        ("2022-11-19 00:30:00", "Friday 18 November 2022"),
-        ("2022-11-18 00:30:00", "Thursday 17 November 2022"),
-        ("2022-11-17 00:30:00", "Wednesday 16 November 2022"),
-        ("2022-11-16 00:30:00", "Tuesday 15 November 2022"),
-        ("2022-11-15 00:30:00", "Monday 14 November 2022"),
-        ("2022-11-14 00:30:00", "Friday 11 November 2022"),
-    ),
-)
-def test_zendesk_new_email_branding_report_calculates_last_weekday_correctly(
-    notify_db_session, mocker, freeze_datetime, expected_last_day_string
-):
-    org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
-    email_brand_1 = create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
-    org_1.email_branding_pool = [email_brand_1]
-    notify_db_session.commit()
-
-    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
-
-    with freeze_time(freeze_datetime):
-        zendesk_new_email_branding_report()
-
-    assert mock_send_ticket.call_count == 1
-    ticket = mock_send_ticket.call_args_list[0][0][0]
-    assert expected_last_day_string in ticket.request_data["ticket"]["comment"]["html_body"]
-
-
-def test_zendesk_new_email_branding_report_does_not_create_ticket_if_no_new_brands(notify_db_session, mocker):
-    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
-    zendesk_new_email_branding_report()
-    assert mock_send_ticket.call_args_list == []
