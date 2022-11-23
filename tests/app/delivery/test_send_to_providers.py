@@ -393,6 +393,22 @@ def test_send_email_should_use_service_reply_to_email(sample_service, sample_ema
     )
 
 
+@pytest.mark.parametrize("service_fixture", ["sample_service", "sample_service_with_email_branding"])
+def test_send_email_works_with_and_without_email_branding(request, service_fixture, sample_email_template, mocker):
+    request.getfixturevalue(service_fixture)  # Creates and loads the relevant service fixture into the DB
+    mocker.patch("app.aws_ses_client.send_email", return_value="reference")
+
+    db_notification = create_notification(template=sample_email_template, reply_to_text="foo@bar.com")
+
+    send_to_providers.send_email_to_provider(
+        db_notification,
+    )
+
+    app.aws_ses_client.send_email.assert_called_once_with(
+        ANY, ANY, ANY, body=ANY, html_body=ANY, reply_to_address="foo@bar.com"
+    )
+
+
 def test_get_html_email_renderer_should_return_for_normal_service(sample_service):
     options = send_to_providers.get_html_email_options(sample_service)
     assert options["govuk_banner"] is True

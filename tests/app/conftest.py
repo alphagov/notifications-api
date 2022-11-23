@@ -158,6 +158,12 @@ def sample_service(sample_user):
 
 
 @pytest.fixture(scope="function")
+def sample_service_with_email_branding(sample_service):
+    sample_service.email_branding = create_email_branding(id=uuid.uuid4())
+    return sample_service
+
+
+@pytest.fixture(scope="function")
 def sample_broadcast_service(broadcast_organisation, sample_user):
     service_name = "Sample broadcast service"
     email_from = service_name.lower().replace(" ", ".")
