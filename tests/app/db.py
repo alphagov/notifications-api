@@ -483,7 +483,7 @@ def create_service_callback_api(
 
 
 def create_email_branding(
-    id=None, colour="blue", alt_text="Alt Text", logo="test_x2.png", name="test_org_1", text="DisplayName"
+    id=None, colour="blue", alt_text=None, logo="test_x2.png", name="test_org_1", text="DisplayName"
 ):
     data = {
         "colour": colour,

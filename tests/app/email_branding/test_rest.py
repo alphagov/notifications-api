@@ -8,8 +8,8 @@ from tests.app.db import create_email_branding
 
 
 def test_get_email_branding_options(admin_request, notify_db_session):
-    email_branding1 = EmailBranding(colour="#FFFFFF", logo="/path/image.png", name="Org1")
-    email_branding2 = EmailBranding(colour="#000000", logo="/path/other.png", name="Org2")
+    email_branding1 = EmailBranding(colour="#FFFFFF", logo="/path/image.png", name="Org1", alt_text="Org1")
+    email_branding2 = EmailBranding(colour="#000000", logo="/path/other.png", name="Org2", alt_text="Org2")
     notify_db_session.add_all([email_branding1, email_branding2])
     notify_db_session.commit()
 
@@ -49,13 +49,14 @@ def test_post_create_email_branding(admin_request, notify_db_session):
         "logo": "/images/test_x2.png",
         "brand_type": BRANDING_ORG,
         "alt_text": None,
+        "text": "some text",
     }
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
     assert data["name"] == response["data"]["name"]
     assert data["colour"] == response["data"]["colour"]
     assert data["logo"] == response["data"]["logo"]
     assert data["brand_type"] == response["data"]["brand_type"]
-    assert response["data"]["text"] is None
+    assert response["data"]["text"] == "some text"
     assert response["data"]["alt_text"] is None
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
@@ -67,6 +68,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
 def test_post_create_email_branding_with_created_fields(admin_request, notify_db_session, sample_user):
     data = {
         "name": "test email_branding",
+        "alt_text": "test alt text",
         "colour": "#0000ff",
         "logo": "/images/test_x2.png",
         "brand_type": BRANDING_ORG,
@@ -85,22 +87,10 @@ def test_post_create_email_branding_with_created_fields(admin_request, notify_db
     assert email_branding.text is None
 
 
-@freezegun.freeze_time()
-def test_post_create_email_branding_adds_alt_text(admin_request, notify_db_session):
-    data = {
-        "name": "test email_branding",
-        "alt_text": "foo",
-    }
-    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
-    assert response["data"]["alt_text"] == "foo"
-
-    email_branding = EmailBranding.query.one()
-    assert email_branding.alt_text == "foo"
-
-
 def test_post_create_email_branding_without_brand_type_defaults(admin_request, notify_db_session):
     data = {
         "name": "test email_branding",
+        "alt_text": "test alt text",
         "colour": "#0000ff",
         "logo": "/images/test_x2.png",
     }
@@ -111,6 +101,7 @@ def test_post_create_email_branding_without_brand_type_defaults(admin_request, n
 def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_session):
     data = {
         "name": "test email_branding",
+        "alt_text": "test alt text",
         "colour": "#0000ff",
     }
     response = admin_request.post(
@@ -122,21 +113,46 @@ def test_post_create_email_branding_without_logo_is_ok(admin_request, notify_db_
 
 
 @pytest.mark.parametrize(
-    "data, expected_text",
+    "data, expected_alt_text, expected_text",
     [
-        ({"logo": "images/text_x2.png", "name": "test branding"}, None),
-        ({"logo": "images/text_x2.png", "name": "test branding", "text": None}, None),
-        ({"logo": "images/text_x2.png", "name": "test branding", "text": ""}, ""),
-        ({"logo": "images/text_x2.png", "name": "test branding", "text": "test text"}, "test text"),
+        ({"alt_text": None, "text": "some text"}, None, "some text"),
+        ({"alt_text": "some alt text", "text": None}, "some alt text", None),
+        ({"text": "some text"}, None, "some text"),
+        ({"alt_text": "some alt text"}, "some alt text", None),
     ],
 )
-def test_post_create_email_branding_colour_is_valid(admin_request, notify_db_session, data, expected_text):
-    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
+def test_post_create_email_branding_allows_one_of_alt_text_or_text_whether_null_or_missing(
+    admin_request,
+    notify_db_session,
+    data,
+    expected_alt_text,
+    expected_text,
+):
+    data = data | {"name": "test email_branding"}
+    admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
 
-    assert response["data"]["logo"] == "images/text_x2.png"
-    assert response["data"]["name"] == "test branding"
-    assert response["data"]["colour"] is None
-    assert response["data"]["text"] == expected_text
+    email_branding = EmailBranding.query.one()
+    assert email_branding.alt_text == expected_alt_text
+    assert email_branding.text == expected_text
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"alt_text": None, "text": None},
+        {"alt_text": "some alt text", "text": "some text"},
+        {},
+    ],
+)
+def test_post_create_email_branding_enforces_alt_text_and_text_one_null_one_provided(
+    admin_request,
+    notify_db_session,
+    data,
+):
+    data = data | {"name": "test email_branding"}
+    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=400)
+
+    assert response["message"] == "Email branding must have exactly one of alt_text and text."
 
 
 def test_post_create_email_branding_returns_400_when_name_is_missing(admin_request, notify_db_session):
@@ -151,13 +167,10 @@ def test_post_create_email_branding_returns_400_when_name_is_missing(admin_reque
     [
         ({"name": "test email_branding 1"}),
         ({"logo": "images/text_x3.png", "colour": "#ffffff"}),
-        ({"logo": "images/text_x3.png"}),
-        ({"logo": "images/text_x3.png"}),
-        ({"logo": "images/text_x3.png"}),
     ],
 )
 def test_post_update_email_branding_updates_field(admin_request, notify_db_session, data_update):
-    data = {"name": "test email_branding", "logo": "images/text_x2.png"}
+    data = {"name": "test email_branding", "logo": "images/text_x2.png", "alt_text": "alt_text"}
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
 
     email_branding_id = response["data"]["id"]
@@ -170,8 +183,6 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
     assert str(email_branding[0].id) == email_branding_id
     for key in data_update.keys():
         assert getattr(email_branding[0], key) == data_update[key]
-    # text field isn't updated
-    assert email_branding[0].text is None
 
 
 @freezegun.freeze_time(as_kwarg="frozen_time")
@@ -179,7 +190,7 @@ def test_post_update_email_branding_updated_fields(admin_request, notify_db_sess
     frozen_time = kwargs["frozen_time"]
     start_time = frozen_time.time_to_freeze
 
-    data = {"name": "test email_branding", "logo": "images/text_x2.png"}
+    data = {"name": "test email_branding", "logo": "images/text_x2.png", "text": "some text"}
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
 
     email_brandings = EmailBranding.query.all()
@@ -209,30 +220,6 @@ def test_post_update_email_branding_updated_fields(admin_request, notify_db_sess
     assert email_branding.updated_at == frozen_time.time_to_freeze
 
 
-@pytest.mark.parametrize(
-    "data_update",
-    [
-        ({"text": "text email branding"}),
-        ({"text": "new text", "name": "new name"}),
-        ({"text": None, "name": "test name"}),
-    ],
-)
-def test_post_update_email_branding_updates_field_with_text(admin_request, notify_db_session, data_update):
-    data = {"name": "test email_branding", "logo": "images/text_x2.png"}
-    response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
-
-    email_branding_id = response["data"]["id"]
-
-    admin_request.post("email_branding.update_email_branding", _data=data_update, email_branding_id=email_branding_id)
-
-    email_branding = EmailBranding.query.all()
-
-    assert len(email_branding) == 1
-    assert str(email_branding[0].id) == email_branding_id
-    for key in data_update.keys():
-        assert getattr(email_branding[0], key) == data_update[key]
-
-
 def test_post_update_email_branding_rejects_none_value_for_name(admin_request, notify_db_session):
     email_branding = create_email_branding(name="foo")
 
@@ -252,7 +239,7 @@ def test_create_email_branding_reject_invalid_brand_type(admin_request):
 
 
 def test_create_email_branding_400s_on_unique_violation(admin_request, notify_db_session):
-    data = {"name": "test email_branding", "logo": "images/text_x2.png"}
+    data = {"name": "test email_branding", "logo": "images/text_x2.png", "text": "some text"}
     admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=201)
     response = admin_request.post("email_branding.create_email_branding", _data=data, _expected_status=400)
 
@@ -280,3 +267,60 @@ def test_update_email_branding_reject_invalid_brand_type(admin_request, notify_d
     )
 
     assert response["errors"][0]["message"] == "brand_type NOT A TYPE is not one of [org, both, org_banner]"
+
+
+@pytest.mark.parametrize(
+    "data, expected_alt_text, expected_text",
+    [
+        # updating text in place
+        ({"alt_text": None, "text": "some text"}, None, "some text"),
+        ({"text": "some text"}, None, "some text"),
+        # not updating either field is ok
+        ({}, None, "DisplayName"),
+        # swapping from text to alt text
+        ({"alt_text": "some alt text", "text": None}, "some alt text", None),
+    ],
+)
+def test_post_update_email_branding_allows_one_of_alt_text_or_text_whether_null_or_missing(
+    admin_request,
+    notify_db_session,
+    data,
+    expected_alt_text,
+    expected_text,
+):
+    email_branding = create_email_branding(alt_text=None, text="DisplayName")
+    admin_request.post(
+        "email_branding.update_email_branding",
+        email_branding_id=email_branding.id,
+        _data=data,
+        _expected_status=200,
+    )
+
+    email_branding = EmailBranding.query.one()
+    assert email_branding.alt_text == expected_alt_text
+    assert email_branding.text == expected_text
+
+
+@pytest.mark.parametrize(
+    "existing_data, data",
+    [
+        # try and set both
+        ({"text": "existing text"}, {"alt_text": "new alt text"}),
+        # try and remove both
+        ({"text": "existing text"}, {"text": None}),
+    ],
+)
+def test_post_update_email_branding_400s_if_not_one_of_alt_text_and_text(
+    admin_request,
+    notify_db_session,
+    existing_data,
+    data,
+):
+    email_branding = create_email_branding(**existing_data)
+    response = admin_request.post(
+        "email_branding.update_email_branding",
+        email_branding_id=email_branding.id,
+        _data=data,
+        _expected_status=400,
+    )
+    assert response["message"] == "Email branding must have exactly one of alt_text and text."
