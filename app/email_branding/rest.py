@@ -24,10 +24,10 @@ def handle_integrity_error(exc):
     """
     Handle integrity errors caused by the unique constraint
     """
-    if "uq_email_branding_name" in str(exc):
+    if exc.orig.diag.constraint_name == EmailBranding.CONSTRAINT_UNIQUE_NAME:
         return jsonify(result="error", message={"name": ["An email branding with that name already exists."]}), 400
 
-    if "ck_email_branding_one_of_alt_text_or_text_is_null" in str(exc):
+    if exc.orig.diag.constraint_name == EmailBranding.CONSTRAINT_CHECK_ONE_OF_ALT_TEXT_TEXT_NULL:
         return (
             jsonify(result="error", message="Email branding must have exactly one of alt_text and text."),
             400,
