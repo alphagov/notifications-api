@@ -57,7 +57,7 @@ from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
 from app.serialised_models import SerialisedService, SerialisedTemplate
 from app.service.utils import service_allowed_to_send_to
-from app.utils import DATETIME_FORMAT, get_reference_from_personalisation
+from app.utils import DATETIME_FORMAT
 from app.v2.errors import TooManyRequestsError
 
 
@@ -130,6 +130,8 @@ def process_row(row, template, job, service, sender_id=None):
             "to": row.recipient,
             "row_number": row.index,
             "personalisation": dict(row.personalisation),
+            # row.recipient_and_personalisation gets all columns for the row, even those not in template placeholders
+            "client_reference": dict(row.recipient_and_personalisation).get("reference", None),
         }
     )
 
@@ -207,6 +209,7 @@ def save_sms(self, service_id, notification_id, encrypted_notification, sender_i
             job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
             reply_to_text=reply_to_text,
+            client_reference=notification.get("client_reference", None),
         )
 
         provider_tasks.deliver_sms.apply_async(
@@ -259,6 +262,7 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
             job_row_number=notification.get("row_number", None),
             notification_id=notification_id,
             reply_to_text=reply_to_text,
+            client_reference=notification.get("client_reference", None),
         )
 
         provider_tasks.deliver_email.apply_async(
@@ -361,7 +365,7 @@ def save_letter(
             job_row_number=notification["row_number"],
             notification_id=notification_id,
             reference=create_random_identifier(),
-            client_reference=get_reference_from_personalisation(notification["personalisation"]),
+            client_reference=notification.get("client_reference", None),
             reply_to_text=template.reply_to_text,
             status=status,
         )

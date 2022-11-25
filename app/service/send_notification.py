@@ -60,6 +60,12 @@ def create_one_off_reference(template_type):
     return None
 
 
+def _get_reference_from_personalisation(personalisation):
+    if personalisation:
+        return personalisation.get("reference")
+    return None
+
+
 def send_one_off_notification(service_id, post_data):
     service = dao_fetch_service_by_id(service_id)
     template = dao_get_template_by_id_and_service_id(template_id=post_data["template_id"], service_id=service_id)
@@ -85,9 +91,8 @@ def send_one_off_notification(service_id, post_data):
         postage = validate_address(service, personalisation)
         if not postage:
             postage = template.postage
-        from app.utils import get_reference_from_personalisation
 
-        client_reference = get_reference_from_personalisation(personalisation)
+        client_reference = _get_reference_from_personalisation(personalisation)
 
     validate_created_by(service, post_data["created_by"])
 
