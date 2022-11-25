@@ -4,7 +4,9 @@ from sqlalchemy.exc import IntegrityError
 from app.dao.email_branding_dao import (
     dao_create_email_branding,
     dao_get_email_branding_by_id,
+    dao_get_email_branding_by_name_case_insensitive,
     dao_get_email_branding_options,
+    dao_get_existing_alternate_email_branding_for_name,
     dao_update_email_branding,
 )
 from app.email_branding.email_branding_schema import (
@@ -73,3 +75,24 @@ def update_email_branding(email_branding_id):
     dao_update_email_branding(fetched_email_branding, **data)
 
     return jsonify(data=fetched_email_branding.serialize()), 200
+
+
+@email_branding_blueprint.route("/get-name-for-alt-text/<alt_text>", methods=["GET"])
+def get_email_branding_name_for_alt_text(alt_text):
+    existing_branding = dao_get_email_branding_by_name_case_insensitive(alt_text)
+    if not existing_branding:
+        chosen_name = alt_text
+    else:
+        existing_alternate_branding_options = {
+            x.name for x in dao_get_existing_alternate_email_branding_for_name(alt_text)
+        }
+
+        for i in range(1, 100):
+            potential_name = f"{alt_text} (alternate {i})"
+            if potential_name not in existing_alternate_branding_options:
+                chosen_name = potential_name
+                break
+        else:
+            raise ValueError(f"Couldnt assign a unique name for {alt_text} - already too many options")
+
+    return jsonify(name=chosen_name), 200
