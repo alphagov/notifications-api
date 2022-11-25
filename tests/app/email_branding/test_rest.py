@@ -332,7 +332,9 @@ def test_get_email_branding_name_for_alt_text_returns_alt_text_if_nothing_in_db_
 ):
     create_email_branding(name="Other Department")
 
-    response = admin_request.get("email_branding.get_email_branding_name_for_alt_text", alt_text="Department Name")
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
     assert response == {"name": "Department Name"}
 
 
@@ -342,7 +344,9 @@ def test_get_email_branding_name_for_alt_text_returns_alternate_option_if_name_a
 ):
     create_email_branding(name="DEPARTMENT name")
 
-    response = admin_request.get("email_branding.get_email_branding_name_for_alt_text", alt_text="Department Name")
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
     assert response == {"name": "Department Name (alternate 1)"}
 
 
@@ -357,7 +361,9 @@ def test_get_email_branding_name_for_alt_text_returns_first_available_alternate_
     # we've already renamed one of the options
     create_email_branding(name="Department Name (blue banner)")
 
-    response = admin_request.get("email_branding.get_email_branding_name_for_alt_text", alt_text="Department Name")
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
     assert response == {"name": "Department Name (alternate 3)"}
 
 
@@ -370,5 +376,5 @@ def test_get_email_branding_name_for_alt_text_gives_up_if_100_options_assigned(
         create_email_branding(name=f"Department Name (alternate {x})")
 
     with pytest.raises(ValueError) as exc:
-        admin_request.get("email_branding.get_email_branding_name_for_alt_text", alt_text="Department Name")
+        admin_request.post("email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"})
     assert "Couldnt assign a unique name for Department Name" in str(exc.value)

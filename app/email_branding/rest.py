@@ -11,6 +11,7 @@ from app.dao.email_branding_dao import (
 )
 from app.email_branding.email_branding_schema import (
     post_create_email_branding_schema,
+    post_get_email_branding_name_for_alt_text_schema,
     post_update_email_branding_schema,
 )
 from app.errors import register_errors
@@ -77,8 +78,14 @@ def update_email_branding(email_branding_id):
     return jsonify(data=fetched_email_branding.serialize()), 200
 
 
-@email_branding_blueprint.route("/get-name-for-alt-text/<alt_text>", methods=["GET"])
-def get_email_branding_name_for_alt_text(alt_text):
+@email_branding_blueprint.route("/get-name-for-alt-text/", methods=["POST"])
+def get_email_branding_name_for_alt_text():
+    data = request.get_json()
+
+    validate(data, post_get_email_branding_name_for_alt_text_schema)
+
+    alt_text = data["alt_text"]
+
     existing_branding = dao_get_email_branding_by_name_case_insensitive(alt_text)
     if not existing_branding:
         chosen_name = alt_text
