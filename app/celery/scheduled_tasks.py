@@ -1,4 +1,3 @@
-import textwrap
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -409,27 +408,9 @@ def zendesk_new_email_branding_report():
             for organisation in new_brand.organisations:
                 brands_by_organisation[organisation].append(new_brand)
 
-    template = jinja2.Template(
-        textwrap.dedent(
-            """
-            <p>There are new email brands to review since {{ yesterday }}.</p><hr>
-            {%- for org, brands in brands_by_organisation.items() -%}
-                <p><a href="{{ domain }}/organisations/{{ org.id }}/">{{ org.name }}</a>:</p><ul>
-                {%- for brand in brands -%}
-                    <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
-                {%- endfor -%}
-                </ul><hr>
-            {%- endfor -%}
-            {%- if brands_with_no_organisation -%}
-                <p>Unassociated brands:</p><ul>
-                {%- for brand in brands_with_no_organisation -%}
-                    <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
-                {%- endfor -%}
-                </ul>
-            {%- endif -%}
-            """
-        ).strip()
-    )
+    with open("templates/tasks/scheduled_tasks/new_email_brandings.html") as template_file:
+        template = jinja2.Template(template_file.read())
+
     message = template.render(
         domain=current_app.config["ADMIN_BASE_URL"],
         yesterday=previous_weekday.strftime("%A %-d %B %Y"),

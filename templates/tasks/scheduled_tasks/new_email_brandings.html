@@ -1,0 +1,15 @@
+<p>There are new email brands to review since {{ yesterday }}.</p><hr>
+{%- for org, brands in brands_by_organisation.items() -%}
+    <p><a href="{{ domain }}/organisations/{{ org.id }}">{{ org.name }}</a>:</p><ul>
+    {%- for brand in brands -%}
+        <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
+    {%- endfor -%}
+    </ul><hr>
+{%- endfor -%}
+{%- if brands_with_no_organisation -%}
+    <p>Unassociated brands:</p><ul>
+    {%- for brand in brands_with_no_organisation -%}
+        <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
+    {%- endfor -%}
+    </ul>
+{%- endif -%}
