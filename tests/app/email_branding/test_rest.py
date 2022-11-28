@@ -324,3 +324,57 @@ def test_post_update_email_branding_400s_if_not_one_of_alt_text_and_text(
         _expected_status=400,
     )
     assert response["message"] == "Email branding must have exactly one of alt_text and text."
+
+
+def test_get_email_branding_name_for_alt_text_returns_alt_text_if_nothing_in_db_with_that_name(
+    admin_request,
+    notify_db_session,
+):
+    create_email_branding(name="Other Department")
+
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
+    assert response == {"name": "Department Name"}
+
+
+def test_get_email_branding_name_for_alt_text_returns_alternate_option_if_name_already_used(
+    admin_request,
+    notify_db_session,
+):
+    create_email_branding(name="DEPARTMENT name")
+
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
+    assert response == {"name": "Department Name (alternate 1)"}
+
+
+def test_get_email_branding_name_for_alt_text_returns_first_available_alternate_option(
+    admin_request,
+    notify_db_session,
+):
+    create_email_branding(name="Department Name")
+    create_email_branding(name="Department Name (alternate 1)")
+    create_email_branding(name="Department Name (alternate 2)")
+    create_email_branding(name="Department Name (alternate 4)")
+    # we've already renamed one of the options
+    create_email_branding(name="Department Name (blue banner)")
+
+    response = admin_request.post(
+        "email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"}
+    )
+    assert response == {"name": "Department Name (alternate 3)"}
+
+
+def test_get_email_branding_name_for_alt_text_gives_up_if_100_options_assigned(
+    admin_request,
+    notify_db_session,
+):
+    create_email_branding(name="Department Name")
+    for x in range(1, 100):
+        create_email_branding(name=f"Department Name (alternate {x})")
+
+    with pytest.raises(ValueError) as exc:
+        admin_request.post("email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"})
+    assert "Couldnt assign a unique name for Department Name" in str(exc.value)
