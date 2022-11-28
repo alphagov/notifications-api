@@ -1,9 +1,9 @@
 from logging.config import fileConfig
+from pathlib import Path
 
 from alembic import context
+from flask import current_app
 from sqlalchemy import engine_from_config, pool
-
-from pathlib import Path
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -17,7 +17,6 @@ fileConfig(config.config_file_name)
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
-from flask import current_app
 
 config.set_main_option("sqlalchemy.url", current_app.config.get("SQLALCHEMY_DATABASE_URI"))
 target_metadata = current_app.extensions["migrate"].db.metadata
@@ -66,7 +65,7 @@ def run_migrations_online():
             context.run_migrations()
 
         # if we're running on the main db (as opposed to the test db)
-        if engine.url.database == 'notification_api':
+        if engine.url.database == "notification_api":
             with open(Path(__file__).parent / ".current-alembic-head", "w") as f:
                 # write the current head to `.current-alembic-head`. This will prevent conflicting migrations
                 # being merged at the same time and breaking the build.
