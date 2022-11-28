@@ -129,13 +129,19 @@ def dao_set_scheduled_jobs_to_pending():
     return jobs
 
 
-def dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id):
-    return Job.query.filter(
-        Job.service_id == service_id,
-        Job.id == job_id,
-        Job.job_status == JOB_STATUS_SCHEDULED,
-        Job.scheduled_for > datetime.utcnow(),
-    ).one()
+def dao_get_scheduled_job_by_id_and_service_id(job_id, service_id):
+    """Fetch a scheduled job from the DB, taking an exclusive lock on the row so that it can't be edited until this
+    transaction is committed or rolled back. This can be used to fetch the job in order to cancel it, while at the
+    same time preventing that job from being picked up and processing started by celery."""
+    return (
+        Job.query.filter(
+            Job.service_id == service_id,
+            Job.id == job_id,
+            Job.job_status == JOB_STATUS_SCHEDULED,
+        )
+        .with_for_update()
+        .one()
+    )
 
 
 def dao_create_job(job):

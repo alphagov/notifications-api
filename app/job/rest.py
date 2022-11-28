@@ -12,10 +12,10 @@ from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
     dao_cancel_letter_job,
     dao_create_job,
-    dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_notification_outcomes_for_job,
+    dao_get_scheduled_job_by_id_and_service_id,
     dao_get_scheduled_job_stats,
     dao_update_job,
 )
@@ -59,7 +59,7 @@ def get_job_by_service_and_job_id(service_id, job_id):
 
 @job_blueprint.route("/<job_id>/cancel", methods=["POST"])
 def cancel_job(service_id, job_id):
-    job = dao_get_future_scheduled_job_by_id_and_service_id(job_id, service_id)
+    job = dao_get_scheduled_job_by_id_and_service_id(job_id, service_id)
     job.job_status = JOB_STATUS_CANCELLED
     dao_update_job(job)
 
