@@ -9,8 +9,8 @@ import os
 
 from alembic import op
 
-revision = '0382_nhs_letter_branding_id'
-down_revision = '0381_letter_branding_to_org'
+revision = "0382_nhs_letter_branding_id"
+down_revision = "0381_letter_branding_to_org"
 
 environment = os.environ["NOTIFY_ENVIRONMENT"]
 

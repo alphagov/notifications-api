@@ -5,12 +5,11 @@ Revises: 0385_letter_branding_pools
 Create Date: 2022-10-21 14:26:12.421574
 
 """
-from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+from alembic import op
 
-revision = '0386_email_branding_alt_text'
-down_revision = '0385_letter_branding_pools'
+revision = "0386_email_branding_alt_text"
+down_revision = "0385_letter_branding_pools"
 
 
 def upgrade():
