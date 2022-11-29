@@ -850,10 +850,10 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
             "ticket_form_id": 1900000284794,
             "priority": "normal",
             "tags": ["govuk_notify_support"],
-            "type": "incident",
+            "type": "task",
             "custom_fields": [
                 {"id": "1900000744994", "value": "notify_ticket_type_non_technical"},
-                {"id": "360022836500", "value": []},
+                {"id": "360022836500", "value": ["notify_no_ticket_category"]},
                 {"id": "360022943959", "value": None},
                 {"id": "360022943979", "value": None},
                 {"id": "1900000745014", "value": None},
