@@ -337,6 +337,11 @@ class Config(object):
                 "schedule": crontab(hour=3, minute=4),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "zendesk-new-email-branding-report": {
+                "task": "zendesk-new-email-branding-report",
+                "schedule": crontab(hour=0, minute=30, day_of_week="mon-fri"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
         },
     }
 

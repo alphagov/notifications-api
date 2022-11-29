@@ -1,5 +1,7 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 
+import jinja2
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
@@ -56,8 +58,10 @@ from app.models import (
     SMS_TYPE,
     BroadcastMessage,
     BroadcastStatusType,
+    EmailBranding,
     Event,
     Job,
+    Organisation,
 )
 from app.notifications.process_notifications import send_notification_to_queue
 
@@ -375,3 +379,51 @@ def delete_old_records_from_events_table():
     current_app.logger.info(f"Deleted {deleted_count} historical events from before {delete_events_before}.")
 
     db.session.commit()
+
+
+@notify_celery.task(name="zendesk-new-email-branding-report")
+def zendesk_new_email_branding_report():
+    previous_weekday = datetime.today().date() - timedelta(days=1)
+
+    # If yesterday is a Saturday or Sunday, adjust back to the Friday
+    if previous_weekday.isoweekday() in {6, 7}:
+        previous_weekday -= timedelta(days=(previous_weekday.isoweekday() - 5))
+
+    new_email_brands = (
+        EmailBranding.query.join(Organisation, isouter=True).filter(EmailBranding.created_at >= previous_weekday).all()
+    )
+
+    current_app.logger.info(f"{len(new_email_brands)} new email brands to review since {previous_weekday}.")
+
+    if not new_email_brands:
+        return
+
+    brands_by_organisation = defaultdict(list)
+    brands_with_no_organisation = []
+    for new_brand in new_email_brands:
+        if not new_brand.organisations:
+            brands_with_no_organisation.append(new_brand)
+
+        else:
+            for organisation in new_brand.organisations:
+                brands_by_organisation[organisation].append(new_brand)
+
+    with open("templates/tasks/scheduled_tasks/new_email_brandings.html") as template_file:
+        template = jinja2.Template(template_file.read())
+
+    message = template.render(
+        domain=current_app.config["ADMIN_BASE_URL"],
+        yesterday=previous_weekday.strftime("%A %-d %B %Y"),
+        brands_by_organisation=brands_by_organisation,
+        brands_with_no_organisation=brands_with_no_organisation,
+    )
+
+    ticket = NotifySupportTicket(
+        subject="Review new email brandings",
+        message=message,
+        ticket_type=NotifySupportTicket.TYPE_TASK,
+        technical_ticket=False,
+        ticket_categories=["notify_no_ticket_category"],
+        message_as_html=True,
+    )
+    zendesk_client.send_ticket_to_zendesk(ticket)
