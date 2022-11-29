@@ -801,14 +801,14 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
     org_2.email_branding_pool = [email_brand_2]
     notify_db_session.commit()
 
+    mock_ticket = mocker.patch("app.celery.scheduled_tasks.NotifySupportTicket")
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
 
     zendesk_new_email_branding_report()
 
     assert mock_send_ticket.call_count == 1
 
-    ticket = mock_send_ticket.call_args_list[0][0][0]
-    expected_html = (
+    message = (
         "<p>There are new email brands to review since Monday 31 October 2022.</p>"
         "<hr>"
         "<p>"
@@ -840,28 +840,18 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
         "</ul>"
     )
 
-    assert ticket.request_data == {
-        "ticket": {
-            "subject": "Review new email brandings",
-            "comment": {
-                "html_body": expected_html,
-                "public": True,
-            },
-            "group_id": 360000036529,
-            "organization_id": 21891972,
-            "ticket_form_id": 1900000284794,
-            "priority": "normal",
-            "tags": ["govuk_notify_support"],
-            "type": "task",
-            "custom_fields": [
-                {"id": "1900000744994", "value": "notify_ticket_type_non_technical"},
-                {"id": "360022836500", "value": ["notify_no_ticket_category"]},
-                {"id": "360022943959", "value": None},
-                {"id": "360022943979", "value": None},
-                {"id": "1900000745014", "value": None},
-            ],
-        }
-    }
+    # Make sure we've built a NotifySupportTicket with the expected params, and passed that ticket to the zendesk client
+    assert mock_ticket.call_args_list == [
+        mocker.call(
+            subject="Review new email brandings",
+            message=message,
+            ticket_type=mock_ticket.TYPE_TASK,
+            technical_ticket=False,
+            ticket_categories=["notify_no_ticket_category"],
+            message_as_html=True,
+        )
+    ]
+    assert mock_send_ticket.call_args_list == [mocker.call(mock_ticket.return_value)]
 
 
 @pytest.mark.parametrize(
@@ -884,14 +874,14 @@ def test_zendesk_new_email_branding_report_calculates_last_weekday_correctly(
     org_1.email_branding_pool = [email_brand_1]
     notify_db_session.commit()
 
+    mocker.patch("app.celery.scheduled_tasks.NotifySupportTicket", wraps=NotifySupportTicket)
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
 
     with freeze_time(freeze_datetime):
         zendesk_new_email_branding_report()
 
-    assert mock_send_ticket.call_count == 1
-    ticket = mock_send_ticket.call_args_list[0][0][0]
-    assert expected_last_day_string in ticket.request_data["ticket"]["comment"]["html_body"]
+    # Make sure we've built a NotifySupportTicket with the expected params, and passed that ticket to the zendesk client
+    assert expected_last_day_string in mock_send_ticket.call_args_list[0][0][0].message
 
 
 def test_zendesk_new_email_branding_report_does_not_create_ticket_if_no_new_brands(notify_db_session, mocker):
