@@ -433,6 +433,10 @@ def zendesk_new_email_branding_report():
 @notify_celery.task(name="check-for-low-available-inbound-sms-numbers")
 @cronitor("check-for-low-available-inbound-sms-numbers")
 def check_for_low_available_inbound_sms_numbers():
+    if (env := current_app.config["NOTIFY_ENVIRONMENT"].lower()) not in {"live", "production", "test"}:
+        current_app.logger.info(f"Skipping report run on in {env}")
+        return
+
     num_available_inbound_numbers = len(dao_get_available_inbound_numbers())
     current_app.logger.info(f"There are {num_available_inbound_numbers} available inbound SMS numbers.")
     if num_available_inbound_numbers > current_app.config["LOW_INBOUND_SMS_NUMBER_THRESHOLD"]:
