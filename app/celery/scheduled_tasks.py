@@ -419,15 +419,16 @@ def zendesk_new_email_branding_report():
         brands_with_no_organisation=brands_with_no_organisation,
     )
 
-    ticket = NotifySupportTicket(
-        subject="Review new email brandings",
-        message=message,
-        ticket_type=NotifySupportTicket.TYPE_TASK,
-        technical_ticket=False,
-        ticket_categories=["notify_no_ticket_category"],
-        message_as_html=True,
-    )
-    zendesk_client.send_ticket_to_zendesk(ticket)
+    if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+        ticket = NotifySupportTicket(
+            subject="Review new email brandings",
+            message=message,
+            ticket_type=NotifySupportTicket.TYPE_TASK,
+            technical_ticket=False,
+            ticket_categories=["notify_no_ticket_category"],
+            message_as_html=True,
+        )
+        zendesk_client.send_ticket_to_zendesk(ticket)
 
 
 @notify_celery.task(name="check-for-low-available-inbound-sms-numbers")
