@@ -342,6 +342,11 @@ class Config(object):
                 "schedule": crontab(hour=0, minute=30, day_of_week="mon-fri"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "check-for-low-available-inbound-sms-numbers": {
+                "task": "check-for-low-available-inbound-sms-numbers",
+                "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
         },
     }
 
@@ -371,6 +376,7 @@ class Config(object):
     FIRETEXT_INBOUND_SMS_AUTH = json.loads(os.environ.get("FIRETEXT_INBOUND_SMS_AUTH", "[]"))
     MMG_INBOUND_SMS_AUTH = json.loads(os.environ.get("MMG_INBOUND_SMS_AUTH", "[]"))
     MMG_INBOUND_SMS_USERNAME = json.loads(os.environ.get("MMG_INBOUND_SMS_USERNAME", "[]"))
+    LOW_INBOUND_SMS_NUMBER_THRESHOLD = 50
     ROUTE_SECRET_KEY_1 = os.environ.get("ROUTE_SECRET_KEY_1", "")
     ROUTE_SECRET_KEY_2 = os.environ.get("ROUTE_SECRET_KEY_2", "")
 
