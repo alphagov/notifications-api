@@ -244,7 +244,7 @@ def check_if_letters_still_pending_virus_check():
 
             Notifications: {sorted(letter_ids)}"""
 
-        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+        if current_app.should_send_zendesk_alerts:
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still pending virus check",
                 message=msg,
@@ -268,7 +268,7 @@ def check_if_letters_still_in_created():
             "#deal-with-Letters-still-in-created.".format(len(letters))
         )
 
-        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+        if current_app.should_send_zendesk_alerts:
             ticket = NotifySupportTicket(
                 subject=f"[{current_app.config['NOTIFY_ENVIRONMENT']}] Letters still in 'created' status",
                 message=msg,
@@ -327,7 +327,7 @@ def check_for_services_with_high_failure_rates_or_sending_to_tv_numbers():
     if services_with_failures or services_sending_to_tv_numbers:
         current_app.logger.warning(message)
 
-        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+        if current_app.should_send_zendesk_alerts:
             message += (
                 "\nYou can find instructions for this ticket in our manual:\n"
                 "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Deal-with-services-with-high-failure-rates-or-sending-sms-to-tv-numbers"  # noqa
@@ -419,7 +419,7 @@ def zendesk_new_email_branding_report():
         brands_with_no_organisation=brands_with_no_organisation,
     )
 
-    if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+    if current_app.should_send_zendesk_alerts:
         ticket = NotifySupportTicket(
             subject="Review new email brandings",
             message=message,
@@ -434,8 +434,8 @@ def zendesk_new_email_branding_report():
 @notify_celery.task(name="check-for-low-available-inbound-sms-numbers")
 @cronitor("check-for-low-available-inbound-sms-numbers")
 def check_for_low_available_inbound_sms_numbers():
-    if (env := current_app.config["NOTIFY_ENVIRONMENT"].lower()) not in {"live", "production", "test"}:
-        current_app.logger.info(f"Skipping report run on in {env}")
+    if not current_app.should_send_zendesk_alerts:
+        current_app.logger.info(f"Skipping report run on in {current_app.config['NOTIFY_ENVIRONMENT']}")
         return
 
     num_available_inbound_numbers = len(dao_get_available_inbound_numbers())

@@ -5,15 +5,15 @@ import pytest
 import sqlalchemy
 from alembic.command import upgrade
 from alembic.config import Config
-from flask import Flask
 
 from app import create_app, db
 from app.dao.provider_details_dao import get_provider_details_by_identifier
+from app.notify_api_flask_app import NotifyApiFlaskApp
 
 
 @pytest.fixture(scope="session")
 def notify_api():
-    app = Flask("test")
+    app = NotifyApiFlaskApp("test")
     create_app(app)
 
     # deattach server-error error handlers - error_handler_spec looks like:
