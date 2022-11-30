@@ -10,11 +10,11 @@ from app.dao.jobs_dao import (
     can_letter_job_be_cancelled,
     dao_cancel_letter_job,
     dao_create_job,
-    dao_get_future_scheduled_job_by_id_and_service_id,
     dao_get_job_by_service_id_and_job_id,
     dao_get_jobs_by_service_id,
     dao_get_jobs_older_than_data_retention,
     dao_get_notification_outcomes_for_job,
+    dao_get_scheduled_job_by_id_and_service_id,
     dao_set_scheduled_jobs_to_pending,
     dao_update_job,
     find_jobs_with_missing_rows,
@@ -234,8 +234,14 @@ def test_set_scheduled_jobs_to_pending_updates_rows(sample_template):
     assert jobs[1].job_status == "pending"
 
 
-def test_get_future_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
-    result = dao_get_future_scheduled_job_by_id_and_service_id(sample_scheduled_job.id, sample_scheduled_job.service_id)
+def test_get_scheduled_job_gets_a_job_yet_to_send(sample_scheduled_job):
+    result = dao_get_scheduled_job_by_id_and_service_id(sample_scheduled_job.id, sample_scheduled_job.service_id)
+    assert result.id == sample_scheduled_job.id
+
+
+def test_get_scheduled_job_gets_a_job_yet_to_send_even_if_scheduled_to_send_in_the_past(sample_scheduled_job):
+    sample_scheduled_job.scheduled_for = datetime.now() - timedelta(hours=1)
+    result = dao_get_scheduled_job_by_id_and_service_id(sample_scheduled_job.id, sample_scheduled_job.service_id)
     assert result.id == sample_scheduled_job.id
 
 
