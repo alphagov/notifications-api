@@ -861,7 +861,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
         ),
         (
             "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
-            "\n    <ul>"
+            "<ul>"
             "<li>"
             '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
             "</li>"
@@ -869,6 +869,33 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
         ),
     ):
         assert expected_html_fragment in ticket.request_data["ticket"]["comment"]["html_body"]
+
+
+@freeze_time("2022-11-01 00:30:00")
+def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_db_session, mocker):
+    create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
+    create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
+    create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
+    create_email_branding(id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2")
+    create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
+    notify_db_session.commit()
+
+    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
+
+    zendesk_new_email_branding_report()
+
+    assert mock_send_ticket.call_args_list[0][0][0].request_data["ticket"]["comment"]["html_body"] == (
+        "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
+        "<ul>"
+        "<li>"
+        '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
+        "</li><li>"
+        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+        "</li><li>"
+        '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
+        "</li>"
+        "</ul>"
+    )
 
 
 @pytest.mark.parametrize(

@@ -74,14 +74,14 @@
     <li>Greenwich Council (alternate 2)</li>
     <li>Greenwich Council (alternate 3)</li>
 </ul>
-{% endif %}
 
 <hr>
 
+{% endif %}
+
 {%- if brands_with_no_organisation -%}
-    <p>These new brands are not associated with any organisation and do not need reviewing:</p>
-    <ul>
-    {%- for brand in brands_with_no_organisation -%}
+    <p>These new brands are not associated with any organisation and do not need reviewing:</p><ul>
+    {%- for brand in brands_with_no_organisation|sort(attribute='name') -%}
         <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
     {%- endfor -%}
     </ul>
