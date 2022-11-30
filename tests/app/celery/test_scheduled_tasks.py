@@ -799,59 +799,103 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
     create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
     org_1.email_branding_pool = [email_brand_1, email_brand_2]
     org_2.email_branding_pool = [email_brand_2]
+    org_2.email_branding = email_brand_1
     notify_db_session.commit()
 
-    mock_ticket = mocker.patch("app.celery.scheduled_tasks.NotifySupportTicket")
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
 
     zendesk_new_email_branding_report()
 
     assert mock_send_ticket.call_count == 1
 
-    message = (
-        "<p>There are new email brands to review since Monday 31 October 2022.</p>"
-        "<hr>"
-        "<p>"
-        '<a href="http://localhost:6012/organisations/113d51e7-f204-44d0-99c6-020f3542a527">org-1</a>:'
-        "</p>"
+    ticket = mock_send_ticket.call_args_list[0][0][0]
+
+    assert ticket.request_data == {
+        "ticket": {
+            "subject": "Review new email brandings",
+            "comment": {
+                "html_body": mocker.ANY,
+                "public": True,
+            },
+            "group_id": 360000036529,
+            "organization_id": 21891972,
+            "ticket_form_id": 1900000284794,
+            "priority": "normal",
+            "tags": ["govuk_notify_support"],
+            "type": "task",
+            "custom_fields": [
+                {"id": "1900000744994", "value": "notify_ticket_type_non_technical"},
+                {"id": "360022836500", "value": ["notify_no_ticket_category"]},
+                {"id": "360022943959", "value": None},
+                {"id": "360022943979", "value": None},
+                {"id": "1900000745014", "value": None},
+            ],
+        }
+    }
+
+    for expected_html_fragment in (
+        "<h2>New email branding to review</h2>\n<p>Uploaded since Monday 31 October 2022:</p>",
+        (
+            "<p>"
+            '<a href="http://localhost:6012/organisations/'
+            '113d51e7-f204-44d0-99c6-020f3542a527/settings/email-branding">org-1</a> (no default):'
+            "</p>"
+            "<ul>"
+            "<li>"
+            '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
+            "</li>"
+            "<li>"
+            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+            "</li>"
+            "</ul>"
+            "<hr>"
+            "<p>"
+            '<a href="http://localhost:6012/organisations/'
+            'd6bc2309-9f79-4779-b864-46c2892db90e/settings/email-branding">org-2</a>:'
+            "</p>"
+            "<ul>"
+            "<li>"
+            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+            "</li>"
+            "</ul>"
+        ),
+        (
+            "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
+            "<ul>"
+            "<li>"
+            '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
+            "</li>"
+            "</ul>"
+        ),
+    ):
+        assert expected_html_fragment in ticket.request_data["ticket"]["comment"]["html_body"]
+
+
+@freeze_time("2022-11-01 00:30:00")
+def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_db_session, mocker):
+    create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
+    create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
+    create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
+    create_email_branding(id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2")
+    create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
+    notify_db_session.commit()
+
+    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
+
+    zendesk_new_email_branding_report()
+
+    assert mock_send_ticket.call_args_list[0][0][0].request_data["ticket"]["comment"]["html_body"] == (
+        "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
         "<ul>"
         "<li>"
         '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
-        "</li>"
-        "<li>"
+        "</li><li>"
         '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
-        "</li>"
-        "</ul>"
-        "<hr>"
-        "<p>"
-        '<a href="http://localhost:6012/organisations/d6bc2309-9f79-4779-b864-46c2892db90e">org-2</a>:'
-        "</p>"
-        "<ul>"
-        "<li>"
-        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
-        "</li>"
-        "</ul>"
-        "<hr>"
-        "<p>Unassociated brands:</p>"
-        "<ul>"
-        "<li>"
+        "</li><li>"
         '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
         "</li>"
         "</ul>"
     )
-
-    # Make sure we've built a NotifySupportTicket with the expected params, and passed that ticket to the zendesk client
-    assert mock_ticket.call_args_list == [
-        mocker.call(
-            subject="Review new email brandings",
-            message=message,
-            ticket_type=mock_ticket.TYPE_TASK,
-            technical_ticket=False,
-            ticket_categories=["notify_no_ticket_category"],
-            message_as_html=True,
-        )
-    ]
-    assert mock_send_ticket.call_args_list == [mocker.call(mock_ticket.return_value)]
 
 
 @pytest.mark.parametrize(

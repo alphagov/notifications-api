@@ -1,14 +1,87 @@
-<p>There are new email brands to review since {{ yesterday }}.</p><hr>
+{% if brands_by_organisation %}
+<h2>New email branding to review</h2>
+<p>Uploaded since {{ yesterday }}:</p>
+{% endif %}
 {%- for org, brands in brands_by_organisation.items() -%}
-    <p><a href="{{ domain }}/organisations/{{ org.id }}">{{ org.name }}</a>:</p><ul>
+    <p><a href="{{ domain }}/organisations/{{ org.id }}/settings/email-branding">{{ org.name }}</a>{% if not org.email_branding_id %} (no default){% endif %}:</p><ul>
     {%- for brand in brands -%}
         <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
     {%- endfor -%}
     </ul><hr>
 {%- endfor -%}
+{% if brands_by_organisation %}
+<h2>
+    How to review new email branding
+</h2>
+<p>
+    Make sure new email branding can remain in the branding pool. Check:
+</p>
+<ul>
+    <li>if it’s a duplicate</li>
+    <li>image quality</li>
+    <li>if it can be used by more than one service</li>
+    <li>branding name</li>
+</ul>
+
+<h3>1. Duplicates</h3>
+<p>
+    If the same logo is in the branding pool twice then keep whichever one looks best.
+</p>
+
+<h3>2. Image quality</h3>
+
+<p>Check the image has a transparent background and is:</p>
+<ul>
+    <li>landscape</li>
+    <li>not distorted or stretched</li>
+    <li>not low resolution</li>
+</ul>
+
+<h4>Text in a logo</h4>
+<p>
+    Some logos may contain text. If the logo contains the name of the service or organisation, it must be clear to read. Ideally, text size ideally should not be less than 14px.
+</p>
+<p>
+    Use your judgement for text that does not convey important information about the brand identity.
+</p>
+
+<h3>
+    3. Used by more than one service
+</h3>
+<p>
+    Logos in the pool can be used by more than one service unless a user lets us know it can’t.
+</p>
+
+<h3>
+    4. Branding name
+</h3>
+
+<p>
+    Users provide alt text when they upload a logo. We use this alt text to help create a name for the brand. For example:
+</p>
+<ul>
+    <li>Alt text provided: Greenwich Council</li>
+    <li>Brand name we give: Greenwich Council</li>
+</ul>
+
+<h4>Renaming branding</h4>
+<p>
+    We can rename the branding if there are many alternate versions. Users may find it hard to choose between them if the names are not descriptive enough. For example:
+</p>
+<ul>
+    <li>Greenwich Council</li>
+    <li>Greenwich Council (alternate 1)</li>
+    <li>Greenwich Council (alternate 2)</li>
+    <li>Greenwich Council (alternate 3)</li>
+</ul>
+
+<hr>
+
+{% endif %}
+
 {%- if brands_with_no_organisation -%}
-    <p>Unassociated brands:</p><ul>
-    {%- for brand in brands_with_no_organisation -%}
+    <p>These new brands are not associated with any organisation and do not need reviewing:</p><ul>
+    {%- for brand in brands_with_no_organisation|sort(attribute='name') -%}
         <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
     {%- endfor -%}
     </ul>
