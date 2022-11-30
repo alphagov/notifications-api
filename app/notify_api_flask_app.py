@@ -4,7 +4,7 @@ from flask import Flask
 class NotifyApiFlaskApp(Flask):
     @property
     def is_prod(self):
-        return self.config["NOTIFY_ENVIRONMENT"] in {"live", "production"}
+        return self.config["NOTIFY_ENVIRONMENT"] == "production"
 
     @property
     def is_test(self):

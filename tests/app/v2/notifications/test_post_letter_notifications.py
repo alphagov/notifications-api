@@ -228,13 +228,7 @@ def test_post_letter_notification_throws_error_for_bad_address(
     assert error_json["errors"] == [{"error": "ValidationError", "message": expected_error}]
 
 
-@pytest.mark.parametrize(
-    "env",
-    [
-        "staging",
-        "live",
-    ],
-)
+@pytest.mark.parametrize("env", ["staging", "production"])
 def test_post_letter_notification_with_test_key_creates_pdf_and_sets_status_to_delivered(
     notify_api, api_client_request, sample_letter_template, mocker, env
 ):

@@ -1232,7 +1232,7 @@ def test_save_sms_uses_non_default_sms_sender_reply_to_text_if_provided(mocker, 
     assert persisted_notification.reply_to_text == "new-sender"
 
 
-@pytest.mark.parametrize("env", ["staging", "live"])
+@pytest.mark.parametrize("env", ["staging", "production"])
 def test_save_letter_sets_delivered_letters_as_pdf_permission_in_research_mode_in_staging_live(
     notify_api, mocker, notify_db_session, sample_letter_job, env
 ):
