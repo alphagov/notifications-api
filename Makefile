@@ -70,7 +70,7 @@ test: ## Run tests
 	flake8 .
 	isort --check-only ./app ./tests
 	black --check .
-	pytest -n4 --maxfail=10
+	pytest -n auto --maxfail=10
 
 .PHONY: freeze-requirements
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
