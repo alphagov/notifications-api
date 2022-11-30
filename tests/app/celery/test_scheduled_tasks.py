@@ -837,7 +837,8 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
         "<h2>New email branding to review</h2>\n<p>Uploaded since Monday 31 October 2022:</p>",
         (
             "<p>"
-            '<a href="http://localhost:6012/organisations/113d51e7-f204-44d0-99c6-020f3542a527">org-1</a> (no default):'
+            '<a href="http://localhost:6012/organisations/'
+            '113d51e7-f204-44d0-99c6-020f3542a527/settings/email-branding">org-1</a> (no default):'
             "</p>"
             "<ul>"
             "<li>"
@@ -849,7 +850,8 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
             "</ul>"
             "<hr>"
             "<p>"
-            '<a href="http://localhost:6012/organisations/d6bc2309-9f79-4779-b864-46c2892db90e">org-2</a>:'
+            '<a href="http://localhost:6012/organisations/'
+            'd6bc2309-9f79-4779-b864-46c2892db90e/settings/email-branding">org-2</a>:'
             "</p>"
             "<ul>"
             "<li>"
