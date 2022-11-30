@@ -21,6 +21,7 @@ from app.celery.tasks import (
 )
 from app.config import QueueNames, TaskNames
 from app.cronitor import cronitor
+from app.dao.inbound_numbers_dao import dao_get_available_inbound_numbers
 from app.dao.invited_org_user_dao import (
     delete_org_invitations_created_more_than_two_days_ago,
 )
@@ -425,5 +426,34 @@ def zendesk_new_email_branding_report():
         technical_ticket=False,
         ticket_categories=["notify_no_ticket_category"],
         message_as_html=True,
+    )
+    zendesk_client.send_ticket_to_zendesk(ticket)
+
+
+@notify_celery.task(name="check-for-low-available-inbound-sms-numbers")
+@cronitor("check-for-low-available-inbound-sms-numbers")
+def check_for_low_available_inbound_sms_numbers():
+    if (env := current_app.config["NOTIFY_ENVIRONMENT"].lower()) not in {"live", "production", "test"}:
+        current_app.logger.info(f"Skipping report run on in {env}")
+        return
+
+    num_available_inbound_numbers = len(dao_get_available_inbound_numbers())
+    current_app.logger.info(f"There are {num_available_inbound_numbers} available inbound SMS numbers.")
+    if num_available_inbound_numbers > current_app.config["LOW_INBOUND_SMS_NUMBER_THRESHOLD"]:
+        return
+
+    message = (
+        f"There are only {num_available_inbound_numbers} inbound SMS numbers currently available for services.\n\n"
+        "Request more from our provider (MMG) and load them into the database.\n\n"
+        "Follow the guidance here: "
+        "https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#Add-new-inbound-SMS-numbers"
+    )
+
+    ticket = NotifySupportTicket(
+        subject="Request more inbound SMS numbers",
+        message=message,
+        ticket_type=NotifySupportTicket.TYPE_TASK,
+        technical_ticket=True,
+        ticket_categories=["notify_no_ticket_category"],
     )
     zendesk_client.send_ticket_to_zendesk(ticket)
