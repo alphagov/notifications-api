@@ -799,6 +799,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
     create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
     org_1.email_branding_pool = [email_brand_1, email_brand_2]
     org_2.email_branding_pool = [email_brand_2]
+    org_2.email_branding = email_brand_1
     notify_db_session.commit()
 
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
@@ -833,10 +834,10 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
     }
 
     for expected_html_fragment in (
-        "<p>These are the new email brands uploaded since Monday 31 October 2022.</p>",
+        "<h2>New email branding to review</h2>\n<p>Uploaded since Monday 31 October 2022:</p>",
         (
             "<p>"
-            '<a href="http://localhost:6012/organisations/113d51e7-f204-44d0-99c6-020f3542a527">org-1</a>:'
+            '<a href="http://localhost:6012/organisations/113d51e7-f204-44d0-99c6-020f3542a527">org-1</a> (no default):'
             "</p>"
             "<ul>"
             "<li>"
@@ -857,8 +858,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
             "</ul>"
         ),
         (
-            "<p>These email brands have also been uploaded. "
-            "They are not associated with any organisation and do not need reviewing:</p>"
+            "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
             "\n    <ul>"
             "<li>"
             '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
