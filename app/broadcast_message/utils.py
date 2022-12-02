@@ -64,7 +64,7 @@ def _validate_broadcast_update(broadcast_message, new_status, updating_user):
 
 
 def _create_p1_zendesk_alert(broadcast_message):
-    if current_app.config["NOTIFY_ENVIRONMENT"] != "live":
+    if not current_app.is_prod:
         return
 
     if broadcast_message.status != BroadcastStatusType.BROADCASTING:

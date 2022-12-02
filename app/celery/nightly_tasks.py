@@ -196,8 +196,8 @@ def raise_alert_if_letter_notifications_still_sending():
         message = "There are {} letters in the 'sending' state from {}".format(
             still_sending_count, sent_date.strftime("%A %d %B")
         )
-        # Only send alerts in production
-        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+
+        if current_app.should_send_zendesk_alerts:
             message += ". Resolve using https://github.com/alphagov/notifications-manuals/wiki/Support-Runbook#deal-with-letters-still-in-sending"  # noqa
 
             ticket = NotifySupportTicket(
@@ -278,7 +278,7 @@ def letter_raise_alert_if_no_ack_file_for_zip():
     zip_file_set.discard("")
 
     if len(zip_file_set - ack_file_set) > 0:
-        if current_app.config["NOTIFY_ENVIRONMENT"] in ["live", "production", "test"]:
+        if current_app.should_send_zendesk_alerts:
             ticket = NotifySupportTicket(
                 subject="Letter acknowledge error",
                 message=message,
