@@ -88,10 +88,10 @@ def _notify_db(notify_api, worker_id):
     with notify_api.app_context():
         upgrade(config, "head")
 
-    yield db
+        yield db
 
-    db.session.remove()
-    db.get_engine(notify_api).dispose()
+        db.session.remove()
+        db.engine.dispose()
 
 
 @pytest.fixture(scope="function")
