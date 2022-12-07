@@ -46,18 +46,18 @@ REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS = Histogram(
 )
 
 
-def check_service_over_api_rate_limit(service, api_key):
+def check_service_over_api_rate_limit(service, key_type):
     if current_app.config["API_RATE_LIMIT_ENABLED"] and current_app.config["REDIS_ENABLED"]:
-        cache_key = rate_limit_cache_key(service.id, api_key.key_type)
+        cache_key = rate_limit_cache_key(service.id, key_type)
         rate_limit = service.rate_limit
         interval = 60
         with REDIS_EXCEEDED_RATE_LIMIT_DURATION_SECONDS.time():
             if redis_store.exceeded_rate_limit(cache_key, rate_limit, interval):
                 current_app.logger.info("service {} has been rate limited for throughput".format(service.id))
-                raise RateLimitError(rate_limit, interval, api_key.key_type)
+                raise RateLimitError(rate_limit, interval, key_type)
 
 
-def check_service_over_daily_message_limit(key_type, service):
+def check_service_over_daily_message_limit(service, key_type):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return 0
 
@@ -79,8 +79,8 @@ def check_service_over_daily_message_limit(key_type, service):
 
 
 def check_rate_limiting(service, api_key):
-    check_service_over_api_rate_limit(service, api_key)
-    check_service_over_daily_message_limit(api_key.key_type, service)
+    check_service_over_api_rate_limit(service, api_key.key_type)
+    check_service_over_daily_message_limit(service, api_key.key_type)
 
 
 def check_template_is_for_notification_type(notification_type, template_type):
