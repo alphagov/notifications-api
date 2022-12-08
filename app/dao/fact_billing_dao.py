@@ -32,6 +32,7 @@ from app.models import (
     Organisation,
     Rate,
     Service,
+    ServicePermission,
 )
 from app.utils import get_london_midnight_in_utc
 
@@ -482,28 +483,41 @@ def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
     transit_data = []
     if service_ids is None:
-        services = Service.query.all()
-    else:
-        services = Service.query.filter(Service.id.in_(service_ids)).all()
+        service_ids = [id_ for (id_,) in Service.query.with_entities(Service.id).all()]
 
-    for service in services:
-        for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-            if (not check_permissions) or service.has_permission(notification_type):
-                results = _query_for_billing_data(
-                    notification_type=notification_type, start_date=start_date, end_date=end_date, service=service
-                )
-                transit_data += results
+    for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+        results = _query_for_billing_data(
+            notification_type=notification_type,
+            start_date=start_date,
+            end_date=end_date,
+            service_ids=service_ids,
+            check_permissions=check_permissions,
+        )
+        transit_data += results
 
     return transit_data
 
 
-def _query_for_billing_data(notification_type, start_date, end_date, service):
+def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions):
+    base_query = db.session.query(NotificationAllTimeView).join(
+        Service, NotificationAllTimeView.service_id == Service.id
+    )
+
+    if check_permissions:
+        base_query = base_query.join(
+            ServicePermission,
+            and_(
+                NotificationAllTimeView.service_id == ServicePermission.service_id,
+                ServicePermission.permission == notification_type,
+            ),
+        )
+
     def _email_query():
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("ses").label("sent_by"),
                 literal(0).label("rate_multiplier"),
@@ -519,9 +533,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
             )
         )
@@ -531,10 +546,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
         international = func.coalesce(NotificationAllTimeView.international, False)
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 sent_by.label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
@@ -550,9 +565,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
                 sent_by,
                 rate_multiplier,
@@ -564,10 +580,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
         postage = func.coalesce(NotificationAllTimeView.postage, "none")
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("dvla").label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
@@ -583,9 +599,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
                 rate_multiplier,
                 NotificationAllTimeView.billable_units,
@@ -595,7 +612,6 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         )
 
     query_funcs = {SMS_TYPE: _sms_query, EMAIL_TYPE: _email_query, LETTER_TYPE: _letter_query}
-
     query = query_funcs[notification_type]()
     return query.all()
 
