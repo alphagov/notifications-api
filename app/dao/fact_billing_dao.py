@@ -295,7 +295,7 @@ def fetch_usage_for_service_by_month(service_id, year):
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
-        data = fetch_billing_data_for_day(process_day=today, service_id=service_id, check_permissions=True)
+        data = fetch_billing_data_for_day(process_day=today, service_ids=[service_id], check_permissions=True)
         for d in data:
             update_fact_billing(data=d, process_day=today)
 
@@ -465,24 +465,26 @@ def _fetch_usage_for_service_sms(service_id, year):
     )
 
 
-def delete_billing_data_for_service_for_day(process_day, service_id):
+def delete_billing_data_for_services_for_day(process_day, service_ids):
     """
-    Delete all ft_billing data for a given service on a given bst_date
+    Delete all ft_billing data for the given service_ids on a given bst_date
 
     Returns how many rows were deleted
     """
-    return FactBilling.query.filter(FactBilling.bst_date == process_day, FactBilling.service_id == service_id).delete()
+    return FactBilling.query.filter(
+        FactBilling.bst_date == process_day, FactBilling.service_id.in_(service_ids)
+    ).delete()
 
 
-def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
+def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
     transit_data = []
-    if not service_id:
+    if service_ids is None:
         services = Service.query.all()
     else:
-        services = [Service.query.get(service_id)]
+        services = Service.query.filter(Service.id.in_(service_ids)).all()
 
     for service in services:
         for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
@@ -605,8 +607,9 @@ def get_rates_for_billing():
 
 
 def get_service_ids_that_need_billing_populated(start_date, end_date):
-    return (
-        db.session.query(NotificationHistory.service_id)
+    return [
+        service_id
+        for (service_id,) in db.session.query(NotificationHistory.service_id)
         .filter(
             NotificationHistory.created_at >= start_date,
             NotificationHistory.created_at <= end_date,
@@ -615,7 +618,7 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
         )
         .distinct()
         .all()
-    )
+    ]
 
 
 def get_rate(
@@ -782,10 +785,9 @@ def fetch_usage_for_organisation(organisation_id, year):
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
-        for service in services:
-            data = fetch_billing_data_for_day(process_day=today, service_id=service.id)
-            for d in data:
-                update_fact_billing(data=d, process_day=today)
+        data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
+        for d in data:
+            update_fact_billing(data=d, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:

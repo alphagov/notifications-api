@@ -29,7 +29,7 @@ from app.dao.annual_billing_dao import (
     set_default_free_allowance_for_service,
 )
 from app.dao.fact_billing_dao import (
-    delete_billing_data_for_service_for_day,
+    delete_billing_data_for_services_for_day,
     fetch_billing_data_for_day,
     get_service_ids_that_need_billing_populated,
     update_fact_billing,
@@ -290,30 +290,29 @@ def rebuild_ft_billing_for_day(service_id, day):
     Rebuild the data in ft_billing for the given service_id and date
     """
 
-    def rebuild_ft_data(process_day, service):
-        deleted_rows = delete_billing_data_for_service_for_day(process_day, service)
+    def rebuild_ft_data(process_day, service_ids):
+        deleted_rows = delete_billing_data_for_services_for_day(process_day, service_ids)
         current_app.logger.info(
-            "deleted {} existing billing rows for {} on {}".format(deleted_rows, service, process_day)
+            "deleted {} existing billing rows for service_ids {} on {}".format(deleted_rows, service_ids, process_day)
         )
-        transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
+        transit_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
         # transit_data = every row that should exist
         for data in transit_data:
             # upsert existing rows
             update_fact_billing(data, process_day)
         current_app.logger.info(
-            "added/updated {} billing rows for {} on {}".format(len(transit_data), service, process_day)
+            "added/updated {} billing rows for service_ids {} on {}".format(len(transit_data), service_ids, process_day)
         )
 
     if service_id:
         # confirm the service exists
         dao_fetch_service_by_id(service_id)
-        rebuild_ft_data(day, service_id)
+        rebuild_ft_data(day, [service_id])
     else:
-        services = get_service_ids_that_need_billing_populated(
+        service_ids = get_service_ids_that_need_billing_populated(
             get_london_midnight_in_utc(day), get_london_midnight_in_utc(day + timedelta(days=1))
         )
-        for row in services:
-            rebuild_ft_data(day, row.service_id)
+        rebuild_ft_data(day, service_ids)
 
 
 @notify_command(name="bulk-invite-user-to-service")

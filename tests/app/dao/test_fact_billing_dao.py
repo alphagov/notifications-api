@@ -7,7 +7,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db
 from app.dao.fact_billing_dao import (
-    delete_billing_data_for_service_for_day,
+    delete_billing_data_for_services_for_day,
     fetch_billing_data_for_day,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
@@ -313,7 +313,7 @@ def test_fetch_billing_data_for_day_uses_correct_table(notify_db_session):
     create_notification(template=sms_template, status="delivered", created_at=five_days_ago)
     create_notification_history(template=email_template, status="delivered", created_at=five_days_ago)
 
-    results = fetch_billing_data_for_day(process_day=five_days_ago.date(), service_id=service.id)
+    results = fetch_billing_data_for_day(process_day=five_days_ago.date(), service_ids=[service.id])
     assert len(results) == 2
     assert results[0].notification_type == "sms"
     assert results[0].notifications_sent == 1
@@ -330,7 +330,7 @@ def test_fetch_billing_data_for_day_returns_list_for_given_service(notify_db_ses
     create_notification(template=template_2, status="delivered")
 
     today = convert_utc_to_bst(datetime.utcnow())
-    results = fetch_billing_data_for_day(process_day=today.date(), service_id=service.id)
+    results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service.id])
     assert len(results) == 1
     assert results[0].service_id == service.id
 
@@ -345,7 +345,7 @@ def test_fetch_billing_data_for_day_bills_correctly_for_status(notify_db_session
         create_notification(template=email_template, status=status)
         create_notification(template=letter_template, status=status)
     today = convert_utc_to_bst(datetime.utcnow())
-    results = fetch_billing_data_for_day(process_day=today.date(), service_id=service.id)
+    results = fetch_billing_data_for_day(process_day=today.date(), service_ids=[service.id])
 
     sms_results = [x for x in results if x.notification_type == "sms"]
     email_results = [x for x in results if x.notification_type == "email"]
@@ -632,7 +632,7 @@ def test_delete_billing_data(notify_db_session):
     other_day = create_ft_billing("2018-01-02", sms_template, billable_unit=3)
     other_service = create_ft_billing("2018-01-01", other_service_template, billable_unit=4)
 
-    delete_billing_data_for_service_for_day("2018-01-01", service_1.id)
+    delete_billing_data_for_services_for_day("2018-01-01", [service_1.id])
 
     current_rows = FactBilling.query.all()
     assert sorted(x.billable_units for x in current_rows) == sorted(
