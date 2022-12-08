@@ -149,6 +149,7 @@ def persist_notification(
     if not simulated:
         dao_create_notification(notification)
         if key_type != KEY_TYPE_TEST and current_app.config["REDIS_ENABLED"]:
+
             cache_key = redis.daily_limit_cache_key(service.id)
             if redis_store.get(cache_key) is None:
                 # if cache does not exist set the cache to 1 with an expiry of 24 hours,
