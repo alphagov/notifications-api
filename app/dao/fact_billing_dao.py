@@ -671,7 +671,7 @@ def update_fact_billing(data: list, process_day):
         return
 
     non_letter_rates, letter_rates = get_rates_for_billing()
-    billing_records = [
+    billing_records = (
         create_billing_record(
             d,
             get_rate(
@@ -686,7 +686,7 @@ def update_fact_billing(data: list, process_day):
             process_day,
         )
         for d in data
-    ]
+    )
 
     table = FactBilling.__table__
     """
