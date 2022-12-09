@@ -47,8 +47,7 @@ def create_nightly_billing_for_day(process_day):
         f"create-nightly-billing-for-day task for {process_day}: data fetched in {(end - start).seconds} seconds"
     )
 
-    for data in transit_data:
-        update_fact_billing(data, process_day)
+    update_fact_billing(transit_data, process_day)
 
     current_app.logger.info(
         f"create-nightly-billing-for-day task for {process_day}: " f"task complete. {len(transit_data)} rows updated"

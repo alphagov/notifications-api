@@ -297,9 +297,7 @@ def rebuild_ft_billing_for_day(service_id, day):
         )
         transit_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
         # transit_data = every row that should exist
-        for data in transit_data:
-            # upsert existing rows
-            update_fact_billing(data, process_day)
+        update_fact_billing(transit_data, process_day)
         current_app.logger.info(
             "added/updated {} billing rows for service_ids {} on {}".format(len(transit_data), service_ids, process_day)
         )

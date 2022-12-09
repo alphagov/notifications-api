@@ -297,8 +297,7 @@ def fetch_usage_for_service_by_month(service_id, year):
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
         data = fetch_billing_data_for_day(process_day=today, service_ids=[service_id], check_permissions=True)
-        for d in data:
-            update_fact_billing(data=d, process_day=today)
+        update_fact_billing(data=data, process_day=today)
 
     return (
         db.session.query(
@@ -667,18 +666,27 @@ def get_rate(
         return 0
 
 
-def update_fact_billing(data, process_day):
+def update_fact_billing(data: list, process_day):
+    if not data:
+        return
+
     non_letter_rates, letter_rates = get_rates_for_billing()
-    rate = get_rate(
-        non_letter_rates,
-        letter_rates,
-        data.notification_type,
-        process_day,
-        data.crown,
-        data.letter_page_count,
-        data.postage,
-    )
-    billing_record = create_billing_record(data, rate, process_day)
+    billing_records = [
+        create_billing_record(
+            d,
+            get_rate(
+                non_letter_rates,
+                letter_rates,
+                d.notification_type,
+                process_day,
+                d.crown,
+                d.letter_page_count,
+                d.postage,
+            ),
+            process_day,
+        )
+        for d in data
+    ]
 
     table = FactBilling.__table__
     """
@@ -687,19 +695,23 @@ def update_fact_billing(data, process_day):
        rejected.
        http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
     """
-    stmt = insert(table).values(
-        bst_date=billing_record.bst_date,
-        template_id=billing_record.template_id,
-        service_id=billing_record.service_id,
-        provider=billing_record.provider,
-        rate_multiplier=billing_record.rate_multiplier,
-        notification_type=billing_record.notification_type,
-        international=billing_record.international,
-        billable_units=billing_record.billable_units,
-        notifications_sent=billing_record.notifications_sent,
-        rate=billing_record.rate,
-        postage=billing_record.postage,
-    )
+    billing_records_data = [
+        dict(
+            bst_date=billing_record.bst_date,
+            template_id=billing_record.template_id,
+            service_id=billing_record.service_id,
+            provider=billing_record.provider,
+            rate_multiplier=billing_record.rate_multiplier,
+            notification_type=billing_record.notification_type,
+            international=billing_record.international,
+            billable_units=billing_record.billable_units,
+            notifications_sent=billing_record.notifications_sent,
+            rate=billing_record.rate,
+            postage=billing_record.postage,
+        )
+        for billing_record in billing_records
+    ]
+    stmt = insert(table).values(billing_records_data)
 
     stmt = stmt.on_conflict_do_update(
         constraint="ft_billing_pkey",
@@ -802,8 +814,7 @@ def fetch_usage_for_organisation(organisation_id, year):
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
         data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
-        for d in data:
-            update_fact_billing(data=d, process_day=today)
+        update_fact_billing(data=data, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:
