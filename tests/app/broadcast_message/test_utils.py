@@ -335,7 +335,7 @@ def test_update_broadcast_message_status_creates_zendesk_ticket(mocker, notify_a
         autospec=True,
     )
 
-    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "live"):
+    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
         update_broadcast_message_status(broadcast_message, BroadcastStatusType.BROADCASTING, approver)
 
     mock_send_ticket_to_zendesk.assert_called_once()
@@ -354,7 +354,7 @@ def test_create_p1_zendesk_alert(sample_broadcast_service, mocker, notify_api):
         autospec=True,
     )
 
-    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "live"):
+    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
         _create_p1_zendesk_alert(broadcast_message)
 
     ticket = mock_send_ticket_to_zendesk.call_args_list[0].args[0]
@@ -378,7 +378,7 @@ def test_create_p1_zendesk_alert_doesnt_alert_when_cancelling(mocker, notify_api
         autospec=True,
     )
 
-    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "live"):
+    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
         _create_p1_zendesk_alert(broadcast_message)
 
     mock_send_ticket_to_zendesk.assert_not_called()
@@ -417,7 +417,7 @@ def test_create_p1_zendesk_alert_doesnt_alert_for_stubbed_messages(mocker, notif
         autospec=True,
     )
 
-    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "live"):
+    with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
         _create_p1_zendesk_alert(broadcast_message)
 
     mock_send_ticket_to_zendesk.assert_not_called()

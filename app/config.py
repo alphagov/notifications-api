@@ -531,9 +531,9 @@ class Staging(Config):
     CHECK_PROXY_HEADER = True
 
 
-class Live(Config):
+class Production(Config):
     NOTIFY_EMAIL_DOMAIN = "notifications.service.gov.uk"
-    NOTIFY_ENVIRONMENT = "live"
+    NOTIFY_ENVIRONMENT = "production"
     CSV_UPLOAD_BUCKET_NAME = "live-notifications-csv-upload"
     CONTACT_LIST_BUCKET_NAME = "production-contact-list"
     TEST_LETTERS_BUCKET_NAME = "production-test-letters"
@@ -573,8 +573,7 @@ class Sandbox(CloudFoundryConfig):
 configs = {
     "development": Development,
     "test": Test,
-    "live": Live,
-    "production": Live,
+    "production": Production,
     "staging": Staging,
     "preview": Preview,
     "sandbox": Sandbox,
