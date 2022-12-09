@@ -14,6 +14,7 @@ from flask import (
     make_response,
     request,
 )
+from flask_debugtoolbar import DebugToolbarExtension
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy as _SQLAlchemy
@@ -65,6 +66,7 @@ redis_store = RedisClient()
 cbc_proxy_client = CBCProxyClient()
 document_download_client = DocumentDownloadClient()
 metrics = GDSMetrics()
+toolbar = DebugToolbarExtension()
 
 notification_provider_clients = NotificationProviderClients()
 
@@ -111,6 +113,7 @@ def create_app(application):
     encryption.init_app(application)
     redis_store.init_app(application)
     document_download_client.init_app(application)
+    toolbar.init_app(application)
 
     cbc_proxy_client.init_app(application)
 
@@ -124,6 +127,12 @@ def create_app(application):
 
     # set up sqlalchemy events
     setup_sqlalchemy_events(application)
+
+    from werkzeug.middleware.profiler import ProfilerMiddleware
+
+    application.wsgi_app = ProfilerMiddleware(
+        application.wsgi_app, stream=None, profile_dir="./profs", filename_format="{method}.{path}.prof"
+    )
 
     return application
 
@@ -246,7 +255,7 @@ def register_blueprint(application):
     service_callback_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(service_callback_blueprint)
 
-    organisation_blueprint.before_request(requires_admin_auth)
+    # organisation_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(organisation_blueprint, url_prefix="/organisations")
 
     complaint_blueprint.before_request(requires_admin_auth)

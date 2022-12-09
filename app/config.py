@@ -452,6 +452,8 @@ class Development(Config):
 
     CBC_PROXY_ENABLED = False
 
+    DEBUG_TB_ENABLED = True
+
 
 class Test(Development):
     NOTIFY_EMAIL_DOMAIN = "test.notify.com"
