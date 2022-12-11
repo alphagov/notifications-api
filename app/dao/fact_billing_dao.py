@@ -297,7 +297,7 @@ def fetch_usage_for_service_by_month(service_id, year):
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
         data = fetch_billing_data_for_day(process_day=today, service_ids=[service_id], check_permissions=True)
-        update_fact_billing(data=data, process_day=today)
+        update_ft_billing(billing_data=data, process_day=today)
 
     return (
         db.session.query(
@@ -480,21 +480,21 @@ def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
-    transit_data = []
+    billing_data = []
     if service_ids is None:
         service_ids = [id_ for (id_,) in Service.query.with_entities(Service.id).all()]
 
     for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-        results = _query_for_billing_data(
+        partial_billing_data = _query_for_billing_data(
             notification_type=notification_type,
             start_date=start_date,
             end_date=end_date,
             service_ids=service_ids,
             check_permissions=check_permissions,
         )
-        transit_data += results
+        billing_data += partial_billing_data
 
-    return transit_data
+    return billing_data
 
 
 def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions):
@@ -666,26 +666,26 @@ def get_rate(
         return 0
 
 
-def update_fact_billing(data: list, process_day):
-    if not data:
+def update_ft_billing(billing_data: list, process_day):
+    if not billing_data:
         return
 
     non_letter_rates, letter_rates = get_rates_for_billing()
     billing_records = (
         create_billing_record(
-            d,
+            billing_datum,
             get_rate(
                 non_letter_rates,
                 letter_rates,
-                d.notification_type,
+                billing_datum.notification_type,
                 process_day,
-                d.crown,
-                d.letter_page_count,
-                d.postage,
+                billing_datum.crown,
+                billing_datum.letter_page_count,
+                billing_datum.postage,
             ),
             process_day,
         )
-        for d in data
+        for billing_datum in billing_data
     )
 
     table = FactBilling.__table__
@@ -814,7 +814,7 @@ def fetch_usage_for_organisation(organisation_id, year):
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
         data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
-        update_fact_billing(data=data, process_day=today)
+        update_ft_billing(billing_data=data, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:

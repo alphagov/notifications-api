@@ -8,7 +8,7 @@ from app.config import QueueNames
 from app.cronitor import cronitor
 from app.dao.fact_billing_dao import (
     fetch_billing_data_for_day,
-    update_fact_billing,
+    update_ft_billing,
 )
 from app.dao.fact_notification_status_dao import update_fact_notification_status
 from app.dao.notifications_dao import get_service_ids_with_notifications_on_date
@@ -40,17 +40,17 @@ def create_nightly_billing_for_day(process_day):
     current_app.logger.info(f"create-nightly-billing-for-day task for {process_day}: started")
 
     start = datetime.utcnow()
-    transit_data = fetch_billing_data_for_day(process_day=process_day)
+    billing_data = fetch_billing_data_for_day(process_day=process_day)
     end = datetime.utcnow()
 
     current_app.logger.info(
         f"create-nightly-billing-for-day task for {process_day}: data fetched in {(end - start).seconds} seconds"
     )
 
-    update_fact_billing(transit_data, process_day)
+    update_ft_billing(billing_data, process_day)
 
     current_app.logger.info(
-        f"create-nightly-billing-for-day task for {process_day}: " f"task complete. {len(transit_data)} rows updated"
+        f"create-nightly-billing-for-day task for {process_day}: " f"task complete. {len(billing_data)} rows updated"
     )
 
 

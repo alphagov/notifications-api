@@ -37,7 +37,7 @@ from app.dao.fact_billing_dao import (
     delete_billing_data_for_services_for_day,
     fetch_billing_data_for_day,
     get_service_ids_that_need_billing_populated,
-    update_fact_billing,
+    update_ft_billing,
 )
 from app.dao.jobs_dao import dao_get_job_by_id
 from app.dao.notifications_dao import move_notifications_to_notification_history
@@ -303,11 +303,11 @@ def rebuild_ft_billing_for_day(service_id, day):
         current_app.logger.info(
             "deleted {} existing billing rows for service_ids {} on {}".format(deleted_rows, service_ids, process_day)
         )
-        transit_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
-        # transit_data = every row that should exist
-        update_fact_billing(transit_data, process_day)
+        billing_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
+        # billing_data = every row that should exist
+        update_ft_billing(billing_data, process_day)
         current_app.logger.info(
-            "added/updated {} billing rows for service_ids {} on {}".format(len(transit_data), service_ids, process_day)
+            "added/updated {} billing rows for service_ids {} on {}".format(len(billing_data), service_ids, process_day)
         )
 
     if service_id:
@@ -1021,8 +1021,8 @@ def generate_bulktest_data(user_id):
     for dt in daily_dates_since_last_new_year:
         dt_date = dt.date()
         delete_billing_data_for_services_for_day(dt_date, service_ids)
-        transit_data = fetch_billing_data_for_day(process_day=dt_date, service_ids=service_ids)
-        update_fact_billing(transit_data, dt_date)
+        billing_data = fetch_billing_data_for_day(process_day=dt_date, service_ids=service_ids)
+        update_ft_billing(billing_data, dt_date)
         pprint(f" -> Done {dt_date}")
 
     pprint("Committing...")
