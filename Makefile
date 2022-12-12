@@ -18,6 +18,9 @@ CF_MANIFEST_PATH ?= /tmp/manifest.yml
 
 NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
+VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
+PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
+
 
 ## DEVELOPMENT
 
