@@ -77,6 +77,10 @@ freeze-requirements: ## Pin all requirements including sub dependencies into req
 	pip install --upgrade pip-tools
 	pip-compile requirements.in
 
+.PHONY: bump-utils
+bump-utils:  # Bump notifications-utils package to latest version
+	${PYTHON_EXECUTABLE_PREFIX}python -c "from notifications_utils.version_tools import upgrade_version; upgrade_version()"
+
 .PHONY: clean
 clean:
 	rm -rf node_modules cache target venv .coverage build tests/.cache ${CF_MANIFEST_PATH}
