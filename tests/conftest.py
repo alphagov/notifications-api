@@ -76,6 +76,8 @@ def _notify_db(notify_api, worker_id):
     from flask import current_app
 
     current_app.config["SQLALCHEMY_DATABASE_URI"] += "_{}".format(worker_id)
+    # reinitalise the db so it picks up on the new test database name
+    db.init_app(notify_api)
     create_test_db(current_app.config["SQLALCHEMY_DATABASE_URI"])
 
     BASE_DIR = os.path.dirname(os.path.dirname(__file__))
@@ -86,10 +88,10 @@ def _notify_db(notify_api, worker_id):
     with notify_api.app_context():
         upgrade(config, "head")
 
-    yield db
+        yield db
 
-    db.session.remove()
-    db.get_engine(notify_api).dispose()
+        db.session.remove()
+        db.engine.dispose()
 
 
 @pytest.fixture(scope="function")
