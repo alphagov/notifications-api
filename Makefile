@@ -18,6 +18,9 @@ CF_MANIFEST_PATH ?= /tmp/manifest.yml
 
 NOTIFY_CREDENTIALS ?= ~/.notify-credentials
 
+VIRTUALENV_ROOT := $(shell [ -z $$VIRTUAL_ENV ] && echo $$(pwd)/venv || echo $$VIRTUAL_ENV)
+PYTHON_EXECUTABLE_PREFIX := $(shell test -d "$${VIRTUALENV_ROOT}" && echo "$${VIRTUALENV_ROOT}/bin/" || echo "")
+
 
 ## DEVELOPMENT
 
@@ -76,6 +79,10 @@ test: ## Run tests
 freeze-requirements: ## Pin all requirements including sub dependencies into requirements.txt
 	pip install --upgrade pip-tools
 	pip-compile requirements.in
+
+.PHONY: bump-utils
+bump-utils:  # Bump notifications-utils package to latest version
+	${PYTHON_EXECUTABLE_PREFIX}python -c "from notifications_utils.version_tools import upgrade_version; upgrade_version()"
 
 .PHONY: clean
 clean:
