@@ -1,13 +1,18 @@
 import csv
 import functools
 import itertools
+import logging
 import os
+import random
 import uuid
 from datetime import datetime, timedelta
+from time import monotonic
+from unittest import mock
 
 import click
 import flask
 from click_datetime import Datetime as click_dt
+from dateutil import rrule
 from flask import current_app, json
 from notifications_utils.recipients import RecipientCSV
 from notifications_utils.statsd_decorators import statsd
@@ -29,12 +34,13 @@ from app.dao.annual_billing_dao import (
     set_default_free_allowance_for_service,
 )
 from app.dao.fact_billing_dao import (
-    delete_billing_data_for_service_for_day,
+    delete_billing_data_for_services_for_day,
     fetch_billing_data_for_day,
     get_service_ids_that_need_billing_populated,
-    update_fact_billing,
+    update_ft_billing,
 )
 from app.dao.jobs_dao import dao_get_job_by_id
+from app.dao.notifications_dao import move_notifications_to_notification_history
 from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_get_organisation_by_email_address,
@@ -42,13 +48,14 @@ from app.dao.organisation_dao import (
 )
 from app.dao.permissions_dao import permission_dao
 from app.dao.services_dao import (
+    dao_create_service,
     dao_fetch_all_services_by_user,
     dao_fetch_all_services_created_by_user,
     dao_fetch_service_by_id,
     dao_update_service,
     delete_service_and_all_associated_db_objects,
 )
-from app.dao.templates_dao import dao_get_template_by_id
+from app.dao.templates_dao import dao_create_template, dao_get_template_by_id
 from app.dao.users_dao import (
     delete_model_user,
     delete_user_verify_codes,
@@ -66,6 +73,7 @@ from app.models import (
     Organisation,
     Permission,
     Service,
+    Template,
     User,
 )
 from app.utils import get_london_midnight_in_utc
@@ -290,30 +298,27 @@ def rebuild_ft_billing_for_day(service_id, day):
     Rebuild the data in ft_billing for the given service_id and date
     """
 
-    def rebuild_ft_data(process_day, service):
-        deleted_rows = delete_billing_data_for_service_for_day(process_day, service)
+    def rebuild_ft_data(process_day, service_ids):
+        deleted_rows = delete_billing_data_for_services_for_day(process_day, service_ids)
         current_app.logger.info(
-            "deleted {} existing billing rows for {} on {}".format(deleted_rows, service, process_day)
+            "deleted {} existing billing rows for service_ids {} on {}".format(deleted_rows, service_ids, process_day)
         )
-        transit_data = fetch_billing_data_for_day(process_day=process_day, service_id=service)
-        # transit_data = every row that should exist
-        for data in transit_data:
-            # upsert existing rows
-            update_fact_billing(data, process_day)
+        billing_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
+        # billing_data = every row that should exist
+        update_ft_billing(billing_data, process_day)
         current_app.logger.info(
-            "added/updated {} billing rows for {} on {}".format(len(transit_data), service, process_day)
+            "added/updated {} billing rows for service_ids {} on {}".format(len(billing_data), service_ids, process_day)
         )
 
     if service_id:
         # confirm the service exists
         dao_fetch_service_by_id(service_id)
-        rebuild_ft_data(day, service_id)
+        rebuild_ft_data(day, [service_id])
     else:
-        services = get_service_ids_that_need_billing_populated(
+        service_ids = get_service_ids_that_need_billing_populated(
             get_london_midnight_in_utc(day), get_london_midnight_in_utc(day + timedelta(days=1))
         )
-        for row in services:
-            rebuild_ft_data(day, row.service_id)
+        rebuild_ft_data(day, service_ids)
 
 
 @notify_command(name="bulk-invite-user-to-service")
@@ -877,3 +882,149 @@ def local_dev_broadcast_permissions(user_id):
         ]
 
         permission_dao.set_user_service_permission(user, service, permission_list, _commit=True, replace=True)
+
+
+@click.option("-u", "--user-id", required=True)
+@notify_command(name="generate-bulktest-data")
+def generate_bulktest_data(user_id):
+    if os.getenv("NOTIFY_ENVIRONMENT", "") not in ["development", "test"]:
+        current_app.logger.error("Can only be run in development")
+        return
+
+    # Our logging setup spams lots of WARNING output for checking out DB conns outside of a request - hide them
+    current_app.logger.setLevel(logging.ERROR)
+
+    start = monotonic()
+    user = User.query.get(user_id)
+
+    def pprint(msg):
+        now = monotonic()
+        print(f"[{(now - start):>7.2f}]: {msg}")
+
+    pprint("Building org...")
+    org = Organisation(
+        name="BULKTEST: Big Ol' Org",
+        organisation_type="central",
+    )
+    db.session.add(org)
+    pprint(" -> Sending org to DB...")
+    db.session.flush()
+    pprint(" -> Done.")
+
+    pprint("Building services...")
+    services = []
+    for batch in range(100):
+        service = Service(
+            organisation_id=org.id,
+            name=f"BULKTEST: Service {batch}",
+            created_by_id=user_id,
+            active=True,
+            restricted=False,
+            organisation_type="central",
+            message_limit=250_000,
+            email_from=f"bulktest.{batch}@notify.works",
+        )
+        services.append(service)
+
+        dao_create_service(service, user)
+        set_default_free_allowance_for_service(service=service, year_start=None)
+
+    pprint(" -> Sending services to DB...")
+    db.session.flush()
+    pprint(" -> Done.")
+
+    # Not bothering to make a template for each service. For our purposes it shouldn't matter.
+    pprint("Building templates...")
+    TEMPLATES = {
+        "email": Template(
+            name="BULKTEST: email",
+            service_id=services[0].id,
+            template_type="email",
+            subject="email",
+            content="email body",
+            created_by_id=user_id,
+        ),
+        "sms": Template(
+            name="BULKTEST: sms",
+            service_id=services[0].id,
+            template_type="sms",
+            subject="sms",
+            content="sms body",
+            created_by_id=user_id,
+        ),
+        "letter": Template(
+            name="BULKTEST: letter",
+            service_id=services[0].id,
+            template_type="letter",
+            subject="letter",
+            content="letter body",
+            postage="second",
+            created_by_id=user_id,
+        ),
+    }
+
+    dao_create_template(TEMPLATES["email"])
+    dao_create_template(TEMPLATES["sms"])
+    dao_create_template(TEMPLATES["letter"])
+    pprint(" -> Sending templates to DB...")
+    db.session.flush()
+    pprint(" -> Done.")
+
+    num_batches = 5
+    batch_size = 1_000_000
+    pprint(f"Building {batch_size * num_batches:,} notifications in batches of {batch_size:,}...")
+    service_ids = [str(service.id) for service in services]
+    last_new_year = datetime(datetime.today().year - 1, 1, 1, 12, 0, 0)
+    daily_dates_since_last_new_year = list(rrule.rrule(freq=rrule.DAILY, dtstart=last_new_year, until=datetime.today()))
+    for batch in range(num_batches):
+        pprint(f" -> Building batch #{batch + 1}...")
+        notifications_batch = []
+        for i in range(batch_size):
+            notification_num = (batch * batch_size) + i
+            notification_type = random.choice(["sms", "letter", "email"])
+            extra_kwargs = {"postage": "second"} if notification_type == "letter" else {}
+            template = TEMPLATES[notification_type]
+            notifications_batch.append(
+                Notification(
+                    to=f"BULKTEST-{notification_num}@notify.works",
+                    normalised_to=f"BULKTEST-{notification_num}@notify.works",
+                    job_id=None,
+                    job_row_number=None,
+                    service_id=random.choice(service_ids),
+                    template_id=template.id,
+                    template_version=1,
+                    api_key_id=None,
+                    key_type="normal",
+                    billable_units=1,
+                    rate_multiplier=1,
+                    notification_type=notification_type,
+                    created_at=random.choice(daily_dates_since_last_new_year),
+                    status="delivered",
+                    client_reference=f"BULKTEST: {notification_num}",
+                    **extra_kwargs,
+                )
+            )
+        pprint(f" -> Sending batch {batch + 1} to DB...")
+        db.session.bulk_save_objects(notifications_batch)
+        pprint(" -> Done.")
+
+    pprint("Moving notifications older than 7 days to notification_history...")
+    for i, service_id in enumerate(service_ids):
+        for notification_type in ["email", "sms", "letter"]:
+            with mock.patch("app.dao.notifications_dao._delete_letters_from_s3"):
+                move_notifications_to_notification_history(
+                    notification_type, service_id, datetime.utcnow() - timedelta(days=7), qry_limit=500_000
+                )
+        pprint(f" -> Service {i} done.")
+
+    pprint("Building ft_billing for all periods")
+    for dt in daily_dates_since_last_new_year:
+        dt_date = dt.date()
+        delete_billing_data_for_services_for_day(dt_date, service_ids)
+        billing_data = fetch_billing_data_for_day(process_day=dt_date, service_ids=service_ids)
+        update_ft_billing(billing_data, dt_date)
+        pprint(f" -> Done {dt_date}")
+
+    pprint("Committing...")
+    db.session.commit()
+    pprint("Finished.")

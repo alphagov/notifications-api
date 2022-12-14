@@ -476,6 +476,7 @@ class Test(Development):
 
     # this is overriden in jenkins and on cloudfoundry
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI", "postgresql://localhost/test_notification_api")
+    SQLALCHEMY_RECORD_QUERIES = False
 
     CELERY = {**Config.CELERY, "broker_url": "you-forgot-to-mock-celery-in-your-tests://"}
 

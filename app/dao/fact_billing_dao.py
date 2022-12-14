@@ -32,6 +32,7 @@ from app.models import (
     Organisation,
     Rate,
     Service,
+    ServicePermission,
 )
 from app.utils import get_london_midnight_in_utc
 
@@ -295,9 +296,8 @@ def fetch_usage_for_service_by_month(service_id, year):
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
-        data = fetch_billing_data_for_day(process_day=today, service_id=service_id, check_permissions=True)
-        for d in data:
-            update_fact_billing(data=d, process_day=today)
+        data = fetch_billing_data_for_day(process_day=today, service_ids=[service_id], check_permissions=True)
+        update_ft_billing(billing_data=data, process_day=today)
 
     return (
         db.session.query(
@@ -465,43 +465,58 @@ def _fetch_usage_for_service_sms(service_id, year):
     )
 
 
-def delete_billing_data_for_service_for_day(process_day, service_id):
+def delete_billing_data_for_services_for_day(process_day, service_ids):
     """
-    Delete all ft_billing data for a given service on a given bst_date
+    Delete all ft_billing data for the given service_ids on a given bst_date
 
     Returns how many rows were deleted
     """
-    return FactBilling.query.filter(FactBilling.bst_date == process_day, FactBilling.service_id == service_id).delete()
+    return FactBilling.query.filter(
+        FactBilling.bst_date == process_day, FactBilling.service_id.in_(service_ids)
+    ).delete()
 
 
-def fetch_billing_data_for_day(process_day, service_id=None, check_permissions=False):
+def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=False):
     start_date = get_london_midnight_in_utc(process_day)
     end_date = get_london_midnight_in_utc(process_day + timedelta(days=1))
     current_app.logger.info("Populate ft_billing for {} to {}".format(start_date, end_date))
-    transit_data = []
-    if not service_id:
-        services = Service.query.all()
-    else:
-        services = [Service.query.get(service_id)]
+    billing_data = []
+    if service_ids is None:
+        service_ids = [id_ for (id_,) in Service.query.with_entities(Service.id).all()]
 
-    for service in services:
-        for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
-            if (not check_permissions) or service.has_permission(notification_type):
-                results = _query_for_billing_data(
-                    notification_type=notification_type, start_date=start_date, end_date=end_date, service=service
-                )
-                transit_data += results
+    for notification_type in (SMS_TYPE, EMAIL_TYPE, LETTER_TYPE):
+        partial_billing_data = _query_for_billing_data(
+            notification_type=notification_type,
+            start_date=start_date,
+            end_date=end_date,
+            service_ids=service_ids,
+            check_permissions=check_permissions,
+        )
+        billing_data += partial_billing_data
 
-    return transit_data
+    return billing_data
 
 
-def _query_for_billing_data(notification_type, start_date, end_date, service):
+def _query_for_billing_data(notification_type, start_date, end_date, service_ids, check_permissions):
+    base_query = db.session.query(NotificationAllTimeView).join(
+        Service, NotificationAllTimeView.service_id == Service.id
+    )
+
+    if check_permissions:
+        base_query = base_query.join(
+            ServicePermission,
+            and_(
+                NotificationAllTimeView.service_id == ServicePermission.service_id,
+                ServicePermission.permission == notification_type,
+            ),
+        )
+
     def _email_query():
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("ses").label("sent_by"),
                 literal(0).label("rate_multiplier"),
@@ -517,9 +532,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
             )
         )
@@ -529,10 +545,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
         international = func.coalesce(NotificationAllTimeView.international, False)
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 sent_by.label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
@@ -548,9 +564,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
                 sent_by,
                 rate_multiplier,
@@ -562,10 +579,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         rate_multiplier = func.coalesce(NotificationAllTimeView.rate_multiplier, 1).cast(Integer)
         postage = func.coalesce(NotificationAllTimeView.postage, "none")
         return (
-            db.session.query(
+            base_query.with_entities(
                 NotificationAllTimeView.template_id,
-                literal(service.crown).label("crown"),
-                literal(service.id).label("service_id"),
+                Service.crown.label("crown"),
+                Service.id.label("service_id"),
                 literal(notification_type).label("notification_type"),
                 literal("dvla").label("sent_by"),
                 rate_multiplier.label("rate_multiplier"),
@@ -581,9 +598,10 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
                 NotificationAllTimeView.created_at >= start_date,
                 NotificationAllTimeView.created_at < end_date,
                 NotificationAllTimeView.notification_type == notification_type,
-                NotificationAllTimeView.service_id == service.id,
+                NotificationAllTimeView.service_id.in_(service_ids),
             )
             .group_by(
+                Service.id,
                 NotificationAllTimeView.template_id,
                 rate_multiplier,
                 NotificationAllTimeView.billable_units,
@@ -593,7 +611,6 @@ def _query_for_billing_data(notification_type, start_date, end_date, service):
         )
 
     query_funcs = {SMS_TYPE: _sms_query, EMAIL_TYPE: _email_query, LETTER_TYPE: _letter_query}
-
     query = query_funcs[notification_type]()
     return query.all()
 
@@ -605,8 +622,9 @@ def get_rates_for_billing():
 
 
 def get_service_ids_that_need_billing_populated(start_date, end_date):
-    return (
-        db.session.query(NotificationHistory.service_id)
+    return [
+        service_id
+        for (service_id,) in db.session.query(NotificationHistory.service_id)
         .filter(
             NotificationHistory.created_at >= start_date,
             NotificationHistory.created_at <= end_date,
@@ -615,7 +633,7 @@ def get_service_ids_that_need_billing_populated(start_date, end_date):
         )
         .distinct()
         .all()
-    )
+    ]
 
 
 def get_rate(
@@ -648,18 +666,27 @@ def get_rate(
         return 0
 
 
-def update_fact_billing(data, process_day):
+def update_ft_billing(billing_data: list, process_day):
+    if not billing_data:
+        return
+
     non_letter_rates, letter_rates = get_rates_for_billing()
-    rate = get_rate(
-        non_letter_rates,
-        letter_rates,
-        data.notification_type,
-        process_day,
-        data.crown,
-        data.letter_page_count,
-        data.postage,
+    billing_records = (
+        create_billing_record(
+            billing_datum,
+            get_rate(
+                non_letter_rates,
+                letter_rates,
+                billing_datum.notification_type,
+                process_day,
+                billing_datum.crown,
+                billing_datum.letter_page_count,
+                billing_datum.postage,
+            ),
+            process_day,
+        )
+        for billing_datum in billing_data
     )
-    billing_record = create_billing_record(data, rate, process_day)
 
     table = FactBilling.__table__
     """
@@ -668,19 +695,23 @@ def update_fact_billing(data, process_day):
        rejected.
        http://docs.sqlalchemy.org/en/latest/dialects/postgresql.html#insert-on-conflict-upsert
     """
-    stmt = insert(table).values(
-        bst_date=billing_record.bst_date,
-        template_id=billing_record.template_id,
-        service_id=billing_record.service_id,
-        provider=billing_record.provider,
-        rate_multiplier=billing_record.rate_multiplier,
-        notification_type=billing_record.notification_type,
-        international=billing_record.international,
-        billable_units=billing_record.billable_units,
-        notifications_sent=billing_record.notifications_sent,
-        rate=billing_record.rate,
-        postage=billing_record.postage,
-    )
+    billing_records_data = [
+        dict(
+            bst_date=billing_record.bst_date,
+            template_id=billing_record.template_id,
+            service_id=billing_record.service_id,
+            provider=billing_record.provider,
+            rate_multiplier=billing_record.rate_multiplier,
+            notification_type=billing_record.notification_type,
+            international=billing_record.international,
+            billable_units=billing_record.billable_units,
+            notifications_sent=billing_record.notifications_sent,
+            rate=billing_record.rate,
+            postage=billing_record.postage,
+        )
+        for billing_record in billing_records
+    ]
+    stmt = insert(table).values(billing_records_data)
 
     stmt = stmt.on_conflict_do_update(
         constraint="ft_billing_pkey",
@@ -782,10 +813,8 @@ def fetch_usage_for_organisation(organisation_id, year):
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
-        for service in services:
-            data = fetch_billing_data_for_day(process_day=today, service_id=service.id)
-            for d in data:
-                update_fact_billing(data=d, process_day=today)
+        data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
+        update_ft_billing(billing_data=data, process_day=today)
     service_with_usage = {}
     # initialise results
     for service in services:

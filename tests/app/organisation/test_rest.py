@@ -1,5 +1,6 @@
+import random
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from flask import current_app
@@ -32,6 +33,7 @@ from tests.app.db import (
     create_template,
     create_user,
 )
+from tests.utils import count_sqlalchemy_queries
 
 
 def test_get_all_organisations(admin_request, notify_db_session, nhs_email_branding, nhs_letter_branding):
@@ -838,6 +840,43 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     assert service_usage["sms_billable_units"] == 19
     assert service_usage["sms_remainder"] == 0
     assert service_usage["sms_cost"] == 0.54
+
+
+@pytest.mark.skip(
+    "Another test (`test_cbc_proxy_vodafone_send_link_test_invokes_function`) fails when we enable "
+    "SQLALCHEMY_RECORD_QUERIES, which is a requirement for this test. So we can't run this for now ... but "
+    "maybe the flask-sqlalchemy/psycopg2 edge case causing the exception (below) will eventually be fixed and we can "
+    "re-enable this. This exception is thrown when trying to record the query result, after sqlalchemy fetches the "
+    "next value from a sequence (sqlalchemy.engine.default.DefaultExecutionContext._execute_scalar).\n\n"
+    "Test error: *** AttributeError: 'PGExecutionContext_psycopg2' object has no attribute 'parameters'"
+)
+@pytest.mark.parametrize("num_services", [1, 5, 10])
+@freeze_time("2020-02-24 13:30")
+def test_get_organisation_services_usage_limit_queries_executed(admin_request, notify_db_session, num_services):
+    org = create_organisation(name="Organisation without live services")
+    for _ in range(num_services):
+        service = create_service(service_name=f"service {_}")
+        template = create_template(service=service)
+        dao_add_service_to_organisation(service=service, organisation_id=org.id)
+        create_annual_billing(service_id=service.id, free_sms_fragment_limit=10, financial_year_start=2019)
+        for num_billing_days in range(random.randint(10, 25)):
+            create_ft_billing(
+                bst_date=datetime.utcnow().date() - timedelta(days=num_billing_days),
+                template=template,
+                billable_unit=num_billing_days + 1,
+                rate=0.060,
+                notifications_sent=num_billing_days + 1,
+            )
+
+    with count_sqlalchemy_queries() as get_query_count:
+        admin_request.get("organisation.get_organisation_services_usage", organisation_id=org.id, **{"year": 2019})
+
+    assert get_query_count() == 9, (
+        "The number of queries executed by this view has changed. The number of queries executed "
+        "shouldn't increase as the number of org services increases. If this has increased by 1 or 2 queries, and "
+        "affects all parameterized versions of this test, you can probably accept the change. If only one of the "
+        "test runs is failing, you may want to look at the new code instead."
+    )
 
 
 @freeze_time("2020-02-24 13:30")
