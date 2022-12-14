@@ -70,7 +70,7 @@ def run_migrations_online():
                 # write the current head to `.current-alembic-head`. This will prevent conflicting migrations
                 # being merged at the same time and breaking the build.
                 head = context.get_head_revision()
-                f.write(head)
+                f.write(head + "\n")
     finally:
         connection.close()
 
