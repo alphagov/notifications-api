@@ -842,6 +842,14 @@ def test_get_organisation_services_usage(admin_request, notify_db_session):
     assert service_usage["sms_cost"] == 0.54
 
 
+@pytest.mark.skip(
+    "Another test (`test_cbc_proxy_vodafone_send_link_test_invokes_function`) fails when we enable "
+    "SQLALCHEMY_RECORD_QUERIES, which is a requirement for this test. So we can't run this for now ... but "
+    "maybe the flask-sqlalchemy/psycopg2 edge case causing the exception (below) will eventually be fixed and we can "
+    "re-enable this. This exception is thrown when trying to record the query result, after sqlalchemy fetches the "
+    "next value from a sequence (sqlalchemy.engine.default.DefaultExecutionContext._execute_scalar).\n\n"
+    "Test error: *** AttributeError: 'PGExecutionContext_psycopg2' object has no attribute 'parameters'"
+)
 @pytest.mark.parametrize("num_services", [1, 5, 10])
 @freeze_time("2020-02-24 13:30")
 def test_get_organisation_services_usage_limit_queries_executed(admin_request, notify_db_session, num_services):
