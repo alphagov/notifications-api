@@ -1,6 +1,7 @@
 import os
 from contextlib import contextmanager
 
+import freezegun
 import pytest
 import sqlalchemy
 from alembic.command import upgrade
@@ -9,6 +10,12 @@ from alembic.config import Config
 from app import create_app, db
 from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.notify_api_flask_app import NotifyApiFlaskApp
+
+# Freezegun has a negative interaction with prompt_toolkit that ends up suppressing text written on the prompt of ipdb
+# so let's ignore that module
+# https://stackoverflow.com/questions/71584885/ipdb-stops-showing-prompt-text-after-carriage-return
+# https://github.com/spulec/freezegun/pull/481
+freezegun.configure(extend_ignore_list=["prompt_toolkit"])
 
 
 @pytest.fixture(scope="session")
