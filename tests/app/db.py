@@ -78,7 +78,7 @@ from app.models import (
 )
 
 
-def create_user(*, mobile_number="+447700900986", email=None, state="active", id_=None, name="Test User"):
+def create_user(*, mobile_number="+447700900986", email=None, state="active", id_=None, name="Test User", **kwargs):
     data = {
         "id": id_ or uuid.uuid4(),
         "name": name,
@@ -86,6 +86,7 @@ def create_user(*, mobile_number="+447700900986", email=None, state="active", id
         "password": "password",
         "mobile_number": mobile_number,
         "state": state,
+        **kwargs,
     }
     user = User.query.filter_by(email_address=email).first()
     if not user:
@@ -483,15 +484,9 @@ def create_service_callback_api(
 
 
 def create_email_branding(
-    id=None, colour="blue", alt_text=None, logo="test_x2.png", name="test_org_1", text="DisplayName"
+    id=None, colour="blue", alt_text=None, logo="test_x2.png", name="test_org_1", text="DisplayName", **kwargs
 ):
-    data = {
-        "colour": colour,
-        "logo": logo,
-        "alt_text": alt_text,
-        "name": name,
-        "text": text,
-    }
+    data = {"colour": colour, "logo": logo, "alt_text": alt_text, "name": name, "text": text, **kwargs}
     if id:
         data["id"] = id
     email_branding = EmailBranding(**data)

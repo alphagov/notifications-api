@@ -51,6 +51,7 @@ from tests.app.db import (
     create_notification,
     create_organisation,
     create_template,
+    create_user,
 )
 from tests.conftest import set_config
 
@@ -791,12 +792,18 @@ def test_delete_old_records_from_events_table(notify_db_session):
 
 
 @freeze_time("2022-11-01 00:30:00")
-def test_zendesk_new_email_branding_report(notify_db_session, mocker):
+def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_user):
     org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     org_2 = create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
-    email_brand_1 = create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
-    email_brand_2 = create_email_branding(id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2")
-    create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
+    email_brand_1 = create_email_branding(
+        id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1", created_by=notify_user.id
+    )
+    email_brand_2 = create_email_branding(
+        id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2", created_by=notify_user.id
+    )
+    create_email_branding(
+        id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3", created_by=notify_user.id
+    )
     org_1.email_branding_pool = [email_brand_1, email_brand_2]
     org_2.email_branding_pool = [email_brand_2]
     org_2.email_branding = email_brand_1
@@ -872,12 +879,18 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker):
 
 
 @freeze_time("2022-11-01 00:30:00")
-def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_db_session, mocker):
+def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_db_session, mocker, notify_user):
     create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
-    create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
-    create_email_branding(id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2")
-    create_email_branding(id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3")
+    create_email_branding(
+        id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1", created_by=notify_user.id
+    )
+    create_email_branding(
+        id=uuid.UUID("c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0"), name="brand-2", created_by=notify_user.id
+    )
+    create_email_branding(
+        id=uuid.UUID("1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e"), name="brand-3", created_by=notify_user.id
+    )
     notify_db_session.commit()
 
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
@@ -911,10 +924,12 @@ def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_d
     ),
 )
 def test_zendesk_new_email_branding_report_calculates_last_weekday_correctly(
-    notify_db_session, mocker, freeze_datetime, expected_last_day_string
+    notify_db_session, mocker, freeze_datetime, expected_last_day_string, notify_user
 ):
     org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
-    email_brand_1 = create_email_branding(id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1")
+    email_brand_1 = create_email_branding(
+        id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1", created_by=notify_user.id
+    )
     org_1.email_branding_pool = [email_brand_1]
     notify_db_session.commit()
 
@@ -932,6 +947,29 @@ def test_zendesk_new_email_branding_report_does_not_create_ticket_if_no_new_bran
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
     zendesk_new_email_branding_report()
     assert mock_send_ticket.call_args_list == []
+
+
+@freeze_time("2022-11-01 00:30:00")
+def test_zendesk_new_email_branding_report_does_not_report_on_brands_created_by_platform_admin(
+    notify_db_session, mocker
+):
+    plain_user = create_user(email="plain@notify.works", platform_admin=False)
+    platform_user = create_user(email="platform@notify.works", platform_admin=True)
+    brand_1 = create_email_branding(name="brand-1", created_by=plain_user.id)
+    brand_2 = create_email_branding(name="brand-2", created_by=plain_user.id)
+    brand_3 = create_email_branding(name="brand-3", created_by=platform_user.id)
+    notify_db_session.commit()
+
+    mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
+
+    zendesk_new_email_branding_report()
+
+    # 1 brand was made by a platform admin - 2 were not. We should report on/link to those 2 brands.
+    ticket_html = mock_send_ticket.call_args_list[0][0][0].request_data["ticket"]["comment"]["html_body"]
+    assert ticket_html.count("<li><a href") == 2
+    assert str(brand_1.id) in ticket_html
+    assert str(brand_2.id) in ticket_html
+    assert str(brand_3.id) not in ticket_html
 
 
 def test_check_for_low_available_inbound_sms_numbers_logs_zendesk_ticket_if_too_few_numbers(
