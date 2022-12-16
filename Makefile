@@ -31,7 +31,7 @@ bootstrap: generate-version-file ## Set up everything to run the app
 	(. environment.sh && flask db upgrade) || true
 
 .PHONY: bootstrap-with-docker
-bootstrap-with-docker: ## Build the image to run the app in Docker
+bootstrap-with-docker: generate-version-file ## Build the image to run the app in Docker
 	docker build -f docker/Dockerfile -t notifications-api .
 
 .PHONY: run-flask
