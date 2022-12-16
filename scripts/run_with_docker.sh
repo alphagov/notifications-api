@@ -12,6 +12,7 @@ SQLALCHEMY_DATABASE_URI=${SQLALCHEMY_DATABASE_URI:-"postgresql://postgres@host.d
 REDIS_URL=${REDIS_URL:-"redis://host.docker.internal:6379"}
 API_HOST_NAME=${API_HOST_NAME:-"http://host.docker.internal:6011"}
 
+# we always expose port 6011 but it is only really needed when running the flask API
 docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
@@ -27,6 +28,7 @@ docker run -it --rm \
   -e FLASK_APP=$FLASK_APP \
   -e FLASK_DEBUG=$FLASK_DEBUG \
   -e WERKZEUG_DEBUG_PIN=$WERKZEUG_DEBUG_PIN \
+  -p 6011:6011 \
   -v $(pwd):/home/vcap/app \
   ${DOCKER_IMAGE_NAME} \
   ${@}

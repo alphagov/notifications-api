@@ -3,6 +3,8 @@
 if [ "$1" == "worker" ]
 then
   shift 1
+  # TODO: This is fine for local development but this file will soon need to change to have
+  # many different celery workers like we currently do in production
   celery -A run_celery.notify_celery worker --pidfile="/tmp/celery.pid" --loglevel=INFO --concurrency=4
 elif [ "$1" == "beat" ]
 then
@@ -15,6 +17,8 @@ then
 elif [ "$1" == "api" ]
 then
   shift 1
+  # TODO: This is fine for local development but this file will soon need to change to have
+  # gunicorn infront of flask
   flask run --host 0.0.0.0 --port 6011
 elif [ -n "$*" ]
 then
