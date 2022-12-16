@@ -40,7 +40,7 @@ run-flask: ## Run flask
 
 .PHONY: run-flask-with-docker
 run-flask-with-docker: ## Run flask
-	./scripts/run_with_docker.sh api
+	./scripts/run_locally_with_docker.sh api
 
 .PHONY: run-celery
 run-celery: ## Run celery
@@ -52,7 +52,7 @@ run-celery: ## Run celery
 
 .PHONY: run-celery-with-docker
 run-celery-with-docker: ## Run celery in Docker container (useful if you can't install pycurl locally)
-	./scripts/run_with_docker.sh worker
+	./scripts/run_locally_with_docker.sh worker
 
 .PHONY: run-celery-beat
 run-celery-beat: ## Run celery beat
@@ -62,11 +62,11 @@ run-celery-beat: ## Run celery beat
 
 .PHONY: run-celery-beat-with-docker
 run-celery-beat-with-docker: ## Run celery beat in Docker container (useful if you can't install pycurl locally)
-	./scripts/run_with_docker.sh beat
+	./scripts/run_locally_with_docker.sh beat
 
 .PHONY: run-migrations-with-docker
 run-migrations-with-docker: ## Run alembic migrations in Docker container
-	./scripts/run_with_docker.sh migration
+	./scripts/run_locally_with_docker.sh migration
 
 .PHONY: help
 help:
