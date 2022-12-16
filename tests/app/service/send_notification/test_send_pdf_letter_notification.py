@@ -43,12 +43,14 @@ def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_mess
     sample_service_full_permissions,
     post_data,
 ):
-    mocker.patch(
+    mock_check_message_limit = mocker.patch(
         "app.service.send_notification.check_service_over_daily_message_limit", side_effect=TooManyRequestsError(10)
     )
 
     with pytest.raises(TooManyRequestsError):
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
+
+    assert mock_check_message_limit.call_args_list == [mocker.call(sample_service_full_permissions, "normal")]
 
 
 def test_send_pdf_letter_notification_validates_created_by(sample_service_full_permissions, sample_user, post_data):
