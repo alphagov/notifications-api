@@ -339,18 +339,21 @@ class DetailedServiceSchema(BaseSchema):
             "created_by",
             "crown",
             "email_branding",
+            "email_message_limit",
             "email_from",
             "guest_list",
             "inbound_api",
             "inbound_number",
             "inbound_sms",
             "jobs",
+            "letter_message_limit",
             "message_limit",
             "permissions",
             "rate_limit",
             "reply_to_email_addresses",
             "returned_letters",
             "service_sms_senders",
+            "sms_message_limit",
             "templates",
             "users",
             "version",
@@ -756,6 +759,9 @@ class ServiceHistorySchema(ma.Schema):
     updated_at = FlexibleDateTime()
     active = fields.Boolean()
     message_limit = fields.Integer()
+    email_message_limit = fields.Integer()
+    sms_message_limit = fields.Integer()
+    letter_message_limit = fields.Integer()
     restricted = fields.Boolean()
     email_from = fields.String()
     created_by_id = fields.UUID()
