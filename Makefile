@@ -31,12 +31,16 @@ bootstrap: generate-version-file ## Set up everything to run the app
 	(. environment.sh && flask db upgrade) || true
 
 .PHONY: bootstrap-with-docker
-bootstrap-with-docker: ## Build the image to run the app in Docker
+bootstrap-with-docker: generate-version-file ## Build the image to run the app in Docker
 	docker build -f docker/Dockerfile -t notifications-api .
 
 .PHONY: run-flask
 run-flask: ## Run flask
 	. environment.sh && flask run -p 6011
+
+.PHONY: run-flask-with-docker
+run-flask-with-docker: ## Run flask
+	./scripts/run_locally_with_docker.sh api
 
 .PHONY: run-celery
 run-celery: ## Run celery
@@ -48,7 +52,7 @@ run-celery: ## Run celery
 
 .PHONY: run-celery-with-docker
 run-celery-with-docker: ## Run celery in Docker container (useful if you can't install pycurl locally)
-	./scripts/run_with_docker.sh make run-celery
+	./scripts/run_locally_with_docker.sh worker
 
 .PHONY: run-celery-beat
 run-celery-beat: ## Run celery beat
@@ -58,7 +62,11 @@ run-celery-beat: ## Run celery beat
 
 .PHONY: run-celery-beat-with-docker
 run-celery-beat-with-docker: ## Run celery beat in Docker container (useful if you can't install pycurl locally)
-	./scripts/run_with_docker.sh make run-celery-beat
+	./scripts/run_locally_with_docker.sh beat
+
+.PHONY: run-migrations-with-docker
+run-migrations-with-docker: ## Run alembic migrations in Docker container
+	./scripts/run_locally_with_docker.sh migration
 
 .PHONY: help
 help:
