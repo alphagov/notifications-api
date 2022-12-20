@@ -33,7 +33,7 @@ def app_for_test():
 
     @blue.route("/raise_too_many_requests", methods=["GET"])
     def raising_too_many_requests():
-        raise TooManyRequestsError(sending_limit="452")
+        raise TooManyRequestsError(limit_group="total", sending_limit="452")
 
     @blue.route("/raise_validation_error", methods=["GET"])
     def raising_validation_error():
@@ -85,7 +85,7 @@ def test_too_many_requests_error(app_for_test):
             error = response.json
             assert error == {
                 "status_code": 429,
-                "errors": [{"error": "TooManyRequestsError", "message": "Exceeded send limits (452) for today"}],
+                "errors": [{"error": "TooManyRequestsError", "message": "Exceeded send limits (total: 452) for today"}],
             }
 
 

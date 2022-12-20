@@ -1,6 +1,7 @@
 import datetime
 import itertools
 import uuid
+from collections import namedtuple
 
 from flask import current_app, url_for
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -605,6 +606,16 @@ class Service(db.Model, Versioned):
             return [x for x in current_app.config["ENABLED_CBCS"] if x == self.allowed_broadcast_provider]
         else:
             return current_app.config["ENABLED_CBCS"]
+
+    @staticmethod
+    def rate_limits_from_service(service):
+        _RateLimit = namedtuple("RateLimit", ("name", "value"))
+        return {
+            None: _RateLimit("total", service.message_limit),
+            EMAIL_TYPE: _RateLimit(EMAIL_TYPE, service.email_message_limit),
+            SMS_TYPE: _RateLimit(SMS_TYPE, service.sms_message_limit),
+            LETTER_TYPE: _RateLimit(LETTER_TYPE, service.letter_message_limit),
+        }
 
 
 class AnnualBilling(db.Model):

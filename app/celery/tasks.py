@@ -52,6 +52,7 @@ from app.models import (
     NOTIFICATION_TEMPORARY_FAILURE,
     SMS_TYPE,
     DailySortedLetter,
+    Service,
 )
 from app.notifications.process_notifications import persist_notification
 from app.notifications.validators import check_service_over_daily_message_limit
@@ -157,10 +158,18 @@ def process_row(row, template, job, service, sender_id=None):
 
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
+    notification_type = None
+
+    rate_limits = Service.rate_limits_from_service(service)
+    limit_name = rate_limits[notification_type].name
+    limit_value = rate_limits[notification_type].value
+
     try:
-        total_sent = check_service_over_daily_message_limit(service, KEY_TYPE_NORMAL)
-        if total_sent + job.notification_count > service.message_limit:
-            raise TooManyRequestsError(service.message_limit)
+        total_sent = check_service_over_daily_message_limit(
+            service, KEY_TYPE_NORMAL, notification_type=notification_type
+        )
+        if total_sent + job.notification_count > limit_value:
+            raise TooManyRequestsError(limit_name, limit_value)
         else:
             return False
     except TooManyRequestsError:
@@ -168,8 +177,8 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
-            "Job {} size {} error. Sending limits {} exceeded".format(
-                job_id, job.notification_count, service.message_limit
+            "Job {} size {} error. Sending limits ({}: {}) exceeded".format(
+                job_id, job.notification_count, limit_name, limit_value
             )
         )
         return True

@@ -168,7 +168,8 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
     )
     mocker.patch("app.celery.tasks.process_row")
     mock_check_message_limit = mocker.patch(
-        "app.celery.tasks.check_service_over_daily_message_limit", side_effect=TooManyRequestsError("exceeded limit")
+        "app.celery.tasks.check_service_over_daily_message_limit",
+        side_effect=TooManyRequestsError("total", "exceeded limit"),
     )
     process_job(job.id)
 
@@ -176,7 +177,9 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
     assert job.job_status == "sending limits exceeded"
     assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
-    assert mock_check_message_limit.call_args_list == [mocker.call(service, "normal")]
+    assert mock_check_message_limit.call_args_list == [
+        mocker.call(service, "normal", notification_type=None),
+    ]
 
 
 def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(notify_api, notify_db_session, mocker):
@@ -195,7 +198,9 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
     assert job.job_status == "sending limits exceeded"
     mock_s3.assert_not_called()
     mock_process_row.assert_not_called()
-    assert mock_check_message_limit.call_args_list == [mocker.call(service, "normal")]
+    assert mock_check_message_limit.call_args_list == [
+        mocker.call(service, "normal", notification_type=None),
+    ]
 
 
 def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_db_session, mocker):
@@ -225,7 +230,9 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
         {},
         queue="database-tasks",
     )
-    assert mock_check_message_limit.call_args_list == [mocker.call(service, "normal")]
+    assert mock_check_message_limit.call_args_list == [
+        mocker.call(service, "normal", notification_type=None),
+    ]
 
 
 def test_should_not_create_save_task_for_empty_file(sample_job, mocker):
