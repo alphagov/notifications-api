@@ -178,7 +178,7 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
     assert s3.get_job_and_metadata_from_s3.called is False
     assert tasks.process_row.called is False
     assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=None, num_notifications=10)
+        mocker.call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
     ]
 
 
@@ -201,7 +201,7 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
     mock_s3.assert_not_called()
     mock_process_row.assert_not_called()
     assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=None, num_notifications=10),
+        mocker.call(service, "normal", notification_type=SMS_TYPE, num_notifications=10),
     ]
 
 
@@ -235,7 +235,7 @@ def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_d
         queue="database-tasks",
     )
     assert mock_check_message_limit.call_args_list == [
-        mocker.call(service, "normal", notification_type=None, num_notifications=10),
+        mocker.call(service, "normal", notification_type=EMAIL_TYPE, num_notifications=10),
     ]
 
 

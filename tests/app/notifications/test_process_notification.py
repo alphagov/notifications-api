@@ -221,7 +221,10 @@ def test_persist_notification_increments_cache_for_trial_or_live_service(
             reference="ref2",
         )
 
-        assert mock_incr.call_args_list == [mocker.call(f"{service.id}-2016-01-01-count")]
+        assert mock_incr.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count"),
+            mocker.call(f"{service.id}-sms-2016-01-01-count"),
+        ]
 
 
 @pytest.mark.parametrize("restricted_service", [True, False])
@@ -247,7 +250,10 @@ def test_persist_notification_sets_daily_limit_cache_if_one_does_not_exists(
             reference="ref2",
         )
 
-        assert mock_set.call_args_list == [mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400)]
+        assert mock_set.call_args_list == [
+            mocker.call(f"{service.id}-2016-01-01-count", 1, ex=86400),
+            mocker.call(f"{service.id}-sms-2016-01-01-count", 1, ex=86400),
+        ]
 
 
 @pytest.mark.parametrize(

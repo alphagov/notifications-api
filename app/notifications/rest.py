@@ -87,7 +87,7 @@ def send_notification(notification_type):
         sms_template_notification_schema if notification_type == SMS_TYPE else email_notification_schema
     ).load(request.get_json())
 
-    check_rate_limiting(authenticated_service, api_user)
+    check_rate_limiting(authenticated_service, api_user, notification_type=notification_type)
 
     template, template_with_content = validate_template(
         template_id=notification_form["template"],

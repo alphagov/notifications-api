@@ -61,9 +61,14 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
         return
 
-    rate_limits = {None: service.message_limit}
+    rate_limits = {
+        None: service.message_limit,
+        EMAIL_TYPE: service.email_message_limit,
+        SMS_TYPE: service.sms_message_limit,
+        LETTER_TYPE: service.letter_message_limit,
+    }
 
-    for notification_type_ in [None]:
+    for notification_type_ in [None, notification_type]:
         limit_name = notification_type_ or "total"
         limit_value = rate_limits[notification_type_]
 
@@ -79,12 +84,20 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
                     service.id, int(service_stats), limit_name, limit_value
                 )
             )
+            # TODO: Remove this - only temporarily logging so it's easy to check/make sure no-one is hitting this
+            #  rate limit while we roll it out
+            if notification_type is not None:
+                current_app.logger.warning(
+                    "notification-specific rate limit hit: {} at {} of {}".format(
+                        notification_type, service_stats, limit_value
+                    )
+                )
             raise TooManyRequestsError(limit_name, limit_value)
 
 
-def check_rate_limiting(service, api_key):
+def check_rate_limiting(service, api_key, notification_type):
     check_service_over_api_rate_limit(service, api_key.key_type)
-    check_service_over_daily_message_limit(service, api_key.key_type, notification_type=None)
+    check_service_over_daily_message_limit(service, api_key.key_type, notification_type=notification_type)
 
 
 def check_template_is_for_notification_type(notification_type, template_type):

@@ -161,7 +161,7 @@ def __sending_limits_for_job_exceeded(service, job, job_id):
         check_service_over_daily_message_limit(
             service,
             KEY_TYPE_NORMAL,
-            notification_type=None,
+            notification_type=job.template.template_type,
             num_notifications=job.notification_count,
         )
 

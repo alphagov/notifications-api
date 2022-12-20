@@ -52,7 +52,7 @@ def test_send_pdf_letter_notification_raises_error_if_service_is_over_daily_mess
         send_pdf_letter_notification(sample_service_full_permissions.id, post_data)
 
     assert mock_check_message_limit.call_args_list == [
-        mocker.call(sample_service_full_permissions, "normal", notification_type=None)
+        mocker.call(sample_service_full_permissions, "normal", notification_type=LETTER_TYPE)
     ]
 
 
