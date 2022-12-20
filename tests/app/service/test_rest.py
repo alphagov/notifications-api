@@ -249,6 +249,7 @@ def test_get_service_by_id(admin_request, sample_service):
         "email_message_limit",
         "go_live_at",
         "go_live_user",
+        "has_active_go_live_request",
         "id",
         "inbound_api",
         "letter_branding",
@@ -692,7 +693,8 @@ def test_create_service_allows_only_lowercase_digits_and_fullstops_in_email_from
         )
 
 
-def test_update_service(client, notify_db_session, sample_service):
+@pytest.mark.parametrize("has_active_go_live_request", (True, False))
+def test_update_service(client, notify_db_session, sample_service, has_active_go_live_request):
     brand = EmailBranding(colour="#000000", logo="justice-league.png", name="Justice League", alt_text="Justice League")
     notify_db_session.add(brand)
     notify_db_session.commit()
@@ -705,6 +707,7 @@ def test_update_service(client, notify_db_session, sample_service):
         "created_by": str(sample_service.created_by.id),
         "email_branding": str(brand.id),
         "organisation_type": "school_or_college",
+        "has_active_go_live_request": has_active_go_live_request,
     }
 
     auth_header = create_admin_authorization_header()
@@ -720,6 +723,7 @@ def test_update_service(client, notify_db_session, sample_service):
     assert result["data"]["email_from"] == "updated.service.name"
     assert result["data"]["email_branding"] == str(brand.id)
     assert result["data"]["organisation_type"] == "school_or_college"
+    assert result["data"]["has_active_go_live_request"] == has_active_go_live_request
 
 
 def test_cant_update_service_org_type_to_random_value(client, sample_service):

@@ -94,6 +94,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
         "billing_contact_email_addresses",
         "billing_reference",
         "purchase_order_number",
+        "can_approve_own_go_live_requests",
     }
     assert response["id"] == str(org.id)
     assert response["name"] == "test_org_1"
@@ -115,6 +116,7 @@ def test_get_organisation_by_id(admin_request, notify_db_session):
     assert response["billing_contact_email_addresses"] is None
     assert response["billing_reference"] is None
     assert response["purchase_order_number"] is None
+    assert response["can_approve_own_go_live_requests"] is False
 
 
 def test_get_organisation_by_id_returns_domains(admin_request, notify_db_session):
@@ -295,10 +297,12 @@ def test_post_create_organisation_with_missing_data_gives_validation_error(
 
 
 @pytest.mark.parametrize("crown", (None, True, False))
+@pytest.mark.parametrize("can_approve_own_go_live_requests", (True, False))
 def test_post_update_organisation_updates_fields(
     admin_request,
     notify_db_session,
     crown,
+    can_approve_own_go_live_requests,
 ):
     org = create_organisation()
     data = {
@@ -306,6 +310,7 @@ def test_post_update_organisation_updates_fields(
         "active": False,
         "crown": crown,
         "organisation_type": "central",
+        "can_approve_own_go_live_requests": can_approve_own_go_live_requests,
     }
     assert org.crown is None
 
@@ -320,6 +325,7 @@ def test_post_update_organisation_updates_fields(
     assert organisation[0].crown == crown
     assert organisation[0].domains == []
     assert organisation[0].organisation_type == "central"
+    assert organisation[0].can_approve_own_go_live_requests == can_approve_own_go_live_requests
 
 
 @pytest.mark.parametrize(
