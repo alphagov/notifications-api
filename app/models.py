@@ -392,7 +392,7 @@ class Organisation(db.Model):
         nullable=True,
     )
     request_to_go_live_notes = db.Column(db.Text)
-    can_approve_own_go_live_requests = db.Column(db.Boolean, default=False)
+    can_approve_own_go_live_requests = db.Column(db.Boolean, default=False, nullable=False)
 
     domains = db.relationship(
         "Domain",
@@ -532,7 +532,7 @@ class Service(db.Model, Versioned):
     go_live_user_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
     go_live_user = db.relationship("User", foreign_keys=[go_live_user_id])
     go_live_at = db.Column(db.DateTime, nullable=True)
-    has_active_go_live_request = db.Column(db.Boolean, default=False)
+    has_active_go_live_request = db.Column(db.Boolean, default=False, nullable=False)
 
     organisation_id = db.Column(UUID(as_uuid=True), db.ForeignKey("organisation.id"), index=True, nullable=True)
     organisation = db.relationship("Organisation", backref="services")
