@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from flask import current_app
+from flask import current_app, g
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import Date, Integer, and_, desc, func, union
 from sqlalchemy.dialects.postgresql import insert
@@ -809,39 +809,45 @@ def _fetch_usage_for_organisation_sms(organisation_id, financial_year):
 def fetch_usage_for_organisation(organisation_id, year):
     year_start, year_end = get_financial_year_dates(year)
     today = convert_utc_to_bst(datetime.utcnow()).date()
-    services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
+    with g.profiler("dao_get_organisation_live_services_and_their_free_allowance"):
+        services = dao_get_organisation_live_services_and_their_free_allowance(organisation_id, year)
 
     # if year end date is less than today, we are calculating for data in the past and have no need for deltas.
     if year_end >= today:
-        data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
-        update_ft_billing(billing_data=data, process_day=today)
+        with g.profiler("fetch_billing_data_for_day"):
+            data = fetch_billing_data_for_day(process_day=today, service_ids=[service.id for service in services])
+        with g.profiler("update_ft_billing"):
+            update_ft_billing(billing_data=data, process_day=today)
     service_with_usage = {}
     # initialise results
-    for service in services:
-        service_with_usage[str(service.id)] = {
-            "service_id": service.id,
-            "service_name": service.name,
-            "free_sms_limit": service.free_sms_fragment_limit,
-            # if sms usage is 0, then remainder is equiv to the free sms fragment limit
-            "sms_remainder": service.free_sms_fragment_limit,
-            "sms_billable_units": 0,
-            "chargeable_billable_sms": 0,
-            "sms_cost": 0.0,
-            "letter_cost": 0.0,
-            "emails_sent": 0,
-            "active": service.active,
-        }
-    sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
-    letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
-    email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
-    for usage in sms_usages:
-        # update sms fields
-        service_with_usage[str(usage.service_id)] |= {
-            "sms_remainder": usage.free_allowance_left,
-            "sms_billable_units": usage.chargeable_units,
-            "chargeable_billable_sms": usage.charged_units,
-            "sms_cost": float(usage.cost),
-        }
+    with g.profiler("for service in services"):
+        for service in services:
+            service_with_usage[str(service.id)] = {
+                "service_id": service.id,
+                "service_name": service.name,
+                "free_sms_limit": service.free_sms_fragment_limit,
+                # if sms usage is 0, then remainder is equiv to the free sms fragment limit
+                "sms_remainder": service.free_sms_fragment_limit,
+                "sms_billable_units": 0,
+                "chargeable_billable_sms": 0,
+                "sms_cost": 0.0,
+                "letter_cost": 0.0,
+                "emails_sent": 0,
+                "active": service.active,
+            }
+    with g.profiler("_fetch_usage_for_organisation_x"):
+        sms_usages = _fetch_usage_for_organisation_sms(organisation_id, year)
+        letter_usages = _fetch_usage_for_organisation_letter(organisation_id, year_start, year_end)
+        email_usages = _fetch_usage_for_organisation_email(organisation_id, year_start, year_end)
+    with g.profiler("for usage in sms_usages"):
+        for usage in sms_usages:
+            # update sms fields
+            service_with_usage[str(usage.service_id)] |= {
+                "sms_remainder": usage.free_allowance_left,
+                "sms_billable_units": usage.chargeable_units,
+                "chargeable_billable_sms": usage.charged_units,
+                "sms_cost": float(usage.cost),
+            }
     for letter_usage in letter_usages:
         service_with_usage[str(letter_usage.service_id)]["letter_cost"] = float(letter_usage.letter_cost)
     for email_usage in email_usages:
