@@ -1,4 +1,7 @@
+import dataclasses
+import time
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pytz
 from flask import url_for
@@ -147,3 +150,59 @@ def get_uuid_string_or_none(val):
 
 def format_sequential_number(sequential_number):
     return format(sequential_number, "x").zfill(8)
+
+
+@dataclasses.dataclass()
+class _Span:
+    description: str
+    start: Optional[int]
+
+
+class TimingContextManager:
+    def __init__(self, app=None, enabled=True):
+        self.stack: list[_Span] = []
+        self.app = app
+        self.enabled = enabled
+
+    def __call__(self, description):
+        if not self.enabled:
+            return self
+
+        span = _Span(description=description, start=None)
+        self.stack.append(span)
+        return self
+
+    def log(self, now, description, message, depth=None):
+        if depth is None:
+            depth = len(self.stack)
+
+        separator = ">" * depth
+
+        self.app.logger.info(f"[g.profiler@{now}] {separator} [{description}]: {message}")
+
+    def __enter__(self):
+        if not self.enabled:
+            return self
+
+        now = time.time_ns()
+        span = self.stack[-1]
+        span.start = now
+        self.log(now, description=span.description, message="opened")
+
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if not self.enabled:
+            return
+
+        end = time.time_ns()
+        try:
+            span: _Span = self.stack.pop()
+        except IndexError:
+            self.log(end, description="FAILED", message="no span to exit")
+            return
+
+        duration_ns = end - span.start
+        duration_ms = duration_ns // 10**6
+
+        self.log(end, description=span.description, message=f"took {duration_ms:.0f}ms")

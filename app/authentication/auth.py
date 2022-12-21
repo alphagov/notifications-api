@@ -60,6 +60,11 @@ def requires_govuk_alerts_auth():
 def requires_admin_auth():
     requires_internal_auth(current_app.config.get("ADMIN_CLIENT_ID"))
 
+    # If successfully auth'd as the admin app, let's make it possible to enable profiling on the request.
+    # The admin app ensures only platform admins can get this header sent so we don't verify anything else.
+    if request.headers.get("X-Notify-Profile", "0") == "1":
+        g.profiler.enabled = True
+
 
 def requires_internal_auth(expected_client_id):
     if expected_client_id not in current_app.config.get("INTERNAL_CLIENT_API_KEYS"):

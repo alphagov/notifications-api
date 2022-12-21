@@ -36,6 +36,7 @@ from app.clients.email.aws_ses import AwsSesClient
 from app.clients.email.aws_ses_stub import AwsSesStubClient
 from app.clients.sms.firetext import FiretextClient
 from app.clients.sms.mmg import MMGClient
+from app.utils import TimingContextManager
 
 
 class SQLAlchemy(_SQLAlchemy):
@@ -313,6 +314,7 @@ def init_app(app):
 
         g.start = monotonic()
         g.endpoint = request.endpoint
+        g.profiler = TimingContextManager(app=current_app, enabled=False)
 
     @app.after_request
     def after_request(response):
