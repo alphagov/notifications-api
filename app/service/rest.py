@@ -31,7 +31,6 @@ from app.dao.fact_notification_status_dao import (
     fetch_notification_status_for_service_for_today_and_7_previous_days,
     fetch_stats_for_all_services_by_date_range,
 )
-from app.dao.inbound_numbers_dao import dao_allocate_number_for_service
 from app.dao.organisation_dao import dao_get_organisation_by_service_id
 from app.dao.returned_letters_dao import (
     fetch_most_recent_returned_letter,
@@ -77,7 +76,6 @@ from app.dao.service_sms_sender_dao import (
     dao_get_service_sms_senders_by_id,
     dao_get_sms_senders_by_service_id,
     dao_update_service_sms_sender,
-    update_existing_sms_sender_with_inbound_number,
 )
 from app.dao.services_dao import (
     dao_add_user_to_service,
@@ -856,27 +854,10 @@ def delete_service_letter_contact(service_id, letter_contact_id):
 def add_service_sms_sender(service_id):
     dao_fetch_service_by_id(service_id)
     form = validate(request.get_json(), add_service_sms_sender_request)
-    inbound_number_id = form.get("inbound_number_id", None)
     sms_sender = form.get("sms_sender")
 
-    if inbound_number_id:
-        updated_number = dao_allocate_number_for_service(service_id=service_id, inbound_number_id=inbound_number_id)
-        # the sms_sender in the form is not set, use the inbound number
-        sms_sender = updated_number.number
-        existing_sms_sender = dao_get_sms_senders_by_service_id(service_id)
-        # we don't want to create a new sms sender for the service if we are allocating an inbound number.
-        if len(existing_sms_sender) == 1:
-            update_existing_sms_sender = existing_sms_sender[0]
-            new_sms_sender = update_existing_sms_sender_with_inbound_number(
-                service_sms_sender=update_existing_sms_sender,
-                sms_sender=sms_sender,
-                inbound_number_id=inbound_number_id,
-            )
-
-            return jsonify(new_sms_sender.serialize()), 201
-
     new_sms_sender = dao_add_sms_sender_for_service(
-        service_id=service_id, sms_sender=sms_sender, is_default=form["is_default"], inbound_number_id=inbound_number_id
+        service_id=service_id, sms_sender=sms_sender, is_default=form["is_default"]
     )
     return jsonify(new_sms_sender.serialize()), 201
 
