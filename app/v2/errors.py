@@ -12,10 +12,11 @@ from app.errors import InvalidRequest
 
 class TooManyRequestsError(InvalidRequest):
     status_code = 429
-    message_template = "Exceeded send limits ({}) for today"
 
-    def __init__(self, sending_limit):
-        self.message = self.message_template.format(sending_limit)
+    def __init__(self, limit_name, sending_limit):
+        self.limit_name = limit_name
+        self.sending_limit = sending_limit
+        self.message = f"Exceeded send limits ({limit_name}: {sending_limit}) for today"
 
 
 class RateLimitError(InvalidRequest):

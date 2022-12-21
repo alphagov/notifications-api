@@ -57,30 +57,34 @@ def check_service_over_api_rate_limit(service, key_type):
                 raise RateLimitError(rate_limit, interval, key_type)
 
 
-def check_service_over_daily_message_limit(service, key_type):
+def check_service_over_daily_message_limit(service, key_type, notification_type, num_notifications=1):
     if key_type == KEY_TYPE_TEST or not current_app.config["REDIS_ENABLED"]:
-        return 0
+        return
 
-    cache_key = daily_limit_cache_key(service.id)
-    service_stats = redis_store.get(cache_key)
-    if service_stats is None:
-        # first message of the day, set the cache to 0 and the expiry to 24 hours
-        service_stats = 0
-        redis_store.set(cache_key, service_stats, ex=86400)
-        return service_stats
-    if int(service_stats) >= service.message_limit:
-        current_app.logger.info(
-            "service {} has been rate limited for daily use sent {} limit {}".format(
-                service.id, int(service_stats), service.message_limit
+    rate_limits = {None: service.message_limit}
+
+    for notification_type_ in [None]:
+        limit_name = notification_type_ or "total"
+        limit_value = rate_limits[notification_type_]
+
+        cache_key = daily_limit_cache_key(service.id, notification_type=notification_type_)
+        service_stats = redis_store.get(cache_key)
+        if service_stats is None:
+            # first message of the day, set the cache to 0 and the expiry to 24 hours
+            redis_store.set(cache_key, 0, ex=86400)
+
+        elif int(service_stats) + num_notifications > limit_value:
+            current_app.logger.info(
+                "service {} has been rate limited for {} daily use sent {} limit {}".format(
+                    service.id, int(service_stats), limit_name, limit_value
+                )
             )
-        )
-        raise TooManyRequestsError(service.message_limit)
-    return int(service_stats)
+            raise TooManyRequestsError(limit_name, limit_value)
 
 
 def check_rate_limiting(service, api_key):
     check_service_over_api_rate_limit(service, api_key.key_type)
-    check_service_over_daily_message_limit(service, api_key.key_type)
+    check_service_over_daily_message_limit(service, api_key.key_type, notification_type=None)
 
 
 def check_template_is_for_notification_type(notification_type, template_type):

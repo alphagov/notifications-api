@@ -158,21 +158,24 @@ def process_row(row, template, job, service, sender_id=None):
 
 def __sending_limits_for_job_exceeded(service, job, job_id):
     try:
-        total_sent = check_service_over_daily_message_limit(service, KEY_TYPE_NORMAL)
-        if total_sent + job.notification_count > service.message_limit:
-            raise TooManyRequestsError(service.message_limit)
-        else:
-            return False
-    except TooManyRequestsError:
+        check_service_over_daily_message_limit(
+            service,
+            KEY_TYPE_NORMAL,
+            notification_type=None,
+            num_notifications=job.notification_count,
+        )
+
+    except TooManyRequestsError as e:
         job.job_status = "sending limits exceeded"
         job.processing_finished = datetime.utcnow()
         dao_update_job(job)
         current_app.logger.info(
-            "Job {} size {} error. Sending limits {} exceeded".format(
-                job_id, job.notification_count, service.message_limit
-            )
+            f"Job {job_id} size {job.notification_count} error. "
+            f"Sending limits ({e.limit_name}: {e.sending_limit}) exceeded."
         )
         return True
+
+    return False
 
 
 @notify_celery.task(bind=True, name="save-sms", max_retries=5, default_retry_delay=300)
