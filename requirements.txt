@@ -156,6 +156,8 @@ marshmallow-sqlalchemy==0.28.1
     # via -r requirements.in
 mistune==0.8.4
     # via notifications-utils
+newrelic==8.5.0
+    # via -r requirements.in
 notifications-python-client==6.3.0
     # via -r requirements.in
 notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@61.0.0
