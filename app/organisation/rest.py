@@ -46,6 +46,7 @@ from app.organisation.organisation_schema import (
     post_update_org_letter_branding_pool_schema,
     post_update_organisation_schema,
 )
+from app.organisation.sender import send_notification_to_organisation_users
 from app.schema_validation import validate
 
 organisation_blueprint = Blueprint("organisation", __name__)
@@ -280,6 +281,33 @@ def remove_letter_branding_from_organisation_pool(organisation_id, letter_brandi
         raise InvalidRequest("You cannot remove an organisation's default letter branding", status_code=400)
 
     dao_remove_letter_branding_from_organisation_pool(organisation_id, letter_branding_id)
+
+    return {}, 204
+
+
+@organisation_blueprint.route("/notify-users-of-request-to-go-live/<uuid:service_id>", methods=["POST"])
+def notify_users_of_request_to_go_live(service_id):
+    template = dao_get_template_by_id(current_app.config["ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID"])
+    service = dao_fetch_service_by_id(service_id)
+    organisation = service.organisation
+    notify_url = f"https://www.{current_app.config['NOTIFY_EMAIL_DOMAIN']}"
+    make_service_live_link = f"{notify_url}/services/{service.id}/make-service-live"
+    support_page_link = f"{notify_url}/support"
+
+    send_notification_to_organisation_users(
+        organisation=organisation,
+        template=template,
+        reply_to_text=service.go_live_user.email_address,
+        personalisation={
+            "service_name": service.name,
+            "requester_name": service.go_live_user.name,
+            "requester_email_address": service.go_live_user.email_address,
+            "make_service_live_link": make_service_live_link,
+            "support_page_link": support_page_link,
+            "organisation_name": organisation.name,
+        },
+        include_user_fields={"name"},
+    )
 
     return {}, 204
 

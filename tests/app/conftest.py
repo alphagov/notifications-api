@@ -1,4 +1,5 @@
 import json
+import textwrap
 import uuid
 from datetime import datetime, timedelta
 
@@ -844,6 +845,46 @@ def letter_volumes_email_template(notify_service):
         template_config_name="LETTERS_VOLUME_EMAIL_TEMPLATE_ID",
         content=email_template_content,
         subject="Notify letter volume for ((date)): ((total_volume)) letters, ((total_sheets)) sheets",
+        template_type="email",
+    )
+
+
+@pytest.fixture(scope="function")
+def organisation_has_new_go_live_request_template(notify_service):
+    template_content = textwrap.dedent(
+        """\
+        Hi ((name))
+
+        ((requester_name)) has requested for ‘((service_name))’ to be made live.
+
+        # To approve or reject this request
+
+        Review this request at: ((make_service_live_link))
+
+        # If you have any questions
+
+        To ask ((requester_name)) about their service reply to this email orcontact them directly at
+        ((requester_email_address))
+
+        ***
+
+        You are receiving this email because you are a team member of ((organisation_name)) on GOV.UK Notify.
+
+        If you need help with this request or anything else, get in touch via our support page at ((support_page_link))
+
+        Thanks,
+        GOV.​UK Notify team
+
+        https://www.gov.uk/notify
+        """
+    )
+
+    return create_custom_template(
+        service=notify_service,
+        user=notify_service.users[0],
+        template_config_name="ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID",
+        content=template_content,
+        subject="Request to go live: ((service_name))",
         template_type="email",
     )
 

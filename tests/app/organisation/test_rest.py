@@ -1,6 +1,7 @@
 import random
 import uuid
 from datetime import datetime, timedelta
+from unittest.mock import ANY
 
 import pytest
 from flask import current_app
@@ -15,7 +16,7 @@ from app.dao.organisation_dao import (
     dao_add_service_to_organisation,
     dao_add_user_to_organisation,
 )
-from app.dao.services_dao import dao_archive_service
+from app.dao.services_dao import dao_archive_service, dao_fetch_service_by_id
 from app.models import (
     INVITE_ACCEPTED,
     INVITE_CANCELLED,
@@ -1156,3 +1157,70 @@ def test_remove_letter_branding_from_organisation_pool_cannot_remove_default_bra
     )
     assert response["message"] == "You cannot remove an organisation's default letter branding"
     assert sample_organisation.letter_branding_pool == [branding]
+
+
+def test_notify_org_users_of_request_to_go_live(
+    mocker,
+    admin_request,
+    notify_service,
+    sample_organisation,
+    sample_service,
+    organisation_has_new_go_live_request_template,
+):
+    notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
+
+    go_live_user = create_user(email="go-live-user@example.gov.uk", name="Go live user")
+    first_org_user = create_user(email="first-org-user@example.gov.uk", name="First org user")
+    second_org_user = create_user(email="second-org-user@example.gov.uk", name="Second org user")
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=first_org_user.id)
+    dao_add_user_to_organisation(organisation_id=sample_organisation.id, user_id=second_org_user.id)
+
+    notifications = [object(), object()]
+
+    mock_persist_notification = mocker.patch(
+        "app.organisation.sender.persist_notification",
+        side_effect=notifications,
+    )
+    mock_send_notification_to_queue = mocker.patch(
+        "app.organisation.sender.send_notification_to_queue",
+    )
+    sample_service.organisation = sample_organisation
+    sample_service.go_live_user = go_live_user
+
+    admin_request.post(
+        "organisation.notify_users_of_request_to_go_live",
+        service_id=sample_service.id,
+        _expected_status=204,
+    )
+
+    assert {
+        (call[1]["recipient"], call[1]["personalisation"]["name"]) for call in mock_persist_notification.call_args_list
+    } == {
+        ("first-org-user@example.gov.uk", "First org user"),
+        ("second-org-user@example.gov.uk", "Second org user"),
+    }
+
+    for call in mock_persist_notification.call_args_list:
+        assert call[1] == dict(
+            template_id=uuid.UUID("5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"),
+            template_version=1,
+            recipient=ANY,
+            service=notify_service,
+            personalisation={
+                "service_name": "Sample service",
+                "requester_name": "Go live user",
+                "requester_email_address": "go-live-user@example.gov.uk",
+                "make_service_live_link": f"https://www.test.notify.com/services/{sample_service.id}/make-service-live",
+                "support_page_link": "https://www.test.notify.com/support",
+                "organisation_name": "sample organisation",
+                "name": ANY,
+            },
+            notification_type="email",
+            api_key_id=None,
+            key_type="normal",
+            reply_to_text="go-live-user@example.gov.uk",
+        )
+
+    assert mock_send_notification_to_queue.call_args_list == [
+        call(notification, False, queue="notify-internal-tasks") for notification in notifications
+    ]
