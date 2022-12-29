@@ -135,7 +135,7 @@ def test_switch_current_sms_provider_on_slow_delivery_switches_when_one_provider
     switch_current_sms_provider_on_slow_delivery()
 
     mock_is_slow.assert_called_once_with(
-        threshold=0.3, created_at=datetime(2017, 5, 1, 13, 50), delivery_time=timedelta(minutes=4)
+        threshold=0.15, created_at=datetime(2017, 5, 1, 13, 50), delivery_time=timedelta(minutes=5)
     )
     mock_reduce.assert_called_once_with("firetext", time_threshold=timedelta(minutes=10))
 

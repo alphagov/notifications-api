@@ -112,14 +112,14 @@ def delete_invitations():
 @notify_celery.task(name="switch-current-sms-provider-on-slow-delivery")
 def switch_current_sms_provider_on_slow_delivery():
     """
-    Reduce provider's priority if at least 30% of notifications took more than four minutes to be delivered
+    Reduce provider's priority if at least 15% of notifications took more than 5 minutes to be delivered
     in the last ten minutes. If both providers are slow, don't do anything. If we changed the providers in the
     last ten minutes, then don't update them again either.
     """
     slow_delivery_notifications = is_delivery_slow_for_providers(
-        threshold=0.3,
+        threshold=0.15,
         created_at=datetime.utcnow() - timedelta(minutes=10),
-        delivery_time=timedelta(minutes=4),
+        delivery_time=timedelta(minutes=5),
     )
 
     # only adjust if some values are true and some are false - ie, don't adjust if all providers are fast or
