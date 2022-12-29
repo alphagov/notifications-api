@@ -319,6 +319,24 @@ def test_get_letter_notifications_still_sending_when_they_shouldnt_finds_friday_
     assert expected_sent_date == date(2018, 1, 12)
 
 
+@freeze_time("Thursday 29th December 2022 17:00")
+def test_get_letter_notifications_still_sending_when_they_shouldnt_treats_bank_holidays_as_non_working_and_looks_beyond(
+    sample_letter_template, rmock
+):
+    """This test implicitly tests the implementation of `govuk_bank_holidays` - but if we don't do that then
+    we aren't really testing anything different here. It's nice to have some confirmation that it's working as intended,
+    as well."""
+    friday = datetime(2022, 12, 23, 13, 30)
+    yesterday = datetime(2022, 12, 28, 13, 30)
+    create_notification(template=sample_letter_template, status="sending", sent_at=friday, postage="first")
+    create_notification(template=sample_letter_template, status="sending", sent_at=friday, postage="second")
+    create_notification(template=sample_letter_template, status="sending", sent_at=yesterday, postage="first")
+
+    count, expected_sent_date = get_letter_notifications_still_sending_when_they_shouldnt_be()
+    assert count == 2
+    assert expected_sent_date == date(2022, 12, 23)
+
+
 @freeze_time("2018-01-11T23:00:00")
 def test_letter_raise_alert_if_no_ack_file_for_zip_does_not_raise_when_files_match_zip_list(mocker, notify_db_session):
     mock_file_list = mocker.patch("app.aws.s3.get_list_of_files_by_suffix", side_effect=mock_s3_get_list_match)
