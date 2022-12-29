@@ -117,9 +117,9 @@ def switch_current_sms_provider_on_slow_delivery():
     last ten minutes, then don't update them again either.
     """
     slow_delivery_notifications = is_delivery_slow_for_providers(
+        created_within_minutes=10,
+        delivered_within_minutes=5,
         threshold=0.15,
-        created_at=datetime.utcnow() - timedelta(minutes=10),
-        delivery_time=timedelta(minutes=5),
     )
 
     # only adjust if some values are true and some are false - ie, don't adjust if all providers are fast or
