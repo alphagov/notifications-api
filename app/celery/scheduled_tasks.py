@@ -398,6 +398,7 @@ def zendesk_new_email_branding_report():
             EmailBranding.created_at >= previous_weekday,
             User.platform_admin.is_(False),
         )
+        .order_by(EmailBranding.created_at)
         .all()
     )
 
