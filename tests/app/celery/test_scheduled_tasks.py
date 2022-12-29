@@ -23,6 +23,7 @@ from app.celery.scheduled_tasks import (
     delete_invitations,
     delete_old_records_from_events_table,
     delete_verify_codes,
+    generate_sms_delivery_stats,
     remove_yesterdays_planned_tests_on_govuk_alerts,
     replay_created_notifications,
     run_scheduled_jobs,
@@ -156,6 +157,26 @@ def test_switch_current_sms_provider_on_slow_delivery_does_nothing_if_no_need(
     switch_current_sms_provider_on_slow_delivery()
 
     assert mock_reduce.called is False
+
+
+def test_generate_sms_delivery_stats(mocker):
+    mocker.patch(
+        "app.celery.scheduled_tasks.get_ratio_of_messages_delivered_slowly_per_provider",
+        return_value={"mmg": 0.4, "firetext": 0.8},
+    )
+    mock_statsd = mocker.patch("app.celery.scheduled_tasks.statsd_client.gauge")
+
+    generate_sms_delivery_stats()
+
+    calls = [
+        call("slow-delivery.mmg.delivered-within-minutes.1.ratio", 0.4),
+        call("slow-delivery.mmg.delivered-within-minutes.5.ratio", 0.4),
+        call("slow-delivery.mmg.delivered-within-minutes.10.ratio", 0.4),
+        call("slow-delivery.firetext.delivered-within-minutes.1.ratio", 0.8),
+        call("slow-delivery.firetext.delivered-within-minutes.5.ratio", 0.8),
+        call("slow-delivery.firetext.delivered-within-minutes.10.ratio", 0.8),
+    ]
+    mock_statsd.assert_has_calls(calls, any_order=True)
 
 
 def test_check_job_status_task_calls_process_incomplete_jobs(mocker, sample_template):

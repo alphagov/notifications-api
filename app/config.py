@@ -217,6 +217,11 @@ class Config(object):
                 "schedule": timedelta(minutes=66),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "generate-sms-delivery-stats": {
+                "task": "generate-sms-delivery-stats",
+                "schedule": crontab(),  # Every minute
+                "options": {"queue": QueueNames.PERIODIC},
+            },
             "switch-current-sms-provider-on-slow-delivery": {
                 "task": "switch-current-sms-provider-on-slow-delivery",
                 "schedule": crontab(),  # Every minute

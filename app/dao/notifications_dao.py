@@ -454,6 +454,8 @@ def is_delivery_slow_for_providers(
     slow_providers = {}
     for provider, ratio in providers_slow_delivery_ratios.items():
         slow_providers[provider] = ratio >= threshold
+        # TODO: when we are happy with the new metrics in generate_sms_delivery_stats then this
+        # can be removed as it will be redundant
         statsd_client.gauge(f"slow-delivery.{provider}.ratio", ratio)
 
     return slow_providers

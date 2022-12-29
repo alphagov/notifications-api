@@ -10,7 +10,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, notify_celery, zendesk_client
+from app import db, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.celery.broadcast_message_tasks import trigger_link_test
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
@@ -38,6 +38,7 @@ from app.dao.jobs_dao import (
 from app.dao.notifications_dao import (
     dao_old_letters_with_created_status,
     dao_precompiled_letters_still_pending_virus_check,
+    get_ratio_of_messages_delivered_slowly_per_provider,
     is_delivery_slow_for_providers,
     letters_missing_from_sending_bucket,
     notifications_not_yet_sent,
@@ -129,6 +130,17 @@ def switch_current_sms_provider_on_slow_delivery():
             if is_slow:
                 current_app.logger.warning("Slow delivery notifications detected for provider {}".format(provider_name))
                 dao_reduce_sms_provider_priority(provider_name, time_threshold=timedelta(minutes=10))
+
+
+@notify_celery.task(name="generate-sms-delivery-stats")
+def generate_sms_delivery_stats():
+    for delivery_interval in (1, 5, 10):
+        providers_slow_delivery_ratios = get_ratio_of_messages_delivered_slowly_per_provider(
+            created_within_minutes=10, delivered_within_minutes=delivery_interval
+        )
+
+        for provider, ratio in providers_slow_delivery_ratios.items():
+            statsd_client.gauge(f"slow-delivery.{provider}.delivered-within-minutes.{delivery_interval}.ratio", ratio)
 
 
 @notify_celery.task(name="tend-providers-back-to-middle")
