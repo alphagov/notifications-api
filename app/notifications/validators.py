@@ -86,7 +86,7 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
             )
             # TODO: Remove this - only temporarily logging so it's easy to check/make sure no-one is hitting this
             #  rate limit while we roll it out
-            if notification_type is not None:
+            if notification_type_ is not None:
                 current_app.logger.warning(
                     "notification-specific rate limit hit: {} at {} of {}".format(
                         notification_type, service_stats, limit_value
