@@ -5,6 +5,10 @@ from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
 )
+from notifications_utils.letter_timings import (
+    get_dvla_working_day_offset_by,
+    is_dvla_working_day,
+)
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import func
 from sqlalchemy.exc import SQLAlchemyError
@@ -214,18 +218,13 @@ def raise_alert_if_letter_notifications_still_sending():
 
 
 def get_letter_notifications_still_sending_when_they_shouldnt_be():
-    today = datetime.utcnow().date()
+    now = datetime.utcnow()
 
-    # Do nothing on the weekend
-    if today.isoweekday() in {6, 7}:  # sat, sun
+    # If it's a weekend day or a bank holiday, do nothing
+    if not is_dvla_working_day(now):
         return 0, None
 
-    if today.isoweekday() in {1, 2}:  # mon, tues. look for files from before the weekend
-        offset_days = 4
-    else:
-        offset_days = 2
-
-    expected_sent_date = today - timedelta(days=offset_days)
+    expected_sent_date = get_dvla_working_day_offset_by(now, days=-2).date()
 
     q = Notification.query.filter(
         Notification.notification_type == LETTER_TYPE,

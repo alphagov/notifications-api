@@ -158,7 +158,7 @@ mistune==0.8.4
     # via notifications-utils
 notifications-python-client==6.3.0
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@59.3.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@60.1.0
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils
@@ -189,7 +189,7 @@ pyparsing==3.0.9
     # via packaging
 pypdf2==2.11.0
     # via notifications-utils
-pyproj==3.4.0
+pyproj==3.4.1
     # via notifications-utils
 pyrsistent==0.18.1
     # via jsonschema
