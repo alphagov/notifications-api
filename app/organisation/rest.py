@@ -290,9 +290,8 @@ def notify_users_of_request_to_go_live(service_id):
     template = dao_get_template_by_id(current_app.config["ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID"])
     service = dao_fetch_service_by_id(service_id)
     organisation = service.organisation
-    notify_url = f"https://www.{current_app.config['NOTIFY_EMAIL_DOMAIN']}"
-    make_service_live_link = f"{notify_url}/services/{service.id}/make-service-live"
-    support_page_link = f"{notify_url}/support"
+    make_service_live_link = f"{current_app.config['ADMIN_BASE_URL']}/services/{service.id}/make-service-live"
+    support_page_link = f"{current_app.config['ADMIN_BASE_URL']}/support"
 
     send_notification_to_organisation_users(
         organisation=organisation,
