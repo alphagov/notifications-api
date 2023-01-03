@@ -125,7 +125,7 @@ def get_reply_to_text(notification_type, sender_id, service, template):
         try:
             if notification_type == EMAIL_TYPE:
                 message = "Reply to email address not found"
-                reply_to = dao_get_reply_to_by_id(service.id, sender_id).email_address
+                reply_to = dao_get_reply_to_by_id(reply_to_id=sender_id, service_id=service.id).email_address
             elif notification_type == SMS_TYPE:
                 message = "SMS sender not found"
                 reply_to = dao_get_service_sms_senders_by_id(service.id, sender_id).get_reply_to_text()

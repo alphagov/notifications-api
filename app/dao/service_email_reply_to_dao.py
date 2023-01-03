@@ -17,18 +17,16 @@ def dao_get_reply_to_by_service_id(service_id):
     return reply_to
 
 
-def dao_get_reply_to_by_id(service_id, reply_to_id):
-    reply_to = (
-        db.session.query(ServiceEmailReplyTo)
-        .filter(
-            ServiceEmailReplyTo.service_id == service_id,
-            ServiceEmailReplyTo.id == reply_to_id,
-            ServiceEmailReplyTo.archived == False,  # noqa
-        )
-        .order_by(ServiceEmailReplyTo.created_at)
-        .one()
+def dao_get_reply_to_by_id(reply_to_id, service_id=None):
+    reply_to = db.session.query(ServiceEmailReplyTo).filter(
+        ServiceEmailReplyTo.id == reply_to_id,
+        ServiceEmailReplyTo.archived.is_(False),
     )
-    return reply_to
+
+    if service_id:
+        reply_to = reply_to.filter(ServiceEmailReplyTo.service_id == service_id)
+
+    return reply_to.order_by(ServiceEmailReplyTo.created_at).one()
 
 
 @autocommit
