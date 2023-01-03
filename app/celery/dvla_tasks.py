@@ -36,3 +36,16 @@ def get_dvla_print_job():
             print("Got 404 from DVLA Letters API - successfully authenticated")
         else:
             raise e
+
+
+@notify_celery.task(name="rotate-dvla-api-password", queue=QueueNames.LETTERS)
+def rotate_dvla_api_password():
+    """This will generate a new random password for the DVLA API, and store it in AWS
+    Parameter Store.
+
+    DVLA API passwords last 90 days. We should schedule this task to run weekly so that
+    we never get into the position where the code is trying to use a password that has expired.
+    """
+    print("rotate_dvla_api_password")
+    client = get_client()
+    client.rotate_password()

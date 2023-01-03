@@ -1,9 +1,16 @@
+import random
+import secrets
+import string
+
 import boto3
+import redis_lock
 import requests
+from celery.exceptions import WorkerShutdown
 from flask import current_app
 
 # TODO: This file contains prototyping code. Many edge cases will not be covered. Consider scrapping this code and
 #       starting from scratch when preparing for production use.
+from app import redis_store
 
 
 class DVLAClient:
@@ -13,6 +20,11 @@ class DVLAClient:
         self.api_key = api_key
         self.jwt_token = None
         self.aws_client = boto3.client("ssm")
+        self.redis_client = redis_store.redis_store._redis_client
+
+        # We could have separate locks for password and API key but it seems like overkill, especially for
+        # proof-of-concept.
+        self.lock = redis_lock.Lock(self.redis_client, "dvla-api-credentials", expire=60)
 
         # Proof-of-concept weirdness: we're now going to make some HTTP requests to:
         #   1) load credentials
@@ -23,6 +35,23 @@ class DVLAClient:
 
     def _get_parameter_from_aws(self, name):
         return self.aws_client.get_parameter(Name=name, WithDecryption=True)["Parameter"]["Value"]
+
+    def _set_parameter_in_aws(self, name, value):
+        self.aws_client.put_parameter(Name=name, Value=value, Overwrite=True)
+        return True
+
+    def _generate_password(self):
+        """
+        DVLA api password must be at least 8 characters in length and contain upper, lower, numerical and special
+        characters.
+        """
+        new_password_as_list = list(secrets.token_urlsafe(32))
+        character_categories = [string.ascii_uppercase, string.ascii_lowercase, string.digits, string.punctuation]
+
+        for category in character_categories:
+            new_password_as_list.append(category[random.randint(0, (len(category) - 1))])
+        random.shuffle(new_password_as_list)
+        return "".join(new_password_as_list)
 
     def _get_unauth_headers(self):
         return {
@@ -95,6 +124,42 @@ class DVLAClient:
 
         current_app.logger.info("Authenticated successfully to DVLA API")
         return self.jwt_token
+
+    def rotate_password(self):
+        # TODO: We should think about whether it's possible for us to "lose" this password, eg DVLA updates it
+        #       but we fail to store the updated password in SSM.
+        if not self.lock.acquire(blocking=False):
+            raise WorkerShutdown(
+                "Could not acquire lock to rotate DVLA API Password. "
+                "Either deadlocked or another process is in this codeblock. "
+                "If deadlocked, lock _should_ auto-release after 60 seconds. "
+                "Killing worker."
+            )
+
+        try:
+            new_password = self._generate_password()
+            current_app.logger.warning(f"Updating DVLA API password to: {new_password}")
+
+            authenticate_api_base_url = current_app.config["DVLA_AUTHENTICATE_API_BASE_URL"]
+            self._post(
+                f"{authenticate_api_base_url}/v1/password",
+                authenticated=False,
+                json={
+                    "userName": self.username,
+                    "password": self.password,
+                    "newPassword": new_password,
+                },
+            )
+
+            # We store the new password on the client so that it can immediately get new valid JWT tokens without
+            # having to go to Parameter Store.
+            self.password = new_password
+            self._set_parameter_in_aws(current_app.config["SSM_INTEGRATION_DVLA_PASSWORD"], new_password)
+
+            return self.password
+
+        finally:
+            self.lock.release()
 
     def get_print_job(self, job_id):
         """
