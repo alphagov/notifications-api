@@ -5,11 +5,14 @@ from sqlalchemy.exc import IntegrityError
 from app.dao.letter_branding_dao import (
     dao_create_letter_branding,
     dao_get_all_letter_branding,
+    dao_get_existing_alternate_letter_branding_for_name,
     dao_get_letter_branding_by_id,
+    dao_get_letter_branding_by_name_case_insensitive,
     dao_update_letter_branding,
 )
 from app.errors import register_errors
 from app.letter_branding.letter_branding_schema import (
+    post_get_unique_name_for_letter_branding_schema,
     post_letter_branding_schema,
 )
 from app.models import LetterBranding
@@ -66,3 +69,30 @@ def update_letter_branding(letter_branding_id):
     letter_branding = dao_update_letter_branding(letter_branding_id, **data)
 
     return jsonify(letter_branding.serialize()), 201
+
+
+@letter_branding_blueprint.route("/get-unique-name/", methods=["POST"])
+def get_letter_branding_unique_name():
+    data = request.get_json()
+
+    validate(data, post_get_unique_name_for_letter_branding_schema)
+
+    name = data["name"]
+
+    existing_branding = dao_get_letter_branding_by_name_case_insensitive(name)
+    if not existing_branding:
+        chosen_name = name
+    else:
+        existing_alternate_branding_options = {
+            x.name for x in dao_get_existing_alternate_letter_branding_for_name(name)
+        }
+
+        for i in range(1, 100):
+            potential_name = f"{name} (alternate {i})"
+            if potential_name not in existing_alternate_branding_options:
+                chosen_name = potential_name
+                break
+        else:
+            raise ValueError(f"Couldnt assign a unique name for {name} - already too many options")
+
+    return jsonify(name=chosen_name), 200
