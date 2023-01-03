@@ -161,6 +161,36 @@ class DVLAClient:
         finally:
             self.lock.release()
 
+    def rotate_api_key(self):
+        # TODO: We should think about whether it's possible for us to "lose" this api key, eg DVLA updates it
+        #       but we fail to store the updated key in SSM.
+        if not self.lock.acquire(blocking=False):
+            raise WorkerShutdown(
+                "Could not acquire lock to rotate DVLA API Key. "
+                "Either deadlocked or another process is in this codeblock. "
+                "If deadlocked, lock _should_ auto-release after 60 seconds. "
+                "Killing worker."
+            )
+
+        try:
+            authenticate_api_base_url = current_app.config["DVLA_AUTHENTICATE_API_BASE_URL"]
+            response = self._post(
+                f"{authenticate_api_base_url}/v1/new-api-key",
+                authenticated=True,
+            )
+
+            new_api_key = response["newApiKey"]
+            self._set_parameter_in_aws(current_app.config["SSM_INTEGRATION_DVLA_API_KEY"], new_api_key)
+
+            # We specifically do *not* store the new API key on the client here, as changing the API key is not a
+            # perfectly consistent operation. It takes a few seconds for various DVLA APIs to recognise the update.
+            # So it's possible for the current API key/JWT to continue working for a few seconds.
+
+            return new_api_key
+
+        finally:
+            self.lock.release()
+
     def get_print_job(self, job_id):
         """
         This method stub is for us to be able to check that once jwt token expires and we can automatically

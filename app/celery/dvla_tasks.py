@@ -49,3 +49,10 @@ def rotate_dvla_api_password():
     print("rotate_dvla_api_password")
     client = get_client()
     client.rotate_password()
+
+
+@notify_celery.task(name="rotate-dvla-api-key", queue=QueueNames.LETTERS)
+def rotate_dvla_api_key():
+    print("rotate_dvla_api_key")
+    client = get_client()
+    client.rotate_api_key()
