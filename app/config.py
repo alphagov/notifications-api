@@ -196,6 +196,7 @@ class Config(object):
             "app.celery.scheduled_tasks",
             "app.celery.reporting_tasks",
             "app.celery.nightly_tasks",
+            "app.celery.dvla_tasks",
         ],
         # this is overriden by the -Q command, but locally, we should read from all queues
         "task_queues": [Queue(queue, Exchange("default"), routing_key=queue) for queue in QueueNames.all_queues()],
@@ -401,6 +402,13 @@ class Config(object):
 
     # as defined in api db migration 0331_add_broadcast_org.py
     BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
+
+    # TODO: Have put these here while prototyping. Consider better placement.
+    DVLA_AUTHENTICATE_API_BASE_URL = os.environ.get("DVLA_AUTHENTICATE_API_BASE_URL")
+    DVLA_PRINT_API_BASE_URL = os.environ.get("DVLA_PRINT_API_BASE_URL")
+    SSM_INTEGRATION_DVLA_USERNAME = "/notify/integrations/dvla/username"
+    SSM_INTEGRATION_DVLA_PASSWORD = "/notify/integrations/dvla/password"
+    SSM_INTEGRATION_DVLA_API_KEY = "/notify/integrations/dvla/api_key"
 
 
 ######################
