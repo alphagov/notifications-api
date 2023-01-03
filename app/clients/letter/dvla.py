@@ -81,7 +81,51 @@ class DVLAClient:
             current_app.logger.warning("{step} {data}", extra=dict(step=step, data=_response.text))
             return _response
 
+        reauth_error_codes = {401, 403}
         response = _do_request("authenticated request attempt 1:")
+
+        # If we get a 401, re-authenticate in-case the JWT has expired and try one more time.
+        # We shouldn't get a 403 from an expired JWT, but for proof-of-concept we accept 403 and it will still drop
+        # us into the full reauth flow.
+        if response.status_code in reauth_error_codes:
+            current_app.logger.warning(
+                f"{response.status_code} from DVLA API - maybe the JWT expired. Getting a new one."
+            )
+
+            try:
+                # If JWT expired, this will fail
+                # If password has changed, this will fail
+                # If API key has changed, this will succeed
+                current_app.logger.warning("authenticate 2")
+                self.authenticate()
+
+                # If API key has changed, this will fail
+                response = _do_request("authenticated request attempt 2:")
+                response.raise_for_status()
+
+            except requests.exceptions.HTTPError as e1:
+                if e1.response.status_code not in reauth_error_codes:
+                    raise e1
+
+                current_app.logger.warning(
+                    f"{response.status_code} from DVLA API - unable to refresh JWT. "
+                    f"Maybe the password or API key has changed. "
+                    f"Fetching them from AWS SSM again."
+                )
+                self.load_credentials()
+
+                try:
+                    current_app.logger.warning("authenticate 3")
+                    self.authenticate()
+
+                    response = _do_request("authenticated request attempt 3:")
+                    response.raise_for_status()
+
+                except requests.exceptions.HTTPError as e2:
+                    if e2.response.status_code not in reauth_error_codes:
+                        raise e2
+
+                    raise WorkerShutdown("Could not get functioning credentials for DVLA API. Terminating.") from e2
 
         return response
 
