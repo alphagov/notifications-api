@@ -24,7 +24,7 @@ from app.dao.provider_details_dao import get_provider_details_by_identifier
 from app.delivery import send_to_providers
 from app.delivery.send_to_providers import get_html_email_options, get_logo_url
 from app.exceptions import NotificationTechnicalFailureException
-from app.models import EmailBranding, Notification
+from app.models import EmailBranding, Notification, NotificationEventLog
 from app.serialised_models import SerialisedService
 from tests.app.db import (
     create_email_branding,
@@ -530,6 +530,11 @@ def test_update_notification_to_sending_does_not_update_status_from_a_final_stat
         notification, notification_provider_clients.get_client_by_name_and_type("mmg", "sms")
     )
     assert notification.status == expected_status
+
+    events = NotificationEventLog.query.order_by(NotificationEventLog.id).all()
+    assert len(events) == 2
+    assert events[1].status == expected_status
+    assert events[1].notes == "Provider: mmg"
 
 
 def __update_notification(notification_to_update, expected_status):

@@ -3,6 +3,7 @@ from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
+from sqlalchemy import desc
 
 from app import statsd_client
 from app.celery.process_sms_client_response_tasks import (
@@ -10,6 +11,7 @@ from app.celery.process_sms_client_response_tasks import (
 )
 from app.clients import ClientException
 from app.constants import NOTIFICATION_TECHNICAL_FAILURE
+from app.models import NotificationEventLog
 
 
 def test_process_sms_client_response_raises_error_if_reference_is_not_a_valid_uuid(client):
@@ -57,6 +59,13 @@ def test_process_sms_client_response_updates_notification_status(
     message = f"{sms_provider} callback returned status of {expected_notification_status}({status}): {reason}({detailed_status_code}) for reference: {sample_notification.id}"  # noqa
     assert message in caplog.messages
     assert sample_notification.status == expected_notification_status
+
+    most_recent_event = NotificationEventLog.query.order_by(desc(NotificationEventLog.id)).first()
+    assert most_recent_event.notification_id == sample_notification.id
+    if detailed_status_code:
+        assert most_recent_event.notes == f"detailed status code: {detailed_status_code}"
+    else:
+        assert most_recent_event.notes is None
 
 
 @pytest.mark.parametrize(

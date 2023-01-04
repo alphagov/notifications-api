@@ -48,6 +48,7 @@ from app.models import (
     LetterCostThreshold,
     Notification,
     NotificationAllTimeView,
+    NotificationEventLog,
     NotificationHistory,
     NotificationLetterDespatch,
     ProviderDetails,
@@ -117,6 +118,13 @@ def dao_create_notification(notification):
         notification.status = NOTIFICATION_CREATED
 
     db.session.add(notification)
+    dao_record_notification_event(notification)
+
+
+@autocommit
+def dao_record_notification_event(notification, notes=None):
+    event = NotificationEventLog(notification_id=notification.id, status=notification.status, notes=notes)
+    db.session.add(event)
 
 
 def _decide_permanent_temporary_failure(status, notification, detailed_status_code=None):
@@ -150,6 +158,9 @@ def _update_notification_status(notification, status, detailed_status_code=None)
     )
     notification.status = status
     dao_update_notification(notification)
+    dao_record_notification_event(
+        notification, notes=f"detailed status code: {detailed_status_code}" if detailed_status_code else None
+    )
     return notification
 
 
@@ -219,6 +230,16 @@ def get_notification_by_id(notification_id, service_id=None, _raise=False):
     query = Notification.query.filter(*filters)
 
     return query.one() if _raise else query.first()
+
+
+def get_notification_events_by_notification_id(notification_id):
+    events = (
+        db.session.query(NotificationEventLog)
+        .filter(NotificationEventLog.notification_id == notification_id)
+        .order_by(NotificationEventLog.happened_at)
+        .all()
+    )
+    return events
 
 
 def get_notifications_for_service(
@@ -366,7 +387,6 @@ def insert_notification_history_delete_notifications(
     result = db.session.execute("select count(*) from NOTIFICATION_ARCHIVE").fetchone()[0]
 
     db.session.execute(insert_query)
-
     db.session.execute(delete_query)
 
     return result
@@ -452,6 +472,14 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
     Notification.query.filter(
         Notification.id.in_([n.id for n in notifications]),
     ).update({"status": new_status, "updated_at": updated_at}, synchronize_session=False)
+
+    # Record events for each notification updated
+    db.session.bulk_save_objects(
+        [
+            NotificationEventLog(notification_id=notification.id, status=new_status, notes="timed out by us")
+            for notification in notifications
+        ]
+    )
 
     db.session.commit()
     return notifications
@@ -543,8 +571,24 @@ def get_ratio_of_messages_delivered_slowly_per_provider(created_within_minutes, 
 
 @autocommit
 def dao_update_notifications_by_reference(references, update_dict):
+    notifications = (
+        Notification.query.with_entities(Notification.id, Notification.status)
+        .filter(Notification.reference.in_(references))
+        .all()
+    )
+
     updated_count = Notification.query.filter(Notification.reference.in_(references)).update(
         update_dict, synchronize_session=False
+    )
+
+    # Record events for each notification updated
+    db.session.bulk_save_objects(
+        [
+            NotificationEventLog(
+                notification_id=notification.id, status=update_dict.get("status", notification.status), notes=None
+            )
+            for notification in notifications
+        ]
     )
 
     updated_history_count = 0
@@ -798,6 +842,15 @@ def _duplicate_update_warning(notification, status):
             new_status=status,
             current_status=notification.status,
             time_diff=time_diff,
+        ),
+    )
+    dao_record_notification_event(
+        notification,
+        notes=(
+            f"Duplicate callback\n"
+            f"current_status: {notification.status}\n"
+            f"new_status: {status}\n"
+            f"time_diff: {time_diff}"
         ),
     )
 

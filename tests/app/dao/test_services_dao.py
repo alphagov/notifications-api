@@ -58,6 +58,7 @@ from app.models import (
     InvitedUser,
     Job,
     Notification,
+    NotificationEventLog,
     NotificationHistory,
     Organisation,
     Permission,
@@ -736,6 +737,7 @@ def test_delete_service_and_associated_objects(notify_db_session):
     assert TemplateHistory.query.count() == 0
     assert Job.query.count() == 0
     assert Notification.query.count() == 0
+    assert NotificationEventLog.query.count() == 0
     assert Permission.query.count() == 0
     assert User.query.count() == 0
     assert InvitedUser.query.count() == 0
