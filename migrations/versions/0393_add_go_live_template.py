@@ -14,7 +14,7 @@ revision = "0393_add_go_live_template"
 down_revision = "0392_go_live_cols_non_nullable"
 
 
-template_id = current_app.config["ORGANISATION_HAS_NEW_GO_LIVE_REQUEST_TEMPLATE_ID"]
+template_id = "5c7cfc0f-c3f4-4bd6-9a84-5a144aad5425"
 template_content = textwrap.dedent(
     """\
     Hi ((name))
