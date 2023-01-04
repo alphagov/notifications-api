@@ -1,7 +1,7 @@
 """
 
 Revision ID: 0399_nullable_message_limit
-Revises: 0395_migrate_rate_limits
+Revises: 0398_active_email_branding
 Create Date: 2023-01-18 13:13:06.439154
 
 """

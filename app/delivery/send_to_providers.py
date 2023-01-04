@@ -27,7 +27,10 @@ from app.constants import (
     SMS_TYPE,
 )
 from app.dao.email_branding_dao import dao_get_email_branding_by_id
-from app.dao.notifications_dao import dao_update_notification
+from app.dao.notifications_dao import (
+    dao_record_notification_event,
+    dao_update_notification,
+)
 from app.dao.provider_details_dao import (
     dao_reduce_sms_provider_priority,
     get_provider_details_by_notification_type,
@@ -155,9 +158,15 @@ def send_email_to_provider(notification):
 def update_notification_to_sending(notification, provider):
     notification.sent_at = datetime.utcnow()
     notification.sent_by = provider.name
+
     if notification.status not in NOTIFICATION_STATUS_TYPES_COMPLETED:
         notification.status = NOTIFICATION_SENT if notification.international else NOTIFICATION_SENDING
+
     dao_update_notification(notification)
+    dao_record_notification_event(
+        notification,
+        notes=f"Provider: {provider.name}",
+    )
 
 
 provider_cache = TTLCache(maxsize=8, ttl=10)
@@ -230,6 +239,8 @@ def get_html_email_options(service):
 def technical_failure(notification):
     notification.status = NOTIFICATION_TECHNICAL_FAILURE
     dao_update_notification(notification)
+    dao_record_notification_event(notification)
+
     raise NotificationTechnicalFailureException(
         "Send {} for notification id {} to provider is not allowed: service {} is inactive".format(
             notification.notification_type, notification.id, notification.service_id

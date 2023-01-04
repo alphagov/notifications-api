@@ -24,6 +24,7 @@ from app.models import (
     FactNotificationStatus,
     Job,
     Notification,
+    NotificationEventLog,
     ServiceDataRetention,
     Template,
 )
@@ -201,9 +202,21 @@ def dao_get_jobs_older_than_data_retention(notification_types):
 
 @autocommit
 def dao_cancel_letter_job(job):
+    notifications = Notification.query.with_entities(Notification.id).filter(Notification.job_id == job.id).all()
     number_of_notifications_cancelled = Notification.query.filter(Notification.job_id == job.id).update(
         {"status": NOTIFICATION_CANCELLED, "updated_at": datetime.utcnow(), "billable_units": 0}
     )
+
+    # Record events for each notification updated
+    db.session.bulk_save_objects(
+        [
+            NotificationEventLog(
+                notification_id=notification.id, status=NOTIFICATION_CANCELLED, notes=f"job {job.id} cancelled"
+            )
+            for notification in notifications
+        ]
+    )
+
     job.job_status = JOB_STATUS_CANCELLED
     dao_update_job(job)
     return number_of_notifications_cancelled

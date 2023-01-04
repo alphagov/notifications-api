@@ -1381,6 +1381,13 @@ class Notification(db.Model):
 
     postage = db.Column(db.String, nullable=True)
 
+    events = db.relationship(
+        "NotificationEventLog",
+        back_populates="notification",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
     __table_args__ = (
         db.ForeignKeyConstraint(
             ["template_id", "template_version"],
@@ -1684,6 +1691,41 @@ class NotificationLetterDespatch(db.Model):
         primaryjoin="NotificationLetterDespatch.notification_id == foreign(NotificationAllTimeView.id)",
         uselist=False,
     )
+
+
+class NotificationEventLog(db.Model):
+    __tablename__ = "notification_event_log"
+
+    id = db.Column(db.BigInteger, primary_key=True)
+    notification_id = db.Column(
+        UUID(as_uuid=True), db.ForeignKey("notifications.id", ondelete="CASCADE"), index=True, unique=False
+    )
+    notification = db.relationship("Notification", back_populates="events")
+
+    # This field records when the notification entered the related status.
+    # Note that because we calculate the timestamp in python rather than the DB, this isn't guaranteed to match
+    # the timestamp on the notifications table _exactly_.
+    # We may want to consider moving to using `server_onupdate=sqlalchemy.func.now()` for all timestamps if we value
+    # this consistency.
+    happened_at = db.Column(
+        db.DateTime, index=False, unique=False, nullable=False, default=lambda: datetime.datetime.utcnow()
+    )
+    status = db.Column(
+        "notification_status",
+        db.Text,
+        db.ForeignKey("notification_status_types.name"),
+        nullable=True,
+    )
+    notes = db.Column(db.Text, nullable=True)
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "notification_id": self.notification_id,
+            "happened_at": self.happened_at.strftime(DATETIME_FORMAT),
+            "status": self.status,
+            "notes": self.notes,
+        }
 
 
 class InviteStatusType(db.Model):

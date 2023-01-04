@@ -144,6 +144,7 @@ def register_blueprint(application):
         letter_branding_blueprint,
     )
     from app.letters.rest import letter_job
+    from app.notifications.admin_rest import admin_notifications_blueprint
     from app.notifications.notifications_letter_callback import (
         letter_callback_blueprint,
     )
@@ -279,6 +280,9 @@ def register_blueprint(application):
 
     letter_attachment_blueprint.before_request(requires_admin_auth)
     application.register_blueprint(letter_attachment_blueprint)
+
+    admin_notifications_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(admin_notifications_blueprint)
 
     if _should_register_functional_testing_blueprint(application.config["NOTIFY_ENVIRONMENT"]):
         test_blueprint.before_request(requires_functional_test_auth)

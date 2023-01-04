@@ -21,7 +21,7 @@ from app.dao.jobs_dao import (
     find_jobs_with_missing_rows,
     find_missing_row_for_job,
 )
-from app.models import Job
+from app.models import Job, NotificationEventLog
 from tests.app.db import (
     create_job,
     create_notification,
@@ -360,10 +360,15 @@ def assert_job_stat(job, result, sent, delivered, failed):
 def test_dao_cancel_letter_job_cancels_job_and_returns_number_of_cancelled_notifications(sample_letter_template):
     job = create_job(template=sample_letter_template, notification_count=1, job_status="finished")
     notification = create_notification(template=job.template, job=job, status="created")
+
+    before_event_count = NotificationEventLog.query.count()
     result = dao_cancel_letter_job(job)
+    after_event_count = NotificationEventLog.query.count()
     assert result == 1
     assert notification.status == "cancelled"
     assert job.job_status == "cancelled"
+    assert after_event_count == (before_event_count + 1)
+    assert NotificationEventLog.query.order_by(NotificationEventLog.id).all()[-1].notes == f"job {job.id} cancelled"
 
 
 @freeze_time("2019-06-13 13:00")
