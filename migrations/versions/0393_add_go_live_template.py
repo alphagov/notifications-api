@@ -1,6 +1,6 @@
 """
 
-Revision ID: 0393_add_service_go_live_template
+Revision ID: 0393_add_go_live_template
 Revises: 0392_go_live_cols_non_nullable
 Create Date: 2022-12-28 12:12:12.929661
 
