@@ -97,5 +97,11 @@ def upgrade():
 
 
 def downgrade():
-    for table in ("notifications", "notification_history", "template_redacted", "templates", "templates_history"):
-        op.execute(f"DELETE FROM {table} WHERE template_id = '{template_id}'")
+    for table, column_name in (
+        ("notifications", "template_id"),
+        ("notification_history", "template_id"),
+        ("template_redacted", "template_id"),
+        ("templates", "id"),
+        ("templates_history", "id"),
+    ):
+        op.execute(f"DELETE FROM {table} WHERE {column_name} = '{template_id}'")
