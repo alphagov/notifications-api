@@ -3,7 +3,7 @@ from flask import current_app
 from app.config import QueueNames
 from app.dao.organisation_dao import dao_get_users_for_organisation
 from app.dao.services_dao import dao_fetch_service_by_id
-from app.models import EMAIL_TYPE, KEY_TYPE_NORMAL
+from app.models import KEY_TYPE_NORMAL
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -23,7 +23,7 @@ def send_notification_to_organisation_users(
         notification = persist_notification(
             template_id=template.id,
             template_version=template.version,
-            recipient=user.email_address if template.template_type == EMAIL_TYPE else user.mobile_number,
+            recipient=user.email_address,
             service=notify_service,
             personalisation=personalisation,
             notification_type=template.template_type,
