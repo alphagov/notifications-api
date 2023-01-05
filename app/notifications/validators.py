@@ -73,12 +73,13 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         limit_value = rate_limits[notification_type_]
 
         cache_key = daily_limit_cache_key(service.id, notification_type=notification_type_)
-        service_stats = redis_store.get(cache_key)
-        if service_stats is None:
+        if (service_stats := redis_store.get(cache_key)) is None:
             # first message of the day, set the cache to 0 and the expiry to 24 hours
             redis_store.set(cache_key, 0, ex=86400)
 
-        elif int(service_stats) + num_notifications > limit_value:
+            service_stats = 0
+
+        if int(service_stats) + num_notifications > limit_value:
             current_app.logger.info(
                 "service {} has been rate limited for {} daily use sent {} limit {}".format(
                     service.id, int(service_stats), limit_name, limit_value

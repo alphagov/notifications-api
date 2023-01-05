@@ -116,6 +116,26 @@ def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(
 
 @pytest.mark.parametrize("key_type", ["team", "normal"])
 @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
+def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missing_cache_value(
+    key_type, mocker, notify_db_session, notification_type
+):
+    service = create_service(message_limit=4, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
+    mocker.patch("app.redis_store.get", return_value=None)
+
+    with pytest.raises(TooManyRequestsError) as e:
+        check_service_over_daily_message_limit(
+            service, key_type, notification_type=notification_type, num_notifications=10
+        )
+    tmr_error: TooManyRequestsError = e.value
+    assert tmr_error.status_code == 429
+    assert tmr_error.limit_name == "total"
+    assert tmr_error.sending_limit == 4
+    assert tmr_error.message == "Exceeded send limits (total: 4) for today"
+    assert tmr_error.fields == []
+
+
+@pytest.mark.parametrize("key_type", ["team", "normal"])
+@pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
 def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, notify_db_session, notification_type):
     service = create_service(message_limit=4, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
     mocker.patch("app.redis_store.get", return_value="5")
