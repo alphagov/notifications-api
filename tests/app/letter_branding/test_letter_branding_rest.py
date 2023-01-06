@@ -41,20 +41,76 @@ def test_get_letter_branding_by_id_returns_404_if_does_not_exist(client, notify_
     assert response.status_code == 404
 
 
-def test_create_letter_branding(client, notify_db_session):
-    form = {"name": "super brand", "filename": "super-brand"}
+def test_create_letter_branding_when_user_is_provided(admin_request, sample_user):
+    form = {"name": "super brand", "filename": "super-brand", "created_by_id": str(sample_user.id)}
 
-    response = client.post(
-        "/letter-branding",
-        data=json.dumps(form),
-        headers=[("Content-Type", "application/json"), create_admin_authorization_header()],
+    response = admin_request.post(
+        "letter_branding.create_letter_brand",
+        _data=form,
+        _expected_status=201,
     )
 
-    assert response.status_code == 201
-    json_response = json.loads(response.get_data(as_text=True))
-    letter_brand = LetterBranding.query.get(json_response["id"])
+    letter_brand = LetterBranding.query.get(response["id"])
     assert letter_brand.name == form["name"]
     assert letter_brand.filename == form["filename"]
+    assert letter_brand.created_at
+    assert letter_brand.updated_at is None
+    assert letter_brand.created_by_id == sample_user.id
+
+
+def test_create_letter_branding_when_user_is_not_provided(admin_request, notify_db_session):
+    form = {"name": "super brand", "filename": "super-brand"}
+
+    response = admin_request.post(
+        "letter_branding.create_letter_brand",
+        _data=form,
+        _expected_status=201,
+    )
+
+    letter_brand = LetterBranding.query.get(response["id"])
+    assert letter_brand.name == form["name"]
+    assert letter_brand.filename == form["filename"]
+    assert letter_brand.created_at
+    assert letter_brand.updated_at is None
+    assert letter_brand.created_by_id is None
+
+
+def test_update_letter_branding_when_updated_by_user_is_provided(admin_request, sample_user):
+    existing_brand = create_letter_branding()
+
+    form = {"name": "new name", "filename": "new filename", "updated_by_id": str(sample_user.id)}
+
+    response = admin_request.post(
+        "letter_branding.update_letter_branding",
+        letter_branding_id=existing_brand.id,
+        _data=form,
+        _expected_status=201,
+    )
+
+    letter_brand = LetterBranding.query.get(response["id"])
+    assert letter_brand.name == form["name"]
+    assert letter_brand.filename == form["filename"]
+    assert letter_brand.updated_by_id == sample_user.id
+    assert letter_brand.updated_at
+
+
+def test_update_letter_branding_when_updated_by_user_is_not_provided(admin_request, notify_db_session):
+    existing_brand = create_letter_branding()
+
+    form = {"name": "new name", "filename": "new filename"}
+
+    response = admin_request.post(
+        "letter_branding.update_letter_branding",
+        letter_branding_id=existing_brand.id,
+        _data=form,
+        _expected_status=201,
+    )
+
+    letter_brand = LetterBranding.query.get(response["id"])
+    assert letter_brand.name == form["name"]
+    assert letter_brand.filename == form["filename"]
+    assert letter_brand.updated_by_id is None
+    assert letter_brand.updated_at
 
 
 def test_update_letter_branding_returns_400_when_integrity_error_is_thrown(client, notify_db_session):
