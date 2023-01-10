@@ -1,5 +1,15 @@
 #!/usr/bin/env python
 
+import os
+
+if (environment := os.getenv("NOTIFY_ENVIRONMENT")) in {"development", "preview"} and os.getenv(
+    "NEW_RELIC_ENABLED"
+) == "1":
+    import newrelic.agent
+
+    # Expects NEW_RELIC_LICENSE_KEY set in environment as well.
+    newrelic.agent.initialize("newrelic.ini", environment=environment, ignore_errors=False)
+
 # import prometheus before any other code. If gds_metrics is imported first it will write a prometheus file to disk
 # that will never be read from (since we don't have prometheus celery stats). If prometheus is imported first,
 # prometheus will simply store the metrics in memory
