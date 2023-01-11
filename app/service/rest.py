@@ -642,7 +642,6 @@ def get_detailed_services(start_date, end_date, only_active=False, include_from_
                 "id": str(rows[0].service_id),
                 "name": rows[0].name,
                 "notification_type": rows[0].notification_type,
-                "research_mode": rows[0].research_mode,
                 "restricted": rows[0].restricted,
                 "active": rows[0].active,
                 "created_at": rows[0].created_at,
@@ -768,7 +767,7 @@ def verify_reply_to_email_address(service_id):
         reply_to_text=notify_service.get_default_reply_to_email_address(),
     )
 
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return jsonify(data={"id": saved_notification.id}), 201
 

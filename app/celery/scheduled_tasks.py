@@ -197,7 +197,7 @@ def replay_created_notifications():
             )
 
         for n in notifications_to_resend:
-            send_notification_to_queue(notification=n, research_mode=n.service.research_mode)
+            send_notification_to_queue(notification=n)
 
     # if the letter has not be send after an hour, then create a zendesk ticket
     letters = letters_missing_from_sending_bucket(resend_created_notifications_older_than)

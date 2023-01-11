@@ -225,7 +225,6 @@ def test_get_service_by_id(admin_request, sample_service):
     json_resp = admin_request.get("service.get_service_by_id", service_id=sample_service.id)
     assert json_resp["data"]["name"] == sample_service.name
     assert json_resp["data"]["id"] == str(sample_service.id)
-    assert not json_resp["data"]["research_mode"]
     assert json_resp["data"]["email_branding"] is None
     assert json_resp["data"]["prefix_sms"] is True
     assert json_resp["data"]["allowed_broadcast_provider"] is None
@@ -261,7 +260,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "prefix_sms",
         "purchase_order_number",
         "rate_limit",
-        "research_mode",
         "restricted",
         "service_callback_api",
         "sms_message_limit",
@@ -397,7 +395,6 @@ def test_create_service(
     assert json_resp["data"]["id"]
     assert json_resp["data"]["name"] == "created service"
     assert json_resp["data"]["email_from"] == "created.service"
-    assert not json_resp["data"]["research_mode"]
     assert json_resp["data"]["letter_branding"] is None
     assert json_resp["data"]["count_as_live"] is expected_count_as_live
 
@@ -409,7 +406,6 @@ def test_create_service(
     )
 
     assert json_resp["data"]["name"] == "created service"
-    assert not json_resp["data"]["research_mode"]
 
     service_sms_senders = ServiceSmsSender.query.filter_by(service_id=service_db.id).all()
     assert len(service_sms_senders) == 1
@@ -811,9 +807,8 @@ def test_update_service_flags(client, sample_service):
     json_resp = resp.json
     assert resp.status_code == 200
     assert json_resp["data"]["name"] == sample_service.name
-    assert json_resp["data"]["research_mode"] is False
 
-    data = {"research_mode": True, "permissions": [LETTER_TYPE, INTERNATIONAL_SMS_TYPE]}
+    data = {"permissions": [LETTER_TYPE, INTERNATIONAL_SMS_TYPE]}
 
     auth_header = create_admin_authorization_header()
 
@@ -824,7 +819,6 @@ def test_update_service_flags(client, sample_service):
     )
     result = resp.json
     assert resp.status_code == 200
-    assert result["data"]["research_mode"] is True
     assert set(result["data"]["permissions"]) == set([LETTER_TYPE, INTERNATIONAL_SMS_TYPE])
 
 
@@ -1060,30 +1054,6 @@ def test_update_permissions_with_duplicate_permissions_will_raise_error(client, 
     assert resp.status_code == 400
     assert result["result"] == "error"
     assert "Duplicate Service Permission: ['{}']".format(LETTER_TYPE) in result["message"]["permissions"]
-
-
-def test_update_service_research_mode_throws_validation_error(notify_api, sample_service):
-    with notify_api.test_request_context():
-        with notify_api.test_client() as client:
-            auth_header = create_admin_authorization_header()
-            resp = client.get("/service/{}".format(sample_service.id), headers=[auth_header])
-            json_resp = resp.json
-            assert resp.status_code == 200
-            assert json_resp["data"]["name"] == sample_service.name
-            assert not json_resp["data"]["research_mode"]
-
-            data = {"research_mode": "dedede"}
-
-            auth_header = create_admin_authorization_header()
-
-            resp = client.post(
-                "/service/{}".format(sample_service.id),
-                data=json.dumps(data),
-                headers=[("Content-Type", "application/json"), auth_header],
-            )
-            result = resp.json
-            assert result["message"]["research_mode"][0] == "Not a valid boolean."
-            assert resp.status_code == 400
 
 
 def test_should_not_update_service_with_duplicate_name(notify_api, notify_db_session, sample_user, sample_service):

@@ -54,7 +54,7 @@ def test_send_one_off_notification_calls_celery_correctly(persist_mock, celery_m
 
     assert resp == {"id": str(persist_mock.return_value.id)}
 
-    celery_mock.assert_called_once_with(notification=persist_mock.return_value, research_mode=False, queue=None)
+    celery_mock.assert_called_once_with(notification=persist_mock.return_value, queue=None)
 
 
 def test_send_one_off_notification_calls_persist_correctly_for_sms(persist_mock, celery_mock, notify_db_session):
@@ -194,17 +194,6 @@ def test_send_one_off_notification_calls_persist_correctly_for_letter(
     )
 
 
-def test_send_one_off_notification_honors_research_mode(notify_db_session, persist_mock, celery_mock):
-    service = create_service(research_mode=True)
-    template = create_template(service=service)
-
-    post_data = {"template_id": str(template.id), "to": "07700 900 001", "created_by": str(service.created_by_id)}
-
-    send_one_off_notification(service.id, post_data)
-
-    assert celery_mock.call_args[1]["research_mode"] is True
-
-
 def test_send_one_off_notification_honors_priority(notify_db_session, persist_mock, celery_mock):
     service = create_service()
     template = create_template(service=service)
@@ -318,7 +307,7 @@ def test_send_one_off_notification_should_add_email_reply_to_text_for_notificati
 
     notification_id = send_one_off_notification(service_id=sample_email_template.service.id, post_data=data)
     notification = Notification.query.get(notification_id["id"])
-    celery_mock.assert_called_once_with(notification=notification, research_mode=False, queue=None)
+    celery_mock.assert_called_once_with(notification=notification, queue=None)
     assert notification.reply_to_text == reply_to_email.email_address
 
 
@@ -340,31 +329,9 @@ def test_send_one_off_letter_notification_should_use_template_reply_to_text(samp
 
     notification_id = send_one_off_notification(service_id=sample_letter_template.service.id, post_data=data)
     notification = Notification.query.get(notification_id["id"])
-    celery_mock.assert_called_once_with(notification=notification, research_mode=False, queue=None)
+    celery_mock.assert_called_once_with(notification=notification, queue=None)
 
     assert notification.reply_to_text == "Edinburgh, ED1 1AA"
-
-
-def test_send_one_off_letter_should_not_make_pdf_in_research_mode(sample_letter_template):
-
-    sample_letter_template.service.research_mode = True
-
-    data = {
-        "to": "A. Name",
-        "template_id": str(sample_letter_template.id),
-        "personalisation": {
-            "name": "foo",
-            "address_line_1": "First Last",
-            "address_line_2": "1 Example Street",
-            "address_line_3": "SW1A 1AA",
-        },
-        "created_by": str(sample_letter_template.service.created_by_id),
-    }
-
-    notification = send_one_off_notification(service_id=sample_letter_template.service.id, post_data=data)
-    notification = Notification.query.get(notification["id"])
-
-    assert notification.status == "delivered"
 
 
 def test_send_one_off_sms_notification_should_use_sms_sender_reply_to_text(sample_service, celery_mock):
@@ -380,7 +347,7 @@ def test_send_one_off_sms_notification_should_use_sms_sender_reply_to_text(sampl
 
     notification_id = send_one_off_notification(service_id=sample_service.id, post_data=data)
     notification = Notification.query.get(notification_id["id"])
-    celery_mock.assert_called_once_with(notification=notification, research_mode=False, queue=None)
+    celery_mock.assert_called_once_with(notification=notification, queue=None)
 
     assert notification.reply_to_text == "447123123123"
 
@@ -398,7 +365,7 @@ def test_send_one_off_sms_notification_should_use_default_service_reply_to_text(
 
     notification_id = send_one_off_notification(service_id=sample_service.id, post_data=data)
     notification = Notification.query.get(notification_id["id"])
-    celery_mock.assert_called_once_with(notification=notification, research_mode=False, queue=None)
+    celery_mock.assert_called_once_with(notification=notification, queue=None)
 
     assert notification.reply_to_text == "447123123456"
 

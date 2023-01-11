@@ -1222,5 +1222,5 @@ def test_notify_org_users_of_request_to_go_live(
         )
 
     assert mock_send_notification_to_queue.call_args_list == [
-        call(notification, False, queue="notify-internal-tasks") for notification in notifications
+        call(notification, queue="notify-internal-tasks") for notification in notifications
     ]

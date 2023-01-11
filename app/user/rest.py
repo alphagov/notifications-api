@@ -139,7 +139,7 @@ def update_user_attribute(user_id):
             reply_to_text=reply_to,
         )
 
-        send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
     return jsonify(data=user_to_update.serialize()), 200
 
 
@@ -336,7 +336,7 @@ def create_2fa_code(template_id, user_to_send_to, secret_code, recipient, person
     # Assume that we never want to observe the Notify service's research mode
     # setting for this notification - we still need to be able to log into the
     # admin even if we're doing user research using this service:
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
 @user_blueprint.route("/<uuid:user_id>/change-email-verification", methods=["POST"])
@@ -364,7 +364,7 @@ def send_user_confirm_new_email(user_id):
         reply_to_text=service.get_default_reply_to_email_address(),
     )
 
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
     return jsonify({}), 204
 
 
@@ -396,7 +396,7 @@ def send_new_user_email_verification(user_id):
         reply_to_text=service.get_default_reply_to_email_address(),
     )
 
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -424,7 +424,7 @@ def send_already_registered_email(user_id):
         reply_to_text=service.get_default_reply_to_email_address(),
     )
 
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 
@@ -523,7 +523,7 @@ def send_user_reset_password():
         reply_to_text=service.get_default_reply_to_email_address(),
     )
 
-    send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return jsonify({}), 204
 

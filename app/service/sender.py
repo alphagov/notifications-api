@@ -34,7 +34,7 @@ def send_notification_to_service_users(service_id, template_id, personalisation=
             key_type=KEY_TYPE_NORMAL,
             reply_to_text=notify_service.get_default_reply_to_email_address(),
         )
-        send_notification_to_queue(notification, False, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(notification, queue=QueueNames.NOTIFY)
 
 
 def _add_user_fields(user, personalisation, fields):

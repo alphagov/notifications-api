@@ -31,4 +31,4 @@ def send_notification_to_organisation_users(
             key_type=KEY_TYPE_NORMAL,
             reply_to_text=reply_to_text,
         )
-        send_notification_to_queue(notification, False, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(notification, queue=QueueNames.NOTIFY)

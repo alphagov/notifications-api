@@ -67,7 +67,6 @@ from tests.app.db import (
     create_template,
     create_user,
 )
-from tests.conftest import set_config_values
 
 
 class AnyStringWith(str):
@@ -367,23 +366,20 @@ def test_should_process_all_sms_job(sample_job_with_placeholdered_template, mock
 
 
 @pytest.mark.parametrize(
-    "template_type, research_mode, expected_function, expected_queue",
+    "template_type, expected_function",
     [
-        (SMS_TYPE, False, "save_sms", "database-tasks"),
-        (SMS_TYPE, True, "save_sms", "research-mode-tasks"),
-        (EMAIL_TYPE, False, "save_email", "database-tasks"),
-        (EMAIL_TYPE, True, "save_email", "research-mode-tasks"),
-        (LETTER_TYPE, False, "save_letter", "database-tasks"),
-        (LETTER_TYPE, True, "save_letter", "research-mode-tasks"),
+        (SMS_TYPE, "save_sms"),
+        (EMAIL_TYPE, "save_email"),
+        (LETTER_TYPE, "save_letter"),
     ],
 )
-def test_process_row_sends_letter_task(template_type, research_mode, expected_function, expected_queue, mocker):
+def test_process_row_sends_letter_task(template_type, expected_function, mocker):
     mocker.patch("app.celery.tasks.create_uuid", return_value="noti_uuid")
     task_mock = mocker.patch("app.celery.tasks.{}.apply_async".format(expected_function))
     encrypt_mock = mocker.patch("app.celery.tasks.encryption.encrypt")
     template = Mock(id="template_id", template_type=template_type)
     job = Mock(id="job_id", template_version="temp_vers")
-    service = Mock(id="service_id", research_mode=research_mode)
+    service = Mock(id="service_id")
 
     process_row(
         Row(
@@ -419,7 +415,7 @@ def test_process_row_sends_letter_task(template_type, research_mode, expected_fu
             encrypt_mock.return_value,
         ),
         {},
-        queue=expected_queue,
+        queue="database-tasks",
     )
 
 
@@ -429,7 +425,7 @@ def test_process_row_when_sender_id_is_provided(mocker, fake_uuid):
     encrypt_mock = mocker.patch("app.celery.tasks.encryption.encrypt")
     template = Mock(id="template_id", template_type=SMS_TYPE)
     job = Mock(id="job_id", template_version="temp_vers")
-    service = Mock(id="service_id", research_mode=False)
+    service = Mock(id="service_id")
 
     process_row(
         Row(
@@ -465,7 +461,7 @@ def test_process_row_when_reference_is_provided(mocker, fake_uuid):
     encryption_mock = mocker.patch("app.celery.tasks.encryption.encrypt")
     template = Mock(id="template_id", template_type=SMS_TYPE)
     job = Mock(id="job_id", template_version="temp_vers")
-    service = Mock(id="service_id", research_mode=False)
+    service = Mock(id="service_id")
 
     process_row(
         Row(
@@ -532,31 +528,6 @@ def test_should_send_template_to_correct_sms_task_and_persist(
     assert persisted_notification.notification_type == "sms"
     assert persisted_notification.client_reference == client_reference
     mocked_deliver_sms.assert_called_once_with([str(persisted_notification.id)], queue="send-sms-tasks")
-
-
-def test_should_put_save_sms_task_in_research_mode_queue_if_research_mode_service(notify_db_session, mocker):
-    service = create_service(
-        research_mode=True,
-    )
-
-    template = create_template(service=service)
-
-    notification = _notification_json(template, to="+447234123123")
-
-    mocked_deliver_sms = mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
-
-    notification_id = uuid.uuid4()
-
-    save_sms(
-        template.service_id,
-        notification_id,
-        encryption.encrypt(notification),
-    )
-    persisted_notification = Notification.query.one()
-    provider_tasks.deliver_sms.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="research-mode-tasks"
-    )
-    assert mocked_deliver_sms.called
 
 
 def test_should_save_sms_if_restricted_service_and_valid_number(notify_db_session, mocker):
@@ -660,29 +631,6 @@ def test_should_not_save_email_if_restricted_service_and_invalid_email_address(n
     )
 
     assert Notification.query.count() == 0
-
-
-def test_should_put_save_email_task_in_research_mode_queue_if_research_mode_service(notify_db_session, mocker):
-    service = create_service(research_mode=True)
-
-    template = create_template(service=service, template_type="email")
-
-    notification = _notification_json(template, to="test@test.com")
-
-    mocker.patch("app.celery.provider_tasks.deliver_email.apply_async")
-
-    notification_id = uuid.uuid4()
-
-    save_email(
-        template.service_id,
-        notification_id,
-        encryption.encrypt(notification),
-    )
-
-    persisted_notification = Notification.query.one()
-    provider_tasks.deliver_email.apply_async.assert_called_once_with(
-        [str(persisted_notification.id)], queue="research-mode-tasks"
-    )
 
 
 def test_should_save_sms_template_to_and_persist_with_job_id(sample_job, mocker):
@@ -1246,81 +1194,7 @@ def test_save_sms_uses_non_default_sms_sender_reply_to_text_if_provided(mocker, 
     assert persisted_notification.reply_to_text == "new-sender"
 
 
-@pytest.mark.parametrize("env", ["staging", "production"])
-def test_save_letter_sets_delivered_letters_as_pdf_permission_in_research_mode_in_staging_live(
-    notify_api, mocker, notify_db_session, sample_letter_job, env
-):
-    sample_letter_job.service.research_mode = True
-    sample_reference = "this-is-random-in-real-life"
-    mock_create_fake_letter_response_file = mocker.patch(
-        "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
-    )
-    mocker.patch("app.celery.tasks.create_random_identifier", return_value=sample_reference)
-
-    personalisation = {
-        "addressline1": "Foo",
-        "addressline2": "Bar",
-        "postcode": "Flob",
-    }
-    notification_json = _notification_json(
-        template=sample_letter_job.template,
-        to="Foo",
-        personalisation=personalisation,
-        job_id=sample_letter_job.id,
-        row_number=1,
-    )
-    notification_id = uuid.uuid4()
-
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
-        save_letter(
-            sample_letter_job.service_id,
-            notification_id,
-            encryption.encrypt(notification_json),
-        )
-
-    notification = Notification.query.filter(Notification.id == notification_id).one()
-    assert notification.status == "delivered"
-    assert not mock_create_fake_letter_response_file.called
-
-
-@pytest.mark.parametrize("env", ["development", "preview"])
-def test_save_letter_calls_create_fake_response_for_letters_in_research_mode_on_development_preview(
-    notify_api, mocker, notify_db_session, sample_letter_job, env
-):
-    sample_letter_job.service.research_mode = True
-    sample_reference = "this-is-random-in-real-life"
-    mock_create_fake_letter_response_file = mocker.patch(
-        "app.celery.research_mode_tasks.create_fake_letter_response_file.apply_async"
-    )
-    mocker.patch("app.celery.tasks.create_random_identifier", return_value=sample_reference)
-
-    personalisation = {
-        "addressline1": "Foo",
-        "addressline2": "Bar",
-        "postcode": "Flob",
-    }
-    notification_json = _notification_json(
-        template=sample_letter_job.template,
-        to="Foo",
-        personalisation=personalisation,
-        job_id=sample_letter_job.id,
-        row_number=1,
-    )
-    notification_id = uuid.uuid4()
-
-    with set_config_values(notify_api, {"NOTIFY_ENVIRONMENT": env}):
-        save_letter(
-            sample_letter_job.service_id,
-            notification_id,
-            encryption.encrypt(notification_json),
-        )
-
-    mock_create_fake_letter_response_file.assert_called_once_with((sample_reference,), queue=QueueNames.RESEARCH_MODE)
-
-
-def test_save_letter_calls_get_pdf_for_templated_letter_task_not_in_research(
-    mocker, notify_db_session, sample_letter_job
-):
+def test_save_letter_calls_get_pdf_for_templated_letter_task(mocker, notify_db_session, sample_letter_job):
     mock_create_letters_pdf = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
 
     personalisation = {

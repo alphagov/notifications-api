@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app import create_random_identifier, create_uuid, encryption, notify_celery
 from app.aws import s3
-from app.celery import letters_pdf_tasks, provider_tasks, research_mode_tasks
+from app.celery import letters_pdf_tasks, provider_tasks
 from app.config import QueueNames
 from app.dao.daily_sorted_letter_dao import (
     dao_create_or_update_daily_sorted_letter,
@@ -24,7 +24,6 @@ from app.dao.notifications_dao import (
     dao_get_notification_or_history_by_reference,
     dao_update_notifications_by_reference,
     get_notification_by_id,
-    update_notification_status_by_reference,
 )
 from app.dao.provider_details_dao import (
     get_provider_details_by_notification_type,
@@ -151,7 +150,7 @@ def process_row(row, template, job, service, sender_id=None):
             encrypted,
         ),
         task_kwargs,
-        queue=QueueNames.DATABASE if not service.research_mode else QueueNames.RESEARCH_MODE,
+        queue=QueueNames.DATABASE,
     )
     return notification_id
 
@@ -217,7 +216,7 @@ def save_sms(self, service_id, notification_id, encrypted_notification, sender_i
 
         provider_tasks.deliver_sms.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_SMS if not service.research_mode else QueueNames.RESEARCH_MODE,
+            queue=QueueNames.SEND_SMS,
         )
 
         current_app.logger.debug(
@@ -270,7 +269,7 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
 
         provider_tasks.deliver_email.apply_async(
             [str(saved_notification.id)],
-            queue=QueueNames.SEND_EMAIL if not service.research_mode else QueueNames.RESEARCH_MODE,
+            queue=QueueNames.SEND_EMAIL,
         )
 
         current_app.logger.debug("Email {} created at {}".format(saved_notification.id, saved_notification.created_at))
@@ -292,7 +291,6 @@ def save_api_sms(self, encrypted_notification):
 def save_api_email_or_sms(self, encrypted_notification):
     notification = encryption.decrypt(encrypted_notification)
     service = SerialisedService.from_id(notification["service_id"])
-    q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
     provider_task = (
         provider_tasks.deliver_email if notification["notification_type"] == EMAIL_TYPE else provider_tasks.deliver_sms
     )
@@ -315,7 +313,7 @@ def save_api_email_or_sms(self, encrypted_notification):
             document_download_count=notification["document_download_count"],
         )
 
-        q = q if not service.research_mode else QueueNames.RESEARCH_MODE
+        q = QueueNames.SEND_EMAIL if notification["notification_type"] == EMAIL_TYPE else QueueNames.SEND_SMS
         provider_task.apply_async([notification["id"]], queue=q)
         current_app.logger.debug(
             f"{notification['notification_type']} {notification['id']} has been persisted and sent to delivery queue."
@@ -350,9 +348,6 @@ def save_letter(
     )
 
     try:
-        # if we don't want to actually send the letter, then start it off in SENDING so we don't pick it up
-        status = NOTIFICATION_CREATED if not service.research_mode else NOTIFICATION_SENDING
-
         saved_notification = persist_notification(
             template_id=notification["template"],
             template_version=notification["template_version"],
@@ -370,19 +365,12 @@ def save_letter(
             reference=create_random_identifier(),
             client_reference=notification.get("client_reference", None),
             reply_to_text=template.reply_to_text,
-            status=status,
+            status=NOTIFICATION_CREATED,
         )
 
-        if not service.research_mode:
-            letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
-                [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
-            )
-        elif current_app.config["NOTIFY_ENVIRONMENT"] in ["preview", "development"]:
-            research_mode_tasks.create_fake_letter_response_file.apply_async(
-                (saved_notification.reference,), queue=QueueNames.RESEARCH_MODE
-            )
-        else:
-            update_notification_status_by_reference(saved_notification.reference, "delivered")
+        letters_pdf_tasks.get_pdf_for_templated_letter.apply_async(
+            [str(saved_notification.id)], queue=QueueNames.CREATE_LETTERS_PDF
+        )
 
         current_app.logger.debug("Letter {} created at {}".format(saved_notification.id, saved_notification.created_at))
     except SQLAlchemyError as e:

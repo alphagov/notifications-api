@@ -251,19 +251,13 @@ def test_send_sms_should_use_template_version_from_notification_not_latest(sampl
     assert not persisted_notification.personalisation
 
 
-@pytest.mark.parametrize("research_mode,key_type", [(True, KEY_TYPE_NORMAL), (False, KEY_TYPE_TEST)])
-def test_should_call_send_sms_response_task_if_research_mode(
-    notify_db_session, sample_service, sample_notification, mocker, research_mode, key_type
+def test_should_call_send_sms_response_task_if_test_api_key(
+    notify_db_session, sample_service, sample_notification, mocker
 ):
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch("app.delivery.send_to_providers.send_sms_response")
 
-    if research_mode:
-        sample_service.research_mode = True
-        notify_db_session.add(sample_service)
-        notify_db_session.commit()
-
-    sample_notification.key_type = key_type
+    sample_notification.key_type = KEY_TYPE_TEST
 
     send_to_providers.send_sms_to_provider(sample_notification)
     assert not mmg_client.send_sms.called
@@ -339,14 +333,10 @@ def test_send_sms_should_use_service_sms_sender(sample_service, sample_template,
     )
 
 
-@pytest.mark.parametrize("research_mode,key_type", [(True, KEY_TYPE_NORMAL), (False, KEY_TYPE_TEST)])
-def test_send_email_to_provider_should_call_research_mode_task_response_task_if_research_mode(
-    sample_service, sample_email_template, mocker, research_mode, key_type
-):
+def test_send_email_to_provider_should_call_response_task_if_test_key(sample_service, sample_email_template, mocker):
     notification = create_notification(
-        template=sample_email_template, to_field="john@smith.com", key_type=key_type, billable_units=0
+        template=sample_email_template, to_field="john@smith.com", key_type=KEY_TYPE_TEST, billable_units=0
     )
-    sample_service.research_mode = research_mode
 
     reference = uuid.uuid4()
     mocker.patch("app.uuid.uuid4", return_value=reference)
@@ -524,20 +514,6 @@ def test_get_logo_url_works_for_different_environments(base_url, expected_url):
     assert logo_url == expected_url
 
 
-def test_should_not_update_notification_if_research_mode_on_exception(sample_service, sample_notification, mocker):
-    mocker.patch("app.delivery.send_to_providers.send_sms_response", side_effect=Exception())
-    update_mock = mocker.patch("app.delivery.send_to_providers.update_notification_to_sending")
-    sample_service.research_mode = True
-    sample_notification.billable_units = 0
-
-    with pytest.raises(Exception):
-        send_to_providers.send_sms_to_provider(sample_notification)
-
-    persisted_notification = notifications_dao.get_notification_by_id(sample_notification.id)
-    assert persisted_notification.billable_units == 0
-    assert update_mock.called
-
-
 @pytest.mark.parametrize(
     "starting_status, expected_status",
     [
@@ -557,34 +533,28 @@ def test_update_notification_to_sending_does_not_update_status_from_a_final_stat
     assert notification.status == expected_status
 
 
-def __update_notification(notification_to_update, research_mode, expected_status):
-    if research_mode or notification_to_update.key_type == KEY_TYPE_TEST:
+def __update_notification(notification_to_update, expected_status):
+    if notification_to_update.key_type == KEY_TYPE_TEST:
         notification_to_update.status = expected_status
 
 
 @pytest.mark.parametrize(
-    "research_mode,key_type, billable_units, expected_status",
+    "key_type, billable_units, expected_status",
     [
-        (True, KEY_TYPE_NORMAL, 0, "delivered"),
-        (False, KEY_TYPE_NORMAL, 1, "sending"),
-        (False, KEY_TYPE_TEST, 0, "sending"),
-        (True, KEY_TYPE_TEST, 0, "sending"),
-        (True, KEY_TYPE_TEAM, 0, "delivered"),
-        (False, KEY_TYPE_TEAM, 1, "sending"),
+        (KEY_TYPE_NORMAL, 1, "sending"),
+        (KEY_TYPE_TEST, 0, "sending"),
+        (KEY_TYPE_TEAM, 1, "sending"),
     ],
 )
-def test_should_update_billable_units_and_status_according_to_research_mode_and_key_type(
-    sample_template, mocker, research_mode, key_type, billable_units, expected_status
+def test_should_update_billable_units_and_status_according_to_and_key_type(
+    sample_template, mocker, key_type, billable_units, expected_status
 ):
     notification = create_notification(template=sample_template, billable_units=0, status="created", key_type=key_type)
     mocker.patch("app.mmg_client.send_sms")
     mocker.patch(
         "app.delivery.send_to_providers.send_sms_response",
-        side_effect=__update_notification(notification, research_mode, expected_status),
+        side_effect=__update_notification(notification, expected_status),
     )
-
-    if research_mode:
-        sample_template.service.research_mode = True
 
     send_to_providers.send_sms_to_provider(notification)
     assert notification.billable_units == billable_units

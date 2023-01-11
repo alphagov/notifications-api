@@ -106,7 +106,6 @@ def test_create_service(notify_db_session):
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.email_from == "email_from"
-    assert service_db.research_mode is False
     assert service_db.prefix_sms is True
     assert service.active is True
     assert user in service_db.users
@@ -137,7 +136,6 @@ def test_create_service_with_organisation(notify_db_session):
     assert service_db.name == "service_name"
     assert service_db.id == service.id
     assert service_db.email_from == "email_from"
-    assert service_db.research_mode is False
     assert service_db.prefix_sms is True
     assert service.active is True
     assert user in service_db.users
@@ -1050,7 +1048,6 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_sess
         service1.id,
         service1.name,
         service1.restricted,
-        service1.research_mode,
         service1.active,
         service1.created_at,
         "sms",
@@ -1061,7 +1058,6 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_sess
         service1.id,
         service1.name,
         service1.restricted,
-        service1.research_mode,
         service1.active,
         service1.created_at,
         "sms",
@@ -1072,7 +1068,6 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_sess
         service1.id,
         service1.name,
         service1.restricted,
-        service1.research_mode,
         service1.active,
         service1.created_at,
         "email",
@@ -1083,7 +1078,6 @@ def test_dao_fetch_todays_stats_for_all_services_groups_correctly(notify_db_sess
         service2.id,
         service2.name,
         service2.restricted,
-        service2.research_mode,
         service2.active,
         service2.created_at,
         "sms",
@@ -1202,9 +1196,8 @@ def create_email_sms_letter_template():
 def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
     service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
     service_3 = create_service(service_name="Service 3", restricted=True)  # restricted is excluded
-    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode is excluded
-    service_5 = create_service(service_name="Service 5", active=False)  # not active is excluded
-    services = [service_1, service_3, service_4, service_5]
+    service_4 = create_service(service_name="Service 4", active=False)  # not active is excluded
+    services = [service_1, service_3, service_4]
 
     tv_number = "447700900001"
     normal_number = "447711900001"
@@ -1215,11 +1208,11 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
         for _ in range(0, 5):
             create_notification(template, normalised_to=tv_number, status="permanent-failure")
 
-    service_6 = create_service(service_name="Service 6")  # notifications too old are excluded
+    service_5 = create_service(service_name="Service 6")  # notifications too old are excluded
     with freeze_time("2019-11-30 15:00:00.000000"):
-        template_6 = create_template(service_6)
+        template_5 = create_template(service_5)
         for _ in range(0, 5):
-            create_notification(template_6, normalised_to=tv_number, status="permanent-failure")
+            create_notification(template_5, normalised_to=tv_number, status="permanent-failure")
 
     service_2 = create_service(service_name="Service 2")  # below threshold is excluded
     template_2 = create_template(service_2)
@@ -1243,9 +1236,8 @@ def test_dao_find_services_sending_to_tv_numbers(notify_db_session, fake_uuid):
 def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid):
     service_1 = create_service(service_name="Service 1", service_id=fake_uuid)
     service_3 = create_service(service_name="Service 3", restricted=True)  # restricted is excluded
-    service_4 = create_service(service_name="Service 4", research_mode=True)  # research mode is excluded
-    service_5 = create_service(service_name="Service 5", active=False)  # not active is excluded
-    services = [service_1, service_3, service_4, service_5]
+    service_4 = create_service(service_name="Service 4", active=False)  # not active is excluded
+    services = [service_1, service_3, service_4]
 
     for service in services:
         template = create_template(service)
@@ -1255,11 +1247,11 @@ def test_dao_find_services_with_high_failure_rates(notify_db_session, fake_uuid)
             create_notification(template, status="sending")
             create_notification(template, status="temporary-failure")
 
-    service_6 = create_service(service_name="Service 6")
+    service_5 = create_service(service_name="Service 5")
     with freeze_time("2019-11-30 15:00:00.000000"):
-        template_6 = create_template(service_6)
+        template_5 = create_template(service_5)
         for _ in range(0, 4):
-            create_notification(template_6, status="permanent-failure")  # notifications too old are excluded
+            create_notification(template_5, status="permanent-failure")  # notifications too old are excluded
 
     service_2 = create_service(service_name="Service 2")
     template_2 = create_template(service_2)

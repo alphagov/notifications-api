@@ -108,7 +108,6 @@ def create_service(
     restricted=False,
     count_as_live=True,
     service_permissions=None,
-    research_mode=False,
     active=True,
     email_from=None,
     prefix_sms=True,
@@ -160,7 +159,6 @@ def create_service(
         )
 
         service.active = active
-        service.research_mode = research_mode
         service.count_as_live = count_as_live
     else:
         if user and user not in service.users:

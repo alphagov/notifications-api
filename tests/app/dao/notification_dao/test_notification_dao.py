@@ -340,20 +340,6 @@ def test_save_notification_does_not_creates_history(sample_email_template, sampl
     assert NotificationHistory.query.count() == 0
 
 
-def test_update_notification_with_research_mode_service_does_not_create_or_update_history(sample_template):
-    sample_template.service.research_mode = True
-    notification = create_notification(template=sample_template)
-
-    assert Notification.query.count() == 1
-    assert NotificationHistory.query.count() == 0
-
-    notification.status = "delivered"
-    dao_update_notification(notification)
-
-    assert Notification.query.one().status == "delivered"
-    assert NotificationHistory.query.count() == 0
-
-
 def test_not_save_notification_and_not_create_stats_on_commit_error(sample_template, sample_job, mmg_provider):
     random_id = str(uuid.uuid4())
 
@@ -577,18 +563,6 @@ def test_should_delete_notification_for_id(sample_template):
 
     assert Notification.query.count() == 1
     assert NotificationHistory.query.count() == 0
-
-    dao_delete_notifications_by_id(notification.id)
-
-    assert Notification.query.count() == 0
-
-
-def test_should_delete_notification_and_ignore_history_for_research_mode(sample_template):
-    sample_template.service.research_mode = True
-
-    notification = create_notification(template=sample_template)
-
-    assert Notification.query.count() == 1
 
     dao_delete_notifications_by_id(notification.id)
 
