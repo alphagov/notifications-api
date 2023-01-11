@@ -1262,7 +1262,7 @@ def test_post_notifications_doesnt_use_save_queue_for_test_notifications(
 
 def test_post_notification_does_not_use_save_queue_for_letters(api_client_request, sample_letter_template, mocker):
     mock_save = mocker.patch("app.v2.notifications.post_notifications.save_email_or_sms_to_queue")
-    mock_create_pdf_task = mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mock_create_pdf_task = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
 
     with set_config_values(
         current_app,

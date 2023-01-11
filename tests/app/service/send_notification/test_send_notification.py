@@ -1048,7 +1048,7 @@ def test_post_notification_should_set_reply_to_text(client, sample_service, mock
 def test_send_notification_should_send_international_letters(
     sample_letter_template, mocker, last_line_of_address, expected_postage, expected_international
 ):
-    deliver_mock = mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    deliver_mock = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": sample_letter_template.id,
         "personalisation": {
@@ -1071,7 +1071,7 @@ def test_send_notification_should_send_international_letters(
 def test_send_notification_should_set_client_reference_from_placeholder(
     sample_letter_template, mocker, reference_paceholder
 ):
-    deliver_mock = mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    deliver_mock = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": sample_letter_template.id,
         "personalisation": {

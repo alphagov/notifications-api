@@ -1031,7 +1031,7 @@ def test_save_letter_saves_letter_to_database(
     job = create_job(template=template)
 
     mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
 
     notification_json = _notification_json(
         template=job.template,
@@ -1084,7 +1084,7 @@ def test_save_letter_saves_letter_to_database_with_correct_postage(
     template = create_template(service=service, template_type=LETTER_TYPE, postage=postage)
     letter_job = create_job(template=template)
 
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     notification_json = _notification_json(
         template=letter_job.template,
         to="Foo",
@@ -1110,7 +1110,7 @@ def test_save_letter_saves_letter_to_database_with_formatted_postcode(mocker, no
     template = create_template(service=service, template_type=LETTER_TYPE)
     letter_job = create_job(template=template)
 
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     notification_json = _notification_json(
         template=letter_job.template,
         to="Foo",
@@ -1137,7 +1137,7 @@ def test_save_letter_saves_letter_to_database_right_reply_to(mocker, notify_db_s
     job = create_job(template=template)
 
     mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
 
     personalisation = {
         "addressline1": "Foo",
@@ -1187,7 +1187,7 @@ def test_save_letter_uses_template_reply_to_text(mocker, notify_db_session):
     job = create_job(template=template)
 
     mocker.patch("app.celery.tasks.create_random_identifier", return_value="this-is-random-in-real-life")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
 
     personalisation = {
         "addressline1": "Foo",
