@@ -111,3 +111,22 @@ def get_orgs_and_services_associated_with_email_branding(email_branding_id):
     orgs_and_services = dao_get_orgs_and_services_associated_with_email_branding(email_branding_id)
 
     return jsonify(data=orgs_and_services), 200
+
+
+@email_branding_blueprint.route("/<uuid:email_branding_id>/archive", methods=["POST"])
+def archive_email_branding(email_branding_id):
+    orgs_and_services = dao_get_orgs_and_services_associated_with_email_branding(email_branding_id)
+
+    # check branding not used
+    if len(orgs_and_services["services"]) > 0 or len(orgs_and_services["organisations"]) > 0:
+        return (
+            jsonify(result="error", message="Email branding is in use and so it can't be archived."),
+            400,
+        )
+
+    # delete branding from branding pools if it's in any
+
+    # archive branding, NOTE: make sure it doesn't show up anywhere when archived - neither on list of brandings
+    # in platform admin view, nor in brandings that can be added to pools
+
+    return "", 204

@@ -4,7 +4,7 @@ import freezegun
 import pytest
 
 from app.models import BRANDING_ORG, EmailBranding
-from tests.app.db import create_email_branding
+from tests.app.db import create_email_branding, create_service
 
 
 def test_get_email_branding_options(admin_request, notify_db_session):
@@ -390,3 +390,18 @@ def test_get_orgs_and_services_associated_with_email_branding(admin_request, not
     )["data"]
 
     assert orgs_and_services == {"services": [], "organisations": []}
+
+
+def test_archive_email_branding_returns_400_if_branding_in_use(admin_request, notify_db_session):
+    email_branding = create_email_branding()
+    service_1 = create_service(service_name="service 1")
+    service_1.email_branding = email_branding
+
+    response = admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding.id,
+        _data=None,
+        _expected_status=400,
+    )
+
+    assert response["message"] == "Email branding is in use and so it can't be archived."
