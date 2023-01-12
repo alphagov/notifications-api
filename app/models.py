@@ -284,6 +284,10 @@ class LetterBranding(db.Model):
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = db.Column(db.String(255), unique=True, nullable=False)
     filename = db.Column(db.String(255), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.datetime.utcnow)
+    created_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=True, onupdate=datetime.datetime.utcnow)
+    updated_by_id = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
     def serialize(self):
         return {

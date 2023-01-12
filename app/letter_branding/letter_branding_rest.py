@@ -12,8 +12,9 @@ from app.dao.letter_branding_dao import (
 )
 from app.errors import register_errors
 from app.letter_branding.letter_branding_schema import (
+    post_create_letter_branding_schema,
     post_get_unique_name_for_letter_branding_schema,
-    post_letter_branding_schema,
+    post_update_letter_branding_schema,
 )
 from app.models import LetterBranding
 from app.schema_validation import validate
@@ -52,7 +53,7 @@ def get_letter_brand_by_id(letter_branding_id):
 def create_letter_brand():
     data = request.get_json()
 
-    validate(data, post_letter_branding_schema)
+    validate(data, post_create_letter_branding_schema)
 
     letter_branding = LetterBranding(**data)
     dao_create_letter_branding(letter_branding)
@@ -64,7 +65,7 @@ def create_letter_brand():
 def update_letter_branding(letter_branding_id):
     data = request.get_json()
 
-    validate(data, post_letter_branding_schema)
+    validate(data, post_update_letter_branding_schema)
 
     letter_branding = dao_update_letter_branding(letter_branding_id, **data)
 
