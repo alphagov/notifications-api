@@ -10,6 +10,10 @@ from app.dao.email_branding_dao import (
     dao_get_orgs_and_services_associated_with_email_branding,
     dao_update_email_branding,
 )
+from app.dao.organisation_dao import (
+    dao_get_all_organisations_with_specific_email_branding_in_their_pool,
+    dao_remove_email_branding_from_organisation_pool,
+)
 from app.email_branding.email_branding_schema import (
     post_create_email_branding_schema,
     post_get_email_branding_name_for_alt_text_schema,
@@ -125,7 +129,9 @@ def archive_email_branding(email_branding_id):
         )
 
     # delete branding from branding pools if it's in any
-
+    orgs_with_pools_to_clean = dao_get_all_organisations_with_specific_email_branding_in_their_pool(email_branding_id)
+    for org in orgs_with_pools_to_clean:
+        dao_remove_email_branding_from_organisation_pool(org.id, email_branding_id)
     # archive branding, NOTE: make sure it doesn't show up anywhere when archived - neither on list of brandings
     # in platform admin view, nor in brandings that can be added to pools
 

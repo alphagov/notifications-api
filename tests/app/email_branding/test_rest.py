@@ -3,8 +3,16 @@ import datetime
 import freezegun
 import pytest
 
+from app.dao.organisation_dao import (
+    dao_add_email_branding_list_to_organisation_pool,
+    dao_get_email_branding_pool_for_organisation,
+)
 from app.models import BRANDING_ORG, EmailBranding
-from tests.app.db import create_email_branding, create_service
+from tests.app.db import (
+    create_email_branding,
+    create_organisation,
+    create_service,
+)
 
 
 def test_get_email_branding_options(admin_request, notify_db_session):
@@ -405,3 +413,24 @@ def test_archive_email_branding_returns_400_if_branding_in_use(admin_request, no
     )
 
     assert response["message"] == "Email branding is in use and so it can't be archived."
+
+
+def test_archive_email_branding_removes_branding_from_org_pools(admin_request, notify_db_session):
+    email_branding_1 = create_email_branding(name="branding 1")
+    email_branding_2 = create_email_branding(name="branding 2")
+
+    org_1 = create_organisation(name="org 1")
+    org_2 = create_organisation(name="org 2")
+
+    dao_add_email_branding_list_to_organisation_pool(org_1.id, [email_branding_1.id])
+    dao_add_email_branding_list_to_organisation_pool(org_2.id, [email_branding_1.id, email_branding_2.id])
+
+    admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert len(dao_get_email_branding_pool_for_organisation(org_1.id)) == 0
+    assert len(dao_get_email_branding_pool_for_organisation(org_2.id)) == 1
