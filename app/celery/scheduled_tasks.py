@@ -6,6 +6,7 @@ from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
 )
+from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -66,6 +67,7 @@ from app.models import (
     User,
 )
 from app.notifications.process_notifications import send_notification_to_queue
+from app.utils import get_london_midnight_in_utc
 
 
 @notify_celery.task(name="run-scheduled-jobs")
@@ -385,17 +387,20 @@ def delete_old_records_from_events_table():
 
 @notify_celery.task(name="zendesk-new-email-branding-report")
 def zendesk_new_email_branding_report():
-    previous_weekday = datetime.today().date() - timedelta(days=1)
+    # make sure we convert to BST as in summer this'll run at 23:30 UTC
+    previous_weekday = convert_utc_to_bst(datetime.utcnow()).date() - timedelta(days=1)
 
     # If yesterday is a Saturday or Sunday, adjust back to the Friday
     if previous_weekday.isoweekday() in {6, 7}:
         previous_weekday -= timedelta(days=(previous_weekday.isoweekday() - 5))
 
+    previous_weekday_midnight = get_london_midnight_in_utc(previous_weekday)
+
     new_email_brands = (
         EmailBranding.query.join(Organisation, isouter=True)
         .join(User, User.id == EmailBranding.created_by, isouter=True)
         .filter(
-            EmailBranding.created_at >= previous_weekday,
+            EmailBranding.created_at >= previous_weekday_midnight,
             User.platform_admin.is_(False),
         )
         .order_by(EmailBranding.created_at)

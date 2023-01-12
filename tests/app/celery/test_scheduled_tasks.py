@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from unittest import mock
 from unittest.mock import ANY, call
 
+import dateutil
 import pytest
 from freezegun import freeze_time
 from notifications_utils.clients.zendesk.zendesk_client import (
@@ -791,7 +792,7 @@ def test_delete_old_records_from_events_table(notify_db_session):
     assert events[0].created_at == recent_datetime
 
 
-@freeze_time("2022-11-01 00:30:00")
+@freeze_time("2022-11-01 00:30:00", tick=True)
 def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_user):
     org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
     org_2 = create_organisation(organisation_id=uuid.UUID("d6bc2309-9f79-4779-b864-46c2892db90e"), name="org-2")
@@ -912,35 +913,49 @@ def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_d
 
 
 @pytest.mark.parametrize(
-    "freeze_datetime, expected_last_day_string",
+    "task_run_time, earliest_searched_timestamp, expected_last_day_string",
     (
-        ("2022-11-20 00:30:00", "Friday 18 November 2022"),
-        ("2022-11-19 00:30:00", "Friday 18 November 2022"),
-        ("2022-11-18 00:30:00", "Thursday 17 November 2022"),
-        ("2022-11-17 00:30:00", "Wednesday 16 November 2022"),
-        ("2022-11-16 00:30:00", "Tuesday 15 November 2022"),
-        ("2022-11-15 00:30:00", "Monday 14 November 2022"),
-        ("2022-11-14 00:30:00", "Friday 11 November 2022"),
+        ("2023-03-24 00:30:00", "2023-03-23 00:00:00", "Thursday 23 March 2023"),
+        ("2023-03-25 00:30:00", "2023-03-24 00:00:00", "Friday 24 March 2023"),
+        ("2023-03-26 00:30:00", "2023-03-24 00:00:00", "Friday 24 March 2023"),  # Sunday morning, DST changeover
+        ("2023-03-26 23:30:00", "2023-03-24 00:00:00", "Friday 24 March 2023"),  # Monday morning early AM
+        ("2023-03-27 23:30:00", "2023-03-26 23:00:00", "Monday 27 March 2023"),
+        ("2023-03-28 23:30:00", "2023-03-27 23:00:00", "Tuesday 28 March 2023"),
+        ("2023-03-29 23:30:00", "2023-03-28 23:00:00", "Wednesday 29 March 2023"),
     ),
 )
 def test_zendesk_new_email_branding_report_calculates_last_weekday_correctly(
-    notify_db_session, mocker, freeze_datetime, expected_last_day_string, notify_user
+    notify_db_session, mocker, task_run_time, earliest_searched_timestamp, expected_last_day_string, notify_user
 ):
-    org_1 = create_organisation(organisation_id=uuid.UUID("113d51e7-f204-44d0-99c6-020f3542a527"), name="org-1")
-    email_brand_1 = create_email_branding(
-        id=uuid.UUID("bc5b45e0-af3c-4e3d-a14c-253a56b77480"), name="brand-1", created_by=notify_user.id
+    org_1 = create_organisation()
+
+    new_brand_ts = dateutil.parser.parse(earliest_searched_timestamp)
+    old_brand_ts = new_brand_ts - timedelta(seconds=1)
+
+    old_brand = create_email_branding(
+        name="old brand",
+        created_by=notify_user.id,
+        created_at=old_brand_ts,
     )
-    org_1.email_branding_pool = [email_brand_1]
+    new_brand = create_email_branding(
+        name="new brand",
+        created_by=notify_user.id,
+        created_at=new_brand_ts,
+    )
+
+    org_1.email_branding_pool = [old_brand, new_brand]
     notify_db_session.commit()
 
     mocker.patch("app.celery.scheduled_tasks.NotifySupportTicket", wraps=NotifySupportTicket)
     mock_send_ticket = mocker.patch("app.celery.scheduled_tasks.zendesk_client.send_ticket_to_zendesk")
 
-    with freeze_time(freeze_datetime):
+    with freeze_time(task_run_time):
         zendesk_new_email_branding_report()
 
-    # Make sure we've built a NotifySupportTicket with the expected params, and passed that ticket to the zendesk client
-    assert expected_last_day_string in mock_send_ticket.call_args_list[0][0][0].message
+    message = mock_send_ticket.call_args_list[0][0][0].message
+    assert expected_last_day_string in message
+    assert "old brand" not in message
+    assert "new brand" in message
 
 
 def test_zendesk_new_email_branding_report_does_not_create_ticket_if_no_new_brands(notify_db_session, mocker):
