@@ -7,6 +7,7 @@ from app.dao.email_branding_dao import (
     dao_get_email_branding_by_name_case_insensitive,
     dao_get_email_branding_options,
     dao_get_existing_alternate_email_branding_for_name,
+    dao_get_orgs_and_services_associated_with_email_branding,
     dao_update_email_branding,
 )
 from app.email_branding.email_branding_schema import (
@@ -103,3 +104,10 @@ def get_email_branding_name_for_alt_text():
             raise ValueError(f"Couldnt assign a unique name for {alt_text} - already too many options")
 
     return jsonify(name=chosen_name), 200
+
+
+@email_branding_blueprint.route("/<uuid:email_branding_id>/orgs_and_services", methods=["GET"])
+def get_orgs_and_services_associated_with_email_branding(email_branding_id):
+    orgs_and_services = dao_get_orgs_and_services_associated_with_email_branding(email_branding_id)
+
+    return jsonify(data=orgs_and_services), 200

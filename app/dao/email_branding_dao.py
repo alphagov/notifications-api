@@ -1,6 +1,6 @@
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import EmailBranding
+from app.models import EmailBranding, Organisation, Service
 
 
 def dao_get_existing_alternate_email_branding_for_name(name):
@@ -40,3 +40,35 @@ def dao_update_email_branding(email_branding, **kwargs):
     for key, value in kwargs.items():
         setattr(email_branding, key, value or None)
     db.session.add(email_branding)
+
+
+def dao_get_orgs_and_services_associated_with_email_branding(email_branding_id):
+    services = (
+        db.session.query(
+            Service.name,
+            Service.id,
+        )
+        .select_from(Service)
+        .join(Service.email_branding)
+        .filter(Service.active == True, EmailBranding.id == email_branding_id)  # noqa
+        .group_by(
+            Service.id,
+            Service.name,
+        )
+        .order_by(Service.name)
+        .all()
+    )
+
+    organisations = (
+        db.session.query(Organisation.name, Organisation.id)
+        .select_from(Organisation)
+        .filter(Organisation.active == True, Organisation.email_branding_id == email_branding_id)  # noqa
+        .group_by(
+            Organisation.id,
+            Organisation.name,
+        )
+        .order_by(Organisation.name)
+        .all()
+    )
+
+    return {"services": [s._asdict() for s in services], "organisations": [o._asdict() for o in organisations]}

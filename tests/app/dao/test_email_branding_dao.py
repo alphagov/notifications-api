@@ -4,10 +4,15 @@ from app.dao.email_branding_dao import (
     dao_get_email_branding_by_name_case_insensitive,
     dao_get_email_branding_options,
     dao_get_existing_alternate_email_branding_for_name,
+    dao_get_orgs_and_services_associated_with_email_branding,
     dao_update_email_branding,
 )
 from app.models import EmailBranding
-from tests.app.db import create_email_branding
+from tests.app.db import (
+    create_email_branding,
+    create_organisation,
+    create_service,
+)
 
 
 def test_get_email_branding_options_gets_all_email_branding(notify_db_session):
@@ -84,3 +89,26 @@ def test_dao_get_existing_alternate_email_branding_for_name(notify_db_session):
 
     assert len(alt_brandings) == 3
     assert original not in alt_brandings
+
+
+def test_dao_get_orgs_and_services_associated_with_email_branding(notify_db_session):
+    email_branding_1 = create_email_branding(name="branding 1")
+    email_branding_2 = create_email_branding(name="branding 2")
+
+    org_1 = create_organisation(name="org 1", email_branding_id=email_branding_1.id)
+    create_organisation(name="org 2", email_branding_id=email_branding_2.id)
+
+    service_1 = create_service(service_name="service 1")
+    service_2 = create_service(service_name="service 2")
+    service_3 = create_service(service_name="service 3")
+
+    service_1.email_branding = email_branding_1
+    service_2.email_branding = email_branding_1
+    service_3.email_branding = email_branding_2
+
+    orgs_and_services = dao_get_orgs_and_services_associated_with_email_branding(email_branding_1.id)
+
+    assert orgs_and_services == {
+        "services": [{"name": "service 1", "id": service_1.id}, {"name": "service 2", "id": service_2.id}],
+        "organisations": [{"name": "org 1", "id": org_1.id}],
+    }

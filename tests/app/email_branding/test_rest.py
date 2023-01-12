@@ -378,3 +378,15 @@ def test_get_email_branding_name_for_alt_text_gives_up_if_100_options_assigned(
     with pytest.raises(ValueError) as exc:
         admin_request.post("email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"})
     assert "Couldnt assign a unique name for Department Name" in str(exc.value)
+
+
+def test_get_orgs_and_services_associated_with_email_branding(admin_request, notify_db_session):
+    email_branding = create_email_branding()
+
+    orgs_and_services = admin_request.get(
+        "email_branding.get_orgs_and_services_associated_with_email_branding",
+        _expected_status=200,
+        email_branding_id=email_branding.id,
+    )["data"]
+
+    assert orgs_and_services == {"services": [], "organisations": []}
