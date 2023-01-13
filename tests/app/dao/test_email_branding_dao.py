@@ -15,9 +15,10 @@ from tests.app.db import (
 )
 
 
-def test_get_email_branding_options_gets_all_email_branding(notify_db_session):
+def test_get_email_branding_options_gets_all_email_branding_except_archived_ones(notify_db_session):
     email_branding_1 = create_email_branding(name="test_email_branding_1")
     email_branding_2 = create_email_branding(name="test_email_branding_2")
+    create_email_branding(name="test_email_branding_3", active=False)
 
     email_branding = dao_get_email_branding_options()
 

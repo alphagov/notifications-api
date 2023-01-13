@@ -16,7 +16,7 @@ def dao_get_existing_alternate_email_branding_for_name(name):
 
 
 def dao_get_email_branding_options():
-    return EmailBranding.query.all()
+    return EmailBranding.query.filter_by(active=True).all()
 
 
 def dao_get_email_branding_by_id(email_branding_id):
