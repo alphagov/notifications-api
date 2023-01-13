@@ -1,7 +1,7 @@
 import datetime
 
-import freezegun
 import pytest
+from freezegun import freeze_time
 
 from app.dao.organisation_dao import (
     dao_add_email_branding_list_to_organisation_pool,
@@ -49,7 +49,7 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
     assert response["email_branding"]["alt_text"] is None
 
 
-@freezegun.freeze_time()
+@freeze_time()
 def test_post_create_email_branding(admin_request, notify_db_session):
     data = {
         "name": "test email_branding",
@@ -72,7 +72,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
     assert email_branding.created_at == datetime.datetime.utcnow()
 
 
-@freezegun.freeze_time()
+@freeze_time()
 def test_post_create_email_branding_with_created_fields(admin_request, notify_db_session, sample_user):
     data = {
         "name": "test email_branding",
@@ -193,7 +193,7 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
         assert getattr(email_branding[0], key) == data_update[key]
 
 
-@freezegun.freeze_time(as_kwarg="frozen_time")
+@freeze_time(as_kwarg="frozen_time")
 def test_post_update_email_branding_updated_fields(admin_request, notify_db_session, sample_user, **kwargs):
     frozen_time = kwargs["frozen_time"]
     start_time = frozen_time.time_to_freeze
@@ -434,3 +434,18 @@ def test_archive_email_branding_removes_branding_from_org_pools(admin_request, n
 
     assert len(dao_get_email_branding_pool_for_organisation(org_1.id)) == 0
     assert len(dao_get_email_branding_pool_for_organisation(org_2.id)) == 1
+
+
+@freeze_time("2023-01-13")
+def test_archive_email_branding_archives_branding_and_changes_its_name(admin_request, notify_db_session):
+    email_branding_1 = create_email_branding(name="branding 1")
+
+    admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert email_branding_1.active is False
+    assert email_branding_1.name == "_archived_2023-01-13_branding 1"

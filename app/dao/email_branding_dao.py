@@ -1,6 +1,7 @@
 from app import db
 from app.dao.dao_utils import autocommit
 from app.models import EmailBranding, Organisation, Service
+from app.utils import get_archived_db_column_value
 
 
 def dao_get_existing_alternate_email_branding_for_name(name):
@@ -39,6 +40,15 @@ def dao_create_email_branding(email_branding):
 def dao_update_email_branding(email_branding, **kwargs):
     for key, value in kwargs.items():
         setattr(email_branding, key, value or None)
+    db.session.add(email_branding)
+
+
+@autocommit
+def dao_archive_email_branding(email_branding_id):
+    email_branding = dao_get_email_branding_by_id(email_branding_id)
+
+    email_branding.active = False
+    email_branding.name = get_archived_db_column_value(email_branding.name)
     db.session.add(email_branding)
 
 

@@ -2,6 +2,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app.dao.email_branding_dao import (
+    dao_archive_email_branding,
     dao_create_email_branding,
     dao_get_email_branding_by_id,
     dao_get_email_branding_by_name_case_insensitive,
@@ -132,7 +133,9 @@ def archive_email_branding(email_branding_id):
     orgs_with_pools_to_clean = dao_get_all_organisations_with_specific_email_branding_in_their_pool(email_branding_id)
     for org in orgs_with_pools_to_clean:
         dao_remove_email_branding_from_organisation_pool(org.id, email_branding_id)
-    # archive branding, NOTE: make sure it doesn't show up anywhere when archived - neither on list of brandings
-    # in platform admin view, nor in brandings that can be added to pools
+
+    # archive branding and rename it, NOTE: make sure it doesn't show up anywhere when archived
+    # - neither on list of brandings in platform admin view, nor in brandings that can be added to pools
+    dao_archive_email_branding(email_branding_id)
 
     return "", 204
