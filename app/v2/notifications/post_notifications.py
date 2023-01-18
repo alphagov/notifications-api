@@ -259,7 +259,6 @@ def process_sms_or_email_notification(
             key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
-            research_mode=service.research_mode,  # research_mode is deprecated
             queue=queue_name,
         )
     else:
@@ -355,7 +354,7 @@ def process_letter_notification(
     if api_key.key_type == KEY_TYPE_TEAM:
         raise BadRequestError(message="Cannot send letters with a team api key", status_code=403)
 
-    if not service.research_mode and service.restricted and api_key.key_type != KEY_TYPE_TEST:
+    if service.restricted and api_key.key_type != KEY_TYPE_TEST:
         raise BadRequestError(message="Cannot send letters when service is in trial mode", status_code=403)
 
     if precompiled:

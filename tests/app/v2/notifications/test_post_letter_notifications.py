@@ -34,7 +34,7 @@ test_address = {"address_line_1": "test 1", "address_line_2": "test 2", "postcod
 
 @pytest.mark.parametrize("reference", [None, "reference_from_client"])
 def test_post_letter_notification_returns_201(api_client_request, sample_letter_template, mocker, reference):
-    mock = mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mock = mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": str(sample_letter_template.id),
         "personalisation": {
@@ -76,7 +76,7 @@ def test_post_letter_notification_returns_201(api_client_request, sample_letter_
 def test_post_letter_notification_sets_postage(api_client_request, notify_db_session, mocker):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter", postage="first")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": str(template.id),
         "personalisation": {
@@ -100,7 +100,7 @@ def test_post_letter_notification_sets_postage(api_client_request, notify_db_ses
 def test_post_letter_notification_formats_postcode(api_client_request, notify_db_session, mocker):
     service = create_service(service_permissions=[LETTER_TYPE])
     template = create_template(service, template_type="letter")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": str(template.id),
         "personalisation": {
@@ -126,7 +126,7 @@ def test_post_letter_notification_formats_postcode(api_client_request, notify_db
 def test_post_letter_notification_stores_country(api_client_request, notify_db_session, mocker):
     service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
     template = create_template(service, template_type="letter")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": str(template.id),
         "personalisation": {
@@ -155,7 +155,7 @@ def test_post_letter_notification_stores_country(api_client_request, notify_db_s
 def test_post_letter_notification_international_sets_rest_of_world(api_client_request, notify_db_session, mocker):
     service = create_service(service_permissions=[LETTER_TYPE, INTERNATIONAL_LETTERS])
     template = create_template(service, template_type="letter")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {
         "template_id": str(template.id),
         "personalisation": {
@@ -217,7 +217,7 @@ def test_post_letter_notification_throws_error_for_bad_address(
 ):
     service = create_service(service_permissions=permissions)
     template = create_template(service, template_type="letter", postage="first")
-    mocker.patch("app.celery.tasks.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
+    mocker.patch("app.celery.letters_pdf_tasks.get_pdf_for_templated_letter.apply_async")
     data = {"template_id": str(template.id), "personalisation": personalisation}
 
     error_json = api_client_request.post(

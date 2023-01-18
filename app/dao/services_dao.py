@@ -302,7 +302,6 @@ def dao_create_service(
     permission_dao.add_default_service_permissions_for_user(user, service)
     service.id = service_id or uuid.uuid4()  # must be set now so version history model can use same id
     service.active = True
-    service.research_mode = False
 
     for permission in service_permissions:
         service_permission = ServicePermission(service_id=service.id, permission=permission)
@@ -466,7 +465,6 @@ def dao_fetch_todays_stats_for_all_services(include_from_test_key=True, only_act
             Service.id.label("service_id"),
             Service.name,
             Service.restricted,
-            Service.research_mode,
             Service.active,
             Service.created_at,
             subquery.c.notification_type,
@@ -502,7 +500,6 @@ def dao_find_services_sending_to_tv_numbers(start_date, end_date, threshold=500)
             Notification.notification_type == SMS_TYPE,
             func.substr(Notification.normalised_to, 3, 7) == "7700900",
             Service.restricted == False,  # noqa
-            Service.research_mode == False,  # noqa
             Service.active == True,  # noqa
         )
         .group_by(
@@ -523,7 +520,6 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
             Notification.key_type != KEY_TYPE_TEST,
             Notification.notification_type == SMS_TYPE,
             Service.restricted == False,  # noqa
-            Service.research_mode == False,  # noqa
             Service.active == True,  # noqa
         )
         .group_by(
@@ -552,7 +548,6 @@ def dao_find_services_with_high_failure_rates(start_date, end_date, threshold=10
             Notification.notification_type == SMS_TYPE,
             Notification.status == NOTIFICATION_PERMANENT_FAILURE,
             Service.restricted == False,  # noqa
-            Service.research_mode == False,  # noqa
             Service.active == True,  # noqa
         )
         .group_by(Notification.service_id, subquery.c.total_count)

@@ -85,7 +85,6 @@ class SerialisedService(SerialisedModel):
         "letter_message_limit",
         "permissions",
         "rate_limit",
-        "research_mode",
         "restricted",
         "prefix_sms",
         "email_branding",

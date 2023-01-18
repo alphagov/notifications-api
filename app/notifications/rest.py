@@ -123,9 +123,7 @@ def send_notification(notification_type):
     )
     if not simulated:
         queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-        send_notification_to_queue(
-            notification=notification_model, research_mode=authenticated_service.research_mode, queue=queue_name
-        )
+        send_notification_to_queue(notification=notification_model, queue=queue_name)
     else:
         current_app.logger.debug("POST simulated notification for id: {}".format(notification_model.id))
     notification_form.update({"template_version": template.version})

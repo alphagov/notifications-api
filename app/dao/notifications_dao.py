@@ -155,22 +155,6 @@ def update_notification_status_by_id(notification_id, status, sent_by=None, deta
 
 
 @autocommit
-def update_notification_status_by_reference(reference, status):
-    # this is used to update letters and emails
-    notification = Notification.query.filter(Notification.reference == reference).first()
-
-    if not notification:
-        current_app.logger.error("notification not found for reference {} (update to {})".format(reference, status))
-        return None
-
-    if notification.status not in {NOTIFICATION_SENDING, NOTIFICATION_PENDING}:
-        _duplicate_update_warning(notification, status)
-        return None
-
-    return _update_notification_status(notification=notification, status=status)
-
-
-@autocommit
 def dao_update_notification(notification):
     notification.updated_at = datetime.utcnow()
     db.session.add(notification)
@@ -585,7 +569,7 @@ def dao_get_notification_by_reference(reference):
 
 def dao_get_notification_or_history_by_reference(reference):
     try:
-        # This try except is necessary because in test keys and research mode does not create notification history.
+        # This try except is necessary because test keys do not create notification history.
         # Otherwise we could just search for the NotificationHistory object
         return Notification.query.filter(Notification.reference == reference).one()
     except NoResultFound:

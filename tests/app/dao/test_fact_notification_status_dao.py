@@ -564,7 +564,6 @@ def test_fetch_monthly_notification_statuses_per_service(notify_db_session):
 def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be_excluded(notify_db_session):
     valid_service = create_service(service_name="valid service")
     inactive_service = create_service(service_name="inactive", active=False)
-    research_mode_service = create_service(service_name="research_mode", research_mode=True)
     restricted_service = create_service(service_name="restricted", restricted=True)
 
     # notification in 'created' state
@@ -573,8 +572,6 @@ def test_fetch_monthly_notification_statuses_per_service_for_rows_that_should_be
     create_ft_notification_status(date(2019, 3, 15), service=inactive_service)
     # notification created with test key
     create_ft_notification_status(date(2019, 3, 12), service=valid_service, key_type=KEY_TYPE_TEST)
-    # notification created by research mode service
-    create_ft_notification_status(date(2019, 3, 2), service=research_mode_service)
     # notification created by trial mode service
     create_ft_notification_status(date(2019, 3, 19), service=restricted_service)
     # notifications outside date range

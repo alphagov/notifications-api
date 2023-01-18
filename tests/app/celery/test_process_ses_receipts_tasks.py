@@ -40,12 +40,13 @@ def test_process_ses_results_retry_called(sample_email_template, mocker):
 
 def test_process_ses_results_in_complaint(sample_email_template, mocker):
     notification = create_notification(template=sample_email_template, reference="ref1")
-    mocked = mocker.patch("app.dao.notifications_dao.update_notification_status_by_reference")
+    old_updated_at = notification.updated_at
     process_ses_results(response=ses_complaint_callback())
-    assert mocked.call_count == 0
     complaints = Complaint.query.all()
     assert len(complaints) == 1
     assert complaints[0].notification_id == notification.id
+    # assert notification has not been modified
+    assert notification.updated_at == old_updated_at
 
 
 def test_remove_emails_from_complaint():

@@ -58,7 +58,7 @@ def send_sms_to_provider(notification):
         )
         created_at = notification.created_at
         key_type = notification.key_type
-        if service.research_mode or notification.key_type == KEY_TYPE_TEST:
+        if notification.key_type == KEY_TYPE_TEST:
             update_notification_to_sending(notification, provider)
             send_sms_response(provider.name, str(notification.id), notification.to)
 
@@ -121,7 +121,7 @@ def send_email_to_provider(notification):
         plain_text_email = PlainTextEmailTemplate(template_dict, values=notification.personalisation)
         created_at = notification.created_at
         key_type = notification.key_type
-        if service.research_mode or notification.key_type == KEY_TYPE_TEST:
+        if notification.key_type == KEY_TYPE_TEST:
             notification.reference = str(create_uuid())
             update_notification_to_sending(notification, provider)
             send_email_response(notification.reference, notification.to)

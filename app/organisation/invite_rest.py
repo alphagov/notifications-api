@@ -64,7 +64,7 @@ def invite_user_to_org(organisation_id):
         reply_to_text=invited_org_user.invited_by.email_address,
     )
 
-    send_notification_to_queue(saved_notification, research_mode=False, queue=QueueNames.NOTIFY)
+    send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
     return jsonify(data=invited_org_user.serialize()), 201
 

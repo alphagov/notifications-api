@@ -231,7 +231,7 @@ def send_letters_volume_email_to_dvla(letters_volumes, date):
             reply_to_text=reply_to,
         )
 
-        send_notification_to_queue(saved_notification, False, queue=QueueNames.NOTIFY)
+        send_notification_to_queue(saved_notification, queue=QueueNames.NOTIFY)
 
 
 def get_key_and_size_of_letters_to_be_sent_to_print(print_run_deadline, postage):

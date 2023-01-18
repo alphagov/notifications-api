@@ -166,8 +166,8 @@ def persist_notification(
     return notification
 
 
-def send_notification_to_queue_detached(key_type, notification_type, notification_id, research_mode, queue=None):
-    if research_mode or key_type == KEY_TYPE_TEST:
+def send_notification_to_queue_detached(key_type, notification_type, notification_id, queue=None):
+    if key_type == KEY_TYPE_TEST:
         queue = QueueNames.RESEARCH_MODE
 
     if notification_type == SMS_TYPE:
@@ -194,10 +194,8 @@ def send_notification_to_queue_detached(key_type, notification_type, notificatio
     )
 
 
-def send_notification_to_queue(notification, research_mode, queue=None):
-    send_notification_to_queue_detached(
-        notification.key_type, notification.notification_type, notification.id, research_mode, queue
-    )
+def send_notification_to_queue(notification, queue=None):
+    send_notification_to_queue_detached(notification.key_type, notification.notification_type, notification.id, queue)
 
 
 def simulated_recipient(to_address, notification_type):

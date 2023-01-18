@@ -8,7 +8,7 @@ from freezegun import freeze_time
 
 import app.celery.tasks
 from app import db
-from app.dao.services_dao import dao_fetch_service_by_id, dao_update_service
+from app.dao.services_dao import dao_fetch_service_by_id
 from app.dao.users_dao import create_user_code
 from app.models import (
     EMAIL_TYPE,
@@ -188,16 +188,12 @@ def test_user_verify_password_missing_password(client, sample_user):
     assert "Required field missing data" in json_resp["message"]["password"]
 
 
-@pytest.mark.parametrize("research_mode", [True, False])
 @freeze_time("2016-01-01 11:09:00.061258")
-def test_send_user_sms_code(client, sample_user, sms_code_template, mocker, research_mode):
+def test_send_user_sms_code(client, sample_user, sms_code_template, mocker):
     """
     Tests POST endpoint /user/<user_id>/sms-code
     """
     notify_service = dao_fetch_service_by_id(current_app.config["NOTIFY_SERVICE_ID"])
-    if research_mode:
-        notify_service.research_mode = True
-        dao_update_service(notify_service)
 
     auth_header = create_admin_authorization_header()
     mocked = mocker.patch("app.user.rest.create_secret_code", return_value="11111")
