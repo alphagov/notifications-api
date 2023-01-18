@@ -245,7 +245,7 @@ def test_send_one_off_notification_raises_if_cant_send_to_recipient(
 
 
 def test_send_one_off_notification_raises_if_over_limit(notify_db_session, mocker):
-    service = create_service(message_limit=0)
+    service = create_service(sms_message_limit=0)
     template = create_template(service=service)
     mock_check_message_limit = mocker.patch(
         "app.service.send_notification.check_service_over_daily_message_limit",

@@ -117,7 +117,7 @@ def test_check_service_over_daily_message_limit_does_nothing_if_redis_disabled(
 def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missing_cache_value(
     key_type, mocker, notify_db_session, notification_type
 ):
-    service = create_service(message_limit=4, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
+    service = create_service(email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
     mocker.patch("app.redis_store.get", return_value=None)
 
     with pytest.raises(TooManyRequestsError) as e:
@@ -135,7 +135,7 @@ def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missi
 @pytest.mark.parametrize("key_type", ["team", "normal"])
 @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
 def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, notify_db_session, notification_type):
-    service = create_service(message_limit=4, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
+    service = create_service(email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
     mocker.patch("app.redis_store.get", return_value="5")
 
     with pytest.raises(TooManyRequestsError) as e:
@@ -153,7 +153,7 @@ def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, 
 def test_check_service_message_limit_check_with_multiple_notifications_for_jobs(
     key_type, mocker, notify_db_session, notification_type
 ):
-    service = create_service(message_limit=10, email_message_limit=10, letter_message_limit=10, sms_message_limit=10)
+    service = create_service(email_message_limit=10, letter_message_limit=10, sms_message_limit=10)
     mocker.patch("app.redis_store.get", return_value="9")
 
     with pytest.raises(TooManyRequestsError) as e:

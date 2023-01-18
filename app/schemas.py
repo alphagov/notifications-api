@@ -229,6 +229,9 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
     permissions = fields.Method("serialize_service_permissions", "deserialize_service_permissions")
     email_branding = field_for(models.Service, "email_branding")
     organisation = field_for(models.Service, "organisation")
+    email_message_limit = field_for(models.Service, "email_message_limit", required=True)
+    sms_message_limit = field_for(models.Service, "sms_message_limit", required=True)
+    letter_message_limit = field_for(models.Service, "letter_message_limit", required=True)
     go_live_at = field_for(models.Service, "go_live_at", format=DATETIME_FORMAT_NO_TIMEZONE)
     allowed_broadcast_provider = fields.Method(dump_only=True, serialize="_get_allowed_broadcast_provider")
     broadcast_channel = fields.Method(dump_only=True, serialize="_get_broadcast_channel")
@@ -278,6 +281,7 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "jobs",
             "letter_contacts",
             "letter_logo_filename",
+            "message_limit",
             "reply_to_email_addresses",
             "returned_letters",
             "service_broadcast_provider_restriction",

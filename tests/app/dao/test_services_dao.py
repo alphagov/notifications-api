@@ -95,7 +95,6 @@ def test_create_service(notify_db_session):
     service = Service(
         name="service_name",
         email_from="email_from",
-        message_limit=1000,
         restricted=False,
         organisation_type="central",
         created_by=user,
@@ -124,7 +123,6 @@ def test_create_service_with_organisation(notify_db_session):
     service = Service(
         name="service_name",
         email_from="email_from",
-        message_limit=1000,
         restricted=False,
         organisation_type="central",
         created_by=user,
@@ -183,7 +181,6 @@ def test_create_nhs_service_get_default_branding_based_on_email_address(
     service = Service(
         name="service_name",
         email_from="email_from",
-        message_limit=1000,
         restricted=False,
         organisation_type=organisation_type,
         created_by=user,
@@ -205,14 +202,11 @@ def test_cannot_create_two_services_with_same_name(notify_db_session):
     service1 = Service(
         name="service_name",
         email_from="email_from1",
-        message_limit=1000,
         restricted=False,
         created_by=user,
     )
 
-    service2 = Service(
-        name="service_name", email_from="email_from2", message_limit=1000, restricted=False, created_by=user
-    )
+    service2 = Service(name="service_name", email_from="email_from2", restricted=False, created_by=user)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, user)
         dao_create_service(service2, user)
@@ -222,12 +216,8 @@ def test_cannot_create_two_services_with_same_name(notify_db_session):
 def test_cannot_create_two_services_with_same_email_from(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
-    service1 = Service(
-        name="service_name1", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
-    service2 = Service(
-        name="service_name2", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service1 = Service(name="service_name1", email_from="email_from", restricted=False, created_by=user)
+    service2 = Service(name="service_name2", email_from="email_from", restricted=False, created_by=user)
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service1, user)
         dao_create_service(service2, user)
@@ -237,9 +227,7 @@ def test_cannot_create_two_services_with_same_email_from(notify_db_session):
 def test_cannot_create_service_with_no_user(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     with pytest.raises(ValueError) as excinfo:
         dao_create_service(service, None)
     assert "Can't create a service without a user" in str(excinfo.value)
@@ -247,9 +235,7 @@ def test_cannot_create_service_with_no_user(notify_db_session):
 
 def test_should_add_user_to_service(notify_db_session):
     user = create_user()
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     dao_create_service(service, user)
     assert user in Service.query.first().users
     new_user = User(
@@ -313,9 +299,7 @@ def test_dao_add_user_to_service_raises_error_if_adding_folder_permissions_for_a
 
 def test_should_remove_user_from_service(notify_db_session):
     user = create_user()
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     dao_create_service(service, user)
     new_user = User(
         name="Test User",
@@ -611,9 +595,7 @@ def test_create_service_creates_a_history_record_with_current_data(notify_db_ses
     create_letter_branding()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     dao_create_service(service, user)
     assert Service.query.count() == 1
     assert Service.get_history_model().query.count() == 1
@@ -633,9 +615,7 @@ def test_update_service_creates_a_history_record_with_current_data(notify_db_ses
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     dao_create_service(service, user)
 
     assert Service.query.count() == 1
@@ -660,9 +640,7 @@ def test_update_service_permission_creates_a_history_record_with_current_data(no
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(
-        name="service_name", email_from="email_from", message_limit=1000, restricted=False, created_by=user
-    )
+    service = Service(name="service_name", email_from="email_from", restricted=False, created_by=user)
     dao_create_service(
         service,
         user,
@@ -721,7 +699,7 @@ def test_create_service_and_history_is_transactional(notify_db_session):
     user = create_user()
     assert Service.query.count() == 0
     assert Service.get_history_model().query.count() == 0
-    service = Service(name=None, email_from="email_from", message_limit=1000, restricted=False, created_by=user)
+    service = Service(name=None, email_from="email_from", restricted=False, created_by=user)
 
     with pytest.raises(IntegrityError) as excinfo:
         dao_create_service(service, user)
@@ -768,9 +746,7 @@ def test_delete_service_and_associated_objects(notify_db_session):
 def test_add_existing_user_to_another_service_doesnot_change_old_permissions(notify_db_session):
     user = create_user()
 
-    service_one = Service(
-        name="service_one", email_from="service_one", message_limit=1000, restricted=False, created_by=user
-    )
+    service_one = Service(name="service_one", email_from="service_one", restricted=False, created_by=user)
 
     dao_create_service(service_one, user)
     assert user.id == service_one.users[0].id
@@ -784,9 +760,7 @@ def test_add_existing_user_to_another_service_doesnot_change_old_permissions(not
         mobile_number="+447700900987",
     )
     save_model_user(other_user, validated_email_access=True)
-    service_two = Service(
-        name="service_two", email_from="service_two", message_limit=1000, restricted=False, created_by=other_user
-    )
+    service_two = Service(name="service_two", email_from="service_two", restricted=False, created_by=other_user)
     dao_create_service(service_two, other_user)
 
     assert other_user.id == service_two.users[0].id
@@ -815,7 +789,13 @@ def test_fetch_stats_filters_on_service(notify_db_session):
     create_notification(template=create_template(service=service_one))
 
     service_two = Service(
-        name="service_two", created_by=service_one.created_by, email_from="hello", restricted=False, message_limit=1000
+        name="service_two",
+        created_by=service_one.created_by,
+        email_from="hello",
+        restricted=False,
+        email_message_limit=1000,
+        sms_message_limit=1000,
+        letter_message_limit=1000,
     )
     dao_create_service(service_two, service_one.created_by)
 

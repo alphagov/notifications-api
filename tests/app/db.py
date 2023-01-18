@@ -111,7 +111,6 @@ def create_service(
     active=True,
     email_from=None,
     prefix_sms=True,
-    message_limit=1000,
     email_message_limit=1000,
     sms_message_limit=1000,
     letter_message_limit=1000,
@@ -132,7 +131,6 @@ def create_service(
     if (not check_if_service_exists) or (check_if_service_exists and not service):
         service = Service(
             name=service_name,
-            message_limit=message_limit,
             email_message_limit=email_message_limit,
             sms_message_limit=sms_message_limit,
             letter_message_limit=letter_message_limit,

@@ -158,7 +158,7 @@ def test_should_not_process_job_if_already_pending(sample_template, mocker):
 
 
 def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_session, mocker):
-    service = create_service(message_limit=9)
+    service = create_service(sms_message_limit=20)
     template = create_template(service=service)
     job = create_job(template=template, notification_count=10, original_file_name="multiple_sms.csv")
     mocker.patch(
@@ -182,7 +182,7 @@ def test_should_not_process_if_send_limit_is_exceeded(notify_api, notify_db_sess
 
 
 def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(notify_api, notify_db_session, mocker):
-    service = create_service(message_limit=9)
+    service = create_service(sms_message_limit=9)
     template = create_template(service=service)
     job = create_job(template=template, notification_count=10, original_file_name="multiple_sms.csv")
     mock_s3 = mocker.patch(
@@ -205,7 +205,7 @@ def test_should_not_process_if_send_limit_is_exceeded_by_job_notification_count(
 
 
 def test_should_process_job_if_send_limits_are_not_exceeded(notify_api, notify_db_session, mocker):
-    service = create_service(message_limit=10)
+    service = create_service(sms_message_limit=10)
     template = create_template(service=service, template_type="email")
     job = create_job(template=template, notification_count=10)
 
