@@ -2292,7 +2292,12 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     send_notification_mock.assert_called_once_with(
         service_id=restricted_service.id,
         template_id="618185c6-3636-49cd-b7d2-6f6f5eb3bdde",
-        personalisation={"service_name": restricted_service.name},
+        personalisation={
+            "service_name": restricted_service.name,
+            "email_message_limit": 1000,
+            "sms_message_limit": 1000,
+            "letter_message_limit": 1000,
+        },
         include_user_fields=["name"],
     )
 
