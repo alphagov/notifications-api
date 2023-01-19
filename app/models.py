@@ -2531,6 +2531,12 @@ class BroadcastProviderTypes(db.Model):
     name = db.Column(db.String(255), primary_key=True)
 
 
+class BroadcastProviderMessageStatusType(db.Model):
+    __tablename__ = "broadcast_provider_message_status_type"
+
+    name = db.Column(db.String(), primary_key=True)
+
+
 class ServiceBroadcastProviderRestriction(db.Model):
     """
     TODO: Drop this table as no longer used
