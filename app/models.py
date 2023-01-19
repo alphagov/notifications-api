@@ -2238,7 +2238,7 @@ class BroadcastMessage(db.Model):
     template = db.relationship("TemplateHistory", backref="broadcast_messages")
 
     _personalisation = db.Column(db.String, nullable=True)
-    content = db.Column(db.String, nullable=False)
+    content = db.Column(db.Text, nullable=False)
     # defaults to empty list
     areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
 
