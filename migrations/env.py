@@ -27,6 +27,14 @@ target_metadata = current_app.extensions["migrate"].db.metadata
 # ... etc.
 
 
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Exclude views from Alembic's consideration.
+    """
+
+    return object.info.get("managed_by_alembic", True)
+
+
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -40,7 +48,7 @@ def run_migrations_offline():
 
     """
     url = config.get_main_option("sqlalchemy.url")
-    context.configure(url=url)
+    context.configure(url=url, include_object=include_object)
 
     with context.begin_transaction():
         context.run_migrations()
@@ -58,7 +66,9 @@ def run_migrations_online():
     )
 
     connection = engine.connect()
-    context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, compare_type=True, include_object=include_object
+    )
 
     try:
         with context.begin_transaction():
