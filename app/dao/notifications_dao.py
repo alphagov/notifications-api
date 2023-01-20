@@ -432,9 +432,9 @@ def dao_timeout_notifications(cutoff_time, limit=100000):
 
 
 def is_delivery_slow_for_providers(
-    created_at,
+    created_within_minutes,
+    delivered_within_minutes,
     threshold,
-    delivery_time,
 ):
     """
     Returns a dict of providers and whether they are currently slow or not. eg:
@@ -442,7 +442,38 @@ def is_delivery_slow_for_providers(
         'mmg': True,
         'firetext': False
     }
+
+    A provider is considered slow if more than the `threshold` of their messages
+    sent in the last `created_within_minutes` minutes took over
+    `delivered_within_minutes` minutes to be delivered
     """
+    providers_slow_delivery_ratios = get_ratio_of_messages_delivered_slowly_per_provider(
+        created_within_minutes, delivered_within_minutes
+    )
+
+    slow_providers = {}
+    for provider, ratio in providers_slow_delivery_ratios.items():
+        slow_providers[provider] = ratio >= threshold
+        # TODO: when we are happy with the new metrics in generate_sms_delivery_stats then this
+        # can be removed as it will be redundant
+        statsd_client.gauge(f"slow-delivery.{provider}.ratio", ratio)
+
+    return slow_providers
+
+
+def get_ratio_of_messages_delivered_slowly_per_provider(created_within_minutes, delivered_within_minutes):
+    """
+    Returns a dict of providers with the ratio of their messages sent in the
+    last `created_within_minutes` minutes that took over
+    `delivered_within_minutes` minutes to be delivered
+
+    {
+        'mmg': 0.4,
+        'firetext': 0.12
+    }
+    """
+    created_since = datetime.utcnow() - timedelta(minutes=created_within_minutes)
+    delivery_time = timedelta(minutes=delivered_within_minutes)
     slow_notification_counts = (
         db.session.query(
             ProviderDetails.identifier,
@@ -463,7 +494,7 @@ def is_delivery_slow_for_providers(
             and_(
                 Notification.notification_type == SMS_TYPE,
                 Notification.sent_by == ProviderDetails.identifier,
-                Notification.created_at >= created_at,
+                Notification.created_at >= created_since,
                 Notification.sent_at.isnot(None),
                 Notification.status.in_([NOTIFICATION_DELIVERED, NOTIFICATION_PENDING, NOTIFICATION_SENDING]),
                 Notification.key_type != KEY_TYPE_TEST,
@@ -474,16 +505,14 @@ def is_delivery_slow_for_providers(
         .group_by(ProviderDetails.identifier, "slow")
     )
 
-    slow_providers = {}
+    providers_slow_delivery_ratios = {}
     for provider, rows in groupby(slow_notification_counts, key=attrgetter("identifier")):
         rows = list(rows)
         total_notifications = sum(row.count for row in rows)
         slow_notifications = sum(row.count for row in rows if row.slow)
+        providers_slow_delivery_ratios[provider] = slow_notifications / total_notifications
 
-        slow_providers[provider] = slow_notifications / total_notifications >= threshold
-        statsd_client.gauge(f"slow-delivery.{provider}.ratio", slow_notifications / total_notifications)
-
-    return slow_providers
+    return providers_slow_delivery_ratios
 
 
 @autocommit

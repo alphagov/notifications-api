@@ -858,7 +858,7 @@ def test_is_delivery_slow_for_providers(
     for _ in range(slow_delivered):
         slow_notification(status="delivered")
 
-    result = is_delivery_slow_for_providers(datetime.utcnow(), threshold, timedelta(minutes=4))
+    result = is_delivery_slow_for_providers(10, 5, threshold)
     assert result == {"firetext": False, "mmg": expected_result}
 
 
@@ -886,7 +886,7 @@ def test_delivery_is_delivery_slow_for_providers_filters_out_notifications_it_sh
     }
     create_slow_notification_with.update(options)
     create_notification(**create_slow_notification_with)
-    result = is_delivery_slow_for_providers(datetime.utcnow(), 0.1, timedelta(minutes=4))
+    result = is_delivery_slow_for_providers(10, 5, 0.1)
     assert result["mmg"] == expected_result
 
 
