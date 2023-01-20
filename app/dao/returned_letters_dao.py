@@ -31,21 +31,20 @@ def _get_notification_ids_for_references(references):
 
 
 @autocommit
-def insert_or_update_returned_letters(references):
+def insert_returned_letters(references):
     data = _get_notification_ids_for_references(references)
     for row in data:
         table = ReturnedLetter.__table__
 
-        stmt = insert(table).values(
-            reported_at=datetime.utcnow().date(),
-            service_id=row.service_id,
-            notification_id=row.id,
-            created_at=datetime.utcnow(),
-        )
-
-        stmt = stmt.on_conflict_do_update(
-            index_elements=[table.c.notification_id],
-            set_={"reported_at": datetime.utcnow().date(), "updated_at": datetime.utcnow()},
+        stmt = (
+            insert(table)
+            .values(
+                reported_at=datetime.utcnow().date(),
+                service_id=row.service_id,
+                notification_id=row.id,
+                created_at=datetime.utcnow(),
+            )
+            .on_conflict_do_nothing(index_elements=[table.c.notification_id])
         )
         db.session.connection().execute(stmt)
 
