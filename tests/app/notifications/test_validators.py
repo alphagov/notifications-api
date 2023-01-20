@@ -70,7 +70,6 @@ def test_check_service_message_limit_in_cache_under_message_limit_passes(
     mock_set = mocker.patch("app.notifications.validators.redis_store.set")
     check_service_over_daily_message_limit(serialised_service, key_type, notification_type=notification_type)
     assert mock_get.call_args_list == [
-        mocker.call(daily_limit_cache_key(sample_service.id, notification_type=None)),
         mocker.call(daily_limit_cache_key(sample_service.id, notification_type=notification_type)),
     ]
     assert mock_set.call_args_list == []
@@ -98,7 +97,6 @@ def test_check_service_over_daily_message_limit_should_set_cache_value_as_zero_i
         check_service_over_daily_message_limit(serialised_service, key_type, notification_type=notification_type)
 
         assert mock_set.call_args_list == [
-            mocker.call(daily_limit_cache_key(sample_service.id, notification_type=None), 0, ex=86400),
             mocker.call(daily_limit_cache_key(sample_service.id, notification_type=notification_type), 0, ex=86400),
         ]
 
@@ -128,9 +126,9 @@ def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missi
         )
     tmr_error: TooManyRequestsError = e.value
     assert tmr_error.status_code == 429
-    assert tmr_error.limit_name == "total"
+    assert tmr_error.limit_name == notification_type
     assert tmr_error.sending_limit == 4
-    assert tmr_error.message == "Exceeded send limits (total: 4) for today"
+    assert tmr_error.message == f"Exceeded send limits ({notification_type}: 4) for today"
     assert tmr_error.fields == []
 
 
@@ -138,24 +136,6 @@ def test_check_service_message_limit_over_message_limit_fails_with_cold_ie_missi
 @pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
 def test_check_service_message_limit_over_message_limit_fails(key_type, mocker, notify_db_session, notification_type):
     service = create_service(message_limit=4, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
-    mocker.patch("app.redis_store.get", return_value="5")
-
-    with pytest.raises(TooManyRequestsError) as e:
-        check_service_over_daily_message_limit(service, key_type, notification_type=notification_type)
-    tmr_error: TooManyRequestsError = e.value
-    assert tmr_error.status_code == 429
-    assert tmr_error.limit_name == "total"
-    assert tmr_error.sending_limit == 4
-    assert tmr_error.message == "Exceeded send limits (total: 4) for today"
-    assert tmr_error.fields == []
-
-
-@pytest.mark.parametrize("key_type", ["team", "normal"])
-@pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
-def test_check_service_message_limit_over_message_limit_fails_over_per_notification_limit(
-    key_type, mocker, notify_db_session, notification_type
-):
-    service = create_service(message_limit=10, email_message_limit=4, letter_message_limit=4, sms_message_limit=4)
     mocker.patch("app.redis_store.get", return_value="5")
 
     with pytest.raises(TooManyRequestsError) as e:
@@ -174,26 +154,6 @@ def test_check_service_message_limit_check_with_multiple_notifications_for_jobs(
     key_type, mocker, notify_db_session, notification_type
 ):
     service = create_service(message_limit=10, email_message_limit=10, letter_message_limit=10, sms_message_limit=10)
-    mocker.patch("app.redis_store.get", return_value="9")
-
-    with pytest.raises(TooManyRequestsError) as e:
-        check_service_over_daily_message_limit(
-            service, key_type, notification_type=notification_type, num_notifications=2
-        )
-    tmr_error: TooManyRequestsError = e.value
-    assert tmr_error.status_code == 429
-    assert tmr_error.limit_name == "total"
-    assert tmr_error.sending_limit == 10
-    assert tmr_error.message == "Exceeded send limits (total: 10) for today"
-    assert tmr_error.fields == []
-
-
-@pytest.mark.parametrize("key_type", ["team", "normal"])
-@pytest.mark.parametrize("notification_type", NOTIFICATION_TYPES)
-def test_check_service_message_limit_check_with_multiple_notifications_for_jobs_over_per_notification_limit(
-    key_type, mocker, notify_db_session, notification_type
-):
-    service = create_service(message_limit=100, email_message_limit=10, letter_message_limit=10, sms_message_limit=10)
     mocker.patch("app.redis_store.get", return_value="9")
 
     with pytest.raises(TooManyRequestsError) as e:
