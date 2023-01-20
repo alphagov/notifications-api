@@ -1,10 +1,18 @@
-import datetime
+from datetime import datetime
 
-import freezegun
 import pytest
+from freezegun import freeze_time
 
+from app.dao.organisation_dao import (
+    dao_add_email_branding_list_to_organisation_pool,
+    dao_get_email_branding_pool_for_organisation,
+)
 from app.models import BRANDING_ORG, EmailBranding
-from tests.app.db import create_email_branding
+from tests.app.db import (
+    create_email_branding,
+    create_organisation,
+    create_service,
+)
 
 
 def test_get_email_branding_options(admin_request, notify_db_session):
@@ -22,8 +30,30 @@ def test_get_email_branding_options(admin_request, notify_db_session):
     }
 
 
-def test_get_email_branding_by_id(admin_request, notify_db_session):
-    email_branding = EmailBranding(colour="#FFFFFF", logo="/path/image.png", name="Some Org", text="My Org")
+@freeze_time("2023-01-20T10:40:34Z")
+@pytest.mark.parametrize(
+    "created_at, expected_created_at, updated_at, expected_updated_at",
+    (
+        (
+            datetime(2022, 12, 6, 14, 00),
+            "2022-12-06T14:00:00.000000Z",
+            datetime(2023, 1, 20, 11, 00),
+            "2023-01-20T11:00:00.000000Z",
+        ),
+        (None, "2023-01-20T10:40:34.000000Z", None, None),
+    ),
+)
+def test_get_email_branding_by_id(
+    admin_request, notify_db_session, created_at, expected_created_at, updated_at, expected_updated_at
+):
+    email_branding = EmailBranding(
+        colour="#FFFFFF",
+        logo="/path/image.png",
+        name="Some Org",
+        text="My Org",
+        created_at=created_at,
+        updated_at=updated_at,
+    )
     notify_db_session.add(email_branding)
     notify_db_session.commit()
 
@@ -31,7 +61,18 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
         "email_branding.get_email_branding_by_id", _expected_status=200, email_branding_id=email_branding.id
     )
 
-    assert set(response["email_branding"].keys()) == {"colour", "logo", "name", "id", "text", "brand_type", "alt_text"}
+    assert set(response["email_branding"].keys()) == {
+        "colour",
+        "logo",
+        "name",
+        "id",
+        "text",
+        "brand_type",
+        "alt_text",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
     assert response["email_branding"]["colour"] == "#FFFFFF"
     assert response["email_branding"]["logo"] == "/path/image.png"
     assert response["email_branding"]["name"] == "Some Org"
@@ -39,9 +80,11 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
     assert response["email_branding"]["id"] == str(email_branding.id)
     assert response["email_branding"]["brand_type"] == str(email_branding.brand_type)
     assert response["email_branding"]["alt_text"] is None
+    assert response["email_branding"]["created_at"] == expected_created_at
+    assert response["email_branding"]["updated_at"] == expected_updated_at
 
 
-@freezegun.freeze_time()
+@freeze_time()
 def test_post_create_email_branding(admin_request, notify_db_session):
     data = {
         "name": "test email_branding",
@@ -61,10 +104,10 @@ def test_post_create_email_branding(admin_request, notify_db_session):
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert email_branding.created_by is None
-    assert email_branding.created_at == datetime.datetime.utcnow()
+    assert email_branding.created_at == datetime.utcnow()
 
 
-@freezegun.freeze_time()
+@freeze_time()
 def test_post_create_email_branding_with_created_fields(admin_request, notify_db_session, sample_user):
     data = {
         "name": "test email_branding",
@@ -83,7 +126,7 @@ def test_post_create_email_branding_with_created_fields(admin_request, notify_db
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert str(email_branding.created_by) == data["created_by"]
-    assert email_branding.created_at == datetime.datetime.utcnow()
+    assert email_branding.created_at == datetime.utcnow()
     assert email_branding.text is None
 
 
@@ -185,7 +228,7 @@ def test_post_update_email_branding_updates_field(admin_request, notify_db_sessi
         assert getattr(email_branding[0], key) == data_update[key]
 
 
-@freezegun.freeze_time(as_kwarg="frozen_time")
+@freeze_time(as_kwarg="frozen_time")
 def test_post_update_email_branding_updated_fields(admin_request, notify_db_session, sample_user, **kwargs):
     frozen_time = kwargs["frozen_time"]
     start_time = frozen_time.time_to_freeze
@@ -378,3 +421,66 @@ def test_get_email_branding_name_for_alt_text_gives_up_if_100_options_assigned(
     with pytest.raises(ValueError) as exc:
         admin_request.post("email_branding.get_email_branding_name_for_alt_text", _data={"alt_text": "Department Name"})
     assert "Couldnt assign a unique name for Department Name" in str(exc.value)
+
+
+def test_get_orgs_and_services_associated_with_email_branding(admin_request, notify_db_session):
+    email_branding = create_email_branding()
+
+    orgs_and_services = admin_request.get(
+        "email_branding.get_orgs_and_services_associated_with_email_branding",
+        _expected_status=200,
+        email_branding_id=email_branding.id,
+    )["data"]
+
+    assert orgs_and_services == {"services": [], "organisations": []}
+
+
+def test_archive_email_branding_returns_400_if_branding_in_use(admin_request, notify_db_session):
+    email_branding = create_email_branding()
+    service_1 = create_service(service_name="service 1")
+    service_1.email_branding = email_branding
+
+    response = admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding.id,
+        _data=None,
+        _expected_status=400,
+    )
+
+    assert response["message"] == "Email branding is in use and so it can't be archived."
+
+
+def test_archive_email_branding_removes_branding_from_org_pools(admin_request, notify_db_session):
+    email_branding_1 = create_email_branding(name="branding 1")
+    email_branding_2 = create_email_branding(name="branding 2")
+
+    org_1 = create_organisation(name="org 1")
+    org_2 = create_organisation(name="org 2")
+
+    dao_add_email_branding_list_to_organisation_pool(org_1.id, [email_branding_1.id])
+    dao_add_email_branding_list_to_organisation_pool(org_2.id, [email_branding_1.id, email_branding_2.id])
+
+    admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert len(dao_get_email_branding_pool_for_organisation(org_1.id)) == 0
+    assert len(dao_get_email_branding_pool_for_organisation(org_2.id)) == 1
+
+
+@freeze_time("2023-01-13")
+def test_archive_email_branding_archives_branding_and_changes_its_name(admin_request, notify_db_session):
+    email_branding_1 = create_email_branding(name="branding 1")
+
+    admin_request.post(
+        "email_branding.archive_email_branding",
+        email_branding_id=email_branding_1.id,
+        _data=None,
+        _expected_status=204,
+    )
+
+    assert email_branding_1.active is False
+    assert email_branding_1.name == "_archived_2023-01-13_branding 1"

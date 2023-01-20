@@ -246,6 +246,8 @@ class EmailBranding(db.Model):
     updated_at = db.Column(db.DateTime, nullable=True, onupdate=lambda: datetime.datetime.utcnow())
     updated_by = db.Column(UUID(as_uuid=True), db.ForeignKey("users.id"), nullable=True)
 
+    active = db.Column(db.Boolean, nullable=False, default=True)
+
     CONSTRAINT_UNIQUE_NAME = "uq_email_branding_name"
     CONSTRAINT_CHECK_ONE_OF_ALT_TEXT_TEXT_NULL = "ck_email_branding_one_of_alt_text_or_text_is_null"
     # one of alt_text or text MUST be supplied
@@ -265,6 +267,9 @@ class EmailBranding(db.Model):
             "text": self.text,
             "brand_type": self.brand_type,
             "alt_text": self.alt_text,
+            "created_by": self.created_by,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
 
         return serialized

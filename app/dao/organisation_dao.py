@@ -233,6 +233,17 @@ def dao_get_email_branding_pool_for_organisation(organisation_id):
     )
 
 
+def dao_get_all_organisations_with_specific_email_branding_in_their_pool(email_branding_id):
+    return (
+        db.session.query(Organisation)
+        .join(Organisation.email_branding_pool)
+        .filter(
+            EmailBranding.id == email_branding_id,
+        )
+        .all()
+    )
+
+
 @autocommit
 def dao_remove_email_branding_from_organisation_pool(organisation_id, email_branding_id):
     organisation = dao_get_organisation_by_id(organisation_id)
