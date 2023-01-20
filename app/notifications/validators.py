@@ -68,32 +68,23 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         LETTER_TYPE: service.letter_message_limit,
     }
 
-    for notification_type_ in [None, notification_type]:
-        limit_name = notification_type_ or "total"
-        limit_value = rate_limits[notification_type_]
+    limit_name = notification_type
+    limit_value = rate_limits[notification_type]
 
-        cache_key = daily_limit_cache_key(service.id, notification_type=notification_type_)
-        if (service_stats := redis_store.get(cache_key)) is None:
-            # first message of the day, set the cache to 0 and the expiry to 24 hours
-            redis_store.set(cache_key, 0, ex=86400)
+    cache_key = daily_limit_cache_key(service.id, notification_type=notification_type)
+    if (service_stats := redis_store.get(cache_key)) is None:
+        # first message of the day, set the cache to 0 and the expiry to 24 hours
+        redis_store.set(cache_key, 0, ex=86400)
 
-            service_stats = 0
+        service_stats = 0
 
-        if int(service_stats) + num_notifications > limit_value:
-            current_app.logger.info(
-                "service {} has been rate limited for {} daily use sent {} limit {}".format(
-                    service.id, int(service_stats), limit_name, limit_value
-                )
+    if int(service_stats) + num_notifications > limit_value:
+        current_app.logger.info(
+            "service {} has been rate limited for {} daily use sent {} limit {}".format(
+                service.id, int(service_stats), limit_name, limit_value
             )
-            # TODO: Remove this - only temporarily logging so it's easy to check/make sure no-one is hitting this
-            #  rate limit while we roll it out
-            if notification_type_ is not None:
-                current_app.logger.warning(
-                    "notification-specific rate limit hit: {} at {} of {}".format(
-                        notification_type, service_stats, limit_value
-                    )
-                )
-            raise TooManyRequestsError(limit_name, limit_value)
+        )
+        raise TooManyRequestsError(limit_name, limit_value)
 
 
 def check_rate_limiting(service, api_key, notification_type):
