@@ -118,7 +118,7 @@ def switch_current_sms_provider_on_slow_delivery():
     last ten minutes, then don't update them again either.
     """
     slow_delivery_notifications = is_delivery_slow_for_providers(
-        created_within_minutes=10,
+        created_within_minutes=15,
         delivered_within_minutes=5,
         threshold=0.15,
     )
@@ -136,7 +136,7 @@ def switch_current_sms_provider_on_slow_delivery():
 def generate_sms_delivery_stats():
     for delivery_interval in (1, 5, 10):
         providers_slow_delivery_ratios = get_ratio_of_messages_delivered_slowly_per_provider(
-            created_within_minutes=10, delivered_within_minutes=delivery_interval
+            created_within_minutes=15, delivered_within_minutes=delivery_interval
         )
 
         for provider, ratio in providers_slow_delivery_ratios.items():
