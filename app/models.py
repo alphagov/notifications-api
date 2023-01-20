@@ -267,6 +267,9 @@ class EmailBranding(db.Model):
             "text": self.text,
             "brand_type": self.brand_type,
             "alt_text": self.alt_text,
+            "created_by": self.created_by,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
 
         return serialized

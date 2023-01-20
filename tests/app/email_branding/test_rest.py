@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 import pytest
 from freezegun import freeze_time
@@ -30,8 +30,30 @@ def test_get_email_branding_options(admin_request, notify_db_session):
     }
 
 
-def test_get_email_branding_by_id(admin_request, notify_db_session):
-    email_branding = EmailBranding(colour="#FFFFFF", logo="/path/image.png", name="Some Org", text="My Org")
+@freeze_time("2023-01-20T10:40:34Z")
+@pytest.mark.parametrize(
+    "created_at, expected_created_at, updated_at, expected_updated_at",
+    (
+        (
+            datetime(2022, 12, 6, 14, 00),
+            "2022-12-06T14:00:00.000000Z",
+            datetime(2023, 1, 20, 11, 00),
+            "2023-01-20T11:00:00.000000Z",
+        ),
+        (None, "2023-01-20T10:40:34.000000Z", None, None),
+    ),
+)
+def test_get_email_branding_by_id(
+    admin_request, notify_db_session, created_at, expected_created_at, updated_at, expected_updated_at
+):
+    email_branding = EmailBranding(
+        colour="#FFFFFF",
+        logo="/path/image.png",
+        name="Some Org",
+        text="My Org",
+        created_at=created_at,
+        updated_at=updated_at,
+    )
     notify_db_session.add(email_branding)
     notify_db_session.commit()
 
@@ -39,7 +61,18 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
         "email_branding.get_email_branding_by_id", _expected_status=200, email_branding_id=email_branding.id
     )
 
-    assert set(response["email_branding"].keys()) == {"colour", "logo", "name", "id", "text", "brand_type", "alt_text"}
+    assert set(response["email_branding"].keys()) == {
+        "colour",
+        "logo",
+        "name",
+        "id",
+        "text",
+        "brand_type",
+        "alt_text",
+        "created_by",
+        "created_at",
+        "updated_at",
+    }
     assert response["email_branding"]["colour"] == "#FFFFFF"
     assert response["email_branding"]["logo"] == "/path/image.png"
     assert response["email_branding"]["name"] == "Some Org"
@@ -47,6 +80,8 @@ def test_get_email_branding_by_id(admin_request, notify_db_session):
     assert response["email_branding"]["id"] == str(email_branding.id)
     assert response["email_branding"]["brand_type"] == str(email_branding.brand_type)
     assert response["email_branding"]["alt_text"] is None
+    assert response["email_branding"]["created_at"] == expected_created_at
+    assert response["email_branding"]["updated_at"] == expected_updated_at
 
 
 @freeze_time()
@@ -69,7 +104,7 @@ def test_post_create_email_branding(admin_request, notify_db_session):
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert email_branding.created_by is None
-    assert email_branding.created_at == datetime.datetime.utcnow()
+    assert email_branding.created_at == datetime.utcnow()
 
 
 @freeze_time()
@@ -91,7 +126,7 @@ def test_post_create_email_branding_with_created_fields(admin_request, notify_db
 
     email_branding = EmailBranding.query.filter(EmailBranding.name == data["name"]).one()
     assert str(email_branding.created_by) == data["created_by"]
-    assert email_branding.created_at == datetime.datetime.utcnow()
+    assert email_branding.created_at == datetime.utcnow()
     assert email_branding.text is None
 
 
