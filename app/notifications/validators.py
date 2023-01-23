@@ -225,7 +225,7 @@ def check_reply_to(service_id, reply_to_id, type_):
 def check_service_email_reply_to_id(service_id, reply_to_id, notification_type):
     if reply_to_id:
         try:
-            return dao_get_reply_to_by_id(service_id, reply_to_id).email_address
+            return dao_get_reply_to_by_id(reply_to_id=reply_to_id, service_id=service_id).email_address
         except NoResultFound:
             message = "email_reply_to_id {} does not exist in database for service id {}".format(
                 reply_to_id, service_id

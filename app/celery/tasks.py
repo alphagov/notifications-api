@@ -241,7 +241,7 @@ def save_email(self, service_id, notification_id, encrypted_notification, sender
     )
 
     if sender_id:
-        reply_to_text = dao_get_reply_to_by_id(service_id, sender_id).email_address
+        reply_to_text = dao_get_reply_to_by_id(reply_to_id=sender_id, service_id=service_id).email_address
     else:
         reply_to_text = template.reply_to_text
 

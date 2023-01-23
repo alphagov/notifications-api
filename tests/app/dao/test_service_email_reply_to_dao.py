@@ -181,13 +181,13 @@ def test_update_reply_to_email_address_raises_exception_if_single_reply_to_and_s
 
 def test_dao_get_reply_to_by_id(sample_service):
     reply_to = create_reply_to_email(service=sample_service, email_address="email@address.com")
-    result = dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=reply_to.id)
+    result = dao_get_reply_to_by_id(reply_to_id=reply_to.id, service_id=sample_service.id)
     assert result == reply_to
 
 
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_does_not_exist(sample_service):
     with pytest.raises(SQLAlchemyError):
-        dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=uuid.uuid4())
+        dao_get_reply_to_by_id(reply_to_id=uuid.uuid4(), service_id=sample_service.id)
 
 
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_is_archived(sample_service):
@@ -197,13 +197,13 @@ def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_reply_to_is_archive
     )
 
     with pytest.raises(SQLAlchemyError):
-        dao_get_reply_to_by_id(service_id=sample_service.id, reply_to_id=archived_reply_to.id)
+        dao_get_reply_to_by_id(reply_to_id=archived_reply_to.id, service_id=sample_service.id)
 
 
 def test_dao_get_reply_to_by_id_raises_sqlalchemy_error_when_service_does_not_exist(sample_service):
     reply_to = create_reply_to_email(service=sample_service, email_address="email@address.com")
     with pytest.raises(SQLAlchemyError):
-        dao_get_reply_to_by_id(service_id=uuid.uuid4(), reply_to_id=reply_to.id)
+        dao_get_reply_to_by_id(reply_to_id=reply_to.id, service_id=uuid.uuid4())
 
 
 def test_archive_reply_to_email_address(sample_service):

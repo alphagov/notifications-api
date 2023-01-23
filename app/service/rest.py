@@ -744,7 +744,7 @@ def get_email_reply_to_addresses(service_id):
 
 @service_blueprint.route("/<uuid:service_id>/email-reply-to/<uuid:reply_to_id>", methods=["GET"])
 def get_email_reply_to_address(service_id, reply_to_id):
-    result = dao_get_reply_to_by_id(service_id=service_id, reply_to_id=reply_to_id)
+    result = dao_get_reply_to_by_id(reply_to_id=reply_to_id, service_id=service_id)
     return jsonify(result.serialize()), 200
 
 

@@ -161,6 +161,7 @@ def register_blueprint(application):
     from app.organisation.invite_rest import organisation_invite_blueprint
     from app.organisation.rest import organisation_blueprint
     from app.performance_dashboard.rest import performance_dashboard_blueprint
+    from app.platform_admin.rest import platform_admin_blueprint
     from app.platform_stats.rest import platform_stats_blueprint
     from app.provider_details.rest import (
         provider_details as provider_details_blueprint,
@@ -271,6 +272,9 @@ def register_blueprint(application):
 
     govuk_alerts_blueprint.before_request(requires_govuk_alerts_auth)
     application.register_blueprint(govuk_alerts_blueprint)
+
+    platform_admin_blueprint.before_request(requires_admin_auth)
+    application.register_blueprint(platform_admin_blueprint, url_prefix="/platform-admin")
 
 
 def register_v2_blueprints(application):
