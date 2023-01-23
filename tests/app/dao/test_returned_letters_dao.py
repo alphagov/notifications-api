@@ -8,7 +8,7 @@ from app.dao.returned_letters_dao import (
     fetch_recent_returned_letter_count,
     fetch_returned_letter_summary,
     fetch_returned_letters,
-    insert_or_update_returned_letters,
+    insert_returned_letters,
 )
 from app.models import NOTIFICATION_RETURNED_LETTER, ReturnedLetter
 from tests.app.db import (
@@ -19,13 +19,13 @@ from tests.app.db import (
 )
 
 
-def test_insert_or_update_returned_letters_inserts(sample_letter_template):
+def test_insert_returned_letters_inserts(sample_letter_template):
     notification = create_notification(template=sample_letter_template, reference="ref1")
     history = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
 
-    insert_or_update_returned_letters(["ref1", "ref2"])
+    insert_returned_letters(["ref1", "ref2"])
 
     returned_letters = ReturnedLetter.query.all()
 
@@ -35,13 +35,13 @@ def test_insert_or_update_returned_letters_inserts(sample_letter_template):
     assert history.id in returned_letters_
 
 
-def test_insert_or_update_returned_letters_updates(sample_letter_template):
+def test_insert_returned_letters_updates(sample_letter_template):
     notification = create_notification(template=sample_letter_template, reference="ref1")
     history = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
     with freeze_time("2019-12-09 13:30"):
-        insert_or_update_returned_letters(["ref1", "ref2"])
+        insert_returned_letters(["ref1", "ref2"])
         returned_letters = ReturnedLetter.query.all()
         assert len(returned_letters) == 2
         for x in returned_letters:
@@ -51,39 +51,39 @@ def test_insert_or_update_returned_letters_updates(sample_letter_template):
             assert x.notification_id in [notification.id, history.id]
 
     with freeze_time("2019-12-10 14:20"):
-        insert_or_update_returned_letters(["ref1", "ref2"])
+        insert_returned_letters(["ref1", "ref2"])
         returned_letters = ReturnedLetter.query.all()
         assert len(returned_letters) == 2
         for x in returned_letters:
-            assert x.reported_at == date(2019, 12, 10)
+            assert x.reported_at == date(2019, 12, 9)
             assert x.created_at == datetime(2019, 12, 9, 13, 30)
-            assert x.updated_at == datetime(2019, 12, 10, 14, 20)
+            assert not x.updated_at
             assert x.notification_id in [notification.id, history.id]
 
 
-def test_insert_or_update_returned_letters_when_no_notification(notify_db_session):
-    insert_or_update_returned_letters(["ref1"])
+def test_insert_returned_letters_when_no_notification(notify_db_session):
+    insert_returned_letters(["ref1"])
     assert ReturnedLetter.query.count() == 0
 
 
-def test_insert_or_update_returned_letters_for_history_only(sample_letter_template):
+def test_insert_returned_letters_for_history_only(sample_letter_template):
     history_1 = create_notification_history(template=sample_letter_template, reference="ref1")
     history_2 = create_notification_history(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
-    insert_or_update_returned_letters(["ref1", "ref2"])
+    insert_returned_letters(["ref1", "ref2"])
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
     for x in returned_letters:
         assert x.notification_id in [history_1.id, history_2.id]
 
 
-def test_insert_or_update_returned_letters_with_duplicates_in_reference_list(sample_letter_template):
+def test_insert_returned_letters_with_duplicates_in_reference_list(sample_letter_template):
     notification_1 = create_notification(template=sample_letter_template, reference="ref1")
     notification_2 = create_notification(template=sample_letter_template, reference="ref2")
 
     assert ReturnedLetter.query.count() == 0
-    insert_or_update_returned_letters(["ref1", "ref2", "ref1", "ref2"])
+    insert_returned_letters(["ref1", "ref2", "ref1", "ref2"])
     returned_letters = ReturnedLetter.query.all()
     assert len(returned_letters) == 2
     for x in returned_letters:
