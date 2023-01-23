@@ -921,7 +921,9 @@ def generate_bulktest_data(user_id):
             active=True,
             restricted=False,
             organisation_type="central",
-            message_limit=250_000,
+            email_message_limit=250_000,
+            sms_message_limit=250_000,
+            letter_message_limit=250_000,
             email_from=f"bulktest.{batch}@notify.works",
         )
         services.append(service)

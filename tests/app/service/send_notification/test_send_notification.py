@@ -379,7 +379,12 @@ def test_should_allow_api_call_if_under_day_limit_regardless_of_type(notify_api,
         with notify_api.test_client() as client:
             mocker.patch("app.celery.provider_tasks.deliver_sms.apply_async")
 
-            service = create_service(restricted=restricted, message_limit=2)
+            service = create_service(
+                restricted=restricted,
+                email_message_limit=2,
+                sms_message_limit=2,
+                letter_message_limit=2,
+            )
             email_template = create_template(service, template_type=EMAIL_TYPE)
             sms_template = create_template(service, template_type=SMS_TYPE)
             create_notification(template=email_template)
@@ -485,7 +490,7 @@ def test_should_send_sms_to_anyone_with_test_key(client, sample_template, mocker
 
     data = {"to": "07811111111", "template": sample_template.id}
     sample_template.service.restricted = restricted
-    sample_template.service.message_limit = limit
+    sample_template.service.sms_message_limit = limit
     api_key = ApiKey(
         service=sample_template.service, name="test_key", created_by=sample_template.created_by, key_type=KEY_TYPE_TEST
     )
@@ -509,7 +514,7 @@ def test_should_send_email_to_anyone_with_test_key(client, sample_email_template
 
     data = {"to": "anyone123@example.com", "template": sample_email_template.id}
     sample_email_template.service.restricted = restricted
-    sample_email_template.service.message_limit = limit
+    sample_email_template.service.email_message_limit = limit
     api_key = ApiKey(
         service=sample_email_template.service,
         name="test_key",
@@ -671,7 +676,8 @@ def test_should_not_send_notification_to_non_guest_list_recipient_in_trial_mode(
 ):
     service = sample_service_guest_list.service
     service.restricted = True
-    service.message_limit = 2
+    service.email_message_limit = 2
+    service.sms_message_limit = 2
 
     apply_async = mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))
     template = create_template(service, template_type=notification_type)
@@ -715,7 +721,8 @@ def test_should_not_send_notification_to_non_guest_list_recipient_in_trial_mode(
 def test_should_send_notification_to_guest_list_recipient(
     client, sample_service, notification_type, to, key_type, service_restricted, mocker
 ):
-    sample_service.message_limit = 2
+    sample_service.email_message_limit = 2
+    sample_service.sms_message_limit = 2
     sample_service.restricted = service_restricted
 
     apply_async = mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))

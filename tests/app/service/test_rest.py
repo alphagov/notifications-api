@@ -251,7 +251,6 @@ def test_get_service_by_id(admin_request, sample_service):
         "inbound_api",
         "letter_branding",
         "letter_message_limit",
-        "message_limit",
         "name",
         "notes",
         "organisation",
@@ -383,7 +382,9 @@ def test_create_service(
     data = {
         "name": "created service",
         "user_id": str(sample_user.id),
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
         "email_from": "created.service",
@@ -447,7 +448,9 @@ def test_create_service_with_domain_sets_organisation(
     data = {
         "name": "created service",
         "user_id": str(sample_user.id),
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
         "email_from": "created.service",
@@ -467,7 +470,9 @@ def test_create_service_should_create_annual_billing_for_service(admin_request, 
     data = {
         "name": "created service",
         "user_id": str(sample_user.id),
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
         "email_from": "created.service",
@@ -487,7 +492,9 @@ def test_create_service_should_raise_exception_and_not_create_service_if_annual_
     data = {
         "name": "created service",
         "user_id": str(sample_user.id),
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
         "email_from": "created.service",
@@ -519,7 +526,9 @@ def test_create_service_inherits_branding_from_organisation(
         _data={
             "name": "created service",
             "user_id": str(sample_user.id),
-            "message_limit": 1000,
+            "email_message_limit": 1000,
+            "sms_message_limit": 1000,
+            "letter_message_limit": 1000,
             "restricted": False,
             "active": False,
             "email_from": "created.service",
@@ -538,7 +547,9 @@ def test_should_not_create_service_with_missing_user_id_field(notify_api, fake_u
             data = {
                 "email_from": "service",
                 "name": "created service",
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "created_by": str(fake_uuid),
@@ -558,7 +569,9 @@ def test_should_error_if_created_by_missing(notify_api, sample_user):
             data = {
                 "email_from": "service",
                 "name": "created service",
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "user_id": str(sample_user.id),
@@ -579,7 +592,9 @@ def test_should_not_create_service_with_missing_if_user_id_is_not_in_database(no
                 "email_from": "service",
                 "user_id": fake_uuid,
                 "name": "created service",
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "created_by": str(fake_uuid),
@@ -604,7 +619,9 @@ def test_should_not_create_service_if_missing_data(notify_api, sample_user):
             assert resp.status_code == 400
             assert json_resp["result"] == "error"
             assert "Missing data for required field." in json_resp["message"]["name"]
-            assert "Missing data for required field." in json_resp["message"]["message_limit"]
+            assert "Missing data for required field." in json_resp["message"]["email_message_limit"]
+            assert "Missing data for required field." in json_resp["message"]["sms_message_limit"]
+            assert "Missing data for required field." in json_resp["message"]["letter_message_limit"]
             assert "Missing data for required field." in json_resp["message"]["restricted"]
 
 
@@ -614,7 +631,9 @@ def test_should_not_create_service_with_duplicate_name(notify_api, sample_user, 
             data = {
                 "name": sample_service.name,
                 "user_id": str(sample_service.users[0].id),
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "email_from": "sample.service2",
@@ -638,7 +657,9 @@ def test_create_service_should_throw_duplicate_key_constraint_for_existing_email
             data = {
                 "name": service_name,
                 "user_id": str(first_service.users[0].id),
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "email_from": "first.service",
@@ -671,7 +692,9 @@ def test_create_service_allows_only_lowercase_digits_and_fullstops_in_email_from
     data = {
         "name": service_name,
         "user_id": str(first_service.users[0].id),
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "active": False,
         "email_from": email_from,
@@ -1174,7 +1197,9 @@ def test_default_permissions_are_added_for_user_service(notify_api, notify_db_se
             data = {
                 "name": "created service",
                 "user_id": str(sample_user.id),
-                "message_limit": 1000,
+                "email_message_limit": 1000,
+                "sms_message_limit": 1000,
+                "letter_message_limit": 1000,
                 "restricted": False,
                 "active": False,
                 "email_from": "created.service",
@@ -2267,7 +2292,12 @@ def test_update_service_calls_send_notification_as_service_becomes_live(notify_d
     send_notification_mock.assert_called_once_with(
         service_id=restricted_service.id,
         template_id="618185c6-3636-49cd-b7d2-6f6f5eb3bdde",
-        personalisation={"service_name": restricted_service.name, "message_limit": "1,000"},
+        personalisation={
+            "service_name": restricted_service.name,
+            "email_message_limit": 1000,
+            "sms_message_limit": 1000,
+            "letter_message_limit": 1000,
+        },
         include_user_fields=["name"],
     )
 

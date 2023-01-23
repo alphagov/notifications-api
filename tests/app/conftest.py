@@ -141,7 +141,9 @@ def sample_service(sample_user):
 
     data = {
         "name": service_name,
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
         "created_by": sample_user,
@@ -171,7 +173,9 @@ def sample_broadcast_service(broadcast_organisation, sample_user):
 
     data = {
         "name": service_name,
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
         "created_by": sample_user,
@@ -198,7 +202,9 @@ def sample_broadcast_service_2(broadcast_organisation, sample_user):
 
     data = {
         "name": service_name,
-        "message_limit": 1000,
+        "email_message_limit": 1000,
+        "sms_message_limit": 1000,
+        "letter_message_limit": 1000,
         "restricted": False,
         "email_from": email_from,
         "created_by": sample_user,
@@ -895,7 +901,9 @@ def notify_service(notify_db_session, sample_user):
     if not service:
         service = Service(
             name="Notify Service",
-            message_limit=1000,
+            email_message_limit=1000,
+            sms_message_limit=1000,
+            letter_message_limit=1000,
             restricted=False,
             email_from="notify.service",
             created_by=sample_user,

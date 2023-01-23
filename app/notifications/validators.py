@@ -62,7 +62,6 @@ def check_service_over_daily_message_limit(service, key_type, notification_type,
         return
 
     rate_limits = {
-        None: service.message_limit,
         EMAIL_TYPE: service.email_message_limit,
         SMS_TYPE: service.sms_message_limit,
         LETTER_TYPE: service.letter_message_limit,
