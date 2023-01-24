@@ -99,19 +99,31 @@ class TestFindByUUID:
         "model, response_type, context_keys",
         ((value, key, FIND_BY_UUID_EXTRA_CONTEXT.get(key, set())) for key, value in FIND_BY_UUID_MODELS.items()),
     )
-    def test_all_known_models(self, request, notify_db_session, admin_request, model, response_type, context_keys):
+    @pytest.mark.parametrize("param_name", ["uuid", "value"])
+    def test_all_known_models(
+        self, request, notify_db_session, admin_request, model, response_type, context_keys, param_name
+    ):
         self.load_sample_data(request, model)
         notify_db_session.commit()
 
         (id_,) = notify_db_session.query(model.id).first()
 
-        response = admin_request.post("platform_admin.find_by_uuid", _data={"uuid": str(id_)})
+        response = admin_request.post("platform_admin.find", _data={param_name: str(id_)})
 
         assert response["type"] == response_type
         assert set(response["context"].keys()) == context_keys
+
+    def test_get_notification_by_reference(self, notify_db_session, admin_request, sample_notification):
+        sample_notification.reference = uuid.uuid4()
+
+        response = admin_request.post("platform_admin.find", _data={"value": str(sample_notification.reference)})
+
+        assert response["type"] == "notification"
+        assert response["id"] == str(sample_notification.id)
+        assert response["context"] == {"service_id": str(sample_notification.service_id)}
 
     def test_404_if_no_matches_found(
         self,
         admin_request,
     ):
-        admin_request.post("platform_admin.find_by_uuid", _data={"uuid": str(uuid.uuid4())}, _expected_status=404)
+        admin_request.post("platform_admin.find", _data={"uuid": str(uuid.uuid4())}, _expected_status=404)

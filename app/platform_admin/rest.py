@@ -76,24 +76,36 @@ FIND_BY_UUID_EXTRA_CONTEXT = {
 }
 
 
-def _find_model_by_uuid(uuid_: str) -> tuple[db.Model, str]:
+def _model_lookup(value: str) -> tuple[db.Model, str]:
     for entity_name, model in FIND_BY_UUID_MODELS.items():
         with suppress(NoResultFound):
-            if instance := model.query.get(uuid_):
+            if instance := model.query.get(value):
                 return instance, entity_name
+
+    # Special case - also see if we're looking for a notification by reference
+    # If we introduce any more of these, consider refactoring FIND_BY_UUID_MODELS to use a list of lookup functions
+    with suppress(NoResultFound):
+        if instance := Notification.query.filter_by(reference=value).one():
+            return instance, "notification"
 
     raise NoResultFound
 
 
+@platform_admin_blueprint.route("/find", methods=["POST"])
 @platform_admin_blueprint.route("/find-by-uuid", methods=["POST"])
-def find_by_uuid():
-    """Provides a simple interface for looking whether a UUID references any common DB objects"""
-    instance, entity_name = _find_model_by_uuid(request.json["uuid"])
+def find():
+    """Provides a simple interface for looking whether a given value is associated with any common DB objects.
+
+    'value' above means a UUID or a notification reference
+    """
+    value = request.json["value"] if "value" in request.json else request.json["uuid"]
+    instance, entity_name = _model_lookup(value)
 
     return (
         jsonify(
             {
                 "type": entity_name,
+                "id": instance.id,
                 "context": {
                     field_name: getattr(instance, field_name)
                     for field_name in FIND_BY_UUID_EXTRA_CONTEXT.get(entity_name, set())
