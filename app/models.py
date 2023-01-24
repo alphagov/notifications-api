@@ -1395,6 +1395,10 @@ class NotificationAllTimeView(db.Model):
 
     __tablename__ = "notifications_all_time_view"
 
+    # Tell alembic not to create this as a table. We have a migration where we manually set this up as a view.
+    # This is custom logic we apply - not built-in logic. See `migrations/env.py`
+    __table_args__ = {"info": {"managed_by_alembic": False}}
+
     id = db.Column(UUID(as_uuid=True), primary_key=True)
     job_id = db.Column(UUID(as_uuid=True))
     job_row_number = db.Column(db.Integer)
@@ -1871,7 +1875,7 @@ class Rate(db.Model):
 
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     valid_from = db.Column(db.DateTime, nullable=False)
-    rate = db.Column(db.Float(asdecimal=False), nullable=False)
+    rate = db.Column(db.Numeric(asdecimal=False), nullable=False)
     notification_type = db.Column(notification_types, index=True, nullable=False)
 
     def __str__(self):
@@ -2234,7 +2238,7 @@ class BroadcastMessage(db.Model):
     template = db.relationship("TemplateHistory", backref="broadcast_messages")
 
     _personalisation = db.Column(db.String, nullable=True)
-    content = db.Column(db.String, nullable=False)
+    content = db.Column(db.Text, nullable=False)
     # defaults to empty list
     areas = db.Column(JSONB(none_as_null=True), nullable=False, default=list)
 
@@ -2525,6 +2529,12 @@ class BroadcastProviderTypes(db.Model):
     __tablename__ = "broadcast_provider_types"
 
     name = db.Column(db.String(255), primary_key=True)
+
+
+class BroadcastProviderMessageStatusType(db.Model):
+    __tablename__ = "broadcast_provider_message_status_type"
+
+    name = db.Column(db.String(), primary_key=True)
 
 
 class ServiceBroadcastProviderRestriction(db.Model):
