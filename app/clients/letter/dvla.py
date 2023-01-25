@@ -1,4 +1,7 @@
+import time
+
 import boto3
+import jwt
 import requests
 from flask import current_app
 
@@ -25,6 +28,7 @@ class DVLAClient:
     statsd_client = None
 
     _jwt_token = None
+    _jwt_expires_at = None
 
     def init_app(self, region, statsd_client):
         ssm_client = boto3.client("ssm", region_name=region)
@@ -41,8 +45,10 @@ class DVLAClient:
 
     @property
     def jwt_token(self):
-        if not self._jwt_token:
+        if not self._jwt_token or time.time() >= self._jwt_expires_at:
             self._jwt_token = self.authenticate()
+            jwt_dict = jwt.decode(self._jwt_token, options={"verify_signature": False})
+            self._jwt_expires_at = jwt_dict["exp"]
 
         return self._jwt_token
 
