@@ -50,3 +50,18 @@ def test_set_ssm_creds(dvla_client, ssm):
     assert ssm.get_parameter(Name="/notify/api/dvla_username")["Parameter"]["Value"] == "some new username"
     assert ssm.get_parameter(Name="/notify/api/dvla_password")["Parameter"]["Value"] == "some new password"
     assert ssm.get_parameter(Name="/notify/api/dvla_api_key")["Parameter"]["Value"] == "some new api key"
+
+
+def test_jwt_token_calls_authenticate_if_not_set(client, dvla_client, rmock):
+    assert dvla_client._jwt_token is None
+
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
+    mock_authenticate = rmock.request("POST", endpoint, json={"id-token": "abc.123"}, status_code=200)
+
+    assert dvla_client.jwt_token == "abc.123"
+    assert dvla_client.jwt_token == "abc.123"
+
+    # despite accessing value twice, we only called authenticate once
+    assert mock_authenticate.called_once
+    assert rmock.last_request.json() == {"userName": "some username", "password": "some password"}
+    assert rmock.last_request.headers["Content-Type"] == "application/json"

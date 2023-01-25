@@ -408,6 +408,8 @@ class Config(object):
     # as defined in api db migration 0331_add_broadcast_org.py
     BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
 
+    DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL")
+
 
 ######################
 # Config overrides ###
@@ -501,6 +503,8 @@ class Test(Development):
     CBC_PROXY_ENABLED = True
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com", "success+2@simulator.amazonses.com"]
 
+    DVLA_API_BASE_URL = "https://test-dvla-api.com"
+
 
 class Preview(Config):
     NOTIFY_EMAIL_DOMAIN = "notify.works"
@@ -535,6 +539,8 @@ class Staging(Config):
     API_RATE_LIMIT_ENABLED = True
     CHECK_PROXY_HEADER = True
 
+    DVLA_API_BASE_URL = "https://uat.driver-vehicle-licensing.api.gov.uk"
+
 
 class Production(Config):
     NOTIFY_EMAIL_DOMAIN = "notifications.service.gov.uk"
@@ -554,6 +560,8 @@ class Production(Config):
     SES_STUB_URL = None
 
     CRONITOR_ENABLED = True
+
+    DVLA_API_BASE_URL = "https://driver-vehicle-licensing.api.gov.uk"
 
 
 class CloudFoundryConfig(Config):

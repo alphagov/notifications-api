@@ -1,4 +1,6 @@
 import boto3
+import requests
+from flask import current_app
 
 
 class SSMParameter:
@@ -22,6 +24,8 @@ class DVLAClient:
 
     statsd_client = None
 
+    _jwt_token = None
+
     def init_app(self, region, statsd_client):
         ssm_client = boto3.client("ssm", region_name=region)
         self.dvla_username = SSMParameter(key="/notify/api/dvla_username", ssm_client=ssm_client)
@@ -29,10 +33,33 @@ class DVLAClient:
         self.dvla_api_key = SSMParameter(key="/notify/api/dvla_api_key", ssm_client=ssm_client)
 
         self.statsd_client = statsd_client
+        self.request = requests.Session()
 
     @property
     def name(self):
         return "dvla"
+
+    @property
+    def jwt_token(self):
+        if not self._jwt_token:
+            self._jwt_token = self.authenticate()
+
+        return self._jwt_token
+
+    def authenticate(self):
+        """
+        Fetch a JWT from the DVLA API that can be used in other DVLA API requests
+        """
+        response = self.request.post(
+            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
+            json={
+                "userName": self.dvla_username.get(),
+                "password": self.dvla_password.get(),
+            },
+        )
+        response.raise_for_status()
+
+        return response.json()["id-token"]
 
     def send_letter(self):
         pass
