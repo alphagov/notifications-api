@@ -514,7 +514,6 @@ class Service(db.Model, Versioned):
     created_at = db.Column(db.DateTime, index=False, unique=False, nullable=False, default=datetime.datetime.utcnow)
     updated_at = db.Column(db.DateTime, index=False, unique=False, nullable=True, onupdate=datetime.datetime.utcnow)
     active = db.Column(db.Boolean, index=False, unique=False, nullable=False, default=True)
-    message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=True)
     letter_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     sms_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
     email_message_limit = db.Column(db.BigInteger, index=False, unique=False, nullable=False, default=999_999_999)
