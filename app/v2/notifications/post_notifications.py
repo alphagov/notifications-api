@@ -36,7 +36,6 @@ from app.models import (
     NOTIFICATION_DELIVERED,
     NOTIFICATION_PENDING_VIRUS_CHECK,
     NOTIFICATION_SENDING,
-    PRIORITY,
     SMS_TYPE,
     Notification,
 )
@@ -254,12 +253,10 @@ def process_sms_or_email_notification(
     )
 
     if not simulated:
-        queue_name = QueueNames.PRIORITY if template_process_type == PRIORITY else None
         send_notification_to_queue_detached(
             key_type=api_user.key_type,
             notification_type=notification_type,
             notification_id=notification_id,
-            queue=queue_name,
         )
     else:
         current_app.logger.debug("POST simulated notification for id: {}".format(notification_id))

@@ -2,16 +2,9 @@ from flask import Blueprint, current_app, jsonify, request
 from notifications_utils import SMS_CHAR_COUNT_LIMIT
 
 from app import api_user, authenticated_service
-from app.config import QueueNames
 from app.dao import notifications_dao
 from app.errors import InvalidRequest, register_errors
-from app.models import (
-    EMAIL_TYPE,
-    KEY_TYPE_TEAM,
-    LETTER_TYPE,
-    PRIORITY,
-    SMS_TYPE,
-)
+from app.models import EMAIL_TYPE, KEY_TYPE_TEAM, LETTER_TYPE, SMS_TYPE
 from app.notifications.process_notifications import (
     persist_notification,
     send_notification_to_queue,
@@ -122,8 +115,7 @@ def send_notification(notification_type):
         reply_to_text=template.reply_to_text,
     )
     if not simulated:
-        queue_name = QueueNames.PRIORITY if template.process_type == PRIORITY else None
-        send_notification_to_queue(notification=notification_model, queue=queue_name)
+        send_notification_to_queue(notification=notification_model)
     else:
         current_app.logger.debug("POST simulated notification for id: {}".format(notification_model.id))
     notification_form.update({"template_version": template.version})
