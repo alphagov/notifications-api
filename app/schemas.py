@@ -281,7 +281,6 @@ class ServiceSchema(BaseSchema, UUIDsAsStringsMixin):
             "jobs",
             "letter_contacts",
             "letter_logo_filename",
-            "message_limit",
             "reply_to_email_addresses",
             "returned_letters",
             "service_broadcast_provider_restriction",
@@ -351,7 +350,6 @@ class DetailedServiceSchema(BaseSchema):
             "inbound_sms",
             "jobs",
             "letter_message_limit",
-            "message_limit",
             "permissions",
             "rate_limit",
             "reply_to_email_addresses",
@@ -762,7 +760,6 @@ class ServiceHistorySchema(ma.Schema):
     created_at = FlexibleDateTime()
     updated_at = FlexibleDateTime()
     active = fields.Boolean()
-    message_limit = fields.Integer()
     email_message_limit = fields.Integer()
     sms_message_limit = fields.Integer()
     letter_message_limit = fields.Integer()
