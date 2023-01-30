@@ -142,8 +142,10 @@ class Config(object):
         "pool_size": int(os.environ.get("SQLALCHEMY_POOL_SIZE", 5)),
         "pool_timeout": 30,
         "pool_recycle": 300,
+        "connect_args": {
+            "options": "-c statement_timeout=1200000",
+        },
     }
-    SQLALCHEMY_STATEMENT_TIMEOUT = 1200
     PAGE_SIZE = 50
     API_PAGE_SIZE = 250
     TEST_MESSAGE_FILENAME = "Test message"

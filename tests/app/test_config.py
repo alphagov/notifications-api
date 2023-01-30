@@ -87,4 +87,4 @@ def test_queue_names_all_queues_correct():
 
 def test_sql_statement_timeout(notify_db_session):
     timeout = notify_db_session.execute("show statement_timeout").scalar()
-    assert timeout == "0"
+    assert timeout == "20min"
