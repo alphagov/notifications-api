@@ -603,32 +603,6 @@ def test_should_not_persist_or_send_notification_if_simulated_recipient(
     "notification_type, key_send_to, send_to",
     [("sms", "phone_number", "07700 900 855"), ("email", "email_address", "sample@email.com")],
 )
-def test_send_notification_uses_priority_queue_when_template_is_marked_as_priority(
-    api_client_request, sample_service, mocker, notification_type, key_send_to, send_to
-):
-    mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))
-
-    sample = create_template(service=sample_service, template_type=notification_type, process_type="priority")
-    mocked = mocker.patch("app.celery.provider_tasks.deliver_{}.apply_async".format(notification_type))
-
-    data = {key_send_to: send_to, "template_id": str(sample.id)}
-
-    resp_json = api_client_request.post(
-        sample_service.id,
-        "v2_notifications.post_notification",
-        notification_type=notification_type,
-        _data=data,
-    )
-
-    notification_id = resp_json["id"]
-
-    mocked.assert_called_once_with([notification_id], queue="priority-tasks")
-
-
-@pytest.mark.parametrize(
-    "notification_type, key_send_to, send_to",
-    [("sms", "phone_number", "07700 900 855"), ("email", "email_address", "sample@email.com")],
-)
 def test_returns_a_429_limit_exceeded_if_rate_limit_exceeded(
     api_client_request, sample_service, mocker, notification_type, key_send_to, send_to
 ):
