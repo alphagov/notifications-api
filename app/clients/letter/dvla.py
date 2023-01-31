@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timedelta
 
 import boto3
 import jwt
@@ -7,17 +8,29 @@ from flask import current_app
 
 
 class SSMParameter:
+    # cache properties for up to a day. note that if another process/app changes the value,
+    # this cache won't be automatically invalidated
+    TTL = timedelta(days=1)
+
     def __init__(self, key, ssm_client):
         self.key = key
         self.ssm_client = ssm_client
+        self.last_read_at = None
+        self._value = None
 
     def get(self):
-        return self.ssm_client.get_parameter(Name=self.key, WithDecryption=True)["Parameter"]["Value"]
+        if self._value is not None and self.last_read_at + self.TTL > datetime.utcnow():
+            return self._value
+        self.last_read_at = datetime.utcnow()
+        self._value = self.ssm_client.get_parameter(Name=self.key, WithDecryption=True)["Parameter"]["Value"]
+        return self._value
 
     def set(self, value):
         # this errors if the parameter doesn't exist yet in SSM as we haven't supplied a `Type`
         # this is fine for our purposes, as we'll always want to pre-seed this data.
         self.ssm_client.put_parameter(Name=self.key, Value=value, Overwrite=True)
+        self._value = value
+        self.last_read_at = datetime.utcnow()
 
 
 class DVLAClient:

@@ -8,7 +8,7 @@ import jwt
 import pytest
 from moto import mock_ssm
 
-from app.clients.letter.dvla import DVLAClient
+from app.clients.letter.dvla import DVLAClient, SSMParameter
 
 
 @pytest.fixture
@@ -38,6 +38,60 @@ def dvla_client(ssm):
     dvla_client = DVLAClient()
     dvla_client.init_app(region="eu-west-1", statsd_client=Mock())
     yield dvla_client
+
+
+def test_set_ssm_creds_saves_in_cache(ssm):
+    param = SSMParameter(key="/foo", ssm_client=ssm)
+
+    today = datetime(2023, 1, 3, 12, 0, 1)
+
+    assert param.last_read_at is None
+    assert param._value is None
+
+    with freezegun.freeze_time(today):
+        param.set("new value")
+
+    assert param._value == "new value"
+    assert param.last_read_at == today
+
+
+@pytest.mark.parametrize(
+    "current_time, expected_value, expected_last_read_at",
+    [
+        (datetime(2023, 1, 3, 11, 59, 59), "old value", datetime(2023, 1, 2, 12, 0, 0)),
+        (datetime(2023, 1, 3, 12, 0, 0), "new value", datetime(2023, 1, 3, 12, 0, 0)),
+    ],
+)
+def test_get_ssm_creds_respects_ttl_when_fetching_value(ssm, current_time, expected_value, expected_last_read_at):
+    param = SSMParameter(key="/foo", ssm_client=ssm)
+
+    yesterday = datetime(2023, 1, 2, 12, 0, 0)
+
+    param.last_read_at = yesterday
+    param._value = "old value"
+
+    ssm.put_parameter(Name="/foo", Value="new value", Type="SecureString")
+
+    with freezegun.freeze_time(current_time):
+        assert param.get() == expected_value
+
+    assert param.last_read_at == expected_last_read_at
+
+
+def test_get_ssm_creds_fetches_value_and_saves_in_cache_if_not_set(ssm):
+    param = SSMParameter(key="/foo", ssm_client=ssm)
+    ssm.put_parameter(Name="/foo", Value="bar", Type="SecureString")
+
+    curr_time = datetime(2023, 1, 2, 12, 0, 0)
+
+    assert param.last_read_at is None
+    assert param._value is None
+
+    with freezegun.freeze_time(curr_time):
+        assert param.get() == "bar"
+
+    assert param.last_read_at == curr_time
+    assert param._value == "bar"
 
 
 def test_get_ssm_creds(dvla_client, ssm):
