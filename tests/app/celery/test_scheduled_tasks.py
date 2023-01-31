@@ -9,6 +9,9 @@ import pytest
 from freezegun import freeze_time
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
+    NotifySupportTicketAttachment,
+    NotifySupportTicketComment,
+    NotifySupportTicketStatus,
 )
 
 from app.celery import scheduled_tasks
@@ -29,6 +32,7 @@ from app.celery.scheduled_tasks import (
     run_scheduled_jobs,
     switch_current_sms_provider_on_slow_delivery,
     trigger_link_tests,
+    weekly_dwp_report,
     zendesk_new_email_branding_report,
 )
 from app.config import Config, QueueNames, TaskNames
@@ -1050,3 +1054,95 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
         check_for_low_available_inbound_sms_numbers()
 
     assert mock_send_ticket.call_args_list == []
+
+
+class TestWeeklyDWPReport:
+    @pytest.fixture(scope="function")
+    def mock_zendesk_update_ticket(self, mocker):
+        yield mocker.patch("app.celery.scheduled_tasks.zendesk_client.update_ticket")
+
+    @pytest.fixture(scope="function")
+    def mock_prod_notify_api(self, mocker, notify_api):
+        with set_config(notify_api, "NOTIFY_ENVIRONMENT", "production"):
+            yield notify_api
+
+    @pytest.mark.parametrize(
+        "environment, should_run",
+        (
+            ("test", True),
+            ("local", False),
+            ("preview", False),
+            ("staging", False),
+            ("production", True),
+        ),
+    )
+    def test_skips_non_prod_environments(
+        self, notify_api, notify_db_session, mock_zendesk_update_ticket, mocker, environment, should_run
+    ):
+        mock_logger = mocker.patch("app.celery.scheduled_tasks.current_app.logger")
+
+        with set_config(notify_api, "NOTIFY_ENVIRONMENT", environment):
+            weekly_dwp_report()
+
+        if should_run:
+            assert mock_logger.info.call_args_list != [mocker.call(f"Skipping DWP report run in {environment}")]
+        else:
+            assert mock_logger.info.call_args_list == [mocker.call(f"Skipping DWP report run in {environment}")]
+
+        # 'Successful' runs for this test still don't get to the zendesk_update_ticket call because of other checks.
+        assert mock_zendesk_update_ticket.call_args_list == []
+
+    @pytest.mark.parametrize(
+        "report_config",
+        [
+            {"weekly-dwp-report": {}},
+            {"weekly-dwp-report": {"query": {}, "ticket_id": 123456}},
+            {"weekly-dwp-report": {"query": {"report.csv": "select 1"}, "ticket_id": None}},
+            {"weekly-dwp-report": {"query": {"report.csv": "select 1"}, "ticket_id": 0}},
+        ],
+    )
+    def test_requires_zendesk_reporting_config(
+        self, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket, mocker, report_config
+    ):
+        mock_logger = mocker.patch("app.celery.scheduled_tasks.current_app.logger")
+
+        with set_config(mock_prod_notify_api, "ZENDESK_REPORTING", report_config):
+            weekly_dwp_report()
+
+        assert mock_logger.info.call_args_list == [mocker.call("Skipping DWP report run - invalid configuration.")]
+        assert mock_zendesk_update_ticket.call_args_list == []
+
+    @freeze_time("2022-01-01T09:00:00")
+    def test_successful_run(self, mocker, mock_prod_notify_api, notify_db_session, mock_zendesk_update_ticket):
+        with set_config(
+            mock_prod_notify_api,
+            "ZENDESK_REPORTING",
+            {
+                "weekly-dwp-report": {
+                    "query": {
+                        "some-data.csv": "select 1 as result, 'something else' as text, 'quote,text' as comma",
+                    },
+                    "ticket_id": 123456,
+                }
+            },
+        ):
+            weekly_dwp_report()
+
+        assert mock_zendesk_update_ticket.call_args_list == [
+            mocker.call(
+                123456,
+                status=NotifySupportTicketStatus.PENDING,
+                comment=NotifySupportTicketComment(
+                    body="Please find attached your weekly report.",
+                    attachments=[
+                        NotifySupportTicketAttachment(
+                            filename="some-data.csv", filedata=mocker.ANY, content_type="text/csv"
+                        ),
+                    ],
+                    public=True,
+                ),
+                due_at=datetime(2022, 1, 8, 9, 0, 0),
+            )
+        ]
+        csv_file = mock_zendesk_update_ticket.call_args_list[0][1]["comment"].attachments[0].filedata
+        assert csv_file.read() == 'result,text,comma\r\n1,something else,"quote,text"\r\n'

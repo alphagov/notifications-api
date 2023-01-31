@@ -355,6 +355,11 @@ class Config(object):
                 "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "weekly-dwp-report": {
+                "task": "weekly-dwp-report",
+                "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
+                "options": {"queue": QueueNames.REPORTING},
+            },
         },
     }
 
@@ -461,6 +466,16 @@ class Development(Config):
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com"]
 
     CBC_PROXY_ENABLED = False
+
+    # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
+    # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
+    # Q1 2023.
+    ZENDESK_REPORTING = {
+        "weekly-dwp-report": {
+            "query": json.loads(os.getenv("ZENDESK_REPORTING_WEEKLY_DWP_QUERY", "null")),
+            "ticket_id": int(os.getenv("ZENDESK_REPORTING_WEEKLY_DWP_TICKET_ID", 0)) or None,
+        }
+    }
 
 
 class Test(Development):
