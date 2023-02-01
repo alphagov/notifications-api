@@ -8,6 +8,7 @@ from app.dao.letter_branding_dao import (
     dao_get_existing_alternate_letter_branding_for_name,
     dao_get_letter_branding_by_id,
     dao_get_letter_branding_by_name_case_insensitive,
+    dao_get_orgs_and_services_associated_with_letter_branding,
     dao_update_letter_branding,
 )
 from app.errors import register_errors
@@ -70,6 +71,13 @@ def update_letter_branding(letter_branding_id):
     letter_branding = dao_update_letter_branding(letter_branding_id, **data)
 
     return jsonify(letter_branding.serialize()), 201
+
+
+@letter_branding_blueprint.route("/<uuid:letter_branding_id>/orgs_and_services", methods=["GET"])
+def get_orgs_and_services_associated_with_letter_branding(letter_branding_id):
+    orgs_and_services = dao_get_orgs_and_services_associated_with_letter_branding(letter_branding_id)
+
+    return jsonify(data=orgs_and_services), 200
 
 
 @letter_branding_blueprint.route("/get-unique-name/", methods=["POST"])
