@@ -5,7 +5,7 @@
 {%- for org, brands in brands_by_organisation.items() -%}
     <p><a href="{{ domain }}/organisations/{{ org.id }}/settings/email-branding">{{ org.name }}</a>{% if not org.email_branding_id %} (no default){% endif %}:</p><ul>
     {%- for brand in brands -%}
-        <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
+        <li><a href="{{ domain }}/email-branding/{{ brand.id }}">{{ brand.name }}</a></li>
     {%- endfor -%}
     </ul><hr>
 {%- endfor -%}
@@ -82,7 +82,7 @@
 {%- if brands_with_no_organisation -%}
     <p>These new brands are not associated with any organisation and do not need reviewing:</p><ul>
     {%- for brand in brands_with_no_organisation|sort(attribute='name') -%}
-        <li><a href="{{ domain }}/email-branding/{{ brand.id }}/edit">{{ brand.name }}</a></li>
+        <li><a href="{{ domain }}/email-branding/{{ brand.id }}">{{ brand.name }}</a></li>
     {%- endfor -%}
     </ul>
 {%- endif -%}

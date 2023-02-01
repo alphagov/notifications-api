@@ -869,10 +869,10 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
             "</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
+            '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
             "</li>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
             "</li>"
             "</ul>"
             "<hr>"
@@ -882,7 +882,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
             "</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+            '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
             "</li>"
             "</ul>"
         ),
@@ -890,7 +890,7 @@ def test_zendesk_new_email_branding_report(notify_db_session, mocker, notify_use
             "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
             "<ul>"
             "<li>"
-            '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
+            '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
             "</li>"
             "</ul>"
         ),
@@ -921,11 +921,11 @@ def test_zendesk_new_email_branding_report_for_unassigned_branding_only(notify_d
         "<p>These new brands are not associated with any organisation and do not need reviewing:</p>"
         "<ul>"
         "<li>"
-        '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480/edit">brand-1</a>'
+        '<a href="http://localhost:6012/email-branding/bc5b45e0-af3c-4e3d-a14c-253a56b77480">brand-1</a>'
         "</li><li>"
-        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0/edit">brand-2</a>'
+        '<a href="http://localhost:6012/email-branding/c9c265b3-14ec-42f1-8ae9-4749ffc6f5b0">brand-2</a>'
         "</li><li>"
-        '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e/edit">brand-3</a>'
+        '<a href="http://localhost:6012/email-branding/1b7deb1f-ff1f-4d00-a7a7-05b0b57a185e">brand-3</a>'
         "</li>"
         "</ul>"
     )
