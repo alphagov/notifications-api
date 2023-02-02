@@ -1,6 +1,6 @@
 from app import db
 from app.dao.dao_utils import autocommit
-from app.models import LetterBranding
+from app.models import LetterBranding, Organisation, Service
 
 
 def dao_get_existing_alternate_letter_branding_for_name(name):
@@ -44,3 +44,35 @@ def dao_update_letter_branding(letter_branding_id, **kwargs):
         setattr(letter_branding, key, value or None)
     db.session.add(letter_branding)
     return letter_branding
+
+
+def dao_get_orgs_and_services_associated_with_letter_branding(letter_branding_id):
+    services = (
+        db.session.query(
+            Service.name,
+            Service.id,
+        )
+        .select_from(Service)
+        .join(Service.letter_branding)
+        .filter(Service.active == True, LetterBranding.id == letter_branding_id)  # noqa
+        .group_by(
+            Service.id,
+            Service.name,
+        )
+        .order_by(Service.name)
+        .all()
+    )
+
+    organisations = (
+        db.session.query(Organisation.name, Organisation.id)
+        .select_from(Organisation)
+        .filter(Organisation.active == True, Organisation.letter_branding_id == letter_branding_id)  # noqa
+        .group_by(
+            Organisation.id,
+            Organisation.name,
+        )
+        .order_by(Organisation.name)
+        .all()
+    )
+
+    return {"services": [s._asdict() for s in services], "organisations": [o._asdict() for o in organisations]}

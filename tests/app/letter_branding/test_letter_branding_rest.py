@@ -174,3 +174,15 @@ def test_get_letter_branding_unique_name_gives_up_if_100_options_assigned(
     with pytest.raises(ValueError) as exc:
         admin_request.post("letter_branding.get_letter_branding_unique_name", _data={"name": "Department Name"})
     assert "Couldnt assign a unique name for Department Name" in str(exc.value)
+
+
+def test_get_orgs_and_services_associated_with_letter_branding(admin_request, notify_db_session):
+    letter_branding = create_letter_branding()
+
+    orgs_and_services = admin_request.get(
+        "letter_branding.get_orgs_and_services_associated_with_letter_branding",
+        _expected_status=200,
+        letter_branding_id=letter_branding.id,
+    )["data"]
+
+    assert orgs_and_services == {"services": [], "organisations": []}
