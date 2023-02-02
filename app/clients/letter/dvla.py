@@ -82,6 +82,21 @@ class DVLAClient:
 
         return response.json()["id-token"]
 
+    def change_password(self):
+        new_password = self._generate_password()
+        response = self.request.post(
+            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
+            json={
+                "userName": self.dvla_username.get(),
+                "password": self.dvla_password.get(),
+                "newPassword": new_password,
+            },
+        )
+
+        response.raise_for_status()
+
+        self.dvla_password.set(new_password)
+
     @staticmethod
     def _generate_password():
         """
