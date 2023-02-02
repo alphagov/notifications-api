@@ -299,6 +299,9 @@ class LetterBranding(db.Model):
             "id": str(self.id),
             "name": self.name,
             "filename": self.filename,
+            "created_by": self.created_by_id,
+            "created_at": self.created_at.strftime(DATETIME_FORMAT) if self.created_at else None,
+            "updated_at": self.updated_at.strftime(DATETIME_FORMAT) if self.updated_at else None,
         }
 
 
