@@ -1,3 +1,4 @@
+import string
 import time
 from datetime import datetime
 from unittest.mock import Mock
@@ -156,3 +157,15 @@ def test_jwt_token_calls_authenticate_if_expiry_time_passed(client, dvla_client,
         assert dvla_client._jwt_expires_at == one_hour_later
 
     assert mock_authenticate.called_once
+
+
+@pytest.mark.parametrize("_execution_number", range(100))
+def test_generate_password_creates_passwords_that_meet_dvla_criteria(_execution_number):
+    password = DVLAClient._generate_password()
+    for character_set in (string.ascii_uppercase, string.ascii_lowercase, string.digits, string.punctuation):
+        # assert the intersection of the character class, and the chars in the password is not empty to make sure
+        # that all character classes are represented
+        assert any(
+            character in character_set for character in password
+        ), f"{password} missing character from {character_set}"
+    assert len(password) > 8

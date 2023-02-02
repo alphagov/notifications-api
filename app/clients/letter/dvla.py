@@ -1,3 +1,5 @@
+import secrets
+import string
 import time
 from datetime import datetime, timedelta
 
@@ -79,6 +81,29 @@ class DVLAClient:
         response.raise_for_status()
 
         return response.json()["id-token"]
+
+    @staticmethod
+    def _generate_password():
+        """
+        DVLA api password must be at least 8 characters in length and contain upper, lower, numerical and special
+        characters.
+
+        This function creates a valid password of length 34 characters.
+        """
+
+        password_length = 30
+
+        alphabet = string.ascii_letters + string.digits + string.punctuation
+        while range(100):
+            password = "".join(secrets.choice(alphabet) for i in range(password_length))
+            if (
+                any(c.islower() for c in password)
+                and any(c.isupper() for c in password)
+                and any(c.isdigit() for c in password)
+                and any(not c.isalnum() for c in password)
+            ):
+                return password
+        raise RuntimeError("Unable to generate sufficiently secure password")
 
     def send_letter(self):
         pass
