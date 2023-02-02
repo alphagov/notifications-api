@@ -1,4 +1,5 @@
 import string
+import sys
 import time
 from datetime import datetime
 from unittest.mock import Mock
@@ -214,3 +215,48 @@ def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, r
         dvla_client.change_password()
 
     assert mock_set_password.called is False
+
+
+def test_change_api_key_calls_dvla(dvla_client, rmock):
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
+    mock_change_api_key = rmock.request("POST", endpoint, json={"newApiKey": "some new api_key"}, status_code=200)
+    dvla_client._jwt_token = "some jwt token"
+    dvla_client._jwt_expires_at = sys.maxsize
+
+    dvla_client.change_api_key()
+
+    assert mock_change_api_key.called_once is True
+    assert rmock.last_request.json() == {
+        "userName": "some username",
+        "password": "some password",
+    }
+    assert rmock.last_request.headers["x-api-key"] == "some api key"
+    assert rmock.last_request.headers["Authorization"] == "some jwt token"
+    assert rmock.last_request.headers["Content-Type"] == "application/json"
+
+
+def test_change_api_key_updates_ssm(dvla_client, rmock, mocker):
+    mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
+    dvla_client._jwt_token = "some jwt token"
+    dvla_client._jwt_expires_at = sys.maxsize
+
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
+    rmock.request("POST", endpoint, json={"newApiKey": "some new api_key"}, status_code=200)
+
+    dvla_client.change_api_key()
+
+    mock_set_api_key.assert_called_once_with("some new api_key")
+
+
+def test_change_api_key_does_not_update_ssm_if_dvla_throws_error(dvla_client, rmock, mocker):
+    mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
+    dvla_client._jwt_token = "some jwt token"
+    dvla_client._jwt_expires_at = sys.maxsize
+
+    endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
+    rmock.request("POST", endpoint, json={"message": "Unauthorized"}, status_code=401)
+
+    with pytest.raises(HTTPError):
+        dvla_client.change_api_key()
+
+    assert mock_set_api_key.called is False

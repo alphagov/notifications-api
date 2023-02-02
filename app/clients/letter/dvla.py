@@ -82,6 +82,22 @@ class DVLAClient:
 
         return response.json()["id-token"]
 
+    def change_api_key(self):
+        response = self.request.post(
+            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
+            headers={
+                "x-api-key": self.dvla_api_key.get(),
+                "Authorization": self.jwt_token,
+            },
+            json={
+                "userName": self.dvla_username.get(),
+                "password": self.dvla_password.get(),
+            },
+        )
+        response.raise_for_status()
+
+        self.dvla_api_key.set(response.json()["newApiKey"])
+
     def change_password(self):
         new_password = self._generate_password()
         response = self.request.post(
