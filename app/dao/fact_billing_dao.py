@@ -28,7 +28,6 @@ from app.models import (
     FactBilling,
     LetterRate,
     NotificationAllTimeView,
-    NotificationHistory,
     Organisation,
     Rate,
     Service,
@@ -465,15 +464,19 @@ def _fetch_usage_for_service_sms(service_id, year):
     )
 
 
-def delete_billing_data_for_services_for_day(process_day, service_ids):
+def delete_billing_data_for_day(process_day, service_ids=None):
     """
-    Delete all ft_billing data for the given service_ids on a given bst_date
+    Delete all ft_billing data for the given bst_date if no service_ids are provided.
+    If service_ids are provided, only the data for specific services will be deleted.
 
     Returns how many rows were deleted
     """
-    return FactBilling.query.filter(
-        FactBilling.bst_date == process_day, FactBilling.service_id.in_(service_ids)
-    ).delete()
+    filters = [FactBilling.bst_date == process_day]
+
+    if service_ids:
+        filters.append(FactBilling.service_id.in_(service_ids))
+
+    return FactBilling.query.filter(*filters).delete()
 
 
 def fetch_billing_data_for_day(process_day, service_ids=None, check_permissions=False):
@@ -619,21 +622,6 @@ def get_rates_for_billing():
     non_letter_rates = Rate.query.order_by(desc(Rate.valid_from)).all()
     letter_rates = LetterRate.query.order_by(desc(LetterRate.start_date)).all()
     return non_letter_rates, letter_rates
-
-
-def get_service_ids_that_need_billing_populated(start_date, end_date):
-    return [
-        service_id
-        for (service_id,) in db.session.query(NotificationHistory.service_id)
-        .filter(
-            NotificationHistory.created_at >= start_date,
-            NotificationHistory.created_at <= end_date,
-            NotificationHistory.notification_type.in_([SMS_TYPE, EMAIL_TYPE, LETTER_TYPE]),
-            NotificationHistory.billable_units != 0,
-        )
-        .distinct()
-        .all()
-    ]
 
 
 def get_rate(

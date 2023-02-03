@@ -34,9 +34,8 @@ from app.dao.annual_billing_dao import (
     set_default_free_allowance_for_service,
 )
 from app.dao.fact_billing_dao import (
-    delete_billing_data_for_services_for_day,
+    delete_billing_data_for_day,
     fetch_billing_data_for_day,
-    get_service_ids_that_need_billing_populated,
     update_ft_billing,
 )
 from app.dao.jobs_dao import dao_get_job_by_id
@@ -76,7 +75,6 @@ from app.models import (
     Template,
     User,
 )
-from app.utils import get_london_midnight_in_utc
 
 
 @click.group(name="command", help="Additional commands")
@@ -295,30 +293,23 @@ def setup_commands(application):
 )
 def rebuild_ft_billing_for_day(service_id, day):
     """
-    Rebuild the data in ft_billing for the given service_id and date
+    Rebuild the data in ft_billing for a given day, optionally filtering by service_id
     """
 
-    def rebuild_ft_data(process_day, service_ids):
-        deleted_rows = delete_billing_data_for_services_for_day(process_day, service_ids)
-        current_app.logger.info(
-            "deleted {} existing billing rows for service_ids {} on {}".format(deleted_rows, service_ids, process_day)
-        )
+    def rebuild_ft_data(process_day, service_ids=None):
+        deleted_rows = delete_billing_data_for_day(process_day=day, service_ids=service_ids)
+        current_app.logger.info(f"deleted {deleted_rows} existing billing rows for {process_day}")
+
         billing_data = fetch_billing_data_for_day(process_day=process_day, service_ids=service_ids)
-        # billing_data = every row that should exist
         update_ft_billing(billing_data, process_day)
-        current_app.logger.info(
-            "added/updated {} billing rows for service_ids {} on {}".format(len(billing_data), service_ids, process_day)
-        )
+        current_app.logger.info(f"added/updated {len(billing_data)} billing rows for {process_day}")
 
     if service_id:
-        # confirm the service exists
+        # get the service to confirm it exists
         dao_fetch_service_by_id(service_id)
-        rebuild_ft_data(day, [service_id])
+        rebuild_ft_data(day, service_ids=[service_id])
     else:
-        service_ids = get_service_ids_that_need_billing_populated(
-            get_london_midnight_in_utc(day), get_london_midnight_in_utc(day + timedelta(days=1))
-        )
-        rebuild_ft_data(day, service_ids)
+        rebuild_ft_data(day)
 
 
 @notify_command(name="bulk-invite-user-to-service")
@@ -1022,7 +1013,7 @@ def generate_bulktest_data(user_id):
     pprint("Building ft_billing for all periods")
     for dt in daily_dates_since_last_new_year:
         dt_date = dt.date()
-        delete_billing_data_for_services_for_day(dt_date, service_ids)
+        delete_billing_data_for_day(dt_date, service_ids)
         billing_data = fetch_billing_data_for_day(process_day=dt_date, service_ids=service_ids)
         update_ft_billing(billing_data, dt_date)
         pprint(f" -> Done {dt_date}")

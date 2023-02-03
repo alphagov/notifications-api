@@ -7,7 +7,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 
 from app import db
 from app.dao.fact_billing_dao import (
-    delete_billing_data_for_services_for_day,
+    delete_billing_data_for_day,
     fetch_billing_data_for_day,
     fetch_daily_sms_provider_volumes_for_platform,
     fetch_daily_volumes_for_platform,
@@ -625,19 +625,44 @@ def test_delete_billing_data(notify_db_session):
     email_template = create_template(service_1, "email")
     other_service_template = create_template(service_2, "sms")
 
-    existing_rows_to_delete = [  # noqa
-        create_ft_billing("2018-01-01", sms_template, billable_unit=1),
-        create_ft_billing("2018-01-01", email_template, billable_unit=2),
-    ]
+    # ft_billing rows for service_1 to delete
+    create_ft_billing("2018-01-01", sms_template, billable_unit=1)
+    create_ft_billing("2018-01-01", email_template, billable_unit=2)
+
     other_day = create_ft_billing("2018-01-02", sms_template, billable_unit=3)
     other_service = create_ft_billing("2018-01-01", other_service_template, billable_unit=4)
 
-    delete_billing_data_for_services_for_day("2018-01-01", [service_1.id])
+    deleted_rows = delete_billing_data_for_day("2018-01-01", [service_1.id])
+
+    assert deleted_rows == 2
 
     current_rows = FactBilling.query.all()
     assert sorted(x.billable_units for x in current_rows) == sorted(
         [other_day.billable_units, other_service.billable_units]
     )
+
+
+def test_delete_billing_data_when_no_service_ids_are_provided(notify_db_session):
+    service_1 = create_service(service_name="1")
+    service_2 = create_service(service_name="2")
+    sms_template = create_template(service_1, "sms")
+    email_template = create_template(service_1, "email")
+    other_service_template = create_template(service_2, "sms")
+
+    # ft_billing rows for service_1 and service_2 for provided day
+    create_ft_billing("2018-01-01", sms_template, billable_unit=1)
+    create_ft_billing("2018-01-01", email_template, billable_unit=2)
+    create_ft_billing("2018-01-01", other_service_template, billable_unit=4)
+
+    other_day = create_ft_billing("2018-01-02", sms_template, billable_unit=3)
+
+    deleted_rows = delete_billing_data_for_day("2018-01-01")
+
+    assert deleted_rows == 3
+
+    current_rows = FactBilling.query.all()
+    assert len(current_rows) == 1
+    assert current_rows[0].billable_units == other_day.billable_units
 
 
 def test_fetch_usage_for_all_services_sms(
