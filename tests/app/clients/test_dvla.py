@@ -9,6 +9,7 @@ import freezegun
 import jwt
 import pytest
 from moto import mock_ssm
+from redis.exceptions import LockError
 from requests import HTTPError
 
 from app.clients.letter.dvla import DVLAClient, SSMParameter
@@ -217,6 +218,17 @@ def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, r
     assert mock_set_password.called is False
 
 
+def test_change_password_raises_if_other_process_holds_lock(dvla_client, rmock, mocker):
+    mocker.patch("notifications_utils.clients.redis.redis_client.StubLock.__enter__", side_effect=LockError)
+    mock_set_password = mocker.patch.object(dvla_client.dvla_password, "set")
+
+    with pytest.raises(LockError):
+        dvla_client.change_password()
+
+    assert rmock.called is False
+    assert mock_set_password.called is False
+
+
 def test_change_api_key_calls_dvla(dvla_client, rmock):
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
     mock_change_api_key = rmock.request("POST", endpoint, json={"newApiKey": "some new api_key"}, status_code=200)
@@ -259,4 +271,15 @@ def test_change_api_key_does_not_update_ssm_if_dvla_throws_error(dvla_client, rm
     with pytest.raises(HTTPError):
         dvla_client.change_api_key()
 
+    assert mock_set_api_key.called is False
+
+
+def test_change_api_key_raises_if_other_process_holds_lock(dvla_client, rmock, mocker):
+    mocker.patch("notifications_utils.clients.redis.redis_client.StubLock.__enter__", side_effect=LockError)
+    mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
+
+    with pytest.raises(LockError):
+        dvla_client.change_api_key()
+
+    assert rmock.called is False
     assert mock_set_api_key.called is False

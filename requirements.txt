@@ -160,7 +160,7 @@ newrelic==8.5.0
     # via -r requirements.in
 notifications-python-client==6.3.0
     # via -r requirements.in
-notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@61.0.0
+notifications-utils @ git+https://github.com/alphagov/notifications-utils.git@61.2.0
     # via -r requirements.in
 orderedset==2.0.3
     # via notifications-utils

@@ -83,35 +83,41 @@ class DVLAClient:
         return response.json()["id-token"]
 
     def change_api_key(self):
-        response = self.request.post(
-            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
-            headers={
-                "x-api-key": self.dvla_api_key.get(),
-                "Authorization": self.jwt_token,
-            },
-            json={
-                "userName": self.dvla_username.get(),
-                "password": self.dvla_password.get(),
-            },
-        )
-        response.raise_for_status()
+        from app import redis_store
 
-        self.dvla_api_key.set(response.json()["newApiKey"])
+        with redis_store.get_lock(f"dvla-change-api-key-{self.dvla_username.get()}", timeout=60, blocking=False):
+            response = self.request.post(
+                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
+                headers={
+                    "x-api-key": self.dvla_api_key.get(),
+                    "Authorization": self.jwt_token,
+                },
+                json={
+                    "userName": self.dvla_username.get(),
+                    "password": self.dvla_password.get(),
+                },
+            )
+            response.raise_for_status()
+
+            self.dvla_api_key.set(response.json()["newApiKey"])
 
     def change_password(self):
+        from app import redis_store
+
         new_password = self._generate_password()
-        response = self.request.post(
-            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
-            json={
-                "userName": self.dvla_username.get(),
-                "password": self.dvla_password.get(),
-                "newPassword": new_password,
-            },
-        )
 
-        response.raise_for_status()
+        with redis_store.get_lock(f"dvla-change-password-{self.dvla_username.get()}", timeout=60, blocking=False):
+            response = self.request.post(
+                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
+                json={
+                    "userName": self.dvla_username.get(),
+                    "password": self.dvla_password.get(),
+                    "newPassword": new_password,
+                },
+            )
+            response.raise_for_status()
 
-        self.dvla_password.set(new_password)
+            self.dvla_password.set(new_password)
 
     @staticmethod
     def _generate_password():
