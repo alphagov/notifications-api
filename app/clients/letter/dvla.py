@@ -1,3 +1,4 @@
+import base64
 import secrets
 import string
 import time
@@ -142,5 +143,84 @@ class DVLAClient:
                 return password
         raise RuntimeError("Unable to generate sufficiently secure password")
 
-    def send_letter(self):
-        pass
+    def _get_auth_headers(self):
+        return {
+            "Accept": "application/json",
+            "Authorization": self.jwt_token,
+            "X-API-Key": self.dvla_api_key.get(),
+        }
+
+    def send_letter(
+        self,
+        *,
+        notification_id: str,
+        address: list[str],
+        postage: str,
+        service_id: str,
+        organisation_id: str,
+        pdf_file: bytes,
+    ):
+        """
+        Sends a letter to the DVLA for printing
+
+        address should be normalised address lines, e.g. ['A. User', 'London', 'SW1 1AA']
+
+        normalised address lines can be returned by calling:
+        `PostalAddress.from_personalisation(notification.personalisation).normalised_lines`
+        """
+        from app.models import INTERNATIONAL_POSTAGE_TYPES
+
+        if postage in INTERNATIONAL_POSTAGE_TYPES:
+            raise NotImplementedError
+
+        response = requests.post(
+            f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+            headers=self._get_auth_headers(),
+            json=self._format_create_print_job_json(
+                notification_id, address, postage, service_id, organisation_id, pdf_file
+            ),
+        )
+
+        return response.json()
+
+    def _format_create_print_job_json(
+        self, notification_id, address_lines, postage, service_id, organisation_id, pdf_file
+    ):
+        from app.models import FIRST_CLASS
+
+        recipient_name = address_lines[0]
+        address_without_recipient = address_lines[1:]
+
+        json_payload = {
+            "id": notification_id,
+            "standardParams": {
+                "jobType": "NOTIFY",
+                "templateReference": "NOTIFY",
+                "businessIdentifier": notification_id,
+                "recipientName": recipient_name,
+                "address": {"unstructuredAddress": self._build_unstructured_address(address_without_recipient)},
+            },
+            "customParams": [
+                {"key": "pdfContent", "value": base64.b64encode(pdf_file).decode("utf-8")},
+                {"key": "organisationIdentifier", "value": organisation_id},
+                {"key": "serviceIdentifier", "value": service_id},
+            ],
+        }
+
+        # `despatchMethod` should not be added for second class letters
+        if postage == FIRST_CLASS:
+            json_payload["standardParams"]["despatchMethod"] = "FIRST"
+
+        return json_payload
+
+    @staticmethod
+    def _build_unstructured_address(address_without_recipient):
+        address_line_keys = ["line1", "line2", "line3", "line4", "line5"]
+
+        postcode = address_without_recipient[-1]
+        address_without_postcode = address_without_recipient[:-1]
+
+        unstructured_address = dict(zip(address_line_keys, address_without_postcode))
+        unstructured_address["postcode"] = postcode
+
+        return unstructured_address
