@@ -1,3 +1,5 @@
+import csv
+import io
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -5,6 +7,9 @@ import jinja2
 from flask import current_app
 from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicket,
+    NotifySupportTicketAttachment,
+    NotifySupportTicketComment,
+    NotifySupportTicketStatus,
 )
 from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import between
@@ -483,3 +488,48 @@ def check_for_low_available_inbound_sms_numbers():
         ticket_categories=["notify_no_ticket_category"],
     )
     zendesk_client.send_ticket_to_zendesk(ticket)
+
+
+@notify_celery.task(name="weekly-dwp-report")
+def weekly_dwp_report():
+    report_config = current_app.config["ZENDESK_REPORTING"].get("weekly-dwp-report")
+
+    if not current_app.should_send_zendesk_alerts:
+        current_app.logger.info(f"Skipping DWP report run in {current_app.config['NOTIFY_ENVIRONMENT']}")
+        return
+
+    if (
+        not report_config
+        or not isinstance(report_config, dict)
+        or not report_config.get("query")
+        or not report_config.get("ticket_id")
+    ):
+        current_app.logger.info("Skipping DWP report run - invalid configuration.")
+        return
+
+    attachments = []
+    for csv_name, query in report_config["query"].items():
+        result = db.session.execute(query)
+        headers = result.keys()
+        rows = result.fetchall()
+
+        csv_data = io.StringIO()
+        csv_writer = csv.DictWriter(csv_data, fieldnames=headers, dialect="excel")
+        csv_writer.writeheader()
+
+        for row in rows:
+            csv_writer.writerow(row._asdict())
+
+        csv_data.seek(0)
+
+        attachments.append(NotifySupportTicketAttachment(filename=csv_name, filedata=csv_data, content_type="text/csv"))
+
+    zendesk_client.update_ticket(
+        report_config["ticket_id"],
+        status=NotifySupportTicketStatus.PENDING,
+        comment=NotifySupportTicketComment(
+            body="Please find attached your weekly report.",
+            attachments=attachments,
+        ),
+        due_at=convert_utc_to_bst(datetime.utcnow()) + timedelta(days=7),
+    )

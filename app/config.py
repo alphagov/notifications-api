@@ -355,6 +355,11 @@ class Config(object):
                 "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
                 "options": {"queue": QueueNames.PERIODIC},
             },
+            "weekly-dwp-report": {
+                "task": "weekly-dwp-report",
+                "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
+                "options": {"queue": QueueNames.REPORTING},
+            },
         },
     }
 
@@ -413,6 +418,16 @@ class Config(object):
     BROADCAST_ORGANISATION_ID = "38e4bf69-93b0-445d-acee-53ea53fe02df"
 
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL")
+
+    # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
+    # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
+    # Q1 2023.
+    # Our manifest builder takes our JSON string from notifications-credentials and passes it through the Jinja2
+    # `tojson` filter, which escapes things like ' < > to their \uxxxx form. We need to turn those back into
+    # real characters. We do that by turning the env var unicode string to bytes and then decoding that back to
+    # a unicode string via the unicode-escape encoding, which will automatically decode \uxxxx forms back to their
+    # basic representation.
+    ZENDESK_REPORTING = json.loads(os.environ.get("ZENDESK_REPORTING", "{}").encode().decode("unicode-escape"))
 
 
 ######################
