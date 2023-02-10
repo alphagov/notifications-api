@@ -135,6 +135,7 @@ applications:
       STATSD_HOST: "notify-statsd-exporter-{{ environment }}.apps.internal"
 
       ZENDESK_API_KEY: '{{ ZENDESK_API_KEY }}'
+      ZENDESK_REPORTING: '{{ ZENDESK_REPORTING | tojson }}'
 
       MMG_API_KEY: '{{ MMG_API_KEY }}'
       MMG_INBOUND_SMS_AUTH: '{{ MMG_INBOUND_SMS_AUTH | tojson }}'

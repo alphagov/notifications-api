@@ -419,6 +419,16 @@ class Config(object):
 
     DVLA_API_BASE_URL = os.environ.get("DVLA_API_BASE_URL")
 
+    # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
+    # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
+    # Q1 2023.
+    # Our manifest builder takes our JSON string from notifications-credentials and passes it through the Jinja2
+    # `tojson` filter, which escapes things like ' < > to their \uxxxx form. We need to turn those back into
+    # real characters. We do that by turning the env var unicode string to bytes and then decoding that back to
+    # a unicode string via the unicode-escape encoding, which will automatically decode \uxxxx forms back to their
+    # basic representation.
+    ZENDESK_REPORTING = json.loads(os.environ.get("ZENDESK_REPORTING", "{}").encode().decode("unicode-escape"))
+
 
 ######################
 # Config overrides ###
@@ -466,16 +476,6 @@ class Development(Config):
     DVLA_EMAIL_ADDRESSES = ["success@simulator.amazonses.com"]
 
     CBC_PROXY_ENABLED = False
-
-    # We don't expect to have any zendesk reporting beyond this. If someone is looking here and thinking of adding
-    # something new, let's consider a more holistic approach first please. We should be revisiting this approach in
-    # Q1 2023.
-    ZENDESK_REPORTING = {
-        "weekly-dwp-report": {
-            "query": json.loads(os.getenv("ZENDESK_REPORTING_WEEKLY_DWP_QUERY", "null")),
-            "ticket_id": int(os.getenv("ZENDESK_REPORTING_WEEKLY_DWP_TICKET_ID", 0)) or None,
-        }
-    }
 
 
 class Test(Development):

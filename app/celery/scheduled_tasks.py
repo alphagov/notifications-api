@@ -492,13 +492,18 @@ def check_for_low_available_inbound_sms_numbers():
 
 @notify_celery.task(name="weekly-dwp-report")
 def weekly_dwp_report():
-    report_config = current_app.config["ZENDESK_REPORTING"]["weekly-dwp-report"]
+    report_config = current_app.config["ZENDESK_REPORTING"].get("weekly-dwp-report")
 
     if not current_app.should_send_zendesk_alerts:
         current_app.logger.info(f"Skipping DWP report run in {current_app.config['NOTIFY_ENVIRONMENT']}")
         return
 
-    if not report_config.get("query") or not report_config.get("ticket_id"):
+    if (
+        not report_config
+        or not isinstance(report_config, dict)
+        or not report_config.get("query")
+        or not report_config.get("ticket_id")
+    ):
         current_app.logger.info("Skipping DWP report run - invalid configuration.")
         return
 
