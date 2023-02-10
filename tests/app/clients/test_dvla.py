@@ -13,7 +13,16 @@ from moto import mock_ssm
 from redis.exceptions import LockError
 from requests import HTTPError
 
-from app.clients.letter.dvla import DVLAClient, SSMParameter
+from app.clients.letter.dvla import (
+    DVLAClient,
+    DvlaDuplicatePrintRequestException,
+    DvlaException,
+    DvlaNonRetryableException,
+    DvlaRetryableException,
+    DvlaThrottlingException,
+    DvlaUnauthorisedRequestException,
+    SSMParameter,
+)
 
 
 @pytest.fixture
@@ -414,6 +423,162 @@ def test_send_letter_raises_an_error_if_postage_is_international(dvla_client, po
             address=["line1", "line2", "postcode"],
             postage=postage,
             service_id="service_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+
+def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_client, rmock):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={
+            "errors": [
+                {
+                    "status": "400 BAD_REQUEST",
+                    "code": "NotEmpty",
+                    "title": "standardParams.jobType",
+                    "detail": "Job type field must not be empty.",
+                },
+                {
+                    "status": "400 BAD_REQUEST",
+                    "code": "NotEmpty",
+                    "title": "standardParams.templateReference",
+                    "detail": "Template reference field must not be empty.",
+                },
+            ]
+        },
+        status_code=400,
+    )
+
+    with pytest.raises(DvlaNonRetryableException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+    assert "Job type field must not be empty." in str(exc.value)
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, rmock, status_code):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={
+            "errors": [
+                {
+                    "status": f"{status_code}",
+                    "code": "Unauthorized",
+                    "detail": "API Key or JWT is either not provided, expired or invalid",
+                }
+            ]
+        },
+        status_code=status_code,
+    )
+
+    with pytest.raises(DvlaUnauthorisedRequestException) as exc:
+        dvla_client.send_letter(
+            notification_id="noti_id",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+    assert "API Key or JWT is either not provided, expired or invalid" in str(exc.value)
+
+
+def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_client, rmock):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={
+            "errors": [
+                {
+                    "status": "409 CONFLICT",
+                    "code": "11",
+                    "title": "Print job cannot be created",
+                    "detail": (
+                        "The supplied identifier 1 conflicts with another print job. "
+                        "Please supply a unique identifier."
+                    ),
+                }
+            ]
+        },
+        status_code=409,
+    )
+
+    with pytest.raises(DvlaDuplicatePrintRequestException) as exc:
+        dvla_client.send_letter(
+            notification_id="1",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+    assert "The supplied identifier 1 conflicts with another print job" in str(exc.value)
+
+
+def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_client, rmock):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        json={
+            "errors": [
+                {
+                    "status": "429",
+                    "title": "Too Many Requests",
+                    "detail": "Too Many Requests",
+                }
+            ]
+        },
+        status_code=429,
+    )
+
+    with pytest.raises(DvlaThrottlingException):
+        dvla_client.send_letter(
+            notification_id="1",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+
+def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_client, rmock):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        status_code=500,
+    )
+
+    with pytest.raises(DvlaRetryableException):
+        dvla_client.send_letter(
+            notification_id="1",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
+            organisation_id="org_id",
+            pdf_file=b"pdf",
+        )
+
+
+def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_client, rmock):
+    rmock.post(
+        f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+        status_code=418,
+    )
+
+    with pytest.raises(DvlaException):
+        dvla_client.send_letter(
+            notification_id="1",
+            address=["line1", "line2", "postcode"],
+            postage="second",
+            service_id="s_id",
             organisation_id="org_id",
             pdf_file=b"pdf",
         )

@@ -9,6 +9,32 @@ import jwt
 import requests
 from flask import current_app
 
+from app.clients import ClientException
+
+
+class DvlaException(ClientException):
+    pass
+
+
+class DvlaRetryableException(DvlaException):
+    pass
+
+
+class DvlaNonRetryableException(DvlaException):
+    pass
+
+
+class DvlaDuplicatePrintRequestException(DvlaNonRetryableException):
+    pass
+
+
+class DvlaUnauthorisedRequestException(DvlaRetryableException):
+    pass
+
+
+class DvlaThrottlingException(DvlaRetryableException):
+    pass
+
 
 class SSMParameter:
     # cache properties for up to a day. note that if another process/app changes the value,
@@ -173,15 +199,34 @@ class DVLAClient:
         if postage in INTERNATIONAL_POSTAGE_TYPES:
             raise NotImplementedError
 
-        response = requests.post(
-            f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
-            headers=self._get_auth_headers(),
-            json=self._format_create_print_job_json(
-                notification_id, address, postage, service_id, organisation_id, pdf_file
-            ),
-        )
+        current_app.logger.info(f"Sending letter with id {notification_id}")
 
-        return response.json()
+        try:
+            response = requests.post(
+                f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
+                headers=self._get_auth_headers(),
+                json=self._format_create_print_job_json(
+                    notification_id, address, postage, service_id, organisation_id, pdf_file
+                ),
+            )
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            # Catch errors and raise our own to indicate what action to take.
+            # If the error has details, we add them to the error message.
+            if e.response.status_code == 400:
+                raise DvlaNonRetryableException(response.json()["errors"][0]["detail"]) from e
+            elif e.response.status_code in {401, 403}:
+                raise DvlaUnauthorisedRequestException({response.json()["errors"][0]["detail"]}) from e
+            elif e.response.status_code == 409:
+                raise DvlaDuplicatePrintRequestException(response.json()["errors"][0]["detail"]) from e
+            elif e.response.status_code == 429:
+                raise DvlaThrottlingException() from e
+            elif e.response.status_code >= 500:
+                raise DvlaRetryableException() from e
+            else:
+                raise DvlaException() from e
+        else:
+            return response.json()
 
     def _format_create_print_job_json(
         self, notification_id, address_lines, postage, service_id, organisation_id, pdf_file
