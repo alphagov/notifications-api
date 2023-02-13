@@ -17,6 +17,8 @@ from notifications_utils.clients.zendesk.zendesk_client import (
 from app.celery import scheduled_tasks
 from app.celery.scheduled_tasks import (
     auto_expire_broadcast_messages,
+    change_dvla_api_key,
+    change_dvla_password,
     check_for_low_available_inbound_sms_numbers,
     check_for_missing_rows_in_completed_jobs,
     check_for_services_with_high_failure_rates_or_sending_to_tv_numbers,
@@ -1054,6 +1056,22 @@ def test_check_for_low_available_inbound_sms_numbers_does_not_proceed_if_enough_
         check_for_low_available_inbound_sms_numbers()
 
     assert mock_send_ticket.call_args_list == []
+
+
+def test_change_dvla_password_task(mocker):
+    mock_change_password = mocker.patch("app.dvla_client.change_password")
+
+    change_dvla_password()
+
+    mock_change_password.assert_called_once_with()
+
+
+def test_change_dvla_api_key_task(mocker):
+    mock_change_api_key = mocker.patch("app.dvla_client.change_api_key")
+
+    change_dvla_api_key()
+
+    mock_change_api_key.assert_called_once_with()
 
 
 class TestWeeklyDWPReport:

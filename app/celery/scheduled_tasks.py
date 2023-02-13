@@ -15,7 +15,7 @@ from notifications_utils.timezones import convert_utc_to_bst
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db, notify_celery, statsd_client, zendesk_client
+from app import db, dvla_client, notify_celery, statsd_client, zendesk_client
 from app.aws import s3
 from app.celery.broadcast_message_tasks import trigger_link_test
 from app.celery.letters_pdf_tasks import get_pdf_for_templated_letter
@@ -533,3 +533,13 @@ def weekly_dwp_report():
         ),
         due_at=convert_utc_to_bst(datetime.utcnow()) + timedelta(days=7),
     )
+
+
+@notify_celery.task(name="change-dvla-password")
+def change_dvla_password():
+    dvla_client.change_password()
+
+
+@notify_celery.task(name="change-dvla-api-key")
+def change_dvla_api_key():
+    dvla_client.change_api_key()

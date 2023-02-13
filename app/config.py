@@ -360,6 +360,18 @@ class Config(object):
                 "schedule": crontab(hour=9, minute=0, day_of_week="mon"),
                 "options": {"queue": QueueNames.REPORTING},
             },
+            # first tuesday of every month
+            "change-dvla-api-key": {
+                "task": "change-dvla-api-key",
+                "schedule": crontab(hour=9, minute=0, day_of_week="tue", day_of_month="1-7"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
+            # the wednesday immediately following the first tuesday of every month
+            "change-dvla-password": {
+                "task": "change-dvla-password",
+                "schedule": crontab(hour=9, minute=0, day_of_week="wed", day_of_month="2-8"),
+                "options": {"queue": QueueNames.PERIODIC},
+            },
         },
     }
 
