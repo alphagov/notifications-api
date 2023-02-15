@@ -55,6 +55,9 @@ class SSMParameter:
         self.ssm_client.put_parameter(Name=self.key, Value=value, Overwrite=True)
         self._value = value
 
+    def clear(self):
+        self._value = None
+
 
 class DVLAClient:
     """

@@ -91,6 +91,17 @@ def test_get_ssm_creds_fetches_value_and_saves_in_cache_if_not_set(ssm):
     assert param._value == "bar"
 
 
+def test_clear_ssm_creds_removes_locally_cached_value(ssm):
+    param = SSMParameter(key="/foo", ssm_client=ssm)
+    ssm.put_parameter(Name="/foo", Value="bar", Type="SecureString")
+
+    param._value = "old value"
+
+    param.clear()
+
+    assert param._value is None
+
+
 def test_get_ssm_creds(dvla_client, ssm):
     assert dvla_client.dvla_username.get() == "some username"
     assert dvla_client.dvla_password.get() == "some password"
