@@ -87,7 +87,9 @@ class DVLAClient:
 
     @property
     def jwt_token(self):
-        if not self._jwt_token or time.time() >= self._jwt_expires_at:
+        # if the jwt is about to expire, just reset it ourselves to avoid unnecessary 401s
+        buffer = 60
+        if not self._jwt_token or time.time() + buffer >= self._jwt_expires_at:
             self._jwt_token = self.authenticate()
             jwt_dict = jwt.decode(self._jwt_token, options={"verify_signature": False})
             self._jwt_expires_at = jwt_dict["exp"]

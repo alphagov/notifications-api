@@ -159,8 +159,9 @@ def test_jwt_token_calls_authenticate_if_not_set(dvla_client, rmock):
 
 def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
     prev_token_expiry_time = time.time()
-    one_second_later = prev_token_expiry_time + 1
-    one_hour_later = one_second_later + 3600
+    sixty_one_seconds_before_expiry = prev_token_expiry_time - 61
+    fifty_nine_seconds_before_expiry = prev_token_expiry_time - 59
+    one_hour_later = fifty_nine_seconds_before_expiry + 3600
 
     old_token = jwt.encode(payload={"exp": prev_token_expiry_time}, key="foo")
     next_token = jwt.encode(payload={"exp": one_hour_later}, key="foo")
@@ -168,10 +169,13 @@ def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
     dvla_client._jwt_token = jwt.encode(payload={"exp": prev_token_expiry_time}, key="foo")
     dvla_client._jwt_expires_at = prev_token_expiry_time
 
+    with freezegun.freeze_time(datetime.fromtimestamp(sixty_one_seconds_before_expiry)):
+        assert dvla_client.jwt_token == old_token
+
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
     mock_authenticate = rmock.request("POST", endpoint, json={"id-token": next_token}, status_code=200)
 
-    with freezegun.freeze_time(datetime.fromtimestamp(one_second_later)):
+    with freezegun.freeze_time(datetime.fromtimestamp(fifty_nine_seconds_before_expiry)):
         assert dvla_client.jwt_token != old_token
         assert dvla_client._jwt_expires_at == one_hour_later
 
