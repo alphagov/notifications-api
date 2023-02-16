@@ -113,7 +113,7 @@ idna==3.4
     # via
     #   jsonschema
     #   requests
-importlib-metadata==5.1.0
+importlib-metadata==6.0.0
     # via flask
 iso8601==1.1.0
     # via -r requirements.in
@@ -250,7 +250,7 @@ sqlalchemy==1.4.41
     #   marshmallow-sqlalchemy
 statsd==3.3.0
     # via notifications-utils
-typing-extensions==4.4.0
+typing-extensions==4.5.0
     # via pypdf2
 uri-template==1.2.0
     # via jsonschema
@@ -267,11 +267,11 @@ wcwidth==0.2.5
     # via prompt-toolkit
 webcolors==1.12
     # via jsonschema
-werkzeug==2.2.2
+werkzeug==2.2.3
     # via flask
 wrapt==1.14.1
     # via deprecated
-zipp==3.11.0
+zipp==3.13.0
     # via importlib-metadata
 
 # The following packages are considered to be unsafe in a requirements file:
