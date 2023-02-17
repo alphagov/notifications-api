@@ -190,9 +190,6 @@ class DVLAClient:
         Sends a letter to the DVLA for printing
 
         address should be normalised address lines, e.g. ['A. User', 'London', 'SW1 1AA']
-
-        normalised address lines can be returned by calling:
-        `PostalAddress.from_personalisation(notification.personalisation).normalised_lines`
         """
         from app.models import INTERNATIONAL_POSTAGE_TYPES
 
