@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from botocore.exceptions import ClientError as BotoClientError
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -17,10 +19,17 @@ from app.clients.sms import SmsClientResponseException
 from app.config import QueueNames
 from app.dao import notifications_dao
 from app.dao.notifications_dao import update_notification_status_by_id
+from app.dao.provider_details_dao import (
+    get_provider_details_by_notification_type,
+)
 from app.delivery import send_to_providers
 from app.exceptions import NotificationTechnicalFailureException
 from app.letters.utils import LetterPDFNotFound, find_letter_pdf_in_s3
-from app.models import NOTIFICATION_TECHNICAL_FAILURE
+from app.models import (
+    LETTER_TYPE,
+    NOTIFICATION_SENDING,
+    NOTIFICATION_TECHNICAL_FAILURE,
+)
 
 
 @notify_celery.task(bind=True, name="deliver_sms", max_retries=48, default_retry_delay=300)
@@ -111,6 +120,7 @@ def deliver_letter(self, notification_id):
             organisation_id=str(notification.service.organisation_id),
             pdf_file=file_bytes,
         )
+        update_letter_to_sending(notification)
     except DvlaRetryableException as e:
         if isinstance(e, DvlaThrottlingException):
             current_app.logger.warning(f"RETRY: Letter notification {notification_id} was rate limited by DVLA")
@@ -134,3 +144,13 @@ def deliver_letter(self, notification_id):
     except Exception as e:
         update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException(f"Error when sending letter notification {notification_id}") from e
+
+
+def update_letter_to_sending(notification):
+    provider = get_provider_details_by_notification_type(LETTER_TYPE)[0]
+
+    notification.status = NOTIFICATION_SENDING
+    notification.sent_at = datetime.utcnow()
+    notification.sent_by = provider.identifier
+
+    notifications_dao.dao_update_notification(notification)

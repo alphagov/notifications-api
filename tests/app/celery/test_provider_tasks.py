@@ -10,7 +10,12 @@ from moto import mock_s3
 
 import app
 from app.celery import provider_tasks
-from app.celery.provider_tasks import deliver_email, deliver_letter, deliver_sms
+from app.celery.provider_tasks import (
+    deliver_email,
+    deliver_letter,
+    deliver_sms,
+    update_letter_to_sending,
+)
 from app.clients.email import EmailClientNonRetryableException
 from app.clients.email.aws_ses import (
     AwsSesClientException,
@@ -26,6 +31,7 @@ from app.clients.sms import SmsClientResponseException
 from app.exceptions import NotificationTechnicalFailureException
 from app.models import (
     NOTIFICATION_CREATED,
+    NOTIFICATION_SENDING,
     NOTIFICATION_TECHNICAL_FAILURE,
     PRECOMPILED_TEMPLATE_NAME,
 )
@@ -201,6 +207,21 @@ def test_if_ses_send_rate_throttle_then_should_retry_and_log_warning(sample_noti
     assert mock_logger_warning.called
 
 
+@freeze_time("2020-02-17 16:00:00")
+def test_update_letter_to_sending(sample_letter_template):
+    letter = create_notification(
+        template=sample_letter_template,
+        status=NOTIFICATION_CREATED,
+        created_at=datetime.now(),
+    )
+    update_letter_to_sending(letter)
+
+    assert letter.status == NOTIFICATION_SENDING
+    assert letter.sent_at == datetime.utcnow()
+    assert letter.updated_at == datetime.utcnow()
+    assert letter.sent_by == "dvla"
+
+
 @mock_s3
 @freeze_time("2020-02-17 16:00:00")
 @pytest.mark.parametrize(
@@ -257,6 +278,8 @@ def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_
         organisation_id=str(sample_organisation.id),
         pdf_file=b"file",
     )
+    assert letter.status == NOTIFICATION_SENDING
+    assert letter.sent_by == "dvla"
 
 
 @mock_s3
@@ -294,6 +317,7 @@ def test_deliver_letter_when_file_is_not_in_S3_logs_an_error(mocker, sample_lett
         "File not found in bucket test-letters-pdf with prefix 2020-02-17/NOTIFY.REF1",
     )
     assert not mock_send_letter.called
+    assert letter.status == NOTIFICATION_CREATED
 
 
 @mock_s3
