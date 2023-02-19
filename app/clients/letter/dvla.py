@@ -192,11 +192,6 @@ class DVLAClient:
 
         address should be normalised address lines, e.g. ['A. User', 'London', 'SW1 1AA']
         """
-        from app.models import INTERNATIONAL_POSTAGE_TYPES
-
-        if postage in INTERNATIONAL_POSTAGE_TYPES:
-            raise NotImplementedError
-
         current_app.logger.info(f"Sending letter with id {notification_id}")
 
         try:
@@ -235,7 +230,7 @@ class DVLAClient:
     def _format_create_print_job_json(
         self, *, notification_id, reference, address_lines, postage, service_id, organisation_id, pdf_file
     ):
-        from app.models import FIRST_CLASS
+        from app.models import EUROPE, FIRST_CLASS, REST_OF_WORLD
 
         recipient_name = address_lines[0]
         address_without_recipient = address_lines[1:]
@@ -247,7 +242,9 @@ class DVLAClient:
                 "templateReference": "NOTIFY",
                 "businessIdentifier": reference,
                 "recipientName": recipient_name,
-                "address": {"unstructuredAddress": self._build_unstructured_address(address_without_recipient)},
+                "address": self._build_address_object(
+                    postage=postage, address_without_recipient=address_without_recipient
+                ),
             },
             "customParams": [
                 {"key": "pdfContent", "value": base64.b64encode(pdf_file).decode("utf-8")},
@@ -259,6 +256,10 @@ class DVLAClient:
         # `despatchMethod` should not be added for second class letters
         if postage == FIRST_CLASS:
             json_payload["standardParams"]["despatchMethod"] = "FIRST"
+        elif postage == EUROPE:
+            json_payload["standardParams"]["despatchMethod"] = "INTERNATIONAL_EU"
+        elif postage == REST_OF_WORLD:
+            json_payload["standardParams"]["despatchMethod"] = "INTERNATIONAL_ROW"
 
         return json_payload
 
@@ -273,3 +274,23 @@ class DVLAClient:
         unstructured_address["postcode"] = postcode
 
         return unstructured_address
+
+    @staticmethod
+    def _build_international_address(address_without_recipient):
+        address_line_keys = ["line1", "line2", "line3", "line4", "line5"]
+
+        country = address_without_recipient[-1]
+        address_without_country = address_without_recipient[:-1]
+
+        international_address = dict(zip(address_line_keys, address_without_country))
+        international_address["country"] = country
+
+        return international_address
+
+    def _build_address_object(self, *, postage, address_without_recipient):
+        from app.models import INTERNATIONAL_POSTAGE_TYPES
+
+        if postage in INTERNATIONAL_POSTAGE_TYPES:
+            return {"internationalAddress": self._build_international_address(address_without_recipient)}
+
+        return {"unstructuredAddress": self._build_unstructured_address(address_without_recipient)}
