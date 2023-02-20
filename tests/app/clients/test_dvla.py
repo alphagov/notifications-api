@@ -246,13 +246,8 @@ def test_change_api_key_calls_dvla(dvla_client, rmock):
     dvla_client.change_api_key()
 
     assert mock_change_api_key.called_once is True
-    assert rmock.last_request.json() == {
-        "userName": "some username",
-        "password": "some password",
-    }
     assert rmock.last_request.headers["x-api-key"] == "some api key"
     assert rmock.last_request.headers["Authorization"] == "some jwt token"
-    assert rmock.last_request.headers["Content-Type"] == "application/json"
 
 
 def test_change_api_key_updates_ssm(dvla_client, rmock, mocker):

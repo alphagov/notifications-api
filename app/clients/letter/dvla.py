@@ -118,10 +118,6 @@ class DVLAClient:
                     "x-api-key": self.dvla_api_key.get(),
                     "Authorization": self.jwt_token,
                 },
-                json={
-                    "userName": self.dvla_username.get(),
-                    "password": self.dvla_password.get(),
-                },
             )
             response.raise_for_status()
 
