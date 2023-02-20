@@ -139,6 +139,7 @@ def test_jwt_token_returns_jwt_if_set_and_not_expired_yet(dvla_client, rmock):
     assert dvla_client.jwt_token == sample_token
 
 
+@freezegun.freeze_time("2023-01-01T12:00:00.000000Z")
 def test_jwt_token_calls_authenticate_if_not_set(dvla_client, rmock):
     assert dvla_client._jwt_token is None
 
