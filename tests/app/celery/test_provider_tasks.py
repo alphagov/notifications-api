@@ -453,8 +453,8 @@ def test_deliver_letter_when_there_is_a_non_retryable_error(
 @mock_s3
 @freeze_time("2020-02-17 16:00:00")
 def test_deliver_letter_when_max_retries_are_reached(mocker, sample_letter_template, sample_organisation):
-    mocker.patch("app.celery.provider_tasks.dvla_client.send_letter", side_effect=Exception())
-    mocker.patch("app.celery.provider_tasks.deliver_letter.retry", side_effect=MaxRetriesExceededError())
+    mocker.patch("app.celery.provider_tasks.dvla_client.send_letter", side_effect=DvlaRetryableException())
+    mock_retry = mocker.patch("app.celery.provider_tasks.deliver_letter.retry", side_effect=MaxRetriesExceededError())
 
     letter = create_notification(
         template=sample_letter_template,
@@ -482,5 +482,6 @@ def test_deliver_letter_when_max_retries_are_reached(mocker, sample_letter_templ
     with pytest.raises(NotificationTechnicalFailureException) as e:
         deliver_letter(letter.id)
 
+    assert mock_retry.called is True
     assert str(letter.id) in str(e.value)
     assert letter.status == NOTIFICATION_TECHNICAL_FAILURE

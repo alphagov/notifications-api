@@ -127,7 +127,14 @@ def deliver_letter(self, notification_id):
         else:
             current_app.logger.exception(f"RETRY: Letter notification {notification_id} failed")
 
-        self.retry()
+        try:
+            self.retry()
+        except self.MaxRetriesExceededError as e:
+            update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
+            raise NotificationTechnicalFailureException(
+                "RETRY FAILED: Max retries reached. The task deliver_letter failed for notification "
+                f"{notification_id}. Notification has been updated to technical-failure"
+            ) from e
     except DvlaNonRetryableException as e:
         if isinstance(e, DvlaDuplicatePrintRequestException):
             current_app.logger.warning(f"Duplicate deliver_letter task called for notification {notification_id}")
@@ -135,12 +142,6 @@ def deliver_letter(self, notification_id):
 
         update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException(f"Error when sending letter notification {notification_id}") from e
-    except self.MaxRetriesExceededError as e:
-        update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
-        raise NotificationTechnicalFailureException(
-            f"RETRY FAILED: Max retries reached. The task deliver_letter failed for notification {notification_id}. "
-            "Notification has been updated to technical-failure"
-        ) from e
     except Exception as e:
         update_notification_status_by_id(notification_id, NOTIFICATION_TECHNICAL_FAILURE)
         raise NotificationTechnicalFailureException(f"Error when sending letter notification {notification_id}") from e
