@@ -116,6 +116,10 @@ class DVLAClient:
             response.raise_for_status()
         except requests.HTTPError as e:
             if e.response.status_code == 401:
+                # likely the old password has already expired
+                current_app.logger.exception("Failed to generate a DVLA jwt token")
+
+                self.dvla_password.clear()
                 raise DvlaRetryableException(e.response.json()[0]["detail"]) from e
 
             self._handle_common_dvla_errors(e)
@@ -134,6 +138,10 @@ class DVLAClient:
                 response.raise_for_status()
             except requests.HTTPError as e:
                 if e.response.status_code == 401:
+                    # likely the old API key has already expired.
+                    current_app.logger.exception("Failed to change DVLA api key")
+
+                    self.dvla_api_key.clear()
                     raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
 
                 self._handle_common_dvla_errors(e)
@@ -158,6 +166,10 @@ class DVLAClient:
                 response.raise_for_status()
             except requests.HTTPError as e:
                 if e.response.status_code == 401:
+                    # likely the old password has already expired
+                    current_app.logger.exception("Failed to change DVLA password")
+                    self.dvla_password.clear()
+
                     raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
 
                 self._handle_common_dvla_errors(e)
@@ -238,6 +250,9 @@ class DVLAClient:
             if e.response.status_code == 400:
                 raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code in {401, 403}:
+                # probably the api key is not valid
+                self.dvla_api_key.clear()
+
                 raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code == 409:
                 raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e

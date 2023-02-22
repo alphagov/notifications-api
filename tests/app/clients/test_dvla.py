@@ -170,6 +170,7 @@ def test_jwt_token_calls_authenticate_if_expiry_time_passed(dvla_client, rmock):
 
 
 def test_authenticate_raises_retryable_exception_if_credentials_are_invalid(dvla_client, rmock):
+    assert dvla_client.dvla_password.get() == "some password"
 
     error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/authenticate"
@@ -179,6 +180,8 @@ def test_authenticate_raises_retryable_exception_if_credentials_are_invalid(dvla
         dvla_client.authenticate()
 
     assert dvla_client._jwt_token is None
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_password._value is None
 
     assert "Some detail" in str(exc.value)
 
@@ -252,6 +255,7 @@ def test_change_password_updates_ssm(dvla_client, rmock, mocker):
 def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, rmock, mocker):
     mocker.patch.object(dvla_client, "_generate_password", return_value="some new password")
     mock_set_password = mocker.patch.object(dvla_client.dvla_password, "set")
+    assert dvla_client.dvla_password.get() == "some password"
 
     error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
@@ -262,6 +266,8 @@ def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, r
 
     # does not update ssm
     assert mock_set_password.called is False
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_password._value is None
 
     assert "Some detail" in str(exc.value)
 
@@ -333,6 +339,7 @@ def test_change_api_key_handles_401_authentication_error(dvla_client, rmock, moc
     mock_set_api_key = mocker.patch.object(dvla_client.dvla_api_key, "set")
     dvla_client._jwt_token = "some jwt token"
     dvla_client._jwt_expires_at = sys.maxsize
+    assert dvla_client.dvla_api_key.get() == "some api key"
 
     error_response = [{"status": 401, "title": "Authentication Failure", "detail": "Some detail"}]
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
@@ -343,6 +350,8 @@ def test_change_api_key_handles_401_authentication_error(dvla_client, rmock, moc
 
     # does not update ssm
     assert mock_set_api_key.called is False
+    # clears down old credentials that are out of date
+    assert dvla_client.dvla_api_key._value is None
 
     assert "Some detail" in str(exc.value)
 
@@ -568,6 +577,7 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
         },
         status_code=status_code,
     )
+    assert dvla_client.dvla_api_key.get() == "some api key"
 
     with pytest.raises(DvlaUnauthorisedRequestException) as exc:
         dvla_client.send_letter(
@@ -579,6 +589,9 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
             organisation_id="org_id",
             pdf_file=b"pdf",
         )
+
+    # make sure we clear down the api key
+    assert dvla_client.dvla_api_key._value is None
 
     assert "API Key or JWT is either not provided, expired or invalid" in str(exc.value)
 
