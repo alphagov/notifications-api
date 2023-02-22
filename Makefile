@@ -36,7 +36,7 @@ bootstrap-with-docker: generate-version-file ## Build the image to run the app i
 
 .PHONY: run-flask
 run-flask: ## Run flask
-	. environment.sh && flask run -p 6011
+	. environment.sh && gunicorn -b 127.0.0.1:6011 application
 
 .PHONY: run-flask-with-docker
 run-flask-with-docker: ## Run flask
