@@ -93,18 +93,29 @@ class DVLAClient:
 
         return self._jwt_token
 
+    def _handle_common_dvla_errors(self, e: requests.HTTPError):
+        if e.response.status_code == 429:
+            raise DvlaThrottlingException() from e
+        elif e.response.status_code >= 500:
+            raise DvlaRetryableException() from e
+        else:
+            raise DvlaNonRetryableException() from e
+
     def authenticate(self):
         """
         Fetch a JWT from the DVLA API that can be used in other DVLA API requests
         """
-        response = self.request.post(
-            f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
-            json={
-                "userName": self.dvla_username.get(),
-                "password": self.dvla_password.get(),
-            },
-        )
-        response.raise_for_status()
+        try:
+            response = self.request.post(
+                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/authenticate",
+                json={
+                    "userName": self.dvla_username.get(),
+                    "password": self.dvla_password.get(),
+                },
+            )
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            self._handle_common_dvla_errors(e)
 
         return response.json()["id-token"]
 
@@ -112,14 +123,14 @@ class DVLAClient:
         from app import redis_store
 
         with redis_store.get_lock(f"dvla-change-api-key-{self.dvla_username.get()}", timeout=60, blocking=False):
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
-                headers={
-                    "x-api-key": self.dvla_api_key.get(),
-                    "Authorization": self.jwt_token,
-                },
-            )
-            response.raise_for_status()
+            try:
+                response = self.request.post(
+                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
+                    headers=self._get_auth_headers(),
+                )
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                self._handle_common_dvla_errors(e)
 
             self.dvla_api_key.set(response.json()["newApiKey"])
 
@@ -129,15 +140,18 @@ class DVLAClient:
         new_password = self._generate_password()
 
         with redis_store.get_lock(f"dvla-change-password-{self.dvla_username.get()}", timeout=60, blocking=False):
-            response = self.request.post(
-                f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
-                json={
-                    "userName": self.dvla_username.get(),
-                    "password": self.dvla_password.get(),
-                    "newPassword": new_password,
-                },
-            )
-            response.raise_for_status()
+            try:
+                response = self.request.post(
+                    f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
+                    json={
+                        "userName": self.dvla_username.get(),
+                        "password": self.dvla_password.get(),
+                        "newPassword": new_password,
+                    },
+                )
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                self._handle_common_dvla_errors(e)
 
             self.dvla_password.set(new_password)
 
@@ -195,7 +209,7 @@ class DVLAClient:
         current_app.logger.info(f"Sending letter with id {notification_id}")
 
         try:
-            response = requests.post(
+            response = self.request.post(
                 f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
                 headers=self._get_auth_headers(),
                 json=self._format_create_print_job_json(
@@ -213,17 +227,13 @@ class DVLAClient:
             # Catch errors and raise our own to indicate what action to take.
             # If the error has details, we add them to the error message.
             if e.response.status_code == 400:
-                raise DvlaNonRetryableException(response.json()["errors"][0]["detail"]) from e
+                raise DvlaNonRetryableException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code in {401, 403}:
-                raise DvlaUnauthorisedRequestException({response.json()["errors"][0]["detail"]}) from e
+                raise DvlaUnauthorisedRequestException(e.response.json()["errors"][0]["detail"]) from e
             elif e.response.status_code == 409:
-                raise DvlaDuplicatePrintRequestException(response.json()["errors"][0]["detail"]) from e
-            elif e.response.status_code == 429:
-                raise DvlaThrottlingException() from e
-            elif e.response.status_code >= 500:
-                raise DvlaRetryableException() from e
-            else:
-                raise DvlaException() from e
+                raise DvlaDuplicatePrintRequestException(e.response.json()["errors"][0]["detail"]) from e
+
+            self._handle_common_dvla_errors(e)
         else:
             return response.json()
 

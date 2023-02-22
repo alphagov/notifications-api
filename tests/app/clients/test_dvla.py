@@ -11,7 +11,6 @@ import pytest
 from flask import current_app
 from moto import mock_ssm
 from redis.exceptions import LockError
-from requests import HTTPError
 
 from app.clients.letter.dvla import (
     DVLAClient,
@@ -220,7 +219,7 @@ def test_change_password_does_not_update_ssm_if_dvla_throws_error(dvla_client, r
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
     rmock.request("POST", endpoint, json={"message": "Unauthorized."}, status_code=401)
 
-    with pytest.raises(HTTPError):
+    with pytest.raises(DvlaException):
         dvla_client.change_password()
 
     assert mock_set_password.called is False
@@ -271,7 +270,7 @@ def test_change_api_key_does_not_update_ssm_if_dvla_throws_error(dvla_client, rm
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/new-api-key"
     rmock.request("POST", endpoint, json={"message": "Unauthorized"}, status_code=401)
 
-    with pytest.raises(HTTPError):
+    with pytest.raises(DvlaException):
         dvla_client.change_api_key()
 
     assert mock_set_api_key.called is False
@@ -570,7 +569,7 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
         status_code=418,
     )
 
-    with pytest.raises(DvlaException):
+    with pytest.raises(DvlaNonRetryableException):
         dvla_client.send_letter(
             notification_id="1",
             reference="ABCDEFGHIJKL",
