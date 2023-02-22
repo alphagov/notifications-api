@@ -12,6 +12,7 @@ from notifications_utils.clients.zendesk.zendesk_client import (
     NotifySupportTicketStatus,
 )
 from notifications_utils.timezones import convert_utc_to_bst
+from redis.exceptions import LockError
 from sqlalchemy import between
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -25,6 +26,7 @@ from app.celery.tasks import (
     process_job,
     process_row,
 )
+from app.clients.letter.dvla import DvlaRetryableException
 from app.config import QueueNames, TaskNames
 from app.cronitor import cronitor
 from app.dao.inbound_numbers_dao import dao_get_available_inbound_numbers
@@ -535,11 +537,25 @@ def weekly_dwp_report():
     )
 
 
-@notify_celery.task(name="change-dvla-password")
-def change_dvla_password():
-    dvla_client.change_password()
+@notify_celery.task(bind=True, name="change-dvla-password", max_retries=3, default_retry_delay=60)
+def change_dvla_password(self):
+    try:
+        dvla_client.change_password()
+    except LockError:
+        # some other task is currently changing the password. let that process handle it and quietly exit
+        current_app.logger.info("change-dvla-password lock held by other process, doing nothing")
+    except DvlaRetryableException:
+        current_app.logger.info("change-dvla-password DvlaRetryableException - retrying")
+        self.retry()
 
 
-@notify_celery.task(name="change-dvla-api-key")
-def change_dvla_api_key():
-    dvla_client.change_api_key()
+@notify_celery.task(bind=True, name="change-dvla-api-key", max_retries=3, default_retry_delay=60)
+def change_dvla_api_key(self):
+    try:
+        dvla_client.change_api_key()
+    except LockError:
+        # some other task is currently changing the api key. let that process handle it and quietly exit
+        current_app.logger.info("change-dvla-api-key lock held by other process, doing nothing")
+    except DvlaRetryableException:
+        current_app.logger.info("change-dvla-api-key DvlaRetryableException - retrying")
+        self.retry()
