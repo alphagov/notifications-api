@@ -115,6 +115,9 @@ class DVLAClient:
             )
             response.raise_for_status()
         except requests.HTTPError as e:
+            if e.response.status_code == 401:
+                raise DvlaRetryableException(e.response.json()[0]["detail"]) from e
+
             self._handle_common_dvla_errors(e)
 
         return response.json()["id-token"]
@@ -130,6 +133,9 @@ class DVLAClient:
                 )
                 response.raise_for_status()
             except requests.HTTPError as e:
+                if e.response.status_code == 401:
+                    raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
+
                 self._handle_common_dvla_errors(e)
 
             self.dvla_api_key.set(response.json()["newApiKey"])
@@ -151,6 +157,9 @@ class DVLAClient:
                 )
                 response.raise_for_status()
             except requests.HTTPError as e:
+                if e.response.status_code == 401:
+                    raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
+
                 self._handle_common_dvla_errors(e)
 
             self.dvla_password.set(new_password)
