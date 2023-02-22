@@ -30,4 +30,4 @@ RUN chown -R notify:notify /home/vcap/app \
 
 USER notify
 
-ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]
+#ENTRYPOINT [ "/home/vcap/app/entrypoint.sh" ]

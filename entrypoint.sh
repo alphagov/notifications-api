@@ -19,7 +19,7 @@ then
   shift 1
   # TODO: This is fine for local development but this file will soon need to change to have
   # gunicorn infront of flask
-  flask run --host 0.0.0.0 --port 6011
+  gunicorn -b 0.0.0.0:6011 application
 elif [ -n "$*" ]
 then
   $*

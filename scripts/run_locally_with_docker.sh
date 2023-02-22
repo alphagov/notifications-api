@@ -20,6 +20,9 @@ else
   EXPOSED_PORTS=""
 fi
 
+EXPOSED_PORTS="-p 6011:6011"
+set -x
+
 docker run -it --rm \
   -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
   -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \

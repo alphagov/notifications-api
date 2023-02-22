@@ -40,7 +40,7 @@ run-flask: ## Run flask
 
 .PHONY: run-flask-with-docker
 run-flask-with-docker: ## Run flask
-	./scripts/run_locally_with_docker.sh api
+	./scripts/run_locally_with_docker.sh gunicorn -c gunicorn_config.py -b 0.0.0.0:6011 application
 
 .PHONY: run-celery
 run-celery: ## Run celery
