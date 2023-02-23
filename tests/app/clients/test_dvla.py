@@ -223,6 +223,7 @@ def test_generate_password_creates_passwords_that_meet_dvla_criteria(_execution_
 
 def test_change_password_calls_dvla(dvla_client, rmock, mocker):
     mocker.patch.object(dvla_client, "_generate_password", return_value="some new password")
+    dvla_client.dvla_password._value = "some old password"
 
     endpoint = "https://test-dvla-api.com/thirdparty-access/v1/password"
     mock_change_password = rmock.request(
@@ -232,6 +233,7 @@ def test_change_password_calls_dvla(dvla_client, rmock, mocker):
     dvla_client.change_password()
 
     assert mock_change_password.called_once is True
+    # assert we ignored the old password from cache and re-fetched from SSM
     assert rmock.last_request.json() == {
         "userName": "some username",
         "password": "some password",
@@ -314,10 +316,12 @@ def test_change_api_key_calls_dvla(dvla_client, rmock):
     mock_change_api_key = rmock.request("POST", endpoint, json={"newApiKey": "some new api_key"}, status_code=200)
     dvla_client._jwt_token = "some jwt token"
     dvla_client._jwt_expires_at = sys.maxsize
+    dvla_client.dvla_api_key._value = "some old api key"
 
     dvla_client.change_api_key()
 
     assert mock_change_api_key.called_once is True
+    # we ignored the old value in cache, and tried with the latest version from SSM
     assert rmock.last_request.headers["x-api-key"] == "some api key"
     assert rmock.last_request.headers["Authorization"] == "some jwt token"
 

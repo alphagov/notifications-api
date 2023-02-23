@@ -130,6 +130,9 @@ class DVLAClient:
         from app import redis_store
 
         with redis_store.get_lock(f"dvla-change-api-key-{self.dvla_username.get()}", timeout=60, blocking=False):
+            # clear and re-fetch dvla api key, just to ensure we have the latest version
+            self.dvla_api_key.clear()
+
             try:
                 response = self.request.post(
                     f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/new-api-key",
@@ -138,7 +141,10 @@ class DVLAClient:
                 response.raise_for_status()
             except requests.HTTPError as e:
                 if e.response.status_code == 401:
-                    # likely the old API key has already expired.
+                    # the api key is invalid, but we know it's current as per SSM as we fetched it at the beginning of
+                    # this block. It feels most likely that the api key has just been changed by another process and
+                    # DVLA's eventual consistency hasn't caught up yet. The other alternative is that the key expired
+                    # due to being a year old - at which point we need to manually reset it
                     current_app.logger.exception("Failed to change DVLA api key")
 
                     self.dvla_api_key.clear()
@@ -154,6 +160,9 @@ class DVLAClient:
         new_password = self._generate_password()
 
         with redis_store.get_lock(f"dvla-change-password-{self.dvla_username.get()}", timeout=60, blocking=False):
+            # clear and re-fetch dvla password, just to ensure we have the latest version
+            self.dvla_password.clear()
+
             try:
                 response = self.request.post(
                     f"{current_app.config['DVLA_API_BASE_URL']}/thirdparty-access/v1/password",
@@ -166,10 +175,13 @@ class DVLAClient:
                 response.raise_for_status()
             except requests.HTTPError as e:
                 if e.response.status_code == 401:
-                    # likely the old password has already expired
+                    # the password is invalid, but we know it's current as per SSM as we fetched it at the beginning of
+                    # this block. It feels most likely that the password has just been changed by another process and
+                    # DVLA's eventual consistency hasn't caught up yet. The other alternative is that the key expired
+                    # due to being 90 days old - at which point we need to manually reset it
                     current_app.logger.exception("Failed to change DVLA password")
-                    self.dvla_password.clear()
 
+                    self.dvla_password.clear()
                     raise DvlaNonRetryableException(e.response.json()[0]["detail"]) from e
 
                 self._handle_common_dvla_errors(e)
