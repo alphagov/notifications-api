@@ -1,6 +1,8 @@
 import json
-from collections import defaultdict, namedtuple
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 from flask import current_app
 from notifications_utils.insensitive_dict import InsensitiveDict
@@ -486,8 +488,21 @@ def persist_daily_sorted_letter_counts(day, file_name, sorted_letter_counts):
     dao_create_or_update_daily_sorted_letter(daily_letter_count)
 
 
+@dataclass
+class NotificationUpdate:
+    """
+    A NotificationUpdate is used to wrap a row of a DVLA response file.
+    `despatch_date` is optional to support files which contain it and those that don't
+    """
+
+    reference: str
+    status: str
+    page_count: str
+    cost_threshold: str
+    despatch_date: Optional[str] = None
+
+
 def process_updates_from_file(response_file):
-    NotificationUpdate = namedtuple("NotificationUpdate", ["reference", "status", "page_count", "cost_threshold"])
     notification_updates = [NotificationUpdate(*line.split("|")) for line in response_file.splitlines()]
     return notification_updates
 
