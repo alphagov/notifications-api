@@ -203,7 +203,12 @@ class DVLAClient:
                 f"{current_app.config['DVLA_API_BASE_URL']}/print-request/v1/print/jobs",
                 headers=self._get_auth_headers(),
                 json=self._format_create_print_job_json(
-                    notification_id, address, postage, service_id, organisation_id, pdf_file
+                    notification_id=notification_id,
+                    address_lines=address,
+                    postage=postage,
+                    service_id=service_id,
+                    organisation_id=organisation_id,
+                    pdf_file=pdf_file,
                 ),
             )
             response.raise_for_status()
@@ -226,7 +231,7 @@ class DVLAClient:
             return response.json()
 
     def _format_create_print_job_json(
-        self, notification_id, address_lines, postage, service_id, organisation_id, pdf_file
+        self, *, notification_id, address_lines, postage, service_id, organisation_id, pdf_file
     ):
         from app.models import FIRST_CLASS
 

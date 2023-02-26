@@ -303,12 +303,12 @@ def test_change_api_key_raises_if_other_process_holds_lock(dvla_client, rmock, m
 
 def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_client):
     formatted_json = dvla_client._format_create_print_job_json(
-        "my_notification_id",
-        ["A. User", "The road", "City", "SW1 1AA"],
-        "second",
-        "my_service_id",
-        "my_organisation_id",
-        b"pdf_content",
+        notification_id="my_notification_id",
+        address_lines=["A. User", "The road", "City", "SW1 1AA"],
+        postage="second",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
     )
 
     assert formatted_json == {
@@ -330,12 +330,12 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
 
 def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_post(dvla_client):
     formatted_json = dvla_client._format_create_print_job_json(
-        "my_notification_id",
-        ["A. User", "The road", "City", "SW1 1AA"],
-        "first",
-        "my_service_id",
-        "my_organisation_id",
-        b"pdf_content",
+        notification_id="my_notification_id",
+        address_lines=["A. User", "The road", "City", "SW1 1AA"],
+        postage="first",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
     )
 
     assert formatted_json["standardParams"]["despatchMethod"] == "FIRST"
@@ -361,12 +361,12 @@ def test_format_create_print_job_json_formats_address_lines(
     dvla_client, address_lines, recipient, unstructured_address
 ):
     formatted_json = dvla_client._format_create_print_job_json(
-        "my_notification_id",
-        address_lines,
-        "first",
-        "my_service_id",
-        "my_organisation_id",
-        b"pdf_content",
+        notification_id="my_notification_id",
+        address_lines=address_lines,
+        postage="first",
+        service_id="my_service_id",
+        organisation_id="my_organisation_id",
+        pdf_file=b"pdf_content",
     )
 
     assert formatted_json["standardParams"]["recipientName"] == recipient
