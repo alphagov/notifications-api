@@ -304,6 +304,7 @@ def test_change_api_key_raises_if_other_process_holds_lock(dvla_client, rmock, m
 def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_client):
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
         address_lines=["A. User", "The road", "City", "SW1 1AA"],
         postage="second",
         service_id="my_service_id",
@@ -316,7 +317,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
         "standardParams": {
             "jobType": "NOTIFY",
             "templateReference": "NOTIFY",
-            "businessIdentifier": "my_notification_id",
+            "businessIdentifier": "ABCDEFGHIJKL",
             "recipientName": "A. User",
             "address": {"unstructuredAddress": {"line1": "The road", "line2": "City", "postcode": "SW1 1AA"}},
         },
@@ -331,6 +332,7 @@ def test_format_create_print_job_json_builds_json_body_to_create_print_job(dvla_
 def test_format_create_print_job_json_adds_despatchMethod_key_for_first_class_post(dvla_client):
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
         address_lines=["A. User", "The road", "City", "SW1 1AA"],
         postage="first",
         service_id="my_service_id",
@@ -362,6 +364,7 @@ def test_format_create_print_job_json_formats_address_lines(
 ):
     formatted_json = dvla_client._format_create_print_job_json(
         notification_id="my_notification_id",
+        reference="ABCDEFGHIJKL",
         address_lines=address_lines,
         postage="first",
         service_id="my_service_id",
@@ -382,6 +385,7 @@ def test_send_letter(dvla_client, dvla_authenticate, rmock):
 
     response = dvla_client.send_letter(
         notification_id="noti_id",
+        reference="ABCDEFGHIJKL",
         address=["recipient", "city", "postcode"],
         postage="second",
         service_id="service_id",
@@ -396,7 +400,7 @@ def test_send_letter(dvla_client, dvla_authenticate, rmock):
         "standardParams": {
             "jobType": "NOTIFY",
             "templateReference": "NOTIFY",
-            "businessIdentifier": "noti_id",
+            "businessIdentifier": "ABCDEFGHIJKL",
             "recipientName": "recipient",
             "address": {"unstructuredAddress": {"line1": "city", "postcode": "postcode"}},
         },
@@ -420,6 +424,7 @@ def test_send_letter_raises_an_error_if_postage_is_international(dvla_client, po
     with pytest.raises(NotImplementedError):
         dvla_client.send_letter(
             notification_id="noti_id",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage=postage,
             service_id="service_id",
@@ -453,6 +458,7 @@ def test_send_letter_when_bad_request_error_is_raised(dvla_authenticate, dvla_cl
     with pytest.raises(DvlaNonRetryableException) as exc:
         dvla_client.send_letter(
             notification_id="1",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
@@ -482,6 +488,7 @@ def test_send_letter_when_auth_error_is_raised(dvla_authenticate, dvla_client, r
     with pytest.raises(DvlaUnauthorisedRequestException) as exc:
         dvla_client.send_letter(
             notification_id="noti_id",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
@@ -514,6 +521,7 @@ def test_send_letter_when_conflict_error_is_raised(dvla_authenticate, dvla_clien
     with pytest.raises(DvlaDuplicatePrintRequestException) as exc:
         dvla_client.send_letter(
             notification_id="1",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
@@ -542,6 +550,7 @@ def test_send_letter_when_throttling_error_is_raised(dvla_authenticate, dvla_cli
     with pytest.raises(DvlaThrottlingException):
         dvla_client.send_letter(
             notification_id="1",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
@@ -559,6 +568,7 @@ def test_send_letter_when_5xx_status_code_is_returned(dvla_authenticate, dvla_cl
     with pytest.raises(DvlaRetryableException):
         dvla_client.send_letter(
             notification_id="1",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
@@ -576,6 +586,7 @@ def test_send_letter_when_unknown_exception_is_raised(dvla_authenticate, dvla_cl
     with pytest.raises(DvlaException):
         dvla_client.send_letter(
             notification_id="1",
+            reference="ABCDEFGHIJKL",
             address=["line1", "line2", "postcode"],
             postage="second",
             service_id="s_id",
