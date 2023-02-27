@@ -113,6 +113,7 @@ def deliver_letter(self, notification_id):
     try:
         dvla_client.send_letter(
             notification_id=str(notification.id),
+            reference=str(notification.reference),
             address=address_lines,
             postage=notification.postage,
             service_id=str(notification.service_id),

@@ -272,6 +272,7 @@ def test_deliver_letter(mocker, sample_letter_template, sample_organisation, is_
 
     mock_send_letter.assert_called_once_with(
         notification_id=str(letter.id),
+        reference="ref1",
         address=["A. User", "My Street", "London", "SW1 1AA"],
         postage="second",
         service_id=str(letter.service_id),
