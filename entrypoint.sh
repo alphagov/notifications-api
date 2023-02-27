@@ -17,9 +17,7 @@ then
 elif [ "$1" == "api" ]
 then
   shift 1
-  # TODO: This is fine for local development but this file will soon need to change to have
-  # gunicorn infront of flask
-  flask run --host 0.0.0.0 --port 6011
+  gunicorn -c /home/vcap/app/gunicorn_config.py application
 elif [ -n "$*" ]
 then
   $*
